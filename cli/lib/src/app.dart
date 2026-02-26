@@ -1,14 +1,18 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math';
 
 import 'terminal/terminal.dart';
 import 'terminal/layout.dart';
 import 'input/line_editor.dart';
 import 'agent/agent_core.dart';
+import 'agent/agent_manager.dart';
+import 'agent/prompts.dart';
 import 'agent/tools.dart';
 import 'commands/slash_commands.dart';
+import 'config/glue_config.dart';
+import 'llm/llm_factory.dart';
 import 'rendering/block_renderer.dart';
+import 'tools/subagent_tools.dart';
 import 'ui/modal.dart';
 
 // ---------------------------------------------------------------------------
@@ -99,32 +103,46 @@ class App {
     _initCommands();
   }
 
-  /// Convenience factory that creates a fully wired [App] with default
-  /// tools and terminal.
-  factory App.create({required String model}) {
+  /// Convenience factory that creates a fully wired [App] with real
+  /// LLM provider and subagent system.
+  factory App.create({String? provider, String? model}) {
+    final config = GlueConfig.load(cliProvider: provider, cliModel: model);
+    config.validate();
+
     final terminal = Terminal();
     final layout = Layout(terminal);
     final editor = LineEditor();
 
-    // TODO: Replace with a real LlmClient implementation.
-    final agent = AgentCore(
-      llm: _FakeLlmClient(),
-      modelName: model,
-      tools: {
-        'read_file': ReadFileTool(),
-        'write_file': WriteFileTool(),
-        'bash': BashTool(),
-        'grep': GrepTool(),
-        'list_directory': ListDirectoryTool(),
-      },
+    final systemPrompt = Prompts.build();
+    final llmFactory = LlmClientFactory();
+    final llm = llmFactory.createFromConfig(config, systemPrompt: systemPrompt);
+
+    final tools = <String, Tool>{
+      'read_file': ReadFileTool(),
+      'write_file': WriteFileTool(),
+      'bash': BashTool(),
+      'grep': GrepTool(),
+      'list_directory': ListDirectoryTool(),
+    };
+
+    final agent = AgentCore(llm: llm, tools: tools, modelName: config.model);
+
+    // Create agent manager and register subagent tools.
+    final manager = AgentManager(
+      tools: tools,
+      llmFactory: llmFactory,
+      config: config,
+      systemPrompt: systemPrompt,
     );
+    tools['spawn_subagent'] = SpawnSubagentTool(manager);
+    tools['spawn_parallel_subagents'] = SpawnParallelSubagentsTool(manager);
 
     return App(
       terminal: terminal,
       layout: layout,
       editor: editor,
       agent: agent,
-      modelName: model,
+      modelName: config.model,
     );
   }
 
@@ -621,264 +639,4 @@ class _ConversationEntry {
       _ConversationEntry._(_EntryKind.system, text);
 }
 
-// ---------------------------------------------------------------------------
-// Fake LLM client for TUI development
-// ---------------------------------------------------------------------------
 
-class _FakeLlmClient extends LlmClient {
-  final _random = Random();
-  int _callCount = 0;
-
-  @override
-  Stream<LlmChunk> stream(
-    List<Message> messages, {
-    List<Tool>? tools,
-  }) async* {
-    _callCount++;
-    final lastMsg = messages.lastWhere((m) => m.role == Role.user,
-        orElse: () => Message.user(''));
-
-    // After a tool result, emit a follow-up response about it.
-    final lastIsToolResult =
-        messages.isNotEmpty && messages.last.role == Role.toolResult;
-    if (lastIsToolResult) {
-      yield* _streamText(
-          'Got the tool result. Let me analyze that...\n\n'
-          'Looks like everything worked as expected. '
-          'The output shows **${_random.nextInt(42) + 1} items** processed.\n\n'
-          '> Tool execution complete.');
-      yield _usage(80, 60);
-      return;
-    }
-
-    // Pick a scenario based on the user's message and some randomness.
-    final text = (lastMsg.text ?? '').toLowerCase();
-    final scenario = _pickScenario(text, tools);
-
-    switch (scenario) {
-      case _Scenario.greeting:
-        yield* _streamText(
-            'Hello! I\'m **Glue**, your coding agent.\n'
-            '\n'
-            '## What I can do\n'
-            '\n'
-            '- Read and write files\n'
-            '- Run shell commands\n'
-            '- Search through code with `grep`\n'
-            '\n'
-            'How can I help you today?');
-        yield _usage(30, 50);
-
-      case _Scenario.codeAnswer:
-        yield* _streamText(
-            'Sure, here\'s how you\'d do that:\n'
-            '\n'
-            '```dart\n'
-            'import \'dart:io\';\n'
-            '\n'
-            'Future<void> main() async {\n'
-            '  final file = File(\'data.json\');\n'
-            '  final contents = await file.readAsString();\n'
-            '  print(\'Read \${contents.length} bytes\');\n'
-            '}\n'
-            '```\n'
-            '\n'
-            'This reads a file asynchronously and prints its size. '
-            'You could also use `File.readAsLines()` for line-by-line processing.');
-        yield _usage(50, 90);
-
-      case _Scenario.readFile:
-        yield* _streamText('Let me take a look at that file.');
-        yield ToolCallDelta(ToolCall(
-          id: 'call_${_callCount}_1',
-          name: 'read_file',
-          arguments: {'path': 'pubspec.yaml'},
-          description: 'Reading pubspec.yaml',
-        ));
-        yield _usage(40, 30);
-
-      case _Scenario.bashCommand:
-        yield* _streamText(
-            'I\'ll run that command for you.\n');
-        yield ToolCallDelta(ToolCall(
-          id: 'call_${_callCount}_1',
-          name: 'bash',
-          arguments: {'command': 'echo "Hello from Glue!" && date'},
-          description: 'Running shell command',
-        ));
-        yield _usage(35, 25);
-
-      case _Scenario.multiTool:
-        yield* _streamText(
-            'Let me check the project structure first.');
-        yield ToolCallDelta(ToolCall(
-          id: 'call_${_callCount}_1',
-          name: 'list_directory',
-          arguments: {'path': '.'},
-          description: 'Listing current directory',
-        ));
-        yield _usage(60, 40);
-
-      case _Scenario.grepSearch:
-        yield* _streamText(
-            'I\'ll search for that pattern in the codebase.');
-        yield ToolCallDelta(ToolCall(
-          id: 'call_${_callCount}_1',
-          name: 'grep',
-          arguments: {'pattern': 'TODO', 'path': '.'},
-          description: 'Searching for TODOs',
-        ));
-        yield _usage(45, 30);
-
-      case _Scenario.writeFile:
-        yield* _streamText(
-            'I\'ll create that file for you.\n');
-        yield ToolCallDelta(ToolCall(
-          id: 'call_${_callCount}_1',
-          name: 'write_file',
-          arguments: {
-            'path': '/tmp/glue-test.txt',
-            'content': 'Hello from Glue!\nGenerated at: ${DateTime.now()}\n',
-          },
-          description: 'Writing test file',
-        ));
-        yield _usage(40, 35);
-
-      case _Scenario.markdownShowcase:
-        yield* _streamText(
-            '# Markdown Showcase\n'
-            '\n'
-            'Here\'s what I can render:\n'
-            '\n'
-            '## Text Styles\n'
-            '\n'
-            'This is **bold**, this is *italic*, and this is `inline code`.\n'
-            '\n'
-            '## Lists\n'
-            '\n'
-            '- First item\n'
-            '- Second item with **emphasis**\n'
-            '- Third item with `code`\n'
-            '\n'
-            '1. Ordered one\n'
-            '2. Ordered two\n'
-            '3. Ordered three\n'
-            '\n'
-            '## Code Block\n'
-            '\n'
-            '```python\n'
-            'def fibonacci(n):\n'
-            '    if n <= 1:\n'
-            '        return n\n'
-            '    return fibonacci(n-1) + fibonacci(n-2)\n'
-            '\n'
-            'print(fibonacci(10))  # 55\n'
-            '```\n'
-            '\n'
-            '## Blockquote\n'
-            '\n'
-            '> The best way to predict the future\n'
-            '> is to *invent* it. — **Alan Kay**\n'
-            '\n'
-            'That\'s most of the markdown I support!');
-        yield _usage(30, 200);
-
-      case _Scenario.longResponse:
-        final buf = StringBuffer('Here\'s a detailed analysis:\n\n');
-        for (var i = 1; i <= 30; i++) {
-          buf.writeln('$i. Item number $i — '
-              '${_randomPhrase()} with some additional detail '
-              'that makes this line longer for wrapping purposes.');
-        }
-        buf.write(
-            '\n> This was a long response to test scrolling behavior.');
-        yield* _streamText(buf.toString());
-        yield _usage(50, 300);
-
-      case _Scenario.error:
-        yield* _streamText('I encountered an issue trying to process that.');
-        yield _usage(20, 15);
-        throw Exception(
-            'Simulated LLM error: rate limit exceeded (fake)');
-    }
-  }
-
-  _Scenario _pickScenario(String text, List<Tool>? tools) {
-    // Keyword matching for deterministic-ish behavior.
-    if (text.contains('hello') || text.contains('hi') || text.isEmpty) {
-      return _Scenario.greeting;
-    }
-    if (text.contains('markdown') || text.contains('render')) {
-      return _Scenario.markdownShowcase;
-    }
-    if (text.contains('read') || text.contains('show') || text.contains('cat')) {
-      return _Scenario.readFile;
-    }
-    if (text.contains('run') || text.contains('exec') || text.contains('bash')) {
-      return _Scenario.bashCommand;
-    }
-    if (text.contains('list') || text.contains('ls') || text.contains('dir')) {
-      return _Scenario.multiTool;
-    }
-    if (text.contains('search') || text.contains('find') || text.contains('grep')) {
-      return _Scenario.grepSearch;
-    }
-    if (text.contains('write') || text.contains('create') || text.contains('save')) {
-      return _Scenario.writeFile;
-    }
-    if (text.contains('long') || text.contains('scroll') || text.contains('many')) {
-      return _Scenario.longResponse;
-    }
-    if (text.contains('error') || text.contains('fail') || text.contains('crash')) {
-      return _Scenario.error;
-    }
-    if (text.contains('code') || text.contains('how') || text.contains('example')) {
-      return _Scenario.codeAnswer;
-    }
-
-    // Random pick for anything else.
-    const scenarios = _Scenario.values;
-    return scenarios[_random.nextInt(scenarios.length)];
-  }
-
-  Stream<LlmChunk> _streamText(String text) async* {
-    // Stream in small chunks with varying speed for realism.
-    final words = text.split(' ');
-    for (var i = 0; i < words.length; i++) {
-      final word = i == 0 ? words[i] : ' ${words[i]}';
-      yield TextDelta(word);
-      await Future.delayed(Duration(
-          milliseconds: 15 + _random.nextInt(35)));
-    }
-  }
-
-  UsageInfo _usage(int input, int output) =>
-      UsageInfo(inputTokens: input, outputTokens: output);
-
-  String _randomPhrase() {
-    const phrases = [
-      'analyzed the dependency graph',
-      'checked for potential issues',
-      'verified the implementation',
-      'found an interesting pattern',
-      'noted a possible optimization',
-      'reviewed the test coverage',
-      'examined the error handling',
-      'validated the API contract',
-    ];
-    return phrases[_random.nextInt(phrases.length)];
-  }
-}
-
-enum _Scenario {
-  greeting,
-  codeAnswer,
-  readFile,
-  bashCommand,
-  multiTool,
-  grepSearch,
-  writeFile,
-  markdownShowcase,
-  longResponse,
-  error,
-}

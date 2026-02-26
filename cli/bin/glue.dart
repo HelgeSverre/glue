@@ -17,7 +17,8 @@ void main(List<String> args) async {
   final parser = ArgParser()
     ..addFlag('help', abbr: 'h', negatable: false, help: 'Show usage information.')
     ..addFlag('version', abbr: 'v', negatable: false, help: 'Print version.')
-    ..addOption('model', abbr: 'm', help: 'LLM model to use.', defaultsTo: 'claude-sonnet-4-20250514');
+    ..addOption('provider', abbr: 'p', help: 'LLM provider (anthropic, openai, ollama).')
+    ..addOption('model', abbr: 'm', help: 'LLM model to use.');
 
   final ArgResults results;
   try {
@@ -45,9 +46,10 @@ void main(List<String> args) async {
     return;
   }
 
-  final model = results.option('model')!;
+  final provider = results.option('provider');
+  final model = results.option('model');
 
-  final app = App.create(model: model);
+  final app = App.create(provider: provider, model: model);
 
   final sigintSub = ProcessSignal.sigint.watch().listen((_) => app.requestExit());
 
