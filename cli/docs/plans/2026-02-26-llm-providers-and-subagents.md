@@ -110,6 +110,7 @@ lib/src/
 ## Task 1: SSE Stream Decoder
 
 **Files:**
+
 - Create: `lib/src/llm/sse.dart`
 - Test: `test/llm/sse_test.dart`
 
@@ -305,6 +306,7 @@ git commit -m "feat: add SSE stream decoder for LLM provider streaming"
 ## Task 2: Tool Schema Translation
 
 **Files:**
+
 - Create: `lib/src/llm/tool_schema.dart`
 - Test: `test/llm/tool_schema_test.dart`
 
@@ -429,6 +431,7 @@ git commit -m "feat: add per-provider tool schema encoders (Anthropic/OpenAI)"
 ## Task 3: Message Mapper & System Prompts
 
 **Files:**
+
 - Create: `lib/src/llm/message_mapper.dart`
 - Create: `lib/src/agent/prompts.dart`
 - Test: `test/llm/message_mapper_test.dart`
@@ -686,6 +689,7 @@ git commit -m "feat: add system prompts and per-provider message mappers"
 ## Task 4: Anthropic Client
 
 **Files:**
+
 - Create: `lib/src/llm/anthropic_client.dart`
 - Test: `test/llm/anthropic_client_test.dart`
 
@@ -932,6 +936,7 @@ git commit -m "feat: add Anthropic Messages API streaming client"
 ## Task 5: OpenAI Client
 
 **Files:**
+
 - Create: `lib/src/llm/openai_client.dart`
 - Test: `test/llm/openai_client_test.dart`
 
@@ -1172,6 +1177,7 @@ git commit -m "feat: add OpenAI Chat Completions streaming client"
 ## Task 6: NDJSON Decoder & Ollama Client
 
 **Files:**
+
 - Create: `lib/src/llm/ndjson.dart`
 - Create: `lib/src/llm/ollama_client.dart`
 - Test: `test/llm/ollama_client_test.dart`
@@ -1451,6 +1457,7 @@ git commit -m "feat: add Ollama local LLM client with NDJSON streaming"
 ## Task 7: Configuration System
 
 **Files:**
+
 - Create: `lib/src/config/glue_config.dart`
 - Test: `test/config/glue_config_test.dart`
 
@@ -1707,6 +1714,7 @@ git commit -m "feat: add configuration system with multi-provider support"
 ## Task 8: LLM Client Factory
 
 **Files:**
+
 - Create: `lib/src/llm/llm_factory.dart`
 - Test: `test/llm/llm_factory_test.dart`
 
@@ -1860,6 +1868,7 @@ git commit -m "feat: add LLM client factory for provider instantiation"
 ## Task 9: Agent Runner (Headless Execution)
 
 **Files:**
+
 - Create: `lib/src/agent/agent_runner.dart`
 - Test: `test/agent/agent_runner_test.dart`
 
@@ -2051,6 +2060,7 @@ git commit -m "feat: add headless AgentRunner with configurable approval policie
 ## Task 10: Agent Manager (Subagent Orchestration)
 
 **Files:**
+
 - Create: `lib/src/agent/agent_manager.dart`
 - Test: `test/agent/agent_manager_test.dart`
 
@@ -2246,6 +2256,7 @@ git commit -m "feat: add AgentManager for subagent orchestration"
 ## Task 11: Subagent Tools
 
 **Files:**
+
 - Create: `lib/src/tools/subagent_tools.dart`
 - Test: `test/tools/subagent_tools_test.dart`
 
@@ -2487,6 +2498,7 @@ git commit -m "feat: add spawn_subagent and spawn_parallel_subagents tools"
 ## Task 12: Wire Everything Together in App
 
 **Files:**
+
 - Modify: `lib/src/app.dart` — replace `_FakeLlmClient` with real provider
 - Modify: `lib/glue.dart` — export new types
 - Modify: `bin/` entry point (if exists)
@@ -2496,6 +2508,7 @@ git commit -m "feat: add spawn_subagent and spawn_parallel_subagents tools"
 Replace the `_FakeLlmClient` in `App.create()` with a `GlueConfig.load()` → `LlmClientFactory` → real provider client.
 
 Key changes to `app.dart`:
+
 - Import config, factory, prompts, subagent tools, agent manager
 - In `App.create()`: load config, create real LLM client, create agent manager, register subagent tools
 - Remove `_FakeLlmClient` class and related code
@@ -2553,6 +2566,7 @@ Delete the entire `_FakeLlmClient` class and the `_Scenario` enum from `app.dart
 **Step 4: Update exports in `lib/glue.dart`**
 
 Add exports for new public types:
+
 ```dart
 export 'src/config/glue_config.dart' show GlueConfig, LlmProvider, AgentProfile, ConfigError;
 export 'src/llm/llm_factory.dart' show LlmClientFactory;
@@ -2578,6 +2592,7 @@ git commit -m "feat: wire real LLM providers and subagent system into App"
 ## Task 13: End-to-End Smoke Test
 
 **Files:**
+
 - Create: `test/integration/smoke_test.dart`
 
 **Step 1: Write the test**
@@ -2681,27 +2696,30 @@ git commit -m "test: add end-to-end smoke tests for agent runner and manager"
 
 ## Summary
 
-| Task | Component | What | Files |
-|------|-----------|------|-------|
-| 1 | SSE Decoder | Shared SSE byte-stream parser | `lib/src/llm/sse.dart` |
-| 2 | Tool Schema | Per-provider tool encoding | `lib/src/llm/tool_schema.dart` |
-| 3 | Messages | System prompts + message mapping | `lib/src/agent/prompts.dart`, `lib/src/llm/message_mapper.dart` |
-| 4 | Anthropic | Full streaming client | `lib/src/llm/anthropic_client.dart` |
-| 5 | OpenAI | Full streaming client | `lib/src/llm/openai_client.dart` |
-| 6 | Config | Multi-provider config system | `lib/src/config/glue_config.dart` |
-| 7 | Factory | Client instantiation | `lib/src/llm/llm_factory.dart` |
-| 8 | Runner | Headless agent execution | `lib/src/agent/agent_runner.dart` |
-| 9 | Manager | Subagent orchestration | `lib/src/agent/agent_manager.dart` |
-| 10 | Tools | Subagent tool calls | `lib/src/tools/subagent_tools.dart` |
-| 11 | Wiring | Connect everything in App | `lib/src/app.dart`, `lib/glue.dart` |
-| 12 | Smoke | Integration tests | `test/integration/smoke_test.dart` |
+| Task | Component   | What                                                                    | Files                                                           |
+| ---- | ----------- | ----------------------------------------------------------------------- | --------------------------------------------------------------- |
+| 1    | SSE Decoder | Shared SSE byte-stream parser                                           | `lib/src/llm/sse.dart`                                          |
+| 2    | Tool Schema | Per-provider tool encoding                                              | `lib/src/llm/tool_schema.dart`                                  |
+| 3    | Messages    | System prompts + message mapping                                        | `lib/src/agent/prompts.dart`, `lib/src/llm/message_mapper.dart` |
+| 4    | Anthropic   | Streaming client (claude-opus-4-6, claude-sonnet-4-6, claude-haiku-4-5) | `lib/src/llm/anthropic_client.dart`                             |
+| 5    | OpenAI      | Streaming client (gpt-4.1, gpt-4.1-mini, gpt-4.1-nano, o3, o4-mini)     | `lib/src/llm/openai_client.dart`                                |
+| 6    | Ollama      | NDJSON streaming client (any local model)                               | `lib/src/llm/ndjson.dart`, `lib/src/llm/ollama_client.dart`     |
+| 7    | Config      | Multi-provider config system                                            | `lib/src/config/glue_config.dart`                               |
+| 8    | Factory     | Client instantiation (3 providers)                                      | `lib/src/llm/llm_factory.dart`                                  |
+| 9    | Runner      | Headless agent execution                                                | `lib/src/agent/agent_runner.dart`                               |
+| 10   | Manager     | Subagent orchestration                                                  | `lib/src/agent/agent_manager.dart`                              |
+| 11   | Tools       | Subagent tool calls                                                     | `lib/src/tools/subagent_tools.dart`                             |
+| 12   | Wiring      | Connect everything in App                                               | `lib/src/app.dart`, `lib/glue.dart`                             |
+| 13   | Smoke       | Integration tests                                                       | `test/integration/smoke_test.dart`                              |
 
 ### Key Architectural Decisions
 
 1. **AgentCore is untouched** — all provider logic lives in the `llm/` layer
-2. **Manager pattern** — `AgentManager` spawns child `AgentCore`s (hierarchical orchestration from research)
-3. **Architect/Editor ready** — profiles allow using expensive models for planning, cheap for execution
-4. **Depth-limited recursion** — prevents infinite subagent nesting
-5. **Subagents strip spawning tools** — no recursive self-spawning at tool level
-6. **SSE decoder is shared** — both providers use same byte-to-event parser
-7. **Tool schema translation is external** — `Tool` class unchanged, encoders handle provider differences
+2. **3 providers, 2 streaming formats** — SSE (Anthropic/OpenAI) and NDJSON (Ollama)
+3. **Manager pattern** — `AgentManager` spawns child `AgentCore`s (hierarchical orchestration from research)
+4. **Architect/Editor ready** — profiles allow expensive models (claude-opus-4-6) for planning, cheap (gpt-4.1-nano, Ollama local) for execution
+5. **Ollama for local testing** — no API key needed, any pulled model works
+6. **Depth-limited recursion** — prevents infinite subagent nesting
+7. **Subagents strip spawning tools** — no recursive self-spawning at tool level
+8. **SSE decoder is shared** — Anthropic and OpenAI use same byte-to-event parser; Ollama uses separate NDJSON decoder
+9. **Tool schema translation is external** — `Tool` class unchanged, encoders handle provider differences (Ollama reuses OpenAI format)
