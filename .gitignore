@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+
+# Dart
+.dart_tool/
+pubspec.lock
+*.dart.js
+*.js_
+*.js.deps
+*.js.map
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Vercel
+.vercel/
+
+# Build outputs
+build/
+dist/
+
+# Environment
+.env
+.env.local
