@@ -203,7 +203,6 @@ class AgentCore {
               yield AgentTextDelta(text);
             case ToolCallDelta(:final toolCall):
               toolCalls.add(toolCall);
-              yield AgentToolCall(toolCall);
             case UsageInfo(:final totalTokens):
               tokenCount += totalTokens;
           }
@@ -220,7 +219,9 @@ class AgentCore {
         // Execute each tool and feed results back to the LLM.
         for (final call in toolCalls) {
           _toolResultCompleter = Completer<ToolResult>();
-          final result = await _toolResultCompleter!.future;
+          final resultFuture = _toolResultCompleter!.future;
+          yield AgentToolCall(call);
+          final result = await resultFuture;
           _conversation.add(Message.toolResult(
             callId: call.id,
             content: result.content,
