@@ -16,7 +16,7 @@ class AnthropicClient implements LlmClient {
   final String systemPrompt;
   final Uri _baseUri;
 
-  static const _apiVersion = '2023-01-01';
+  static const _apiVersion = '2023-06-01';
   static const _defaultBaseUrl = 'https://api.anthropic.com';
 
   AnthropicClient({
