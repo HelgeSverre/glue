@@ -8,8 +8,10 @@ import 'dart:convert';
 Stream<Map<String, dynamic>> decodeNdjson(Stream<List<int>> bytes) async* {
   final buffer = StringBuffer();
 
-  await for (final chunk in bytes) {
-    buffer.write(utf8.decode(chunk));
+  // Use utf8.decoder (a StreamTransformer) instead of utf8.decode() to
+  // correctly handle multi-byte characters split across chunk boundaries.
+  await for (final str in bytes.cast<List<int>>().transform(utf8.decoder)) {
+    buffer.write(str);
 
     while (true) {
       final content = buffer.toString();

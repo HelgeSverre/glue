@@ -131,9 +131,14 @@ class OpenAiClient implements LlmClient {
       if (finishReason != null && toolBuilders.isNotEmpty) {
         for (final builder in toolBuilders.values) {
           final argsStr = builder.argsBuffer.toString();
-          final args = argsStr.isNotEmpty
-              ? (jsonDecode(argsStr) as Map<String, dynamic>)
-              : <String, dynamic>{};
+          Map<String, dynamic> args;
+          try {
+            args = argsStr.isNotEmpty
+                ? (jsonDecode(argsStr) as Map<String, dynamic>)
+                : <String, dynamic>{};
+          } on FormatException {
+            args = <String, dynamic>{'_raw': argsStr};
+          }
           yield ToolCallDelta(ToolCall(
             id: builder.id,
             name: builder.name,

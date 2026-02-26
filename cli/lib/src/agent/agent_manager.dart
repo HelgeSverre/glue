@@ -3,24 +3,31 @@ import 'agent_runner.dart';
 import 'tools.dart';
 import '../config/glue_config.dart';
 import '../llm/llm_factory.dart';
+import '../tools/subagent_tools.dart';
+
+/// Tools that are safe for subagents to execute without user approval.
+const safeSubagentTools = {'read_file', 'list_directory', 'grep'};
 
 /// Orchestrates subagent spawning using the manager pattern.
 ///
 /// Creates independent [AgentCore] instances with their own conversation
 /// history but shared tool registry. Subagents run headlessly via
-/// [AgentRunner] with auto-approve policy.
+/// [AgentRunner] with an allowlist-based approval policy (read-only
+/// tools by default).
 class AgentManager {
   final Map<String, Tool> tools;
   final LlmClientFactory llmFactory;
   final GlueConfig config;
   final String systemPrompt;
+  final Set<String> allowedSubagentTools;
 
   AgentManager({
     required this.tools,
     required this.llmFactory,
     required this.config,
     required this.systemPrompt,
-  });
+    Set<String>? allowedSubagentTools,
+  }) : allowedSubagentTools = allowedSubagentTools ?? safeSubagentTools;
 
   /// Spawn a single subagent to complete a [task].
   ///
@@ -48,11 +55,20 @@ class AgentManager {
       systemPrompt: systemPrompt,
     );
 
-    // Subagents get all tools except subagent-spawning tools
-    // to prevent infinite recursion at the tool level.
-    final subagentTools = Map<String, Tool>.from(tools)
-      ..removeWhere((name, _) =>
+    final subagentTools = Map<String, Tool>.from(tools);
+
+    // Give subagents depth-incremented spawning tools if they haven't
+    // reached the maximum depth yet.
+    final nextDepth = currentDepth + 1;
+    if (nextDepth < config.maxSubagentDepth) {
+      subagentTools['spawn_subagent'] =
+          SpawnSubagentTool(this, depth: nextDepth);
+      subagentTools['spawn_parallel_subagents'] =
+          SpawnParallelSubagentsTool(this, depth: nextDepth);
+    } else {
+      subagentTools.removeWhere((name, _) =>
           name == 'spawn_subagent' || name == 'spawn_parallel_subagents');
+    }
 
     final core = AgentCore(
       llm: llm,
@@ -62,7 +78,8 @@ class AgentManager {
 
     final runner = AgentRunner(
       core: core,
-      policy: ToolApprovalPolicy.autoApproveAll,
+      policy: ToolApprovalPolicy.allowlist,
+      allowedTools: allowedSubagentTools,
     );
 
     return runner.runToCompletion(task);
@@ -71,6 +88,10 @@ class AgentManager {
   /// Spawn [tasks] in parallel, each as an independent subagent.
   ///
   /// All subagents run concurrently and results are returned in order.
+  ///
+  /// **Note:** Parallel subagents share the same file system. Avoid
+  /// tasks that write to the same files concurrently, as this can
+  /// cause race conditions.
   Future<List<String>> spawnParallel({
     required List<String> tasks,
     AgentProfile? profile,

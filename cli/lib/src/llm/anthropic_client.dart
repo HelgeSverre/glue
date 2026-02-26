@@ -119,9 +119,14 @@ class AnthropicClient implements LlmClient {
           final buf = toolBuffers.remove(index);
           if (buf != null) {
             final argsJson = buf.buffer.toString();
-            final args = argsJson.isNotEmpty
-                ? (jsonDecode(argsJson) as Map<String, dynamic>)
-                : <String, dynamic>{};
+            Map<String, dynamic> args;
+            try {
+              args = argsJson.isNotEmpty
+                  ? (jsonDecode(argsJson) as Map<String, dynamic>)
+                  : <String, dynamic>{};
+            } on FormatException {
+              args = <String, dynamic>{'_raw': argsJson};
+            }
             yield ToolCallDelta(ToolCall(
               id: buf.id,
               name: buf.name,

@@ -6,8 +6,9 @@ import '../config/glue_config.dart';
 /// Tool that spawns a single subagent to perform a focused task.
 class SpawnSubagentTool extends Tool {
   final AgentManager _manager;
+  final int _depth;
 
-  SpawnSubagentTool(this._manager);
+  SpawnSubagentTool(this._manager, {int depth = 0}) : _depth = depth;
 
   @override
   String get name => 'spawn_subagent';
@@ -59,15 +60,20 @@ class SpawnSubagentTool extends Tool {
       );
     }
 
-    return _manager.spawnSubagent(task: task, profile: profile);
+    return _manager.spawnSubagent(
+      task: task,
+      profile: profile,
+      currentDepth: _depth,
+    );
   }
 }
 
 /// Tool that spawns multiple subagents in parallel.
 class SpawnParallelSubagentsTool extends Tool {
   final AgentManager _manager;
+  final int _depth;
 
-  SpawnParallelSubagentsTool(this._manager);
+  SpawnParallelSubagentsTool(this._manager, {int depth = 0}) : _depth = depth;
 
   @override
   String get name => 'spawn_parallel_subagents';
@@ -119,7 +125,11 @@ class SpawnParallelSubagentsTool extends Tool {
       );
     }
 
-    final results = await _manager.spawnParallel(tasks: tasks, profile: profile);
+    final results = await _manager.spawnParallel(
+      tasks: tasks,
+      profile: profile,
+      currentDepth: _depth,
+    );
 
     return jsonEncode({
       'results': [
