@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glue — Documentation</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <div class="tape"></div>
+  <nav class="nav">
+    <a href="index.html" class="nav-logo">GLUE</a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="docs.html" class="active">Docs</a></li>
+      <li><a href="models.html">Models</a></li>
+      <li><a href="worktrees.html">Worktrees</a></li>
+      <li><a href="app.html">Web UI</a></li>
+      <li><a href="brand.html">Brand</a></li>
+    </ul>
+  </nav>
+  <div class="tape"></div>
+
+  <!-- ─── Hero ─── -->
+  <section class="block">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">■ Documentation</div>
+        <h2 class="block-heading">Get Started<br>with Glue</h2>
+        <p class="block-sub">Everything you need to install, configure, and start using Glue in your projects.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="tape"></div>
+
+  <!-- ─── Quick Start ─── -->
+  <section class="block block-dark">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">01 · Quick Start</div>
+        <h2 class="block-heading">Install & Run</h2>
+      </div>
+      <div class="two-col">
+        <div class="prose reveal rd1" style="color: #ccc;">
+          <h3 style="color: var(--yellow);">Prerequisites</h3>
+          <ul>
+            <li>Dart SDK 3.0 or later</li>
+            <li>Git (for worktree support)</li>
+            <li>An API key for at least one LLM provider</li>
+          </ul>
+          <h3 style="color: var(--yellow);">Set Your API Key</h3>
+          <p>Glue reads your provider keys from environment variables. Set the one for your preferred provider:</p>
+        </div>
+        <div class="reveal rd2">
+          <div class="terminal" style="margin-bottom: 24px;">
+            <div class="terminal-bar">▸ Installation</div>
+            <div class="terminal-body">
+              <span class="line"><span class="d"># Install globally</span></span>
+              <span class="line"><span class="p">❯</span> <span class="c">dart pub global activate glue</span></span>
+              <span class="blank"></span>
+              <span class="line"><span class="d"># Navigate to your project</span></span>
+              <span class="line"><span class="p">❯</span> <span class="c">cd my-project</span></span>
+              <span class="blank"></span>
+              <span class="line"><span class="d"># Launch</span></span>
+              <span class="line"><span class="p">❯</span> <span class="c">glue</span></span>
+            </div>
+          </div>
+          <div class="terminal">
+            <div class="terminal-bar">▸ Environment</div>
+            <div class="terminal-body">
+              <span class="line"><span class="d"># Anthropic (default)</span></span>
+              <span class="line"><span class="p">❯</span> <span class="c">export ANTHROPIC_API_KEY=sk-...</span></span>
+              <span class="blank"></span>
+              <span class="line"><span class="d"># OpenAI</span></span>
+              <span class="line"><span class="p">❯</span> <span class="c">export OPENAI_API_KEY=sk-...</span></span>
+              <span class="blank"></span>
+              <span class="line"><span class="d"># Google</span></span>
+              <span class="line"><span class="p">❯</span> <span class="c">export GOOGLE_API_KEY=...</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="tape"></div>
+
+  <!-- ─── CLI Reference ─── -->
+  <section class="block">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">02 · CLI Reference</div>
+        <h2 class="block-heading">Commands & Flags</h2>
+      </div>
+      <div class="reveal rd1">
+        <table class="brutal-table">
+          <thead>
+            <tr><th>Command / Flag</th><th>Description</th><th>Example</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>glue</code></td><td>Start an interactive session in the current directory</td><td><code>glue</code></td></tr>
+            <tr><td><code>glue "prompt"</code></td><td>Start with an initial prompt</td><td><code>glue "add auth endpoint"</code></td></tr>
+            <tr><td><code>--model, -m</code></td><td>Select LLM provider and model</td><td><code>glue -m gpt-5</code></td></tr>
+            <tr><td><code>--worktree, -w</code></td><td>Run in a specific git worktree</td><td><code>glue -w feat/auth</code></td></tr>
+            <tr><td><code>--new-worktree</code></td><td>Create a new worktree and start a session</td><td><code>glue --new-worktree feat/api</code></td></tr>
+            <tr><td><code>--approve-all</code></td><td>Auto-approve all tool calls (use with caution)</td><td><code>glue --approve-all</code></td></tr>
+            <tr><td><code>--resume, -r</code></td><td>Resume the last session in this directory</td><td><code>glue -r</code></td></tr>
+            <tr><td><code>--list</code></td><td>List all active sessions</td><td><code>glue --list</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <div class="tape"></div>
+
+  <!-- ─── Configuration ─── -->
+  <section class="block block-dark">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">03 · Configuration</div>
+        <h2 class="block-heading">Configure Glue</h2>
+        <p class="block-sub">Glue works out of the box, but you can customize behavior with a <code>.glue/</code> directory in your project root.</p>
+      </div>
+      <div class="two-col">
+        <div class="reveal rd1">
+          <div class="code-block"><span class="comment">// .glue/config.json</span>
+{
+  <span class="hl">"model"</span>: <span class="string">"claude-4-sonnet"</span>,
+  <span class="hl">"approval"</span>: {
+    <span class="hl">"auto_approve"</span>: [<span class="string">"read_file"</span>, <span class="string">"list_dir"</span>],
+    <span class="hl">"always_ask"</span>: [<span class="string">"bash"</span>, <span class="string">"write_file"</span>]
+  },
+  <span class="hl">"context"</span>: {
+    <span class="hl">"include"</span>: [<span class="string">"README.md"</span>, <span class="string">"AGENTS.md"</span>],
+    <span class="hl">"ignore"</span>: [<span class="string">"node_modules"</span>, <span class="string">".git"</span>]
+  }
+}</div>
+        </div>
+        <div class="prose reveal rd2" style="color: #ccc;">
+          <h3 style="color: var(--yellow);">Config Files</h3>
+          <ul>
+            <li><code>.glue/config.json</code> — Main configuration</li>
+            <li><code>.glue/mcp.json</code> — MCP server definitions</li>
+            <li><code>.glue/rules.md</code> — Custom instructions for the agent</li>
+          </ul>
+          <h3 style="color: var(--yellow);">Scoping</h3>
+          <p>Config is hierarchical. Global settings live in <code>~/.glue/</code>, project-level in <code>.glue/</code>. Project config overrides global.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="tape"></div>
+
+  <!-- ─── Tools ─── -->
+  <section class="block">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">04 · Built-in Tools</div>
+        <h2 class="block-heading">What Glue Can Do</h2>
+      </div>
+      <div class="grid grid-3">
+        <div class="cell reveal"><div class="cell-title">read_file</div><div class="cell-text">Read file contents with optional line ranges. Supports binary detection and large file handling.</div></div>
+        <div class="cell reveal rd1"><div class="cell-title">write_file</div><div class="cell-text">Create or overwrite files. Always requires approval. Shows diff preview before writing.</div></div>
+        <div class="cell reveal rd2"><div class="cell-title">edit_file</div><div class="cell-text">Surgical edits with search-and-replace. Minimal diffs, preserves formatting.</div></div>
+        <div class="cell reveal rd3"><div class="cell-title">bash</div><div class="cell-text">Run shell commands. Streams output in real-time. Timeout and approval configurable.</div></div>
+        <div class="cell reveal rd4"><div class="cell-title">list_dir</div><div class="cell-text">List directory contents with metadata. Respects .gitignore patterns.</div></div>
+        <div class="cell reveal rd5"><div class="cell-title">search</div><div class="cell-text">Fast regex search across files. Powered by ripgrep when available.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="tape"></div>
+  <footer class="footer">GLUE · Apache-2.0 · <a href="#">GitHub</a> <a href="#">Docs</a> <a href="#">Discord</a></footer>
+  <div class="tape"></div>
+
+  <script>
+    const reveals = document.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+    reveals.forEach(el => observer.observe(el));
+  </script>
+</body>
+</html>

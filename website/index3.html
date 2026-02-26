@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glue — The coding agent that holds it all together</title>
+  <meta name="description" content="Open source CLI coding agent built in Dart. Multi-model, multi-worktree, impossibly fast.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⬡</text></svg>">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --yellow: #FACC15;
+      --gold: #EAB308;
+      --amber: #F59E0B;
+      --bg: #0A0A0B;
+      --surface: #18181B;
+      --surface-el: #27272A;
+      --border: #3F3F46;
+      --border-bright: #52525B;
+      --text: #FAFAFA;
+      --text-sec: #A1A1AA;
+      --text-muted: #71717A;
+      --text-yellow: #FDE047;
+      --success: #22C55E;
+      --mono: 'JetBrains Mono', monospace;
+      --sans: 'Inter', sans-serif;
+      --glow: rgba(250, 204, 21, 0.15);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--yellow); text-decoration: none; transition: color 0.2s; }
+    a:hover { color: var(--amber); }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+    section { padding: 100px 0; position: relative; }
+
+    /* ─── Hex Background Canvas ─── */
+    #hex-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.4;
+    }
+
+    /* ─── Reveal ─── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal-d1 { transition-delay: 0.1s; }
+    .reveal-d2 { transition-delay: 0.2s; }
+    .reveal-d3 { transition-delay: 0.3s; }
+    .reveal-d4 { transition-delay: 0.4s; }
+    .reveal-d5 { transition-delay: 0.5s; }
+    .reveal-d6 { transition-delay: 0.6s; }
+
+    /* ─── Nav ─── */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 16px 0;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      background: rgba(10, 10, 11, 0.75);
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.3s;
+    }
+    .nav.scrolled { border-bottom-color: var(--border); }
+    .nav .container { display: flex; align-items: center; justify-content: space-between; }
+    .nav-logo {
+      font-family: var(--mono); font-weight: 700; font-size: 20px;
+      color: var(--yellow); letter-spacing: -0.5px;
+    }
+    .nav-logo span { color: var(--text-muted); }
+    .nav-links { display: flex; gap: 28px; align-items: center; list-style: none; }
+    .nav-links a { color: var(--text-sec); font-size: 14px; font-weight: 500; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      background: var(--yellow) !important; color: var(--bg) !important;
+      padding: 8px 18px; border-radius: 6px; font-weight: 600; font-size: 13px !important;
+      transition: background 0.2s, transform 0.2s !important;
+    }
+    .nav-cta:hover { background: var(--gold) !important; transform: translateY(-1px); }
+
+    /* ─── Hero ─── */
+    .hero {
+      min-height: 100vh; display: flex; align-items: center;
+      padding-top: 80px; position: relative; overflow: hidden;
+    }
+    .hero-inner { position: relative; z-index: 1; text-align: center; width: 100%; }
+
+    .hero-status {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 16px; border-radius: 999px;
+      border: 1px solid var(--border); background: var(--surface);
+      font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--text-sec);
+      margin-bottom: 36px;
+    }
+    .hero-status .dot {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--success);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .hero-ascii {
+      font-family: var(--mono); font-size: clamp(16px, 3vw, 28px);
+      line-height: 1.15; color: var(--yellow); margin-bottom: 28px;
+      white-space: pre; display: inline-block;
+      text-shadow: 0 0 60px var(--glow);
+      filter: drop-shadow(0 0 30px rgba(250, 204, 21, 0.1));
+    }
+
+    .hero-tagline {
+      font-size: clamp(22px, 4.5vw, 42px); font-weight: 800;
+      letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 16px;
+    }
+    .hero-tagline em { font-style: normal; color: var(--yellow); }
+
+    .hero-sub {
+      font-size: clamp(15px, 2vw, 18px); color: var(--text-sec);
+      max-width: 560px; margin: 0 auto 40px; line-height: 1.6;
+    }
+
+    .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    /* ─── Hex Buttons ─── */
+    .btn-hex {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 14px 28px; font-size: 15px; font-weight: 600;
+      border: none; cursor: pointer; text-decoration: none;
+      font-family: var(--sans);
+      clip-path: polygon(8% 0%, 92% 0%, 100% 50%, 92% 100%, 8% 100%, 0% 50%);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-hex:hover { transform: translateY(-2px); }
+    .btn-hex-primary { background: var(--yellow); color: var(--bg); }
+    .btn-hex-primary:hover { color: var(--bg); }
+    .btn-hex-ghost {
+      background: var(--surface); color: var(--text-sec);
+      border: none;
+    }
+    .btn-hex-ghost:hover { color: var(--text); }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 24px; border-radius: 8px; font-size: 15px; font-weight: 600;
+      border: none; cursor: pointer; text-decoration: none; font-family: var(--sans);
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--yellow); color: var(--bg); }
+    .btn-primary:hover { background: var(--gold); color: var(--bg); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(250,204,21,0.2); }
+    .btn-ghost { background: transparent; color: var(--text-sec); border: 1px solid var(--border); }
+    .btn-ghost:hover { color: var(--text); border-color: var(--border-bright); transform: translateY(-2px); }
+
+    /* ─── Section Headers ─── */
+    .section-label {
+      font-family: var(--mono); font-size: 13px; font-weight: 600;
+      color: var(--yellow); text-transform: uppercase; letter-spacing: 0.1em;
+      margin-bottom: 12px;
+    }
+    .section-heading {
+      font-size: clamp(24px, 4vw, 40px); font-weight: 800;
+      letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 16px;
+    }
+    .section-sub {
+      font-size: 17px; color: var(--text-sec); max-width: 560px; line-height: 1.6;
+    }
+    .section-center { text-align: center; margin-bottom: 64px; }
+    .section-center .section-sub { margin: 0 auto; }
+
+    .section-line {
+      position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border) 30%, var(--border) 70%, transparent);
+    }
+
+    /* ─── Honeycomb Features ─── */
+    .hex-grid {
+      display: flex; flex-wrap: wrap; justify-content: center;
+      gap: 16px; max-width: 900px; margin: 0 auto;
+    }
+    .hex-card {
+      width: 260px; padding: 40px 28px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+      text-align: center;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+    }
+    .hex-card::before {
+      content: '';
+      position: absolute; inset: 0;
+      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+      background: linear-gradient(180deg, rgba(250,204,21,0.05) 0%, transparent 60%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .hex-card:hover {
+      transform: scale(1.05);
+      border-color: var(--border-bright);
+      box-shadow: 0 0 40px rgba(250,204,21,0.08);
+    }
+    .hex-card:hover::before { opacity: 1; }
+
+    .hex-icon {
+      font-size: 28px; margin-bottom: 12px; display: block; position: relative;
+      color: var(--yellow);
+    }
+    .hex-icon svg { width: 32px; height: 32px; display: inline-block; }
+
+    .hex-title {
+      font-size: 15px; font-weight: 700; margin-bottom: 8px;
+      color: var(--text); position: relative;
+    }
+    .hex-desc {
+      font-size: 13px; color: var(--text-sec); line-height: 1.5;
+      position: relative;
+    }
+
+    /* Offset rows */
+    .hex-row { display: flex; justify-content: center; gap: 16px; }
+    .hex-row-offset { margin-top: -40px; }
+
+    /* ─── Terminal ─── */
+    .terminal {
+      background: #0D0D0F; border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden; text-align: left;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.03), 0 24px 48px rgba(0,0,0,0.5), 0 0 80px rgba(250,204,21,0.04);
+    }
+    .terminal-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 16px; background: rgba(255,255,255,0.03);
+      border-bottom: 1px solid var(--border);
+    }
+    .terminal-dot { width: 12px; height: 12px; border-radius: 50%; }
+    .terminal-dot.red { background: #FF5F57; }
+    .terminal-dot.yellow { background: #FEBC2E; }
+    .terminal-dot.green { background: #28C840; }
+    .terminal-title {
+      flex: 1; text-align: center;
+      font-family: var(--mono); font-size: 12px; color: var(--text-muted);
+      margin-right: 44px;
+    }
+    .terminal-body {
+      padding: 20px; font-family: var(--mono); font-size: 13px;
+      line-height: 1.7; color: var(--text-sec); position: relative; z-index: 1;
+    }
+    .terminal-body .prompt { color: var(--yellow); font-weight: 700; }
+    .terminal-body .cmd { color: var(--text); }
+    .terminal-body .comment { color: var(--text-muted); }
+    .terminal-body .success { color: var(--success); }
+    .terminal-body .accent { color: var(--yellow); }
+    .terminal-body .tool-call { color: var(--amber); }
+    .terminal-body .dim { color: var(--text-muted); }
+    .terminal-body .line { display: block; }
+    .terminal-body .blank { display: block; height: 1.7em; }
+
+    .demo-wrap { max-width: 720px; margin: 0 auto; }
+
+    /* ─── Architecture ─── */
+    .arch-nodes {
+      display: flex; flex-wrap: wrap; justify-content: center;
+      gap: 24px; margin-bottom: 40px; position: relative;
+    }
+    .arch-node {
+      width: 180px; padding: 28px 16px;
+      background: var(--surface); border: 1px solid var(--border);
+      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+      text-align: center;
+      transition: all 0.3s;
+    }
+    .arch-node:hover {
+      border-color: var(--yellow);
+      box-shadow: 0 0 24px rgba(250,204,21,0.1);
+    }
+    .arch-node-label {
+      font-family: var(--mono); font-size: 13px; font-weight: 600;
+      color: var(--yellow);
+    }
+    .arch-node-sub {
+      font-size: 11px; color: var(--text-muted); margin-top: 4px;
+    }
+    .arch-desc {
+      max-width: 700px; margin: 0 auto;
+    }
+    .arch-desc p {
+      color: var(--text-sec); line-height: 1.7; margin-bottom: 16px; font-size: 15px;
+    }
+
+    /* ─── Install ─── */
+    .install-block { max-width: 480px; margin: 0 auto 40px; }
+    .install-block .terminal-body { min-height: auto; }
+    .install-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    /* ─── Footer ─── */
+    .footer { border-top: 1px solid var(--border); padding: 40px 0; }
+    .footer-inner {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 20px; text-align: center;
+    }
+    .footer-brand { font-family: var(--mono); font-size: 14px; color: var(--text-muted); }
+    .footer-brand .sep { color: var(--yellow); margin: 0 8px; }
+    .footer-links { display: flex; gap: 24px; list-style: none; }
+    .footer-links a { color: var(--text-muted); font-size: 14px; }
+    .footer-links a:hover { color: var(--text); }
+    .footer-license { font-size: 13px; color: var(--text-muted); font-family: var(--mono); }
+
+    /* ─── Cursor ─── */
+    .cursor {
+      display: inline-block; width: 8px; height: 1.1em;
+      background: var(--yellow); vertical-align: text-bottom;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .hex-card { width: 200px; padding: 32px 20px; }
+      .hex-row-offset { margin-top: -30px; }
+      .arch-node { width: 140px; padding: 22px 12px; }
+      section { padding: 72px 0; }
+      .hero { padding-top: 100px; min-height: auto; padding-bottom: 48px; }
+      .terminal-body { font-size: 11px; padding: 14px; }
+    }
+
+    @media (max-width: 500px) {
+      .hex-grid { flex-direction: column; align-items: center; }
+      .hex-row { flex-direction: column; align-items: center; }
+      .hex-row-offset { margin-top: 16px; }
+      .hex-card { width: 260px; }
+      .arch-nodes { flex-direction: column; align-items: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hex Background -->
+  <canvas id="hex-bg"></canvas>
+
+  <!-- ─── Nav ─── -->
+  <nav class="nav" id="nav">
+    <div class="container">
+      <a href="#" class="nav-logo">glue<span>_</span></a>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#demo">Demo</a></li>
+        <li><a href="#architecture">Architecture</a></li>
+        <li><a href="#install">Install</a></li>
+        <li><a href="#" class="nav-cta">Get Started</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ─── Hero ─── -->
+  <section class="hero" id="hero">
+    <div class="container">
+      <div class="hero-inner">
+        <div class="reveal">
+          <div class="hero-status">
+            <span class="dot"></span>
+            Online · v0.1.0 · Apache-2.0
+          </div>
+        </div>
+
+        <div class="reveal reveal-d1">
+          <div class="hero-ascii" aria-label="glue">        .__
+   ____ |  |  __ __   ____
+  / ___\|  | |  |  \_/ __ \
+ / /_/  >  |_|  |  /\  ___/
+ \___  /|____/____/  \___  >
+/_____/                  \/</div>
+        </div>
+
+        <h1 class="hero-tagline reveal reveal-d2">
+          The coding agent that <em>holds it all together.</em>
+        </h1>
+
+        <p class="hero-sub reveal reveal-d3">
+          Open source CLI coding agent built in Dart. Multi-model, multi-worktree, impossibly fast.
+        </p>
+
+        <div class="hero-actions reveal reveal-d4">
+          <a href="#install" class="btn-hex btn-hex-primary">Get Started</a>
+          <a href="#" class="btn-hex btn-hex-ghost">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+            GitHub
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Features ─── -->
+  <section class="features" id="features">
+    <div class="section-line"></div>
+    <div class="container">
+      <div class="section-center reveal">
+        <p class="section-label">⬡ Features</p>
+        <h2 class="section-heading">Everything you need. Nothing you don't.</h2>
+        <p class="section-sub">Glue is opinionated about simplicity. No bloated IDE plugins, no cloud dependencies — just a fast CLI that gets out of your way.</p>
+      </div>
+
+      <div class="hex-grid">
+        <div class="hex-row">
+          <div class="hex-card reveal">
+            <span class="hex-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#FACC15" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            </span>
+            <div class="hex-title">Blazing Fast</div>
+            <div class="hex-desc">Built in Dart for native speed. No runtime overhead. Starts instantly.</div>
+          </div>
+          <div class="hex-card reveal reveal-d1">
+            <span class="hex-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#FACC15" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v18"/><path d="M18 3v18"/><path d="M6 9h12"/><path d="M6 15h12"/></svg>
+            </span>
+            <div class="hex-title">Multi-Worktree</div>
+            <div class="hex-desc">Run parallel agents across git worktrees. Ship simultaneously.</div>
+          </div>
+          <div class="hex-card reveal reveal-d2">
+            <span class="hex-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#FACC15" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            </span>
+            <div class="hex-title">Any Model</div>
+            <div class="hex-desc">Anthropic, OpenAI, Google, local. Swap providers with a flag.</div>
+          </div>
+        </div>
+        <div class="hex-row hex-row-offset">
+          <div class="hex-card reveal reveal-d3">
+            <span class="hex-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#FACC15" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            </span>
+            <div class="hex-title">Tool Approval</div>
+            <div class="hex-desc">Every file write requires your explicit approval. You stay in control.</div>
+          </div>
+          <div class="hex-card reveal reveal-d4">
+            <span class="hex-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#FACC15" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg>
+            </span>
+            <div class="hex-title">MCP Native</div>
+            <div class="hex-desc">First-class Model Context Protocol support. Extend with any MCP server.</div>
+          </div>
+          <div class="hex-card reveal reveal-d5">
+            <span class="hex-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#FACC15" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05"/><path d="M12 22.08V12"/></svg>
+            </span>
+            <div class="hex-title">Zero Config</div>
+            <div class="hex-desc">Drop into any project and start coding. Glue figures out the rest.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Demo ─── -->
+  <section class="demo-section" id="demo">
+    <div class="section-line"></div>
+    <div class="container">
+      <div class="section-center reveal">
+        <p class="section-label">◇ In Action</p>
+        <h2 class="section-heading">Watch Glue work</h2>
+        <p class="section-sub">A real session showing Glue reading files, understanding context, and writing code — all from your terminal.</p>
+      </div>
+      <div class="demo-wrap reveal reveal-d1">
+        <div class="terminal">
+          <div class="terminal-bar">
+            <div class="terminal-dot red"></div>
+            <div class="terminal-dot yellow"></div>
+            <div class="terminal-dot green"></div>
+            <div class="terminal-title">glue — ~/projects/api-server</div>
+          </div>
+          <div class="terminal-body">
+            <span class="line"><span class="prompt">❯</span> <span class="cmd">glue</span></span>
+            <span class="blank"></span>
+            <span class="line"><span class="accent">        .__</span></span>
+            <span class="line"><span class="accent">   ____ |  |  __ __   ____</span></span>
+            <span class="line"><span class="accent">  / ___\|  | |  |  \_/ __ \</span></span>
+            <span class="line"><span class="accent"> / /_/  >  |_|  |  /\  ___/</span></span>
+            <span class="line"><span class="accent"> \___  /|____/____/  \___  ></span></span>
+            <span class="line"><span class="accent">/_____/                  \/</span></span>
+            <span class="blank"></span>
+            <span class="line">  <span class="dim">glue v0.1.0 · claude-4-sonnet</span></span>
+            <span class="blank"></span>
+            <span class="line"><span class="prompt">❯</span> <span class="cmd">Add a REST API endpoint for user authentication</span></span>
+            <span class="blank"></span>
+            <span class="line"> <span class="accent">●</span> Streaming...</span>
+            <span class="blank"></span>
+            <span class="line">I'll help you add an authentication endpoint. Let me first</span>
+            <span class="line">examine your project structure.</span>
+            <span class="blank"></span>
+            <span class="line"><span class="tool-call">┌ 🔧 read_file</span></span>
+            <span class="line"><span class="tool-call">│</span> <span class="dim">path: lib/src/routes/api.dart</span></span>
+            <span class="line"><span class="tool-call">└</span> <span class="success">✓ 142 lines</span></span>
+            <span class="blank"></span>
+            <span class="line"><span class="tool-call">┌ 🔧 write_file</span></span>
+            <span class="line"><span class="tool-call">│</span> <span class="dim">path: lib/src/routes/auth.dart</span></span>
+            <span class="line"><span class="tool-call">│</span> <span class="accent">⚡ Awaiting approval...</span></span>
+            <span class="line"><span class="tool-call">└</span> <span class="success">✓ approved · 67 lines written</span></span>
+            <span class="blank"></span>
+            <span class="line"><span class="tool-call">┌ 🔧 run_command</span></span>
+            <span class="line"><span class="tool-call">│</span> <span class="dim">cmd: dart test test/routes/auth_test.dart</span></span>
+            <span class="line"><span class="tool-call">└</span> <span class="success">✓ 12 tests passed</span></span>
+            <span class="blank"></span>
+            <span class="line"><span class="success">✓</span> Authentication endpoint added at <span class="accent">POST /api/auth/login</span></span>
+            <span class="line">  with JWT token generation and bcrypt password hashing.<span class="cursor"></span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Architecture ─── -->
+  <section class="arch-section" id="architecture">
+    <div class="section-line"></div>
+    <div class="container">
+      <div class="section-center reveal">
+        <p class="section-label">△ Architecture</p>
+        <h2 class="section-heading">Built for the terminal, designed for humans</h2>
+      </div>
+
+      <div class="arch-nodes reveal reveal-d1">
+        <div class="arch-node">
+          <div class="arch-node-label">TUI Shell</div>
+          <div class="arch-node-sub">Layout · Editor · Modals</div>
+        </div>
+        <div class="arch-node">
+          <div class="arch-node-label">Agent Core</div>
+          <div class="arch-node-sub">Orchestration · Context</div>
+        </div>
+        <div class="arch-node">
+          <div class="arch-node-label">LLM Provider</div>
+          <div class="arch-node-sub">Anthropic · OpenAI · Google</div>
+        </div>
+        <div class="arch-node">
+          <div class="arch-node-label">Tool Executor</div>
+          <div class="arch-node-sub">Approval · Sandbox</div>
+        </div>
+        <div class="arch-node">
+          <div class="arch-node-label">Conversation</div>
+          <div class="arch-node-sub">History · Multi-turn</div>
+        </div>
+      </div>
+
+      <div class="arch-desc reveal reveal-d2">
+        <p>
+          Glue's architecture is built on Dart's async runtime, giving you non-blocking I/O across every layer — from TUI rendering to model streaming to file operations.
+        </p>
+        <p>
+          The <strong>Agent Core</strong> orchestrates conversations, manages tool execution with approval gates, and maintains context across multi-turn interactions. LLM providers are pluggable — swap between any provider with a single flag.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Install ─── -->
+  <section class="install-section" id="install" style="text-align: center;">
+    <div class="section-line"></div>
+    <div class="container">
+      <div class="section-center reveal">
+        <p class="section-label">▸ Get Started</p>
+        <h2 class="section-heading">Up and running in 30 seconds</h2>
+        <p class="section-sub">Install Glue globally, drop into your project, and start coding with AI.</p>
+      </div>
+      <div class="install-block reveal reveal-d1">
+        <div class="terminal">
+          <div class="terminal-bar">
+            <div class="terminal-dot red"></div>
+            <div class="terminal-dot yellow"></div>
+            <div class="terminal-dot green"></div>
+            <div class="terminal-title">Terminal</div>
+          </div>
+          <div class="terminal-body">
+            <span class="line"><span class="comment"># Install</span></span>
+            <span class="line"><span class="prompt">❯</span> <span class="cmd">dart pub global activate glue</span></span>
+            <span class="blank"></span>
+            <span class="line"><span class="comment"># Run</span></span>
+            <span class="line"><span class="prompt">❯</span> <span class="cmd">cd your-project</span></span>
+            <span class="line"><span class="prompt">❯</span> <span class="cmd">glue</span></span>
+          </div>
+        </div>
+      </div>
+      <div class="install-actions reveal reveal-d2">
+        <a href="#" class="btn btn-primary">Read the Docs</a>
+        <a href="#" class="btn btn-ghost">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          View on GitHub
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Footer ─── -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-brand">Made with <span class="sep">⬡</span> by the Glue contributors</div>
+        <ul class="footer-links">
+          <li><a href="#">GitHub</a></li>
+          <li><a href="#">Docs</a></li>
+          <li><a href="#">Discord</a></li>
+        </ul>
+        <div class="footer-license">Apache-2.0 License</div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // ─── Hex Background ───
+    const canvas = document.getElementById('hex-bg');
+    const ctx = canvas.getContext('2d');
+    let w, h;
+    function resize() {
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight * 3;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    function drawHexGrid() {
+      ctx.clearRect(0, 0, w, h);
+      const size = 40;
+      const xStep = size * Math.sqrt(3);
+      const yStep = size * 1.5;
+      ctx.strokeStyle = 'rgba(250, 204, 21, 0.04)';
+      ctx.lineWidth = 0.5;
+
+      for (let row = -1; row < h / yStep + 1; row++) {
+        for (let col = -1; col < w / xStep + 1; col++) {
+          const x = col * xStep + (row % 2 ? xStep / 2 : 0);
+          const y = row * yStep;
+          ctx.beginPath();
+          for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI / 3) * i - Math.PI / 6;
+            const px = x + size * Math.cos(angle);
+            const py = y + size * Math.sin(angle);
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+          ctx.stroke();
+        }
+      }
+
+      // Pulse dots at some intersections
+      const time = Date.now() * 0.001;
+      for (let row = 0; row < h / yStep; row += 3) {
+        for (let col = 0; col < w / xStep; col += 3) {
+          const x = col * xStep + (row % 2 ? xStep / 2 : 0);
+          const y = row * yStep;
+          const pulse = 0.3 + 0.3 * Math.sin(time + row * 0.5 + col * 0.3);
+          ctx.beginPath();
+          ctx.arc(x, y, 2, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(250, 204, 21, ${pulse * 0.15})`;
+          ctx.fill();
+        }
+      }
+    }
+
+    drawHexGrid();
+    // Redraw periodically for pulse effect
+    setInterval(() => { drawHexGrid(); }, 100);
+
+    // ─── Scroll Reveal ───
+    const reveals = document.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+    reveals.forEach(el => observer.observe(el));
+
+    // ─── Nav scroll ───
+    const nav = document.getElementById('nav');
+    window.addEventListener('scroll', () => {
+      nav.classList.toggle('scrolled', window.scrollY > 20);
+    }, { passive: true });
+  </script>
+</body>
+</html>

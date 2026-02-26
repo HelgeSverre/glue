@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glue — Brand & Design System</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .swatch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0; }
+    .swatch {
+      border: 3px solid var(--black); padding: 0; overflow: hidden;
+      transition: all 0.15s;
+    }
+    .swatch:hover { transform: translate(-2px, -2px); box-shadow: 2px 2px 0 var(--black); }
+    .swatch-color { height: 80px; }
+    .swatch-info { padding: 12px 16px; }
+    .swatch-name { font-family: var(--mono); font-size: 12px; font-weight: 700; text-transform: uppercase; }
+    .swatch-hex { font-family: var(--mono); font-size: 11px; color: var(--gray); margin-top: 2px; }
+
+    .type-sample { border: 3px solid var(--black); padding: 24px 28px; margin-bottom: 0; }
+    .type-label { font-family: var(--mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--gray); margin-bottom: 8px; }
+
+    .component-preview {
+      border: 3px solid var(--black); padding: 32px;
+      display: flex; flex-wrap: wrap; gap: 16px; align-items: center;
+    }
+
+    .icon-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 0; }
+    .icon-cell {
+      border: 3px solid var(--black); padding: 24px;
+      text-align: center; transition: all 0.15s;
+    }
+    .icon-cell:hover { background: var(--black); color: var(--yellow); }
+    .icon-cell svg { width: 32px; height: 32px; display: block; margin: 0 auto 8px; }
+    .icon-cell:hover svg { stroke: var(--yellow); }
+    .icon-label { font-family: var(--mono); font-size: 10px; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+
+  <div class="tape"></div>
+  <nav class="nav">
+    <a href="index.html" class="nav-logo">GLUE</a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="docs.html">Docs</a></li>
+      <li><a href="models.html">Models</a></li>
+      <li><a href="worktrees.html">Worktrees</a></li>
+      <li><a href="app.html">Web UI</a></li>
+      <li><a href="brand.html" class="active">Brand</a></li>
+    </ul>
+  </nav>
+  <div class="tape"></div>
+
+  <!-- ─── Hero ─── -->
+  <section class="block">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">◈ Brand</div>
+        <h2 class="block-heading">Design System</h2>
+        <p class="block-sub">Colors, typography, components, and visual language for the Glue brand. Everything you need to build with the system.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="tape"></div>
+
+  <!-- ─── Colors ─── -->
+  <section class="block block-dark">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">01 · Color Palette</div>
+        <h2 class="block-heading">Colors</h2>
+      </div>
+
+      <h3 class="section-title reveal rd1" style="color: var(--yellow); margin-top: 32px;">Primary</h3>
+      <div class="swatch-grid reveal rd1">
+        <div class="swatch"><div class="swatch-color" style="background: #FACC15;"></div><div class="swatch-info" style="color: var(--yellow);"><div class="swatch-name">Yellow</div><div class="swatch-hex" style="color: #888;">#FACC15</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background: #EAB308;"></div><div class="swatch-info" style="color: var(--yellow);"><div class="swatch-name">Gold</div><div class="swatch-hex" style="color: #888;">#EAB308</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background: #F59E0B;"></div><div class="swatch-info" style="color: var(--yellow);"><div class="swatch-name">Amber</div><div class="swatch-hex" style="color: #888;">#F59E0B</div></div></div>
+      </div>
+
+      <div class="spacer"></div>
+
+      <h3 class="section-title reveal" style="color: var(--yellow);">Dark Foundation</h3>
+      <div class="swatch-grid reveal">
+        <div class="swatch"><div class="swatch-color" style="background: #0A0A0B;"></div><div class="swatch-info" style="color: var(--yellow);"><div class="swatch-name">Background</div><div class="swatch-hex" style="color: #888;">#0A0A0B</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background: #18181B;"></div><div class="swatch-info" style="color: var(--yellow);"><div class="swatch-name">Surface</div><div class="swatch-hex" style="color: #888;">#18181B</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background: #27272A;"></div><div class="swatch-info" style="color: var(--yellow);"><div class="swatch-name">Elevated</div><div class="swatch-hex" style="color: #888;">#27272A</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background: #3F3F46;"></div><div class="swatch-info" style="color: var(--yellow);"><div class="swatch-name">Border</div><div class="swatch-hex" style="color: #888;">#3F3F46</div></div></div>
+      </div>
+
+      <div class="spacer"></div>
+
+      <h3 class="section-title reveal" style="color: var(--yellow);">Semantic</h3>
+      <div class="swatch-grid reveal">
+        <div class="swatch"><div class="swatch-color" style="background: #22C55E;"></div><div class="swatch-info" style="color: var(--yellow);"><div class="swatch-name">Success</div><div class="swatch-hex" style="color: #888;">#22C55E</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background: #EF4444;"></div><div class="swatch-info" style="color: var(--yellow);"><div class="swatch-name">Error</div><div class="swatch-hex" style="color: #888;">#EF4444</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background: #F59E0B;"></div><div class="swatch-info" style="color: var(--yellow);"><div class="swatch-name">Warning</div><div class="swatch-hex" style="color: #888;">#F59E0B</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background: #3B82F6;"></div><div class="swatch-info" style="color: var(--yellow);"><div class="swatch-name">Info</div><div class="swatch-hex" style="color: #888;">#3B82F6</div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="tape"></div>
+
+  <!-- ─── Typography ─── -->
+  <section class="block">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">02 · Typography</div>
+        <h2 class="block-heading">Fonts & Scale</h2>
+      </div>
+
+      <div class="grid grid-2 reveal rd1">
+        <div class="type-sample">
+          <div class="type-label">Display / Brand — JetBrains Mono</div>
+          <div style="font-family: var(--mono); font-size: 36px; font-weight: 800; letter-spacing: -0.04em; line-height: 1.1; margin-bottom: 8px;">GLUE</div>
+          <div style="font-family: var(--mono); font-size: 20px; font-weight: 700; margin-bottom: 8px;">Heading Medium</div>
+          <div style="font-family: var(--mono); font-size: 14px; font-weight: 500;">Labels and metadata</div>
+          <div style="font-family: var(--mono); font-size: 12px; color: var(--gray); margin-top: 8px;">ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>abcdefghijklmnopqrstuvwxyz<br>0123456789 !@#$%^&*()</div>
+        </div>
+        <div class="type-sample">
+          <div class="type-label">Body / UI — Inter</div>
+          <div style="font-family: var(--sans); font-size: 24px; font-weight: 800; margin-bottom: 8px;">Body Heading</div>
+          <div style="font-family: var(--sans); font-size: 16px; font-weight: 400; line-height: 1.6; margin-bottom: 8px;">Body text for paragraphs and descriptions. Clean, readable, neutral. Designed to step back and let content breathe.</div>
+          <div style="font-family: var(--sans); font-size: 13px; font-weight: 600; color: var(--gray);">Semibold for emphasis and labels</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="tape"></div>
+
+  <!-- ─── Components ─── -->
+  <section class="block block-dark">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">03 · Components</div>
+        <h2 class="block-heading">UI Elements</h2>
+      </div>
+
+      <h3 class="section-title reveal rd1" style="color: var(--yellow);">Buttons</h3>
+      <div class="component-preview reveal rd1" style="border-color: var(--yellow);">
+        <a href="#" class="btn-brutal" style="background: var(--yellow); color: var(--black); border-color: var(--yellow);">Primary</a>
+        <a href="#" class="btn-brutal" style="background: transparent; color: var(--yellow); border-color: var(--yellow);">Ghost</a>
+        <a href="#" class="btn-brutal" style="background: var(--black); color: var(--yellow); border-color: var(--yellow); font-size: 12px; padding: 8px 20px;">Small</a>
+        <span class="tag tag-filled">Tag Filled</span>
+        <span class="tag" style="border-color: var(--yellow); color: var(--yellow);">Tag Outline</span>
+      </div>
+
+      <div class="spacer"></div>
+
+      <h3 class="section-title reveal" style="color: var(--yellow);">Info Boxes</h3>
+      <div style="border: 3px solid var(--yellow); padding: 20px 24px; margin-bottom: 16px;" class="reveal">
+        <div style="font-family: var(--mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--yellow); margin-bottom: 8px;">▲ Note</div>
+        <p style="font-size: 14px; line-height: 1.6; color: #ccc;">This is an info callout box. Used for tips, warnings, and important notes throughout the documentation.</p>
+      </div>
+      <div style="border: 3px solid #EF4444; padding: 20px 24px;" class="reveal rd1">
+        <div style="font-family: var(--mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #EF4444; margin-bottom: 8px;">▲ Warning</div>
+        <p style="font-size: 14px; line-height: 1.6; color: #ccc;">This is a warning callout. Used when an action could have destructive consequences or requires extra attention.</p>
+      </div>
+
+      <div class="spacer"></div>
+
+      <h3 class="section-title reveal" style="color: var(--yellow);">Feature Cells</h3>
+      <div class="grid grid-3 reveal">
+        <div class="cell" style="border-color: var(--yellow);"><div class="cell-num" style="color: var(--yellow); opacity: 0.3;">01</div><div class="cell-title" style="color: var(--yellow);">Title</div><div class="cell-text" style="color: #ccc;">Description text goes here. Hover to see the inverted state.</div></div>
+        <div class="cell" style="border-color: var(--yellow);"><div class="cell-num" style="color: var(--yellow); opacity: 0.3;">02</div><div class="cell-title" style="color: var(--yellow);">Title</div><div class="cell-text" style="color: #ccc;">Another cell with content. They stack responsively.</div></div>
+        <div class="cell" style="border-color: var(--yellow); background: var(--yellow); color: var(--black);"><div class="cell-num" style="opacity: 0.2;">03</div><div class="cell-title">Active State</div><div class="cell-text">Yellow background variant for emphasis.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="tape"></div>
+
+  <!-- ─── Iconography ─── -->
+  <section class="block">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">04 · Iconography</div>
+        <h2 class="block-heading">Icons</h2>
+        <p class="block-sub">Line icons, 1.5px stroke weight, rounded caps and joins, 24×24 base grid.</p>
+      </div>
+      <div class="icon-grid reveal rd1">
+        <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg><div class="icon-label">Speed</div></div>
+        <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v18"/><path d="M18 3v18"/><path d="M6 9h12"/><path d="M6 15h12"/></svg><div class="icon-label">Worktree</div></div>
+        <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg><div class="icon-label">Layers</div></div>
+        <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><div class="icon-label">Lock</div></div>
+        <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg><div class="icon-label">Settings</div></div>
+        <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/></svg><div class="icon-label">Package</div></div>
+        <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg><div class="icon-label">Terminal</div></div>
+        <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><div class="icon-label">File</div></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="tape"></div>
+
+  <!-- ─── Voice ─── -->
+  <section class="block block-dark">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">05 · Voice & Tone</div>
+        <h2 class="block-heading">How Glue Talks</h2>
+      </div>
+      <div class="grid grid-2 reveal rd1">
+        <div class="cell" style="border-color: var(--yellow);">
+          <div class="cell-title" style="color: var(--yellow);">Direct</div>
+          <div class="cell-text" style="color: #ccc;">No fluff. Say what you mean. Short sentences. Active voice.</div>
+        </div>
+        <div class="cell" style="border-color: var(--yellow);">
+          <div class="cell-title" style="color: var(--yellow);">Technical</div>
+          <div class="cell-text" style="color: #ccc;">Respect the developer audience. Don't dumb things down. Code over prose.</div>
+        </div>
+        <div class="cell" style="border-color: var(--yellow);">
+          <div class="cell-title" style="color: var(--yellow);">Warm</div>
+          <div class="cell-text" style="color: #ccc;">Not cold or corporate. Glue has personality. "You" not "users."</div>
+        </div>
+        <div class="cell" style="border-color: var(--yellow);">
+          <div class="cell-title" style="color: var(--yellow);">Confident</div>
+          <div class="cell-text" style="color: #ccc;">Not arrogant. "Here's how it works" — not "we're the best." Show, don't tell.</div>
+        </div>
+      </div>
+
+      <div class="spacer"></div>
+
+      <div class="reveal">
+        <div style="font-family: var(--mono); font-size: 13px; color: #888; margin-bottom: 12px;">VISUAL MOTIFS</div>
+        <div class="grid grid-3">
+          <div class="cell" style="border-color: var(--yellow); text-align: center;">
+            <div style="font-size: 32px; margin-bottom: 8px; color: var(--yellow);">· · ·<br>· · ·<br>· · ·</div>
+            <div class="cell-title" style="color: var(--yellow);">Dot Grid</div>
+            <div class="cell-text" style="color: #ccc;">Connections, structure</div>
+          </div>
+          <div class="cell" style="border-color: var(--yellow); text-align: center;">
+            <div style="font-size: 32px; margin-bottom: 8px; color: var(--yellow);">⬡ ⬡<br> ⬡<br>⬡ ⬡</div>
+            <div class="cell-title" style="color: var(--yellow);">Honeycomb</div>
+            <div class="cell-text" style="color: #ccc;">Adhesion, binding</div>
+          </div>
+          <div class="cell" style="border-color: var(--yellow); text-align: center;">
+            <div style="font-family: var(--mono); font-size: 28px; margin-bottom: 8px; color: var(--yellow);">┌──┐<br>│▸▸│<br>└──┘</div>
+            <div class="cell-title" style="color: var(--yellow);">Box Drawing</div>
+            <div class="cell-text" style="color: #ccc;">Terminal, structure</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="tape"></div>
+
+  <!-- ─── Tokens ─── -->
+  <section class="block">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">06 · Design Tokens</div>
+        <h2 class="block-heading">CSS Variables</h2>
+      </div>
+      <div class="reveal rd1">
+        <div class="code-block" style="border-color: var(--black);"><span class="comment">/* Copy into your project */</span>
+:root {
+  <span class="comment">/* Brand */</span>
+  <span class="hl">--glue-yellow</span>: #FACC15;
+  <span class="hl">--glue-gold</span>: #EAB308;
+  <span class="hl">--glue-amber</span>: #F59E0B;
+
+  <span class="comment">/* Backgrounds */</span>
+  <span class="hl">--glue-bg</span>: #0A0A0B;
+  <span class="hl">--glue-surface</span>: #18181B;
+  <span class="hl">--glue-surface-elevated</span>: #27272A;
+
+  <span class="comment">/* Borders */</span>
+  <span class="hl">--glue-border</span>: #3F3F46;
+  <span class="hl">--glue-border-bright</span>: #52525B;
+
+  <span class="comment">/* Text */</span>
+  <span class="hl">--glue-text</span>: #FAFAFA;
+  <span class="hl">--glue-text-secondary</span>: #A1A1AA;
+  <span class="hl">--glue-text-muted</span>: #71717A;
+
+  <span class="comment">/* Typography */</span>
+  <span class="hl">--glue-font-mono</span>: <span class="string">'JetBrains Mono'</span>, monospace;
+  <span class="hl">--glue-font-sans</span>: <span class="string">'Inter'</span>, sans-serif;
+}</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="tape"></div>
+  <footer class="footer">GLUE · Apache-2.0 · <a href="#">GitHub</a> <a href="#">Docs</a> <a href="#">Discord</a></footer>
+  <div class="tape"></div>
+
+  <script>
+    const reveals = document.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+    reveals.forEach(el => observer.observe(el));
+  </script>
+</body>
+</html>

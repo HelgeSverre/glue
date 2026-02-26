@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Glue Times — Coding Agent</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --cream: #F5F0E8;
+      --paper: #EDE8DC;
+      --ink: #1a1a1a;
+      --ink-light: #444;
+      --ink-faint: #888;
+      --rule: #c8c0b0;
+      --red: #8B0000;
+      --serif: 'Playfair Display', Georgia, serif;
+      --body: 'Source Serif 4', Georgia, serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--body);
+      background: var(--cream);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--ink); }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 0 32px; }
+
+    /* ─── Reveal ─── */
+    .reveal {
+      opacity: 0; transform: translateY(16px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .rd1 { transition-delay: 0.1s; } .rd2 { transition-delay: 0.2s; }
+    .rd3 { transition-delay: 0.3s; }
+
+    /* ─── Masthead ─── */
+    .masthead {
+      text-align: center;
+      padding: 32px 0 16px;
+      border-bottom: 4px double var(--ink);
+    }
+    .masthead-date {
+      font-size: 12px; color: var(--ink-faint);
+      text-transform: uppercase; letter-spacing: 0.15em;
+      margin-bottom: 8px;
+    }
+    .masthead-title {
+      font-family: var(--serif);
+      font-size: clamp(40px, 10vw, 80px);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .masthead-sub {
+      font-size: 13px; color: var(--ink-faint);
+      font-style: italic;
+      letter-spacing: 0.05em;
+    }
+
+    /* ─── Nav rule ─── */
+    .nav-rule {
+      display: flex; justify-content: center; gap: 32px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--rule);
+      font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em;
+    }
+    .nav-rule a { text-decoration: none; color: var(--ink-light); }
+    .nav-rule a:hover { color: var(--ink); }
+
+    /* ─── Thick rules ─── */
+    .rule-thick { border: none; border-top: 2px solid var(--ink); margin: 0; }
+    .rule-thin { border: none; border-top: 1px solid var(--rule); margin: 0; }
+    .rule-double { border: none; border-top: 4px double var(--ink); margin: 0; }
+
+    /* ─── Hero / Front Page ─── */
+    .hero {
+      padding: 48px 0;
+      text-align: center;
+    }
+    .hero-kicker {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em;
+      color: var(--red); font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .hero-headline {
+      font-family: var(--serif);
+      font-size: clamp(32px, 7vw, 64px);
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      margin-bottom: 20px;
+      max-width: 700px; margin-left: auto; margin-right: auto;
+    }
+    .hero-deck {
+      font-size: 20px; font-style: italic;
+      color: var(--ink-light);
+      max-width: 540px; margin: 0 auto 32px;
+      line-height: 1.5;
+    }
+    .hero-byline {
+      font-size: 13px; color: var(--ink-faint);
+      text-transform: uppercase; letter-spacing: 0.08em;
+    }
+
+    /* ─── Columns ─── */
+    .columns {
+      padding: 48px 0;
+    }
+    .col-grid {
+      display: grid;
+      grid-template-columns: 1fr 1px 1fr 1px 1fr;
+      gap: 0;
+    }
+    .col-divider {
+      background: var(--rule);
+    }
+    .col {
+      padding: 0 24px;
+    }
+    .col:first-child { padding-left: 0; }
+    .col:last-child { padding-right: 0; }
+
+    .col-head {
+      font-family: var(--serif);
+      font-size: 22px; font-weight: 900;
+      margin-bottom: 12px;
+      line-height: 1.2;
+    }
+    .col-text {
+      font-size: 15px; line-height: 1.7;
+      color: var(--ink-light);
+    }
+    .col-label {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em;
+      color: var(--red); font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    /* ─── Features as articles ─── */
+    .features-section { padding: 48px 0; }
+    .features-head {
+      font-family: var(--serif);
+      font-size: 28px; font-weight: 900;
+      text-align: center; margin-bottom: 32px;
+    }
+    .features-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+    .feature-article {
+      padding: 24px;
+      border: 1px solid var(--rule);
+      border-collapse: collapse;
+    }
+    .feature-num {
+      font-family: var(--serif);
+      font-size: 48px; font-weight: 900;
+      color: var(--rule); line-height: 1;
+      float: left; margin-right: 12px; margin-top: -4px;
+    }
+    .feature-headline {
+      font-family: var(--serif);
+      font-size: 18px; font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .feature-body {
+      font-size: 14px; color: var(--ink-light); line-height: 1.6;
+    }
+
+    /* ─── Code block ─── */
+    .code-section { padding: 48px 0; }
+    .code-block {
+      background: var(--ink);
+      color: #ccc;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.7;
+      padding: 24px;
+      border: 1px solid var(--ink);
+      max-width: 660px;
+      margin: 0 auto;
+    }
+    .code-block .p { color: #FACC15; font-weight: 700; }
+    .code-block .s { color: #22C55E; }
+    .code-block .a { color: #FACC15; }
+    .code-block .d { color: #666; }
+    .code-block .t { color: #F59E0B; }
+    .code-block .c { color: #eee; }
+    .code-block .line { display: block; }
+    .code-block .blank { display: block; height: 1.7em; }
+    .code-caption {
+      font-size: 12px; color: var(--ink-faint);
+      text-align: center; font-style: italic;
+      margin-top: 12px;
+    }
+
+    /* ─── Architecture ─── */
+    .arch-block {
+      font-family: var(--mono);
+      font-size: 14px; line-height: 1.5;
+      background: var(--paper);
+      border: 1px solid var(--rule);
+      padding: 24px;
+      max-width: 600px;
+      margin: 0 auto;
+      white-space: pre; overflow-x: auto;
+    }
+    .arch-hl { font-weight: 700; color: var(--red); }
+
+    /* ─── Install ─── */
+    .install-section {
+      padding: 48px 0;
+      text-align: center;
+    }
+    .install-head {
+      font-family: var(--serif);
+      font-size: clamp(24px, 5vw, 40px);
+      font-weight: 900;
+      margin-bottom: 24px;
+    }
+    .install-code {
+      font-family: var(--mono);
+      font-size: 18px;
+      background: var(--ink);
+      color: #ccc;
+      display: inline-block;
+      padding: 16px 32px;
+      margin-bottom: 32px;
+    }
+    .install-code .p { color: #FACC15; }
+    .install-links {
+      display: flex; gap: 20px; justify-content: center;
+    }
+    .install-links a {
+      font-size: 14px; text-decoration: none;
+      padding: 10px 24px;
+      border: 2px solid var(--ink);
+      font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+      transition: all 0.2s;
+    }
+    .install-links a:hover {
+      background: var(--ink); color: var(--cream);
+    }
+
+    /* ─── Footer ─── */
+    .footer {
+      border-top: 4px double var(--ink);
+      padding: 24px 0;
+      text-align: center;
+      font-size: 12px; color: var(--ink-faint);
+      text-transform: uppercase; letter-spacing: 0.1em;
+    }
+    .footer a { color: var(--ink-faint); margin: 0 8px; text-decoration: none; }
+    .footer a:hover { color: var(--ink); }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 768px) {
+      .col-grid { grid-template-columns: 1fr; }
+      .col-divider { display: none; }
+      .col { padding: 16px 0; border-bottom: 1px solid var(--rule); }
+      .features-grid { grid-template-columns: 1fr; }
+      .nav-rule { gap: 16px; flex-wrap: wrap; }
+      .container { padding: 0 20px; }
+      .code-block { font-size: 11px; }
+      .install-links { flex-direction: column; align-items: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header class="masthead reveal">
+      <div class="masthead-date">Wednesday, February 26, 2026 · Open Source Edition</div>
+      <h1 class="masthead-title">The Glue Times</h1>
+      <div class="masthead-sub">"All the Code That's Fit to Ship"</div>
+    </header>
+
+    <nav class="nav-rule reveal rd1">
+      <a href="#features">Features</a>
+      <a href="#demo">Demo</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#install">Install</a>
+      <a href="#">GitHub</a>
+    </nav>
+  </div>
+
+  <hr class="rule-thick">
+
+  <!-- ─── Hero ─── -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-kicker reveal">Breaking · Open Source Release</div>
+      <h2 class="hero-headline reveal rd1">New CLI Coding Agent "Holds It All Together," Say Developers</h2>
+      <p class="hero-deck reveal rd2">Open source tool built in Dart promises multi-model, multi-worktree AI assistance directly from the terminal — and it's impossibly fast.</p>
+      <div class="hero-byline reveal rd3">By The Glue Contributors · Apache-2.0 License</div>
+    </div>
+  </section>
+
+  <hr class="rule-thin">
+
+  <!-- ─── 3-Column Lead ─── -->
+  <section class="columns">
+    <div class="container">
+      <div class="col-grid">
+        <div class="col reveal">
+          <div class="col-label">Speed</div>
+          <h3 class="col-head">Dart Runtime Delivers Native Performance</h3>
+          <p class="col-text">No Node.js, no Python overhead. Glue starts instantly and responds immediately, leveraging Dart's compiled speed and async runtime for non-blocking I/O across every layer.</p>
+        </div>
+        <div class="col-divider"></div>
+        <div class="col reveal rd1">
+          <div class="col-label">Flexibility</div>
+          <h3 class="col-head">Any Model, Any Provider, One Flag</h3>
+          <p class="col-text">Swap between Anthropic, OpenAI, Google, or any OpenAI-compatible endpoint. No restart required. Use the best model for each task without configuration changes.</p>
+        </div>
+        <div class="col-divider"></div>
+        <div class="col reveal rd2">
+          <div class="col-label">Control</div>
+          <h3 class="col-head">Every Action Requires Your Approval</h3>
+          <p class="col-text">File writes, command execution — nothing happens without explicit consent. Glue's approval gates keep you in command while the agent handles the heavy lifting.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule-thick">
+
+  <!-- ─── Features ─── -->
+  <section class="features-section" id="features">
+    <div class="container">
+      <h2 class="features-head reveal">Feature Report</h2>
+      <div class="features-grid">
+        <div class="feature-article reveal">
+          <span class="feature-num">1</span>
+          <h3 class="feature-headline">Blazing Fast</h3>
+          <p class="feature-body">Built in Dart for native speed. No runtime overhead. Starts instantly, responds immediately. Compiled performance for real-time interaction.</p>
+        </div>
+        <div class="feature-article reveal rd1">
+          <span class="feature-num">2</span>
+          <h3 class="feature-headline">Multi-Worktree</h3>
+          <p class="feature-body">Run parallel agents across git worktrees. Ship features simultaneously without context switching. True concurrent development.</p>
+        </div>
+        <div class="feature-article reveal rd2">
+          <span class="feature-num">3</span>
+          <h3 class="feature-headline">Any Model</h3>
+          <p class="feature-body">Anthropic, OpenAI, Google, local models. Swap providers with a flag. Use the best model for the task at hand.</p>
+        </div>
+        <div class="feature-article reveal rd3">
+          <span class="feature-num">4</span>
+          <h3 class="feature-headline">Tool Approval</h3>
+          <p class="feature-body">Every file write, every command requires explicit approval. You remain in control at all times. Safety by design.</p>
+        </div>
+        <div class="feature-article reveal">
+          <span class="feature-num">5</span>
+          <h3 class="feature-headline">MCP Native</h3>
+          <p class="feature-body">First-class Model Context Protocol support. Extend Glue with any MCP server for custom tool integrations and workflows.</p>
+        </div>
+        <div class="feature-article reveal rd1">
+          <span class="feature-num">6</span>
+          <h3 class="feature-headline">Zero Config</h3>
+          <p class="feature-body">Drop into any project and start coding. Glue figures out the rest — languages, frameworks, project structure. No setup required.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule-thick">
+
+  <!-- ─── Demo ─── -->
+  <section class="code-section" id="demo">
+    <div class="container">
+      <h2 class="features-head reveal">Live Session Transcript</h2>
+      <div class="reveal rd1">
+        <div class="code-block">
+          <span class="line"><span class="p">❯</span> <span class="c">glue</span></span>
+          <span class="blank"></span>
+          <span class="line">  <span class="d">glue v0.1.0 · claude-4-sonnet</span></span>
+          <span class="blank"></span>
+          <span class="line"><span class="p">❯</span> <span class="c">Add a REST API endpoint for user auth</span></span>
+          <span class="blank"></span>
+          <span class="line"><span class="t">┌ ▸ read_file</span></span>
+          <span class="line"><span class="t">│</span> <span class="d">path: lib/src/routes/api.dart</span></span>
+          <span class="line"><span class="t">└</span> <span class="s">✓ 142 lines</span></span>
+          <span class="blank"></span>
+          <span class="line"><span class="t">┌ ▸ write_file</span></span>
+          <span class="line"><span class="t">│</span> <span class="d">path: lib/src/routes/auth.dart</span></span>
+          <span class="line"><span class="t">└</span> <span class="s">✓ approved · 67 lines written</span></span>
+          <span class="blank"></span>
+          <span class="line"><span class="t">┌ ▸ run_command</span></span>
+          <span class="line"><span class="t">│</span> <span class="d">cmd: dart test</span></span>
+          <span class="line"><span class="t">└</span> <span class="s">✓ 12 tests passed</span></span>
+          <span class="blank"></span>
+          <span class="line"><span class="s">✓</span> POST /api/auth/login added</span>
+        </div>
+        <p class="code-caption">Fig. 1 — A typical Glue session adding an authentication endpoint.</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule-thin">
+
+  <!-- ─── Architecture ─── -->
+  <section class="code-section" id="architecture">
+    <div class="container">
+      <h2 class="features-head reveal">System Architecture</h2>
+      <div class="reveal rd1">
+        <pre class="arch-block"><span class="arch-hl">TUI Shell</span> ◄──► <span class="arch-hl">Agent Core</span> ◄──► <span class="arch-hl">LLM Provider</span>
+    │              │
+    ▼              ▼
+ Layout        Tool Executor
+ Editor        Conversation
+ Modals        History</pre>
+        <p class="code-caption">Fig. 2 — High-level architecture of the Glue coding agent.</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule-thick">
+
+  <!-- ─── Install ─── -->
+  <section class="install-section" id="install">
+    <div class="container">
+      <h2 class="install-head reveal">Get Your Copy Today</h2>
+      <div class="reveal rd1">
+        <div class="install-code">
+          <span class="p">$</span> dart pub global activate glue
+        </div>
+      </div>
+      <div class="install-links reveal rd2">
+        <a href="#">Read the Docs</a>
+        <a href="#">View on GitHub</a>
+        <a href="#">Join Discord</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      The Glue Times · Est. 2026 · Apache-2.0 ·
+      <a href="#">GitHub</a>
+      <a href="#">Docs</a>
+      <a href="#">Discord</a>
+    </div>
+  </footer>
+
+  <script>
+    const reveals = document.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+    }, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
+    reveals.forEach(el => observer.observe(el));
+  </script>
+</body>
+</html>
