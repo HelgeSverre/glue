@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Glue — Sessions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --yellow:#FACC15;--gold:#EAB308;--amber:#F59E0B;
+  --bg:#040405;--surface:#0b0b0d;--surface-el:#131315;
+  --border:#1f1f25;--border-br:#2d2d35;
+  --text:#e4e4e8;--text-sec:#94949e;--text-mut:#4e4e58;--text-yel:#FDE047;
+  --success:#22C55E;--error:#EF4444;--warning:#F59E0B;--info:#3B82F6;
+  --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;
+}
+html{font-size:13px;-webkit-font-smoothing:antialiased}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-br);border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:var(--yellow)}
+
+/*
+  Layout concept: Single-column, mobile-friendly, "slack-like".
+  A scrollable list of session cards. Click to expand into full terminal.
+  Think: Arc browser's tab view meets Slack's channel list.
+  Optimized for quickly scanning all sessions and diving into any one.
+  Command palette (⌘K) for quick switching.
+*/
+
+.app{display:flex;flex-direction:column;height:100vh;max-width:100%;overflow:hidden}
+
+/* Top bar */
+.topbar{height:44px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0}
+.logo{font-family:var(--mono);font-weight:700;font-size:16px;color:var(--yellow)}
+.logo span{color:var(--text-mut)}
+.topbar-sep{width:1px;height:18px;background:var(--border)}
+.search-box{flex:1;max-width:320px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:11px;outline:none;transition:border-color .15s}
+.search-box:focus{border-color:var(--yellow)}
+.search-box::placeholder{color:var(--text-mut)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.kbd{font-family:var(--mono);font-size:9px;color:var(--text-mut);background:var(--surface-el);border:1px solid var(--border);border-radius:3px;padding:1px 5px}
+.stats-pill{font-size:10px;color:var(--text-mut);font-family:var(--mono)}
+.new-btn{padding:6px 14px;border-radius:6px;border:none;background:var(--yellow);color:var(--bg);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans);transition:all .15s;display:flex;align-items:center;gap:5px}
+.new-btn:hover{background:var(--gold);box-shadow:0 2px 10px rgba(250,204,21,.2)}
+
+/* Two modes: list and terminal */
+.content{flex:1;display:flex;overflow:hidden}
+
+/* List View — scrollable session cards */
+.list-view{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.list-scroll{flex:1;overflow-y:auto;padding:12px 16px}
+
+/* Project Section */
+.project-section{margin-bottom:16px}
+.project-header{display:flex;align-items:center;gap:8px;padding:4px 0;margin-bottom:6px;cursor:pointer;user-select:none}
+.project-header .chevron{font-size:9px;color:var(--text-mut);transition:transform .15s;width:12px;text-align:center}
+.project-header .chevron.open{transform:rotate(90deg)}
+.project-name{font-size:12px;font-weight:600;color:var(--text-sec)}
+.project-path{font-size:10px;color:var(--text-mut);font-family:var(--mono)}
+.project-count{font-size:9px;color:var(--text-mut);font-family:var(--mono);background:var(--surface-el);padding:1px 6px;border-radius:8px;margin-left:auto}
+
+/* Session Card — the main UI element */
+.session-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:all .15s;overflow:hidden}
+.session-card:hover{border-color:var(--border-br);box-shadow:0 2px 12px rgba(0,0,0,.3)}
+.session-card.has-activity{border-left:2px solid var(--success);padding-left:0}
+.session-card.needs-attention{border-left:2px solid var(--warning)}
+.session-card.is-dead{opacity:.55}
+.session-card.is-dead:hover{opacity:.85}
+
+.card-main{display:flex;align-items:center;gap:10px;padding:10px 14px}
+.card-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.card-dot.alive{background:var(--success);box-shadow:0 0 5px rgba(34,197,94,.35);animation:pulse 2.5s infinite}
+.card-dot.streaming{background:var(--yellow);box-shadow:0 0 5px rgba(250,204,21,.35);animation:pulse 1.8s infinite}
+.card-dot.waiting{background:var(--warning);animation:pulse 3s infinite}
+.card-dot.dead{background:var(--text-mut)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+.card-info{flex:1;min-width:0}
+.card-top-row{display:flex;align-items:center;gap:6px;margin-bottom:2px}
+.card-branch{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-model{font-size:9px;color:var(--text-mut);font-family:var(--mono);background:var(--bg);padding:1px 5px;border-radius:3px}
+.card-preview{font-family:var(--mono);font-size:10px;color:var(--text-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.card-preview .prompt{color:var(--yellow)}
+
+.card-right{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0}
+.card-time{font-size:9px;color:var(--text-mut);font-family:var(--mono)}
+.card-tokens{font-size:9px;color:var(--text-mut);font-family:var(--mono)}
+
+/* Expanded card shows more context */
+.card-expanded{padding:0 14px 10px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.card-terminal-preview{background:var(--bg);border-radius:6px;padding:8px 10px;font-family:var(--mono);font-size:10px;line-height:1.6;color:var(--text-sec);max-height:120px;overflow:hidden;position:relative;white-space:pre-wrap}
+.card-terminal-preview::after{content:'';position:absolute;bottom:0;left:0;right:0;height:20px;background:linear-gradient(transparent,var(--bg))}
+.card-terminal-preview .prompt{color:var(--yellow);font-weight:700}
+.card-terminal-preview .user-text{color:var(--text)}
+.card-terminal-preview .tool-text{color:var(--text-mut);opacity:.7}
+.card-terminal-preview .cursor-blink{display:inline-block;width:5px;height:11px;background:var(--yellow);animation:blink 1s step-end infinite;vertical-align:text-bottom}
+@keyframes blink{50%{opacity:0}}
+.card-expand-actions{display:flex;gap:6px}
+.card-expand-btn{padding:5px 14px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text-sec);font-size:11px;font-weight:500;cursor:pointer;font-family:var(--sans);transition:all .12s}
+.card-expand-btn:hover{border-color:var(--border-br);color:var(--text)}
+.card-expand-btn.primary{background:var(--yellow);color:var(--bg);border-color:var(--yellow)}
+.card-expand-btn.primary:hover{background:var(--gold)}
+.card-expand-btn.danger{border-color:rgba(239,68,68,.2);color:var(--error)}
+
+/* Full Terminal View — takes over the whole screen */
+.terminal-view{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.term-head{display:flex;align-items:center;gap:10px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.term-back{padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-sec);font-size:11px;font-family:var(--mono);cursor:pointer;transition:all .12s;display:flex;align-items:center;gap:4px}
+.term-back:hover{border-color:var(--yellow);color:var(--yellow)}
+.term-branch{font-family:var(--mono);font-weight:600;font-size:12px;color:var(--text)}
+.term-project{font-family:var(--mono);font-size:11px;color:var(--text-mut)}
+.term-model{font-family:var(--mono);font-size:10px;color:var(--text-mut)}
+.term-nav{margin-left:auto;display:flex;gap:4px}
+.term-nav-btn{padding:3px 8px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--text-mut);font-size:10px;font-family:var(--mono);cursor:pointer;transition:all .1s}
+.term-nav-btn:hover{border-color:var(--border-br);color:var(--text-sec)}
+
+.term-body{flex:1;overflow-y:auto;padding:16px 20px;font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--text-sec)}
+.term-body::before{content:'';position:fixed;left:0;right:0;top:0;bottom:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,255,255,.003) 2px,rgba(255,255,255,.003) 4px);pointer-events:none;z-index:1}
+.t-block{margin-bottom:14px;position:relative;z-index:2}
+.t-user{margin-bottom:4px}
+.t-user .prompt{color:var(--yellow);font-weight:700}
+.t-user .msg{color:var(--text)}
+.t-assistant{color:var(--text-sec);white-space:pre-wrap}
+.t-tool{margin:6px 0;padding:5px 10px;border-left:2px solid var(--border);font-size:11px}
+.t-tool-name{color:var(--text);font-weight:600}
+.t-tool-path{color:var(--text-mut)}
+.t-tool-result{font-size:10px}
+.t-tool-result.ok{color:var(--success)}
+.t-tool-result.pending{color:var(--warning)}
+.t-cursor{display:inline-block;width:7px;height:14px;background:var(--yellow);animation:blink 1s step-end infinite;vertical-align:text-bottom}
+
+.term-input{border-top:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:8px;background:var(--surface);flex-shrink:0}
+.input-prompt{color:var(--yellow);font-family:var(--mono);font-size:14px;font-weight:700}
+.input-field{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:var(--mono);font-size:12px;caret-color:var(--yellow)}
+.input-field::placeholder{color:var(--text-mut)}
+.input-meta{font-size:10px;color:var(--text-mut);font-family:var(--mono)}
+
+.term-status{height:22px;background:var(--surface);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 16px;font-size:10px;font-family:var(--mono);color:var(--text-mut);gap:10px;flex-shrink:0}
+.term-status .dot{width:4px;height:4px;border-radius:50%;background:var(--success);animation:pulse 2s infinite}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:10px;width:460px;max-width:92vw}
+.modal-head{padding:16px 20px 10px;display:flex;align-items:center;gap:8px}
+.modal-title{font-family:var(--mono);font-weight:700;font-size:14px}
+.modal-close{margin-left:auto;background:none;border:none;color:var(--text-mut);cursor:pointer;font-size:16px;padding:4px;border-radius:4px}
+.modal-close:hover{color:var(--text);background:var(--surface-el)}
+.modal-body{padding:0 20px 16px}
+.mf{margin-bottom:12px}
+.ml{font-size:10px;font-weight:600;color:var(--text-mut);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.ms,.mi{width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none}
+.ms:focus,.mi:focus{border-color:var(--yellow)}
+.ms{cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%234e4e58'%3E%3Cpath d='M2 4l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+.ms option{background:var(--surface);color:var(--text)}
+.mi::placeholder{color:var(--text-mut)}
+.mhint{font-size:10px;color:var(--text-mut);margin-top:3px}
+.modal-foot{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+.mbtn{padding:7px 18px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-sec);font-family:var(--sans);transition:all .12s}
+.mbtn:hover{border-color:var(--border-br);color:var(--text)}
+.mbtn.primary{background:var(--yellow);color:var(--bg);border-color:var(--yellow)}
+.mbtn.primary:hover{background:var(--gold)}
+
+/* Command palette */
+.cmd-palette{position:fixed;top:15%;left:50%;transform:translateX(-50%);width:520px;max-width:92vw;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.6);z-index:200;overflow:hidden}
+.cmd-input{width:100%;padding:12px 16px;background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;outline:none}
+.cmd-input::placeholder{color:var(--text-mut)}
+.cmd-results{max-height:300px;overflow-y:auto}
+.cmd-item{display:flex;align-items:center;gap:8px;padding:8px 16px;cursor:pointer;transition:background .08s}
+.cmd-item:hover,.cmd-item.active{background:var(--surface-el)}
+.cmd-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.cmd-dot.alive{background:var(--success)}
+.cmd-dot.dead{background:var(--text-mut)}
+.cmd-label{font-family:var(--mono);font-size:12px;color:var(--text);flex:1}
+.cmd-sub{font-size:10px;color:var(--text-mut);font-family:var(--mono)}
+.cmd-hint{padding:8px 16px;border-top:1px solid var(--border);font-size:10px;color:var(--text-mut);display:flex;gap:12px}
+</style>
+</head>
+<body>
+<div class="app" x-data="glue()" @keydown.meta.k.window.prevent="cmdOpen=!cmdOpen" @keydown.escape.window="if(cmdOpen) cmdOpen=false; else if(mode==='terminal') mode='list'">
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <span class="logo">glue<span>.</span></span>
+    <span class="topbar-sep"></span>
+    <input class="search-box" type="text" placeholder="Search sessions... ⌘K" x-model="searchText" @focus="cmdOpen=true" @input="cmdOpen=true" readonly>
+    <div class="topbar-right">
+      <span class="stats-pill" x-text="sessions.filter(s=>s.alive).length + ' active / ' + sessions.length + ' total'"></span>
+      <button class="new-btn" @click="showNewModal=true"><span style="font-size:14px;font-weight:300">+</span> New</button>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+    <!-- List View -->
+    <div class="list-view" x-show="mode==='list'" x-transition.opacity>
+      <div class="list-scroll">
+        <template x-for="group in groupedSessions()" :key="group.project">
+          <div class="project-section">
+            <div class="project-header" @click="group.open=!group.open">
+              <span class="chevron" :class="group.open&&'open'">▶</span>
+              <span class="project-name" x-text="group.project"></span>
+              <span class="project-path" x-text="group.path"></span>
+              <span class="project-count" x-text="group.sessions.length"></span>
+            </div>
+            <template x-if="group.open">
+              <div>
+                <template x-for="s in group.sessions" :key="s.id">
+                  <div class="session-card" :class="{'has-activity':s.alive && !s.waiting, 'needs-attention':s.waiting, 'is-dead':!s.alive}" @click="expandedId === s.id ? expandedId = null : expandedId = s.id">
+                    <div class="card-main">
+                      <span class="card-dot" :class="s.waiting ? 'waiting' : s.streaming ? 'streaming' : s.alive ? 'alive' : 'dead'"></span>
+                      <div class="card-info">
+                        <div class="card-top-row">
+                          <span class="card-branch" x-text="s.branch"></span>
+                          <span class="card-model" x-text="s.model"></span>
+                        </div>
+                        <div class="card-preview"><span class="prompt">❯ </span><span x-text="s.lastInput"></span></div>
+                      </div>
+                      <div class="card-right">
+                        <span class="card-time" x-text="s.time"></span>
+                        <span class="card-tokens" x-text="s.tokens.toLocaleString() + ' tok'"></span>
+                      </div>
+                    </div>
+                    <!-- Expanded preview -->
+                    <template x-if="expandedId === s.id">
+                      <div class="card-expanded" @click.stop>
+                        <div class="card-terminal-preview" x-html="cardPreview(s)"></div>
+                        <div class="card-expand-actions">
+                          <button class="card-expand-btn primary" @click="openTerminal(s.id)">Open Terminal</button>
+                          <template x-if="s.waiting">
+                            <button class="card-expand-btn" style="border-color:rgba(250,204,21,.3);color:var(--yellow)" @click="approveSession(s)">Approve</button>
+                          </template>
+                          <button class="card-expand-btn danger" @click="closeSession(s.id)">Close</button>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- Terminal View -->
+    <div class="terminal-view" x-show="mode==='terminal'" x-transition.opacity>
+      <template x-if="activeSession()">
+        <div style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+          <div class="term-head">
+            <button class="term-back" @click="mode='list'">← Back</button>
+            <span class="term-project" x-text="activeSession().project + ' /'"></span>
+            <span class="term-branch" x-text="activeSession().branch"></span>
+            <span class="term-model" x-text="activeSession().model"></span>
+            <div class="term-nav">
+              <button class="term-nav-btn" @click="prevSession()">↑</button>
+              <button class="term-nav-btn" @click="nextSession()">↓</button>
+            </div>
+          </div>
+
+          <div class="term-body">
+            <template x-for="(block, i) in activeSession().blocks" :key="i">
+              <div class="t-block">
+                <template x-if="block.type==='user'">
+                  <div class="t-user"><span class="prompt">❯ </span><span class="msg" x-text="block.text"></span></div>
+                </template>
+                <template x-if="block.type==='assistant'">
+                  <div class="t-assistant" x-html="block.text + (block.streaming ? '<span class=\'t-cursor\'></span>' : '')"></div>
+                </template>
+                <template x-if="block.type==='tool'">
+                  <div class="t-tool">
+                    <span class="t-tool-name" x-text="block.name"></span>
+                    <span class="t-tool-path" x-text="' ' + block.path"></span>
+                    <div class="t-tool-result" :class="block.pending?'pending':'ok'" x-text="block.result"></div>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+
+          <div class="term-input">
+            <span class="input-prompt">❯</span>
+            <input class="input-field" type="text" placeholder="Type a message..." x-model="inputText" @keydown.enter="sendMessage()">
+            <span class="input-meta" x-text="activeSession().tokens.toLocaleString() + ' tok'"></span>
+          </div>
+
+          <div class="term-status">
+            <template x-if="activeSession().alive"><span class="dot"></span></template>
+            <span x-text="activeSession().project + ' / ' + activeSession().branch"></span>
+            <span>·</span>
+            <span x-text="activeSession().model"></span>
+            <span style="margin-left:auto">Esc to go back</span>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Command Palette -->
+  <template x-if="cmdOpen">
+    <div style="position:fixed;inset:0;z-index:150" @click="cmdOpen=false">
+      <div class="cmd-palette" @click.stop>
+        <input class="cmd-input" type="text" placeholder="Switch to session..." x-model="cmdSearch" x-ref="cmdInput" @keydown.escape="cmdOpen=false" @keydown.enter="cmdGo()" @keydown.down.prevent="cmdIdx=Math.min(cmdIdx+1,cmdFiltered().length-1)" @keydown.up.prevent="cmdIdx=Math.max(cmdIdx-1,0)" x-init="$nextTick(()=>$refs.cmdInput.focus())" autofocus>
+        <div class="cmd-results">
+          <template x-for="(s, i) in cmdFiltered()" :key="s.id">
+            <div class="cmd-item" :class="i===cmdIdx&&'active'" @click="openTerminal(s.id);cmdOpen=false">
+              <span class="cmd-dot" :class="s.alive?'alive':'dead'"></span>
+              <span class="cmd-label" x-text="s.project + ' / ' + s.branch"></span>
+              <span class="cmd-sub" x-text="s.model + ' · ' + s.time"></span>
+            </div>
+          </template>
+        </div>
+        <div class="cmd-hint">
+          <span><span class="kbd">↑↓</span> navigate</span>
+          <span><span class="kbd">⏎</span> open</span>
+          <span><span class="kbd">esc</span> close</span>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- New Session Modal -->
+  <template x-if="showNewModal">
+    <div class="modal-bg" @click.self="showNewModal=false" x-transition.opacity>
+      <div class="modal" @click.stop>
+        <div class="modal-head">
+          <span class="modal-title">New Session</span>
+          <button class="modal-close" @click="showNewModal=false">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="mf">
+            <div class="ml">Project</div>
+            <select class="ms" x-model="newSession.project">
+              <option value="">Select project...</option>
+              <template x-for="p in projects" :key="p.name">
+                <option :value="p.name" x-text="p.name + ' — ' + p.path"></option>
+              </template>
+            </select>
+          </div>
+          <div class="mf">
+            <div class="ml">Branch / Worktree</div>
+            <select class="ms" x-model="newSession.branch">
+              <option value="">Select worktree...</option>
+              <template x-for="wt in worktreesFor(newSession.project)" :key="wt">
+                <option :value="wt" x-text="wt"></option>
+              </template>
+              <option value="__new__">+ New worktree</option>
+            </select>
+          </div>
+          <template x-if="newSession.branch==='__new__'">
+            <div class="mf">
+              <div class="ml">Branch Name</div>
+              <input class="mi" placeholder="feat/my-feature" x-model="newSession.newBranch">
+              <div class="mhint">Creates a worktree from main</div>
+            </div>
+          </template>
+          <div class="mf">
+            <div class="ml">Model</div>
+            <select class="ms" x-model="newSession.model">
+              <option>claude-4-sonnet</option><option>claude-4-opus</option><option>gpt-5</option><option>gemini-3-pro</option>
+            </select>
+          </div>
+          <div class="mf">
+            <div class="ml">Initial Prompt (optional)</div>
+            <input class="mi" placeholder="What should this agent work on?" x-model="newSession.prompt">
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="mbtn" @click="showNewModal=false">Cancel</button>
+          <button class="mbtn primary" @click="createSession()">Create</button>
+        </div>
+      </div>
+    </div>
+  </template>
+</div>
+
+<script>
+function glue() {
+  let nextId = 20;
+  const data = [
+    {id:1,project:'glue-cli',path:'~/code/glue/cli',branch:'feat/tui-overhaul',model:'claude-4-sonnet',alive:true,streaming:false,waiting:false,time:'2m ago',tokens:4521,lastInput:'implement the screen buffer',blocks:[
+      {type:'user',text:'implement the screen buffer with diff-based rendering'},
+      {type:'assistant',text:'I\'ll create a virtual screen buffer with Cell-based grid. Let me check the current code.',streaming:false},
+      {type:'tool',name:'read_file',path:'lib/src/terminal/terminal.dart',result:'✓ 156 lines',pending:false},
+      {type:'assistant',text:'Creating ScreenBuffer with double-buffering and diff-based flush...',streaming:false},
+      {type:'tool',name:'write_file',path:'lib/src/terminal/screen_buffer.dart',result:'✓ created (89 lines)',pending:false},
+      {type:'assistant',text:'Done! The buffer compares current vs previous frame and only writes changed cells. Want me to integrate it with Layout?',streaming:false},
+    ]},
+    {id:2,project:'glue-cli',path:'~/code/glue/cli',branch:'feat/mcp-support',model:'claude-4-sonnet',alive:true,streaming:true,waiting:false,time:'1m ago',tokens:1892,lastInput:'add MCP server discovery',blocks:[
+      {type:'user',text:'add MCP server discovery and connection management'},
+      {type:'assistant',text:'Scanning for MCP server configurations...\n\nFound 2 servers:\n  • filesystem (stdio)\n  • github (sse)\n\nConnecting to filesystem server...',streaming:true},
+    ]},
+    {id:3,project:'glue-cli',path:'~/code/glue/cli',branch:'fix/input-parsing',model:'gpt-5',alive:true,streaming:false,waiting:true,time:'3m ago',tokens:3107,lastInput:'fix UTF-8 parsing bug',blocks:[
+      {type:'user',text:'fix the UTF-8 multi-byte character parsing bug'},
+      {type:'assistant',text:'Found the issue — fixed surrogate pair handling in _decodeUtf8Char.',streaming:false},
+      {type:'tool',name:'bash',path:'dart analyze lib/',result:'⏳ awaiting approval',pending:true},
+    ]},
+    {id:4,project:'glue-cli',path:'~/code/glue/cli',branch:'main',model:'claude-4-haiku',alive:false,streaming:false,waiting:false,time:'8m ago',tokens:987,lastInput:'update the README',blocks:[
+      {type:'user',text:'update the README with install instructions'},
+      {type:'assistant',text:'Done! Updated README.md with ASCII logo, install guide, and architecture overview.',streaming:false},
+    ]},
+    {id:5,project:'api-server',path:'~/code/api-server',branch:'feat/auth',model:'claude-4-sonnet',alive:true,streaming:true,waiting:false,time:'1m ago',tokens:2890,lastInput:'implement JWT auth middleware',blocks:[
+      {type:'user',text:'implement JWT auth middleware with refresh token rotation'},
+      {type:'tool',name:'read_file',path:'lib/src/routes/api.dart',result:'✓ 142 lines',pending:false},
+      {type:'assistant',text:'Creating JWT middleware with RS256 verification and automatic refresh token rotation...',streaming:true},
+    ]},
+    {id:6,project:'api-server',path:'~/code/api-server',branch:'feat/graphql',model:'gpt-5',alive:true,streaming:true,waiting:false,time:'55s ago',tokens:1456,lastInput:'generate GraphQL schema',blocks:[
+      {type:'user',text:'generate GraphQL schema from REST endpoints'},
+      {type:'assistant',text:'type User {\n  id: ID!\n  email: String!\n  name: String\n  createdAt: DateTime!\n}',streaming:true},
+    ]},
+    {id:7,project:'infra',path:'~/code/infra',branch:'feat/k8s-deploy',model:'claude-4-sonnet',alive:true,streaming:false,waiting:false,time:'2m ago',tokens:3654,lastInput:'create k8s manifests with HPA',blocks:[
+      {type:'user',text:'create k8s deployment manifests with HPA'},
+      {type:'tool',name:'write_file',path:'k8s/overlays/prod/hpa.yaml',result:'✓ created (28 lines)',pending:false},
+      {type:'assistant',text:'Created HPA: min 2, max 10 replicas, 70% CPU target. Also added resource requests and limits.',streaming:false},
+    ]},
+  ];
+
+  return {
+    mode: 'list',
+    activeId: null,
+    expandedId: null,
+    showNewModal: false,
+    cmdOpen: false,
+    cmdSearch: '',
+    cmdIdx: 0,
+    inputText: '',
+    searchText: '',
+    sessions: data,
+    newSession: {project:'',branch:'',newBranch:'',model:'claude-4-sonnet',prompt:''},
+    projects: [{name:'glue-cli',path:'~/code/glue/cli'},{name:'api-server',path:'~/code/api-server'},{name:'docs-site',path:'~/code/docs'},{name:'infra',path:'~/code/infra'}],
+    allWorktrees: {'glue-cli':['main','feat/tui-overhaul','feat/mcp-support','fix/input-parsing'],'api-server':['main','feat/auth','feat/graphql'],'docs-site':['main'],'infra':['main','feat/k8s-deploy']},
+
+    groupedSessions() {
+      const g = {};
+      this.sessions.forEach(s => {
+        if (!g[s.project]) g[s.project] = {project:s.project,path:s.path,open:true,sessions:[]};
+        g[s.project].sessions.push(s);
+      });
+      return Object.values(g);
+    },
+    activeSession() { return this.sessions.find(s => s.id === this.activeId); },
+    openTerminal(id) { this.activeId = id; this.mode = 'terminal'; this.expandedId = null; },
+    prevSession() { const i = this.sessions.findIndex(s => s.id === this.activeId); if (i > 0) { this.activeId = this.sessions[i-1].id; }},
+    nextSession() { const i = this.sessions.findIndex(s => s.id === this.activeId); if (i < this.sessions.length-1) { this.activeId = this.sessions[i+1].id; }},
+    closeSession(id) { this.sessions = this.sessions.filter(s => s.id !== id); if (this.activeId === id) { this.activeId = null; this.mode = 'list'; } this.expandedId = null; },
+    approveSession(s) { s.waiting = false; const b = s.blocks.find(b => b.pending); if (b) { b.pending = false; b.result = '✓ No issues found'; }},
+    worktreesFor(proj) { return this.allWorktrees[proj] || []; },
+    cardPreview(s) {
+      return s.blocks.slice(-3).map(b => {
+        if (b.type === 'user') return '<span class="prompt">❯ </span><span class="user-text">' + b.text + '</span>';
+        if (b.type === 'assistant') return b.text.substring(0,150) + (b.streaming ? '<span class="cursor-blink"></span>' : '');
+        if (b.type === 'tool') return '<span class="tool-text">┌ ' + b.name + ' ' + b.path + '\n└ ' + b.result + '</span>';
+        return '';
+      }).join('\n');
+    },
+    cmdFiltered() {
+      if (!this.cmdSearch) return this.sessions;
+      const q = this.cmdSearch.toLowerCase();
+      return this.sessions.filter(s => (s.project + ' ' + s.branch + ' ' + s.model + ' ' + s.lastInput).toLowerCase().includes(q));
+    },
+    cmdGo() {
+      const filtered = this.cmdFiltered();
+      if (filtered[this.cmdIdx]) { this.openTerminal(filtered[this.cmdIdx].id); this.cmdOpen = false; this.cmdSearch = ''; this.cmdIdx = 0; }
+    },
+    createSession() {
+      const branch = this.newSession.branch === '__new__' ? this.newSession.newBranch : this.newSession.branch;
+      const proj = this.projects.find(p => p.name === this.newSession.project);
+      const s = {id:nextId++,project:this.newSession.project,path:proj?.path||'',branch,model:this.newSession.model,alive:true,streaming:!!this.newSession.prompt,waiting:false,time:'now',tokens:0,lastInput:this.newSession.prompt||'(new)',
+        blocks:this.newSession.prompt?[{type:'user',text:this.newSession.prompt},{type:'assistant',text:'Looking at your project...',streaming:true}]:[]
+      };
+      this.sessions.push(s);
+      this.openTerminal(s.id);
+      this.showNewModal = false;
+      this.newSession = {project:'',branch:'',newBranch:'',model:'claude-4-sonnet',prompt:''};
+    },
+    sendMessage() {
+      if (!this.inputText.trim() || !this.activeSession()) return;
+      const s = this.activeSession();
+      s.blocks.forEach(b => { if (b.streaming) b.streaming = false; });
+      s.blocks.push({type:'user',text:this.inputText});
+      s.blocks.push({type:'assistant',text:'Working on it...',streaming:true});
+      s.lastInput = this.inputText.substring(0,40);
+      s.time = 'now';
+      s.streaming = true;
+      this.inputText = '';
+    },
+  };
+}
+</script>
+</body>
+</html>

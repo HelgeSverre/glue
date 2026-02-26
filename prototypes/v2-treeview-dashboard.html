@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Glue — Treeview Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --yellow:#FACC15;--gold:#EAB308;--amber:#F59E0B;
+  --bg:#050506;--surface:#111113;--surface-el:#1a1a1e;
+  --border:#2a2a30;--border-br:#3f3f46;
+  --text:#FAFAFA;--text-sec:#A1A1AA;--text-mut:#5a5a65;--text-yel:#FDE047;
+  --success:#22C55E;--error:#EF4444;--warning:#F59E0B;--info:#3B82F6;
+  --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;
+}
+html{font-size:13px;-webkit-font-smoothing:antialiased}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh;overflow:hidden;
+  background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.015) 1px,transparent 0);
+  background-size:24px 24px}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:var(--yellow)}
+
+.app{display:grid;grid-template-columns:260px 1fr;height:100vh}
+
+/* Sidebar */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sidebar-head{padding:16px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.logo{font-family:var(--mono);font-weight:700;font-size:17px;color:var(--yellow)}
+.logo-dot{color:var(--text-mut)}
+.logo-sub{font-size:10px;color:var(--text-mut);margin-left:auto;font-family:var(--mono)}
+
+.tree{flex:1;overflow-y:auto;padding:8px 0}
+.tree-node{cursor:pointer;user-select:none}
+.tree-row{display:flex;align-items:center;gap:6px;padding:4px 12px;transition:background .1s;font-size:12px}
+.tree-row:hover{background:var(--surface-el)}
+.tree-row.selected{background:var(--surface-el);border-left:2px solid var(--yellow);padding-left:10px}
+.tree-indent{display:inline-block}
+.tree-chevron{width:14px;height:14px;color:var(--text-mut);transition:transform .15s;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px}
+.tree-chevron.open{transform:rotate(90deg)}
+.tree-icon{flex-shrink:0;font-size:12px}
+.tree-label{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tree-label.project{font-weight:600;color:var(--text);font-size:12px}
+.tree-label.worktree{color:var(--text-sec);font-family:var(--mono);font-size:11px}
+.tree-label.agent{font-family:var(--mono);font-size:11px}
+.tree-badge{font-size:9px;padding:1px 5px;border-radius:8px;font-family:var(--mono);font-weight:600}
+.tree-badge.running{background:rgba(34,197,94,.12);color:var(--success)}
+.tree-badge.streaming{background:rgba(250,204,21,.12);color:var(--yellow)}
+.tree-badge.waiting{background:rgba(245,158,11,.12);color:var(--warning)}
+.tree-badge.completed{background:rgba(34,197,94,.08);color:var(--success)}
+.tree-badge.error{background:rgba(239,68,68,.12);color:var(--error)}
+.tree-badge.idle{background:var(--surface-el);color:var(--text-mut)}
+
+.status-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.status-dot.running{background:var(--success);box-shadow:0 0 5px var(--success)}
+.status-dot.streaming{background:var(--yellow);box-shadow:0 0 5px var(--yellow)}
+.status-dot.waiting{background:var(--warning)}
+.status-dot.completed{background:var(--success);opacity:.6}
+.status-dot.error{background:var(--error)}
+.status-dot.idle{background:var(--border-br)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.status-dot.running,.status-dot.streaming{animation:pulse 2s infinite}
+
+.sidebar-footer{padding:10px 14px;border-top:1px solid var(--border);font-size:11px;color:var(--text-mut);font-family:var(--mono);display:flex;flex-direction:column;gap:2px}
+
+/* Main */
+.main{overflow-y:auto;padding:24px 32px}
+.main-head{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.main-title{font-family:var(--mono);font-size:16px;font-weight:700;color:var(--text)}
+.back-btn{font-size:12px;color:var(--text-mut);cursor:pointer;font-family:var(--mono);background:none;border:1px solid var(--border);padding:4px 10px;border-radius:4px;transition:all .15s}
+.back-btn:hover{border-color:var(--yellow);color:var(--yellow)}
+
+/* Stats Cards */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px 18px;border-top:2px solid var(--yellow);position:relative}
+.stat-card .num{font-family:var(--mono);font-size:28px;font-weight:700;color:var(--yellow);line-height:1}
+.stat-card .label{font-size:11px;color:var(--text-mut);margin-top:4px}
+.stat-card .sub{font-size:10px;color:var(--text-mut);margin-top:6px;font-family:var(--mono);line-height:1.5}
+.stat-card .sparkline{position:absolute;bottom:12px;right:14px;display:flex;align-items:flex-end;gap:2px;height:24px}
+.spark-bar{width:4px;background:var(--yellow);opacity:.3;border-radius:1px}
+
+/* Content Grid */
+.content-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:16px}
+
+/* Activity Feed */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.panel-head{padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;font-weight:600;color:var(--text-sec);display:flex;align-items:center;gap:6px}
+.panel-head .dot{width:5px;height:5px;border-radius:50%;background:var(--yellow)}
+.feed{max-height:420px;overflow-y:auto}
+.feed-row{display:grid;grid-template-columns:60px 56px 76px 1fr 20px;gap:8px;padding:7px 16px;font-size:11px;align-items:center;border-bottom:1px solid rgba(42,42,48,.5);transition:background .1s}
+.feed-row:hover{background:var(--surface-el)}
+.feed-row:nth-child(even){background:rgba(17,17,19,.5)}
+.feed-row:nth-child(even):hover{background:var(--surface-el)}
+.feed-time{color:var(--text-mut);font-family:var(--mono)}
+.feed-agent{color:var(--text-yel);font-family:var(--mono);font-weight:600}
+.feed-type{color:var(--text-sec);font-family:var(--mono)}
+.feed-desc{color:var(--text-sec);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.feed-icon{text-align:center;font-size:10px}
+.feed-icon.ok{color:var(--success)}
+.feed-icon.pending{color:var(--warning)}
+.feed-icon.err{color:var(--error)}
+.feed-icon.info{color:var(--info)}
+
+/* Resource panels */
+.resource-panel{display:flex;flex-direction:column;gap:16px;padding:16px}
+.res-section-title{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-mut);font-weight:600;margin-bottom:8px}
+.model-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px}
+.model-name{width:110px;color:var(--text-sec);font-family:var(--mono);flex-shrink:0}
+.model-bar{flex:1;height:6px;background:var(--surface-el);border-radius:3px;overflow:hidden}
+.model-fill{height:100%;background:var(--yellow);border-radius:3px;transition:width .5s}
+.model-val{width:50px;text-align:right;color:var(--text-mut);font-family:var(--mono);font-size:10px}
+
+.donut-wrap{display:flex;align-items:center;gap:20px}
+.donut{width:80px;height:80px;border-radius:50%;background:conic-gradient(var(--yellow) 0deg 135deg,var(--info) 135deg 225deg,var(--success) 225deg 270deg,var(--border) 270deg 360deg);position:relative}
+.donut::after{content:'';position:absolute;inset:14px;border-radius:50%;background:var(--surface)}
+.donut-legend{display:flex;flex-direction:column;gap:4px;font-size:11px}
+.donut-legend-item{display:flex;align-items:center;gap:6px;color:var(--text-sec)}
+.donut-legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+
+.util-bar-wrap{margin-top:4px}
+.util-bar{height:6px;background:var(--surface-el);border-radius:3px;overflow:hidden;margin:6px 0}
+.util-fill{height:100%;background:var(--yellow);border-radius:3px;width:58%}
+.util-label{font-size:11px;color:var(--text-sec);font-family:var(--mono)}
+
+/* Agent Detail View */
+.detail-view{max-width:800px}
+.detail-header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.detail-id{font-family:var(--mono);font-weight:700;font-size:20px;color:var(--text-yel)}
+.detail-branch{font-family:var(--mono);font-size:12px;color:var(--text-mut);background:var(--surface-el);padding:3px 8px;border-radius:4px}
+.detail-status{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500}
+.detail-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.detail-meta-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px}
+.detail-meta-card .label{font-size:10px;color:var(--text-mut);text-transform:uppercase;letter-spacing:.04em}
+.detail-meta-card .val{font-family:var(--mono);font-size:14px;font-weight:600;margin-top:2px}
+.terminal-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--text-sec);max-height:300px;overflow-y:auto;white-space:pre-wrap;margin-bottom:16px}
+.tool-list{display:flex;flex-direction:column;gap:6px}
+.tool-item{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-family:var(--mono);font-size:11px;display:flex;align-items:center;gap:8px}
+.tool-item .name{font-weight:600;color:var(--text)}
+.tool-item .path{color:var(--text-mut);flex:1}
+.tool-item .st{font-size:10px}
+.tool-item .st.ok{color:var(--success)}
+.tool-item .st.pending{color:var(--warning)}
+</style>
+</head>
+<body>
+<div class="app" x-data="app()">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <span class="logo">glue<span class="logo-dot">.</span></span>
+      <span class="logo-sub">dashboard</span>
+    </div>
+    <div class="tree">
+      <template x-for="proj in projects" :key="proj.name">
+        <div class="tree-node">
+          <div class="tree-row" @click="proj.open = !proj.open">
+            <span class="tree-chevron" :class="proj.open && 'open'">▶</span>
+            <span class="tree-icon">📁</span>
+            <span class="tree-label project" x-text="proj.name"></span>
+            <span class="tree-badge" :class="proj.agents.length > 0 ? 'running' : 'idle'" x-text="proj.agents.length"></span>
+          </div>
+          <template x-if="proj.open">
+            <div>
+              <template x-for="wt in proj.worktrees" :key="wt.branch">
+                <div class="tree-node">
+                  <div class="tree-row" @click="wt.open = !wt.open" style="padding-left:32px">
+                    <span class="tree-chevron" :class="wt.open && 'open'" x-show="wtAgents(proj, wt).length > 0">▶</span>
+                    <span x-show="wtAgents(proj, wt).length === 0" style="width:14px"></span>
+                    <span class="status-dot" :class="wtAgents(proj, wt).some(a=>['running','streaming'].includes(a.status)) ? 'running' : 'idle'"></span>
+                    <span class="tree-label worktree" x-text="wt.branch"></span>
+                  </div>
+                  <template x-if="wt.open">
+                    <div>
+                      <template x-for="agent in wtAgents(proj, wt)" :key="agent.id">
+                        <div class="tree-row" :class="selectedAgent?.id === agent.id && 'selected'" @click="selectAgent(agent)" style="padding-left:56px">
+                          <span class="status-dot" :class="agent.status"></span>
+                          <span class="tree-label agent" :style="{color: agent.status === 'error' ? 'var(--error)' : agent.status === 'completed' ? 'var(--success)' : 'var(--text-sec)'}">#<span x-text="agent.id"></span></span>
+                          <span class="tree-badge" :class="agent.status" x-text="agent.statusLabel"></span>
+                        </div>
+                      </template>
+                      <div x-show="wtAgents(proj, wt).length === 0" class="tree-row" style="padding-left:56px">
+                        <span style="color:var(--text-mut);font-size:11px">○ idle</span>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+      </template>
+    </div>
+    <div class="sidebar-footer">
+      <span>8 agents · 4 running</span>
+      <span>21,234 tokens total</span>
+      <span>7/12 worktrees active</span>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <!-- Dashboard View -->
+    <div x-show="!selectedAgent" x-transition.opacity>
+      <div class="main-head">
+        <span class="main-title">Overview</span>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="num">8</div>
+          <div class="label">Total Agents</div>
+          <div class="sub">4 running · 1 streaming · 1 waiting<br>1 completed · 1 error</div>
+          <div class="sparkline">
+            <div class="spark-bar" style="height:40%"></div>
+            <div class="spark-bar" style="height:60%"></div>
+            <div class="spark-bar" style="height:80%"></div>
+            <div class="spark-bar" style="height:55%"></div>
+            <div class="spark-bar" style="height:90%"></div>
+            <div class="spark-bar" style="height:70%"></div>
+            <div class="spark-bar" style="height:100%"></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="num">21,234</div>
+          <div class="label">Total Tokens</div>
+          <div class="sub">847 tok/min avg</div>
+          <div class="sparkline">
+            <div class="spark-bar" style="height:30%"></div>
+            <div class="spark-bar" style="height:50%"></div>
+            <div class="spark-bar" style="height:45%"></div>
+            <div class="spark-bar" style="height:75%"></div>
+            <div class="spark-bar" style="height:60%"></div>
+            <div class="spark-bar" style="height:85%"></div>
+            <div class="spark-bar" style="height:95%"></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="num">7 / 12</div>
+          <div class="label">Active Worktrees</div>
+          <div class="sub">across 4 projects</div>
+          <div class="sparkline">
+            <div class="spark-bar" style="height:50%"></div>
+            <div class="spark-bar" style="height:50%"></div>
+            <div class="spark-bar" style="height:60%"></div>
+            <div class="spark-bar" style="height:55%"></div>
+            <div class="spark-bar" style="height:70%"></div>
+            <div class="spark-bar" style="height:65%"></div>
+            <div class="spark-bar" style="height:58%"></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="num">1m 48s</div>
+          <div class="label">Avg Duration</div>
+          <div class="sub">fastest: 0m 22s</div>
+          <div class="sparkline">
+            <div class="spark-bar" style="height:70%"></div>
+            <div class="spark-bar" style="height:45%"></div>
+            <div class="spark-bar" style="height:90%"></div>
+            <div class="spark-bar" style="height:35%"></div>
+            <div class="spark-bar" style="height:60%"></div>
+            <div class="spark-bar" style="height:80%"></div>
+            <div class="spark-bar" style="height:50%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="content-grid">
+        <div class="panel">
+          <div class="panel-head"><span class="dot"></span> Activity Feed</div>
+          <div class="feed">
+            <template x-for="evt in feed" :key="evt.time+evt.agent">
+              <div class="feed-row">
+                <span class="feed-time" x-text="evt.time"></span>
+                <span class="feed-agent" x-text="'#'+evt.agent"></span>
+                <span class="feed-type" x-text="evt.type"></span>
+                <span class="feed-desc" x-text="evt.desc"></span>
+                <span class="feed-icon" :class="evt.icon" x-text="evt.sym"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">Resources</div>
+          <div class="resource-panel">
+            <div>
+              <div class="res-section-title">Models in Use</div>
+              <div class="model-row">
+                <span class="model-name">claude-4-sonnet</span>
+                <div class="model-bar"><div class="model-fill" style="width:73%"></div></div>
+                <span class="model-val">15,289</span>
+              </div>
+              <div class="model-row">
+                <span class="model-name">gpt-5</span>
+                <div class="model-bar"><div class="model-fill" style="width:22%"></div></div>
+                <span class="model-val">4,563</span>
+              </div>
+              <div class="model-row">
+                <span class="model-name">claude-4-haiku</span>
+                <div class="model-bar"><div class="model-fill" style="width:5%"></div></div>
+                <span class="model-val">987</span>
+              </div>
+            </div>
+            <div>
+              <div class="res-section-title">Agents by Project</div>
+              <div class="donut-wrap">
+                <div class="donut"></div>
+                <div class="donut-legend">
+                  <div class="donut-legend-item"><span class="donut-legend-dot" style="background:var(--yellow)"></span> glue-cli (5)</div>
+                  <div class="donut-legend-item"><span class="donut-legend-dot" style="background:var(--info)"></span> api-server (2)</div>
+                  <div class="donut-legend-item"><span class="donut-legend-dot" style="background:var(--success)"></span> infra (1)</div>
+                  <div class="donut-legend-item"><span class="donut-legend-dot" style="background:var(--border-br)"></span> docs-site (0)</div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="res-section-title">Worktree Utilization</div>
+              <div class="util-label">7 of 12 worktrees active</div>
+              <div class="util-bar"><div class="util-fill"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Agent Detail View -->
+    <div x-show="selectedAgent" x-transition.opacity class="detail-view">
+      <div class="main-head">
+        <button class="back-btn" @click="selectedAgent = null">← Dashboard</button>
+        <span class="main-title">Agent Detail</span>
+      </div>
+      <template x-if="selectedAgent">
+        <div>
+          <div class="detail-header">
+            <span class="detail-id">#<span x-text="selectedAgent.id"></span></span>
+            <span class="detail-branch" x-text="selectedAgent.branch"></span>
+            <div class="detail-status">
+              <span class="status-dot" :class="selectedAgent.status"></span>
+              <span :style="{color: statusColor(selectedAgent.status)}" x-text="selectedAgent.statusLabel"></span>
+            </div>
+            <span style="margin-left:auto;font-size:11px;color:var(--text-mut);font-family:var(--mono)" x-text="selectedAgent.model"></span>
+          </div>
+          <div class="detail-meta">
+            <div class="detail-meta-card"><div class="label">Tokens</div><div class="val" x-text="selectedAgent.tokens.toLocaleString()"></div></div>
+            <div class="detail-meta-card"><div class="label">Duration</div><div class="val" x-text="selectedAgent.time"></div></div>
+            <div class="detail-meta-card"><div class="label">Tool Calls</div><div class="val" x-text="selectedAgent.tools"></div></div>
+            <div class="detail-meta-card"><div class="label">Step</div><div class="val" x-text="selectedAgent.step"></div></div>
+          </div>
+          <div style="font-size:12px;color:var(--text-sec);margin-bottom:12px;line-height:1.5" x-text="selectedAgent.task"></div>
+          <div class="terminal-box" x-text="selectedAgent.output"></div>
+          <div style="font-size:11px;font-weight:600;color:var(--text-mut);margin-bottom:8px">TOOL CALLS</div>
+          <div class="tool-list">
+            <template x-for="tc in selectedAgent.toolCalls" :key="tc.name+tc.path">
+              <div class="tool-item">
+                <span>┌</span>
+                <span class="name" x-text="tc.name"></span>
+                <span class="path" x-text="tc.path"></span>
+                <span class="st" :class="tc.ok ? 'ok' : 'pending'" x-text="tc.ok ? '✓ '+tc.result : '⏳ pending'"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+      </template>
+    </div>
+  </main>
+</div>
+
+<script>
+function app() {
+  const allAgents = [
+    { id:1, project:'glue-cli', branch:'feat/tui-overhaul', status:'running', statusLabel:'Running', task:'Implement the virtual screen buffer with diff-based rendering for flicker-free TUI updates', step:7, tools:23, tokens:4521, time:'2m 34s', model:'claude-4-sonnet', output:'I\'ll implement the virtual screen buffer with diff-based rendering.\n\nReading lib/src/terminal/terminal.dart...\n✓ 156 lines\n\nCreating Cell-based buffer system that tracks changes between frames.\n\nclass Cell {\n  String char;\n  AnsiStyle? style;\n  Cell(this.char, {this.style});\n}\n\nclass ScreenBuffer {\n  final Terminal _terminal;\n  late List<List<Cell>> _current;\n  late List<List<Cell>> _previous;', toolCalls:[{name:'read_file',path:'lib/src/terminal/terminal.dart',ok:true,result:'156 lines'},{name:'write_file',path:'lib/src/terminal/screen_buffer.dart',ok:true,result:'Created (89 lines)'},{name:'bash',path:'dart analyze lib/',ok:false,result:''}] },
+    { id:2, project:'glue-cli', branch:'feat/mcp-support', status:'streaming', statusLabel:'Streaming', task:'Add MCP server discovery and connection management with stdio and SSE transports', step:3, tools:8, tokens:1892, time:'1m 12s', model:'claude-4-sonnet', output:'Scanning for MCP server configurations...\n\nFound 2 servers:\n  • filesystem (stdio)\n  • github (sse)\n\nImplementing MCP protocol handshake...', toolCalls:[{name:'read_file',path:'.glue/mcp.json',ok:true,result:'24 lines'},{name:'read_file',path:'lib/src/mcp/client.dart',ok:true,result:'0 lines (new)'}] },
+    { id:3, project:'glue-cli', branch:'fix/input-parsing', status:'waiting', statusLabel:'Approval', task:'Fix UTF-8 multi-byte character parsing in raw terminal input handler', step:5, tools:15, tokens:3107, time:'3m 45s', model:'gpt-5', output:'Fixed surrogate pair handling in _decodeUtf8Char.\n\n┌ bash\n│ dart analyze lib/\n└ ⏳ AWAITING APPROVAL', toolCalls:[{name:'read_file',path:'lib/src/terminal/terminal.dart',ok:true,result:'156 lines'},{name:'write_file',path:'lib/src/terminal/terminal.dart',ok:true,result:'Modified'},{name:'bash',path:'dart analyze lib/',ok:false,result:''}] },
+    { id:4, project:'glue-cli', branch:'main', status:'completed', statusLabel:'Completed', task:'Update README with installation instructions and architecture overview', step:3, tools:4, tokens:987, time:'0m 22s', model:'claude-4-haiku', output:'README updated with:\n- ASCII logo\n- Installation instructions\n- Architecture overview\n- Usage examples', toolCalls:[{name:'read_file',path:'README.md',ok:true,result:'45 lines'},{name:'write_file',path:'README.md',ok:true,result:'Modified (128 lines)'}] },
+    { id:5, project:'glue-cli', branch:'feat/tui-overhaul', status:'error', statusLabel:'Error', task:'Add mouse event support to terminal controller for scroll and click handling', step:2, tools:6, tokens:2341, time:'1m 56s', model:'claude-4-sonnet', output:'Error: Rate limit exceeded.\nRetry after 30s.', toolCalls:[{name:'read_file',path:'lib/src/terminal/terminal.dart',ok:true,result:'156 lines'}] },
+    { id:6, project:'api-server', branch:'feat/auth', status:'running', statusLabel:'Running', task:'Implement JWT authentication middleware with refresh token rotation', step:4, tools:11, tokens:2890, time:'1m 45s', model:'claude-4-sonnet', output:'Creating JWT middleware...\n\nfinal token = request.headers\n  .value(\'Authorization\')\n  ?.replaceFirst(\'Bearer \', \'\');\n\nfinal payload = await verifyJwt(token);', toolCalls:[{name:'read_file',path:'lib/src/middleware/auth.dart',ok:true,result:'0 lines'},{name:'write_file',path:'lib/src/middleware/auth.dart',ok:true,result:'Created (67 lines)'}] },
+    { id:7, project:'api-server', branch:'feat/graphql', status:'streaming', statusLabel:'Streaming', task:'Generate GraphQL schema and resolvers from existing REST endpoints', step:2, tools:5, tokens:1456, time:'0m 55s', model:'gpt-5', output:'Generating type definitions from REST schemas...\n\ntype User {\n  id: ID!\n  email: String!\n  name: String\n  createdAt: DateTime!\n}', toolCalls:[{name:'read_file',path:'lib/src/routes/users.dart',ok:true,result:'89 lines'}] },
+    { id:8, project:'infra', branch:'feat/k8s-deploy', status:'running', statusLabel:'Running', task:'Create Kubernetes deployment manifests with horizontal pod autoscaling', step:6, tools:18, tokens:3654, time:'2m 10s', model:'claude-4-sonnet', output:'apiVersion: autoscaling/v2\nkind: HorizontalPodAutoscaler\nmetadata:\n  name: glue-api\nspec:\n  minReplicas: 2\n  maxReplicas: 10\n  targetCPUUtilizationPercentage: 70', toolCalls:[{name:'read_file',path:'k8s/base/deployment.yaml',ok:true,result:'45 lines'},{name:'write_file',path:'k8s/overlays/prod/hpa.yaml',ok:true,result:'Created (28 lines)'}] },
+  ];
+
+  return {
+    selectedAgent: null,
+    projects: [
+      { name:'glue-cli', open:true, agents: allAgents.filter(a=>a.project==='glue-cli'), worktrees:[
+        {branch:'main',open:true},{branch:'feat/tui-overhaul',open:true},{branch:'feat/mcp-support',open:false},{branch:'fix/input-parsing',open:true},{branch:'feat/tool-approval',open:false}
+      ]},
+      { name:'api-server', open:true, agents: allAgents.filter(a=>a.project==='api-server'), worktrees:[
+        {branch:'main',open:false},{branch:'feat/auth',open:true},{branch:'feat/graphql',open:true}
+      ]},
+      { name:'docs-site', open:false, agents:[], worktrees:[{branch:'main',open:false}]},
+      { name:'infra', open:true, agents: allAgents.filter(a=>a.project==='infra'), worktrees:[
+        {branch:'main',open:false},{branch:'feat/k8s-deploy',open:true}
+      ]},
+    ],
+    feed: [
+      {time:'2:34 PM',agent:1,type:'read_file',desc:'lib/src/terminal/terminal.dart',sym:'✓',icon:'ok'},
+      {time:'2:33 PM',agent:2,type:'started',desc:'Add MCP server discovery...',sym:'●',icon:'info'},
+      {time:'2:32 PM',agent:4,type:'completed',desc:'Update README with installation...',sym:'✓',icon:'ok'},
+      {time:'2:31 PM',agent:1,type:'write_file',desc:'lib/src/terminal/screen_buffer.dart',sym:'✓',icon:'ok'},
+      {time:'2:30 PM',agent:3,type:'bash',desc:'dart analyze lib/',sym:'⏳',icon:'pending'},
+      {time:'2:28 PM',agent:5,type:'error',desc:'Rate limit exceeded',sym:'✗',icon:'err'},
+      {time:'2:25 PM',agent:1,type:'read_file',desc:'pubspec.yaml',sym:'✓',icon:'ok'},
+      {time:'2:22 PM',agent:8,type:'write_file',desc:'k8s/overlays/prod/hpa.yaml',sym:'✓',icon:'ok'},
+      {time:'2:20 PM',agent:6,type:'read_file',desc:'lib/src/routes/api.dart',sym:'✓',icon:'ok'},
+      {time:'2:18 PM',agent:7,type:'started',desc:'Generate GraphQL schema...',sym:'●',icon:'info'},
+      {time:'2:15 PM',agent:8,type:'read_file',desc:'k8s/base/deployment.yaml',sym:'✓',icon:'ok'},
+      {time:'2:12 PM',agent:1,type:'started',desc:'Implement virtual screen buffer...',sym:'●',icon:'info'},
+      {time:'2:10 PM',agent:3,type:'write_file',desc:'lib/src/terminal/terminal.dart',sym:'✓',icon:'ok'},
+      {time:'2:08 PM',agent:6,type:'started',desc:'Implement JWT authentication...',sym:'●',icon:'info'},
+    ],
+    wtAgents(proj, wt) { return proj.agents.filter(a => a.branch === wt.branch); },
+    selectAgent(agent) { this.selectedAgent = agent; },
+    statusColor(s) {
+      return {running:'var(--success)',streaming:'var(--yellow)',waiting:'var(--warning)',completed:'var(--success)',error:'var(--error)'}[s] || 'var(--text-sec)';
+    }
+  };
+}
+</script>
+</body>
+</html>
