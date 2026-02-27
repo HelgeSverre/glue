@@ -354,14 +354,12 @@ class App {
         // Scroll handling — works in all modes.
         if (event case KeyEvent(key: Key.pageUp)) {
           final viewportHeight = layout.outputBottom - layout.outputTop + 1;
-          _scrollOffset += viewportHeight ~/ 2;
-          _render();
+          _events.add(UserScroll(viewportHeight ~/ 2));
           return;
         }
         if (event case KeyEvent(key: Key.pageDown)) {
           final viewportHeight = layout.outputBottom - layout.outputTop + 1;
-          _scrollOffset = (_scrollOffset - viewportHeight ~/ 2).clamp(0, _scrollOffset);
-          _render();
+          _events.add(UserScroll(-(viewportHeight ~/ 2)));
           return;
         }
 
@@ -424,18 +422,12 @@ class App {
             break;
         }
 
-      case ResizeEvent():
-        layout.apply();
-        _render();
+      case ResizeEvent(:final cols, :final rows):
+        _events.add(UserResize(cols, rows));
 
       case MouseEvent(:final isScroll, :final isScrollUp):
         if (isScroll) {
-          if (isScrollUp) {
-            _scrollOffset += 3;
-          } else {
-            _scrollOffset = (_scrollOffset - 3).clamp(0, _scrollOffset);
-          }
-          _render();
+          _events.add(UserScroll(isScrollUp ? 3 : -3));
         }
     }
   }
@@ -458,12 +450,14 @@ class App {
       case UserCancel():
         _cancelAgent();
 
-      case UserScroll():
-        // TODO: Implement viewport scrolling.
-        break;
+      case UserScroll(:final delta):
+        _scrollOffset = (_scrollOffset + delta).clamp(0, 999999);
+        _render();
 
       case UserResize():
         layout.apply();
+        terminal.clearScreen();
+        _scrollOffset = 0;
         _render();
     }
   }
