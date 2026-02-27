@@ -162,18 +162,34 @@ class BashTool extends Tool {
     final t = args['timeout_seconds'];
     final timeoutSeconds = (t is num) ? t.toInt() : 30;
     try {
-      final future = Process.run('sh', ['-c', command]);
-      final result = timeoutSeconds == 0
-          ? await future
-          : await future.timeout(Duration(seconds: timeoutSeconds));
+      final process = await Process.start('sh', ['-c', command]);
+      final stdoutFuture =
+          process.stdout.transform(const SystemEncoding().decoder).join();
+      final stderrFuture =
+          process.stderr.transform(const SystemEncoding().decoder).join();
+
+      final int exitCode;
+      if (timeoutSeconds == 0) {
+        exitCode = await process.exitCode;
+      } else {
+        exitCode = await process.exitCode
+            .timeout(Duration(seconds: timeoutSeconds), onTimeout: () {
+          process.kill();
+          return -1;
+        });
+      }
+
+      final stdout = await stdoutFuture;
+      final stderr = await stderrFuture;
+
+      if (exitCode == -1) {
+        return 'Error: command timed out after $timeoutSeconds seconds';
+      }
+
       final buf = StringBuffer();
-      if ((result.stdout as String).isNotEmpty) {
-        buf.writeln(result.stdout);
-      }
-      if ((result.stderr as String).isNotEmpty) {
-        buf.writeln('STDERR: ${result.stderr}');
-      }
-      buf.writeln('Exit code: ${result.exitCode}');
+      if (stdout.isNotEmpty) buf.writeln(stdout);
+      if (stderr.isNotEmpty) buf.writeln('STDERR: $stderr');
+      buf.writeln('Exit code: $exitCode');
       return buf.toString();
     } on TimeoutException {
       return 'Error: command timed out after $timeoutSeconds seconds';
