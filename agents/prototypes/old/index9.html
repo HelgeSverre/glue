@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GLUE.EXE</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
+      background: #008080;
+      color: #000;
+      min-height: 100vh;
+      overflow-x: hidden;
+      font-size: 12px;
+      cursor: default;
+    }
+
+    /* ─── Desktop ─── */
+    .desktop {
+      min-height: calc(100vh - 36px);
+      padding: 20px;
+      position: relative;
+    }
+
+    /* ─── Desktop Icons ─── */
+    .desktop-icons {
+      display: flex; flex-direction: column; gap: 24px;
+      position: absolute; top: 20px; left: 20px;
+    }
+    .desktop-icon {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      width: 72px; cursor: pointer; text-decoration: none; color: #fff;
+    }
+    .desktop-icon:hover .icon-label { background: #000080; color: #fff; }
+    .icon-img {
+      width: 40px; height: 40px;
+      background: #C0C0C0;
+      border: 2px outset #ddd;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 800;
+    }
+    .icon-img.yellow { background: #FACC15; color: #000; }
+    .icon-img.white { background: #fff; color: #000; font-size: 10px; }
+    .icon-label {
+      font-size: 11px; text-align: center; padding: 1px 3px;
+      text-shadow: 1px 1px 1px #000;
+    }
+
+    /* ─── Window Chrome ─── */
+    .win {
+      background: #C0C0C0;
+      border: 2px outset #fff;
+      box-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+      position: relative;
+    }
+    .win-title {
+      background: linear-gradient(90deg, #000080, #1084D0);
+      color: #fff;
+      padding: 3px 4px;
+      font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: space-between;
+      user-select: none;
+    }
+    .win-title-text { display: flex; align-items: center; gap: 6px; }
+    .win-title-icon { width: 16px; height: 16px; background: #FACC15; border: 1px solid #000; flex-shrink: 0; }
+    .win-btns { display: flex; gap: 2px; }
+    .win-btn {
+      width: 18px; height: 16px;
+      background: #C0C0C0;
+      border: 2px outset #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; cursor: pointer;
+      font-family: "Marlett", sans-serif;
+    }
+    .win-btn:active { border-style: inset; }
+    .win-body {
+      border: 2px inset #888;
+      margin: 2px;
+    }
+    .win-body-inner { padding: 12px; }
+
+    /* ─── Menu Bar ─── */
+    .win-menu {
+      padding: 2px 0;
+      display: flex; gap: 0;
+      border-bottom: 1px solid #808080;
+    }
+    .win-menu span {
+      padding: 2px 8px;
+      cursor: pointer;
+    }
+    .win-menu span:hover { background: #000080; color: #fff; }
+
+    /* ─── Windows Layout ─── */
+    .windows-container {
+      display: flex; flex-direction: column; gap: 20px;
+      max-width: 900px; margin: 0 auto;
+      padding-left: 100px;
+    }
+    @media (max-width: 768px) {
+      .windows-container { padding-left: 0; }
+      .desktop-icons { display: none; }
+    }
+
+    .win-row { display: flex; gap: 16px; flex-wrap: wrap; }
+    .win-row > * { flex: 1; min-width: 280px; }
+
+    /* ─── Hero Window ─── */
+    .hero-content {
+      text-align: center; padding: 24px 16px;
+      background: #fff;
+    }
+    .hero-mascot { width: 120px; height: auto; margin: 0 auto 12px; display: block; }
+    .hero-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 56px; font-weight: 800;
+      color: #000080; letter-spacing: -2px;
+      margin-bottom: 8px;
+    }
+    .hero-tagline { font-size: 14px; font-weight: 700; margin-bottom: 16px; }
+    .hero-tagline em { font-style: normal; background: #FACC15; padding: 1px 6px; }
+    .hero-sub { font-size: 11px; color: #444; margin-bottom: 20px; }
+
+    .btn95 {
+      display: inline-block; padding: 6px 24px;
+      background: #C0C0C0; border: 2px outset #fff;
+      font-size: 12px; font-weight: 700;
+      cursor: pointer; text-decoration: none; color: #000;
+      font-family: inherit;
+    }
+    .btn95:active { border-style: inset; }
+    .btn95-primary { background: #000080; color: #fff; border-color: #4444cc; }
+
+    /* ─── Notepad ─── */
+    .notepad-body {
+      background: #fff; padding: 8px;
+      font-family: "Courier New", monospace; font-size: 12px;
+      line-height: 1.6; white-space: pre-wrap;
+      min-height: 200px;
+    }
+
+    /* ─── Terminal ─── */
+    .cmd-body {
+      background: #000; color: #C0C0C0;
+      font-family: "Courier New", 'JetBrains Mono', monospace;
+      font-size: 12px; line-height: 1.6;
+      padding: 8px; min-height: 220px;
+    }
+    .cmd-body .prompt { color: #C0C0C0; }
+    .cmd-body .g { color: #00FF00; }
+    .cmd-body .y { color: #FACC15; font-weight: 700; }
+    .cmd-body .w { color: #fff; }
+    .cmd-body .d { color: #666; }
+    .cmd-cursor {
+      display: inline-block; width: 8px; height: 14px;
+      background: #C0C0C0; vertical-align: text-bottom;
+      animation: blink95 1s step-end infinite;
+    }
+    @keyframes blink95 { 50% { opacity: 0; } }
+
+    /* ─── About Box ─── */
+    .about-box {
+      max-width: 340px;
+    }
+    .about-content {
+      text-align: center; padding: 20px;
+      background: #C0C0C0;
+    }
+    .about-logo {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 28px; font-weight: 800;
+      color: #000080; margin-bottom: 8px;
+    }
+    .about-ver { font-size: 11px; margin-bottom: 4px; }
+    .about-hr {
+      border: none; border-top: 1px solid #808080;
+      border-bottom: 1px solid #fff; margin: 12px 0;
+    }
+    .about-copy { font-size: 10px; color: #444; }
+
+    /* ─── Progress Bar ─── */
+    .progress-outer {
+      border: 2px inset #888; height: 20px;
+      background: #C0C0C0; margin: 12px 0;
+    }
+    .progress-inner {
+      height: 100%; width: 0;
+      background: repeating-linear-gradient(
+        90deg, #000080 0px, #000080 10px, transparent 10px, transparent 12px
+      );
+      animation: loadBar 3s ease-in-out infinite;
+    }
+    @keyframes loadBar {
+      0% { width: 0; }
+      80% { width: 100%; }
+      100% { width: 100%; }
+    }
+    .progress-label { font-size: 10px; text-align: center; margin-top: 4px; }
+
+    /* ─── Taskbar ─── */
+    .taskbar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: 36px;
+      background: #C0C0C0;
+      border-top: 2px outset #fff;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 2px 4px;
+      z-index: 1000;
+    }
+    .start-btn {
+      display: flex; align-items: center; gap: 4px;
+      padding: 2px 8px; height: 28px;
+      background: #C0C0C0; border: 2px outset #fff;
+      font-size: 12px; font-weight: 700;
+      cursor: pointer;
+    }
+    .start-btn:active { border-style: inset; }
+    .start-icon { width: 20px; height: 20px; background: #FACC15; border: 1px solid #000; }
+    .taskbar-tasks {
+      display: flex; gap: 2px; flex: 1; margin: 0 4px;
+      overflow: hidden;
+    }
+    .taskbar-task {
+      padding: 2px 8px; height: 28px;
+      border: 2px inset #888; background: #C0C0C0;
+      font-size: 11px; display: flex; align-items: center; gap: 4px;
+      max-width: 160px; overflow: hidden; white-space: nowrap;
+      cursor: pointer;
+    }
+    .taskbar-task-icon { width: 14px; height: 14px; background: #FACC15; border: 1px solid #000; flex-shrink: 0; }
+    .taskbar-clock {
+      border: 2px inset #888; padding: 2px 12px;
+      height: 28px; display: flex; align-items: center;
+      font-size: 11px; min-width: 70px; justify-content: center;
+    }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 768px) {
+      .desktop { padding: 8px; padding-bottom: 44px; }
+      .win-row { flex-direction: column; }
+      .hero-title { font-size: 36px; }
+      .taskbar-tasks { display: none; }
+    }
+    @media (min-width: 769px) {
+      .desktop { padding-bottom: 44px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Desktop Icons -->
+  <div class="desktop-icons">
+    <a href="#" class="desktop-icon">
+      <div class="icon-img yellow">G</div>
+      <span class="icon-label">Glue.exe</span>
+    </a>
+    <a href="#" class="desktop-icon">
+      <div class="icon-img white">📄</div>
+      <span class="icon-label">README.txt</span>
+    </a>
+    <a href="#" class="desktop-icon">
+      <div class="icon-img" style="background:#000080;color:#fff;font-size:10px;">🔗</div>
+      <span class="icon-label">Docs</span>
+    </a>
+  </div>
+
+  <div class="desktop">
+    <div class="windows-container">
+
+      <!-- ─── Hero Window ─── -->
+      <div class="win">
+        <div class="win-title">
+          <span class="win-title-text"><span class="win-title-icon"></span> GLUE.EXE</span>
+          <div class="win-btns"><div class="win-btn">─</div><div class="win-btn">□</div><div class="win-btn">✕</div></div>
+        </div>
+        <div class="win-menu"><span><u>F</u>ile</span><span><u>E</u>dit</span><span><u>V</u>iew</span><span><u>H</u>elp</span></div>
+        <div class="win-body">
+          <div class="hero-content">
+            <img src="construction/mascots/mascot-02-blob.png" alt="Glue blob" class="hero-mascot">
+            <div class="hero-title">GLUE</div>
+            <p class="hero-tagline">The coding agent that <em>holds it all together.</em></p>
+            <p class="hero-sub">Open source CLI coding agent built in Dart. Multi-model, multi-worktree, impossibly fast.</p>
+            <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+              <button class="btn95 btn95-primary" onclick="document.getElementById('install').scrollIntoView()">▸ Get Started</button>
+              <a href="#" class="btn95">View Source</a>
+            </div>
+            <div style="max-width:300px;margin:16px auto 0;">
+              <div class="progress-outer"><div class="progress-inner"></div></div>
+              <div class="progress-label">Loading awesomeness...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Features + Terminal Row ─── -->
+      <div class="win-row">
+
+        <!-- Notepad: Features -->
+        <div class="win">
+          <div class="win-title">
+            <span class="win-title-text"><span class="win-title-icon" style="background:#fff;"></span> features.txt — Notepad</span>
+            <div class="win-btns"><div class="win-btn">─</div><div class="win-btn">□</div><div class="win-btn">✕</div></div>
+          </div>
+          <div class="win-menu"><span><u>F</u>ile</span><span><u>E</u>dit</span><span>F<u>o</u>rmat</span><span><u>H</u>elp</span></div>
+          <div class="win-body">
+            <div class="notepad-body">GLUE — FEATURES
+================
+
+01. BLAZING FAST
+    Built in Dart for native speed.
+    No Node.js, no Python overhead.
+
+02. MULTI-WORKTREE
+    Run parallel agents across
+    git worktrees. Ship features
+    simultaneously.
+
+03. ANY MODEL
+    Anthropic, OpenAI, Google,
+    local models. Swap with a flag.
+
+04. TOOL APPROVAL
+    Every file write requires your
+    explicit approval. You stay in
+    control.
+
+05. MCP NATIVE
+    First-class Model Context
+    Protocol support.
+
+06. ZERO CONFIG
+    Drop into any project and
+    start coding. Glue figures
+    out the rest.</div>
+          </div>
+        </div>
+
+        <!-- Terminal -->
+        <div class="win">
+          <div class="win-title" style="background:linear-gradient(90deg,#000,#444);">
+            <span class="win-title-text"><span class="win-title-icon" style="background:#000;border-color:#666;"></span> Command Prompt</span>
+            <div class="win-btns"><div class="win-btn">─</div><div class="win-btn">□</div><div class="win-btn">✕</div></div>
+          </div>
+          <div class="win-body" style="border:none;">
+            <div class="cmd-body">
+<span class="prompt">C:\Projects\api&gt;</span> <span class="w">glue</span>
+
+  <span class="d">glue v0.1.0 · claude-4-sonnet</span>
+
+<span class="y">❯</span> <span class="w">Add auth endpoint with JWT</span>
+
+<span class="y">┌ ▸ read_file</span>
+<span class="y">│</span> <span class="d">lib/src/routes/api.dart</span>
+<span class="y">└</span> <span class="g">✓ 142 lines</span>
+
+<span class="y">┌ ▸ write_file</span>
+<span class="y">│</span> <span class="d">lib/src/routes/auth.dart</span>
+<span class="y">└</span> <span class="g">✓ approved · 67 lines</span>
+
+<span class="y">┌ ▸ run_command</span>
+<span class="y">│</span> <span class="d">dart test</span>
+<span class="y">└</span> <span class="g">✓ 12 tests passed</span>
+
+<span class="g">✓</span> <span class="y">POST /api/auth/login</span> added<span class="cmd-cursor"></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ─── About + Install Row ─── -->
+      <div class="win-row" id="install">
+
+        <!-- Install -->
+        <div class="win">
+          <div class="win-title">
+            <span class="win-title-text"><span class="win-title-icon"></span> Install — Setup Wizard</span>
+            <div class="win-btns"><div class="win-btn">─</div><div class="win-btn">□</div><div class="win-btn">✕</div></div>
+          </div>
+          <div class="win-body">
+            <div class="win-body-inner" style="text-align:center;">
+              <p style="font-size:14px;font-weight:700;margin-bottom:16px;">Welcome to Glue Setup</p>
+              <p style="font-size:11px;margin-bottom:16px;color:#444;">
+                To install Glue, run the following command in your terminal:
+              </p>
+              <div style="background:#fff;border:2px inset #888;padding:8px 16px;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;margin-bottom:16px;display:inline-block;">
+                ❯ dart pub global activate glue
+              </div>
+              <p style="font-size:11px;margin-bottom:16px;color:#444;">
+                Then launch with: <code style="background:#fff;padding:2px 6px;border:1px solid #888;font-family:monospace;">glue</code>
+              </p>
+              <div style="display:flex;gap:8px;justify-content:center;">
+                <a href="#" class="btn95 btn95-primary">Read the Docs</a>
+                <a href="#" class="btn95">View on GitHub</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- About Box -->
+        <div class="win about-box">
+          <div class="win-title">
+            <span class="win-title-text"><span class="win-title-icon"></span> About Glue</span>
+            <div class="win-btns"><div class="win-btn">✕</div></div>
+          </div>
+          <div class="win-body">
+            <div class="about-content">
+              <div class="about-logo">GLUE</div>
+              <div class="about-ver">Version 0.1.0</div>
+              <div class="about-ver">Built with Dart</div>
+              <hr class="about-hr">
+              <div class="about-ver" style="margin-bottom:8px;">
+                "The coding agent that<br>holds it all together."
+              </div>
+              <hr class="about-hr">
+              <div class="about-copy">
+                Apache-2.0 License<br>
+                © 2026 Glue Contributors
+              </div>
+              <div style="margin-top:12px;">
+                <button class="btn95" onclick="window.scrollTo({top:0,behavior:'smooth'})">OK</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── Taskbar ─── -->
+  <div class="taskbar">
+    <div class="start-btn" onclick="alert('🟡 Glue v0.1.0\n\nThe coding agent that holds it all together.\n\nApache-2.0 · Built in Dart')">
+      <div class="start-icon"></div>
+      <span>Start</span>
+    </div>
+    <div class="taskbar-tasks">
+      <div class="taskbar-task"><div class="taskbar-task-icon"></div> GLUE.EXE</div>
+      <div class="taskbar-task"><div class="taskbar-task-icon" style="background:#fff;"></div> features.txt</div>
+      <div class="taskbar-task"><div class="taskbar-task-icon" style="background:#000;"></div> Command Prompt</div>
+    </div>
+    <div class="taskbar-clock" id="clock">12:00 PM</div>
+  </div>
+
+  <script>
+    function updateClock() {
+      const now = new Date();
+      let h = now.getHours(), m = now.getMinutes();
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12 || 12;
+      document.getElementById('clock').textContent =
+        h + ':' + String(m).padStart(2,'0') + ' ' + ampm;
+    }
+    updateClock();
+    setInterval(updateClock, 30000);
+  </script>
+</body>
+</html>

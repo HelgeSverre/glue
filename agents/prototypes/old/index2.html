@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glue — The coding agent that holds it all together</title>
+  <meta name="description" content="Open source CLI coding agent built in Dart. Multi-model, multi-worktree, impossibly fast.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --yellow: #FACC15;
+      --gold: #EAB308;
+      --amber: #F59E0B;
+      --bg: #0A0A0B;
+      --surface: #18181B;
+      --surface-elevated: #27272A;
+      --border: #3F3F46;
+      --border-bright: #52525B;
+      --text: #FAFAFA;
+      --text-secondary: #A1A1AA;
+      --text-muted: #71717A;
+      --success: #22C55E;
+      --red: #EF4444;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-body: 'Inter', sans-serif;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) var(--bg);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      line-height: 1.8;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+
+    ::selection {
+      background: var(--yellow);
+      color: var(--bg);
+    }
+
+    /* ─── Terminal Chrome Bar (Nav) ─── */
+    .terminal-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      height: 40px;
+      padding: 0 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      gap: 8px;
+      -webkit-app-region: drag;
+    }
+
+    .terminal-dots {
+      display: flex;
+      gap: 7px;
+      align-items: center;
+    }
+
+    .terminal-dots span {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: block;
+    }
+
+    .dot-red { background: #FF5F57; }
+    .dot-yellow { background: #FFBD2E; }
+    .dot-green { background: #28C840; }
+
+    .terminal-title {
+      flex: 1;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.02em;
+      user-select: none;
+    }
+
+    .terminal-nav-links {
+      display: flex;
+      gap: 20px;
+      list-style: none;
+    }
+
+    .terminal-nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      transition: color 0.2s;
+    }
+
+    .terminal-nav-links a:hover {
+      color: var(--yellow);
+    }
+
+    /* ─── Main Content Area ─── */
+    .terminal-content {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 64px 24px 48px;
+    }
+
+    /* ─── Reveal Animations ─── */
+    .line-reveal {
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+
+    .line-reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .line-reveal.delay-1 { transition-delay: 0.06s; }
+    .line-reveal.delay-2 { transition-delay: 0.12s; }
+    .line-reveal.delay-3 { transition-delay: 0.18s; }
+    .line-reveal.delay-4 { transition-delay: 0.24s; }
+    .line-reveal.delay-5 { transition-delay: 0.30s; }
+    .line-reveal.delay-6 { transition-delay: 0.36s; }
+    .line-reveal.delay-7 { transition-delay: 0.42s; }
+    .line-reveal.delay-8 { transition-delay: 0.48s; }
+    .line-reveal.delay-9 { transition-delay: 0.54s; }
+    .line-reveal.delay-10 { transition-delay: 0.60s; }
+    .line-reveal.delay-11 { transition-delay: 0.66s; }
+    .line-reveal.delay-12 { transition-delay: 0.72s; }
+
+    /* ─── Horizontal Rules ─── */
+    .hr {
+      color: var(--border);
+      margin: 48px 0;
+      user-select: none;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    /* ─── Common Text Styles ─── */
+    .prompt { color: var(--yellow); }
+    .cmd { color: var(--text); }
+    .dim { color: var(--text-muted); }
+    .accent { color: var(--yellow); }
+    .success-text { color: var(--success); }
+    .comment { color: var(--text-muted); font-style: italic; }
+    .flag { color: var(--yellow); }
+    .desc { color: var(--text-secondary); }
+
+    a.term-link {
+      color: var(--yellow);
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+
+    a.term-link:hover {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    /* ─── Blinking Cursor ─── */
+    .cursor {
+      display: inline-block;
+      width: 8px;
+      height: 17px;
+      background: var(--yellow);
+      vertical-align: text-bottom;
+      animation: blink 1s step-end infinite;
+      margin-left: 2px;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+
+    /* ─── Hero Section ─── */
+    .hero-section {
+      padding-top: 24px;
+    }
+
+    .hero-prompt {
+      margin-bottom: 4px;
+    }
+
+    .hero-ascii {
+      color: var(--yellow);
+      font-size: 13px;
+      line-height: 1.2;
+      margin: 12px 0;
+      white-space: pre;
+    }
+
+    .hero-version {
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .hero-tagline {
+      color: var(--text);
+      margin: 4px 0 4px;
+    }
+
+    .hero-tagline em {
+      color: var(--yellow);
+      font-style: normal;
+    }
+
+    .hero-sub {
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+
+    .hero-install {
+      margin-top: 20px;
+    }
+
+    .hero-links {
+      margin-top: 16px;
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    /* ─── Features (--help) ─── */
+    .help-section {
+      white-space: pre;
+    }
+
+    .help-header {
+      color: var(--text);
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .help-line {
+      display: block;
+      line-height: 2;
+    }
+
+    .help-line .flag {
+      display: inline-block;
+      width: 180px;
+    }
+
+    /* ─── Demo Section ─── */
+    .demo-output {
+      white-space: pre-wrap;
+    }
+
+    .demo-line {
+      display: block;
+    }
+
+    .tool-box {
+      color: var(--text-secondary);
+      display: block;
+    }
+
+    .tool-box .border-char {
+      color: var(--border-bright);
+    }
+
+    /* ─── Architecture ─── */
+    .arch-diagram {
+      white-space: pre;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-secondary);
+      overflow-x: auto;
+    }
+
+    .arch-diagram .highlight {
+      color: var(--yellow);
+      font-weight: 500;
+    }
+
+    .arch-desc {
+      color: var(--text-secondary);
+      margin-top: 20px;
+      max-width: 680px;
+    }
+
+    /* ─── Install Section ─── */
+    .install-line {
+      display: block;
+      line-height: 2;
+    }
+
+    /* ─── Footer ─── */
+    .footer-line {
+      color: var(--text-muted);
+      margin-top: 8px;
+      padding-bottom: 32px;
+      font-style: italic;
+    }
+
+    .footer-line a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .footer-line a:hover {
+      color: var(--yellow);
+    }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 768px) {
+      .terminal-content {
+        padding: 56px 16px 32px;
+        font-size: 12px;
+      }
+
+      .terminal-nav-links {
+        display: none;
+      }
+
+      .terminal-title {
+        text-align: left;
+        padding-left: 8px;
+      }
+
+      .hero-ascii {
+        font-size: 10px;
+      }
+
+      .help-line .flag {
+        width: 140px;
+      }
+
+      .arch-diagram {
+        font-size: 11px;
+      }
+
+      .hr {
+        margin: 32px 0;
+      }
+
+      .hero-links {
+        flex-direction: column;
+        gap: 8px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .hero-ascii {
+        font-size: 8px;
+      }
+
+      .terminal-content {
+        font-size: 11px;
+      }
+
+      .help-line .flag {
+        width: 120px;
+      }
+
+      .terminal-bar {
+        height: 36px;
+      }
+
+      .terminal-dots span {
+        width: 10px;
+        height: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─── Terminal Chrome Bar ─── -->
+  <div class="terminal-bar">
+    <div class="terminal-dots">
+      <span class="dot-red"></span>
+      <span class="dot-yellow"></span>
+      <span class="dot-green"></span>
+    </div>
+    <div class="terminal-title">glue — docs</div>
+    <ul class="terminal-nav-links">
+      <li><a href="#features">features</a></li>
+      <li><a href="#demo">demo</a></li>
+      <li><a href="#architecture">arch</a></li>
+      <li><a href="#install">install</a></li>
+    </ul>
+  </div>
+
+  <!-- ─── Terminal Output ─── -->
+  <div class="terminal-content">
+
+    <!-- ─── Hero ─── -->
+    <section class="hero-section" id="hero">
+      <div class="hero-prompt line-reveal">
+        <span class="prompt">$</span> <span class="cmd">glue --version</span>
+      </div>
+
+      <div class="hero-ascii line-reveal delay-1" aria-label="glue">        .__
+   ____ |  |  __ __   ____
+  / ___\|  | |  |  \_/ __ \
+ / /_/  >  |_|  |  /\  ___/
+ \___  /|____/____/  \___  >
+/_____/                  \/</div>
+
+      <div class="hero-version line-reveal delay-2">glue v0.1.0 · open source coding agent</div>
+
+      <div class="line-reveal delay-3">
+        <br>
+        <span class="hero-tagline">The coding agent that <em>holds it all together.</em></span>
+      </div>
+
+      <div class="hero-sub line-reveal delay-4">
+        Multi-model, multi-worktree, impossibly fast. Built in Dart.
+      </div>
+
+      <div class="hero-install line-reveal delay-5">
+        <span class="prompt">$</span> <span class="cmd">dart pub global activate glue</span><span class="cursor"></span>
+      </div>
+
+      <div class="hero-links line-reveal delay-6">
+        <a href="#install" class="term-link">▸ Get Started</a>
+        <a href="https://github.com/glue-cli" class="term-link">▸ GitHub</a>
+        <a href="#features" class="term-link">▸ Features</a>
+      </div>
+    </section>
+
+    <!-- ─── HR ─── -->
+    <div class="hr line-reveal">────────────────────────────────────────────────────────────────────────────</div>
+
+    <!-- ─── Features ─── -->
+    <section id="features">
+      <div class="line-reveal">
+        <span class="prompt">$</span> <span class="cmd">glue --help</span>
+      </div>
+
+      <br>
+
+      <div class="help-section">
+        <div class="help-header line-reveal delay-1">USAGE:</div>
+        <div class="line-reveal delay-1"><span class="dim">  glue [command] [options]</span></div>
+
+        <br>
+
+        <div class="help-header line-reveal delay-2">COMMANDS:</div>
+        <span class="help-line line-reveal delay-3"><span class="flag">  ⚡ --fast</span><span class="desc">Blazing fast. Built in Dart for native speed.</span></span>
+        <span class="help-line line-reveal delay-4"><span class="flag">  ◆  --worktree</span><span class="desc">Multi-worktree. Run parallel agents across git worktrees.</span></span>
+        <span class="help-line line-reveal delay-5"><span class="flag">  ●  --model</span><span class="desc">Any model. Anthropic, OpenAI, Google, local.</span></span>
+        <span class="help-line line-reveal delay-6"><span class="flag">  ■  --approve</span><span class="desc">Tool approval. Every action requires your explicit OK.</span></span>
+        <span class="help-line line-reveal delay-7"><span class="flag">  →  --mcp</span><span class="desc">MCP native. First-class Model Context Protocol support.</span></span>
+        <span class="help-line line-reveal delay-8"><span class="flag">  ▸  --zero-config</span><span class="desc">Zero config. Drop in and start coding.</span></span>
+
+        <br>
+
+        <div class="line-reveal delay-9">
+          <span class="dim">  Run `glue help &lt;command&gt;` for more information on a command.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── HR ─── -->
+    <div class="hr line-reveal">────────────────────────────────────────────────────────────────────────────</div>
+
+    <!-- ─── Demo ─── -->
+    <section id="demo">
+      <div class="line-reveal">
+        <span class="prompt">$</span> <span class="cmd">glue</span>
+      </div>
+
+      <div class="line-reveal delay-1">
+        <br>
+        <span class="dim">  glue v0.1.0 · claude-4-sonnet</span>
+      </div>
+
+      <div class="demo-output">
+        <br>
+        <span class="demo-line line-reveal delay-2"><span class="prompt">❯</span> <span class="cmd">Add a REST API endpoint for user authentication</span></span>
+
+        <br>
+
+        <span class="demo-line line-reveal delay-3"> <span class="accent">●</span> Thinking...</span>
+
+        <br>
+
+        <span class="demo-line line-reveal delay-4">I'll help you add an authentication endpoint. Let me</span>
+        <span class="demo-line line-reveal delay-4">first examine your project structure.</span>
+
+        <br>
+
+        <div class="line-reveal delay-5">
+          <span class="tool-box"><span class="border-char">┌</span> <span class="accent">⚡</span> read_file</span>
+          <span class="tool-box"><span class="border-char">│</span> <span class="dim">path: lib/src/routes/api.dart</span></span>
+          <span class="tool-box"><span class="border-char">└</span> <span class="success-text">✓ 142 lines</span></span>
+        </div>
+
+        <br>
+
+        <div class="line-reveal delay-6">
+          <span class="tool-box"><span class="border-char">┌</span> <span class="accent">⚡</span> read_file</span>
+          <span class="tool-box"><span class="border-char">│</span> <span class="dim">path: lib/src/models/user.dart</span></span>
+          <span class="tool-box"><span class="border-char">└</span> <span class="success-text">✓ 89 lines</span></span>
+        </div>
+
+        <br>
+
+        <span class="demo-line line-reveal delay-7">Based on your existing route structure, I'll create an auth</span>
+        <span class="demo-line line-reveal delay-7">endpoint that follows your patterns.</span>
+
+        <br>
+
+        <div class="line-reveal delay-8">
+          <span class="tool-box"><span class="border-char">┌</span> <span class="accent">⚡</span> write_file</span>
+          <span class="tool-box"><span class="border-char">│</span> <span class="dim">path: lib/src/routes/auth.dart</span></span>
+          <span class="tool-box"><span class="border-char">│</span> <span class="accent">■ Awaiting approval...</span></span>
+          <span class="tool-box"><span class="border-char">└</span> <span class="success-text">✓ approved · 67 lines written</span></span>
+        </div>
+
+        <br>
+
+        <div class="line-reveal delay-9">
+          <span class="tool-box"><span class="border-char">┌</span> <span class="accent">⚡</span> run_command</span>
+          <span class="tool-box"><span class="border-char">│</span> <span class="dim">cmd: dart test test/routes/auth_test.dart</span></span>
+          <span class="tool-box"><span class="border-char">└</span> <span class="success-text">✓ 12 tests passed</span></span>
+        </div>
+
+        <br>
+
+        <span class="demo-line line-reveal delay-10"><span class="success-text">✓</span> Authentication endpoint added at <span class="accent">POST /api/auth/login</span></span>
+        <span class="demo-line line-reveal delay-10">  with JWT token generation and bcrypt password hashing.</span>
+      </div>
+    </section>
+
+    <!-- ─── HR ─── -->
+    <div class="hr line-reveal">────────────────────────────────────────────────────────────────────────────</div>
+
+    <!-- ─── Architecture ─── -->
+    <section id="architecture">
+      <div class="line-reveal">
+        <span class="prompt">$</span> <span class="cmd">glue --architecture</span>
+      </div>
+
+      <br>
+
+      <div class="arch-diagram line-reveal delay-1">
+┌─────────────────────────────────────────────────────┐
+│                    <span class="highlight">TUI Shell</span>                         │
+│  ┌──────────────────────────────────────────────┐   │
+│  │  Output Viewport (scrollable, streaming)      │   │
+│  │  - Markdown rendered blocks                   │   │
+│  │  - Tool call/result cards                     │   │
+│  │  - Diff views                                 │   │
+│  │  - Streaming LLM text                         │   │
+│  └──────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────┐   │
+│  │  Status Bar (spinner, model, token count)     │   │
+│  └──────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────┐   │
+│  │  Input Area (multi-line editor, completions)  │   │
+│  └──────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────┘
+         │                           ▲
+         ▼                           │
+┌─────────────────────────────────────────────────────┐
+│                 <span class="highlight">Agent Core</span>                           │
+│  ┌─────────┐  ┌──────────┐  ┌──────────────────┐   │
+│  │  LLM    │  │  Tool    │  │  Conversation    │   │
+│  │ Client  │◄─┤ Executor ├──┤  Manager         │   │
+│  │(stream) │  │          │  │  (history+state)  │   │
+│  └─────────┘  └──────────┘  └──────────────────┘   │
+└─────────────────────────────────────────────────────┘</div>
+
+      <div class="arch-desc line-reveal delay-2">
+        <br>
+        <span class="dim"># Dart's async runtime provides non-blocking I/O across every layer.</span>
+        <br>
+        <span class="dim"># The TUI and Agent Core run on separate async tracks — the UI</span>
+        <br>
+        <span class="dim"># is always responsive while the agent loop streams in background.</span>
+        <br>
+        <span class="dim"># LLM providers are pluggable — swap with a single flag.</span>
+      </div>
+    </section>
+
+    <!-- ─── HR ─── -->
+    <div class="hr line-reveal">────────────────────────────────────────────────────────────────────────────</div>
+
+    <!-- ─── Install ─── -->
+    <section id="install">
+      <div class="line-reveal">
+        <span class="prompt">$</span> <span class="cmd">glue --install</span>
+      </div>
+
+      <br>
+
+      <div class="line-reveal delay-1">
+        <span class="dim"># Install the Dart SDK first (if you haven't)</span>
+      </div>
+      <div class="line-reveal delay-2">
+        <span class="install-line"><span class="prompt">$</span> <span class="cmd">brew install dart</span></span>
+      </div>
+
+      <br>
+
+      <div class="line-reveal delay-3">
+        <span class="dim"># Install Glue globally</span>
+      </div>
+      <div class="line-reveal delay-4">
+        <span class="install-line"><span class="prompt">$</span> <span class="cmd">dart pub global activate glue</span></span>
+      </div>
+
+      <br>
+
+      <div class="line-reveal delay-5">
+        <span class="dim"># Navigate to your project and start coding</span>
+      </div>
+      <div class="line-reveal delay-6">
+        <span class="install-line"><span class="prompt">$</span> <span class="cmd">cd your-project</span></span>
+      </div>
+      <div class="line-reveal delay-7">
+        <span class="install-line"><span class="prompt">$</span> <span class="cmd">glue</span></span>
+      </div>
+
+      <br>
+
+      <div class="line-reveal delay-8">
+        <span class="success-text">✓</span> <span class="dim">You're ready. That's it. No config files needed.</span>
+      </div>
+
+      <br>
+
+      <div class="line-reveal delay-9">
+        <a href="https://github.com/glue-cli" class="term-link">▸ View on GitHub</a>
+        &nbsp;&nbsp;&nbsp;
+        <a href="#" class="term-link">▸ Read the Docs</a>
+        &nbsp;&nbsp;&nbsp;
+        <a href="#" class="term-link">▸ Join Discord</a>
+      </div>
+    </section>
+
+    <!-- ─── HR ─── -->
+    <div class="hr line-reveal">────────────────────────────────────────────────────────────────────────────</div>
+
+    <!-- ─── Footer ─── -->
+    <div class="footer-line line-reveal">
+      # Made by Glue contributors · Apache-2.0 · <a href="https://github.com/glue-cli">github.com/glue-cli</a>
+    </div>
+
+  </div>
+
+  <!-- ─── Scripts ─── -->
+  <script>
+    (function () {
+      // Intersection Observer for line-by-line reveal
+      const els = document.querySelectorAll('.line-reveal');
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('visible');
+            }
+          });
+        },
+        { threshold: 0.15, rootMargin: '0px 0px -30px 0px' }
+      );
+      els.forEach((el) => observer.observe(el));
+
+      // Smooth scroll for nav links
+      document.querySelectorAll('a[href^="#"]').forEach((a) => {
+        a.addEventListener('click', (e) => {
+          const href = a.getAttribute('href');
+          if (href === '#') return;
+          e.preventDefault();
+          const target = document.querySelector(href);
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+      });
+    })();
+  </script>
+
+</body>
+</html>

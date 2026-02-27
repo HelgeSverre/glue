@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glue — The coding agent that holds it all together</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --yellow: #FACC15;
+      --black: #0A0A0B;
+      --dark: #1a1a1a;
+      --gray: #555;
+      --mono: 'JetBrains Mono', monospace;
+      --sans: 'Inter', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--yellow);
+      color: var(--black);
+      line-height: 1.5;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--black); }
+
+    /* ─── Reveal ─── */
+    .reveal {
+      opacity: 0; transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .rd1 { transition-delay: 0.1s; } .rd2 { transition-delay: 0.2s; }
+    .rd3 { transition-delay: 0.3s; } .rd4 { transition-delay: 0.4s; }
+
+    /* ─── Caution Tape ─── */
+    .tape {
+      background: repeating-linear-gradient(
+        -45deg,
+        var(--black), var(--black) 10px,
+        var(--yellow) 10px, var(--yellow) 20px
+      );
+      height: 8px; width: 100%;
+    }
+
+    /* ─── Nav ─── */
+    .nav {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--black); color: var(--yellow);
+      padding: 16px 32px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 4px solid var(--yellow);
+    }
+    .nav-logo {
+      font-family: var(--mono); font-weight: 800; font-size: 24px;
+      color: var(--yellow); text-decoration: none; letter-spacing: -1px;
+    }
+    .nav-links { display: flex; gap: 24px; list-style: none; }
+    .nav-links a {
+      color: var(--yellow); font-size: 14px; font-weight: 600;
+      text-decoration: none; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .nav-links a:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+    /* ─── Hero ─── */
+    .hero {
+      padding: 80px 32px 60px;
+      text-align: center;
+      position: relative;
+    }
+    .hero-overline {
+      font-family: var(--mono); font-size: 14px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.15em;
+      margin-bottom: 24px;
+      display: inline-block;
+      background: var(--black); color: var(--yellow);
+      padding: 6px 16px;
+    }
+    .hero-title {
+      font-family: var(--mono);
+      font-size: clamp(48px, 12vw, 160px);
+      font-weight: 900;
+      line-height: 0.9;
+      letter-spacing: -0.06em;
+      margin-bottom: 32px;
+      text-transform: uppercase;
+    }
+    .hero-tagline {
+      font-size: clamp(18px, 3vw, 28px);
+      font-weight: 700;
+      max-width: 600px; margin: 0 auto 40px;
+      line-height: 1.3;
+    }
+    .hero-tagline em { font-style: normal; background: var(--black); color: var(--yellow); padding: 0 8px; }
+    .hero-sub {
+      font-size: 16px; color: var(--dark);
+      max-width: 500px; margin: 0 auto 48px;
+    }
+
+    .hero-cta {
+      display: inline-block;
+      padding: 18px 48px;
+      background: var(--black); color: var(--yellow);
+      font-family: var(--mono); font-size: 18px; font-weight: 700;
+      text-decoration: none; text-transform: uppercase; letter-spacing: 0.05em;
+      border: 4px solid var(--black);
+      transition: all 0.15s;
+    }
+    .hero-cta:hover {
+      background: var(--yellow); color: var(--black);
+      transform: translate(-4px, -4px);
+      box-shadow: 4px 4px 0 var(--black);
+    }
+
+    /* ─── Block sections ─── */
+    .block {
+      padding: 80px 32px;
+    }
+    .block-dark {
+      background: var(--black); color: var(--yellow);
+    }
+    .block-inner {
+      max-width: 1100px; margin: 0 auto;
+    }
+
+    .block-label {
+      font-family: var(--mono); font-size: 13px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.15em;
+      margin-bottom: 12px;
+    }
+    .block-heading {
+      font-family: var(--mono);
+      font-size: clamp(28px, 5vw, 56px);
+      font-weight: 900; line-height: 1.05;
+      letter-spacing: -0.04em; margin-bottom: 24px;
+      text-transform: uppercase;
+    }
+    .block-sub {
+      font-size: 17px; max-width: 560px; line-height: 1.6;
+      margin-bottom: 48px;
+    }
+    .block-dark .block-sub { color: #ccc; }
+
+    /* ─── Features ─── */
+    .features-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 0;
+    }
+    .feature-cell {
+      border: 3px solid var(--black);
+      padding: 32px;
+      transition: all 0.15s;
+      position: relative;
+    }
+    .feature-cell:hover {
+      background: var(--black); color: var(--yellow);
+      transform: translate(-3px, -3px);
+      box-shadow: 3px 3px 0 var(--black);
+    }
+    .feature-num {
+      font-family: var(--mono); font-size: 48px; font-weight: 900;
+      line-height: 1; margin-bottom: 12px; opacity: 0.2;
+    }
+    .feature-cell:hover .feature-num { opacity: 0.4; }
+    .feature-name {
+      font-family: var(--mono); font-size: 18px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+    .feature-text {
+      font-size: 14px; line-height: 1.6;
+    }
+
+    /* ─── Terminal ─── */
+    .terminal {
+      background: var(--black); color: #ccc;
+      border: 4px solid var(--yellow);
+      font-family: var(--mono); font-size: 13px;
+      line-height: 1.7; overflow: hidden;
+      max-width: 720px; margin: 0 auto;
+    }
+    .terminal-bar {
+      background: var(--yellow); color: var(--black);
+      padding: 8px 16px; font-weight: 700; font-size: 12px;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .terminal-body { padding: 24px; }
+    .terminal-body .p { color: var(--yellow); font-weight: 700; }
+    .terminal-body .c { color: #fff; }
+    .terminal-body .s { color: #22C55E; }
+    .terminal-body .a { color: var(--yellow); }
+    .terminal-body .d { color: #666; }
+    .terminal-body .tc { color: #F59E0B; }
+    .terminal-body .line { display: block; }
+    .terminal-body .blank { display: block; height: 1.7em; }
+    .cursor {
+      display: inline-block; width: 9px; height: 1.1em;
+      background: var(--yellow); vertical-align: text-bottom;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* ─── Architecture ─── */
+    .arch-boxes {
+      display: flex; flex-wrap: wrap; gap: 0; justify-content: center;
+    }
+    .arch-box {
+      border: 3px solid var(--yellow);
+      padding: 24px 32px; text-align: center;
+      min-width: 180px;
+    }
+    .arch-box-label {
+      font-family: var(--mono); font-size: 14px; font-weight: 700;
+      text-transform: uppercase;
+    }
+    .arch-box-sub { font-size: 12px; color: #888; margin-top: 4px; }
+    .arch-arrow {
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--mono); font-size: 24px; color: var(--yellow);
+      padding: 0 8px;
+    }
+
+    /* ─── Install ─── */
+    .install-cmd {
+      font-family: var(--mono);
+      font-size: clamp(16px, 3vw, 28px);
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    .install-cmd .p { color: var(--yellow); }
+
+    .btn-row { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+    .btn-brutal {
+      display: inline-block;
+      padding: 14px 32px;
+      font-family: var(--mono); font-size: 15px; font-weight: 700;
+      text-decoration: none; text-transform: uppercase; letter-spacing: 0.03em;
+      border: 3px solid;
+      transition: all 0.15s;
+    }
+    .btn-brutal-primary {
+      background: var(--yellow); color: var(--black); border-color: var(--yellow);
+    }
+    .btn-brutal-primary:hover {
+      transform: translate(-3px, -3px);
+      box-shadow: 3px 3px 0 var(--yellow);
+      color: var(--black);
+    }
+    .btn-brutal-ghost {
+      background: transparent; color: var(--yellow); border-color: var(--yellow);
+    }
+    .btn-brutal-ghost:hover {
+      background: var(--yellow); color: var(--black);
+      transform: translate(-3px, -3px);
+      box-shadow: 3px 3px 0 var(--yellow);
+    }
+
+    /* ─── Footer ─── */
+    .footer {
+      background: var(--black); color: var(--yellow);
+      padding: 32px; text-align: center;
+      font-family: var(--mono); font-size: 13px;
+      border-top: 4px solid var(--yellow);
+    }
+    .footer a { color: var(--yellow); margin: 0 12px; }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .feature-cell { border-width: 2px; }
+      .arch-boxes { flex-direction: column; align-items: center; }
+      .arch-arrow { transform: rotate(90deg); padding: 8px 0; }
+      .block { padding: 60px 20px; }
+      .hero { padding: 60px 20px 40px; }
+      .terminal-body { font-size: 11px; padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="tape"></div>
+
+  <nav class="nav">
+    <a href="#" class="nav-logo">GLUE</a>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#demo">Demo</a></li>
+      <li><a href="#install">Install</a></li>
+      <li><a href="#">GitHub</a></li>
+    </ul>
+  </nav>
+
+  <div class="tape"></div>
+
+  <!-- ─── Hero ─── -->
+  <section class="hero">
+    <div class="reveal">
+      <div class="hero-overline">▲ Open Source · Apache-2.0</div>
+    </div>
+    <h1 class="hero-title reveal rd1">GLUE</h1>
+    <p class="hero-tagline reveal rd2">
+      The coding agent that <em>holds it all together.</em>
+    </p>
+    <p class="hero-sub reveal rd3">
+      Open source CLI coding agent built in Dart. Multi-model, multi-worktree, impossibly fast.
+    </p>
+    <div class="reveal rd4">
+      <a href="#install" class="hero-cta">▸ Get Started</a>
+    </div>
+  </section>
+
+  <div class="tape"></div>
+
+  <!-- ─── Features ─── -->
+  <section class="block" id="features">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">■ Features</div>
+        <h2 class="block-heading">Everything you need.<br>Nothing you don't.</h2>
+        <p class="block-sub">No bloated IDE plugins, no cloud dependencies — just a fast CLI that gets out of your way.</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-cell reveal">
+          <div class="feature-num">01</div>
+          <div class="feature-name">Blazing Fast</div>
+          <div class="feature-text">Built in Dart for native speed. No Node.js, no Python runtime overhead. Starts instantly.</div>
+        </div>
+        <div class="feature-cell reveal rd1">
+          <div class="feature-num">02</div>
+          <div class="feature-name">Multi-Worktree</div>
+          <div class="feature-text">Run parallel agents across git worktrees. Ship features simultaneously.</div>
+        </div>
+        <div class="feature-cell reveal rd2">
+          <div class="feature-num">03</div>
+          <div class="feature-name">Any Model</div>
+          <div class="feature-text">Anthropic, OpenAI, Google, local models. Swap providers with a flag.</div>
+        </div>
+        <div class="feature-cell reveal rd3">
+          <div class="feature-num">04</div>
+          <div class="feature-name">Tool Approval</div>
+          <div class="feature-text">Every file write requires your explicit approval. You stay in control.</div>
+        </div>
+        <div class="feature-cell reveal rd4">
+          <div class="feature-num">05</div>
+          <div class="feature-name">MCP Native</div>
+          <div class="feature-text">First-class Model Context Protocol support. Extend with any MCP server.</div>
+        </div>
+        <div class="feature-cell reveal">
+          <div class="feature-num">06</div>
+          <div class="feature-name">Zero Config</div>
+          <div class="feature-text">Drop into any project and start coding. Glue figures out the rest.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="tape"></div>
+
+  <!-- ─── Demo ─── -->
+  <section class="block block-dark" id="demo">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">◇ In Action</div>
+        <h2 class="block-heading">Watch Glue Work</h2>
+        <p class="block-sub">A real session — reading, writing, testing — all from your terminal.</p>
+      </div>
+      <div class="reveal rd1">
+        <div class="terminal">
+          <div class="terminal-bar">▸ glue — ~/projects/api-server</div>
+          <div class="terminal-body">
+            <span class="line"><span class="p">❯</span> <span class="c">glue</span></span>
+            <span class="blank"></span>
+            <span class="line">  <span class="d">glue v0.1.0 · claude-4-sonnet</span></span>
+            <span class="blank"></span>
+            <span class="line"><span class="p">❯</span> <span class="c">Add a REST API endpoint for user authentication</span></span>
+            <span class="blank"></span>
+            <span class="line"> <span class="a">●</span> Streaming...</span>
+            <span class="blank"></span>
+            <span class="line">I'll add an auth endpoint. Let me examine your project.</span>
+            <span class="blank"></span>
+            <span class="line"><span class="tc">┌ ▸ read_file</span></span>
+            <span class="line"><span class="tc">│</span> <span class="d">path: lib/src/routes/api.dart</span></span>
+            <span class="line"><span class="tc">└</span> <span class="s">✓ 142 lines</span></span>
+            <span class="blank"></span>
+            <span class="line"><span class="tc">┌ ▸ write_file</span></span>
+            <span class="line"><span class="tc">│</span> <span class="d">path: lib/src/routes/auth.dart</span></span>
+            <span class="line"><span class="tc">└</span> <span class="s">✓ approved · 67 lines written</span></span>
+            <span class="blank"></span>
+            <span class="line"><span class="tc">┌ ▸ run_command</span></span>
+            <span class="line"><span class="tc">│</span> <span class="d">cmd: dart test test/routes/auth_test.dart</span></span>
+            <span class="line"><span class="tc">└</span> <span class="s">✓ 12 tests passed</span></span>
+            <span class="blank"></span>
+            <span class="line"><span class="s">✓</span> Auth endpoint added at <span class="a">POST /api/auth/login</span><span class="cursor"></span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="tape"></div>
+
+  <!-- ─── Architecture ─── -->
+  <section class="block">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">△ Architecture</div>
+        <h2 class="block-heading">Under the Hood</h2>
+        <p class="block-sub">Dart's async runtime, non-blocking I/O, pluggable providers.</p>
+      </div>
+      <div class="arch-boxes reveal rd1">
+        <div class="arch-box" style="border-color: var(--black);">
+          <div class="arch-box-label" style="color: var(--black);">TUI Shell</div>
+          <div class="arch-box-sub" style="color: var(--gray);">Layout · Editor · Modals</div>
+        </div>
+        <div class="arch-arrow" style="color: var(--black);">◄──►</div>
+        <div class="arch-box" style="border-color: var(--black);">
+          <div class="arch-box-label" style="color: var(--black);">Agent Core</div>
+          <div class="arch-box-sub" style="color: var(--gray);">Tools · Context · Approval</div>
+        </div>
+        <div class="arch-arrow" style="color: var(--black);">◄──►</div>
+        <div class="arch-box" style="border-color: var(--black);">
+          <div class="arch-box-label" style="color: var(--black);">LLM Provider</div>
+          <div class="arch-box-sub" style="color: var(--gray);">Anthropic · OpenAI · Google</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="tape"></div>
+
+  <!-- ─── Install ─── -->
+  <section class="block block-dark" id="install">
+    <div class="block-inner" style="text-align: center;">
+      <div class="reveal">
+        <div class="block-label">▸ Install</div>
+        <h2 class="block-heading">30 Seconds</h2>
+      </div>
+      <div class="install-cmd reveal rd1">
+        <span class="p">❯</span> dart pub global activate glue<br>
+        <span class="p">❯</span> glue
+      </div>
+      <div class="btn-row reveal rd2">
+        <a href="#" class="btn-brutal btn-brutal-primary">Read the Docs</a>
+        <a href="#" class="btn-brutal btn-brutal-ghost">View on GitHub</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="tape"></div>
+
+  <footer class="footer">
+    GLUE · Apache-2.0 ·
+    <a href="#">GitHub</a>
+    <a href="#">Docs</a>
+    <a href="#">Discord</a>
+  </footer>
+
+  <div class="tape"></div>
+
+  <script>
+    const reveals = document.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+    reveals.forEach(el => observer.observe(el));
+  </script>
+</body>
+</html>

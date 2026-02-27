@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Glue — Constellation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --yellow:#FACC15;--gold:#EAB308;--amber:#F59E0B;
+  --bg:#040405;--surface:#0b0b0d;--surface-el:#131315;
+  --border:#1f1f25;--border-br:#2d2d35;
+  --text:#e4e4e8;--text-sec:#94949e;--text-mut:#4e4e58;--text-yel:#FDE047;
+  --success:#22C55E;--error:#EF4444;--warning:#F59E0B;--info:#3B82F6;
+  --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;
+}
+html{font-size:13px;-webkit-font-smoothing:antialiased}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-br);border-radius:2px}
+
+.app{position:relative;height:100vh;overflow:hidden}
+
+/* Starfield */
+.starfield{position:fixed;inset:0;overflow:hidden;z-index:0}
+.star{position:absolute;width:1px;height:1px;background:#fff;border-radius:50%}
+.star.bright{width:2px;height:2px;box-shadow:0 0 3px rgba(255,255,255,.5)}
+@keyframes twinkle{0%,100%{opacity:.3}50%{opacity:1}}
+
+/* Floating top bar */
+.topbar{position:fixed;top:0;left:0;right:0;height:44px;display:flex;align-items:center;padding:0 20px;gap:12px;z-index:20;background:linear-gradient(180deg,rgba(4,4,5,.9) 0%,transparent 100%)}
+.logo{font-family:var(--mono);font-weight:700;font-size:16px;color:var(--yellow)}
+.logo span{color:var(--text-mut)}
+.topbar-spacer{flex:1}
+.topbar-stats{font-size:11px;color:var(--text-mut);font-family:var(--mono)}
+.new-btn{padding:6px 16px;border-radius:6px;border:1px solid var(--yellow);background:transparent;color:var(--yellow);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans);transition:all .15s;display:flex;align-items:center;gap:5px}
+.new-btn:hover{background:rgba(250,204,21,.08);box-shadow:0 0 20px rgba(250,204,21,.1)}
+
+/* Canvas area */
+.canvas{position:relative;width:100%;height:100%;z-index:1}
+
+/* Cluster backgrounds */
+.cluster-glow{position:absolute;border-radius:50%;pointer-events:none;filter:blur(80px);opacity:.04;background:var(--yellow)}
+
+/* Cluster labels */
+.cluster-label{position:absolute;font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text-mut);text-transform:uppercase;letter-spacing:.08em;pointer-events:none;opacity:.5}
+
+/* Connection lines */
+.connections{position:absolute;inset:0;pointer-events:none;z-index:1}
+.connections line{stroke:var(--border);stroke-width:1;opacity:.3}
+
+/* Session node */
+.node{position:absolute;transform:translate(-50%,-50%);z-index:5;cursor:pointer;transition:all .3s ease}
+.node:hover{z-index:10;transform:translate(-50%,-50%) scale(1.15)}
+.node-circle{width:52px;height:52px;border-radius:50%;border:2px solid var(--border-br);display:flex;align-items:center;justify-content:center;background:var(--surface);transition:all .3s;position:relative}
+.node:hover .node-circle{border-color:var(--text-sec)}
+.node.alive .node-circle{border-color:rgba(34,197,94,.4);box-shadow:0 0 15px rgba(34,197,94,.15)}
+.node.streaming .node-circle{border-color:rgba(250,204,21,.5);box-shadow:0 0 20px rgba(250,204,21,.2);animation:node-pulse 2.5s infinite}
+.node.waiting .node-circle{border-color:rgba(245,158,11,.4);box-shadow:0 0 15px rgba(245,158,11,.15)}
+.node.dead .node-circle{border-color:var(--border);opacity:.5}
+.node:hover.dead .node-circle{opacity:.8}
+@keyframes node-pulse{0%,100%{box-shadow:0 0 20px rgba(250,204,21,.2)}50%{box-shadow:0 0 30px rgba(250,204,21,.35)}}
+
+.node-letter{font-family:var(--mono);font-weight:700;font-size:14px;color:var(--text);text-transform:uppercase}
+.node.alive .node-letter{color:var(--success)}
+.node.streaming .node-letter{color:var(--yellow)}
+.node.dead .node-letter{color:var(--text-mut)}
+
+.node-status{position:absolute;bottom:-2px;right:-2px;width:10px;height:10px;border-radius:50%;border:2px solid var(--surface)}
+.node-status.alive{background:var(--success)}
+.node-status.streaming{background:var(--yellow);animation:pulse 2s infinite}
+.node-status.waiting{background:var(--warning)}
+.node-status.dead{background:var(--text-mut)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Node label (always visible) */
+.node-label{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:6px;white-space:nowrap;text-align:center;pointer-events:none}
+.node-label .branch{font-family:var(--mono);font-size:9px;font-weight:600;color:var(--text-sec)}
+.node.dead .node-label .branch{color:var(--text-mut)}
+
+/* Hover tooltip */
+.node-tooltip{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:12px;background:var(--surface-el);border:1px solid var(--border-br);border-radius:8px;padding:10px 12px;width:260px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:20}
+.node:hover .node-tooltip{opacity:1}
+.tooltip-head{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:10px}
+.tooltip-branch{font-family:var(--mono);font-weight:600;color:var(--text)}
+.tooltip-model{font-family:var(--mono);color:var(--text-mut);margin-left:auto}
+.tooltip-project{font-size:9px;color:var(--text-mut);font-family:var(--mono);margin-bottom:6px}
+.tooltip-preview{font-family:var(--mono);font-size:9px;line-height:1.5;color:var(--text-mut);border-top:1px solid var(--border);padding-top:6px;max-height:60px;overflow:hidden;white-space:pre-wrap}
+.tooltip-preview .prompt{color:var(--yellow);font-weight:700}
+.tooltip-meta{display:flex;gap:8px;font-size:9px;color:var(--text-mut);font-family:var(--mono);margin-top:4px;border-top:1px solid var(--border);padding-top:4px}
+
+/* Terminal View */
+.terminal-view{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;transition:opacity .3s,transform .3s}
+.term-head{display:flex;align-items:center;gap:10px;padding:10px 20px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.term-back{padding:5px 12px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text-sec);font-size:11px;font-family:var(--mono);cursor:pointer;transition:all .12s;display:flex;align-items:center;gap:5px}
+.term-back:hover{border-color:var(--yellow);color:var(--yellow)}
+.term-branch{font-family:var(--mono);font-weight:600;font-size:13px;color:var(--text)}
+.term-project{font-family:var(--mono);font-size:11px;color:var(--text-mut)}
+.term-model{font-family:var(--mono);font-size:10px;color:var(--text-mut);margin-left:auto}
+.term-body{flex:1;overflow-y:auto;padding:20px 24px;font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--text-sec)}
+.t-block{margin-bottom:16px}
+.t-user{margin-bottom:4px}
+.t-user .prompt{color:var(--yellow);font-weight:700}
+.t-user .msg{color:var(--text)}
+.t-assistant{color:var(--text-sec);white-space:pre-wrap}
+.t-tool{margin:6px 0;padding:5px 10px;border-left:2px solid var(--border);font-size:11px}
+.t-tool-name{color:var(--text);font-weight:600}
+.t-tool-path{color:var(--text-mut)}
+.t-tool-result{font-size:10px}
+.t-tool-result.ok{color:var(--success)}
+.t-tool-result.pending{color:var(--warning)}
+.t-cursor{display:inline-block;width:7px;height:14px;background:var(--yellow);animation:blink 1s step-end infinite;vertical-align:text-bottom}
+@keyframes blink{50%{opacity:0}}
+
+.term-input{border-top:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:8px;background:var(--surface);flex-shrink:0}
+.input-prompt{color:var(--yellow);font-family:var(--mono);font-size:14px;font-weight:700}
+.input-field{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:var(--mono);font-size:12px;caret-color:var(--yellow)}
+.input-field::placeholder{color:var(--text-mut)}
+.input-meta{font-size:10px;color:var(--text-mut);font-family:var(--mono)}
+
+.term-status{height:24px;background:var(--surface);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 20px;font-size:10px;font-family:var(--mono);color:var(--text-mut);gap:10px;flex-shrink:0}
+
+/* New Session Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:10px;width:460px;max-width:92vw}
+.modal-head{padding:16px 20px 10px;display:flex;align-items:center;gap:8px}
+.modal-title{font-family:var(--mono);font-weight:700;font-size:14px}
+.modal-close{margin-left:auto;background:none;border:none;color:var(--text-mut);cursor:pointer;font-size:16px;padding:4px;border-radius:4px}
+.modal-close:hover{color:var(--text);background:var(--surface-el)}
+.modal-body{padding:0 20px 16px}
+.mf{margin-bottom:12px}
+.ml{font-size:10px;font-weight:600;color:var(--text-mut);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.ms,.mi{width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none}
+.ms:focus,.mi:focus{border-color:var(--yellow)}
+.ms{cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%234e4e58'%3E%3Cpath d='M2 4l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+.ms option{background:var(--surface);color:var(--text)}
+.mi::placeholder{color:var(--text-mut)}
+.mhint{font-size:10px;color:var(--text-mut);margin-top:3px}
+.modal-foot{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+.mbtn{padding:7px 18px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-sec);font-family:var(--sans);transition:all .12s}
+.mbtn:hover{border-color:var(--border-br);color:var(--text)}
+.mbtn.primary{background:var(--yellow);color:var(--bg);border-color:var(--yellow)}
+.mbtn.primary:hover{background:var(--gold)}
+</style>
+</head>
+<body>
+<div class="app" x-data="glue()" @keydown.escape.window="if(showNewModal) showNewModal=false; else if(mode==='terminal') mode='constellation'">
+
+  <!-- Starfield background -->
+  <div class="starfield" x-ref="starfield" x-init="generateStars()"></div>
+
+  <!-- Floating top bar -->
+  <div class="topbar">
+    <span class="logo">glue<span>.</span></span>
+    <span class="topbar-spacer"></span>
+    <span class="topbar-stats" x-text="sessions.filter(s=>s.alive).length + ' active · ' + sessions.length + ' sessions'"></span>
+    <button class="new-btn" @click="showNewModal=true"><span style="font-size:14px;font-weight:300">+</span> New Session</button>
+  </div>
+
+  <!-- Constellation View -->
+  <div class="canvas" x-show="mode==='constellation'" x-transition.opacity>
+    <!-- Cluster glows -->
+    <div class="cluster-glow" style="width:350px;height:350px;left:12%;top:15%"></div>
+    <div class="cluster-glow" style="width:250px;height:250px;left:63%;top:12%"></div>
+    <div class="cluster-glow" style="width:200px;height:200px;left:40%;top:60%"></div>
+
+    <!-- Cluster labels -->
+    <div class="cluster-label" style="left:18%;top:10%">glue-cli</div>
+    <div class="cluster-label" style="left:68%;top:12%">api-server</div>
+    <div class="cluster-label" style="left:43%;top:58%">infra</div>
+
+    <!-- Connection lines (SVG) -->
+    <svg class="connections" width="100%" height="100%">
+      <!-- glue-cli connections -->
+      <line x1="22%" y1="30%" x2="30%" y2="22%"/>
+      <line x1="22%" y1="30%" x2="17%" y2="42%"/>
+      <line x1="22%" y1="30%" x2="32%" y2="38%"/>
+      <line x1="30%" y1="22%" x2="17%" y2="42%"/>
+      <line x1="30%" y1="22%" x2="32%" y2="38%"/>
+      <!-- api-server connections -->
+      <line x1="68%" y1="26%" x2="76%" y2="35%"/>
+    </svg>
+
+    <!-- Session Nodes -->
+    <template x-for="s in sessions" :key="s.id">
+      <div class="node" :class="s.waiting ? 'waiting' : s.streaming ? 'streaming' : s.alive ? 'alive' : 'dead'" :style="'left:'+s.x+'%;top:'+s.y+'%'" @click="openTerminal(s.id)">
+        <!-- Tooltip -->
+        <div class="node-tooltip">
+          <div class="tooltip-head">
+            <span class="tooltip-branch" x-text="s.branch"></span>
+            <span class="tooltip-model" x-text="s.model"></span>
+          </div>
+          <div class="tooltip-project" x-text="s.project + ' · ' + s.path"></div>
+          <div class="tooltip-preview" x-html="tooltipPreview(s)"></div>
+          <div class="tooltip-meta">
+            <span x-text="s.time"></span>
+            <span x-text="s.tokens.toLocaleString() + ' tokens'"></span>
+          </div>
+        </div>
+        <!-- Circle -->
+        <div class="node-circle">
+          <span class="node-letter" x-text="s.branch.split('/').pop().charAt(0).toUpperCase()"></span>
+          <span class="node-status" :class="s.waiting ? 'waiting' : s.streaming ? 'streaming' : s.alive ? 'alive' : 'dead'"></span>
+        </div>
+        <!-- Label -->
+        <div class="node-label">
+          <div class="branch" x-text="s.branch.split('/').pop()"></div>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Terminal View -->
+  <template x-if="mode==='terminal' && activeSession()">
+    <div class="terminal-view">
+      <div class="term-head">
+        <button class="term-back" @click="mode='constellation'">✦ Constellation</button>
+        <span class="term-project" x-text="activeSession().project + ' /'"></span>
+        <span class="term-branch" x-text="activeSession().branch"></span>
+        <span class="term-model" x-text="activeSession().model"></span>
+      </div>
+      <div class="term-body">
+        <template x-for="(block, i) in activeSession().blocks" :key="i">
+          <div class="t-block">
+            <template x-if="block.type==='user'">
+              <div class="t-user"><span class="prompt">❯ </span><span class="msg" x-text="block.text"></span></div>
+            </template>
+            <template x-if="block.type==='assistant'">
+              <div class="t-assistant" x-html="block.text + (block.streaming ? '<span class=\'t-cursor\'></span>' : '')"></div>
+            </template>
+            <template x-if="block.type==='tool'">
+              <div class="t-tool">
+                <span class="t-tool-name" x-text="block.name"></span>
+                <span class="t-tool-path" x-text="' ' + block.path"></span>
+                <div class="t-tool-result" :class="block.pending?'pending':'ok'" x-text="block.result"></div>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+      <div class="term-input">
+        <span class="input-prompt">❯</span>
+        <input class="input-field" type="text" placeholder="Type a message..." x-model="inputText" @keydown.enter="sendMessage()">
+        <span class="input-meta" x-text="activeSession().tokens.toLocaleString() + ' tok'"></span>
+      </div>
+      <div class="term-status">
+        <span x-text="activeSession().project + ' / ' + activeSession().branch"></span>
+        <span>·</span>
+        <span x-text="activeSession().model"></span>
+        <span style="margin-left:auto">Esc → constellation</span>
+      </div>
+    </div>
+  </template>
+
+  <!-- New Session Modal -->
+  <template x-if="showNewModal">
+    <div class="modal-bg" @click.self="showNewModal=false">
+      <div class="modal" @click.stop>
+        <div class="modal-head">
+          <span class="modal-title">New Session</span>
+          <button class="modal-close" @click="showNewModal=false">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="mf">
+            <div class="ml">Project</div>
+            <select class="ms" x-model="newSession.project">
+              <option value="">Select project...</option>
+              <template x-for="p in projects" :key="p.name">
+                <option :value="p.name" x-text="p.name + ' — ' + p.path"></option>
+              </template>
+            </select>
+          </div>
+          <div class="mf">
+            <div class="ml">Branch / Worktree</div>
+            <select class="ms" x-model="newSession.branch">
+              <option value="">Select worktree...</option>
+              <template x-for="wt in worktreesFor(newSession.project)" :key="wt">
+                <option :value="wt" x-text="wt"></option>
+              </template>
+              <option value="__new__">+ New worktree</option>
+            </select>
+          </div>
+          <template x-if="newSession.branch==='__new__'">
+            <div class="mf">
+              <div class="ml">Branch Name</div>
+              <input class="mi" placeholder="feat/my-feature" x-model="newSession.newBranch">
+              <div class="mhint">Creates a worktree from main</div>
+            </div>
+          </template>
+          <div class="mf">
+            <div class="ml">Model</div>
+            <select class="ms" x-model="newSession.model">
+              <option>claude-4-sonnet</option><option>claude-4-opus</option><option>gpt-5</option><option>gemini-3-pro</option>
+            </select>
+          </div>
+          <div class="mf">
+            <div class="ml">Initial Prompt</div>
+            <input class="mi" placeholder="What should this agent work on?" x-model="newSession.prompt">
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="mbtn" @click="showNewModal=false">Cancel</button>
+          <button class="mbtn primary" @click="createSession()">Create</button>
+        </div>
+      </div>
+    </div>
+  </template>
+</div>
+
+<script>
+function glue() {
+  let nextId = 20;
+  return {
+    mode: 'constellation',
+    activeId: null,
+    showNewModal: false,
+    inputText: '',
+    sessions: [
+      {id:1,project:'glue-cli',path:'~/code/glue/cli',branch:'feat/tui-overhaul',model:'claude-4-sonnet',alive:true,streaming:false,waiting:false,time:'2m ago',tokens:4521,lastInput:'implement the screen buffer',x:22,y:30,blocks:[
+        {type:'user',text:'implement the screen buffer with diff-based rendering'},
+        {type:'assistant',text:'I\'ll implement a virtual screen buffer. Let me check the current code.',streaming:false},
+        {type:'tool',name:'read_file',path:'lib/src/terminal/terminal.dart',result:'✓ 156 lines',pending:false},
+        {type:'assistant',text:'Creating ScreenBuffer with double-buffering and diff-based flush for flicker-free rendering...',streaming:false},
+        {type:'tool',name:'write_file',path:'lib/src/terminal/screen_buffer.dart',result:'✓ created (89 lines)',pending:false},
+        {type:'assistant',text:'Done! The buffer compares current vs previous frame and only writes changed cells.\n\nWant me to integrate it with Layout?',streaming:false},
+      ]},
+      {id:2,project:'glue-cli',path:'~/code/glue/cli',branch:'feat/mcp-support',model:'claude-4-sonnet',alive:true,streaming:true,waiting:false,time:'1m ago',tokens:1892,lastInput:'add MCP server discovery',x:30,y:22,blocks:[
+        {type:'user',text:'add MCP server discovery and connection management'},
+        {type:'assistant',text:'Scanning for MCP server configurations...\n\nFound 2 servers:\n  • filesystem (stdio)\n  • github (sse)',streaming:true},
+      ]},
+      {id:3,project:'glue-cli',path:'~/code/glue/cli',branch:'fix/input-parsing',model:'gpt-5',alive:true,streaming:false,waiting:true,time:'3m ago',tokens:3107,lastInput:'fix UTF-8 parsing bug',x:17,y:42,blocks:[
+        {type:'user',text:'fix the UTF-8 multi-byte character parsing bug'},
+        {type:'assistant',text:'Found the issue — fixed surrogate pair handling.',streaming:false},
+        {type:'tool',name:'bash',path:'dart analyze lib/',result:'⏳ awaiting approval',pending:true},
+      ]},
+      {id:4,project:'glue-cli',path:'~/code/glue/cli',branch:'main',model:'claude-4-haiku',alive:false,streaming:false,waiting:false,time:'8m ago',tokens:987,lastInput:'update the README',x:32,y:38,blocks:[
+        {type:'user',text:'update the README with install instructions'},
+        {type:'assistant',text:'Done! Updated README.md with ASCII logo, install guide, and architecture overview.',streaming:false},
+      ]},
+      {id:5,project:'api-server',path:'~/code/api-server',branch:'feat/auth',model:'claude-4-sonnet',alive:true,streaming:true,waiting:false,time:'1m ago',tokens:2890,lastInput:'implement JWT auth middleware',x:68,y:26,blocks:[
+        {type:'user',text:'implement JWT auth middleware with refresh token rotation'},
+        {type:'tool',name:'read_file',path:'lib/src/routes/api.dart',result:'✓ 142 lines',pending:false},
+        {type:'assistant',text:'Creating JWT middleware with RS256 verification and automatic refresh token rotation...',streaming:true},
+      ]},
+      {id:6,project:'api-server',path:'~/code/api-server',branch:'feat/graphql',model:'gpt-5',alive:true,streaming:true,waiting:false,time:'55s ago',tokens:1456,lastInput:'generate GraphQL schema',x:76,y:35,blocks:[
+        {type:'user',text:'generate GraphQL schema from REST endpoints'},
+        {type:'assistant',text:'type User {\n  id: ID!\n  email: String!\n  name: String\n  createdAt: DateTime!\n}',streaming:true},
+      ]},
+      {id:7,project:'infra',path:'~/code/infra',branch:'feat/k8s-deploy',model:'claude-4-sonnet',alive:true,streaming:false,waiting:false,time:'2m ago',tokens:3654,lastInput:'create k8s manifests with HPA',x:48,y:68,blocks:[
+        {type:'user',text:'create k8s deployment manifests with HPA'},
+        {type:'tool',name:'write_file',path:'k8s/overlays/prod/hpa.yaml',result:'✓ created (28 lines)',pending:false},
+        {type:'assistant',text:'Created HPA: min 2, max 10 replicas, 70% CPU target.',streaming:false},
+      ]},
+    ],
+    newSession:{project:'',branch:'',newBranch:'',model:'claude-4-sonnet',prompt:''},
+    projects:[{name:'glue-cli',path:'~/code/glue/cli'},{name:'api-server',path:'~/code/api-server'},{name:'docs-site',path:'~/code/docs'},{name:'infra',path:'~/code/infra'}],
+    allWorktrees:{'glue-cli':['main','feat/tui-overhaul','feat/mcp-support','fix/input-parsing','feat/tool-approval'],'api-server':['main','feat/auth','feat/graphql'],'docs-site':['main'],'infra':['main','feat/k8s-deploy']},
+
+    generateStars() {
+      const el = this.$refs.starfield;
+      for (let i = 0; i < 150; i++) {
+        const star = document.createElement('div');
+        star.className = 'star' + (Math.random() > 0.85 ? ' bright' : '');
+        star.style.left = Math.random() * 100 + '%';
+        star.style.top = Math.random() * 100 + '%';
+        star.style.opacity = Math.random() * 0.6 + 0.1;
+        star.style.animation = `twinkle ${3 + Math.random() * 5}s ${Math.random() * 5}s infinite`;
+        el.appendChild(star);
+      }
+    },
+
+    activeSession() { return this.sessions.find(s => s.id === this.activeId); },
+    openTerminal(id) { this.activeId = id; this.mode = 'terminal'; },
+    worktreesFor(proj) { return this.allWorktrees[proj] || []; },
+
+    tooltipPreview(s) {
+      const last = s.blocks.slice(-2);
+      return last.map(b => {
+        if (b.type === 'user') return '<span class="prompt">❯ </span>' + b.text;
+        if (b.type === 'assistant') return b.text.substring(0, 80) + (b.text.length > 80 ? '...' : '');
+        if (b.type === 'tool') return '┌ ' + b.name + ' ' + b.path + '\n└ ' + b.result;
+        return '';
+      }).join('\n');
+    },
+
+    createSession() {
+      const branch = this.newSession.branch === '__new__' ? this.newSession.newBranch : this.newSession.branch;
+      const proj = this.projects.find(p => p.name === this.newSession.project);
+      const clusterPositions = {'glue-cli':{x:25,y:30},'api-server':{x:72,y:30},'docs-site':{x:50,y:50},'infra':{x:48,y:68}};
+      const base = clusterPositions[this.newSession.project] || {x:50,y:50};
+      const s = {
+        id: nextId++, project: this.newSession.project, path: proj?.path || '', branch, model: this.newSession.model,
+        alive: true, streaming: !!this.newSession.prompt, waiting: false, time: 'now', tokens: 0, lastInput: this.newSession.prompt || '(new)',
+        x: base.x + (Math.random() - 0.5) * 12, y: base.y + (Math.random() - 0.5) * 12,
+        blocks: this.newSession.prompt ? [{type:'user',text:this.newSession.prompt},{type:'assistant',text:'Looking at your project...',streaming:true}] : [],
+      };
+      this.sessions.push(s);
+      this.openTerminal(s.id);
+      this.showNewModal = false;
+      this.newSession = {project:'',branch:'',newBranch:'',model:'claude-4-sonnet',prompt:''};
+    },
+
+    sendMessage() {
+      if (!this.inputText.trim() || !this.activeSession()) return;
+      const s = this.activeSession();
+      s.blocks.forEach(b => { if (b.streaming) b.streaming = false; });
+      s.blocks.push({type:'user',text:this.inputText});
+      s.blocks.push({type:'assistant',text:'Working on it...',streaming:true});
+      s.lastInput = this.inputText.substring(0, 40);
+      s.time = 'now';
+      s.streaming = true;
+      this.inputText = '';
+    },
+  };
+}
+</script>
+</body>
+</html>

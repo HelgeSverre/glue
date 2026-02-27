@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MISSION: GLUE — Launch Control</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Share+Tech+Mono&family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;700&display=swap">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0A0E1A;
+      --surface: #111827;
+      --surface-el: #1A2332;
+      --cyan: #00F5D4;
+      --yellow: #FACC15;
+      --green: #00FF88;
+      --amber: #FFB800;
+      --red: #FF3B5C;
+      --text: #C9D6E3;
+      --bright: #E8F0FF;
+      --dim: #3A4A5C;
+      --grid: #141E2E;
+      --display: 'Orbitron', sans-serif;
+      --data: 'Share Tech Mono', monospace;
+      --mono: 'JetBrains Mono', monospace;
+      --sans: 'Inter', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--data);
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ─── Star Field ─── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.4) 0%, transparent 100%),
+        radial-gradient(1px 1px at 30% 65%, rgba(255,255,255,0.3) 0%, transparent 100%),
+        radial-gradient(1px 1px at 50% 10%, rgba(255,255,255,0.5) 0%, transparent 100%),
+        radial-gradient(1px 1px at 70% 40%, rgba(255,255,255,0.3) 0%, transparent 100%),
+        radial-gradient(1px 1px at 90% 80%, rgba(255,255,255,0.4) 0%, transparent 100%),
+        radial-gradient(1px 1px at 15% 90%, rgba(255,255,255,0.2) 0%, transparent 100%),
+        radial-gradient(1px 1px at 45% 50%, rgba(255,255,255,0.3) 0%, transparent 100%),
+        radial-gradient(1px 1px at 80% 15%, rgba(255,255,255,0.4) 0%, transparent 100%),
+        radial-gradient(1px 1px at 25% 35%, rgba(255,255,255,0.2) 0%, transparent 100%),
+        radial-gradient(1px 1px at 60% 75%, rgba(255,255,255,0.3) 0%, transparent 100%),
+        radial-gradient(1px 1px at 5% 55%, rgba(255,255,255,0.4) 0%, transparent 100%),
+        radial-gradient(1px 1px at 85% 45%, rgba(255,255,255,0.2) 0%, transparent 100%),
+        radial-gradient(1px 1px at 35% 85%, rgba(255,255,255,0.3) 0%, transparent 100%),
+        radial-gradient(1px 1px at 95% 25%, rgba(255,255,255,0.4) 0%, transparent 100%),
+        radial-gradient(1px 1px at 55% 95%, rgba(255,255,255,0.2) 0%, transparent 100%);
+    }
+
+    .page { position: relative; z-index: 1; }
+
+    /* ─── HUD Brackets ─── */
+    .hud-bracket {
+      position: relative;
+    }
+    .hud-bracket::before, .hud-bracket::after {
+      content: '';
+      position: absolute;
+      width: 16px; height: 16px;
+      border-color: rgba(0,245,212,0.4);
+    }
+    .hud-bracket::before {
+      top: -1px; left: -1px;
+      border-top: 2px solid; border-left: 2px solid;
+    }
+    .hud-bracket::after {
+      bottom: -1px; right: -1px;
+      border-bottom: 2px solid; border-right: 2px solid;
+    }
+
+    /* ─── Mission Header ─── */
+    .mission-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--dim);
+      padding: 12px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .mission-name {
+      font-family: var(--display); font-size: 14px;
+      font-weight: 700; letter-spacing: 0.15em;
+      color: var(--cyan);
+    }
+    .mission-meta {
+      display: flex; gap: 24px; align-items: center;
+      font-size: 11px; letter-spacing: 0.05em;
+    }
+    .status-light {
+      display: inline-block; width: 8px; height: 8px;
+      border-radius: 50; margin-right: 4px;
+      animation: pulse 2s ease-in-out infinite;
+      border-radius: 50%;
+    }
+    .status-green { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .status-amber { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .met-clock { color: var(--yellow); font-family: var(--data); }
+
+    .mascot-badge {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 1px solid var(--dim);
+      object-fit: cover;
+    }
+
+    /* ─── Primary Display ─── */
+    .primary-display {
+      text-align: center;
+      padding: 80px 32px 60px;
+      position: relative;
+    }
+    .countdown {
+      font-family: var(--display); font-size: clamp(12px, 2vw, 18px);
+      color: var(--amber); letter-spacing: 0.2em;
+      margin-bottom: 24px;
+    }
+    .primary-title {
+      font-family: var(--display);
+      font-size: clamp(56px, 14vw, 160px);
+      font-weight: 900; letter-spacing: 0.15em;
+      color: var(--bright);
+      line-height: 0.9;
+      text-shadow: 0 0 60px rgba(0,245,212,0.15);
+      margin-bottom: 24px;
+    }
+    .primary-tagline {
+      font-family: var(--sans);
+      font-size: clamp(16px, 2.5vw, 22px);
+      font-weight: 600; color: var(--text);
+      max-width: 500px; margin: 0 auto 32px;
+    }
+    .primary-tagline em {
+      font-style: normal; color: var(--cyan);
+    }
+    .launch-cmd {
+      font-family: var(--data);
+      font-size: clamp(13px, 2vw, 18px);
+      color: var(--yellow);
+      background: var(--surface);
+      border: 1px solid var(--dim);
+      padding: 12px 28px;
+      display: inline-block;
+    }
+    .launch-cmd-label {
+      font-size: 10px; color: var(--dim);
+      text-transform: uppercase; letter-spacing: 0.15em;
+      margin-bottom: 8px;
+    }
+
+    /* ─── Panels Grid ─── */
+    .panels-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--dim);
+      border: 1px solid var(--dim);
+      max-width: 1100px; margin: 0 auto;
+    }
+    .panel {
+      background: var(--surface);
+      padding: 24px;
+    }
+    .panel-label {
+      font-family: var(--display); font-size: 10px;
+      letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--cyan); margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    /* ─── System Status ─── */
+    .sys-list { list-style: none; }
+    .sys-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--grid);
+      font-size: 12px;
+    }
+    .sys-item:last-child { border-bottom: none; }
+    .sys-id {
+      font-family: var(--display); font-size: 9px;
+      color: var(--dim); width: 48px; flex-shrink: 0;
+      letter-spacing: 0.05em;
+    }
+    .sys-name {
+      font-weight: 700; color: var(--bright);
+      flex: 1; text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .sys-status {
+      font-size: 10px;
+      padding: 2px 8px;
+      border: 1px solid;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .sys-nominal { color: var(--green); border-color: var(--green); }
+
+    /* ─── Telemetry ─── */
+    .telemetry-feed {
+      font-family: var(--mono); font-size: 12px;
+      line-height: 1.7;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--grid);
+      padding: 16px;
+      max-height: 340px;
+      overflow-y: auto;
+    }
+    .telemetry-feed .y { color: var(--yellow); font-weight: 700; }
+    .telemetry-feed .g { color: var(--green); }
+    .telemetry-feed .c { color: var(--cyan); }
+    .telemetry-feed .d { color: var(--dim); }
+    .telemetry-feed .w { color: #fff; }
+    .telemetry-feed .ts { color: var(--dim); font-size: 10px; }
+    .mc-cursor {
+      display: inline-block; width: 8px; height: 1.1em;
+      background: var(--cyan); vertical-align: text-bottom;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* ─── Mission Parameters ─── */
+    .params-table {
+      width: 100%; border-collapse: collapse;
+      font-size: 11px;
+    }
+    .params-table td {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--grid);
+    }
+    .params-table td:first-child {
+      color: var(--dim); text-transform: uppercase;
+      letter-spacing: 0.1em; font-size: 10px;
+      width: 40%;
+    }
+    .params-table td:last-child { color: var(--bright); font-weight: 700; }
+
+    /* ─── Radar ─── */
+    .radar-container {
+      display: flex; align-items: center; justify-content: center;
+      gap: 32px; flex-wrap: wrap;
+    }
+    .radar {
+      width: 140px; height: 140px;
+      border: 2px solid var(--cyan);
+      border-radius: 50%;
+      position: relative;
+      overflow: hidden;
+      background: radial-gradient(circle, transparent 0%, rgba(0,245,212,0.03) 100%);
+    }
+    .radar::before {
+      content: '';
+      position: absolute; top: 50%; left: 50%;
+      width: 50%; height: 2px;
+      background: linear-gradient(90deg, var(--cyan), transparent);
+      transform-origin: left center;
+      animation: radarSweep 3s linear infinite;
+    }
+    @keyframes radarSweep {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .radar-cross-h {
+      position: absolute; top: 50%; left: 0; right: 0;
+      border-top: 1px solid rgba(0,245,212,0.15);
+    }
+    .radar-cross-v {
+      position: absolute; left: 50%; top: 0; bottom: 0;
+      border-left: 1px solid rgba(0,245,212,0.15);
+    }
+    .radar-ring {
+      position: absolute; top: 25%; left: 25%;
+      width: 50%; height: 50%;
+      border: 1px solid rgba(0,245,212,0.1);
+      border-radius: 50%;
+    }
+
+    /* ─── Comm Links (Footer) ─── */
+    .comm-links {
+      max-width: 1100px; margin: 0 auto;
+      border: 1px solid var(--dim);
+      background: var(--surface);
+      padding: 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 16px;
+    }
+    .comm-links a {
+      color: var(--cyan); text-decoration: none;
+      font-size: 12px; text-transform: uppercase;
+      letter-spacing: 0.1em;
+      display: flex; align-items: center; gap: 6px;
+      transition: color 0.2s;
+    }
+    .comm-links a:hover { color: var(--yellow); }
+    .comm-label {
+      font-family: var(--display); font-size: 10px;
+      color: var(--dim); letter-spacing: 0.2em;
+    }
+
+    /* ─── Buttons ─── */
+    .btn-mc {
+      display: inline-block; padding: 10px 24px;
+      font-family: var(--display); font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      text-decoration: none;
+      border: 1px solid;
+      transition: all 0.2s;
+    }
+    .btn-mc-cyan {
+      color: var(--cyan); border-color: var(--cyan);
+      background: rgba(0,245,212,0.05);
+    }
+    .btn-mc-cyan:hover {
+      background: var(--cyan); color: var(--bg);
+      box-shadow: 0 0 20px rgba(0,245,212,0.3);
+    }
+    .btn-mc-yellow {
+      color: var(--bg); border-color: var(--yellow);
+      background: var(--yellow);
+    }
+    .btn-mc-yellow:hover {
+      box-shadow: 0 0 20px rgba(250,204,21,0.3);
+    }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 768px) {
+      .panels-grid { grid-template-columns: 1fr; }
+      .mission-meta { gap: 12px; }
+      .primary-display { padding: 60px 20px 40px; }
+      .radar-container { justify-content: center; }
+      .comm-links { flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ─── Mission Header ─── -->
+  <header class="mission-header">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <img src="construction/mascots/mascot-02-blob.png" alt="Crew" class="mascot-badge">
+      <span class="mission-name">MISSION: GLUE</span>
+    </div>
+    <div class="mission-meta">
+      <span><span class="status-light status-green"></span> NOMINAL</span>
+      <span class="met-clock" id="met">MET T+00:00:00</span>
+      <span id="utc" style="color:var(--dim);"></span>
+    </div>
+  </header>
+
+  <!-- ─── Primary Display ─── -->
+  <section class="primary-display">
+    <div class="countdown" id="countdown">T-00:30:00 TO LAUNCH</div>
+    <h1 class="primary-title">GLUE</h1>
+    <p class="primary-tagline">The coding agent that <em>holds it all together.</em></p>
+    <div class="launch-cmd-label">LAUNCH COMMAND</div>
+    <div class="launch-cmd hud-bracket">❯ dart pub global activate glue</div>
+    <div style="margin-top:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <a href="#" class="btn-mc btn-mc-yellow">▸ Initiate Launch</a>
+      <a href="#" class="btn-mc btn-mc-cyan">View Schematics</a>
+    </div>
+  </section>
+
+  <!-- ─── Panels ─── -->
+  <div class="panels-grid">
+
+    <!-- System Status -->
+    <div class="panel">
+      <div class="panel-label"><span class="status-light status-green"></span> System Status</div>
+      <ul class="sys-list">
+        <li class="sys-item">
+          <span class="sys-id">SYS-01</span>
+          <span class="sys-name">Propulsion</span>
+          <span class="sys-status sys-nominal">Nominal</span>
+        </li>
+        <li class="sys-item">
+          <span class="sys-id">SYS-02</span>
+          <span class="sys-name">Multi-Vector</span>
+          <span class="sys-status sys-nominal">Nominal</span>
+        </li>
+        <li class="sys-item">
+          <span class="sys-id">SYS-03</span>
+          <span class="sys-name">Model Array</span>
+          <span class="sys-status sys-nominal">Nominal</span>
+        </li>
+        <li class="sys-item">
+          <span class="sys-id">SYS-04</span>
+          <span class="sys-name">Auth Gate</span>
+          <span class="sys-status sys-nominal">Nominal</span>
+        </li>
+        <li class="sys-item">
+          <span class="sys-id">SYS-05</span>
+          <span class="sys-name">MCP Link</span>
+          <span class="sys-status sys-nominal">Nominal</span>
+        </li>
+        <li class="sys-item">
+          <span class="sys-id">SYS-06</span>
+          <span class="sys-name">Auto-Config</span>
+          <span class="sys-status sys-nominal">Nominal</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Telemetry Feed -->
+    <div class="panel">
+      <div class="panel-label"><span class="status-light status-amber"></span> Telemetry Feed</div>
+      <div class="telemetry-feed">
+<span class="ts">[00:00:01]</span> <span class="c">SESSION INIT</span>
+<span class="ts">[00:00:01]</span> <span class="d">glue v0.1.0 · claude-4-sonnet</span>
+
+<span class="ts">[00:00:03]</span> <span class="y">CMD:</span> <span class="w">Add auth endpoint with JWT</span>
+
+<span class="ts">[00:00:04]</span> <span class="c">TOOL_CALL</span> read_file
+<span class="ts">[00:00:04]</span> <span class="d">→ lib/src/routes/api.dart</span>
+<span class="ts">[00:00:05]</span> <span class="g">OK</span> 142 lines received
+
+<span class="ts">[00:00:08]</span> <span class="c">TOOL_CALL</span> write_file
+<span class="ts">[00:00:08]</span> <span class="d">→ lib/src/routes/auth.dart</span>
+<span class="ts">[00:00:09]</span> <span class="y">APPROVAL</span> awaiting...
+<span class="ts">[00:00:11]</span> <span class="g">APPROVED</span> 67 lines written
+
+<span class="ts">[00:00:14]</span> <span class="c">TOOL_CALL</span> run_command
+<span class="ts">[00:00:14]</span> <span class="d">→ dart test</span>
+<span class="ts">[00:00:18]</span> <span class="g">OK</span> 12 tests passed
+
+<span class="ts">[00:00:19]</span> <span class="g">COMPLETE</span> <span class="y">POST /api/auth/login</span><span class="mc-cursor"></span>
+      </div>
+    </div>
+
+    <!-- Mission Parameters -->
+    <div class="panel">
+      <div class="panel-label">Mission Parameters</div>
+      <table class="params-table">
+        <tr><td>Vehicle</td><td>Glue CLI v0.1.0</td></tr>
+        <tr><td>Propellant</td><td>Dart SDK ≥ 3.0</td></tr>
+        <tr><td>Payload</td><td>Multi-Model Agent</td></tr>
+        <tr><td>License</td><td>Apache-2.0</td></tr>
+        <tr><td>Orbit</td><td>Your Terminal</td></tr>
+        <tr><td>Status</td><td style="color:var(--green);">■ ACTIVE</td></tr>
+      </table>
+    </div>
+
+    <!-- Radar -->
+    <div class="panel" style="display:flex;flex-direction:column;">
+      <div class="panel-label">Signal Tracking</div>
+      <div class="radar-container" style="flex:1;">
+        <div class="radar">
+          <div class="radar-cross-h"></div>
+          <div class="radar-cross-v"></div>
+          <div class="radar-ring"></div>
+        </div>
+        <div style="font-size:11px;line-height:2;">
+          <div><span class="status-light status-green" style="width:6px;height:6px;"></span> Anthropic <span style="color:var(--dim);">— LINKED</span></div>
+          <div><span class="status-light status-green" style="width:6px;height:6px;"></span> OpenAI <span style="color:var(--dim);">— LINKED</span></div>
+          <div><span class="status-light status-green" style="width:6px;height:6px;"></span> Google <span style="color:var(--dim);">— LINKED</span></div>
+          <div><span class="status-light status-amber" style="width:6px;height:6px;"></span> Local <span style="color:var(--dim);">— STANDBY</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ─── COMM Links (Footer) ─── -->
+  <div style="padding:24px;">
+    <div class="comm-links">
+      <span class="comm-label">COMM LINKS</span>
+      <a href="#"><span class="status-light status-green" style="width:6px;height:6px;"></span> GitHub</a>
+      <a href="#"><span class="status-light status-green" style="width:6px;height:6px;"></span> Documentation</a>
+      <a href="#"><span class="status-light status-green" style="width:6px;height:6px;"></span> Discord</a>
+      <span style="font-size:10px;color:var(--dim);">APACHE-2.0</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Mission Elapsed Time
+  const start = Date.now();
+  function updateMET() {
+    const elapsed = Math.floor((Date.now() - start) / 1000);
+    const h = String(Math.floor(elapsed / 3600)).padStart(2, '0');
+    const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+    const s = String(elapsed % 60).padStart(2, '0');
+    document.getElementById('met').textContent = `MET T+${h}:${m}:${s}`;
+  }
+
+  // Countdown
+  let countdownSec = 30 * 60;
+  function updateCountdown() {
+    if (countdownSec <= 0) {
+      document.getElementById('countdown').textContent = '🚀 LAUNCH SUCCESSFUL';
+      document.getElementById('countdown').style.color = '#00FF88';
+      return;
+    }
+    countdownSec--;
+    const m = String(Math.floor(countdownSec / 60)).padStart(2, '0');
+    const s = String(countdownSec % 60).padStart(2, '0');
+    document.getElementById('countdown').textContent = `T-00:${m}:${s} TO LAUNCH`;
+  }
+
+  // UTC Clock
+  function updateUTC() {
+    const now = new Date();
+    document.getElementById('utc').textContent =
+      now.toISOString().slice(11, 19) + ' UTC';
+  }
+
+  setInterval(updateMET, 1000);
+  setInterval(updateCountdown, 1000);
+  setInterval(updateUTC, 1000);
+  updateMET(); updateUTC();
+</script>
+</body>
+</html>

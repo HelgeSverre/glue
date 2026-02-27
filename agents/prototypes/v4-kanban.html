@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Glue — Kanban Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --yellow:#FACC15;--gold:#EAB308;--amber:#F59E0B;
+  --bg:#060607;--surface:#0e0e10;--surface-el:#161618;
+  --border:#252529;--border-br:#35353b;
+  --text:#FAFAFA;--text-sec:#A1A1AA;--text-mut:#555560;--text-yel:#FDE047;
+  --success:#22C55E;--error:#EF4444;--warning:#F59E0B;--info:#3B82F6;
+  --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;
+}
+html{font-size:13px;-webkit-font-smoothing:antialiased}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh;overflow:hidden;
+  background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.012) 1px,transparent 0);background-size:20px 20px}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:var(--yellow)}
+
+.app{display:grid;grid-template-columns:240px 1fr;grid-template-rows:48px 1fr;height:100vh}
+
+/* Navbar */
+.navbar{grid-column:1/-1;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:16px}
+.nav-logo{font-family:var(--mono);font-weight:700;font-size:16px;color:var(--yellow)}
+.nav-logo span{color:var(--text-mut)}
+.nav-sep{width:1px;height:20px;background:var(--border)}
+.nav-stats{font-size:11px;color:var(--text-mut);font-family:var(--mono);display:flex;gap:12px}
+.nav-stat-val{color:var(--text-sec)}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.btn-new{padding:5px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:var(--yellow);color:var(--bg);font-family:var(--sans);transition:all .15s}
+.btn-new:hover{background:var(--gold);box-shadow:0 2px 10px rgba(250,204,21,.2)}
+
+/* Sidebar Tree */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;padding:10px 0}
+.tree-node{cursor:pointer;user-select:none}
+.tree-row{display:flex;align-items:center;gap:5px;padding:4px 10px;transition:background .1s;font-size:11px}
+.tree-row:hover{background:var(--surface-el)}
+.tree-row.selected{background:var(--surface-el);border-left:2px solid var(--yellow);padding-left:8px}
+.chev{width:12px;color:var(--text-mut);transition:transform .15s;font-size:9px;text-align:center;flex-shrink:0}
+.chev.open{transform:rotate(90deg)}
+.dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.dot.running{background:var(--success);box-shadow:0 0 4px var(--success)}
+.dot.streaming{background:var(--yellow);box-shadow:0 0 4px var(--yellow)}
+.dot.waiting{background:var(--warning)}
+.dot.completed{background:var(--success);opacity:.5}
+.dot.error{background:var(--error)}
+.dot.idle{background:var(--border-br)}
+.tree-lbl{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-sec)}
+.tree-lbl.proj{font-weight:600;color:var(--text);font-size:12px}
+.tree-lbl.wt{font-family:var(--mono);color:var(--text-mut)}
+.tree-lbl.ag{font-family:var(--mono)}
+.tree-guide{border-left:1px solid var(--border);margin-left:8px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.dot.running,.dot.streaming{animation:pulse 2s infinite}
+
+/* Kanban Board */
+.board{display:flex;gap:0;overflow-x:auto;padding:0}
+.column{min-width:300px;max-width:320px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--border);height:100%}
+.col-head{padding:12px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);flex-shrink:0;position:relative}
+.col-head::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.column[data-status="queued"] .col-head::before{background:var(--border-br)}
+.column[data-status="running"] .col-head::before{background:var(--success)}
+.column[data-status="streaming"] .col-head::before{background:var(--yellow)}
+.column[data-status="waiting"] .col-head::before{background:var(--warning)}
+.column[data-status="completed"] .col-head::before{background:var(--success)}
+.column[data-status="failed"] .col-head::before{background:var(--error)}
+.col-icon{font-size:12px}
+.col-title{font-size:12px;font-weight:600}
+.col-count{font-size:10px;padding:1px 6px;border-radius:8px;background:var(--surface-el);color:var(--text-mut);font-family:var(--mono);margin-left:auto}
+.col-cards{flex:1;overflow-y:auto;padding:10px}
+.col-empty{text-align:center;padding:32px 16px;font-size:11px;color:var(--text-mut)}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;gap:8px}
+.card:hover{border-color:var(--border-br);transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.5)}
+.card.highlight{border-color:var(--yellow);box-shadow:0 0 0 1px var(--yellow)}
+.card-top{display:flex;align-items:center;gap:6px;font-size:11px}
+.card-id{font-family:var(--mono);font-weight:700;color:var(--text-yel)}
+.card-branch{font-family:var(--mono);font-size:10px;color:var(--text-mut);background:var(--bg);padding:2px 6px;border-radius:3px}
+.card-model{margin-left:auto;font-size:10px;color:var(--text-mut);font-family:var(--mono)}
+.card-task{font-size:12px;color:var(--text-sec);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card-progress{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text-mut);font-family:var(--mono)}
+.prog-bar{flex:1;height:3px;background:var(--bg);border-radius:2px;overflow:hidden;max-width:100px}
+.prog-fill{height:100%;border-radius:2px}
+.card-metrics{display:flex;gap:10px;font-size:10px;color:var(--text-mut);font-family:var(--mono)}
+.card-preview{font-family:var(--mono);font-size:10px;color:var(--text-mut);background:var(--bg);border-radius:4px;padding:6px 8px;line-height:1.5;max-height:40px;overflow:hidden;position:relative}
+.card-preview::after{content:'';position:absolute;bottom:0;left:0;right:0;height:14px;background:linear-gradient(transparent,var(--bg))}
+.card-actions{display:flex;gap:4px}
+.card-btn{padding:3px 8px;border-radius:4px;font-size:10px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-mut);font-family:var(--sans);transition:all .12s}
+.card-btn:hover{border-color:var(--border-br);color:var(--text)}
+.card-btn.primary{border-color:rgba(250,204,21,.3);color:var(--yellow)}
+.card-btn.primary:hover{background:rgba(250,204,21,.08)}
+.card-btn.danger{border-color:rgba(239,68,68,.25);color:var(--error)}
+.card-btn.danger:hover{background:rgba(239,68,68,.06)}
+.card-error{font-size:10px;color:var(--error);font-family:var(--mono);background:rgba(239,68,68,.06);padding:4px 8px;border-radius:4px}
+
+.card.waiting-glow{animation:amberGlow 3s infinite}
+@keyframes amberGlow{0%,100%{border-color:var(--border)}50%{border-color:rgba(245,158,11,.4);box-shadow:0 0 12px rgba(245,158,11,.08)}}
+
+.card.dimmed{opacity:.6}
+.card.error-border{border-left:2px solid var(--error)}
+
+.cursor-blink{display:inline-block;width:6px;height:12px;background:var(--yellow);animation:blink 1s step-end infinite;vertical-align:text-bottom}
+@keyframes blink{50%{opacity:0}}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:10px;width:580px;max-width:92vw;max-height:80vh;overflow-y:auto}
+.modal-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.modal-title{font-family:var(--mono);font-weight:700;font-size:15px;color:var(--text-yel)}
+.modal-close{margin-left:auto;background:none;border:none;color:var(--text-mut);cursor:pointer;font-size:18px;padding:4px}
+.modal-close:hover{color:var(--text)}
+.modal-body{padding:20px}
+.modal-meta{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:16px}
+.modal-meta-item{background:var(--bg);border-radius:6px;padding:8px 10px}
+.modal-meta-item .lbl{font-size:9px;color:var(--text-mut);text-transform:uppercase;letter-spacing:.05em}
+.modal-meta-item .val{font-family:var(--mono);font-size:13px;font-weight:600;margin-top:2px}
+.modal-term{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px 14px;font-family:var(--mono);font-size:11px;line-height:1.7;color:var(--text-sec);max-height:200px;overflow-y:auto;white-space:pre-wrap;margin-bottom:14px}
+.modal-tools{display:flex;flex-direction:column;gap:4px;margin-bottom:14px}
+.modal-tool{background:var(--bg);border-radius:4px;padding:6px 10px;font-family:var(--mono);font-size:11px;display:flex;align-items:center;gap:6px}
+.modal-tool .nm{font-weight:600;color:var(--text)}
+.modal-tool .pt{color:var(--text-mut);flex:1}
+.modal-tool .rs{font-size:10px}
+.modal-tool .rs.ok{color:var(--success)}
+.modal-tool .rs.pending{color:var(--warning)}
+.modal-actions{display:flex;gap:6px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--border)}
+.modal-btn{padding:6px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-sec);font-family:var(--sans);transition:all .12s}
+.modal-btn:hover{border-color:var(--border-br);color:var(--text)}
+.modal-btn.primary{background:var(--yellow);color:var(--bg);border-color:var(--yellow)}
+.modal-btn.primary:hover{background:var(--gold)}
+.modal-btn.danger{border-color:rgba(239,68,68,.3);color:var(--error)}
+</style>
+</head>
+<body>
+<div x-data="kanban()">
+  <!-- Navbar -->
+  <div class="app">
+    <nav class="navbar">
+      <span class="nav-logo">glue<span>.</span></span>
+      <span class="nav-sep"></span>
+      <div class="nav-stats">
+        <span><span class="nav-stat-val" x-text="allAgents.length"></span> agents</span>
+        <span>·</span>
+        <span><span class="nav-stat-val" x-text="allAgents.reduce((s,a)=>s+a.tokens,0).toLocaleString()"></span> tokens</span>
+        <span>·</span>
+        <span><span class="nav-stat-val">4</span> projects</span>
+      </div>
+      <div class="nav-right">
+        <button class="btn-new">+ New Agent</button>
+      </div>
+    </nav>
+
+    <!-- Sidebar Tree -->
+    <aside class="sidebar">
+      <template x-for="proj in projects" :key="proj.name">
+        <div class="tree-node">
+          <div class="tree-row" @click="proj.open = !proj.open">
+            <span class="chev" :class="proj.open && 'open'">▶</span>
+            <span class="tree-lbl proj" x-text="proj.name"></span>
+          </div>
+          <template x-if="proj.open">
+            <div class="tree-guide" style="margin-left:12px">
+              <template x-for="wt in proj.worktrees" :key="wt.branch">
+                <div class="tree-node">
+                  <div class="tree-row" @click="wt.open = !wt.open" style="padding-left:8px">
+                    <span class="chev" :class="wt.open && 'open'" x-show="wtAgents(proj.name,wt.branch).length">▶</span>
+                    <span x-show="!wtAgents(proj.name,wt.branch).length" style="width:12px"></span>
+                    <span class="dot" :class="wtAgents(proj.name,wt.branch).some(a=>['running','streaming'].includes(a.status)) ? 'running' : 'idle'"></span>
+                    <span class="tree-lbl wt" x-text="wt.branch"></span>
+                  </div>
+                  <template x-if="wt.open && wtAgents(proj.name,wt.branch).length">
+                    <div class="tree-guide" style="margin-left:12px">
+                      <template x-for="ag in wtAgents(proj.name,wt.branch)" :key="ag.id">
+                        <div class="tree-row" :class="highlightedId===ag.id && 'selected'" @click="scrollToCard(ag.id)" style="padding-left:8px">
+                          <span class="dot" :class="ag.status"></span>
+                          <span class="tree-lbl ag" :style="{color:statusColor(ag.status)}">#<span x-text="ag.id"></span></span>
+                        </div>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+      </template>
+    </aside>
+
+    <!-- Kanban Board -->
+    <div class="board">
+      <template x-for="col in columns" :key="col.key">
+        <div class="column" :data-status="col.key">
+          <div class="col-head">
+            <span class="col-icon" x-text="col.icon"></span>
+            <span class="col-title" x-text="col.title"></span>
+            <span class="col-count" x-text="colAgents(col.key).length"></span>
+          </div>
+          <div class="col-cards">
+            <template x-if="colAgents(col.key).length === 0">
+              <div class="col-empty" x-text="'No '+col.title.toLowerCase()+' agents'"></div>
+            </template>
+            <template x-for="agent in colAgents(col.key)" :key="agent.id">
+              <div class="card" :id="'card-'+agent.id"
+                :class="{
+                  'highlight': highlightedId===agent.id,
+                  'waiting-glow': agent.status==='waiting',
+                  'dimmed': agent.status==='completed',
+                  'error-border': agent.status==='error'
+                }" @click="openModal(agent)">
+                <div class="card-top">
+                  <span class="card-id">#<span x-text="agent.id"></span></span>
+                  <span class="card-branch" x-text="agent.branch"></span>
+                  <span class="card-model" x-text="agent.model"></span>
+                </div>
+                <div class="card-task" x-text="agent.task"></div>
+                <div class="card-progress">
+                  <div class="prog-bar"><div class="prog-fill" :style="{width:agent.progress+'%',background:statusColor(agent.status)}"></div></div>
+                  <span>Step <span x-text="agent.step"></span> · <span x-text="agent.tools"></span> tools</span>
+                </div>
+                <div class="card-metrics">
+                  <span x-text="agent.tokens.toLocaleString()+' tok'"></span>
+                  <span>·</span>
+                  <span x-text="agent.time"></span>
+                </div>
+                <div class="card-preview" x-text="agent.preview"></div>
+                <template x-if="agent.status==='error'">
+                  <div class="card-error" x-text="agent.errorMsg"></div>
+                </template>
+                <div class="card-actions" @click.stop>
+                  <template x-if="agent.status==='waiting'">
+                    <button class="card-btn primary" @click="approveAgent(agent)">Approve</button>
+                  </template>
+                  <template x-if="agent.status==='waiting'">
+                    <button class="card-btn danger" @click="denyAgent(agent)">Deny</button>
+                  </template>
+                  <template x-if="agent.status==='error'">
+                    <button class="card-btn primary" @click="retryAgent(agent)">Retry</button>
+                  </template>
+                  <template x-if="['running','streaming'].includes(agent.status)">
+                    <button class="card-btn" @click="pauseAgent(agent)">Pause</button>
+                  </template>
+                  <button class="card-btn" @click="openModal(agent)">View</button>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Detail Modal -->
+  <template x-if="modalAgent">
+    <div class="modal-bg" @click.self="modalAgent=null" x-transition.opacity>
+      <div class="modal" @click.stop>
+        <div class="modal-head">
+          <span class="modal-title">Agent #<span x-text="modalAgent.id"></span></span>
+          <span class="card-branch" x-text="modalAgent.branch" style="font-size:11px"></span>
+          <span style="font-size:11px;color:var(--text-mut);font-family:var(--mono)" x-text="modalAgent.model"></span>
+          <button class="modal-close" @click="modalAgent=null">×</button>
+        </div>
+        <div class="modal-body">
+          <div style="font-size:12px;color:var(--text-sec);margin-bottom:14px;line-height:1.5" x-text="modalAgent.task"></div>
+          <div class="modal-meta">
+            <div class="modal-meta-item"><div class="lbl">Tokens</div><div class="val" x-text="modalAgent.tokens.toLocaleString()"></div></div>
+            <div class="modal-meta-item"><div class="lbl">Duration</div><div class="val" x-text="modalAgent.time"></div></div>
+            <div class="modal-meta-item"><div class="lbl">Tools</div><div class="val" x-text="modalAgent.tools"></div></div>
+            <div class="modal-meta-item"><div class="lbl">Step</div><div class="val" x-text="modalAgent.step"></div></div>
+          </div>
+          <div style="font-size:10px;font-weight:600;color:var(--text-mut);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Output</div>
+          <div class="modal-term" x-text="modalAgent.output"></div>
+          <div style="font-size:10px;font-weight:600;color:var(--text-mut);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Tool Calls</div>
+          <div class="modal-tools">
+            <template x-for="tc in modalAgent.toolCalls" :key="tc.name+tc.path">
+              <div class="modal-tool">
+                <span>┌</span>
+                <span class="nm" x-text="tc.name"></span>
+                <span class="pt" x-text="tc.path"></span>
+                <span class="rs" :class="tc.ok?'ok':'pending'" x-text="tc.ok?'✓ '+tc.result:'⏳ pending'"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <template x-if="modalAgent.status==='waiting'">
+            <button class="modal-btn primary" @click="approveAgent(modalAgent);modalAgent=null">Approve</button>
+          </template>
+          <template x-if="['running','streaming'].includes(modalAgent.status)">
+            <button class="modal-btn danger">Cancel Agent</button>
+          </template>
+          <button class="modal-btn" @click="modalAgent=null">Close</button>
+        </div>
+      </div>
+    </div>
+  </template>
+</div>
+
+<script>
+function kanban() {
+  const agents = [
+    {id:1,project:'glue-cli',branch:'feat/tui-overhaul',status:'running',statusLabel:'Running',task:'Implement the virtual screen buffer with diff-based rendering for flicker-free TUI updates',step:7,tools:23,tokens:4521,time:'2m 34s',model:'claude-4-sonnet',progress:65,preview:'Creating Cell-based buffer system\nthat tracks frame changes...',output:'I\'ll implement the virtual screen buffer...\n\nclass ScreenBuffer {\n  final Terminal _terminal;\n  late List<List<Cell>> _current;\n  late List<List<Cell>> _previous;\n\n  void flush() {\n    _terminal.hideCursor();\n    final buf = StringBuffer();',toolCalls:[{name:'read_file',path:'lib/src/terminal/terminal.dart',ok:true,result:'156 lines'},{name:'write_file',path:'lib/src/terminal/screen_buffer.dart',ok:true,result:'89 lines'}]},
+    {id:2,project:'glue-cli',branch:'feat/mcp-support',status:'streaming',statusLabel:'Streaming',task:'Add MCP server discovery and connection management',step:3,tools:8,tokens:1892,time:'1m 12s',model:'claude-4-sonnet',progress:35,preview:'Implementing MCP protocol\nhandshake...',output:'Scanning for MCP server configurations...\n\nFound 2 servers:\n  • filesystem (stdio)\n  • github (sse)',toolCalls:[{name:'read_file',path:'.glue/mcp.json',ok:true,result:'24 lines'}]},
+    {id:3,project:'glue-cli',branch:'fix/input-parsing',status:'waiting',statusLabel:'Approval',task:'Fix UTF-8 multi-byte character parsing in raw terminal input handler',step:5,tools:15,tokens:3107,time:'3m 45s',model:'gpt-5',progress:50,preview:'Fixed surrogate pair handling.\nAwaiting: dart analyze lib/',output:'Fixed surrogate pair handling in _decodeUtf8Char.\n\n┌ bash\n│ dart analyze lib/\n└ ⏳ AWAITING APPROVAL',toolCalls:[{name:'read_file',path:'lib/src/terminal/terminal.dart',ok:true,result:'156 lines'},{name:'bash',path:'dart analyze lib/',ok:false,result:''}]},
+    {id:4,project:'glue-cli',branch:'main',status:'completed',statusLabel:'Completed',task:'Update README with installation instructions and architecture overview',step:3,tools:4,tokens:987,time:'0m 22s',model:'claude-4-haiku',progress:100,preview:'README updated successfully.',output:'README updated with install guide, ASCII logo, and usage examples.',toolCalls:[{name:'read_file',path:'README.md',ok:true,result:'45 lines'},{name:'write_file',path:'README.md',ok:true,result:'128 lines'}]},
+    {id:5,project:'glue-cli',branch:'feat/tui-overhaul',status:'error',statusLabel:'Error',task:'Add mouse event support to terminal controller',step:2,tools:6,tokens:2341,time:'1m 56s',model:'claude-4-sonnet',progress:25,preview:'Error: Rate limit exceeded.',errorMsg:'Rate limit exceeded. Retry after 30s.',output:'Error: Rate limit exceeded.\nRetry after 30s.',toolCalls:[{name:'read_file',path:'lib/src/terminal/terminal.dart',ok:true,result:'156 lines'}]},
+    {id:6,project:'api-server',branch:'feat/auth',status:'running',statusLabel:'Running',task:'Implement JWT authentication middleware with refresh token rotation',step:4,tools:11,tokens:2890,time:'1m 45s',model:'claude-4-sonnet',progress:55,preview:'Creating JWT middleware...\nRS256 validation.',output:'Creating JWT middleware...\n\nfinal token = request.headers\n  .value(\'Authorization\')?.replaceFirst(\'Bearer \', \'\');',toolCalls:[{name:'write_file',path:'lib/src/middleware/auth.dart',ok:true,result:'67 lines'}]},
+    {id:7,project:'api-server',branch:'feat/graphql',status:'streaming',statusLabel:'Streaming',task:'Generate GraphQL schema and resolvers from existing REST endpoints',step:2,tools:5,tokens:1456,time:'0m 55s',model:'gpt-5',progress:30,preview:'Generating type definitions...',output:'type User {\n  id: ID!\n  email: String!\n  name: String\n}',toolCalls:[{name:'read_file',path:'lib/src/routes/users.dart',ok:true,result:'89 lines'}]},
+    {id:8,project:'infra',branch:'feat/k8s-deploy',status:'running',statusLabel:'Running',task:'Create Kubernetes deployment manifests with horizontal pod autoscaling',step:6,tools:18,tokens:3654,time:'2m 10s',model:'claude-4-sonnet',progress:70,preview:'Writing HPA config with CPU\nand memory-based scaling...',output:'apiVersion: autoscaling/v2\nkind: HorizontalPodAutoscaler\nmetadata:\n  name: glue-api\nspec:\n  minReplicas: 2\n  maxReplicas: 10',toolCalls:[{name:'read_file',path:'k8s/base/deployment.yaml',ok:true,result:'45 lines'},{name:'write_file',path:'k8s/overlays/prod/hpa.yaml',ok:true,result:'28 lines'}]},
+  ];
+
+  return {
+    allAgents: agents,
+    highlightedId: null,
+    modalAgent: null,
+    columns: [
+      {key:'queued',title:'Queued',icon:'○'},
+      {key:'running',title:'Running',icon:'●'},
+      {key:'streaming',title:'Streaming',icon:'●'},
+      {key:'waiting',title:'Awaiting Approval',icon:'⏳'},
+      {key:'completed',title:'Completed',icon:'✓'},
+      {key:'error',title:'Failed',icon:'✗'},
+    ],
+    projects: [
+      {name:'glue-cli',open:true,worktrees:[{branch:'main',open:false},{branch:'feat/tui-overhaul',open:true},{branch:'feat/mcp-support',open:false},{branch:'fix/input-parsing',open:true},{branch:'feat/tool-approval',open:false}]},
+      {name:'api-server',open:true,worktrees:[{branch:'main',open:false},{branch:'feat/auth',open:true},{branch:'feat/graphql',open:true}]},
+      {name:'docs-site',open:false,worktrees:[{branch:'main',open:false}]},
+      {name:'infra',open:true,worktrees:[{branch:'main',open:false},{branch:'feat/k8s-deploy',open:true}]},
+    ],
+    colAgents(key) {
+      if (key === 'queued') return [];
+      if (key === 'error') return this.allAgents.filter(a => a.status === 'error');
+      return this.allAgents.filter(a => a.status === key);
+    },
+    wtAgents(proj, branch) { return this.allAgents.filter(a => a.project === proj && a.branch === branch); },
+    statusColor(s) { return {running:'var(--success)',streaming:'var(--yellow)',waiting:'var(--warning)',completed:'var(--success)',error:'var(--error)'}[s]||'var(--text-mut)'; },
+    scrollToCard(id) {
+      this.highlightedId = id;
+      document.getElementById('card-'+id)?.scrollIntoView({behavior:'smooth',block:'center'});
+      setTimeout(()=>{ this.highlightedId = null; }, 2000);
+    },
+    openModal(agent) { this.modalAgent = agent; },
+    approveAgent(agent) { agent.status = 'running'; agent.statusLabel = 'Running'; },
+    denyAgent(agent) { agent.status = 'error'; agent.statusLabel = 'Denied'; agent.errorMsg = 'Tool call denied by user'; },
+    retryAgent(agent) { agent.status = 'running'; agent.statusLabel = 'Running'; agent.errorMsg = null; },
+    pauseAgent(agent) { agent.status = 'queued'; agent.statusLabel = 'Paused'; },
+  };
+}
+</script>
+</body>
+</html>
