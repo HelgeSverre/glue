@@ -1,3 +1,4 @@
+import '../rendering/ansi_utils.dart';
 import 'terminal.dart';
 
 /// Divides the terminal into vertical zones that cooperate using
@@ -120,7 +121,9 @@ class Layout {
     terminal.moveTo(statusRow, 1);
     terminal.clearLine();
 
-    final padding = terminal.columns - left.length - right.length;
+    final leftVisible = visibleLength(left);
+    final rightVisible = visibleLength(right);
+    final padding = terminal.columns - leftVisible - rightVisible;
     terminal.writeStyled(
       '$left${' ' * padding.clamp(0, 9999)}$right',
       style: AnsiStyle.inverse,
