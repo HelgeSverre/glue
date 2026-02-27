@@ -14,6 +14,7 @@ import 'llm/llm_factory.dart';
 import 'rendering/block_renderer.dart';
 import 'tools/subagent_tools.dart';
 import 'ui/modal.dart';
+import 'ui/panel_modal.dart';
 import 'input/file_expander.dart';
 import 'ui/at_file_hint.dart';
 import 'ui/slash_autocomplete.dart';
@@ -94,6 +95,8 @@ class App {
   String _modelName;
   final String _cwd;
   ConfirmModal? _activeModal;
+  PanelModal? _activePanel;
+  bool _renderedPanelLastFrame = false;
   final Set<String> _autoApprovedTools = {
     'read_file', 'list_directory', 'grep',
     'spawn_subagent', 'spawn_parallel_subagents',
@@ -243,23 +246,8 @@ class App {
       name: 'help',
       description: 'Show available commands and keybindings',
       execute: (_) {
-        final buf = StringBuffer('Available commands:\n');
-        for (final cmd in _commands.commands) {
-          final aliases = cmd.aliases.isNotEmpty
-              ? ' (${cmd.aliases.map((a) => '/$a').join(', ')})'
-              : '';
-          buf.writeln('  /${cmd.name}$aliases — ${cmd.description}');
-        }
-        buf.writeln('\nKeybindings:');
-        buf.writeln('  Ctrl+C     Cancel / Exit');
-        buf.writeln('  Up/Down    History navigation');
-        buf.writeln('  Ctrl+U     Clear line');
-        buf.writeln('  Ctrl+W     Delete word');
-        buf.writeln('  Ctrl+K     Kill to end of line');
-        buf.writeln('  Ctrl+A     Move to start');
-        buf.writeln('  Ctrl+E     Move to end');
-        buf.writeln('  PageUp/Dn  Scroll output');
-        return buf.toString();
+        _openHelpPanel();
+        return '';
       },
     ));
 
@@ -342,12 +330,66 @@ class App {
     ));
   }
 
+  void _openHelpPanel() {
+    const yellow = '\x1b[33m';
+    const rst = '\x1b[0m';
+    const dim = '\x1b[90m';
+
+    final lines = <String>[];
+
+    lines.add('$yellow■ COMMANDS$rst');
+    lines.add('');
+    for (final cmd in _commands.commands) {
+      final aliases = cmd.aliases.isNotEmpty
+          ? ' $dim(${cmd.aliases.map((a) => '/$a').join(', ')})$rst'
+          : '';
+      final name = '/${cmd.name}'.padRight(16);
+      lines.add('  $yellow$name$rst${cmd.description}$aliases');
+    }
+
+    lines.add('');
+    lines.add('$yellow■ KEYBINDINGS$rst');
+    lines.add('');
+    lines.add('  ${'Ctrl+C'.padRight(16)}Cancel / Exit');
+    lines.add('  ${'Escape'.padRight(16)}Cancel generation');
+    lines.add('  ${'Up / Down'.padRight(16)}History navigation');
+    lines.add('  ${'Ctrl+U'.padRight(16)}Clear line');
+    lines.add('  ${'Ctrl+W'.padRight(16)}Delete word');
+    lines.add('  ${'Ctrl+A / E'.padRight(16)}Start / End of line');
+    lines.add('  ${'PageUp / Dn'.padRight(16)}Scroll output');
+    lines.add('  ${'Tab'.padRight(16)}Accept completion');
+
+    lines.add('');
+    lines.add('$yellow■ FILE REFERENCES$rst');
+    lines.add('');
+    lines.add('  ${'@path/to/file'.padRight(16)}Attach file to message');
+    lines.add('  ${'@dir/'.padRight(16)}Browse directory');
+
+    _activePanel = PanelModal(
+      title: 'HELP',
+      lines: lines,
+      style: PanelStyle.tape,
+      barrier: BarrierStyle.dim,
+      height: PanelFluid(0.5, 10),
+    );
+    _render();
+  }
+
   // ── Terminal event handling ─────────────────────────────────────────────
 
   void _handleTerminalEvent(TerminalEvent event) {
     switch (event) {
       case CharEvent() || KeyEvent():
-        // Modal gets first crack at input.
+        // Panel modal gets first crack at input.
+        if (_activePanel != null && !_activePanel!.isComplete) {
+          if (_activePanel!.handleEvent(event)) {
+            if (_activePanel!.isComplete) _activePanel = null;
+            _doRender();
+            return;
+          }
+        }
+
+        // Confirm modal gets next crack at input.
         if (_activeModal != null && !_activeModal!.isComplete) {
           if (_activeModal!.handleEvent(event)) {
             _render();
@@ -393,13 +435,26 @@ class App {
             _render();
             return;
           }
-          if (event case KeyEvent(key: Key.enter) || KeyEvent(key: Key.tab)) {
+          if (event case KeyEvent(key: Key.tab)) {
             final accepted = _autocomplete.accept();
             if (accepted != null) {
               editor.setText(accepted);
             }
             _render();
             return;
+          }
+          if (event case KeyEvent(key: Key.enter)) {
+            if (_autocomplete.selectedText == editor.text) {
+              _autocomplete.dismiss();
+              // Fall through to normal submit handling.
+            } else {
+              final accepted = _autocomplete.accept();
+              if (accepted != null) {
+                editor.setText(accepted);
+              }
+              _render();
+              return;
+            }
           }
           if (event case KeyEvent(key: Key.escape)) {
             _autocomplete.dismiss();
@@ -698,6 +753,14 @@ class App {
 
   void _doRender() {
     _lastRender = DateTime.now();
+
+    final panelActive = _activePanel != null && !_activePanel!.isComplete;
+    if (_renderedPanelLastFrame && !panelActive) {
+      terminal.resetScrollRegion();
+      terminal.clearScreen();
+      layout.apply();
+    }
+
     if (_blocks.length > _maxBlocks) {
       _blocks.removeRange(0, _blocks.length - _maxBlocks);
     }
@@ -733,6 +796,25 @@ class App {
 
     // Trailing blank line so content doesn't butt against the status bar.
     outputLines.add('');
+
+    // Panel modal takes over the full viewport.
+    if (panelActive) {
+      _renderedPanelLastFrame = true;
+      final panelGrid = _activePanel!.render(
+        terminal.columns,
+        terminal.rows,
+        outputLines,
+      );
+      terminal.hideCursor();
+      for (var i = 0; i < panelGrid.length && i < terminal.rows; i++) {
+        terminal.moveTo(i + 1, 1);
+        terminal.clearLine();
+        terminal.write(panelGrid[i]);
+      }
+      return;
+    }
+
+    _renderedPanelLastFrame = false;
 
     // 2. Reserve overlay space for autocomplete (before computing viewport).
     final overlayHeight = _autocomplete.active

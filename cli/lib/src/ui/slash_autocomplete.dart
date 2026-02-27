@@ -90,6 +90,12 @@ class SlashAutocomplete {
     _selected = (_selected + 1) % _matches.length;
   }
 
+  /// The full command text of the currently selected item (e.g. `/help`).
+  String? get selectedText {
+    if (!_active || _matches.isEmpty) return null;
+    return '/${_matches[_selected].name}';
+  }
+
   /// Accept the current selection. Returns the full command text
   /// (e.g. `/help`) to fill into the editor.
   String? accept() {

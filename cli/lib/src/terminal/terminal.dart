@@ -122,6 +122,7 @@ class Terminal {
   StreamSubscription<ProcessSignal>? _sigwinchSub;
   bool _isRaw = false;
   List<int> _pending = [];
+  Timer? _escTimer;
 
   /// Stream of parsed terminal input events.
   Stream<TerminalEvent> get events => _inputController.stream;
@@ -168,6 +169,7 @@ class Terminal {
 
   /// Release all resources.
   void dispose() {
+    _escTimer?.cancel();
     disableRawMode();
     _inputController.close();
   }
@@ -175,14 +177,25 @@ class Terminal {
   // ── Input parsing ───────────────────────────────────────────────────────
 
   void _parseInput(List<int> bytes) {
+    _escTimer?.cancel();
+    _escTimer = null;
     final data = [..._pending, ...bytes];
     _pending = [];
     var i = 0;
     while (i < data.length) {
       if (data[i] == 0x1b) {
-        // If ESC is last byte, it might be start of a sequence — buffer it
+        // If ESC is last byte, it might be start of a sequence — buffer
+        // it briefly. If no follow-up arrives within 50ms, emit as
+        // standalone Escape.
         if (i + 1 >= data.length) {
           _pending = data.sublist(i);
+          _escTimer = Timer(const Duration(milliseconds: 50), () {
+            if (_pending.isNotEmpty && _pending[0] == 0x1b) {
+              _pending = _pending.sublist(1);
+              _emit(KeyEvent(Key.escape));
+              if (_pending.isNotEmpty) _parseInput([]);
+            }
+          });
           return;
         }
         if (data[i + 1] == 0x5b) {
