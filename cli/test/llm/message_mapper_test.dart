@@ -40,6 +40,25 @@ void main() {
       expect(result.messages.first['content'], 'You are Glue.');
     });
 
+    test('serializes tool call arguments as JSON string', () {
+      final mapper = OpenAiMessageMapper();
+      final messages = [
+        Message.assistant(
+          text: '',
+          toolCalls: [
+            ToolCall(id: 'tc1', name: 'read_file', arguments: {'path': '/foo.txt'}),
+          ],
+        ),
+      ];
+      final result = mapper.mapMessages(messages, systemPrompt: '');
+      final assistantMsg = result.messages.last;
+      final toolCall = (assistantMsg['tool_calls'] as List).first as Map;
+      final fn = toolCall['function'] as Map;
+      final args = fn['arguments'] as String;
+      // Must be valid JSON, not Dart Map.toString()
+      expect(args, '{"path":"/foo.txt"}');
+    });
+
     test('maps tool result as tool role', () {
       final mapper = OpenAiMessageMapper();
       final result = mapper.mapMessages(messages, systemPrompt: '');

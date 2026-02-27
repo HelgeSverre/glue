@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../agent/agent_core.dart';
 
 /// Result of mapping Glue messages to a provider-specific format.
@@ -114,7 +116,7 @@ class OpenAiMessageMapper extends MessageMapper {
                   'type': 'function',
                   'function': {
                     'name': tc.name,
-                    'arguments': tc.arguments.toString(),
+                    'arguments': jsonEncode(tc.arguments),
                   },
                 }
             ];
