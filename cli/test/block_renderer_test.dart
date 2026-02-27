@@ -214,4 +214,76 @@ void main() {
       }
     });
   });
+
+  group('renderBash', () {
+    test('renders fieldset box with command in legend', () {
+      final output = renderer.renderBash('git push', 'Everything up-to-date');
+      final stripped = stripAnsi(output);
+      expect(stripped, contains('git push'));
+      expect(stripped, contains('Everything up-to-date'));
+    });
+
+    test('renders top border with command legend', () {
+      final output = renderer.renderBash('ls', 'file.txt');
+      final stripped = stripAnsi(output);
+      final lines = stripped.split('\n');
+      expect(lines.first, contains('┌'));
+      expect(lines.first, contains('ls'));
+      expect(lines.first, contains('┐'));
+    });
+
+    test('renders bottom border', () {
+      final output = renderer.renderBash('ls', 'file.txt');
+      final stripped = stripAnsi(output);
+      final lines = stripped.split('\n');
+      expect(lines.last, contains('└'));
+      expect(lines.last, contains('┘'));
+    });
+
+    test('renders side borders on content lines', () {
+      final output = renderer.renderBash('ls', 'file.txt');
+      final stripped = stripAnsi(output);
+      final contentLines = stripped.split('\n')
+          .where((l) => l.contains('file.txt'))
+          .toList();
+      expect(contentLines, isNotEmpty);
+      for (final line in contentLines) {
+        expect(line, contains('│'));
+      }
+    });
+
+    test('handles empty output', () {
+      final output = renderer.renderBash('true', '');
+      final stripped = stripAnsi(output);
+      expect(stripped, contains('true'));
+      expect(stripped, contains('┌'));
+      expect(stripped, contains('└'));
+    });
+
+    test('handles multi-line output', () {
+      final output = renderer.renderBash('ls', 'a.txt\nb.txt\nc.txt');
+      final stripped = stripAnsi(output);
+      expect(stripped, contains('a.txt'));
+      expect(stripped, contains('b.txt'));
+      expect(stripped, contains('c.txt'));
+    });
+
+    test('truncates long output with notice', () {
+      final longOutput = List.generate(60, (i) => 'line $i').join('\n');
+      final output = renderer.renderBash('cmd', longOutput, maxLines: 50);
+      final stripped = stripAnsi(output);
+      expect(stripped, contains('lines above'));
+      expect(stripped, contains('line 59'));
+      expect(stripped, isNot(contains('line 0\n')));
+    });
+
+    test('content lines do not exceed terminal width', () {
+      final r = BlockRenderer(40);
+      final longLine = 'x' * 100;
+      final output = r.renderBash('cmd', longLine);
+      for (final line in output.split('\n')) {
+        expect(stripAnsi(line).length, lessThanOrEqualTo(40));
+      }
+    });
+  });
 }

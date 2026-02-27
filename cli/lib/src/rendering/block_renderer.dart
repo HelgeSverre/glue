@@ -72,6 +72,56 @@ class BlockRenderer {
     return ' \x1b[90m$text\x1b[0m';
   }
 
+  String renderBash(String command, String output, {int maxLines = 50}) {
+    final boxWidth = _inner;
+    final contentWidth = boxWidth - 4;
+
+    final legend = ' $command ';
+    final topFill = boxWidth - 2 - legend.length;
+    final topBar = topFill > 0 ? '─' * topFill : '';
+    final top = ' \x1b[90m┌─\x1b[0m\x1b[1m$legend\x1b[0m\x1b[90m$topBar┐\x1b[0m';
+
+    final bottom = ' \x1b[90m└${'─' * (boxWidth - 2)}┘\x1b[0m';
+
+    final lines = output.isEmpty ? <String>[] : output.split('\n');
+    final truncated = lines.length > maxLines;
+    final visible = truncated ? lines.sublist(lines.length - maxLines) : lines;
+
+    final contentLines = <String>[];
+    if (truncated) {
+      final notice = '… (${lines.length - maxLines} lines above)';
+      final noticeDisplay = visibleLength(notice) > contentWidth
+          ? ansiTruncate(notice, contentWidth)
+          : notice;
+      contentLines.add(
+        ' \x1b[90m│ $noticeDisplay${_bashPad(notice, contentWidth)} │\x1b[0m',
+      );
+    }
+    for (final line in visible) {
+      final stripped = stripAnsi(line);
+      final display = visibleLength(stripped) > contentWidth
+          ? ansiTruncate(stripped, contentWidth)
+          : stripped;
+      contentLines.add(
+        ' \x1b[90m│\x1b[0m $display${_bashPad(display, contentWidth)} \x1b[90m│\x1b[0m',
+      );
+    }
+
+    if (contentLines.isEmpty) {
+      contentLines.add(
+        ' \x1b[90m│\x1b[0m${' ' * (boxWidth - 2)}\x1b[90m│\x1b[0m',
+      );
+    }
+
+    return [top, ...contentLines, bottom].join('\n');
+  }
+
+  String _bashPad(String text, int width) {
+    final vis = visibleLength(text);
+    final pad = width - vis;
+    return pad > 0 ? ' ' * pad : '';
+  }
+
   String _truncateLines(String s, int maxLines, int maxWidth) {
     final lines = s.split('\n');
     final capped = lines.length > maxLines
