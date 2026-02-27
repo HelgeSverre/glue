@@ -15,6 +15,7 @@ import 'rendering/block_renderer.dart';
 import 'tools/subagent_tools.dart';
 import 'ui/modal.dart';
 import 'input/file_expander.dart';
+import 'ui/at_file_hint.dart';
 import 'ui/slash_autocomplete.dart';
 
 // ---------------------------------------------------------------------------
@@ -102,6 +103,7 @@ class App {
   final GlueConfig? _config;
   final String? _systemPrompt;
   late final SlashAutocomplete _autocomplete;
+  late final AtFileHint _atHint;
 
   App({
     required this.terminal,
@@ -121,6 +123,7 @@ class App {
        _cwd = Directory.current.path {
     _initCommands();
     _autocomplete = SlashAutocomplete(_commands);
+    _atHint = AtFileHint();
   }
 
   /// Convenience factory that creates a fully wired [App] with real
@@ -405,11 +408,43 @@ class App {
           }
         }
 
+        // @file hint intercepts keys when active.
+        if (_atHint.active) {
+          if (event case KeyEvent(key: Key.up)) {
+            _atHint.moveUp();
+            _render();
+            return;
+          }
+          if (event case KeyEvent(key: Key.down)) {
+            _atHint.moveDown();
+            _render();
+            return;
+          }
+          if (event case KeyEvent(key: Key.enter) || KeyEvent(key: Key.tab)) {
+            final accepted = _atHint.accept();
+            if (accepted != null) {
+              final buf = editor.text;
+              final before = buf.substring(0, _atHint.tokenStart);
+              final after = buf.substring(editor.cursor);
+              editor.setText('$before$accepted$after',
+                  cursor: before.length + accepted.length);
+            }
+            _render();
+            return;
+          }
+          if (event case KeyEvent(key: Key.escape)) {
+            _atHint.dismiss();
+            _render();
+            return;
+          }
+        }
+
         // Normal idle mode — full input handling.
         final action = editor.handle(event);
         switch (action) {
           case InputAction.submit:
             _autocomplete.dismiss();
+            _atHint.dismiss();
             final text = editor.lastSubmitted;
             if (text.isNotEmpty) {
               _events.add(UserSubmit(text));
@@ -418,6 +453,11 @@ class App {
             requestExit();
           case InputAction.changed:
             _autocomplete.update(editor.text, editor.cursor);
+            if (!_autocomplete.active) {
+              _atHint.update(editor.text, editor.cursor);
+            } else {
+              _atHint.dismiss();
+            }
             _render();
           default:
             break;
@@ -694,7 +734,10 @@ class App {
     outputLines.add('');
 
     // 2. Reserve overlay space for autocomplete (before computing viewport).
-    layout.setOverlayHeight(_autocomplete.overlayHeight);
+    final overlayHeight = _autocomplete.active
+        ? _autocomplete.overlayHeight
+        : _atHint.overlayHeight;
+    layout.setOverlayHeight(overlayHeight);
 
     // 3. Compute visible window.
     final viewportHeight = layout.outputBottom - layout.outputTop + 1;
@@ -710,9 +753,11 @@ class App {
 
     layout.paintOutputViewport(visibleLines);
 
-    // 4. Autocomplete overlay.
+    // 4. Autocomplete / @file overlay.
     if (_autocomplete.active) {
       layout.paintOverlay(_autocomplete.render(terminal.columns));
+    } else if (_atHint.active) {
+      layout.paintOverlay(_atHint.render(terminal.columns));
     } else {
       layout.paintOverlay([]);
     }
