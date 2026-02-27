@@ -1,6 +1,7 @@
 import 'package:test/test.dart';
 
 import 'package:glue/src/rendering/ansi_utils.dart';
+import 'package:glue/src/terminal/terminal.dart';
 import 'package:glue/src/ui/panel_modal.dart';
 
 void main() {
@@ -180,6 +181,102 @@ void main() {
         expect(result.length, testLines.length,
             reason: '${style.name} changed line count');
       }
+    });
+  });
+
+  group('PanelModal', () {
+    late PanelModal panel;
+
+    setUp(() {
+      panel = PanelModal(
+        title: 'TEST',
+        lines: List.generate(30, (i) => 'Line $i'),
+        style: PanelStyle.simple,
+        barrier: BarrierStyle.dim,
+        width: PanelFixed(40),
+        height: PanelFixed(10),
+      );
+    });
+
+    test('initial scroll offset is 0', () {
+      expect(panel.scrollOffset, 0);
+    });
+
+    test('scroll down advances offset', () {
+      panel.handleEvent(KeyEvent(Key.down));
+      expect(panel.scrollOffset, 1);
+    });
+
+    test('scroll up at top stays at 0', () {
+      panel.handleEvent(KeyEvent(Key.up));
+      expect(panel.scrollOffset, 0);
+    });
+
+    test('scroll clamps to max', () {
+      for (var i = 0; i < 50; i++) {
+        panel.handleEvent(KeyEvent(Key.down));
+      }
+      // 30 lines, 8 visible (10 - 2 borders), max scroll = 22
+      expect(panel.scrollOffset, 22);
+    });
+
+    test('page down scrolls by visible height', () {
+      panel.handleEvent(KeyEvent(Key.pageDown));
+      // visible height = 10 - 2 = 8
+      expect(panel.scrollOffset, 8);
+    });
+
+    test('escape completes result when dismissable', () {
+      expect(panel.isComplete, false);
+      panel.handleEvent(KeyEvent(Key.escape));
+      expect(panel.isComplete, true);
+    });
+
+    test('escape does not complete when not dismissable', () {
+      final locked = PanelModal(
+        title: 'LOCKED',
+        lines: ['content'],
+        style: PanelStyle.simple,
+        barrier: BarrierStyle.dim,
+        dismissable: false,
+      );
+      locked.handleEvent(KeyEvent(Key.escape));
+      expect(locked.isComplete, false);
+    });
+
+    test('swallows all other input', () {
+      expect(panel.handleEvent(CharEvent('a')), true);
+    });
+
+    test('returns false when already complete', () {
+      panel.dismiss();
+      expect(panel.handleEvent(KeyEvent(Key.down)), false);
+    });
+
+    test('dismiss completes the result future', () {
+      panel.dismiss();
+      expect(panel.isComplete, true);
+    });
+
+    test('render produces correct number of lines', () {
+      final bg = List.generate(24, (i) => 'bg $i');
+      final rendered = panel.render(80, 24, bg);
+      expect(rendered.length, 24);
+    });
+
+    test('render shows panel content in output', () {
+      final bg = List.generate(24, (i) => '');
+      final rendered = panel.render(80, 24, bg);
+      final allText = rendered.map(stripAnsi).join('\n');
+      expect(allText, contains('Line 0'));
+      expect(allText, contains('TEST'));
+    });
+
+    test('render applies barrier to background', () {
+      final bg = List.generate(24, (i) => 'visible background $i');
+      final rendered = panel.render(80, 24, bg);
+      final firstLine = rendered.first;
+      expect(firstLine, contains('\x1b[2m'));
     });
   });
 }

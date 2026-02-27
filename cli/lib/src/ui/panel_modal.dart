@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:math';
 
 import '../rendering/ansi_utils.dart';
+import '../terminal/terminal.dart';
 
 enum PanelStyle { tape, simple, heavy }
 
@@ -130,4 +132,164 @@ List<String> applyBarrier(BarrierStyle style, List<String> lines) {
         return '\x1b[90m${'░' * len}\x1b[0m';
       }).toList(),
   };
+}
+
+class PanelModal {
+  final String title;
+  final List<String> lines;
+  final PanelStyle style;
+  final BarrierStyle barrier;
+  final PanelSize _width;
+  final PanelSize _height;
+  final bool dismissable;
+
+  int _scrollOffset = 0;
+  final Completer<void> _completer = Completer<void>();
+  int _lastVisibleHeight = 0;
+
+  PanelModal({
+    required this.title,
+    required this.lines,
+    this.style = PanelStyle.tape,
+    this.barrier = BarrierStyle.dim,
+    PanelSize? width,
+    PanelSize? height,
+    this.dismissable = true,
+  })  : _width = width ?? PanelFluid(0.7, 40),
+        _height = height ?? PanelFluid(0.7, 10) {
+    if (_height case PanelFixed(:final size)) {
+      _lastVisibleHeight = size - 2;
+    }
+  }
+
+  int get scrollOffset => _scrollOffset;
+  bool get isComplete => _completer.isCompleted;
+  Future<void> get result => _completer.future;
+
+  void dismiss() {
+    if (!_completer.isCompleted) _completer.complete();
+  }
+
+  bool handleEvent(TerminalEvent event) {
+    if (isComplete) return false;
+
+    final visibleH = max<int>(_lastVisibleHeight, 1);
+    final maxScroll = max<int>(0, lines.length - visibleH);
+
+    switch (event) {
+      case KeyEvent(key: Key.escape):
+        if (dismissable) dismiss();
+        return true;
+      case KeyEvent(key: Key.up):
+        _scrollOffset = max<int>(0, _scrollOffset - 1);
+        return true;
+      case KeyEvent(key: Key.down):
+        _scrollOffset = min<int>(maxScroll, _scrollOffset + 1);
+        return true;
+      case KeyEvent(key: Key.pageUp):
+        _scrollOffset = max<int>(0, _scrollOffset - visibleH);
+        return true;
+      case KeyEvent(key: Key.pageDown):
+        _scrollOffset = min<int>(maxScroll, _scrollOffset + visibleH);
+        return true;
+      default:
+        return true;
+    }
+  }
+
+  List<String> render(int termWidth, int termHeight, List<String> backgroundLines) {
+    final panelW = _width.resolve(termWidth);
+    final panelH = _height.resolve(termHeight);
+    final visibleContentH = panelH - 2;
+    _lastVisibleHeight = visibleContentH;
+
+    final maxScroll = max(0, lines.length - visibleContentH);
+    _scrollOffset = min(_scrollOffset, maxScroll);
+
+    final dimmed = applyBarrier(barrier, backgroundLines);
+    final grid = List<String>.generate(termHeight, (i) => i < dimmed.length ? dimmed[i] : '');
+
+    final border = renderBorder(style, panelW, panelH, title);
+
+    final topRow = (termHeight - panelH) ~/ 2;
+    final leftCol = (termWidth - panelW) ~/ 2;
+    final contentW = panelW - 4;
+
+    final visibleLines = lines.sublist(
+      _scrollOffset,
+      min(_scrollOffset + visibleContentH, lines.length),
+    );
+
+    final hasOverflow = lines.length > visibleContentH;
+    final totalPages = (lines.length + visibleContentH - 1) ~/ visibleContentH;
+    final currentPage = (_scrollOffset ~/ max(visibleContentH, 1)) + 1;
+
+    final panelLines = <String>[];
+    for (var r = 0; r < panelH; r++) {
+      if (r == 0) {
+        panelLines.add(border.first);
+      } else if (r == panelH - 1) {
+        if (hasOverflow) {
+          final indicator = '$currentPage/$totalPages';
+          final borderStr = stripAnsi(border.last);
+          final insertPos = borderStr.length - indicator.length - 2;
+          if (insertPos > 0) {
+            final before = border.last.substring(0, _ansiIndex(border.last, insertPos));
+            final after = border.last.substring(_ansiIndex(border.last, insertPos + indicator.length));
+            panelLines.add('$before$indicator$after');
+          } else {
+            panelLines.add(border.last);
+          }
+        } else {
+          panelLines.add(border.last);
+        }
+      } else {
+        final contentIdx = r - 1;
+        final raw = contentIdx < visibleLines.length ? visibleLines[contentIdx] : '';
+        final truncated = ansiTruncate(raw, contentW);
+        final padLen = contentW - visibleLength(truncated);
+        final padded = '$truncated${' ' * max(0, padLen)}';
+
+        final (leftBorder, rightBorder) = switch (style) {
+          PanelStyle.simple => ('\x1b[2m│\x1b[0m', '\x1b[2m│\x1b[0m'),
+          PanelStyle.heavy => ('\x1b[33m║\x1b[0m', '\x1b[33m║\x1b[0m'),
+          PanelStyle.tape => ('\x1b[33m│\x1b[0m', '\x1b[33m│\x1b[0m'),
+        };
+
+        panelLines.add('$leftBorder $padded $rightBorder');
+      }
+    }
+
+    for (var r = 0; r < panelH; r++) {
+      final gridRow = topRow + r;
+      if (gridRow < 0 || gridRow >= termHeight) continue;
+      grid[gridRow] = _spliceRow(grid[gridRow], leftCol, panelW, panelLines[r], termWidth);
+    }
+
+    return grid;
+  }
+
+  int _ansiIndex(String s, int visiblePos) {
+    final ansiPattern = RegExp(r'\x1b\[[0-9;]*[a-zA-Z]');
+    var visible = 0;
+    var i = 0;
+    while (i < s.length && visible < visiblePos) {
+      final match = ansiPattern.matchAsPrefix(s, i);
+      if (match != null) {
+        i += match.group(0)!.length;
+      } else {
+        visible++;
+        i++;
+      }
+    }
+    return i;
+  }
+
+  String _spliceRow(String bgLine, int leftCol, int panelW, String overlay, int termWidth) {
+    final bgPlain = stripAnsi(bgLine);
+    final padded = bgPlain.padRight(termWidth);
+    final before = padded.substring(0, max(0, leftCol));
+    final after = leftCol + panelW < padded.length ? padded.substring(leftCol + panelW) : '';
+    return '$before$overlay${' ' * max(0, panelW - visibleLength(overlay))}$after';
+  }
 }
