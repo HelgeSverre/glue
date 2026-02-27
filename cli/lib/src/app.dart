@@ -507,7 +507,8 @@ class App {
   // ── Agent interaction ──────────────────────────────────────────────────
 
   void _startAgent(String displayMessage, {String? expandedMessage}) {
-    _blocks.add(_ConversationEntry.user(displayMessage));
+    _blocks.add(_ConversationEntry.user(displayMessage,
+        expandedText: expandedMessage));
     _mode = AppMode.streaming;
     _streamingText = '';
     _render();
@@ -796,11 +797,12 @@ class _ConversationEntry {
   final _EntryKind kind;
   final String text;
   final Map<String, dynamic>? args;
+  final String? expandedText;
 
-  _ConversationEntry._(this.kind, this.text, {this.args});
+  _ConversationEntry._(this.kind, this.text, {this.args, this.expandedText});
 
-  factory _ConversationEntry.user(String text) =>
-      _ConversationEntry._(_EntryKind.user, text);
+  factory _ConversationEntry.user(String text, {String? expandedText}) =>
+      _ConversationEntry._(_EntryKind.user, text, expandedText: expandedText);
 
   factory _ConversationEntry.assistant(String text) =>
       _ConversationEntry._(_EntryKind.assistant, text);
