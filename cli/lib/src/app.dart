@@ -15,6 +15,9 @@ import 'llm/llm_factory.dart';
 import 'rendering/block_renderer.dart';
 import 'rendering/ansi_utils.dart';
 import 'rendering/mascot.dart';
+import 'shell/command_executor.dart';
+import 'shell/host_executor.dart';
+import 'shell/shell_config.dart';
 import 'shell/shell_job_manager.dart';
 import 'tools/subagent_tools.dart';
 import 'ui/modal.dart';
@@ -131,6 +134,7 @@ class App {
   final LlmClientFactory? _llmFactory;
   final GlueConfig? _config;
   final String? _systemPrompt;
+  final CommandExecutor _executor;
   final ShellJobManager _jobManager;
   late final SlashAutocomplete _autocomplete;
   late final AtFileHint _atHint;
@@ -157,6 +161,7 @@ class App {
     String? systemPrompt,
     Set<String>? extraTrustedTools,
     SessionStore? sessionStore,
+    CommandExecutor? executor,
     ShellJobManager? jobManager,
     bool startupResume = false,
     bool startupContinue = false,
@@ -166,7 +171,8 @@ class App {
         _config = config,
         _systemPrompt = systemPrompt,
         _sessionStore = sessionStore,
-        _jobManager = jobManager ?? ShellJobManager(),
+        _executor = executor ?? HostExecutor(const ShellConfig()),
+        _jobManager = jobManager ?? ShellJobManager(executor ?? HostExecutor(const ShellConfig())),
         _startupResume = startupResume,
         _startupContinue = startupContinue,
         _cwd = Directory.current.path {
@@ -197,11 +203,13 @@ class App {
     final llmFactory = LlmClientFactory();
     final llm = llmFactory.createFromConfig(config, systemPrompt: systemPrompt);
 
+    final executor = HostExecutor(config.shellConfig);
+
     final tools = <String, Tool>{
       'read_file': ReadFileTool(),
       'write_file': WriteFileTool(),
       'edit_file': EditFileTool(),
-      'bash': BashTool(),
+      'bash': BashTool(executor),
       'grep': GrepTool(),
       'list_directory': ListDirectoryTool(),
     };
@@ -247,6 +255,8 @@ class App {
       systemPrompt: systemPrompt,
       extraTrustedTools: configStore.trustedTools.toSet(),
       sessionStore: sessionStore,
+      executor: executor,
+      jobManager: ShellJobManager(executor),
       startupResume: startupResume,
       startupContinue: startupContinue,
     );
@@ -1021,15 +1031,15 @@ class App {
 
   Future<void> _runBlockingBash(String command) async {
     try {
-      final process = await Process.start('sh', ['-c', command]);
-      _bashRunProcess = process;
+      final running = await _executor.startStreaming(command);
+      _bashRunProcess = running.process;
 
       final stdoutFuture =
-          process.stdout.transform(const SystemEncoding().decoder).join();
+          running.stdout.transform(const SystemEncoding().decoder).join();
       final stderrFuture =
-          process.stderr.transform(const SystemEncoding().decoder).join();
+          running.stderr.transform(const SystemEncoding().decoder).join();
 
-      final exitCode = await process.exitCode;
+      final exitCode = await running.exitCode;
       _bashRunProcess = null;
 
       final stdout = await stdoutFuture;
