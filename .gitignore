@@ -23,6 +23,7 @@ pubspec.lock
 build/
 dist/
 cli/glue
+cli/dart-docs
 
 # Environment
 .env
