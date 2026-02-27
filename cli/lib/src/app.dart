@@ -12,6 +12,8 @@ import 'commands/slash_commands.dart';
 import 'config/glue_config.dart';
 import 'llm/llm_factory.dart';
 import 'rendering/block_renderer.dart';
+import 'rendering/ansi_utils.dart';
+import 'shell/shell_job_manager.dart';
 import 'tools/subagent_tools.dart';
 import 'ui/modal.dart';
 import 'ui/panel_modal.dart';
@@ -39,6 +41,9 @@ enum AppMode {
 
   /// Waiting for user to approve a tool invocation.
   confirming,
+
+  /// A bash command is currently executing.
+  bashRunning,
 }
 
 // ---------------------------------------------------------------------------
@@ -108,9 +113,14 @@ class App {
   final LlmClientFactory? _llmFactory;
   final GlueConfig? _config;
   final String? _systemPrompt;
+  final ShellJobManager _jobManager;
   late final SlashAutocomplete _autocomplete;
   late final AtFileHint _atHint;
   SessionStore? _sessionStore;
+  bool _bashMode = false;
+  Process? _bashRunProcess;
+  DateTime? _lastCtrlC;
+  static const _ctrlCWindow = Duration(seconds: 2);
 
   App({
     required this.terminal,
@@ -124,12 +134,14 @@ class App {
     String? systemPrompt,
     Set<String>? extraTrustedTools,
     SessionStore? sessionStore,
+    ShellJobManager? jobManager,
   }) : _modelName = modelName,
        _manager = manager,
        _llmFactory = llmFactory,
        _config = config,
        _systemPrompt = systemPrompt,
        _sessionStore = sessionStore,
+       _jobManager = jobManager ?? ShellJobManager(),
        _cwd = Directory.current.path {
     if (extraTrustedTools != null) {
       _autoApprovedTools.addAll(extraTrustedTools);
@@ -240,6 +252,7 @@ class App {
     final termSub = terminal.events.listen(_handleTerminalEvent);
     final appSub = _events.stream.listen(_handleAppEvent);
     _subagentSub = _manager?.updates.listen(_handleSubagentUpdate);
+    final jobSub = _jobManager.events.listen(_handleJobEvent);
 
     _render();
 
@@ -248,6 +261,8 @@ class App {
     } finally {
       // Stop all event sources before touching terminal state.
       await _sessionStore?.close();
+      await jobSub.cancel();
+      await _jobManager.shutdown();
       await termSub.cancel();
       await appSub.cancel();
       await _agentSub?.cancel();
@@ -529,10 +544,27 @@ class App {
           return;
         }
 
-        if (_mode == AppMode.streaming || _mode == AppMode.toolRunning) {
-          // While the agent is working the user can still cancel.
+        // Bash mode switching — before passing to editor.
+        if (_mode == AppMode.idle) {
+          if (!_bashMode && event is CharEvent && event.char == '!' && editor.cursor == 0) {
+            _bashMode = true;
+            _render();
+            return;
+          }
+          if (_bashMode && event is KeyEvent && event.key == Key.backspace && editor.cursor == 0) {
+            _bashMode = false;
+            _render();
+            return;
+          }
+        }
+
+        if (_mode == AppMode.streaming || _mode == AppMode.toolRunning || _mode == AppMode.bashRunning) {
           if (event case KeyEvent(key: Key.ctrlC) || KeyEvent(key: Key.escape)) {
-            _cancelAgent();
+            if (_mode == AppMode.bashRunning) {
+              _cancelBash();
+            } else {
+              _cancelAgent();
+            }
             return;
           }
           // Swallow Enter during streaming — keep buffer intact for when agent finishes.
@@ -625,7 +657,15 @@ class App {
               _events.add(UserSubmit(text));
             }
           case InputAction.interrupt:
-            requestExit();
+            final now = DateTime.now();
+            if (_lastCtrlC != null && now.difference(_lastCtrlC!) < _ctrlCWindow) {
+              _lastCtrlC = null;
+              requestExit();
+            } else {
+              _lastCtrlC = now;
+              _blocks.add(_ConversationEntry.system('Press Ctrl+C again to exit.'));
+              _render();
+            }
           case InputAction.changed:
             _autocomplete.update(editor.text, editor.cursor);
             if (!_autocomplete.active) {
@@ -653,7 +693,9 @@ class App {
   void _handleAppEvent(AppEvent event) {
     switch (event) {
       case UserSubmit(:final text):
-        if (text.startsWith('/')) {
+        if (_bashMode) {
+          _handleBashSubmit(text);
+        } else if (text.startsWith('/')) {
           final result = _commands.execute(text);
           if (result != null && result.isNotEmpty) {
             _blocks.add(_ConversationEntry.system(result));
@@ -828,6 +870,95 @@ class App {
     _render();
   }
 
+  // ── Bash mode ─────────────────────────────────────────────────────────
+
+  void _handleBashSubmit(String text) {
+    if (text.isEmpty) return;
+
+    if (text.startsWith('& ') || text == '&') {
+      final command = text.substring(1).trim();
+      if (command.isEmpty) return;
+      _startBackgroundJob(command);
+      return;
+    }
+
+    _mode = AppMode.bashRunning;
+    _render();
+    unawaited(_runBlockingBash(text));
+  }
+
+  Future<void> _runBlockingBash(String command) async {
+    try {
+      final process = await Process.start('sh', ['-c', command]);
+      _bashRunProcess = process;
+
+      final stdoutFuture =
+          process.stdout.transform(const SystemEncoding().decoder).join();
+      final stderrFuture =
+          process.stderr.transform(const SystemEncoding().decoder).join();
+
+      final exitCode = await process.exitCode;
+      _bashRunProcess = null;
+
+      final stdout = await stdoutFuture;
+      final stderr = await stderrFuture;
+
+      final output = StringBuffer();
+      if (stdout.isNotEmpty) output.write(stdout);
+      if (stderr.isNotEmpty) {
+        if (output.isNotEmpty) output.write('\n');
+        output.write(stderr);
+      }
+
+      final stripped = stripAnsi(output.toString().trimRight());
+      _blocks.add(_ConversationEntry.bash(command, stripped));
+      if (exitCode != 0) {
+        _blocks.add(_ConversationEntry.system('Exit code: $exitCode'));
+      }
+    } catch (e) {
+      _bashRunProcess = null;
+      _blocks.add(_ConversationEntry.error('Bash error: $e'));
+    }
+    _mode = AppMode.idle;
+    _render();
+  }
+
+  void _cancelBash() {
+    _bashRunProcess?.kill(ProcessSignal.sigterm);
+    _bashRunProcess = null;
+    _mode = AppMode.idle;
+    _blocks.add(_ConversationEntry.system('[bash command cancelled]'));
+    _render();
+  }
+
+  void _startBackgroundJob(String command) {
+    unawaited(() async {
+      try {
+        await _jobManager.start(command);
+      } catch (e) {
+        _blocks.add(_ConversationEntry.error('Failed to start job: $e'));
+        _render();
+      }
+    }());
+  }
+
+  void _handleJobEvent(JobEvent event) {
+    switch (event) {
+      case JobStarted(:final id, :final command):
+        _blocks.add(_ConversationEntry.system('↳ Started job #$id: $command'));
+        _render();
+      case JobExited(:final id, :final exitCode):
+        final job = _jobManager.getJob(id);
+        final cmd = job?.command ?? '?';
+        final label = exitCode == 0 ? 'exited' : 'failed';
+        _blocks.add(_ConversationEntry.system('↳ Job #$id $label ($exitCode): $cmd'));
+        _render();
+      case JobError(:final id, :final error):
+        _blocks.add(_ConversationEntry.system('↳ Job #$id error: $error'));
+        _render();
+    }
+  }
+
   // ── Subagent updates ──────────────────────────────────────────────────
 
   void _handleSubagentUpdate(SubagentUpdate update) {
@@ -915,6 +1046,11 @@ class App {
         _EntryKind.error => renderer.renderError(block.text),
         _EntryKind.subagent => renderer.renderSubagent(block.text),
         _EntryKind.system => renderer.renderSystem(block.text),
+        _EntryKind.bash => renderer.renderBash(
+          block.expandedText ?? 'shell',
+          block.text,
+          maxLines: _config?.bashMaxLines ?? 50,
+        ),
       };
       outputLines.addAll(text.split('\n'));
       outputLines.add(''); // blank line between blocks
@@ -988,6 +1124,7 @@ class App {
       AppMode.streaming => '● Generating',
       AppMode.toolRunning => '⚙ Tool',
       AppMode.confirming => '? Approve',
+      AppMode.bashRunning => '! Running',
     };
     final shortCwd = _shortenPath(_cwd);
     final statusLeft = ' $modeIndicator  $_modelName  $shortCwd';
@@ -997,12 +1134,19 @@ class App {
     layout.paintStatus(statusLeft, statusRight);
 
     // 6. Input area — MUST be last so cursor lands here.
-    final prompt = switch (_mode) {
-      AppMode.idle => '❯ ',
+    final prompt = switch ((_mode, _bashMode)) {
+      (AppMode.idle, true) => '! ',
+      (AppMode.idle, false) => '❯ ',
       _ => '  ',
     };
+    final promptStyle = switch ((_mode, _bashMode)) {
+      (AppMode.idle, true) => AnsiStyle.red,
+      (AppMode.idle, false) => AnsiStyle.yellow,
+      _ => AnsiStyle.dim,
+    };
     final showCursor = !(_mode == AppMode.confirming && _activeModal != null);
-    layout.paintInput(prompt, editor.text, editor.cursor, showCursor: showCursor);
+    layout.paintInput(prompt, editor.text, editor.cursor,
+        showCursor: showCursor, promptStyle: promptStyle);
   }
 }
 
@@ -1010,7 +1154,7 @@ class App {
 // Conversation entries (simple model for the output log)
 // ---------------------------------------------------------------------------
 
-enum _EntryKind { user, assistant, toolCall, toolResult, error, system, subagent }
+enum _EntryKind { user, assistant, toolCall, toolResult, error, system, subagent, bash }
 
 class _ConversationEntry {
   final _EntryKind kind;
@@ -1043,6 +1187,9 @@ class _ConversationEntry {
 
   factory _ConversationEntry.system(String text) =>
       _ConversationEntry._(_EntryKind.system, text);
+
+  factory _ConversationEntry.bash(String command, String output) =>
+      _ConversationEntry._(_EntryKind.bash, output, expandedText: command);
 }
 
 

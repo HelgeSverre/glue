@@ -5,18 +5,27 @@ class LineRingBuffer {
   final int maxBytes;
   final _lines = ListQueue<String>();
   int _bytes = 0;
+  String _partial = '';
 
   LineRingBuffer({required this.maxLines, required this.maxBytes});
 
-  int get lineCount => _lines.length;
+  int get lineCount => _lines.length + (_partial.isNotEmpty ? 1 : 0);
 
   void addText(String text) {
-    for (final line in text.split('\n')) {
-      _pushLine(line);
+    if (text.isEmpty) return;
+    final parts = text.split('\n');
+    if (parts.length == 1) {
+      _partial += parts[0];
+      return;
     }
+    _commitLine(_partial + parts[0]);
+    for (var i = 1; i < parts.length - 1; i++) {
+      _commitLine(parts[i]);
+    }
+    _partial = parts.last;
   }
 
-  void _pushLine(String line) {
+  void _commitLine(String line) {
     final b = line.length + 1;
     _lines.add(line);
     _bytes += b;
@@ -28,9 +37,15 @@ class LineRingBuffer {
   }
 
   String tail({int lines = 200}) {
-    final start = (_lines.length - lines).clamp(0, _lines.length);
-    return _lines.skip(start).join('\n');
+    final all = _allLines().toList();
+    final start = (all.length - lines).clamp(0, all.length);
+    return all.sublist(start).join('\n');
   }
 
-  String dump() => _lines.join('\n');
+  String dump() => _allLines().join('\n');
+
+  Iterable<String> _allLines() sync* {
+    yield* _lines;
+    if (_partial.isNotEmpty) yield _partial;
+  }
 }

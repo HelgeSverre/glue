@@ -132,10 +132,13 @@ class Layout {
 
   /// Paint the input area showing [prompt] followed by [text] with the
   /// cursor positioned at [cursorPos] within the text.
-  void paintInput(String prompt, String text, int cursorPos, {bool showCursor = true}) {
+  void paintInput(String prompt, String text, int cursorPos, {
+    bool showCursor = true,
+    AnsiStyle promptStyle = AnsiStyle.yellow,
+  }) {
     terminal.moveTo(inputTop, 1);
     terminal.clearLine();
-    terminal.writeStyled(prompt, style: AnsiStyle.yellow);
+    terminal.writeStyled(prompt, style: promptStyle);
     terminal.write(text);
 
     // Fill rest of line with spaces to clear stale characters.
