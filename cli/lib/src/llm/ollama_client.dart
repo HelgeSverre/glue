@@ -60,7 +60,7 @@ class OllamaClient implements LlmClient {
           mappedMessages.add({
             'role': 'tool',
             'content': msg.text ?? '',
-            'tool_name': msg.toolCallId ?? '',
+            'tool_name': msg.toolName ?? '',
           });
       }
     }

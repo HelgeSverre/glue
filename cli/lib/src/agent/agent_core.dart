@@ -15,12 +15,14 @@ class Message {
   final String? text;
   final List<ToolCall> toolCalls;
   final String? toolCallId;
+  final String? toolName;
 
   const Message._({
     required this.role,
     this.text,
     this.toolCalls = const [],
     this.toolCallId,
+    this.toolName,
   });
 
   factory Message.user(String text) =>
@@ -36,8 +38,9 @@ class Message {
   factory Message.toolResult({
     required String callId,
     required String content,
+    String? toolName,
   }) =>
-      Message._(role: Role.toolResult, text: content, toolCallId: callId);
+      Message._(role: Role.toolResult, text: content, toolCallId: callId, toolName: toolName);
 }
 
 // ---------------------------------------------------------------------------
@@ -225,6 +228,7 @@ class AgentCore {
           _conversation.add(Message.toolResult(
             callId: call.id,
             content: result.content,
+            toolName: call.name,
           ));
           yield AgentToolResult(result);
         }

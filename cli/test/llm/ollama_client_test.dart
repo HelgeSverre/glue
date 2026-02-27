@@ -58,4 +58,16 @@ void main() {
       expect(toolCalls.first.toolCall.arguments['path'], 'main.dart');
     });
   });
+
+  group('Ollama message mapping', () {
+    test('tool result uses tool name not call ID', () {
+      final msg = Message.toolResult(
+        callId: 'ollama_tc_1',
+        content: 'file contents',
+        toolName: 'read_file',
+      );
+      expect(msg.toolName, 'read_file');
+      expect(msg.toolCallId, 'ollama_tc_1');
+    });
+  });
 }
