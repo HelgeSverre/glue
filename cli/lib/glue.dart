@@ -8,7 +8,7 @@ export 'src/terminal/layout.dart' show Layout;
 export 'src/input/line_editor.dart' show LineEditor, InputAction;
 export 'src/agent/agent_core.dart'
     show AgentCore, LlmClient, LlmChunk, TextDelta, ToolCallDelta, UsageInfo, ToolCall, ToolResult, Message;
-export 'src/agent/tools.dart' show Tool, ToolParameter, ReadFileTool, WriteFileTool, BashTool, GrepTool, ListDirectoryTool;
+export 'src/agent/tools.dart' show Tool, ToolParameter, ReadFileTool, WriteFileTool, EditFileTool, BashTool, GrepTool, ListDirectoryTool;
 export 'src/config/glue_config.dart' show GlueConfig, LlmProvider, AgentProfile, ConfigError;
 export 'src/llm/llm_factory.dart' show LlmClientFactory;
 export 'src/agent/agent_runner.dart' show AgentRunner, ToolApprovalPolicy;

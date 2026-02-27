@@ -262,6 +262,88 @@ class GrepTool extends Tool {
   }
 }
 
+/// Edit a file by replacing an exact string match.
+class EditFileTool extends Tool {
+  @override
+  String get name => 'edit_file';
+
+  @override
+  String get description =>
+      'Edit a file by replacing an exact match of old_string with new_string. '
+      'old_string must match exactly one location in the file (include enough '
+      'context lines to be unambiguous). If old_string is empty, creates the '
+      'file with new_string as content. Supports multi-line strings.';
+
+  @override
+  List<ToolParameter> get parameters => const [
+        ToolParameter(
+          name: 'path',
+          type: 'string',
+          description: 'Absolute or relative path to the file.',
+        ),
+        ToolParameter(
+          name: 'old_string',
+          type: 'string',
+          description:
+              'The exact text to find (multi-line supported). '
+              'Must be unique in the file. Empty string to create a new file.',
+        ),
+        ToolParameter(
+          name: 'new_string',
+          type: 'string',
+          description:
+              'The replacement text (multi-line supported). '
+              'Empty string to delete the matched text.',
+        ),
+      ];
+
+  @override
+  Future<String> execute(Map<String, dynamic> args) async {
+    final path = args['path'];
+    if (path is! String || path.isEmpty) return 'Error: no path provided';
+    final oldString = args['old_string'] as String? ?? '';
+    final newString = args['new_string'] as String? ?? '';
+
+    final file = File(path);
+
+    if (oldString.isEmpty) {
+      await file.parent.create(recursive: true);
+      await file.writeAsString(newString);
+      return 'Created ${file.path} (${newString.length} bytes)';
+    }
+
+    if (!await file.exists()) {
+      return 'Error: file not found: $path';
+    }
+
+    final content = await file.readAsString();
+
+    final firstIndex = content.indexOf(oldString);
+    if (firstIndex == -1) {
+      return 'Error: old_string not found in $path. '
+          'Make sure it matches the file content exactly, '
+          'including whitespace and indentation.';
+    }
+
+    final lastIndex = content.lastIndexOf(oldString);
+    if (firstIndex != lastIndex) {
+      return 'Error: old_string appears multiple times in $path. '
+          'Include more surrounding context lines to make the match unique.';
+    }
+
+    final newContent =
+        content.substring(0, firstIndex) +
+        newString +
+        content.substring(firstIndex + oldString.length);
+
+    await file.writeAsString(newContent);
+
+    final oldLines = oldString.split('\n').length;
+    final newLines = newString.split('\n').length;
+    return 'Applied edit to $path: replaced $oldLines line(s) with $newLines line(s)';
+  }
+}
+
 /// List directory contents.
 class ListDirectoryTool extends Tool {
   @override

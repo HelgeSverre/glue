@@ -146,6 +146,7 @@ class App {
     final tools = <String, Tool>{
       'read_file': ReadFileTool(),
       'write_file': WriteFileTool(),
+      'edit_file': EditFileTool(),
       'bash': BashTool(),
       'grep': GrepTool(),
       'list_directory': ListDirectoryTool(),
