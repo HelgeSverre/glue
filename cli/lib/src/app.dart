@@ -18,6 +18,9 @@ import 'ui/panel_modal.dart';
 import 'input/file_expander.dart';
 import 'ui/at_file_hint.dart';
 import 'ui/slash_autocomplete.dart';
+import 'storage/glue_home.dart';
+import 'storage/session_store.dart';
+import 'storage/config_store.dart';
 
 // ---------------------------------------------------------------------------
 // Application state
@@ -107,6 +110,7 @@ class App {
   final String? _systemPrompt;
   late final SlashAutocomplete _autocomplete;
   late final AtFileHint _atHint;
+  SessionStore? _sessionStore;
 
   App({
     required this.terminal,
@@ -118,12 +122,18 @@ class App {
     LlmClientFactory? llmFactory,
     GlueConfig? config,
     String? systemPrompt,
+    Set<String>? extraTrustedTools,
+    SessionStore? sessionStore,
   }) : _modelName = modelName,
        _manager = manager,
        _llmFactory = llmFactory,
        _config = config,
        _systemPrompt = systemPrompt,
+       _sessionStore = sessionStore,
        _cwd = Directory.current.path {
+    if (extraTrustedTools != null) {
+      _autoApprovedTools.addAll(extraTrustedTools);
+    }
     _initCommands();
     _autocomplete = SlashAutocomplete(_commands);
     _atHint = AtFileHint();
@@ -164,6 +174,23 @@ class App {
     tools['spawn_subagent'] = SpawnSubagentTool(manager);
     tools['spawn_parallel_subagents'] = SpawnParallelSubagentsTool(manager);
 
+    final home = GlueHome();
+    home.ensureDirectories();
+    final configStore = ConfigStore(home.configPath);
+
+    final sessionId = '${DateTime.now().millisecondsSinceEpoch}-'
+        '${DateTime.now().microsecond.toRadixString(36)}';
+    final sessionStore = SessionStore(
+      sessionDir: home.sessionDir(sessionId),
+      meta: SessionMeta(
+        id: sessionId,
+        cwd: Directory.current.path,
+        model: config.model,
+        provider: config.provider.name,
+        startTime: DateTime.now(),
+      ),
+    );
+
     return App(
       terminal: terminal,
       layout: layout,
@@ -174,6 +201,8 @@ class App {
       llmFactory: llmFactory,
       config: config,
       systemPrompt: systemPrompt,
+      extraTrustedTools: configStore.trustedTools.toSet(),
+      sessionStore: sessionStore,
     );
   }
 
@@ -218,6 +247,7 @@ class App {
       await _exitCompleter.future;
     } finally {
       // Stop all event sources before touching terminal state.
+      await _sessionStore?.close();
       await termSub.cancel();
       await appSub.cancel();
       await _agentSub?.cancel();
@@ -297,9 +327,23 @@ class App {
     ));
 
     _commands.register(SlashCommand(
-      name: 'tokens',
-      description: 'Show token usage',
-      execute: (_) => 'Total tokens used: ${agent.tokenCount}',
+      name: 'info',
+      description: 'Show session info',
+      aliases: ['status'],
+      execute: (_) {
+        final shortCwd = _shortenPath(_cwd);
+        final trustedList = _autoApprovedTools.toList()..sort();
+        final buf = StringBuffer();
+        buf.writeln('Session Info');
+        buf.writeln('  Model:        $_modelName');
+        buf.writeln('  Provider:     ${_config?.provider.name ?? "unknown"}');
+        buf.writeln('  Directory:    $shortCwd');
+        buf.writeln('  Tokens used:  ${agent.tokenCount}');
+        buf.writeln('  Messages:     ${agent.conversation.length}');
+        buf.writeln('  Tools:        ${agent.tools.length} registered');
+        buf.writeln('  Auto-approve: ${trustedList.join(", ")}');
+        return buf.toString();
+      },
     ));
 
     _commands.register(SlashCommand(
@@ -329,6 +373,81 @@ class App {
         return buf.toString();
       },
     ));
+
+    _commands.register(SlashCommand(
+      name: 'resume',
+      description: 'Resume a previous session',
+      execute: (args) {
+        final home = GlueHome();
+        final sessions = SessionStore.listSessions(home.sessionsDir);
+        if (sessions.isEmpty) return 'No saved sessions found.';
+
+        final count = args.isNotEmpty ? int.tryParse(args[0]) ?? 10 : 10;
+        final shown = sessions.take(count).toList();
+
+        if (args.isNotEmpty) {
+          final idx = (int.tryParse(args[0]) ?? 0) - 1;
+          if (idx >= 0 && idx < shown.length) {
+            return _resumeSession(shown[idx]);
+          }
+        }
+
+        final buf = StringBuffer('Recent sessions:\n');
+        for (var i = 0; i < shown.length; i++) {
+          final s = shown[i];
+          final ago = _timeAgo(s.startTime);
+          final shortCwd = _shortenPath(s.cwd);
+          buf.writeln(
+            '  ${i + 1}. ${s.id.substring(0, 8)}…  '
+            '${s.model}  $shortCwd  $ago',
+          );
+        }
+        buf.writeln('\nUsage: /resume <number> to load a session.');
+        return buf.toString();
+      },
+    ));
+  }
+
+  String _resumeSession(SessionMeta session) {
+    final home = GlueHome();
+    final events = SessionStore.loadConversation(home.sessionDir(session.id));
+    if (events.isEmpty) {
+      return 'Session ${session.id} has no conversation data.';
+    }
+
+    var userCount = 0;
+    var assistantCount = 0;
+    for (final event in events) {
+      final type = event['type'] as String?;
+      final text = event['text'] as String? ?? '';
+      if (text.isEmpty) continue;
+      switch (type) {
+        case 'user_message':
+          agent.addMessage(Message.user(text));
+          userCount++;
+        case 'assistant_message':
+          agent.addMessage(Message.assistant(text: text));
+          assistantCount++;
+        default:
+          break;
+      }
+    }
+
+    _blocks.add(_ConversationEntry.system(
+      'Resumed session ${session.id.substring(0, 8)}… '
+      '($userCount user + $assistantCount assistant messages, model: ${session.model})',
+    ));
+
+    return 'Resumed session from ${_timeAgo(session.startTime)}.';
+  }
+
+  static String _timeAgo(DateTime time) {
+    final diff = DateTime.now().difference(time);
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return time.toIso8601String().substring(0, 10);
   }
 
   void _openHelpPanel() {
@@ -542,6 +661,7 @@ class App {
           _render();
         } else {
           final expanded = expandFileRefs(text);
+          _sessionStore?.logEvent('user_message', {'text': expanded});
           _startAgent(text, expandedMessage: expanded != text ? expanded : null);
         }
 
@@ -602,6 +722,10 @@ class App {
           _streamingText = '';
         }
         _blocks.add(_ConversationEntry.toolCall(call.name, call.arguments));
+        _sessionStore?.logEvent('tool_call', {
+          'name': call.name,
+          'arguments': call.arguments,
+        });
 
         // Auto-approve safe tools.
         if (_autoApprovedTools.contains(call.name)) {
@@ -637,6 +761,17 @@ class App {
               unawaited(_executeAndCompleteTool(call));
             case 2: // Always
               _autoApprovedTools.add(call.name);
+              try {
+                final home = GlueHome();
+                final store = ConfigStore(home.configPath);
+                store.update((c) {
+                  final tools = (c['trusted_tools'] as List?)?.cast<String>() ?? [];
+                  if (!tools.contains(call.name)) {
+                    tools.add(call.name);
+                    c['trusted_tools'] = tools;
+                  }
+                });
+              } catch (_) {}
               _mode = AppMode.toolRunning;
               _render();
               unawaited(_executeAndCompleteTool(call));
@@ -656,6 +791,7 @@ class App {
 
       case AgentDone():
         if (_streamingText.isNotEmpty) {
+          _sessionStore?.logEvent('assistant_message', {'text': _streamingText});
           _blocks.add(_ConversationEntry.assistant(_streamingText));
           _streamingText = '';
         }

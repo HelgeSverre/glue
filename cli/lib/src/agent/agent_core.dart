@@ -185,6 +185,9 @@ class AgentCore {
   /// The full conversation history.
   List<Message> get conversation => List.unmodifiable(_conversation);
 
+  /// Add a message directly to the conversation history (for session resume).
+  void addMessage(Message message) => _conversation.add(message);
+
   /// Run a [userMessage] through the agent loop.
   ///
   /// Returns a stream of [AgentEvent]s that the UI subscribes to.
