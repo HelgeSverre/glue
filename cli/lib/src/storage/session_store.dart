@@ -62,4 +62,47 @@ class SessionStore {
     await _conversationSink.flush();
     await _conversationSink.close();
   }
+
+  static List<SessionMeta> listSessions(String sessionsDir) {
+    final dir = Directory(sessionsDir);
+    if (!dir.existsSync()) return [];
+
+    final sessions = <SessionMeta>[];
+    for (final entry in dir.listSync()) {
+      if (entry is! Directory) continue;
+      final metaFile = File(p.join(entry.path, 'meta.json'));
+      if (!metaFile.existsSync()) continue;
+      try {
+        final json =
+            jsonDecode(metaFile.readAsStringSync()) as Map<String, dynamic>;
+        sessions.add(SessionMeta(
+          id: json['id'] as String,
+          cwd: json['cwd'] as String? ?? '',
+          model: json['model'] as String? ?? 'unknown',
+          provider: json['provider'] as String? ?? 'unknown',
+          startTime: DateTime.parse(json['start_time'] as String),
+          endTime: json['end_time'] != null
+              ? DateTime.parse(json['end_time'] as String)
+              : null,
+        ));
+      } catch (_) {}
+    }
+
+    sessions.sort((a, b) => b.startTime.compareTo(a.startTime));
+    return sessions;
+  }
+
+  static List<Map<String, dynamic>> loadConversation(String sessionDir) {
+    final file = File(p.join(sessionDir, 'conversation.jsonl'));
+    if (!file.existsSync()) return [];
+
+    final events = <Map<String, dynamic>>[];
+    for (final line in file.readAsLinesSync()) {
+      if (line.trim().isEmpty) continue;
+      try {
+        events.add(jsonDecode(line) as Map<String, dynamic>);
+      } catch (_) {}
+    }
+    return events;
+  }
 }
