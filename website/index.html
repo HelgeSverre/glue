@@ -4,308 +4,140 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Glue — The coding agent that holds it all together</title>
-  <meta name="description" content="Open source CLI coding agent built in Dart. Multi-model, multi-worktree, impossibly fast.">
   <link rel="stylesheet" href="styles.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
 </head>
 <body>
 
-  <!-- ─── Navigation ─── -->
-  <nav class="nav" id="nav">
-    <div class="container">
-      <a href="#" class="nav-logo">glue<span>_</span></a>
-      <ul class="nav-links">
-        <li><a href="#features">Features</a></li>
-        <li><a href="#demo">Demo</a></li>
-        <li><a href="#architecture">Architecture</a></li>
-        <li><a href="#get-started">Install</a></li>
-        <li><a href="#" class="nav-cta">Get Started</a></li>
-      </ul>
-    </div>
+  <div class="tape"></div>
+  <nav class="nav">
+    <a href="index.html" class="nav-logo">GLUE</a>
+    <ul class="nav-links">
+      <li><a href="index.html" class="active">Home</a></li>
+      <li><a href="docs.html">Docs</a></li>
+      <li><a href="models.html">Models</a></li>
+      <li><a href="worktrees.html">Worktrees</a></li>
+      <li><a href="app.html">Web UI</a></li>
+      <li><a href="brand.html">Brand</a></li>
+    </ul>
   </nav>
+  <div class="tape"></div>
 
   <!-- ─── Hero ─── -->
-  <section class="hero" id="hero">
-    <div class="container">
-      <div class="hero-inner">
-        <div class="reveal">
-          <div class="hero-badge">
-            <span class="dot"></span>
-            Open Source · Apache-2.0
-          </div>
-        </div>
-
-        <div class="reveal reveal-delay-1">
-          <div class="hero-ascii" aria-label="glue">        .__
-   ____ |  |  __ __   ____
-  / ___\|  | |  |  \_/ __ \
- / /_/  >  |_|  |  /\  ___/
- \___  /|____/____/  \___  >
-/_____/                  \/</div>
-        </div>
-
-        <h1 class="hero-tagline reveal reveal-delay-2">
-          The coding agent that <em>holds it all together.</em>
-        </h1>
-
-        <p class="hero-subtext reveal reveal-delay-3">
-          Open source CLI coding agent built in Dart. Multi-model, multi-worktree, impossibly fast.
-        </p>
-
-        <div class="hero-actions reveal reveal-delay-4">
-          <a href="#get-started" class="btn btn-primary">Get Started</a>
-          <a href="#" class="btn btn-ghost">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-            View on GitHub
-          </a>
-        </div>
-
-        <div class="terminal-wrapper reveal reveal-delay-5">
-          <div class="terminal">
-            <div class="terminal-bar">
-              <div class="terminal-dot red"></div>
-              <div class="terminal-dot yellow"></div>
-              <div class="terminal-dot green"></div>
-              <div class="terminal-title">glue — ~/projects/my-app</div>
-            </div>
-            <div class="terminal-body">
-              <span class="line"><span class="prompt">❯</span> <span class="cmd">glue</span></span>
-              <span class="blank"></span>
-              <span class="line"><span class="accent">        .__</span></span>
-              <span class="line"><span class="accent">   ____ |  |  __ __   ____</span></span>
-              <span class="line"><span class="accent">  / ___\|  | |  |  \_/ __ \</span></span>
-              <span class="line"><span class="accent"> / /_/  >  |_|  |  /\  ___/</span></span>
-              <span class="line"><span class="accent"> \___  /|____/____/  \___  ></span></span>
-              <span class="line"><span class="accent">/_____/                  \/</span></span>
-              <span class="blank"></span>
-              <span class="line">  <span class="dim">glue v0.1.0 · claude-4-sonnet</span></span>
-              <span class="blank"></span>
-              <span class="line"><span class="prompt">❯</span> <span class="cmd">Add a REST API endpoint for user authentication</span></span>
-              <span class="blank"></span>
-              <span class="line"> <span class="accent">●</span> Streaming...</span>
-              <span class="blank"></span>
-              <span class="line">I'll help you add an authentication endpoint. Let me</span>
-              <span class="line">first examine your project structure.</span>
-              <span class="blank"></span>
-              <span class="line"><span class="tool-call">┌ 🔧 read_file</span></span>
-              <span class="line"><span class="tool-call">│</span> <span class="dim">path: lib/src/routes/api.dart</span></span>
-              <span class="line"><span class="tool-call">└</span> <span class="success">✓ 142 lines</span></span>
-              <span class="blank"></span>
-              <span class="line">Based on your existing route structure, I'll create</span>
-              <span class="line">an auth endpoint that follows your patterns...<span class="cursor"></span></span>
-            </div>
-          </div>
-        </div>
+  <section class="block" style="text-align: center; padding-top: 100px; padding-bottom: 80px;">
+    <div class="reveal">
+      <div style="font-family: var(--mono); font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 24px; display: inline-block; background: var(--black); color: var(--yellow); padding: 6px 16px;">
+        ▲ Open Source · Apache-2.0
       </div>
     </div>
+    <div class="reveal rd1" style="margin-bottom: 32px;">
+      <img src="mascots/blob-waving.png" alt="Glue mascot" style="width: 180px; height: auto; display: block; margin: 0 auto;">
+    </div>
+    <h1 style="font-family: var(--mono); font-size: clamp(48px, 12vw, 140px); font-weight: 900; line-height: 0.9; letter-spacing: -0.06em; margin-bottom: 32px; text-transform: uppercase;" class="reveal rd2">GLUE</h1>
+    <p style="font-size: clamp(18px, 3vw, 28px); font-weight: 700; max-width: 600px; margin: 0 auto 40px; line-height: 1.3;" class="reveal rd2">
+      The coding agent that <em style="font-style: normal; background: var(--black); color: var(--yellow); padding: 0 8px;">holds it all together.</em>
+    </p>
+    <p style="font-size: 16px; color: var(--dark); max-width: 500px; margin: 0 auto 48px;" class="reveal rd3">
+      Open source CLI coding agent built in Dart. Multi-model, multi-worktree, impossibly fast.
+    </p>
+    <div class="btn-row reveal rd4" style="justify-content: center;">
+      <a href="docs.html" class="btn-brutal btn-brutal-primary">▸ Get Started</a>
+      <a href="https://github.com" class="btn-brutal btn-brutal-ghost">GitHub</a>
+    </div>
   </section>
+
+  <div class="tape"></div>
 
   <!-- ─── Features ─── -->
-  <section class="features" id="features">
-    <div class="container">
-      <div class="section-header-center reveal">
-        <p class="section-label">Features</p>
-        <h2 class="section-heading">Everything you need. Nothing you don't.</h2>
-        <p class="section-subtext">Glue is opinionated about simplicity. No bloated IDE plugins, no cloud dependencies — just a fast CLI that gets out of your way.</p>
+  <section class="block" id="features">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">■ Features</div>
+        <h2 class="block-heading">Everything you need.<br>Nothing you don't.</h2>
+        <p class="block-sub">No bloated IDE plugins, no cloud dependencies — just a fast CLI that gets out of your way.</p>
       </div>
-      <div class="features-grid">
-        <div class="feature-card reveal">
-          <span class="feature-icon">🔥</span>
-          <h3 class="feature-title">Blazing Fast</h3>
-          <p class="feature-desc">Built in Dart for native speed. No Node.js, no Python runtime overhead. Starts instantly, responds immediately.</p>
-        </div>
-        <div class="feature-card reveal reveal-delay-1">
-          <span class="feature-icon">🔀</span>
-          <h3 class="feature-title">Multi-Worktree</h3>
-          <p class="feature-desc">Run parallel agents across git worktrees. Ship features simultaneously without context switching.</p>
-        </div>
-        <div class="feature-card reveal reveal-delay-2">
-          <span class="feature-icon">🤖</span>
-          <h3 class="feature-title">Any Model</h3>
-          <p class="feature-desc">Anthropic, OpenAI, Google, local models. Swap providers with a flag. Use the best model for each task.</p>
-        </div>
-        <div class="feature-card reveal reveal-delay-3">
-          <span class="feature-icon">🛡️</span>
-          <h3 class="feature-title">Tool Approval</h3>
-          <p class="feature-desc">Every file write, every command requires your explicit approval. You stay in control at all times.</p>
-        </div>
-        <div class="feature-card reveal reveal-delay-4">
-          <span class="feature-icon">🔌</span>
-          <h3 class="feature-title">MCP Native</h3>
-          <p class="feature-desc">First-class Model Context Protocol support. Extend Glue with any MCP server for custom tool integrations.</p>
-        </div>
-        <div class="feature-card reveal reveal-delay-5">
-          <span class="feature-icon">📦</span>
-          <h3 class="feature-title">Zero Config</h3>
-          <p class="feature-desc">Drop into any project and start coding. Glue figures out the rest — languages, frameworks, project structure.</p>
-        </div>
+      <div class="grid grid-3">
+        <div class="cell reveal"><div class="cell-num">01</div><div class="cell-title">Blazing Fast</div><div class="cell-text">Built in Dart for native speed. No Node.js, no Python runtime overhead. Starts instantly.</div></div>
+        <div class="cell reveal rd1"><div class="cell-num">02</div><div class="cell-title">Multi-Worktree</div><div class="cell-text">Run parallel agents across git worktrees. Ship features simultaneously.</div></div>
+        <div class="cell reveal rd2"><div class="cell-num">03</div><div class="cell-title">Any Model</div><div class="cell-text">Anthropic, OpenAI, Google, local models. Swap providers with a flag.</div></div>
+        <div class="cell reveal rd3"><div class="cell-num">04</div><div class="cell-title">Tool Approval</div><div class="cell-text">Every file write requires your explicit approval. You stay in control.</div></div>
+        <div class="cell reveal rd4"><div class="cell-num">05</div><div class="cell-title">MCP Native</div><div class="cell-text">First-class Model Context Protocol support. Extend with any MCP server.</div></div>
+        <div class="cell reveal rd5"><div class="cell-num">06</div><div class="cell-title">Zero Config</div><div class="cell-text">Drop into any project and start coding. Glue figures out the rest.</div></div>
       </div>
     </div>
   </section>
 
-  <!-- ─── Terminal Demo ─── -->
-  <section class="demo-section" id="demo">
-    <div class="container">
-      <div class="section-header-center reveal">
-        <p class="section-label">In Action</p>
-        <h2 class="section-heading">Watch Glue work</h2>
-        <p class="section-subtext">A real session showing Glue reading files, understanding context, and writing code — all from your terminal.</p>
+  <div class="tape"></div>
+
+  <!-- ─── Demo ─── -->
+  <section class="block block-dark">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">◇ In Action</div>
+        <h2 class="block-heading">Watch Glue Work</h2>
+        <p class="block-sub">A real session — reading, writing, testing — all from your terminal.</p>
       </div>
-      <div class="demo-terminal reveal reveal-delay-1">
+      <div class="reveal rd1" style="max-width: 720px;">
         <div class="terminal">
-          <div class="terminal-bar">
-            <div class="terminal-dot red"></div>
-            <div class="terminal-dot yellow"></div>
-            <div class="terminal-dot green"></div>
-            <div class="terminal-title">glue — ~/projects/api-server</div>
-          </div>
+          <div class="terminal-bar">▸ glue — ~/projects/api-server</div>
           <div class="terminal-body">
-            <span class="line"><span class="prompt">❯</span> <span class="cmd">glue</span></span>
+            <span class="line"><span class="p">❯</span> <span class="c">glue</span></span>
             <span class="blank"></span>
-            <span class="line"><span class="accent">        .__</span></span>
-            <span class="line"><span class="accent">   ____ |  |  __ __   ____</span></span>
-            <span class="line"><span class="accent">  / ___\|  | |  |  \_/ __ \</span></span>
-            <span class="line"><span class="accent"> / /_/  >  |_|  |  /\  ___/</span></span>
-            <span class="line"><span class="accent"> \___  /|____/____/  \___  ></span></span>
-            <span class="line"><span class="accent">/_____/                  \/</span></span>
+            <span class="line">  <span class="d">glue v0.1.0 · claude-4-sonnet</span></span>
             <span class="blank"></span>
-            <span class="line">  <span class="dim">glue v0.1.0 · claude-4-sonnet</span></span>
+            <span class="line"><span class="p">❯</span> <span class="c">Add auth endpoint with JWT tokens</span></span>
             <span class="blank"></span>
-            <span class="line"><span class="prompt">❯</span> <span class="cmd">Add a REST API endpoint for user authentication</span></span>
+            <span class="line"><span class="tc">┌ ▸ read_file</span></span>
+            <span class="line"><span class="tc">│</span> <span class="d">lib/src/routes/api.dart</span></span>
+            <span class="line"><span class="tc">└</span> <span class="s">✓ 142 lines</span></span>
             <span class="blank"></span>
-            <span class="line"> <span class="accent">●</span> Streaming...</span>
+            <span class="line"><span class="tc">┌ ▸ write_file</span></span>
+            <span class="line"><span class="tc">│</span> <span class="d">lib/src/routes/auth.dart</span></span>
+            <span class="line"><span class="tc">└</span> <span class="s">✓ approved · 67 lines</span></span>
             <span class="blank"></span>
-            <span class="line">I'll help you add an authentication endpoint. Let me first</span>
-            <span class="line">examine your project structure.</span>
+            <span class="line"><span class="tc">┌ ▸ run_command</span></span>
+            <span class="line"><span class="tc">│</span> <span class="d">dart test</span></span>
+            <span class="line"><span class="tc">└</span> <span class="s">✓ 12 tests passed</span></span>
             <span class="blank"></span>
-            <span class="line"><span class="tool-call">┌ 🔧 read_file</span></span>
-            <span class="line"><span class="tool-call">│</span> <span class="dim">path: lib/src/routes/api.dart</span></span>
-            <span class="line"><span class="tool-call">└</span> <span class="success">✓ 142 lines</span></span>
-            <span class="blank"></span>
-            <span class="line"><span class="tool-call">┌ 🔧 read_file</span></span>
-            <span class="line"><span class="tool-call">│</span> <span class="dim">path: lib/src/models/user.dart</span></span>
-            <span class="line"><span class="tool-call">└</span> <span class="success">✓ 89 lines</span></span>
-            <span class="blank"></span>
-            <span class="line">Based on your existing route structure, I'll create an auth</span>
-            <span class="line">endpoint that follows your patterns.</span>
-            <span class="blank"></span>
-            <span class="line"><span class="tool-call">┌ 🔧 write_file</span></span>
-            <span class="line"><span class="tool-call">│</span> <span class="dim">path: lib/src/routes/auth.dart</span></span>
-            <span class="line"><span class="tool-call">│</span> <span class="accent">⚡ Awaiting approval...</span></span>
-            <span class="line"><span class="tool-call">└</span> <span class="success">✓ approved · 67 lines written</span></span>
-            <span class="blank"></span>
-            <span class="line"><span class="tool-call">┌ 🔧 run_command</span></span>
-            <span class="line"><span class="tool-call">│</span> <span class="dim">cmd: dart test test/routes/auth_test.dart</span></span>
-            <span class="line"><span class="tool-call">└</span> <span class="success">✓ 12 tests passed</span></span>
-            <span class="blank"></span>
-            <span class="line"><span class="success">✓</span> Authentication endpoint added at <span class="accent">POST /api/auth/login</span></span>
-            <span class="line">  with JWT token generation and bcrypt password hashing.</span>
+            <span class="line"><span class="s">✓</span> <span class="a">POST /api/auth/login</span> added<span class="cursor"></span></span>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ─── Architecture ─── -->
-  <section class="arch-section" id="architecture">
-    <div class="container">
-      <div class="section-header-center reveal">
-        <p class="section-label">Under the Hood</p>
-        <h2 class="section-heading">Built for the terminal, designed for humans</h2>
+  <div class="tape"></div>
+
+  <!-- ─── Install ─── -->
+  <section class="block" style="text-align: center;">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">▸ Install</div>
+        <h2 class="block-heading">30 Seconds</h2>
       </div>
-      <div class="arch-content">
-        <div class="arch-diagram reveal">
-<span class="highlight">TUI Shell</span> ◄──► <span class="highlight">Agent Core</span> ◄──► <span class="highlight">LLM Provider</span>
-    │              │
-    ▼              ▼
- Layout        Tool Executor
- Editor        Conversation
- Modals        History</div>
-        <div class="arch-text reveal reveal-delay-1">
-          <p>
-            Glue's architecture is built on Dart's async runtime, giving you non-blocking I/O across every layer — from TUI rendering to model streaming to file operations.
-          </p>
-          <p>
-            The <strong>Agent Core</strong> orchestrates conversations, manages tool execution with approval gates, and maintains context across multi-turn interactions. The <strong>TUI Shell</strong> provides a responsive terminal interface with rich layouts, inline editing, and modal dialogs.
-          </p>
-          <p>
-            LLM providers are pluggable — swap between Anthropic, OpenAI, Google, or any OpenAI-compatible endpoint with a single flag. No restart required.
-          </p>
-        </div>
+      <div style="font-family: var(--mono); font-size: clamp(16px, 3vw, 24px); font-weight: 700; margin-bottom: 48px;" class="reveal rd1">
+        ❯ dart pub global activate glue<br>
+        ❯ glue
+      </div>
+      <div class="btn-row reveal rd2" style="justify-content: center;">
+        <a href="docs.html" class="btn-brutal btn-brutal-primary">Read the Docs</a>
+        <a href="#" class="btn-brutal btn-brutal-ghost">View on GitHub</a>
       </div>
     </div>
   </section>
 
-  <!-- ─── Get Started ─── -->
-  <section class="getstarted" id="get-started">
-    <div class="container">
-      <div class="section-header-center reveal">
-        <p class="section-label">Get Started</p>
-        <h2 class="section-heading">Up and running in 30 seconds</h2>
-        <p class="section-subtext">Install Glue globally, drop into your project, and start coding with AI.</p>
-      </div>
-      <div class="install-block reveal reveal-delay-1">
-        <div class="terminal">
-          <div class="terminal-bar">
-            <div class="terminal-dot red"></div>
-            <div class="terminal-dot yellow"></div>
-            <div class="terminal-dot green"></div>
-            <div class="terminal-title">Terminal</div>
-          </div>
-          <div class="terminal-body">
-            <span class="line"><span class="comment"># Install</span></span>
-            <span class="line"><span class="prompt">❯</span> <span class="cmd">dart pub global activate glue</span></span>
-            <span class="blank"></span>
-            <span class="line"><span class="comment"># Run</span></span>
-            <span class="line"><span class="prompt">❯</span> <span class="cmd">cd your-project</span></span>
-            <span class="line"><span class="prompt">❯</span> <span class="cmd">glue</span></span>
-          </div>
-        </div>
-      </div>
-      <div class="hero-actions reveal reveal-delay-2">
-        <a href="#" class="btn btn-primary">Read the Docs</a>
-        <a href="#" class="btn btn-ghost">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-          View on GitHub
-        </a>
-      </div>
-    </div>
-  </section>
-
-  <!-- ─── Footer ─── -->
+  <div class="tape"></div>
   <footer class="footer">
-    <div class="container">
-      <div class="footer-inner">
-        <div class="footer-brand">Made with <span class="prompt">❯</span> by the Glue contributors</div>
-        <ul class="footer-links">
-          <li><a href="#">GitHub</a></li>
-          <li><a href="#">Docs</a></li>
-          <li><a href="#">Discord</a></li>
-        </ul>
-        <div class="footer-license">Apache-2.0 License</div>
-      </div>
-    </div>
+    <img src="mascots/blob-hardhat.png" alt="Glue mascot" style="width: 64px; height: auto; display: block; margin: 0 auto 12px; opacity: 0.7;">
+    GLUE · Apache-2.0 · <a href="#">GitHub</a> <a href="#">Docs</a> <a href="#">Discord</a>
   </footer>
+  <div class="tape"></div>
 
-  <!-- ─── Scripts ─── -->
   <script>
-    // Scroll reveal
     const reveals = document.querySelectorAll('.reveal');
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-        }
-      });
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
     }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
     reveals.forEach(el => observer.observe(el));
-
-    // Nav scroll state
-    const nav = document.getElementById('nav');
-    window.addEventListener('scroll', () => {
-      nav.classList.toggle('scrolled', window.scrollY > 20);
-    }, { passive: true });
   </script>
-
 </body>
 </html>

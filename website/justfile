@@ -1,0 +1,11 @@
+default:
+    @just --list
+
+serve:
+    npx serve .
+
+deploy:
+    vercel --prod
+
+preview:
+    vercel
