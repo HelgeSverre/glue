@@ -23,3 +23,4 @@ export 'src/storage/glue_home.dart' show GlueHome;
 export 'src/storage/session_store.dart' show SessionStore, SessionMeta;
 export 'src/storage/debug_logger.dart' show DebugLogger;
 export 'src/storage/config_store.dart' show ConfigStore;
+export 'src/input/file_expander.dart' show expandFileRefs, extractFileRefs;

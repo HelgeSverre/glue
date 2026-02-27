@@ -14,6 +14,7 @@ import 'llm/llm_factory.dart';
 import 'rendering/block_renderer.dart';
 import 'tools/subagent_tools.dart';
 import 'ui/modal.dart';
+import 'input/file_expander.dart';
 import 'ui/slash_autocomplete.dart';
 
 // ---------------------------------------------------------------------------
@@ -444,7 +445,8 @@ class App {
           }
           _render();
         } else {
-          _startAgent(text);
+          final expanded = expandFileRefs(text);
+          _startAgent(text, expandedMessage: expanded != text ? expanded : null);
         }
 
       case UserCancel():
@@ -464,13 +466,13 @@ class App {
 
   // ── Agent interaction ──────────────────────────────────────────────────
 
-  void _startAgent(String userMessage) {
-    _blocks.add(_ConversationEntry.user(userMessage));
+  void _startAgent(String displayMessage, {String? expandedMessage}) {
+    _blocks.add(_ConversationEntry.user(displayMessage));
     _mode = AppMode.streaming;
     _streamingText = '';
     _render();
 
-    final stream = agent.run(userMessage);
+    final stream = agent.run(expandedMessage ?? displayMessage);
     _agentSub = stream.listen(
       _handleAgentEvent,
       onError: (Object e) {
