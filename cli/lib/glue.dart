@@ -19,3 +19,7 @@ export 'src/rendering/block_renderer.dart' show BlockRenderer;
 export 'src/rendering/markdown_renderer.dart' show MarkdownRenderer;
 export 'src/commands/slash_commands.dart' show SlashCommand, SlashCommandRegistry;
 export 'src/ui/modal.dart' show ConfirmModal, ModalChoice;
+export 'src/storage/glue_home.dart' show GlueHome;
+export 'src/storage/session_store.dart' show SessionStore, SessionMeta;
+export 'src/storage/debug_logger.dart' show DebugLogger;
+export 'src/storage/config_store.dart' show ConfigStore;
