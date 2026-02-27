@@ -35,6 +35,7 @@ class GlueConfig {
   final String ollamaBaseUrl;
   final Map<String, AgentProfile> profiles;
   final int maxSubagentDepth;
+  final int bashMaxLines;
 
   GlueConfig({
     LlmProvider? provider,
@@ -44,6 +45,7 @@ class GlueConfig {
     this.ollamaBaseUrl = 'http://localhost:11434',
     this.profiles = const {},
     this.maxSubagentDepth = 2,
+    this.bashMaxLines = 50,
   })  : provider = provider ?? LlmProvider.anthropic,
         model = model ?? _defaultModel(provider ?? LlmProvider.anthropic);
 
@@ -126,6 +128,8 @@ class GlueConfig {
         Platform.environment['GLUE_OPENAI_API_KEY'] ??
         (fileConfig?['openai'] as Map?)?['api_key'] as String?;
 
+    final bashMaxLines = (fileConfig?['bash'] as Map?)?['max_lines'] as int? ?? 50;
+
     // 3. Parse profiles.
     final profiles = <String, AgentProfile>{};
     final profilesYaml = fileConfig?['profiles'] as Map?;
@@ -148,6 +152,7 @@ class GlueConfig {
       anthropicApiKey: anthropicKey,
       openaiApiKey: openaiKey,
       profiles: profiles,
+      bashMaxLines: bashMaxLines,
     );
   }
 }

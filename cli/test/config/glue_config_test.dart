@@ -61,5 +61,18 @@ void main() {
       expect(config.profiles['editor']!.provider, LlmProvider.openai);
       expect(config.profiles['local']!.provider, LlmProvider.ollama);
     });
+
+    test('bashMaxLines defaults to 50', () {
+      final config = GlueConfig(anthropicApiKey: 'sk-ant-test');
+      expect(config.bashMaxLines, 50);
+    });
+
+    test('bashMaxLines can be set explicitly', () {
+      final config = GlueConfig(
+        anthropicApiKey: 'sk-ant-test',
+        bashMaxLines: 100,
+      );
+      expect(config.bashMaxLines, 100);
+    });
   });
 }
