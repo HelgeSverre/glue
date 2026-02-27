@@ -1068,11 +1068,20 @@ class App {
   Timer? _splashTimer;
   int _splashOriginCol = 0; // screen col of mascot left edge
   int _splashOriginRow = 0; // screen row of mascot top edge
+  GooExplosion? _gooExplosion;
 
   void _startSplashAnimation() {
     _liquidSim ??= LiquidSim();
     if (_splashTimer != null) return;
     _splashTimer = Timer.periodic(const Duration(milliseconds: 50), (_) {
+      if (_gooExplosion != null) {
+        _gooExplosion!.step();
+        if (_gooExplosion!.isDone) {
+          _stopSplashAnimation();
+        }
+        _render();
+        return;
+      }
       _liquidSim!.step();
       if (_liquidSim!.isActive) _render();
     });
@@ -1082,9 +1091,22 @@ class App {
     _splashTimer?.cancel();
     _splashTimer = null;
     _liquidSim = null;
+    _gooExplosion = null;
+  }
+
+  void _triggerExplosion() {
+    final viewH = layout.outputBottom - layout.outputTop + 1;
+    _gooExplosion = GooExplosion(
+      viewportWidth: terminal.columns,
+      viewportHeight: viewH,
+      originX: _splashOriginCol,
+      originY: _splashOriginRow - layout.outputTop,
+    );
+    _liquidSim = null;
   }
 
   void _handleSplashClick(int screenX, int screenY) {
+    if (_gooExplosion != null) return;
     final sim = _liquidSim;
     if (sim == null) return;
     final localX = screenX - _splashOriginCol;
@@ -1092,6 +1114,9 @@ class App {
     if (localX >= 0 && localX < mascotRenderWidth &&
         localY >= 0 && localY < mascotRenderHeight) {
       sim.impulse(localX, localY);
+      if (sim.shouldExplode) {
+        _triggerExplosion();
+      }
       _render();
     }
   }
@@ -1154,7 +1179,13 @@ class App {
     final isSplash = _blocks.length == 1 &&
         _blocks.first.kind == _EntryKind.system &&
         _streamingText.isEmpty;
-    if (isSplash) {
+    if (isSplash && _gooExplosion != null) {
+      // Explosion takes over the entire output viewport.
+      _startSplashAnimation();
+      final explosionLines = _gooExplosion!.render();
+      outputLines.clear();
+      outputLines.addAll(explosionLines);
+    } else if (isSplash) {
       _startSplashAnimation();
       final mascotLines = renderMascot(_liquidSim!);
       final viewH = layout.outputBottom - layout.outputTop + 1;
