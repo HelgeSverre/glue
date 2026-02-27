@@ -84,13 +84,18 @@ class App {
   int _scrollOffset = 0;
   String _streamingText = '';
   StreamSubscription<AgentEvent>? _agentSub;
+  StreamSubscription<SubagentUpdate>? _subagentSub;
   final _exitCompleter = Completer<void>();
 
   late final SlashCommandRegistry _commands;
   String _modelName;
   final String _cwd;
   ConfirmModal? _activeModal;
-  final Set<String> _autoApprovedTools = {'read_file', 'list_directory', 'grep'};
+  final Set<String> _autoApprovedTools = {
+    'read_file', 'list_directory', 'grep',
+    'spawn_subagent', 'spawn_parallel_subagents',
+  };
+  final AgentManager? _manager;
 
   App({
     required this.terminal,
@@ -98,7 +103,9 @@ class App {
     required this.editor,
     required this.agent,
     required String modelName,
+    AgentManager? manager,
   }) : _modelName = modelName,
+       _manager = manager,
        _cwd = Directory.current.path {
     _initCommands();
   }
@@ -143,6 +150,7 @@ class App {
       editor: editor,
       agent: agent,
       modelName: config.model,
+      manager: manager,
     );
   }
 
@@ -179,6 +187,7 @@ class App {
 
     final termSub = terminal.events.listen(_handleTerminalEvent);
     final appSub = _events.stream.listen(_handleAppEvent);
+    _subagentSub = _manager?.updates.listen(_handleSubagentUpdate);
 
     _render();
 
@@ -189,6 +198,7 @@ class App {
       await termSub.cancel();
       await appSub.cancel();
       await _agentSub?.cancel();
+      await _subagentSub?.cancel();
       await _events.close();
       terminal.disableMouse();
       terminal.resetScrollRegion();
@@ -437,6 +447,12 @@ class App {
         _render();
 
       case AgentToolCall(:final call):
+        // Flush any accumulated assistant text before the tool call so
+        // the ordering in _blocks matches the actual conversation flow.
+        if (_streamingText.isNotEmpty) {
+          _blocks.add(_ConversationEntry.assistant(_streamingText));
+          _streamingText = '';
+        }
         _blocks.add(_ConversationEntry.toolCall(call.name, call.arguments));
 
         // Auto-approve safe tools.
@@ -521,6 +537,43 @@ class App {
     _render();
   }
 
+  // ── Subagent updates ──────────────────────────────────────────────────
+
+  void _handleSubagentUpdate(SubagentUpdate update) {
+    final prefix = update.index != null
+        ? '↳ [${update.index! + 1}/${update.total}]'
+        : '↳';
+
+    switch (update.event) {
+      case AgentToolCall(:final call):
+        final argsPreview = call.arguments.entries
+            .take(2)
+            .map((e) => '${e.key}: ${e.value}')
+            .join(', ');
+        _blocks.add(_ConversationEntry.subagent(
+          '$prefix ▶ ${call.name}  $argsPreview',
+        ));
+        _render();
+      case AgentToolResult(:final result):
+        final preview = result.content.length > 80
+            ? '${result.content.substring(0, 80)}…'
+            : result.content;
+        _blocks.add(_ConversationEntry.subagent(
+          '$prefix ✓ ${preview.replaceAll('\n', ' ')}',
+        ));
+        _render();
+      case AgentError(:final error):
+        _blocks.add(_ConversationEntry.subagent(
+          '$prefix ✗ Error: $error',
+        ));
+        _render();
+      case AgentTextDelta():
+        break; // Skip text streaming — too noisy.
+      case AgentDone():
+        break;
+    }
+  }
+
   // ── Rendering ──────────────────────────────────────────────────────────
 
   void _render() {
@@ -539,6 +592,7 @@ class App {
         _EntryKind.toolCall => renderer.renderToolCall(block.text, block.args),
         _EntryKind.toolResult => renderer.renderToolResult(block.text),
         _EntryKind.error => renderer.renderError(block.text),
+        _EntryKind.subagent => renderer.renderSubagent(block.text),
         _EntryKind.system => renderer.renderSystem(block.text),
       };
       outputLines.addAll(text.split('\n'));
@@ -608,7 +662,7 @@ class App {
 // Conversation entries (simple model for the output log)
 // ---------------------------------------------------------------------------
 
-enum _EntryKind { user, assistant, toolCall, toolResult, error, system }
+enum _EntryKind { user, assistant, toolCall, toolResult, error, system, subagent }
 
 class _ConversationEntry {
   final _EntryKind kind;
@@ -634,6 +688,9 @@ class _ConversationEntry {
 
   factory _ConversationEntry.error(String message) =>
       _ConversationEntry._(_EntryKind.error, message);
+
+  factory _ConversationEntry.subagent(String text) =>
+      _ConversationEntry._(_EntryKind.subagent, text);
 
   factory _ConversationEntry.system(String text) =>
       _ConversationEntry._(_EntryKind.system, text);

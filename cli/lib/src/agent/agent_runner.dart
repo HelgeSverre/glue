@@ -22,10 +22,15 @@ class AgentRunner {
   final ToolApprovalPolicy policy;
   final Set<String> _allowedTools;
 
+  /// Optional callback invoked for every [AgentEvent] during execution.
+  /// Used to forward subagent activity to the parent UI.
+  final void Function(AgentEvent)? onEvent;
+
   AgentRunner({
     required this.core,
     required this.policy,
     Set<String>? allowedTools,
+    this.onEvent,
   }) : _allowedTools = allowedTools ?? const {};
 
   /// Run a [userMessage] through the agent loop until completion.
@@ -35,6 +40,7 @@ class AgentRunner {
     final buf = StringBuffer();
 
     await for (final event in core.run(userMessage)) {
+      onEvent?.call(event);
       switch (event) {
         case AgentTextDelta(:final delta):
           buf.write(delta);

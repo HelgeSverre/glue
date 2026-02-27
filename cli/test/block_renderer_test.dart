@@ -158,7 +158,7 @@ void main() {
 
     test('handles empty text', () {
       final output = renderer.renderSystem('');
-      expect(output, equals('\x1b[90m\x1b[0m'));
+      expect(output, equals(' \x1b[90m\x1b[0m'));
     });
   });
 
