@@ -18,7 +18,7 @@ class BlockRenderer {
   String renderUser(String text) {
     final header = ' \x1b[1m\x1b[34m❯ You\x1b[0m';
     final body = ansiWrap(text, _inner - 2);
-    final indented = body.split('\n').map((l) => '    $l').join('\n');
+    final indented = body.split('\n').map((l) => '   $l').join('\n');
     return '$header\n$indented';
   }
 
@@ -27,7 +27,7 @@ class BlockRenderer {
     final header = ' \x1b[1m\x1b[33m◆ Glue\x1b[0m';
     final md = MarkdownRenderer(_inner - 2);
     final body = md.render(text);
-    final indented = body.split('\n').map((l) => '    $l').join('\n');
+    final indented = body.split('\n').map((l) => '   $l').join('\n');
     return '$header\n$indented';
   }
 
