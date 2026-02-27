@@ -139,7 +139,7 @@ class App {
     final layout = Layout(terminal);
     final editor = LineEditor();
 
-    final systemPrompt = Prompts.build();
+    final systemPrompt = Prompts.build(cwd: Directory.current.path);
     final llmFactory = LlmClientFactory();
     final llm = llmFactory.createFromConfig(config, systemPrompt: systemPrompt);
 
