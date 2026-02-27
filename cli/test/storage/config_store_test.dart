@@ -73,4 +73,45 @@ void main() {
     final loaded = jsonDecode(File(nestedPath).readAsStringSync());
     expect(loaded['key'], 'value');
   });
+
+  test('detects external file changes', () async {
+    final store = ConfigStore(configPath);
+    store.save({'default_model': 'gpt-4'});
+    expect(store.defaultModel, 'gpt-4');
+
+    // Simulate external edit — wait a moment for mtime to differ
+    await Future.delayed(Duration(milliseconds: 50));
+    const encoder = JsonEncoder.withIndent('  ');
+    File(configPath).writeAsStringSync(
+      encoder.convert({'default_model': 'claude-sonnet'}),
+    );
+
+    expect(store.defaultModel, 'claude-sonnet');
+  });
+
+  test('update() applies mutation and saves', () {
+    final store = ConfigStore(configPath);
+    store.save({'debug': true, 'trusted_tools': ['read_file']});
+
+    store.update((c) {
+      (c['trusted_tools'] as List).add('bash');
+    });
+
+    expect(store.trustedTools, ['read_file', 'bash']);
+    // Verify persisted to disk
+    final onDisk = jsonDecode(File(configPath).readAsStringSync());
+    expect(onDisk['trusted_tools'], ['read_file', 'bash']);
+  });
+
+  test('handles corrupt JSON gracefully', () {
+    final store = ConfigStore(configPath);
+    store.save({'debug': false});
+    expect(store.debug, isFalse);
+
+    // Corrupt the file
+    File(configPath).writeAsStringSync('not valid json{{{');
+
+    // Should keep last-known-good cache
+    expect(store.debug, isFalse);
+  });
 }
