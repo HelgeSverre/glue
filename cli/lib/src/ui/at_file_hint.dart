@@ -20,6 +20,10 @@ class AtFileHint {
   int _tokenStart = 0;
   List<_Candidate> _matches = [];
 
+  String? _cachedDirPath;
+  List<FileSystemEntity>? _cachedEntries;
+  DateTime _cachedAt = DateTime(0);
+
   AtFileHint({String? cwd}) : cwd = cwd ?? Directory.current.path;
 
   bool get active => _active;
@@ -71,7 +75,7 @@ class AtFileHint {
 
     final candidates = <_Candidate>[];
     try {
-      final entries = dir.listSync();
+      final entries = _listDir(resolvedDir);
       for (final entry in entries) {
         final name = p.basename(entry.path);
         // Skip hidden files
@@ -163,5 +167,18 @@ class AtFileHint {
     }
 
     return lines;
+  }
+
+  List<FileSystemEntity> _listDir(String dirPath) {
+    final now = DateTime.now();
+    if (dirPath == _cachedDirPath &&
+        _cachedEntries != null &&
+        now.difference(_cachedAt).inSeconds < 2) {
+      return _cachedEntries!;
+    }
+    _cachedDirPath = dirPath;
+    _cachedEntries = Directory(dirPath).listSync();
+    _cachedAt = now;
+    return _cachedEntries!;
   }
 }
