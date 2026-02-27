@@ -7,10 +7,23 @@ void main() {
   group('OllamaClient.parseStream', () {
     test('parses text deltas from streaming JSON', () async {
       final events = [
-        {'model': 'llama3.2', 'message': {'role': 'assistant', 'content': 'Hello '}, 'done': false},
-        {'model': 'llama3.2', 'message': {'role': 'assistant', 'content': 'world'}, 'done': false},
-        {'model': 'llama3.2', 'message': {'role': 'assistant', 'content': ''}, 'done': true,
-         'prompt_eval_count': 26, 'eval_count': 10},
+        {
+          'model': 'llama3.2',
+          'message': {'role': 'assistant', 'content': 'Hello '},
+          'done': false
+        },
+        {
+          'model': 'llama3.2',
+          'message': {'role': 'assistant', 'content': 'world'},
+          'done': false
+        },
+        {
+          'model': 'llama3.2',
+          'message': {'role': 'assistant', 'content': ''},
+          'done': true,
+          'prompt_eval_count': 26,
+          'eval_count': 10
+        },
       ];
 
       final chunks = await OllamaClient.parseStreamEvents(
@@ -44,8 +57,13 @@ void main() {
           },
           'done': false,
         },
-        {'model': 'llama3.2', 'message': {'role': 'assistant', 'content': ''}, 'done': true,
-         'prompt_eval_count': 20, 'eval_count': 15},
+        {
+          'model': 'llama3.2',
+          'message': {'role': 'assistant', 'content': ''},
+          'done': true,
+          'prompt_eval_count': 20,
+          'eval_count': 15
+        },
       ];
 
       final chunks = await OllamaClient.parseStreamEvents(

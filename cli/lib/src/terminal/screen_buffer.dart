@@ -50,7 +50,8 @@ class ScreenBuffer {
     final chars = text.runes.toList();
     for (var i = 0; i < chars.length && col + i < _width; i++) {
       if (col + i < 0) continue;
-      _current[row][col + i] = Cell(String.fromCharCode(chars[i]), style: style);
+      _current[row][col + i] =
+          Cell(String.fromCharCode(chars[i]), style: style);
     }
   }
 

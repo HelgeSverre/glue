@@ -124,9 +124,8 @@ String _repeatTape(String pattern, int length) {
 List<String> applyBarrier(BarrierStyle style, List<String> lines) {
   return switch (style) {
     BarrierStyle.none => lines,
-    BarrierStyle.dim => lines
-        .map((line) => '\x1b[2m${stripAnsi(line)}\x1b[0m')
-        .toList(),
+    BarrierStyle.dim =>
+      lines.map((line) => '\x1b[2m${stripAnsi(line)}\x1b[0m').toList(),
     BarrierStyle.obscure => lines.map((line) {
         final len = visibleLength(line);
         return '\x1b[90m${'░' * len}\x1b[0m';
@@ -228,7 +227,8 @@ class PanelModal {
         return true;
       case KeyEvent(key: Key.pageDown):
         if (selectable) {
-          _selectedIndex = min<int>(lines.length - 1, _selectedIndex + visibleH);
+          _selectedIndex =
+              min<int>(lines.length - 1, _selectedIndex + visibleH);
           _scrollOffset = min<int>(maxScroll, _scrollOffset + visibleH);
         } else {
           _scrollOffset = min<int>(maxScroll, _scrollOffset + visibleH);
@@ -239,7 +239,8 @@ class PanelModal {
     }
   }
 
-  List<String> render(int termWidth, int termHeight, List<String> backgroundLines) {
+  List<String> render(
+      int termWidth, int termHeight, List<String> backgroundLines) {
     final panelW = _width.resolve(termWidth);
     final panelH = _height.resolve(termHeight);
     final visibleContentH = panelH - 2;
@@ -249,7 +250,8 @@ class PanelModal {
     _scrollOffset = min(_scrollOffset, maxScroll);
 
     final dimmed = applyBarrier(barrier, backgroundLines);
-    final grid = List<String>.generate(termHeight, (i) => i < dimmed.length ? dimmed[i] : '');
+    final grid = List<String>.generate(
+        termHeight, (i) => i < dimmed.length ? dimmed[i] : '');
 
     final border = renderBorder(style, panelW, panelH, title);
 
@@ -276,8 +278,10 @@ class PanelModal {
           final borderStr = stripAnsi(border.last);
           final insertPos = borderStr.length - indicator.length - 2;
           if (insertPos > 0) {
-            final before = border.last.substring(0, _ansiIndex(border.last, insertPos));
-            final after = border.last.substring(_ansiIndex(border.last, insertPos + indicator.length));
+            final before =
+                border.last.substring(0, _ansiIndex(border.last, insertPos));
+            final after = border.last.substring(
+                _ansiIndex(border.last, insertPos + indicator.length));
             panelLines.add('$before$indicator$after');
           } else {
             panelLines.add(border.last);
@@ -287,16 +291,15 @@ class PanelModal {
         }
       } else {
         final contentIdx = r - 1;
-        final raw = contentIdx < visibleLines.length ? visibleLines[contentIdx] : '';
+        final raw =
+            contentIdx < visibleLines.length ? visibleLines[contentIdx] : '';
         final truncated = ansiTruncate(raw, contentW);
         final padLen = contentW - visibleLength(truncated);
         final padded = '$truncated${' ' * max(0, padLen)}';
 
-        final isSelected = selectable &&
-            (contentIdx + _scrollOffset) == _selectedIndex;
-        final styledContent = isSelected
-            ? '\x1b[7m$padded\x1b[27m'
-            : padded;
+        final isSelected =
+            selectable && (contentIdx + _scrollOffset) == _selectedIndex;
+        final styledContent = isSelected ? '\x1b[7m$padded\x1b[27m' : padded;
 
         final (leftBorder, rightBorder) = switch (style) {
           PanelStyle.simple => ('\x1b[2m│\x1b[0m', '\x1b[2m│\x1b[0m'),
@@ -311,7 +314,8 @@ class PanelModal {
     for (var r = 0; r < panelH; r++) {
       final gridRow = topRow + r;
       if (gridRow < 0 || gridRow >= termHeight) continue;
-      grid[gridRow] = _spliceRow(grid[gridRow], leftCol, panelW, panelLines[r], termWidth);
+      grid[gridRow] =
+          _spliceRow(grid[gridRow], leftCol, panelW, panelLines[r], termWidth);
     }
 
     return grid;
@@ -333,11 +337,14 @@ class PanelModal {
     return i;
   }
 
-  String _spliceRow(String bgLine, int leftCol, int panelW, String overlay, int termWidth) {
+  String _spliceRow(
+      String bgLine, int leftCol, int panelW, String overlay, int termWidth) {
     final bgPlain = stripAnsi(bgLine);
     final padded = bgPlain.padRight(termWidth);
     final before = padded.substring(0, max(0, leftCol));
-    final after = leftCol + panelW < padded.length ? padded.substring(leftCol + panelW) : '';
+    final after = leftCol + panelW < padded.length
+        ? padded.substring(leftCol + panelW)
+        : '';
     return '$before$overlay${' ' * max(0, panelW - visibleLength(overlay))}$after';
   }
 }

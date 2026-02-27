@@ -4,10 +4,14 @@ import 'package:glue/src/shell/shell_job_manager.dart';
 void main() {
   group('JobStatus', () {
     test('enum values exist', () {
-      expect(JobStatus.values, containsAll([
-        JobStatus.running, JobStatus.exited,
-        JobStatus.failed, JobStatus.killed,
-      ]));
+      expect(
+          JobStatus.values,
+          containsAll([
+            JobStatus.running,
+            JobStatus.exited,
+            JobStatus.failed,
+            JobStatus.killed,
+          ]));
     });
   });
 
@@ -95,7 +99,8 @@ void main() {
       await Future.delayed(Duration(milliseconds: 100));
       await manager.kill(job.id);
       await Future.delayed(Duration(milliseconds: 500));
-      expect(job.status, anyOf(JobStatus.killed, JobStatus.exited, JobStatus.failed));
+      expect(job.status,
+          anyOf(JobStatus.killed, JobStatus.exited, JobStatus.failed));
     });
 
     test('shutdown terminates all running jobs', () async {

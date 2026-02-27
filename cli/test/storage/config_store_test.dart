@@ -91,7 +91,10 @@ void main() {
 
   test('update() applies mutation and saves', () {
     final store = ConfigStore(configPath);
-    store.save({'debug': true, 'trusted_tools': ['read_file']});
+    store.save({
+      'debug': true,
+      'trusted_tools': ['read_file']
+    });
 
     store.update((c) {
       (c['trusted_tools'] as List).add('bash');

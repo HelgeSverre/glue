@@ -39,20 +39,23 @@ sealed class TerminalEvent {}
 class KeyEvent extends TerminalEvent {
   final Key key;
   final bool ctrl;
+  final bool alt;
   final int? charCode;
-  KeyEvent(this.key, {this.ctrl = false, this.charCode});
+  KeyEvent(this.key, {this.ctrl = false, this.alt = false, this.charCode});
 
   @override
-  String toString() => 'KeyEvent($key${ctrl ? ', ctrl' : ''})';
+  String toString() =>
+      'KeyEvent($key${ctrl ? ', ctrl' : ''}${alt ? ', alt' : ''})';
 }
 
 /// A printable character (may be multi-byte UTF-8).
 class CharEvent extends TerminalEvent {
   final String char;
-  CharEvent(this.char);
+  final bool alt;
+  CharEvent(this.char, {this.alt = false});
 
   @override
-  String toString() => 'CharEvent($char)';
+  String toString() => 'CharEvent($char${alt ? ', alt' : ''})';
 }
 
 /// The terminal was resized.
@@ -199,7 +202,6 @@ class Terminal {
           return;
         }
         if (data[i + 1] == 0x5b) {
-          // CSI: need at least ESC [ + final byte
           final (event, next, complete) = _parseCsiSafe(data, i + 2);
           if (!complete) {
             _pending = data.sublist(i);
@@ -207,6 +209,18 @@ class Terminal {
           }
           _emit(event);
           i = next;
+          continue;
+        }
+        // ESC + 0x7f = Alt+Backspace
+        if (data[i + 1] == 0x7f) {
+          _emit(KeyEvent(Key.backspace, alt: true));
+          i += 2;
+          continue;
+        }
+        // ESC + printable byte = Alt+char (e.g. Alt+f, Alt+b)
+        if (data[i + 1] >= 0x20 && data[i + 1] < 0x7f) {
+          _emit(CharEvent(String.fromCharCode(data[i + 1]), alt: true));
+          i += 2;
           continue;
         }
         _emit(KeyEvent(Key.escape));
@@ -231,7 +245,8 @@ class Terminal {
         0x03 => KeyEvent(Key.ctrlC, ctrl: true),
         0x04 => KeyEvent(Key.ctrlD, ctrl: true),
         0x05 => KeyEvent(Key.ctrlE),
-        0x0a => KeyEvent(Key.enter), // LF — some terminals send this instead of CR
+        0x0a =>
+          KeyEvent(Key.enter), // LF — some terminals send this instead of CR
         0x0b => KeyEvent(Key.ctrlK, ctrl: true),
         0x0c => KeyEvent(Key.ctrlL, ctrl: true),
         0x0d => KeyEvent(Key.enter),
@@ -267,16 +282,27 @@ class Terminal {
 
     // SGR mouse: ESC [ < button;x;y M/m
     if (paramStr.startsWith('<') && (finalByte == 0x4d || finalByte == 0x6d)) {
-      return (_parseSgrMouse(paramStr.substring(1), finalByte == 0x4d), i, true);
+      return (
+        _parseSgrMouse(paramStr.substring(1), finalByte == 0x4d),
+        i,
+        true
+      );
     }
 
+    // CSI modifier encoding: "1;M" where M is 1+bitmask
+    // (2=Shift, 3=Alt, 4=Shift+Alt, 5=Ctrl, etc).
+    final parts = paramStr.split(';');
+    final modifier = parts.length >= 2 ? (int.tryParse(parts.last) ?? 1) : 1;
+    final isAlt = (modifier - 1) & 0x02 != 0;
+    final isCtrl = (modifier - 1) & 0x04 != 0;
+
     final event = switch (finalByte) {
-      0x41 => KeyEvent(Key.up),    // A
-      0x42 => KeyEvent(Key.down),  // B
-      0x43 => KeyEvent(Key.right), // C
-      0x44 => KeyEvent(Key.left),  // D
-      0x48 => KeyEvent(Key.home),  // H
-      0x46 => KeyEvent(Key.end),   // F
+      0x41 => KeyEvent(Key.up, alt: isAlt, ctrl: isCtrl),
+      0x42 => KeyEvent(Key.down, alt: isAlt, ctrl: isCtrl),
+      0x43 => KeyEvent(Key.right, alt: isAlt, ctrl: isCtrl),
+      0x44 => KeyEvent(Key.left, alt: isAlt, ctrl: isCtrl),
+      0x48 => KeyEvent(Key.home, alt: isAlt, ctrl: isCtrl),
+      0x46 => KeyEvent(Key.end, alt: isAlt, ctrl: isCtrl),
       0x7e => _parseTilde(paramStr),
       _ => KeyEvent(Key.unknown, charCode: finalByte),
     };
@@ -365,8 +391,7 @@ class Terminal {
   void disableMouse() => write('\x1b[?1000l\x1b[?1006l');
 
   /// Set the hardware scroll region to rows [top] through [bottom] (1-indexed).
-  void setScrollRegion(int top, int bottom) =>
-      write('\x1b[$top;${bottom}r');
+  void setScrollRegion(int top, int bottom) => write('\x1b[$top;${bottom}r');
 
   /// Reset scroll region to the full terminal height.
   void resetScrollRegion() => write('\x1b[r');

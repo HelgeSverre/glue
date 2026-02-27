@@ -5,8 +5,8 @@ class GlueHome {
   final String basePath;
 
   GlueHome({String? basePath})
-      : basePath = basePath ??
-            p.join(Platform.environment['HOME'] ?? '.', '.glue');
+      : basePath =
+            basePath ?? p.join(Platform.environment['HOME'] ?? '.', '.glue');
 
   String get configPath => p.join(basePath, 'config.json');
   String get sessionsDir => p.join(basePath, 'sessions');

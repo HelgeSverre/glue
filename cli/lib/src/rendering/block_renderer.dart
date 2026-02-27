@@ -79,7 +79,8 @@ class BlockRenderer {
     final legend = ' $command ';
     final topFill = boxWidth - 2 - legend.length;
     final topBar = topFill > 0 ? '─' * topFill : '';
-    final top = ' \x1b[90m┌─\x1b[0m\x1b[1m$legend\x1b[0m\x1b[90m$topBar┐\x1b[0m';
+    final top =
+        ' \x1b[90m┌─\x1b[0m\x1b[1m$legend\x1b[0m\x1b[90m$topBar┐\x1b[0m';
 
     final bottom = ' \x1b[90m└${'─' * (boxWidth - 2)}┘\x1b[0m';
 

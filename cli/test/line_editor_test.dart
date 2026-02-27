@@ -433,6 +433,70 @@ void main() {
     });
   });
 
+  group('alt key word navigation', () {
+    test('alt+left moves to previous word boundary', () {
+      type('hello world');
+      final action = editor.handle(KeyEvent(Key.left, alt: true));
+      expect(action, InputAction.changed);
+      expect(editor.cursor, 6);
+    });
+
+    test('alt+left skips trailing spaces', () {
+      type('hello   world');
+      editor.handle(KeyEvent(Key.left, alt: true)); // to 'w' at 8
+      editor.handle(KeyEvent(Key.left, alt: true)); // to 'h' at 0
+      expect(editor.cursor, 0);
+    });
+
+    test('alt+left at beginning returns null', () {
+      type('hello');
+      key(Key.home);
+      expect(editor.handle(KeyEvent(Key.left, alt: true)), isNull);
+    });
+
+    test('alt+right moves to next word boundary', () {
+      type('hello world');
+      key(Key.home);
+      final action = editor.handle(KeyEvent(Key.right, alt: true));
+      expect(action, InputAction.changed);
+      expect(editor.cursor, 5);
+    });
+
+    test('alt+right skips leading spaces', () {
+      type('hello   world');
+      key(Key.home);
+      editor.handle(KeyEvent(Key.right, alt: true)); // to end of 'hello'
+      editor.handle(KeyEvent(Key.right, alt: true)); // to end of 'world'
+      expect(editor.cursor, 13);
+    });
+
+    test('alt+right at end returns null', () {
+      type('hello');
+      expect(editor.handle(KeyEvent(Key.right, alt: true)), isNull);
+    });
+
+    test('alt+backspace deletes word (same as ctrl+w)', () {
+      type('hello world');
+      final action = editor.handle(KeyEvent(Key.backspace, alt: true));
+      expect(action, InputAction.changed);
+      expect(editor.text, 'hello ');
+      expect(editor.cursor, 6);
+    });
+
+    test('alt+backspace at beginning returns null', () {
+      type('hello');
+      key(Key.home);
+      expect(editor.handle(KeyEvent(Key.backspace, alt: true)), isNull);
+    });
+
+    test('alt+char is swallowed (not inserted)', () {
+      type('hello');
+      final action = editor.handle(CharEvent('f', alt: true));
+      expect(action, isNull);
+      expect(editor.text, 'hello');
+    });
+  });
+
   group('edge cases', () {
     test('empty buffer is empty', () {
       expect(editor.isEmpty, isTrue);

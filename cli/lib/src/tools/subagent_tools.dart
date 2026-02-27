@@ -29,13 +29,15 @@ class SpawnSubagentTool extends Tool {
         ToolParameter(
           name: 'provider',
           type: 'string',
-          description: 'LLM provider: "anthropic" or "openai". Defaults to current.',
+          description:
+              'LLM provider: "anthropic" or "openai". Defaults to current.',
           required: false,
         ),
         ToolParameter(
           name: 'model',
           type: 'string',
-          description: 'Model name override (e.g. "claude-haiku-4-5", "gpt-4.1-nano").',
+          description:
+              'Model name override (e.g. "claude-haiku-4-5", "gpt-4.1-nano").',
           required: false,
         ),
       ];

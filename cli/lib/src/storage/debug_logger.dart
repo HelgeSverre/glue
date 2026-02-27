@@ -1,4 +1,5 @@
 import 'dart:io';
+import '../config/constants.dart';
 import 'package:path/path.dart' as p;
 
 class DebugLogger {
@@ -10,7 +11,8 @@ class DebugLogger {
             ? (File(p.join(
                 logsDir,
                 'debug-${DateTime.now().toIso8601String().substring(0, 10)}.log',
-              ))..parent.createSync(recursive: true))
+              ))
+                  ..parent.createSync(recursive: true))
                 .openWrite(mode: FileMode.append)
             : null {
     if (enabled) {
@@ -27,7 +29,7 @@ class DebugLogger {
 
   void logHttp(String method, String url, int statusCode, {String? body}) {
     log('HTTP', '$method $url → $statusCode');
-    if (body != null && body.length < 1000) {
+    if (body != null && body.length < AppConstants.debugLogBodySizeLimit) {
       log('HTTP', 'Body: $body');
     }
   }

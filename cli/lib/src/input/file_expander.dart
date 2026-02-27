@@ -1,4 +1,5 @@
 import 'dart:io';
+import '../config/constants.dart';
 
 import 'package:path/path.dart' as p;
 
@@ -23,8 +24,6 @@ const _langTags = <String, String>{
   '.go': 'go',
 };
 
-const _maxFileSize = 100 * 1024;
-
 List<String> extractFileRefs(String input) {
   return _refPattern.allMatches(input).map((m) {
     return m.group(1) ?? m.group(2) ?? m.group(3)!;
@@ -43,7 +42,7 @@ String expandFileRefs(String input, {String? cwd}) {
     }
 
     final stat = file.statSync();
-    if (stat.size > _maxFileSize) {
+    if (stat.size > AppConstants.maxFileExpansionBytes) {
       final kb = (stat.size / 1024).round();
       return '$fullMatch [too large: $kb KB]';
     }

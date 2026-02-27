@@ -7,7 +7,8 @@ void main() {
 
   group('Cell', () {
     test('same char and style are equal', () {
-      expect(Cell('a', style: AnsiStyle.bold), equals(Cell('a', style: AnsiStyle.bold)));
+      expect(Cell('a', style: AnsiStyle.bold),
+          equals(Cell('a', style: AnsiStyle.bold)));
     });
 
     test('different char are not equal', () {
@@ -15,7 +16,8 @@ void main() {
     });
 
     test('different style are not equal', () {
-      expect(Cell('a', style: AnsiStyle.bold), isNot(equals(Cell('a', style: AnsiStyle.dim))));
+      expect(Cell('a', style: AnsiStyle.bold),
+          isNot(equals(Cell('a', style: AnsiStyle.dim))));
     });
 
     test('null style vs non-null style are not equal', () {
@@ -69,7 +71,7 @@ void main() {
     test('Key.left moves selection backward', () {
       final modal = makeModal();
       modal.handleEvent(KeyEvent(Key.right)); // -> 1
-      modal.handleEvent(KeyEvent(Key.left));  // -> 0
+      modal.handleEvent(KeyEvent(Key.left)); // -> 0
       expect(modal.selected, equals(0));
     });
 

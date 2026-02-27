@@ -9,6 +9,7 @@ import 'agent/agent_manager.dart';
 import 'agent/prompts.dart';
 import 'agent/tools.dart';
 import 'commands/slash_commands.dart';
+import 'config/constants.dart';
 import 'config/glue_config.dart';
 import 'llm/llm_factory.dart';
 import 'rendering/block_renderer.dart';
@@ -84,8 +85,6 @@ class UserResize extends AppEvent {
 /// agent output) are merged into a single render cycle so the UI is never
 /// blocked.
 class App {
-  static const _maxBlocks = 200;
-
   final Terminal terminal;
   final Layout layout;
   final LineEditor editor;
@@ -95,6 +94,21 @@ class App {
   AppMode _mode = AppMode.idle;
   final List<_ConversationEntry> _blocks = [];
   int _scrollOffset = 0;
+
+  static const _spinnerFrames = [
+    '⠋',
+    '⠙',
+    '⠹',
+    '⠸',
+    '⠼',
+    '⠴',
+    '⠦',
+    '⠧',
+    '⠇',
+    '⠏'
+  ];
+  int _spinnerFrame = 0;
+  Timer? _spinnerTimer;
   String _streamingText = '';
   StreamSubscription<AgentEvent>? _agentSub;
   StreamSubscription<SubagentUpdate>? _subagentSub;
@@ -107,8 +121,11 @@ class App {
   PanelModal? _activePanel;
   bool _renderedPanelLastFrame = false;
   final Set<String> _autoApprovedTools = {
-    'read_file', 'list_directory', 'grep',
-    'spawn_subagent', 'spawn_parallel_subagents',
+    'read_file',
+    'list_directory',
+    'grep',
+    'spawn_subagent',
+    'spawn_parallel_subagents',
   };
   final AgentManager? _manager;
   final LlmClientFactory? _llmFactory;
@@ -121,7 +138,10 @@ class App {
   bool _bashMode = false;
   Process? _bashRunProcess;
   DateTime? _lastCtrlC;
-  static const _ctrlCWindow = Duration(seconds: 2);
+
+  final Map<String, _SubagentGroup> _subagentGroups = {};
+  final List<_SubagentGroup?> _outputLineGroups = [];
+
   final bool _startupResume;
   final bool _startupContinue;
 
@@ -140,16 +160,16 @@ class App {
     ShellJobManager? jobManager,
     bool startupResume = false,
     bool startupContinue = false,
-  }) : _modelName = modelName,
-       _manager = manager,
-       _llmFactory = llmFactory,
-       _config = config,
-       _systemPrompt = systemPrompt,
-       _sessionStore = sessionStore,
-       _jobManager = jobManager ?? ShellJobManager(),
-       _startupResume = startupResume,
-       _startupContinue = startupContinue,
-       _cwd = Directory.current.path {
+  })  : _modelName = modelName,
+        _manager = manager,
+        _llmFactory = llmFactory,
+        _config = config,
+        _systemPrompt = systemPrompt,
+        _sessionStore = sessionStore,
+        _jobManager = jobManager ?? ShellJobManager(),
+        _startupResume = startupResume,
+        _startupContinue = startupContinue,
+        _cwd = Directory.current.path {
     if (extraTrustedTools != null) {
       _autoApprovedTools.addAll(extraTrustedTools);
     }
@@ -292,6 +312,7 @@ class App {
     } finally {
       // Stop all event sources before touching terminal state.
       _stopSplashAnimation();
+      _stopSpinner();
       await _sessionStore?.close();
       await jobSub.cancel();
       await _jobManager.shutdown();
@@ -605,20 +626,29 @@ class App {
 
         // Bash mode switching — before passing to editor.
         if (_mode == AppMode.idle) {
-          if (!_bashMode && event is CharEvent && event.char == '!' && editor.cursor == 0) {
+          if (!_bashMode &&
+              event is CharEvent &&
+              event.char == '!' &&
+              editor.cursor == 0) {
             _bashMode = true;
             _render();
             return;
           }
-          if (_bashMode && event is KeyEvent && event.key == Key.backspace && editor.cursor == 0) {
+          if (_bashMode &&
+              event is KeyEvent &&
+              event.key == Key.backspace &&
+              editor.cursor == 0) {
             _bashMode = false;
             _render();
             return;
           }
         }
 
-        if (_mode == AppMode.streaming || _mode == AppMode.toolRunning || _mode == AppMode.bashRunning) {
-          if (event case KeyEvent(key: Key.ctrlC) || KeyEvent(key: Key.escape)) {
+        if (_mode == AppMode.streaming ||
+            _mode == AppMode.toolRunning ||
+            _mode == AppMode.bashRunning) {
+          if (event
+              case KeyEvent(key: Key.ctrlC) || KeyEvent(key: Key.escape)) {
             if (_mode == AppMode.bashRunning) {
               _cancelBash();
             } else {
@@ -719,12 +749,15 @@ class App {
             }
           case InputAction.interrupt:
             final now = DateTime.now();
-            if (_lastCtrlC != null && now.difference(_lastCtrlC!) < _ctrlCWindow) {
+            if (_lastCtrlC != null &&
+                now.difference(_lastCtrlC!) <
+                    AppConstants.ctrlCDoubleTapWindow) {
               _lastCtrlC = null;
               requestExit();
             } else {
               _lastCtrlC = now;
-              _blocks.add(_ConversationEntry.system('Press Ctrl+C again to exit.'));
+              _blocks.add(
+                  _ConversationEntry.system('Press Ctrl+C again to exit.'));
               _render();
             }
           case InputAction.changed:
@@ -742,11 +775,35 @@ class App {
       case ResizeEvent(:final cols, :final rows):
         _events.add(UserResize(cols, rows));
 
-      case MouseEvent(:final x, :final y, :final isScroll, :final isScrollUp, :final isDown):
+      case MouseEvent(
+          :final x,
+          :final y,
+          :final isScroll,
+          :final isScrollUp,
+          :final isDown
+        ):
         if (isScroll) {
           _events.add(UserScroll(isScrollUp ? 3 : -3));
-        } else if (isDown && _liquidSim != null) {
-          _handleSplashClick(x, y);
+        } else if (isDown) {
+          if (y >= layout.outputTop && y <= layout.outputBottom) {
+            final viewportHeight = layout.outputBottom - layout.outputTop + 1;
+            final totalLines = _outputLineGroups.length;
+            final firstLine = (totalLines - viewportHeight - _scrollOffset)
+                .clamp(0, totalLines);
+            final outputLineIdx = firstLine + (y - layout.outputTop);
+            if (outputLineIdx >= 0 &&
+                outputLineIdx < _outputLineGroups.length) {
+              final group = _outputLineGroups[outputLineIdx];
+              if (group != null) {
+                group.expanded = !group.expanded;
+                _render();
+                return;
+              }
+            }
+          }
+          if (_liquidSim != null) {
+            _handleSplashClick(x, y);
+          }
         }
     }
   }
@@ -767,7 +824,8 @@ class App {
         } else {
           final expanded = expandFileRefs(text);
           _sessionStore?.logEvent('user_message', {'text': expanded});
-          _startAgent(text, expandedMessage: expanded != text ? expanded : null);
+          _startAgent(text,
+              expandedMessage: expanded != text ? expanded : null);
         }
 
       case UserCancel():
@@ -788,10 +846,12 @@ class App {
   // ── Agent interaction ──────────────────────────────────────────────────
 
   void _startAgent(String displayMessage, {String? expandedMessage}) {
-    _blocks.add(_ConversationEntry.user(displayMessage,
-        expandedText: expandedMessage));
+    _blocks.add(
+        _ConversationEntry.user(displayMessage, expandedText: expandedMessage));
     _mode = AppMode.streaming;
+    _startSpinner();
     _streamingText = '';
+    _subagentGroups.clear();
     _render();
 
     final stream = agent.run(expandedMessage ?? displayMessage);
@@ -799,6 +859,7 @@ class App {
       _handleAgentEvent,
       onError: (Object e) {
         _blocks.add(_ConversationEntry.error(e.toString()));
+        _stopSpinner();
         _mode = AppMode.idle;
         _render();
       },
@@ -807,6 +868,7 @@ class App {
           _blocks.add(_ConversationEntry.assistant(_streamingText));
           _streamingText = '';
         }
+        _stopSpinner();
         _mode = AppMode.idle;
         _render();
       },
@@ -834,6 +896,7 @@ class App {
 
         // Auto-approve safe tools.
         if (_autoApprovedTools.contains(call.name)) {
+          _stopSpinner();
           _mode = AppMode.toolRunning;
           _render();
           unawaited(_executeAndCompleteTool(call));
@@ -841,10 +904,10 @@ class App {
         }
 
         // Show confirmation modal.
+        _stopSpinner();
         _mode = AppMode.confirming;
-        final bodyLines = call.arguments.entries
-            .map((e) => '${e.key}: ${e.value}')
-            .toList();
+        final bodyLines =
+            call.arguments.entries.map((e) => '${e.key}: ${e.value}').toList();
         if (bodyLines.isEmpty) bodyLines.add('(no arguments)');
         _activeModal = ConfirmModal(
           title: 'Approve tool: ${call.name}',
@@ -870,7 +933,8 @@ class App {
                 final home = GlueHome();
                 final store = ConfigStore(home.configPath);
                 store.update((c) {
-                  final tools = (c['trusted_tools'] as List?)?.cast<String>() ?? [];
+                  final tools =
+                      (c['trusted_tools'] as List?)?.cast<String>() ?? [];
                   if (!tools.contains(call.name)) {
                     tools.add(call.name);
                     c['trusted_tools'] = tools;
@@ -882,6 +946,7 @@ class App {
               unawaited(_executeAndCompleteTool(call));
             default: // No
               _mode = AppMode.streaming;
+              _startSpinner();
               agent.completeToolCall(ToolResult.denied(call.id));
               _render();
           }
@@ -892,19 +957,23 @@ class App {
           _ConversationEntry.toolResult(result.callId, result.content),
         );
         _mode = AppMode.streaming;
+        _startSpinner();
         _render();
 
       case AgentDone():
         if (_streamingText.isNotEmpty) {
-          _sessionStore?.logEvent('assistant_message', {'text': _streamingText});
+          _sessionStore
+              ?.logEvent('assistant_message', {'text': _streamingText});
           _blocks.add(_ConversationEntry.assistant(_streamingText));
           _streamingText = '';
         }
+        _stopSpinner();
         _mode = AppMode.idle;
         _render();
 
       case AgentError(:final error):
         _blocks.add(_ConversationEntry.error(error.toString()));
+        _stopSpinner();
         _mode = AppMode.idle;
         _render();
     }
@@ -1014,7 +1083,8 @@ class App {
         final job = _jobManager.getJob(id);
         final cmd = job?.command ?? '?';
         final label = exitCode == 0 ? 'exited' : 'failed';
-        _blocks.add(_ConversationEntry.system('↳ Job #$id $label ($exitCode): $cmd'));
+        _blocks.add(
+            _ConversationEntry.system('↳ Job #$id $label ($exitCode): $cmd'));
         _render();
       case JobError(:final id, :final error):
         _blocks.add(_ConversationEntry.system('↳ Job #$id error: $error'));
@@ -1025,9 +1095,22 @@ class App {
   // ── Subagent updates ──────────────────────────────────────────────────
 
   void _handleSubagentUpdate(SubagentUpdate update) {
-    final prefix = update.index != null
-        ? '↳ [${update.index! + 1}/${update.total}]'
-        : '↳';
+    final groupKey = '${update.task}:${update.index ?? 0}';
+    final group = _subagentGroups.putIfAbsent(
+      groupKey,
+      () {
+        final g = _SubagentGroup(
+          task: update.task,
+          index: update.index,
+          total: update.total,
+        );
+        _blocks.add(_ConversationEntry.subagentGroup(g));
+        return g;
+      },
+    );
+
+    final prefix =
+        update.index != null ? '↳ [${update.index! + 1}/${update.total}]' : '↳';
 
     switch (update.event) {
       case AgentToolCall(:final call):
@@ -1035,27 +1118,22 @@ class App {
             .take(2)
             .map((e) => '${e.key}: ${e.value}')
             .join(', ');
-        _blocks.add(_ConversationEntry.subagent(
-          '$prefix ▶ ${call.name}  $argsPreview',
-        ));
+        group.entries.add('$prefix ▶ ${call.name}  $argsPreview');
         _render();
       case AgentToolResult(:final result):
         final preview = result.content.length > 80
             ? '${result.content.substring(0, 80)}…'
             : result.content;
-        _blocks.add(_ConversationEntry.subagent(
-          '$prefix ✓ ${preview.replaceAll('\n', ' ')}',
-        ));
+        group.entries.add('$prefix ✓ ${preview.replaceAll('\n', ' ')}');
         _render();
       case AgentError(:final error):
-        _blocks.add(_ConversationEntry.subagent(
-          '$prefix ✗ Error: $error',
-        ));
+        group.entries.add('$prefix ✗ Error: $error');
         _render();
       case AgentTextDelta():
-        break; // Skip text streaming — too noisy.
-      case AgentDone():
         break;
+      case AgentDone():
+        group.done = true;
+        _render();
     }
   }
 
@@ -1113,14 +1191,30 @@ class App {
     if (sim == null) return;
     final localX = screenX - _splashOriginCol;
     final localY = screenY - _splashOriginRow;
-    if (localX >= 0 && localX < mascotRenderWidth &&
-        localY >= 0 && localY < mascotRenderHeight) {
+    if (localX >= 0 &&
+        localX < mascotRenderWidth &&
+        localY >= 0 &&
+        localY < mascotRenderHeight) {
       sim.impulse(localX, localY);
       if (sim.shouldExplode) {
         _triggerExplosion();
       }
       _render();
     }
+  }
+
+  void _startSpinner() {
+    if (_spinnerTimer != null) return;
+    _spinnerFrame = 0;
+    _spinnerTimer = Timer.periodic(const Duration(milliseconds: 80), (_) {
+      _spinnerFrame = (_spinnerFrame + 1) % _spinnerFrames.length;
+      _render();
+    });
+  }
+
+  void _stopSpinner() {
+    _spinnerTimer?.cancel();
+    _spinnerTimer = null;
   }
 
   void _render() {
@@ -1150,14 +1244,16 @@ class App {
       layout.apply();
     }
 
-    if (_blocks.length > _maxBlocks) {
-      _blocks.removeRange(0, _blocks.length - _maxBlocks);
+    if (_blocks.length > AppConstants.maxConversationBlocks) {
+      _blocks.removeRange(
+          0, _blocks.length - AppConstants.maxConversationBlocks);
     }
     terminal.hideCursor();
     final renderer = BlockRenderer(terminal.columns);
 
     // 1. Build all output lines from blocks.
     final outputLines = <String>[];
+    _outputLineGroups.clear();
     for (final block in _blocks) {
       final text = switch (block.kind) {
         _EntryKind.user => renderer.renderUser(block.text),
@@ -1166,15 +1262,25 @@ class App {
         _EntryKind.toolResult => renderer.renderToolResult(block.text),
         _EntryKind.error => renderer.renderError(block.text),
         _EntryKind.subagent => renderer.renderSubagent(block.text),
+        _EntryKind.subagentGroup => renderer.renderSubagent(
+            block.group!.expanded
+                ? '${block.group!.summary}\n${block.group!.entries.join('\n')}'
+                : block.group!.summary),
         _EntryKind.system => renderer.renderSystem(block.text),
         _EntryKind.bash => renderer.renderBash(
-          block.expandedText ?? 'shell',
-          block.text,
-          maxLines: _config?.bashMaxLines ?? 50,
-        ),
+            block.expandedText ?? 'shell',
+            block.text,
+            maxLines: _config?.bashMaxLines ?? 50,
+          ),
       };
-      outputLines.addAll(text.split('\n'));
-      outputLines.add(''); // blank line between blocks
+      final lines = text.split('\n');
+      final group = block.kind == _EntryKind.subagentGroup ? block.group : null;
+      for (var j = 0; j < lines.length; j++) {
+        _outputLineGroups.add(group);
+      }
+      _outputLineGroups.add(null);
+      outputLines.addAll(lines);
+      outputLines.add('');
     }
 
     // Splash screen: show animated mascot when only the initial system block.
@@ -1192,9 +1298,8 @@ class App {
       final mascotLines = renderMascot(_liquidSim!);
       final viewH = layout.outputBottom - layout.outputTop + 1;
       final artH = mascotLines.length;
-      final padTop = ((viewH - outputLines.length - artH) / 2)
-          .clamp(0, viewH)
-          .toInt();
+      final padTop =
+          ((viewH - outputLines.length - artH) / 2).clamp(0, viewH).toInt();
       for (var i = 0; i < padTop; i++) {
         outputLines.add('');
       }
@@ -1255,7 +1360,8 @@ class App {
     final maxScroll = (totalLines - viewportHeight).clamp(0, totalLines);
     _scrollOffset = _scrollOffset.clamp(0, maxScroll);
 
-    final firstLine = (totalLines - viewportHeight - _scrollOffset).clamp(0, totalLines);
+    final firstLine =
+        (totalLines - viewportHeight - _scrollOffset).clamp(0, totalLines);
     final endLine = (firstLine + viewportHeight).clamp(0, totalLines);
     final visibleLines = firstLine < endLine
         ? outputLines.sublist(firstLine, endLine)
@@ -1275,7 +1381,7 @@ class App {
     // 5. Status bar.
     final modeIndicator = switch (_mode) {
       AppMode.idle => 'Ready',
-      AppMode.streaming => '● Generating',
+      AppMode.streaming => '${_spinnerFrames[_spinnerFrame]} Generating',
       AppMode.toolRunning => '⚙ Tool',
       AppMode.confirming => '? Approve',
       AppMode.bashRunning => '! Running',
@@ -1308,15 +1414,27 @@ class App {
 // Conversation entries (simple model for the output log)
 // ---------------------------------------------------------------------------
 
-enum _EntryKind { user, assistant, toolCall, toolResult, error, system, subagent, bash }
+enum _EntryKind {
+  user,
+  assistant,
+  toolCall,
+  toolResult,
+  error,
+  system,
+  subagent,
+  subagentGroup,
+  bash
+}
 
 class _ConversationEntry {
   final _EntryKind kind;
   final String text;
   final Map<String, dynamic>? args;
   final String? expandedText;
+  final _SubagentGroup? group;
 
-  _ConversationEntry._(this.kind, this.text, {this.args, this.expandedText});
+  _ConversationEntry._(this.kind, this.text,
+      {this.args, this.expandedText, this.group});
 
   factory _ConversationEntry.user(String text, {String? expandedText}) =>
       _ConversationEntry._(_EntryKind.user, text, expandedText: expandedText);
@@ -1336,8 +1454,8 @@ class _ConversationEntry {
   factory _ConversationEntry.error(String message) =>
       _ConversationEntry._(_EntryKind.error, message);
 
-  factory _ConversationEntry.subagent(String text) =>
-      _ConversationEntry._(_EntryKind.subagent, text);
+  factory _ConversationEntry.subagentGroup(_SubagentGroup group) =>
+      _ConversationEntry._(_EntryKind.subagentGroup, '', group: group);
 
   factory _ConversationEntry.system(String text) =>
       _ConversationEntry._(_EntryKind.system, text);
@@ -1346,4 +1464,20 @@ class _ConversationEntry {
       _ConversationEntry._(_EntryKind.bash, output, expandedText: command);
 }
 
+class _SubagentGroup {
+  final String task;
+  final int? index;
+  final int? total;
+  final List<String> entries = [];
+  bool expanded = false;
+  bool done = false;
 
+  _SubagentGroup({required this.task, this.index, this.total});
+
+  String get summary {
+    final prefix = index != null ? '[${index! + 1}/$total]' : '';
+    final status = done ? '✓' : '${entries.length} steps…';
+    final taskPreview = task.length > 50 ? '${task.substring(0, 50)}…' : task;
+    return '↳ $prefix $taskPreview ($status)';
+  }
+}

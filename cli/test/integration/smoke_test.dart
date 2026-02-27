@@ -40,7 +40,8 @@ class _MockFactory extends LlmClientFactory {
     required String apiKey,
     required String systemPrompt,
     String ollamaBaseUrl = 'http://localhost:11434',
-  }) => _MockLlm();
+  }) =>
+      _MockLlm();
 }
 
 void main() {

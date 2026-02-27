@@ -69,11 +69,11 @@ class ShellJobManager {
     _events.add(JobStarted(id, command));
 
     process.stdout.transform(const SystemEncoding().decoder).listen(
-      (chunk) => job.output.addText(chunk),
-    );
+          (chunk) => job.output.addText(chunk),
+        );
     process.stderr.transform(const SystemEncoding().decoder).listen(
-      (chunk) => job.output.addText(chunk),
-    );
+          (chunk) => job.output.addText(chunk),
+        );
 
     unawaited(() async {
       try {

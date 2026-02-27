@@ -77,8 +77,8 @@ class AgentManager {
       );
     }
 
-    final effectiveProfile = profile ??
-        AgentProfile(provider: config.provider, model: config.model);
+    final effectiveProfile =
+        profile ?? AgentProfile(provider: config.provider, model: config.model);
 
     final llm = llmFactory.create(
       provider: effectiveProfile.provider,

@@ -50,7 +50,8 @@ class ConfirmModal {
         _completer.complete(_selected);
         return true;
       case KeyEvent(key: Key.escape):
-        final noIndex = choices.indexWhere((c) => c.hotkey.toLowerCase() == 'n');
+        final noIndex =
+            choices.indexWhere((c) => c.hotkey.toLowerCase() == 'n');
         _completer.complete(noIndex >= 0 ? noIndex : 1);
         return true;
       case CharEvent(char: final c):
@@ -106,7 +107,8 @@ class ConfirmModal {
     for (var i = 0; i < choices.length; i++) {
       final choice = choices[i];
       if (i == _selected) {
-        choiceBuf.write('\x1b[7m  (${choice.hotkey}) ${choice.label}  \x1b[27m ');
+        choiceBuf
+            .write('\x1b[7m  (${choice.hotkey}) ${choice.label}  \x1b[27m ');
       } else {
         choiceBuf.write('  (${choice.hotkey}) ${choice.label}  ');
       }

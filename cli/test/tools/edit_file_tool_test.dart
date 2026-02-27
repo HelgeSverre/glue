@@ -40,7 +40,8 @@ void main() {
       'new_string': 'void foo() {\n  print("world");\n  return;\n}',
     });
     expect(result, contains('Applied edit'));
-    expect(f.readAsStringSync(), 'void foo() {\n  print("world");\n  return;\n}\n');
+    expect(f.readAsStringSync(),
+        'void foo() {\n  print("world");\n  return;\n}\n');
   });
 
   test('errors when old_string not found', () async {

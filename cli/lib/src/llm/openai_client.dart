@@ -96,7 +96,8 @@ class OpenAiClient implements LlmClient {
       }
 
       final choice = (choices.first as Map).cast<String, dynamic>();
-      final delta = (choice['delta'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
+      final delta = (choice['delta'] as Map?)?.cast<String, dynamic>() ??
+          <String, dynamic>{};
       final finishReason = choice['finish_reason'] as String?;
 
       // Text content.

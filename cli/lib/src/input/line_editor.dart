@@ -54,13 +54,14 @@ class LineEditor {
   /// the event was not consumed.
   InputAction? handle(TerminalEvent event) {
     return switch (event) {
+      CharEvent(alt: true) => null,
       CharEvent(:final char) => _insert(char),
-      KeyEvent(:final key) => switch (key) {
+      KeyEvent(:final key, :final alt) => switch (key) {
           Key.enter => _submit(),
-          Key.backspace => _backspace(),
+          Key.backspace => alt ? _deleteWord() : _backspace(),
           Key.delete => _delete(),
-          Key.left => _moveLeft(),
-          Key.right => _moveRight(),
+          Key.left => alt ? _moveWordLeft() : _moveLeft(),
+          Key.right => alt ? _moveWordRight() : _moveRight(),
           Key.home || Key.ctrlA => _moveHome(),
           Key.end || Key.ctrlE => _moveEnd(),
           Key.up => _historyPrev(),
@@ -99,8 +100,7 @@ class LineEditor {
 
   InputAction? _backspace() {
     if (_cursor > 0) {
-      _buffer =
-          _buffer.substring(0, _cursor - 1) + _buffer.substring(_cursor);
+      _buffer = _buffer.substring(0, _cursor - 1) + _buffer.substring(_cursor);
       _cursor--;
       return InputAction.changed;
     }
@@ -109,8 +109,7 @@ class LineEditor {
 
   InputAction? _delete() {
     if (_cursor < _buffer.length) {
-      _buffer =
-          _buffer.substring(0, _cursor) + _buffer.substring(_cursor + 1);
+      _buffer = _buffer.substring(0, _cursor) + _buffer.substring(_cursor + 1);
       return InputAction.changed;
     }
     return null;
@@ -132,6 +131,32 @@ class LineEditor {
       return InputAction.changed;
     }
     return null;
+  }
+
+  InputAction? _moveWordLeft() {
+    if (_cursor == 0) return null;
+    var i = _cursor - 1;
+    while (i > 0 && _buffer[i] == ' ') {
+      i--;
+    }
+    while (i > 0 && _buffer[i - 1] != ' ') {
+      i--;
+    }
+    _cursor = i;
+    return InputAction.changed;
+  }
+
+  InputAction? _moveWordRight() {
+    if (_cursor >= _buffer.length) return null;
+    var i = _cursor;
+    while (i < _buffer.length && _buffer[i] == ' ') {
+      i++;
+    }
+    while (i < _buffer.length && _buffer[i] != ' ') {
+      i++;
+    }
+    _cursor = i;
+    return InputAction.changed;
   }
 
   InputAction _moveHome() {

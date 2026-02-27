@@ -14,7 +14,8 @@ void main() {
   group('AnthropicMessageMapper', () {
     test('maps user message', () {
       final mapper = AnthropicMessageMapper();
-      final result = mapper.mapMessages(messages, systemPrompt: 'You are Glue.');
+      final result =
+          mapper.mapMessages(messages, systemPrompt: 'You are Glue.');
       // System prompt is returned separately.
       expect(result.systemPrompt, 'You are Glue.');
       expect(result.messages.first['role'], 'user');
@@ -35,7 +36,8 @@ void main() {
   group('OpenAiMessageMapper', () {
     test('prepends system message', () {
       final mapper = OpenAiMessageMapper();
-      final result = mapper.mapMessages(messages, systemPrompt: 'You are Glue.');
+      final result =
+          mapper.mapMessages(messages, systemPrompt: 'You are Glue.');
       expect(result.messages.first['role'], 'system');
       expect(result.messages.first['content'], 'You are Glue.');
     });
@@ -46,7 +48,8 @@ void main() {
         Message.assistant(
           text: '',
           toolCalls: [
-            ToolCall(id: 'tc1', name: 'read_file', arguments: {'path': '/foo.txt'}),
+            ToolCall(
+                id: 'tc1', name: 'read_file', arguments: {'path': '/foo.txt'}),
           ],
         ),
       ];

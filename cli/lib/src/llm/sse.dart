@@ -40,9 +40,8 @@ Stream<SseEvent> decodeSse(Stream<List<int>> bytes) async* {
         ..write(content.substring(nlIndex + 1));
 
       // Strip trailing \r for CRLF compatibility.
-      final trimmed = line.endsWith('\r')
-          ? line.substring(0, line.length - 1)
-          : line;
+      final trimmed =
+          line.endsWith('\r') ? line.substring(0, line.length - 1) : line;
 
       if (trimmed.isEmpty) {
         // Blank line = event boundary.

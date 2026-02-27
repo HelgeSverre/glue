@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../config/constants.dart';
 import '../rendering/ansi_utils.dart';
 
 class _Candidate {
@@ -20,9 +21,7 @@ class _TreeEntry {
 
 class AtFileHint {
   final String cwd;
-  static const maxVisible = 8;
-  static const _maxTreeEntries = 2000;
-  static const _maxTreeDepth = 3;
+  static const maxVisible = AppConstants.maxVisibleDropdownItems;
 
   bool _active = false;
   int _selected = 0;
@@ -203,14 +202,16 @@ class AtFileHint {
   List<_TreeEntry> _listTree() {
     final now = DateTime.now();
     if (_cachedTree != null &&
-        now.difference(_cachedTreeAt).inSeconds < 2) {
+        now.difference(_cachedTreeAt).inSeconds <
+            AppConstants.atFileHintCacheTtlSeconds) {
       return _cachedTree!;
     }
 
     final entries = <_TreeEntry>[];
     final queue = <(String, String, int)>[(cwd, '', 1)];
 
-    while (queue.isNotEmpty && entries.length < _maxTreeEntries) {
+    while (queue.isNotEmpty &&
+        entries.length < AppConstants.atFileHintMaxTreeEntries) {
       final (dirAbs, relPrefix, depth) = queue.removeAt(0);
       List<FileSystemEntity> children;
       try {
@@ -228,10 +229,10 @@ class AtFileHint {
           name,
           isDir,
         ));
-        if (isDir && depth <= _maxTreeDepth) {
+        if (isDir && depth <= AppConstants.atFileHintMaxTreeDepth) {
           queue.add((child.path, relPath, depth + 1));
         }
-        if (entries.length >= _maxTreeEntries) break;
+        if (entries.length >= AppConstants.atFileHintMaxTreeEntries) break;
       }
     }
 
@@ -292,7 +293,8 @@ class AtFileHint {
     final now = DateTime.now();
     if (dirPath == _cachedDirPath &&
         _cachedEntries != null &&
-        now.difference(_cachedAt).inSeconds < 2) {
+        now.difference(_cachedAt).inSeconds <
+            AppConstants.atFileHintCacheTtlSeconds) {
       return _cachedEntries!;
     }
     _cachedDirPath = dirPath;

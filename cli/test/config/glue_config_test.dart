@@ -52,9 +52,12 @@ void main() {
         anthropicApiKey: 'sk-ant',
         openaiApiKey: 'sk-oai',
         profiles: {
-          'architect': AgentProfile(provider: LlmProvider.anthropic, model: 'claude-opus-4-6'),
-          'editor': AgentProfile(provider: LlmProvider.openai, model: 'gpt-4.1-mini'),
-          'local': AgentProfile(provider: LlmProvider.ollama, model: 'qwen2.5-coder'),
+          'architect': AgentProfile(
+              provider: LlmProvider.anthropic, model: 'claude-opus-4-6'),
+          'editor':
+              AgentProfile(provider: LlmProvider.openai, model: 'gpt-4.1-mini'),
+          'local': AgentProfile(
+              provider: LlmProvider.ollama, model: 'qwen2.5-coder'),
         },
       );
       expect(config.profiles['architect']!.model, 'claude-opus-4-6');

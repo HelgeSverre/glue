@@ -24,7 +24,8 @@ class _TestFactory extends LlmClientFactory {
     required String apiKey,
     required String systemPrompt,
     String ollamaBaseUrl = 'http://localhost:11434',
-  }) => _EchoLlm();
+  }) =>
+      _EchoLlm();
 }
 
 void main() {

@@ -212,9 +212,8 @@ class MarkdownRenderer {
     }
 
     // Pre-render all cells so widths reflect actual visible output
-    final rendered = rows
-        .map((row) => row.map(_renderInline).toList())
-        .toList();
+    final rendered =
+        rows.map((row) => row.map(_renderInline).toList()).toList();
 
     // Compute column widths from rendered visible text
     final widths = List<int>.filled(colCount, 0);
@@ -261,7 +260,8 @@ class MarkdownRenderer {
   List<String> _parseTableRow(String line) {
     var trimmed = line.trim();
     if (trimmed.startsWith('|')) trimmed = trimmed.substring(1);
-    if (trimmed.endsWith('|')) trimmed = trimmed.substring(0, trimmed.length - 1);
+    if (trimmed.endsWith('|'))
+      trimmed = trimmed.substring(0, trimmed.length - 1);
     return trimmed.split('|').map((c) => c.trim()).toList();
   }
 
@@ -270,7 +270,8 @@ class MarkdownRenderer {
     return '\x1b[90m$left${parts.join(mid)}$right\x1b[0m';
   }
 
-  String _tableDataRow(List<String> cells, List<int> widths, {bool bold = false}) {
+  String _tableDataRow(List<String> cells, List<int> widths,
+      {bool bold = false}) {
     final parts = <String>[];
     for (var c = 0; c < cells.length; c++) {
       final cell = cells[c];
@@ -278,9 +279,8 @@ class MarkdownRenderer {
       final colW = widths[c];
       final display = vis > colW ? ansiTruncate(cell, colW) : cell;
       final pad = colW - (vis > colW ? colW : vis);
-      final content = bold
-          ? '\x1b[1m$display\x1b[22m${' ' * pad}'
-          : '$display${' ' * pad}';
+      final content =
+          bold ? '\x1b[1m$display\x1b[22m${' ' * pad}' : '$display${' ' * pad}';
       parts.add(' $content ');
     }
     return '\x1b[90m│\x1b[0m${parts.join('\x1b[90m│\x1b[0m')}\x1b[90m│\x1b[0m';

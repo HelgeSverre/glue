@@ -1,13 +1,11 @@
 // Liquid simulation + ASCII renderer for the Glue mascot splash screen.
 
 import 'dart:math';
+import 'mascot_physics.dart';
 import 'mascot_sprite.dart';
 
 const mascotRenderWidth = spriteWidth;
 const mascotRenderHeight = spriteHeight;
-
-// Threshold of accumulated disturbance before the mascot explodes.
-const _explodeThreshold = 60.0;
 
 class LiquidSim {
   final int width = spriteWidth;
@@ -17,13 +15,10 @@ class LiquidSim {
   late List<double> _curr;
   late List<double> _prev;
 
-  // Damping factor (0–1). Lower = longer-lasting ripples.
-  static const _damping = 0.92;
-
   // Accumulated disturbance energy from clicks.
   double disturbance = 0.0;
 
-  bool get shouldExplode => disturbance >= _explodeThreshold;
+  bool get shouldExplode => disturbance >= LiquidSimPhysics.explodeThreshold;
 
   LiquidSim() {
     final n = width * height;
@@ -34,7 +29,9 @@ class LiquidSim {
   int _idx(int x, int y) => y * width + x;
 
   /// Inject a ripple impulse at (cx, cy) in sprite-local coordinates.
-  void impulse(int cx, int cy, {double strength = 6.0, int radius = 3}) {
+  void impulse(int cx, int cy,
+      {double strength = MascotParticles.impulseStrength,
+      int radius = MascotParticles.impulseRadius}) {
     disturbance += strength;
     for (var dy = -radius; dy <= radius; dy++) {
       for (var dx = -radius; dx <= radius; dx++) {
@@ -56,10 +53,12 @@ class LiquidSim {
       for (var x = 1; x < width - 1; x++) {
         final i = _idx(x, y);
         // Wave equation: average of neighbors * 2 - previous.
-        final avg = (_curr[i - 1] + _curr[i + 1] +
-                _curr[i - width] + _curr[i + width]) /
+        final avg = (_curr[i - 1] +
+                _curr[i + 1] +
+                _curr[i - width] +
+                _curr[i + width]) /
             2.0;
-        next[i] = (avg - _prev[i]) * _damping;
+        next[i] = (avg - _prev[i]) * LiquidSimPhysics.damping;
       }
     }
     _prev = _curr;
@@ -75,7 +74,7 @@ class LiquidSim {
   /// Whether any cell still has significant displacement.
   bool get isActive {
     for (final v in _curr) {
-      if (v.abs() > 0.01) return true;
+      if (v.abs() > LiquidSimPhysics.activeThreshold) return true;
     }
     return false;
   }
@@ -139,8 +138,6 @@ class GooExplosion {
   final int viewportWidth;
   final int viewportHeight;
   int _tick = 0;
-  static const _gravity = 0.15;
-  static const _drag = 0.96;
 
   // Drip trails that have settled at the bottom and drip further.
   final List<_DripTrail> _drips = [];
@@ -148,7 +145,7 @@ class GooExplosion {
   bool get isActive =>
       _particles.any((p) => !p.landed) || _drips.any((d) => d.active);
 
-  bool get isDone => _tick > 10 && !isActive;
+  bool get isDone => _tick > MascotParticles.settleFrames && !isActive;
 
   GooExplosion({
     required this.viewportWidth,
@@ -162,8 +159,8 @@ class GooExplosion {
         final pixel = spriteData[sy * spriteWidth + sx];
         if (pixel == null) continue;
 
-        // Only sample ~40% of pixels to keep it performant.
-        if (_rng.nextDouble() > 0.4) continue;
+        // Only sample some pixels to keep it performant.
+        if (_rng.nextDouble() > MascotParticles.samplingRate) continue;
 
         final px = originX + sx;
         final py = originY + sy;
@@ -174,13 +171,17 @@ class GooExplosion {
         final dx = px - cx;
         final dy = py - cy;
         final dist = sqrt(dx * dx + dy * dy) + 0.1;
-        final speed = 1.5 + _rng.nextDouble() * 2.5;
+        final speed = MascotParticles.baseSpeed +
+            _rng.nextDouble() * MascotParticles.speedVariance;
 
         _particles.add(_GooParticle(
           x: px.toDouble(),
           y: py.toDouble(),
-          vx: (dx / dist) * speed + (_rng.nextDouble() - 0.5) * 0.8,
-          vy: (dy / dist) * speed - _rng.nextDouble() * 1.5,
+          vx: (dx / dist) * speed +
+              (_rng.nextDouble() - 0.5) *
+                  MascotParticles.horizontalPerturbation,
+          vy: (dy / dist) * speed -
+              _rng.nextDouble() * MascotParticles.verticalPerturbation,
           r: pixel[0],
           g: pixel[1],
           b: pixel[2],
@@ -194,9 +195,9 @@ class GooExplosion {
     _tick++;
     for (final p in _particles) {
       if (p.landed) continue;
-      p.vy += _gravity;
-      p.vx *= _drag;
-      p.vy *= _drag;
+      p.vy += MascotParticles.gravity;
+      p.vx *= MascotParticles.drag;
+      p.vy *= MascotParticles.drag;
       p.x += p.vx;
       p.y += p.vy;
 
@@ -205,7 +206,7 @@ class GooExplosion {
         p.y = viewportHeight - 1;
         p.landed = true;
         // Some particles spawn drip trails that ooze down slowly.
-        if (_rng.nextDouble() < 0.3) {
+        if (_rng.nextDouble() < MascotParticles.dripSpawnChance) {
           _drips.add(_DripTrail(
             x: p.x.round().clamp(0, viewportWidth - 1),
             y: p.y.round().clamp(0, viewportHeight - 1),
@@ -240,7 +241,13 @@ class GooExplosion {
         final cx = cell.x;
         final cy = cell.y;
         if (cx >= 0 && cx < viewportWidth && cy >= 0 && cy < viewportHeight) {
-          grid[cy][cx] = [d.r, d.g, d.b, _gooChars[_rng.nextInt(_gooChars.length)]];
+          final gooCharList = GooChar.values;
+          grid[cy][cx] = [
+            d.r,
+            d.g,
+            d.b,
+            gooCharList[_rng.nextInt(gooCharList.length)].charCode
+          ];
         }
       }
     }
@@ -273,9 +280,6 @@ class GooExplosion {
   }
 }
 
-// Gooey drip characters.
-const _gooChars = [46, 44, 59, 111]; // . , ; o
-
 /// A drip trail that oozes downward from a landing point.
 class _DripTrail {
   final int x;
@@ -291,7 +295,8 @@ class _DripTrail {
     required this.r,
     required this.g,
     required this.b,
-  }) : _delay = _rng.nextInt(8) + 2 {
+  }) : _delay = _rng.nextInt(MascotParticles.maxDripDelay) +
+            MascotParticles.minDripDelay {
     cells.add(_DripCell(x, y));
   }
 
@@ -304,7 +309,8 @@ class _DripTrail {
     y++;
     cells.add(_DripCell(x, y));
     // Random chance to stop dripping.
-    if (_rng.nextDouble() < 0.15 || cells.length > 6) {
+    if (_rng.nextDouble() < MascotParticles.dripStopChance ||
+        cells.length > MascotParticles.maxDripLength) {
       active = false;
     }
   }

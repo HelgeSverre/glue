@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:yaml/yaml.dart';
+import 'constants.dart';
 
 /// Supported LLM providers.
 enum LlmProvider { anthropic, openai, ollama }
@@ -42,10 +43,10 @@ class GlueConfig {
     String? model,
     this.anthropicApiKey,
     this.openaiApiKey,
-    this.ollamaBaseUrl = 'http://localhost:11434',
+    this.ollamaBaseUrl = AppConstants.defaultOllamaBaseUrl,
     this.profiles = const {},
-    this.maxSubagentDepth = 2,
-    this.bashMaxLines = 50,
+    this.maxSubagentDepth = AppConstants.maxSubagentDepth,
+    this.bashMaxLines = AppConstants.bashMaxLinesDefault,
   })  : provider = provider ?? LlmProvider.anthropic,
         model = model ?? _defaultModel(provider ?? LlmProvider.anthropic);
 
@@ -128,7 +129,8 @@ class GlueConfig {
         Platform.environment['GLUE_OPENAI_API_KEY'] ??
         (fileConfig?['openai'] as Map?)?['api_key'] as String?;
 
-    final bashMaxLines = (fileConfig?['bash'] as Map?)?['max_lines'] as int? ?? 50;
+    final bashMaxLines = (fileConfig?['bash'] as Map?)?['max_lines'] as int? ??
+        AppConstants.bashMaxLinesDefault;
 
     // 3. Parse profiles.
     final profiles = <String, AgentProfile>{};

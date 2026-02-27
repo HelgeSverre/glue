@@ -25,8 +25,7 @@ class Message {
     this.toolName,
   });
 
-  factory Message.user(String text) =>
-      Message._(role: Role.user, text: text);
+  factory Message.user(String text) => Message._(role: Role.user, text: text);
 
   factory Message.assistant({String? text, List<ToolCall>? toolCalls}) =>
       Message._(
@@ -40,7 +39,11 @@ class Message {
     required String content,
     String? toolName,
   }) =>
-      Message._(role: Role.toolResult, text: content, toolCallId: callId, toolName: toolName);
+      Message._(
+          role: Role.toolResult,
+          text: content,
+          toolCallId: callId,
+          toolName: toolName);
 }
 
 // ---------------------------------------------------------------------------
@@ -180,7 +183,8 @@ class AgentCore {
   /// Completers keyed by tool call ID for parallel tool execution.
   final Map<String, Completer<ToolResult>> _pendingToolResults = {};
 
-  AgentCore({required this.llm, required this.tools, this.modelName = 'unknown'});
+  AgentCore(
+      {required this.llm, required this.tools, this.modelName = 'unknown'});
 
   /// The full conversation history.
   List<Message> get conversation => List.unmodifiable(_conversation);

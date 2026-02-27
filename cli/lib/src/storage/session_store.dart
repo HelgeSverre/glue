@@ -20,13 +20,13 @@ class SessionMeta {
   });
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'cwd': cwd,
-    'model': model,
-    'provider': provider,
-    'start_time': startTime.toIso8601String(),
-    if (endTime != null) 'end_time': endTime!.toIso8601String(),
-  };
+        'id': id,
+        'cwd': cwd,
+        'model': model,
+        'provider': provider,
+        'start_time': startTime.toIso8601String(),
+        if (endTime != null) 'end_time': endTime!.toIso8601String(),
+      };
 }
 
 class SessionStore {

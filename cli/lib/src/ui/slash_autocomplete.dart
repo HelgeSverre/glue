@@ -1,4 +1,5 @@
 import '../commands/slash_commands.dart';
+import '../config/constants.dart';
 import '../rendering/ansi_utils.dart';
 
 /// A candidate in the autocomplete list.
@@ -20,7 +21,7 @@ class SlashAutocomplete {
   int _selected = 0;
   List<_Candidate> _matches = [];
 
-  static const maxVisible = 8;
+  static const maxVisible = AppConstants.maxVisibleDropdownItems;
 
   SlashAutocomplete(this._registry);
 
@@ -63,7 +64,8 @@ class SlashAutocomplete {
       }
       for (final alias in cmd.aliases) {
         if (alias.startsWith(prefix) && alias != cmd.name) {
-          candidates.add(_Candidate(alias, '${cmd.description} (→/${cmd.name})'));
+          candidates
+              .add(_Candidate(alias, '${cmd.description} (→/${cmd.name})'));
         }
       }
     }

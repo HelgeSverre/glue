@@ -44,7 +44,8 @@ class LlmClientFactory {
   }
 
   /// Create an [LlmClient] from a [GlueConfig] using its defaults.
-  LlmClient createFromConfig(GlueConfig config, {required String systemPrompt}) {
+  LlmClient createFromConfig(GlueConfig config,
+      {required String systemPrompt}) {
     return create(
       provider: config.provider,
       model: config.model,

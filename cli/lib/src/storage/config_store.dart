@@ -27,9 +27,8 @@ class ConfigStore {
     }
 
     final stat = file.statSync();
-    final changed = !_loaded ||
-        _lastMtime != stat.modified ||
-        _lastSize != stat.size;
+    final changed =
+        !_loaded || _lastMtime != stat.modified || _lastSize != stat.size;
 
     if (!changed) return;
 

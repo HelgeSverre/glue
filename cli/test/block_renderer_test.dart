@@ -2,8 +2,7 @@ import 'package:glue/glue.dart';
 import 'package:test/test.dart';
 
 /// Strip ANSI escape sequences for measuring visible width.
-String stripAnsi(String s) =>
-    s.replaceAll(RegExp(r'\x1b\[[0-9;]*m'), '');
+String stripAnsi(String s) => s.replaceAll(RegExp(r'\x1b\[[0-9;]*m'), '');
 
 void main() {
   late BlockRenderer renderer;
@@ -115,15 +114,13 @@ void main() {
     });
 
     test('truncates content beyond 20 lines', () {
-      final longContent =
-          List.generate(30, (i) => 'line $i').join('\n');
+      final longContent = List.generate(30, (i) => 'line $i').join('\n');
       final output = renderer.renderToolResult(longContent);
       expect(output, contains('more lines'));
     });
 
     test('preserves content at exactly 20 lines', () {
-      final content =
-          List.generate(20, (i) => 'line $i').join('\n');
+      final content = List.generate(20, (i) => 'line $i').join('\n');
       final output = renderer.renderToolResult(content);
       expect(output, isNot(contains('more lines')));
     });
@@ -187,8 +184,7 @@ void main() {
 
   group('truncation', () {
     test('tool result truncates with "more lines" indicator', () {
-      final content =
-          List.generate(50, (i) => 'Result line $i').join('\n');
+      final content = List.generate(50, (i) => 'Result line $i').join('\n');
       final output = renderer.renderToolResult(content);
       final stripped = stripAnsi(output);
       expect(stripped, contains('30 more lines'));
@@ -243,9 +239,8 @@ void main() {
     test('renders side borders on content lines', () {
       final output = renderer.renderBash('ls', 'file.txt');
       final stripped = stripAnsi(output);
-      final contentLines = stripped.split('\n')
-          .where((l) => l.contains('file.txt'))
-          .toList();
+      final contentLines =
+          stripped.split('\n').where((l) => l.contains('file.txt')).toList();
       expect(contentLines, isNotEmpty);
       for (final line in contentLines) {
         expect(line, contains('│'));

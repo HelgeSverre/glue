@@ -42,8 +42,8 @@ void main() {
 
   group('SessionStore.loadConversation', () {
     test('loads user and assistant events', () {
-      final sessDir = _createSession(
-          tmpDir.path, 'sess-1', DateTime.now(), 'model');
+      final sessDir =
+          _createSession(tmpDir.path, 'sess-1', DateTime.now(), 'model');
       _appendEvent(sessDir, 'user_message', {'text': 'hello'});
       _appendEvent(sessDir, 'assistant_message', {'text': 'hi there'});
 
@@ -62,8 +62,7 @@ void main() {
   });
 }
 
-String _createSession(
-    String base, String id, DateTime start, String model) {
+String _createSession(String base, String id, DateTime start, String model) {
   final dir = p.join(base, id);
   Directory(dir).createSync(recursive: true);
   final meta = {
@@ -77,8 +76,7 @@ String _createSession(
   return dir;
 }
 
-void _appendEvent(
-    String sessDir, String type, Map<String, dynamic> data) {
+void _appendEvent(String sessDir, String type, Map<String, dynamic> data) {
   final file = File(p.join(sessDir, 'conversation.jsonl'));
   final record = {
     'timestamp': DateTime.now().toIso8601String(),

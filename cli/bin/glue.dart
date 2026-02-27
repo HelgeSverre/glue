@@ -15,12 +15,16 @@ const logo = '''
 
 void main(List<String> args) async {
   final parser = ArgParser()
-    ..addFlag('help', abbr: 'h', negatable: false, help: 'Show usage information.')
+    ..addFlag('help',
+        abbr: 'h', negatable: false, help: 'Show usage information.')
     ..addFlag('version', abbr: 'v', negatable: false, help: 'Print version.')
-    ..addOption('provider', abbr: 'p', help: 'LLM provider (anthropic, openai, ollama).')
+    ..addOption('provider',
+        abbr: 'p', help: 'LLM provider (anthropic, openai, ollama).')
     ..addOption('model', abbr: 'm', help: 'LLM model to use.')
-    ..addFlag('resume', negatable: false, help: 'Start with session picker open.')
-    ..addFlag('continue', negatable: false, help: 'Resume most recent session.');
+    ..addFlag('resume',
+        negatable: false, help: 'Start with session picker open.')
+    ..addFlag('continue',
+        negatable: false, help: 'Resume most recent session.');
 
   final ArgResults results;
   try {
@@ -35,7 +39,8 @@ void main(List<String> args) async {
   if (results.flag('help')) {
     stdout.writeln(logo);
     stdout.writeln();
-    stdout.writeln('glue v$version — the coding agent that holds it all together.');
+    stdout.writeln(
+        'glue v$version — the coding agent that holds it all together.');
     stdout.writeln();
     stdout.writeln('Usage: glue [options]');
     stdout.writeln();
@@ -58,7 +63,8 @@ void main(List<String> args) async {
     startupContinue: results.flag('continue'),
   );
 
-  final sigintSub = ProcessSignal.sigint.watch().listen((_) => app.requestExit());
+  final sigintSub =
+      ProcessSignal.sigint.watch().listen((_) => app.requestExit());
 
   await app.run();
 

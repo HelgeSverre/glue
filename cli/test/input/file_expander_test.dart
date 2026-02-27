@@ -162,8 +162,7 @@ void main() {
       sub.createSync();
       File(p.join(sub.path, 'file.dart')).writeAsStringSync('spaced');
 
-      final result =
-          expandFileRefs('@"my dir/file.dart"', cwd: tmpDir.path);
+      final result = expandFileRefs('@"my dir/file.dart"', cwd: tmpDir.path);
       expect(result, contains('[my dir/file.dart]'));
       expect(result, contains('spaced'));
     });

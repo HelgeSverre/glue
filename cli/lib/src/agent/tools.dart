@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import '../config/constants.dart';
 
 /// Schema for a single tool parameter.
 class ToolParameter {
@@ -148,7 +149,8 @@ class BashTool extends Tool {
         ToolParameter(
           name: 'timeout_seconds',
           type: 'integer',
-          description: 'Timeout in seconds. 0 for no timeout. Default: 30.',
+          description:
+              'Timeout in seconds. 0 for no timeout. Default: ${AppConstants.bashTimeoutSeconds}.',
           required: false,
         ),
       ];
@@ -160,7 +162,8 @@ class BashTool extends Tool {
       return 'Error: no command provided';
     }
     final t = args['timeout_seconds'];
-    final timeoutSeconds = (t is num) ? t.toInt() : 30;
+    final timeoutSeconds =
+        (t is num) ? t.toInt() : AppConstants.bashTimeoutSeconds;
     try {
       final process = await Process.start('sh', ['-c', command]);
       final stdoutFuture =
@@ -231,8 +234,7 @@ class GrepTool extends Tool {
     final dir = (path is String && path.isNotEmpty) ? path : '.';
 
     // Try ripgrep first, fall back to grep.
-    final executable =
-        await _which('rg') != null ? 'rg' : 'grep';
+    final executable = await _which('rg') != null ? 'rg' : 'grep';
 
     final arguments = executable == 'rg'
         ? ['--line-number', '--no-heading', pattern, dir]
@@ -240,22 +242,20 @@ class GrepTool extends Tool {
 
     try {
       final result = await Process.run(executable, arguments)
-          .timeout(const Duration(seconds: 15));
+          .timeout(Duration(seconds: AppConstants.grepTimeoutSeconds));
       if ((result.stdout as String).isEmpty) {
         return 'No matches found.';
       }
       return result.stdout as String;
     } on TimeoutException {
-      return 'Error: grep timed out after 15 seconds';
+      return 'Error: grep timed out after ${AppConstants.grepTimeoutSeconds} seconds';
     }
   }
 
   Future<String?> _which(String cmd) async {
     try {
       final result = await Process.run('which', [cmd]);
-      return result.exitCode == 0
-          ? (result.stdout as String).trim()
-          : null;
+      return result.exitCode == 0 ? (result.stdout as String).trim() : null;
     } catch (_) {
       return null;
     }
@@ -284,15 +284,13 @@ class EditFileTool extends Tool {
         ToolParameter(
           name: 'old_string',
           type: 'string',
-          description:
-              'The exact text to find (multi-line supported). '
+          description: 'The exact text to find (multi-line supported). '
               'Must be unique in the file. Empty string to create a new file.',
         ),
         ToolParameter(
           name: 'new_string',
           type: 'string',
-          description:
-              'The replacement text (multi-line supported). '
+          description: 'The replacement text (multi-line supported). '
               'Empty string to delete the matched text.',
         ),
       ];
@@ -331,8 +329,7 @@ class EditFileTool extends Tool {
           'Include more surrounding context lines to make the match unique.';
     }
 
-    final newContent =
-        content.substring(0, firstIndex) +
+    final newContent = content.substring(0, firstIndex) +
         newString +
         content.substring(firstIndex + oldString.length);
 
@@ -369,15 +366,14 @@ class ListDirectoryTool extends Tool {
     if (!await dir.exists()) {
       return 'Error: directory not found: $path';
     }
-    const maxEntries = 1000;
-    final entries = await dir.list().take(maxEntries).toList();
+    final entries = await dir.list().take(AppConstants.globMaxEntries).toList();
     final buf = StringBuffer();
     for (final entry in entries) {
       final suffix = entry is Directory ? '/' : '';
       buf.writeln('${entry.path}$suffix');
     }
-    if (entries.length == maxEntries) {
-      buf.writeln('(output capped at $maxEntries entries)');
+    if (entries.length == AppConstants.globMaxEntries) {
+      buf.writeln('(output capped at ${AppConstants.globMaxEntries} entries)');
     }
     return buf.toString();
   }

@@ -1,4 +1,5 @@
 import '../rendering/ansi_utils.dart';
+import '../config/constants.dart';
 import 'terminal.dart';
 
 /// Divides the terminal into vertical zones that cooperate using
@@ -66,7 +67,8 @@ class Layout {
 
   /// Update the input zone height (e.g. for multi-line editing).
   void setInputHeight(int lines) {
-    _inputHeight = lines.clamp(1, terminal.rows ~/ 3);
+    _inputHeight =
+        lines.clamp(1, terminal.rows ~/ AppConstants.inputAreaDivisor);
     apply();
   }
 
@@ -74,7 +76,8 @@ class Layout {
   ///
   /// Only calls [apply] if the height actually changed to avoid flicker.
   void setOverlayHeight(int lines) {
-    final clamped = lines.clamp(0, terminal.rows ~/ 3);
+    final clamped =
+        lines.clamp(0, terminal.rows ~/ AppConstants.inputAreaDivisor);
     if (clamped == _overlayHeight) return;
     _overlayHeight = clamped;
     apply();
@@ -132,7 +135,10 @@ class Layout {
 
   /// Paint the input area showing [prompt] followed by [text] with the
   /// cursor positioned at [cursorPos] within the text.
-  void paintInput(String prompt, String text, int cursorPos, {
+  void paintInput(
+    String prompt,
+    String text,
+    int cursorPos, {
     bool showCursor = true,
     AnsiStyle promptStyle = AnsiStyle.yellow,
   }) {
@@ -148,7 +154,8 @@ class Layout {
     }
 
     // Position the visible cursor where the user is typing.
-    final cursorCol = (prompt.length + cursorPos + 1).clamp(1, terminal.columns);
+    final cursorCol =
+        (prompt.length + cursorPos + 1).clamp(1, terminal.columns);
     terminal.moveTo(inputTop, cursorCol);
     if (showCursor) terminal.showCursor();
   }

@@ -2,7 +2,13 @@ import 'dart:async';
 
 import 'package:glue/glue.dart';
 import 'package:glue/src/agent/agent_core.dart'
-    show AgentEvent, AgentTextDelta, AgentToolCall, AgentToolResult, AgentDone, Role;
+    show
+        AgentEvent,
+        AgentTextDelta,
+        AgentToolCall,
+        AgentToolResult,
+        AgentDone,
+        Role;
 import 'package:test/test.dart';
 
 // ---------------------------------------------------------------------------
