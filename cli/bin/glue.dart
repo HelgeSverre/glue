@@ -18,7 +18,9 @@ void main(List<String> args) async {
     ..addFlag('help', abbr: 'h', negatable: false, help: 'Show usage information.')
     ..addFlag('version', abbr: 'v', negatable: false, help: 'Print version.')
     ..addOption('provider', abbr: 'p', help: 'LLM provider (anthropic, openai, ollama).')
-    ..addOption('model', abbr: 'm', help: 'LLM model to use.');
+    ..addOption('model', abbr: 'm', help: 'LLM model to use.')
+    ..addFlag('resume', negatable: false, help: 'Start with session picker open.')
+    ..addFlag('continue', negatable: false, help: 'Resume most recent session.');
 
   final ArgResults results;
   try {
@@ -49,7 +51,12 @@ void main(List<String> args) async {
   final provider = results.option('provider');
   final model = results.option('model');
 
-  final app = App.create(provider: provider, model: model);
+  final app = App.create(
+    provider: provider,
+    model: model,
+    startupResume: results.flag('resume'),
+    startupContinue: results.flag('continue'),
+  );
 
   final sigintSub = ProcessSignal.sigint.watch().listen((_) => app.requestExit());
 

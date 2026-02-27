@@ -126,7 +126,7 @@ class Layout {
     final padding = terminal.columns - leftVisible - rightVisible;
     terminal.writeStyled(
       '$left${' ' * padding.clamp(0, 9999)}$right',
-      style: AnsiStyle.inverse,
+      style: const AnsiStyle('\x1b[30;43m', '\x1b[0m'),
     );
   }
 

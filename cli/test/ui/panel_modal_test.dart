@@ -279,4 +279,92 @@ void main() {
       expect(firstLine, contains('\x1b[2m'));
     });
   });
+
+  group('PanelModal selectable', () {
+    late PanelModal panel;
+
+    setUp(() {
+      panel = PanelModal(
+        title: 'SELECT',
+        lines: List.generate(20, (i) => 'Item $i'),
+        style: PanelStyle.simple,
+        barrier: BarrierStyle.dim,
+        width: PanelFixed(40),
+        height: PanelFixed(10),
+        selectable: true,
+      );
+    });
+
+    test('initial selectedIndex is 0', () {
+      expect(panel.selectedIndex, 0);
+    });
+
+    test('down moves selection forward', () {
+      panel.handleEvent(KeyEvent(Key.down));
+      expect(panel.selectedIndex, 1);
+    });
+
+    test('up at top stays at 0', () {
+      panel.handleEvent(KeyEvent(Key.up));
+      expect(panel.selectedIndex, 0);
+    });
+
+    test('selection clamps to last item', () {
+      for (var i = 0; i < 50; i++) {
+        panel.handleEvent(KeyEvent(Key.down));
+      }
+      expect(panel.selectedIndex, 19);
+    });
+
+    test('enter completes selection with index', () async {
+      panel.handleEvent(KeyEvent(Key.down));
+      panel.handleEvent(KeyEvent(Key.down));
+      panel.handleEvent(KeyEvent(Key.enter));
+      expect(panel.isComplete, true);
+      expect(await panel.selection, 2);
+    });
+
+    test('escape completes selection with null', () async {
+      panel.handleEvent(KeyEvent(Key.down));
+      panel.handleEvent(KeyEvent(Key.escape));
+      expect(panel.isComplete, true);
+      expect(await panel.selection, null);
+    });
+
+    test('selection auto-scrolls when moving past visible area', () {
+      // visible height = 10 - 2 = 8
+      for (var i = 0; i < 9; i++) {
+        panel.handleEvent(KeyEvent(Key.down));
+      }
+      expect(panel.selectedIndex, 9);
+      expect(panel.scrollOffset, greaterThan(0));
+    });
+
+    test('render highlights selected row with inverse video', () {
+      final bg = List.generate(24, (i) => '');
+      final rendered = panel.render(80, 24, bg);
+      final allText = rendered.join();
+      expect(allText, contains('\x1b[7m'));
+    });
+
+    test('non-selectable panel has no selection future', () async {
+      final plain = PanelModal(
+        title: 'PLAIN',
+        lines: ['a', 'b'],
+        style: PanelStyle.simple,
+        barrier: BarrierStyle.dim,
+      );
+      expect(await plain.selection, null);
+    });
+
+    test('selectedIndex is -1 for non-selectable panel', () {
+      final plain = PanelModal(
+        title: 'PLAIN',
+        lines: ['a', 'b'],
+        style: PanelStyle.simple,
+        barrier: BarrierStyle.dim,
+      );
+      expect(plain.selectedIndex, -1);
+    });
+  });
 }

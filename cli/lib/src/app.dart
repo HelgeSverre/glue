@@ -13,6 +13,7 @@ import 'config/glue_config.dart';
 import 'llm/llm_factory.dart';
 import 'rendering/block_renderer.dart';
 import 'rendering/ansi_utils.dart';
+import 'rendering/mascot.dart';
 import 'shell/shell_job_manager.dart';
 import 'tools/subagent_tools.dart';
 import 'ui/modal.dart';
@@ -121,6 +122,8 @@ class App {
   Process? _bashRunProcess;
   DateTime? _lastCtrlC;
   static const _ctrlCWindow = Duration(seconds: 2);
+  final bool _startupResume;
+  final bool _startupContinue;
 
   App({
     required this.terminal,
@@ -135,6 +138,8 @@ class App {
     Set<String>? extraTrustedTools,
     SessionStore? sessionStore,
     ShellJobManager? jobManager,
+    bool startupResume = false,
+    bool startupContinue = false,
   }) : _modelName = modelName,
        _manager = manager,
        _llmFactory = llmFactory,
@@ -142,6 +147,8 @@ class App {
        _systemPrompt = systemPrompt,
        _sessionStore = sessionStore,
        _jobManager = jobManager ?? ShellJobManager(),
+       _startupResume = startupResume,
+       _startupContinue = startupContinue,
        _cwd = Directory.current.path {
     if (extraTrustedTools != null) {
       _autoApprovedTools.addAll(extraTrustedTools);
@@ -153,7 +160,12 @@ class App {
 
   /// Convenience factory that creates a fully wired [App] with real
   /// LLM provider and subagent system.
-  factory App.create({String? provider, String? model}) {
+  factory App.create({
+    String? provider,
+    String? model,
+    bool startupResume = false,
+    bool startupContinue = false,
+  }) {
     final config = GlueConfig.load(cliProvider: provider, cliModel: model);
     config.validate();
 
@@ -215,6 +227,8 @@ class App {
       systemPrompt: systemPrompt,
       extraTrustedTools: configStore.trustedTools.toSet(),
       sessionStore: sessionStore,
+      startupResume: startupResume,
+      startupContinue: startupContinue,
     );
   }
 
@@ -256,10 +270,28 @@ class App {
 
     _render();
 
+    if (_startupResume) {
+      _openResumePanel();
+    } else if (_startupContinue) {
+      final home = GlueHome();
+      final sessions = SessionStore.listSessions(home.sessionsDir);
+      if (sessions.isNotEmpty) {
+        final result = _resumeSession(sessions.first);
+        if (result.isNotEmpty) {
+          _blocks.add(_ConversationEntry.system(result));
+        }
+        _render();
+      } else {
+        _blocks.add(_ConversationEntry.system('No sessions to continue.'));
+        _render();
+      }
+    }
+
     try {
       await _exitCompleter.future;
     } finally {
       // Stop all event sources before touching terminal state.
+      _stopSplashAnimation();
       await _sessionStore?.close();
       await jobSub.cancel();
       await _jobManager.shutdown();
@@ -393,32 +425,8 @@ class App {
       name: 'resume',
       description: 'Resume a previous session',
       execute: (args) {
-        final home = GlueHome();
-        final sessions = SessionStore.listSessions(home.sessionsDir);
-        if (sessions.isEmpty) return 'No saved sessions found.';
-
-        final count = args.isNotEmpty ? int.tryParse(args[0]) ?? 10 : 10;
-        final shown = sessions.take(count).toList();
-
-        if (args.isNotEmpty) {
-          final idx = (int.tryParse(args[0]) ?? 0) - 1;
-          if (idx >= 0 && idx < shown.length) {
-            return _resumeSession(shown[idx]);
-          }
-        }
-
-        final buf = StringBuffer('Recent sessions:\n');
-        for (var i = 0; i < shown.length; i++) {
-          final s = shown[i];
-          final ago = _timeAgo(s.startTime);
-          final shortCwd = _shortenPath(s.cwd);
-          buf.writeln(
-            '  ${i + 1}. ${s.id.substring(0, 8)}…  '
-            '${s.model}  $shortCwd  $ago',
-          );
-        }
-        buf.writeln('\nUsage: /resume <number> to load a session.');
-        return buf.toString();
+        _openResumePanel();
+        return '';
       },
     ));
   }
@@ -430,30 +438,39 @@ class App {
       return 'Session ${session.id} has no conversation data.';
     }
 
+    _blocks.add(_ConversationEntry.system(
+      'Resuming session ${session.id.substring(0, 8)}… '
+      '(${session.model}, ${_timeAgo(session.startTime)})',
+    ));
+
     var userCount = 0;
     var assistantCount = 0;
     for (final event in events) {
       final type = event['type'] as String?;
       final text = event['text'] as String? ?? '';
-      if (text.isEmpty) continue;
       switch (type) {
         case 'user_message':
+          if (text.isEmpty) continue;
           agent.addMessage(Message.user(text));
+          _blocks.add(_ConversationEntry.user(text));
           userCount++;
         case 'assistant_message':
+          if (text.isEmpty) continue;
           agent.addMessage(Message.assistant(text: text));
+          _blocks.add(_ConversationEntry.assistant(text));
           assistantCount++;
+        case 'tool_call':
+          final name = event['name'] as String? ?? '';
+          final args = event['arguments'] as Map<String, dynamic>? ?? {};
+          if (name.isNotEmpty) {
+            _blocks.add(_ConversationEntry.toolCall(name, args));
+          }
         default:
           break;
       }
     }
 
-    _blocks.add(_ConversationEntry.system(
-      'Resumed session ${session.id.substring(0, 8)}… '
-      '($userCount user + $assistantCount assistant messages, model: ${session.model})',
-    ));
-
-    return 'Resumed session from ${_timeAgo(session.startTime)}.';
+    return 'Restored $userCount user + $assistantCount assistant messages.';
   }
 
   static String _timeAgo(DateTime time) {
@@ -503,11 +520,53 @@ class App {
     _activePanel = PanelModal(
       title: 'HELP',
       lines: lines,
-      style: PanelStyle.tape,
+      style: PanelStyle.simple,
       barrier: BarrierStyle.dim,
       height: PanelFluid(0.5, 10),
     );
     _render();
+  }
+
+  void _openResumePanel() {
+    final home = GlueHome();
+    final sessions = SessionStore.listSessions(home.sessionsDir);
+    if (sessions.isEmpty) {
+      _blocks.add(_ConversationEntry.system('No saved sessions found.'));
+      _render();
+      return;
+    }
+
+    final displayLines = <String>[];
+    for (final s in sessions) {
+      final ago = _timeAgo(s.startTime);
+      final shortCwd = _shortenPath(s.cwd);
+      final id = s.id.length > 8 ? s.id.substring(0, 8) : s.id;
+      displayLines.add('$id…  ${s.model}  $shortCwd  $ago');
+    }
+
+    final panel = PanelModal(
+      title: 'Resume Session',
+      lines: displayLines,
+      style: PanelStyle.simple,
+      barrier: BarrierStyle.dim,
+      height: PanelFluid(0.5, 10),
+      selectable: true,
+    );
+    _activePanel = panel;
+    _render();
+
+    panel.selection.then((idx) {
+      _activePanel = null;
+      if (idx == null) {
+        _render();
+        return;
+      }
+      final result = _resumeSession(sessions[idx]);
+      if (result.isNotEmpty) {
+        _blocks.add(_ConversationEntry.system(result));
+      }
+      _render();
+    });
   }
 
   // ── Terminal event handling ─────────────────────────────────────────────
@@ -681,9 +740,11 @@ class App {
       case ResizeEvent(:final cols, :final rows):
         _events.add(UserResize(cols, rows));
 
-      case MouseEvent(:final isScroll, :final isScrollUp):
+      case MouseEvent(:final x, :final y, :final isScroll, :final isScrollUp, :final isDown):
         if (isScroll) {
           _events.add(UserScroll(isScrollUp ? 3 : -3));
+        } else if (isDown && _liquidSim != null) {
+          _handleSplashClick(x, y);
         }
     }
   }
@@ -1002,6 +1063,39 @@ class App {
   bool _renderScheduled = false;
   static const _minRenderInterval = Duration(milliseconds: 16); // ~60fps
 
+  // Splash liquid simulation state.
+  LiquidSim? _liquidSim;
+  Timer? _splashTimer;
+  int _splashOriginCol = 0; // screen col of mascot left edge
+  int _splashOriginRow = 0; // screen row of mascot top edge
+
+  void _startSplashAnimation() {
+    _liquidSim ??= LiquidSim();
+    if (_splashTimer != null) return;
+    _splashTimer = Timer.periodic(const Duration(milliseconds: 50), (_) {
+      _liquidSim!.step();
+      if (_liquidSim!.isActive) _render();
+    });
+  }
+
+  void _stopSplashAnimation() {
+    _splashTimer?.cancel();
+    _splashTimer = null;
+    _liquidSim = null;
+  }
+
+  void _handleSplashClick(int screenX, int screenY) {
+    final sim = _liquidSim;
+    if (sim == null) return;
+    final localX = screenX - _splashOriginCol;
+    final localY = screenY - _splashOriginRow;
+    if (localX >= 0 && localX < mascotRenderWidth &&
+        localY >= 0 && localY < mascotRenderHeight) {
+      sim.impulse(localX, localY);
+      _render();
+    }
+  }
+
   void _render() {
     final now = DateTime.now();
     if (now.difference(_lastRender) < _minRenderInterval) {
@@ -1054,6 +1148,33 @@ class App {
       };
       outputLines.addAll(text.split('\n'));
       outputLines.add(''); // blank line between blocks
+    }
+
+    // Splash screen: show animated mascot when only the initial system block.
+    final isSplash = _blocks.length == 1 &&
+        _blocks.first.kind == _EntryKind.system &&
+        _streamingText.isEmpty;
+    if (isSplash) {
+      _startSplashAnimation();
+      final mascotLines = renderMascot(_liquidSim!);
+      final viewH = layout.outputBottom - layout.outputTop + 1;
+      final artH = mascotLines.length;
+      final padTop = ((viewH - outputLines.length - artH) / 2)
+          .clamp(0, viewH)
+          .toInt();
+      for (var i = 0; i < padTop; i++) {
+        outputLines.add('');
+      }
+      final padLeft = ((terminal.columns - mascotRenderWidth) / 2)
+          .clamp(0, terminal.columns)
+          .toInt();
+      _splashOriginCol = padLeft;
+      _splashOriginRow = layout.outputTop + outputLines.length;
+      for (final line in mascotLines) {
+        outputLines.add('${' ' * padLeft}$line');
+      }
+    } else {
+      _stopSplashAnimation();
     }
 
     // If streaming, add the partial text.

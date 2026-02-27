@@ -142,19 +142,23 @@ class PanelModal {
   final PanelSize _width;
   final PanelSize _height;
   final bool dismissable;
+  final bool selectable;
 
   int _scrollOffset = 0;
+  int _selectedIndex = 0;
   final Completer<void> _completer = Completer<void>();
+  final Completer<int?> _selectionCompleter = Completer<int?>();
   int _lastVisibleHeight = 0;
 
   PanelModal({
     required this.title,
     required this.lines,
-    this.style = PanelStyle.tape,
+    this.style = PanelStyle.simple,
     this.barrier = BarrierStyle.dim,
     PanelSize? width,
     PanelSize? height,
     this.dismissable = true,
+    this.selectable = false,
   })  : _width = width ?? PanelFluid(0.7, 40),
         _height = height ?? PanelFluid(0.7, 10) {
     if (_height case PanelFixed(:final size)) {
@@ -165,9 +169,15 @@ class PanelModal {
   int get scrollOffset => _scrollOffset;
   bool get isComplete => _completer.isCompleted;
   Future<void> get result => _completer.future;
+  int get selectedIndex => selectable ? _selectedIndex : -1;
+  Future<int?> get selection =>
+      selectable ? _selectionCompleter.future : Future.value(null);
 
   void dismiss() {
     if (!_completer.isCompleted) _completer.complete();
+    if (selectable && !_selectionCompleter.isCompleted) {
+      _selectionCompleter.complete(null);
+    }
   }
 
   bool handleEvent(TerminalEvent event) {
@@ -180,17 +190,49 @@ class PanelModal {
       case KeyEvent(key: Key.escape):
         if (dismissable) dismiss();
         return true;
+      case KeyEvent(key: Key.enter):
+        if (selectable) {
+          if (!_selectionCompleter.isCompleted) {
+            _selectionCompleter.complete(_selectedIndex);
+          }
+          if (!_completer.isCompleted) _completer.complete();
+        }
+        return true;
       case KeyEvent(key: Key.up):
-        _scrollOffset = max<int>(0, _scrollOffset - 1);
+        if (selectable) {
+          _selectedIndex = max<int>(0, _selectedIndex - 1);
+          if (_selectedIndex < _scrollOffset) {
+            _scrollOffset = _selectedIndex;
+          }
+        } else {
+          _scrollOffset = max<int>(0, _scrollOffset - 1);
+        }
         return true;
       case KeyEvent(key: Key.down):
-        _scrollOffset = min<int>(maxScroll, _scrollOffset + 1);
+        if (selectable) {
+          _selectedIndex = min<int>(lines.length - 1, _selectedIndex + 1);
+          if (_selectedIndex >= _scrollOffset + visibleH) {
+            _scrollOffset = _selectedIndex - visibleH + 1;
+          }
+        } else {
+          _scrollOffset = min<int>(maxScroll, _scrollOffset + 1);
+        }
         return true;
       case KeyEvent(key: Key.pageUp):
-        _scrollOffset = max<int>(0, _scrollOffset - visibleH);
+        if (selectable) {
+          _selectedIndex = max<int>(0, _selectedIndex - visibleH);
+          _scrollOffset = max<int>(0, _scrollOffset - visibleH);
+        } else {
+          _scrollOffset = max<int>(0, _scrollOffset - visibleH);
+        }
         return true;
       case KeyEvent(key: Key.pageDown):
-        _scrollOffset = min<int>(maxScroll, _scrollOffset + visibleH);
+        if (selectable) {
+          _selectedIndex = min<int>(lines.length - 1, _selectedIndex + visibleH);
+          _scrollOffset = min<int>(maxScroll, _scrollOffset + visibleH);
+        } else {
+          _scrollOffset = min<int>(maxScroll, _scrollOffset + visibleH);
+        }
         return true;
       default:
         return true;
@@ -250,13 +292,19 @@ class PanelModal {
         final padLen = contentW - visibleLength(truncated);
         final padded = '$truncated${' ' * max(0, padLen)}';
 
+        final isSelected = selectable &&
+            (contentIdx + _scrollOffset) == _selectedIndex;
+        final styledContent = isSelected
+            ? '\x1b[7m$padded\x1b[27m'
+            : padded;
+
         final (leftBorder, rightBorder) = switch (style) {
           PanelStyle.simple => ('\x1b[2m│\x1b[0m', '\x1b[2m│\x1b[0m'),
           PanelStyle.heavy => ('\x1b[33m║\x1b[0m', '\x1b[33m║\x1b[0m'),
           PanelStyle.tape => ('\x1b[33m│\x1b[0m', '\x1b[33m│\x1b[0m'),
         };
 
-        panelLines.add('$leftBorder $padded $rightBorder');
+        panelLines.add('$leftBorder $styledContent $rightBorder');
       }
     }
 

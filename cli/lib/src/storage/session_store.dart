@@ -54,6 +54,7 @@ class SessionStore {
       ...data,
     };
     _conversationSink.writeln(jsonEncode(record));
+    _conversationSink.flush();
   }
 
   Future<void> close() async {
