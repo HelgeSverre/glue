@@ -632,7 +632,29 @@ class App {
 
   // ── Rendering ──────────────────────────────────────────────────────────
 
+  DateTime _lastRender = DateTime(0);
+  bool _renderScheduled = false;
+  static const _minRenderInterval = Duration(milliseconds: 16); // ~60fps
+
   void _render() {
+    final now = DateTime.now();
+    if (now.difference(_lastRender) < _minRenderInterval) {
+      if (!_renderScheduled) {
+        _renderScheduled = true;
+        Future.delayed(_minRenderInterval, () {
+          _renderScheduled = false;
+          if (DateTime.now().difference(_lastRender) >= _minRenderInterval) {
+            _doRender();
+          }
+        });
+      }
+      return;
+    }
+    _doRender();
+  }
+
+  void _doRender() {
+    _lastRender = DateTime.now();
     if (_blocks.length > _maxBlocks) {
       _blocks.removeRange(0, _blocks.length - _maxBlocks);
     }
