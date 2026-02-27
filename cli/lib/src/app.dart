@@ -687,11 +687,13 @@ class App {
             return;
           }
           if (event case KeyEvent(key: Key.enter) || KeyEvent(key: Key.tab)) {
+            final start = _atHint.tokenStart;
+            final cursor = editor.cursor;
             final accepted = _atHint.accept();
             if (accepted != null) {
               final buf = editor.text;
-              final before = buf.substring(0, _atHint.tokenStart);
-              final after = buf.substring(editor.cursor);
+              final before = buf.substring(0, start);
+              final after = buf.substring(cursor);
               editor.setText('$before$accepted$after',
                   cursor: before.length + accepted.length);
             }

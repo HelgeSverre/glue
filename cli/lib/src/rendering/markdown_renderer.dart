@@ -19,7 +19,7 @@ class MarkdownRenderer {
   final int width;
 
   static final _tableRowPattern = RegExp(r'^\s*\|.*\|\s*$');
-  static final _tableSepPattern = RegExp(r'^\s*\|[\s:?-]+\|\s*$');
+  static final _tableSepPattern = RegExp(r'^\s*\|[\s:?\-|]+\|\s*$');
 
   MarkdownRenderer(this.width);
 
@@ -124,6 +124,23 @@ class MarkdownRenderer {
 
   /// Render inline markdown: **bold**, *italic*, `code`, [links](url)
   String _renderInline(String text) {
+    // Extract inline code spans first to protect their contents from further
+    // inline processing (e.g. links/bold inside backticks).
+    final segments = <String>[];
+    var remaining = text;
+    final codeRe = RegExp(r'`(.+?)`');
+    while (true) {
+      final m = codeRe.firstMatch(remaining);
+      if (m == null) break;
+      segments.add(_renderInlineSegment(remaining.substring(0, m.start)));
+      segments.add('\x1b[33m${m.group(1)}\x1b[39m');
+      remaining = remaining.substring(m.end);
+    }
+    segments.add(_renderInlineSegment(remaining));
+    return segments.join();
+  }
+
+  String _renderInlineSegment(String text) {
     // Bold: **text**
     text = text.replaceAllMapped(
       RegExp(r'\*\*(.+?)\*\*'),
@@ -133,11 +150,6 @@ class MarkdownRenderer {
     text = text.replaceAllMapped(
       RegExp(r'(?<!\*)\*([^*]+?)\*(?!\*)'),
       (m) => '\x1b[3m${m.group(1)}\x1b[23m',
-    );
-    // Inline code: `code`
-    text = text.replaceAllMapped(
-      RegExp(r'`(.+?)`'),
-      (m) => '\x1b[33m${m.group(1)}\x1b[39m',
     );
     // Links: [text](url)
     text = text.replaceAllMapped(
@@ -199,9 +211,14 @@ class MarkdownRenderer {
       }
     }
 
-    // Compute column widths from visible text
+    // Pre-render all cells so widths reflect actual visible output
+    final rendered = rows
+        .map((row) => row.map(_renderInline).toList())
+        .toList();
+
+    // Compute column widths from rendered visible text
     final widths = List<int>.filled(colCount, 0);
-    for (final row in rows) {
+    for (final row in rendered) {
       for (var c = 0; c < colCount; c++) {
         widths[c] = max(widths[c], visibleLength(row[c]));
       }
@@ -230,10 +247,10 @@ class MarkdownRenderer {
 
     output.add(_tableRule(widths, '┌', '┬', '┐'));
 
-    for (var r = 0; r < rows.length; r++) {
+    for (var r = 0; r < rendered.length; r++) {
       final isHeader = r < headerEnd;
-      output.add(_tableDataRow(rows[r], widths, bold: isHeader));
-      if (r == headerEnd - 1 && rows.length > headerEnd) {
+      output.add(_tableDataRow(rendered[r], widths, bold: isHeader));
+      if (r == headerEnd - 1 && rendered.length > headerEnd) {
         output.add(_tableRule(widths, '├', '┼', '┤'));
       }
     }
@@ -256,12 +273,11 @@ class MarkdownRenderer {
   String _tableDataRow(List<String> cells, List<int> widths, {bool bold = false}) {
     final parts = <String>[];
     for (var c = 0; c < cells.length; c++) {
-      final raw = cells[c];
-      final rendered = _renderInline(raw);
-      final vis = visibleLength(raw);
+      final cell = cells[c];
+      final vis = visibleLength(cell);
       final colW = widths[c];
-      final display = vis > colW ? ansiTruncate(rendered, colW) : rendered;
-      final pad = colW - (vis < colW ? vis : colW);
+      final display = vis > colW ? ansiTruncate(cell, colW) : cell;
+      final pad = colW - (vis > colW ? colW : vis);
       final content = bold
           ? '\x1b[1m$display\x1b[22m${' ' * pad}'
           : '$display${' ' * pad}';

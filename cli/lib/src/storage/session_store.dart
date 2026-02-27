@@ -32,12 +32,11 @@ class SessionMeta {
 class SessionStore {
   final String sessionDir;
   final SessionMeta meta;
-  late final IOSink _conversationSink;
+  late final File _conversationFile;
 
   SessionStore({required this.sessionDir, required this.meta}) {
     Directory(sessionDir).createSync(recursive: true);
-    _conversationSink = File(p.join(sessionDir, 'conversation.jsonl'))
-        .openWrite(mode: FileMode.append);
+    _conversationFile = File(p.join(sessionDir, 'conversation.jsonl'));
     _writeMeta();
   }
 
@@ -53,15 +52,15 @@ class SessionStore {
       'type': type,
       ...data,
     };
-    _conversationSink.writeln(jsonEncode(record));
-    _conversationSink.flush();
+    _conversationFile.writeAsStringSync(
+      '${jsonEncode(record)}\n',
+      mode: FileMode.append,
+    );
   }
 
   Future<void> close() async {
     meta.endTime = DateTime.now();
     _writeMeta();
-    await _conversationSink.flush();
-    await _conversationSink.close();
   }
 
   static List<SessionMeta> listSessions(String sessionsDir) {

@@ -23,6 +23,11 @@ void main() {
     File(p.join(tmpDir.path, 'lib', 'utils.dart')).createSync();
     Directory(p.join(tmpDir.path, 'my dir')).createSync();
     File(p.join(tmpDir.path, 'my dir', 'spaced.dart')).createSync();
+    Directory(p.join(tmpDir.path, 'lib', 'src')).createSync();
+    File(p.join(tmpDir.path, 'lib', 'src', 'app.dart')).createSync();
+    File(p.join(tmpDir.path, 'lib', 'src', 'config.dart')).createSync();
+    Directory(p.join(tmpDir.path, 'lib', 'src', 'tools')).createSync();
+    File(p.join(tmpDir.path, 'lib', 'src', 'tools', 'grep.dart')).createSync();
 
     hint = AtFileHint(cwd: tmpDir.path);
   });
@@ -72,8 +77,8 @@ void main() {
     test('filters by subdirectory prefix', () {
       hint.update('@lib/', 5);
       expect(hint.active, isTrue);
-      // lib/ contains app.dart and utils.dart
-      expect(hint.matchCount, 2);
+      // lib/ contains app.dart, src/, utils.dart
+      expect(hint.matchCount, 3);
     });
 
     test('dismisses when no matches', () {
@@ -192,6 +197,80 @@ void main() {
       expect(hint.active, isTrue);
       final result = hint.accept();
       expect(result, '@lib/app.dart');
+    });
+
+    test('tokenStart preserved after accept for mid-buffer @mention', () {
+      hint.update('look in the file at @lib', 24);
+      expect(hint.active, isTrue);
+      expect(hint.tokenStart, 20);
+      final start = hint.tokenStart;
+      final accepted = hint.accept();
+      expect(accepted, isNotNull);
+      // Simulate what app.dart does: splice into buffer
+      const buffer = 'look in the file at @lib';
+      const cursor = 24;
+      final before = buffer.substring(0, start);
+      final after = buffer.substring(cursor);
+      final result = '$before$accepted$after';
+      expect(result, startsWith('look in the file at @lib/'));
+      expect(before, 'look in the file at ');
+    });
+
+    test('recursive fuzzy finds file in nested dir', () {
+      hint.update('@config', 7);
+      expect(hint.active, isTrue);
+      expect(hint.matchCount, greaterThanOrEqualTo(1));
+      final result = hint.accept();
+      expect(result, '@lib/src/config.dart');
+    });
+
+    test('recursive fuzzy finds file at depth 3', () {
+      hint.update('@grep', 5);
+      expect(hint.active, isTrue);
+      final result = hint.accept();
+      expect(result, '@lib/src/tools/grep.dart');
+    });
+
+    test('recursive fuzzy shows relative path in display', () {
+      hint.update('@config', 7);
+      expect(hint.active, isTrue);
+      final lines = hint.render(80);
+      final joined = lines.join('\n');
+      expect(joined, contains('lib/src/config.dart'));
+    });
+
+    test('recursive fuzzy ranks exact match first', () {
+      hint.update('@app', 4);
+      expect(hint.active, isTrue);
+      final result = hint.accept();
+      expect(result, '@lib/app.dart');
+    });
+
+    test('recursive fuzzy prefers shorter paths', () {
+      hint.update('@app.dart', 9);
+      expect(hint.active, isTrue);
+      final result = hint.accept();
+      expect(result, '@lib/app.dart');
+    });
+
+    test('recursive fuzzy skips hidden directories', () {
+      Directory(p.join(tmpDir.path, '.git')).createSync();
+      File(p.join(tmpDir.path, '.git', 'config')).createSync();
+      hint.update('@config', 7);
+      final lines = hint.render(80);
+      final joined = lines.join('\n');
+      expect(joined, isNot(contains('.git')));
+    });
+
+    test('recursive does not duplicate cwd-level files', () {
+      hint.update('@main', 5);
+      expect(hint.matchCount, 1);
+    });
+
+    test('slash after recursive still does dir browse', () {
+      hint.update('@lib/', 5);
+      expect(hint.active, isTrue);
+      expect(hint.matchCount, 3);
     });
   });
 }
