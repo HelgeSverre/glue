@@ -1,0 +1,25 @@
+# Build and install the glue CLI
+
+default:
+    @just --list
+
+# Compile AOT binary and symlink to ~/.local/bin
+install: build
+    mkdir -p ~/.local/bin
+    ln -sf "$(pwd)/glue" ~/.local/bin/glue
+
+# Compile AOT native binary
+build:
+    dart compile exe bin/glue.dart -o glue
+
+# Install via dart pub global activate (JIT, slower startup)
+link:
+    dart pub global activate --source path .
+
+# Remove installed binary and symlink
+uninstall:
+    rm -f ~/.local/bin/glue
+
+# Remove compiled binary
+clean:
+    rm -f glue
