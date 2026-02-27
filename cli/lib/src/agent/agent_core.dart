@@ -171,7 +171,7 @@ class AgentError extends AgentEvent {
 ///    the conversation, and go to step 1.
 /// 4. If no tool calls: done.
 class AgentCore {
-  final LlmClient llm;
+  LlmClient llm;
   final Map<String, Tool> tools;
   final String modelName;
   final List<Message> _conversation = [];

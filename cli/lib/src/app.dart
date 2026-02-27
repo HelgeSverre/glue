@@ -97,6 +97,9 @@ class App {
     'spawn_subagent', 'spawn_parallel_subagents',
   };
   final AgentManager? _manager;
+  final LlmClientFactory? _llmFactory;
+  final GlueConfig? _config;
+  final String? _systemPrompt;
   late final SlashAutocomplete _autocomplete;
 
   App({
@@ -106,8 +109,14 @@ class App {
     required this.agent,
     required String modelName,
     AgentManager? manager,
+    LlmClientFactory? llmFactory,
+    GlueConfig? config,
+    String? systemPrompt,
   }) : _modelName = modelName,
        _manager = manager,
+       _llmFactory = llmFactory,
+       _config = config,
+       _systemPrompt = systemPrompt,
        _cwd = Directory.current.path {
     _initCommands();
     _autocomplete = SlashAutocomplete(_commands);
@@ -154,6 +163,9 @@ class App {
       agent: agent,
       modelName: config.model,
       manager: manager,
+      llmFactory: llmFactory,
+      config: config,
+      systemPrompt: systemPrompt,
     );
   }
 
@@ -275,8 +287,19 @@ class App {
       description: 'Show or set the model name',
       execute: (args) {
         if (args.isEmpty) return 'Current model: $_modelName';
-        _modelName = args.join(' ');
-        return 'Model set to: $_modelName';
+        final newModel = args.join(' ');
+        if (_llmFactory != null && _config != null && _systemPrompt != null) {
+          final llm = _llmFactory.create(
+            provider: _config.provider,
+            model: newModel,
+            apiKey: _config.apiKey,
+            systemPrompt: _systemPrompt,
+            ollamaBaseUrl: _config.ollamaBaseUrl,
+          );
+          agent.llm = llm;
+        }
+        _modelName = newModel;
+        return 'Model switched to: $_modelName';
       },
     ));
 
