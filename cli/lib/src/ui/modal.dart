@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 import '../terminal/terminal.dart';
 
 /// A choice in a confirmation modal.
@@ -10,7 +9,10 @@ class ModalChoice {
   const ModalChoice(this.label, this.hotkey);
 }
 
-/// A confirmation modal rendered as a centered box overlay.
+/// An inline confirmation prompt rendered in the content flow.
+///
+/// Displays a highlighted title bar with context, followed by
+/// selectable choices. Navigate with ←/→ or press hotkeys directly.
 class ConfirmModal {
   final String title;
   final List<String> bodyLines;
@@ -48,7 +50,6 @@ class ConfirmModal {
         _completer.complete(_selected);
         return true;
       case KeyEvent(key: Key.escape):
-        // Escape = deny (find "No" choice, or default to 1)
         final noIndex = choices.indexWhere((c) => c.hotkey.toLowerCase() == 'n');
         _completer.complete(noIndex >= 0 ? noIndex : 1);
         return true;
@@ -73,54 +74,45 @@ class ConfirmModal {
     _completer.complete(noIndex >= 0 ? noIndex : 1);
   }
 
-  /// Render the modal as lines to be painted over the output zone.
+  /// Render the modal as lines to be appended to the output.
   List<String> render(int terminalWidth) {
-    final contentWidth = min(terminalWidth - 4, 64);
-    if (contentWidth < 10) return ['[Modal too small]'];
-    final horizontal = '─' * (contentWidth - 2);
-
     final lines = <String>[];
-    lines.add(_center('┌$horizontal┐', terminalWidth));
 
-    // Title
-    lines.add(_center('│${_pad(' $title', contentWidth - 2)}│', terminalWidth));
-    lines.add(_center('│${'─' * (contentWidth - 2)}│', terminalWidth));
+    // Title bar — yellow background with tool name and context.
+    final contextStr = bodyLines.isNotEmpty ? '  ${bodyLines.first}' : '';
+    final titleContent = ' ? $title ';
+    final maxContext = terminalWidth - titleContent.length - 4;
+    final truncContext = contextStr.length > maxContext && maxContext > 0
+        ? '${contextStr.substring(0, maxContext - 1)}…'
+        : contextStr;
+    lines.add(
+      ' \x1b[43m\x1b[30m$titleContent\x1b[0m'
+      '  \x1b[90m${truncContext.trim()}\x1b[0m',
+    );
 
-    // Body
-    for (final line in bodyLines) {
-      final truncated = line.length > contentWidth - 4
-          ? '${line.substring(0, contentWidth - 5)}…'
+    // Extra body lines (if more than one arg).
+    for (var i = 1; i < bodyLines.length; i++) {
+      final line = bodyLines[i];
+      final truncated = line.length > terminalWidth - 6
+          ? '${line.substring(0, terminalWidth - 7)}…'
           : line;
-      lines.add(_center('│${_pad('  $truncated', contentWidth - 2)}│', terminalWidth));
+      lines.add('    \x1b[90m$truncated\x1b[0m');
     }
 
-    lines.add(_center('│${' ' * (contentWidth - 2)}│', terminalWidth));
+    lines.add('');
 
-    // Choices
-    final choiceBuf = StringBuffer();
+    // Choices row.
+    final choiceBuf = StringBuffer('   ');
     for (var i = 0; i < choices.length; i++) {
       final choice = choices[i];
       if (i == _selected) {
-        choiceBuf.write(' \x1b[7m [${choice.hotkey}]${choice.label} \x1b[27m ');
+        choiceBuf.write('\x1b[7m  (${choice.hotkey}) ${choice.label}  \x1b[27m ');
       } else {
-        choiceBuf.write(' [${choice.hotkey}]${choice.label} ');
+        choiceBuf.write('  (${choice.hotkey}) ${choice.label}  ');
       }
     }
-    lines.add(_center('│${_pad(choiceBuf.toString(), contentWidth - 2)}│', terminalWidth));
-    lines.add(_center('└$horizontal┘', terminalWidth));
+    lines.add(choiceBuf.toString());
 
     return lines;
-  }
-
-  String _pad(String s, int width) {
-    final visible = s.replaceAll(RegExp(r'\x1b\[[0-9;]*m'), '');
-    if (visible.length >= width) return s;
-    return '$s${' ' * (width - visible.length)}';
-  }
-
-  String _center(String s, int terminalWidth) {
-    final visible = s.replaceAll(RegExp(r'\x1b\[[0-9;]*m'), '');
-    final pad = ((terminalWidth - visible.length) / 2).floor().clamp(0, terminalWidth);
-    return '${' ' * pad}$s';
   }
 }

@@ -1,12 +1,14 @@
 import 'terminal.dart';
 
-/// Divides the terminal into three vertical zones that cooperate using
+/// Divides the terminal into vertical zones that cooperate using
 /// ANSI scroll regions:
 ///
 /// ```
 /// ┌──────────────────────────────┐
 /// │  Output Zone (scrollable)    │ ← uses terminal's native scroll
 /// │  ...                         │
+/// ├──────────────────────────────┤
+/// │  Overlay Zone (0-N lines)    │ ← autocomplete popup, etc.
 /// ├──────────────────────────────┤
 /// │  Status Bar (1 line, fixed)  │ ← painted at fixed row
 /// ├──────────────────────────────┤
@@ -15,12 +17,13 @@ import 'terminal.dart';
 /// ```
 ///
 /// The scroll region trick keeps output scrolling naturally while the
-/// status bar and input area stay pinned.
+/// overlay, status bar, and input area stay pinned.
 class Layout {
   final Terminal terminal;
 
   final int _statusHeight = 1;
   int _inputHeight = 1;
+  int _overlayHeight = 0;
 
   Layout(this.terminal);
 
@@ -30,7 +33,15 @@ class Layout {
   int get outputTop => 1;
 
   /// Last row of the scrollable output zone.
-  int get outputBottom => (terminal.rows - _statusHeight - _inputHeight).clamp(outputTop, terminal.rows);
+  int get outputBottom =>
+      (terminal.rows - _statusHeight - _inputHeight - _overlayHeight)
+          .clamp(outputTop, terminal.rows);
+
+  /// First row of the overlay zone (between output and status bar).
+  int get overlayTop => outputBottom + 1;
+
+  /// Last row of the overlay zone.
+  int get overlayBottom => overlayTop + _overlayHeight - 1;
 
   /// Row where the status bar is painted.
   int get statusRow => terminal.rows - _inputHeight;
@@ -58,6 +69,16 @@ class Layout {
     apply();
   }
 
+  /// Update the overlay zone height. Call before rendering.
+  ///
+  /// Only calls [apply] if the height actually changed to avoid flicker.
+  void setOverlayHeight(int lines) {
+    final clamped = lines.clamp(0, terminal.rows ~/ 3);
+    if (clamped == _overlayHeight) return;
+    _overlayHeight = clamped;
+    apply();
+  }
+
   // ── Zone rendering helpers ────────────────────────────────────────────
 
   /// Paint the output zone with pre-computed lines for scrollback.
@@ -79,6 +100,17 @@ class Layout {
     terminal.moveTo(outputBottom, 1);
     terminal.write('\n$text');
     terminal.restoreCursor();
+  }
+
+  /// Paint the overlay zone with pre-rendered lines.
+  void paintOverlay(List<String> lines) {
+    for (var i = 0; i < _overlayHeight; i++) {
+      terminal.moveTo(overlayTop + i, 1);
+      terminal.clearLine();
+      if (i < lines.length) {
+        terminal.write(lines[i]);
+      }
+    }
   }
 
   /// Paint the status bar at its fixed row.

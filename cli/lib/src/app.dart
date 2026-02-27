@@ -14,6 +14,7 @@ import 'llm/llm_factory.dart';
 import 'rendering/block_renderer.dart';
 import 'tools/subagent_tools.dart';
 import 'ui/modal.dart';
+import 'ui/slash_autocomplete.dart';
 
 // ---------------------------------------------------------------------------
 // Application state
@@ -96,6 +97,7 @@ class App {
     'spawn_subagent', 'spawn_parallel_subagents',
   };
   final AgentManager? _manager;
+  late final SlashAutocomplete _autocomplete;
 
   App({
     required this.terminal,
@@ -108,6 +110,7 @@ class App {
        _manager = manager,
        _cwd = Directory.current.path {
     _initCommands();
+    _autocomplete = SlashAutocomplete(_commands);
   }
 
   /// Convenience factory that creates a fully wired [App] with real
@@ -353,10 +356,38 @@ class App {
           return;
         }
 
+        // Autocomplete intercepts keys when active.
+        if (_autocomplete.active) {
+          if (event case KeyEvent(key: Key.up)) {
+            _autocomplete.moveUp();
+            _render();
+            return;
+          }
+          if (event case KeyEvent(key: Key.down)) {
+            _autocomplete.moveDown();
+            _render();
+            return;
+          }
+          if (event case KeyEvent(key: Key.enter) || KeyEvent(key: Key.tab)) {
+            final accepted = _autocomplete.accept();
+            if (accepted != null) {
+              editor.setText(accepted);
+            }
+            _render();
+            return;
+          }
+          if (event case KeyEvent(key: Key.escape)) {
+            _autocomplete.dismiss();
+            _render();
+            return;
+          }
+        }
+
         // Normal idle mode — full input handling.
         final action = editor.handle(event);
         switch (action) {
           case InputAction.submit:
+            _autocomplete.dismiss();
             final text = editor.lastSubmitted;
             if (text.isNotEmpty) {
               _events.add(UserSubmit(text));
@@ -364,6 +395,7 @@ class App {
           case InputAction.interrupt:
             requestExit();
           case InputAction.changed:
+            _autocomplete.update(editor.text, editor.cursor);
             _render();
           default:
             break;
@@ -604,10 +636,19 @@ class App {
       outputLines.addAll(renderer.renderAssistant(_streamingText).split('\n'));
     }
 
+    // Inline modal (if active) — appended to the output flow.
+    if (_activeModal != null && !_activeModal!.isComplete) {
+      outputLines.add('');
+      outputLines.addAll(_activeModal!.render(terminal.columns));
+    }
+
     // Trailing blank line so content doesn't butt against the status bar.
     outputLines.add('');
 
-    // 2. Compute visible window.
+    // 2. Reserve overlay space for autocomplete (before computing viewport).
+    layout.setOverlayHeight(_autocomplete.overlayHeight);
+
+    // 3. Compute visible window.
     final viewportHeight = layout.outputBottom - layout.outputTop + 1;
     final totalLines = outputLines.length;
     final maxScroll = (totalLines - viewportHeight).clamp(0, totalLines);
@@ -621,20 +662,14 @@ class App {
 
     layout.paintOutputViewport(visibleLines);
 
-    // Modal overlay (if active).
-    if (_activeModal != null && !_activeModal!.isComplete) {
-      final modalLines = _activeModal!.render(terminal.columns);
-      final outputHeight = layout.outputBottom - layout.outputTop + 1;
-      final startRow = layout.outputTop +
-          ((outputHeight - modalLines.length) ~/ 2).clamp(0, outputHeight);
-      for (var i = 0; i < modalLines.length && startRow + i <= layout.outputBottom; i++) {
-        terminal.moveTo(startRow + i, 1);
-        terminal.clearLine();
-        terminal.write(modalLines[i]);
-      }
+    // 4. Autocomplete overlay.
+    if (_autocomplete.active) {
+      layout.paintOverlay(_autocomplete.render(terminal.columns));
+    } else {
+      layout.paintOverlay([]);
     }
 
-    // 3. Status bar.
+    // 5. Status bar.
     final modeIndicator = switch (_mode) {
       AppMode.idle => 'Ready',
       AppMode.streaming => '● Generating',
@@ -648,7 +683,7 @@ class App {
     final statusRight = '${scrollIndicator}tok ${agent.tokenCount} ';
     layout.paintStatus(statusLeft, statusRight);
 
-    // 4. Input area — MUST be last so cursor lands here.
+    // 6. Input area — MUST be last so cursor lands here.
     final prompt = switch (_mode) {
       AppMode.idle => '❯ ',
       _ => '  ',

@@ -205,4 +205,13 @@ class LineEditor {
     _buffer = '';
     _cursor = 0;
   }
+
+  /// Programmatically set the buffer text and cursor position.
+  ///
+  /// Used by autocomplete to accept a completion.
+  void setText(String text, {int? cursor}) {
+    _buffer = text;
+    _cursor = cursor ?? text.length;
+    _historyIndex = -1;
+  }
 }
