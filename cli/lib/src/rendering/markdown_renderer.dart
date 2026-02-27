@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'ansi_utils.dart';
 
 /// Renders a subset of Markdown to ANSI-styled terminal text.
@@ -12,8 +14,12 @@ import 'ansi_utils.dart';
 /// - Ordered lists: 1. item
 /// - Blockquotes: > text
 /// - Links: [text](url)
+/// - Tables: | col | col |
 class MarkdownRenderer {
   final int width;
+
+  static final _tableRowPattern = RegExp(r'^\s*\|.*\|\s*$');
+  static final _tableSepPattern = RegExp(r'^\s*\|[\s:?-]+\|\s*$');
 
   MarkdownRenderer(this.width);
 
@@ -24,11 +30,15 @@ class MarkdownRenderer {
     var inCodeBlock = false;
     String? codeBlockLang;
     final codeLines = <String>[];
+    final tableLines = <String>[];
 
-    for (final line in lines) {
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
+
       // Fenced code blocks
       if (line.trimLeft().startsWith('```')) {
         if (!inCodeBlock) {
+          _flushTable(tableLines, output);
           inCodeBlock = true;
           codeBlockLang = line.trimLeft().substring(3).trim();
           if (codeBlockLang.isEmpty) codeBlockLang = null;
@@ -46,6 +56,14 @@ class MarkdownRenderer {
         codeLines.add(line);
         continue;
       }
+
+      // Table detection: collect consecutive pipe-delimited lines
+      if (_tableRowPattern.hasMatch(line)) {
+        tableLines.add(line);
+        continue;
+      }
+
+      _flushTable(tableLines, output);
 
       // Headings
       if (line.startsWith('### ')) {
@@ -93,6 +111,8 @@ class MarkdownRenderer {
         output.add(_renderInline(line));
       }
     }
+
+    _flushTable(tableLines, output);
 
     // Close any unclosed code block
     if (inCodeBlock && codeLines.isNotEmpty) {
@@ -146,5 +166,107 @@ class MarkdownRenderer {
     }
     output.add('\x1b[90m╰${'─' * (codeWidth - 2)}╯\x1b[0m');
     return output;
+  }
+
+  // ── Table rendering ───────────────────────────────────────────────────
+
+  void _flushTable(List<String> tableLines, List<String> output) {
+    if (tableLines.isEmpty) return;
+
+    // Need at least header + separator + one body row, or header + separator
+    final rows = <List<String>>[];
+    int? separatorIdx;
+
+    for (var i = 0; i < tableLines.length; i++) {
+      if (_tableSepPattern.hasMatch(tableLines[i])) {
+        if (separatorIdx == null) {
+          separatorIdx = i;
+          continue;
+        }
+      }
+      rows.add(_parseTableRow(tableLines[i]));
+    }
+
+    tableLines.clear();
+
+    if (rows.isEmpty) return;
+
+    // Normalize column count
+    final colCount = rows.map((r) => r.length).reduce(max);
+    for (final row in rows) {
+      while (row.length < colCount) {
+        row.add('');
+      }
+    }
+
+    // Compute column widths from visible text
+    final widths = List<int>.filled(colCount, 0);
+    for (final row in rows) {
+      for (var c = 0; c < colCount; c++) {
+        widths[c] = max(widths[c], visibleLength(row[c]));
+      }
+    }
+
+    // Clamp total width to available space
+    final totalWidth = widths.fold<int>(0, (s, w) => s + w) + colCount * 3 + 1;
+    if (totalWidth > width) {
+      final excess = totalWidth - width;
+      // Shrink widest columns first
+      var remaining = excess;
+      while (remaining > 0) {
+        final maxW = widths.reduce(max);
+        if (maxW <= 1) break;
+        for (var c = 0; c < colCount && remaining > 0; c++) {
+          if (widths[c] == maxW) {
+            widths[c]--;
+            remaining--;
+          }
+        }
+      }
+    }
+
+    // Header row index
+    final headerEnd = separatorIdx ?? 1;
+
+    output.add(_tableRule(widths, '┌', '┬', '┐'));
+
+    for (var r = 0; r < rows.length; r++) {
+      final isHeader = r < headerEnd;
+      output.add(_tableDataRow(rows[r], widths, bold: isHeader));
+      if (r == headerEnd - 1 && rows.length > headerEnd) {
+        output.add(_tableRule(widths, '├', '┼', '┤'));
+      }
+    }
+
+    output.add(_tableRule(widths, '└', '┴', '┘'));
+  }
+
+  List<String> _parseTableRow(String line) {
+    var trimmed = line.trim();
+    if (trimmed.startsWith('|')) trimmed = trimmed.substring(1);
+    if (trimmed.endsWith('|')) trimmed = trimmed.substring(0, trimmed.length - 1);
+    return trimmed.split('|').map((c) => c.trim()).toList();
+  }
+
+  String _tableRule(List<int> widths, String left, String mid, String right) {
+    final parts = widths.map((w) => '─' * (w + 2));
+    return '\x1b[90m$left${parts.join(mid)}$right\x1b[0m';
+  }
+
+  String _tableDataRow(List<String> cells, List<int> widths, {bool bold = false}) {
+    final parts = <String>[];
+    for (var c = 0; c < cells.length; c++) {
+      final raw = cells[c];
+      final rendered = _renderInline(raw);
+      final vis = visibleLength(raw);
+      final colW = widths[c];
+      final display = vis > colW ? ansiTruncate(rendered, colW) : rendered;
+      final pad = colW - (vis < colW ? vis : colW);
+      final content = bold
+          ? '\x1b[1m$display\x1b[22m${' ' * pad}'
+          : '$display${' ' * pad}';
+      parts.add(' $content ');
+    }
+    return '\x1b[90m│\x1b[0m${parts.join('\x1b[90m│\x1b[0m')}\x1b[90m│\x1b[0m';
   }
 }

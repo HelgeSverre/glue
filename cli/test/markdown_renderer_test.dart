@@ -146,4 +146,96 @@ void main() {
       expect(result, 'just some text');
     });
   });
+
+  group('tables', () {
+    test('renders table with box-drawing characters', () {
+      final result = renderer.render(
+        '| Name | Age |\n'
+        '|------|-----|\n'
+        '| Alice | 30 |\n'
+        '| Bob | 25 |',
+      );
+      final stripped = result.replaceAll(RegExp(r'\x1b\[[0-9;]*m'), '');
+      expect(stripped, contains('┌'));
+      expect(stripped, contains('┐'));
+      expect(stripped, contains('└'));
+      expect(stripped, contains('┘'));
+      expect(stripped, contains('│'));
+      expect(stripped, contains('├'));
+      expect(stripped, contains('┤'));
+      expect(stripped, contains('Alice'));
+      expect(stripped, contains('Bob'));
+    });
+
+    test('header row is bold', () {
+      final result = renderer.render(
+        '| Name | Age |\n'
+        '|------|-----|\n'
+        '| Alice | 30 |',
+      );
+      expect(result, contains('\x1b[1m'));
+      expect(result, contains('Name'));
+    });
+
+    test('computes column widths from longest cell', () {
+      final result = renderer.render(
+        '| A | Longer |\n'
+        '|---|--------|\n'
+        '| Bigger | B |',
+      );
+      final stripped = result.replaceAll(RegExp(r'\x1b\[[0-9;]*m'), '');
+      final lines = stripped.split('\n');
+      // All lines (top, header, separator, body, bottom) should be the same width
+      final widths = lines.map((l) => l.trimRight().length).toSet();
+      expect(widths.length, 1);
+    });
+
+    test('handles single column table', () {
+      final result = renderer.render(
+        '| Name |\n'
+        '|------|\n'
+        '| Alice |',
+      );
+      final stripped = result.replaceAll(RegExp(r'\x1b\[[0-9;]*m'), '');
+      expect(stripped, contains('Alice'));
+      expect(stripped, contains('┌'));
+      expect(stripped, contains('└'));
+    });
+
+    test('handles empty cells', () {
+      final result = renderer.render(
+        '| A | B |\n'
+        '|---|---|\n'
+        '| x |  |',
+      );
+      final stripped = result.replaceAll(RegExp(r'\x1b\[[0-9;]*m'), '');
+      expect(stripped, contains('x'));
+    });
+
+    test('table surrounded by other content', () {
+      final result = renderer.render(
+        'Before\n\n'
+        '| Name | Age |\n'
+        '|------|-----|\n'
+        '| Alice | 30 |\n\n'
+        'After',
+      );
+      final stripped = result.replaceAll(RegExp(r'\x1b\[[0-9;]*m'), '');
+      expect(stripped, contains('Before'));
+      expect(stripped, contains('After'));
+      expect(stripped, contains('Alice'));
+      expect(stripped, contains('┌'));
+    });
+
+    test('inline formatting in table cells', () {
+      final result = renderer.render(
+        '| Name | Note |\n'
+        '|------|------|\n'
+        '| **Alice** | `code` |',
+      );
+      expect(result, contains('\x1b[1m'));
+      expect(result, contains('Alice'));
+      expect(result, contains('code'));
+    });
+  });
 }
