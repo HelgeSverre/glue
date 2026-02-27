@@ -62,6 +62,10 @@ export 'src/storage/debug_logger.dart' show DebugLogger;
 export 'src/storage/config_store.dart' show ConfigStore;
 export 'src/input/file_expander.dart' show expandFileRefs, extractFileRefs;
 export 'src/ui/at_file_hint.dart' show AtFileHint;
+export 'src/shell/command_executor.dart'
+    show CommandExecutor, CaptureResult, RunningCommand;
+export 'src/shell/host_executor.dart' show HostExecutor;
+export 'src/shell/shell_config.dart' show ShellConfig, ShellMode;
 export 'src/shell/line_ring_buffer.dart' show LineRingBuffer;
 export 'src/shell/shell_job_manager.dart'
     show

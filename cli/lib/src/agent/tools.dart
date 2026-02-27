@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import '../config/constants.dart';
+import '../shell/command_executor.dart';
 
 /// Schema for a single tool parameter.
 class ToolParameter {
@@ -133,6 +134,10 @@ class WriteFileTool extends Tool {
 
 /// Run a shell command and return its output.
 class BashTool extends Tool {
+  final CommandExecutor executor;
+
+  BashTool(this.executor);
+
   @override
   String get name => 'bash';
 
@@ -164,39 +169,21 @@ class BashTool extends Tool {
     final t = args['timeout_seconds'];
     final timeoutSeconds =
         (t is num) ? t.toInt() : AppConstants.bashTimeoutSeconds;
-    try {
-      final process = await Process.start('sh', ['-c', command]);
-      final stdoutFuture =
-          process.stdout.transform(const SystemEncoding().decoder).join();
-      final stderrFuture =
-          process.stderr.transform(const SystemEncoding().decoder).join();
+    final timeout = timeoutSeconds == 0
+        ? null
+        : Duration(seconds: timeoutSeconds);
 
-      final int exitCode;
-      if (timeoutSeconds == 0) {
-        exitCode = await process.exitCode;
-      } else {
-        exitCode = await process.exitCode
-            .timeout(Duration(seconds: timeoutSeconds), onTimeout: () {
-          process.kill();
-          return -1;
-        });
-      }
+    final result = await executor.runCapture(command, timeout: timeout);
 
-      final stdout = await stdoutFuture;
-      final stderr = await stderrFuture;
-
-      if (exitCode == -1) {
-        return 'Error: command timed out after $timeoutSeconds seconds';
-      }
-
-      final buf = StringBuffer();
-      if (stdout.isNotEmpty) buf.writeln(stdout);
-      if (stderr.isNotEmpty) buf.writeln('STDERR: $stderr');
-      buf.writeln('Exit code: $exitCode');
-      return buf.toString();
-    } on TimeoutException {
+    if (result.exitCode == -1 && timeout != null) {
       return 'Error: command timed out after $timeoutSeconds seconds';
     }
+
+    final buf = StringBuffer();
+    if (result.stdout.isNotEmpty) buf.writeln(result.stdout);
+    if (result.stderr.isNotEmpty) buf.writeln('STDERR: ${result.stderr}');
+    buf.writeln('Exit code: ${result.exitCode}');
+    return buf.toString();
   }
 }
 

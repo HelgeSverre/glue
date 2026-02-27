@@ -13,6 +13,7 @@
 ## Task 1: `FileExpander` utility — expansion logic
 
 **Files:**
+
 - Create: `lib/src/input/file_expander.dart`
 - Create: `test/input/file_expander_test.dart`
 
@@ -20,7 +21,7 @@
 
 Create `test/input/file_expander_test.dart`:
 
-```dart
+`````dart
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
@@ -179,7 +180,7 @@ void main() {
     });
   });
 }
-```
+`````
 
 ### Step 2: Run tests to verify they fail
 
@@ -304,12 +305,14 @@ git commit -m "feat: add FileExpander utility for @file reference expansion"
 ## Task 2: Wire expansion into App submit flow
 
 **Files:**
+
 - Modify: `lib/src/app.dart` (lines 437-448 `_handleAppEvent`, lines 467-489 `_startAgent`)
 - Modify: `lib/glue.dart`
 
 ### Step 1: Import file_expander in app.dart
 
 Add to imports:
+
 ```dart
 import 'input/file_expander.dart';
 ```
@@ -349,6 +352,7 @@ case UserSubmit(:final text):
 ### Step 4: Export from barrel
 
 Add to `lib/glue.dart`:
+
 ```dart
 export 'src/input/file_expander.dart' show expandFileRefs, extractFileRefs;
 ```
@@ -370,6 +374,7 @@ git commit -m "feat: expand @file references on submit, show raw text in UI"
 ## Task 3: `AtFileHint` autocomplete overlay
 
 **Files:**
+
 - Create: `lib/src/ui/at_file_hint.dart`
 - Create: `test/ui/at_file_hint_test.dart`
 
@@ -771,22 +776,26 @@ git commit -m "feat: add AtFileHint autocomplete overlay for @file references"
 ## Task 4: Wire `AtFileHint` into App
 
 **Files:**
+
 - Modify: `lib/src/app.dart`
 - Modify: `lib/glue.dart`
 
 ### Step 1: Add `_atHint` field and instantiate
 
 In `App` fields (after `_autocomplete`):
+
 ```dart
 late final AtFileHint _atHint;
 ```
 
 In constructor body (after `_autocomplete = ...`):
+
 ```dart
 _atHint = AtFileHint();
 ```
 
 Add import at top of app.dart:
+
 ```dart
 import 'ui/at_file_hint.dart';
 ```
@@ -847,6 +856,7 @@ case InputAction.changed:
 ### Step 4: Dismiss `_atHint` on submit
 
 In the `InputAction.submit` case (line 410):
+
 ```dart
 case InputAction.submit:
   _autocomplete.dismiss();
@@ -873,6 +883,7 @@ layout.setOverlayHeight(activeOverlay != null
 ```
 
 And the overlay painting section:
+
 ```dart
 // 4. Autocomplete / @file overlay.
 if (_autocomplete.active) {
@@ -887,6 +898,7 @@ if (_autocomplete.active) {
 ### Step 6: Export from barrel
 
 Add to `lib/glue.dart`:
+
 ```dart
 export 'src/ui/at_file_hint.dart' show AtFileHint;
 ```
@@ -918,14 +930,14 @@ Tasks are sequential — each depends on the previous:
 
 ## File Changelist
 
-| File | Change |
-|---|---|
-| `lib/src/input/file_expander.dart` | **New** — `expandFileRefs`, `extractFileRefs` |
-| `lib/src/ui/at_file_hint.dart` | **New** — `AtFileHint` overlay |
-| `lib/src/app.dart` | **Modified** — expand on submit, wire `AtFileHint` overlay |
-| `lib/glue.dart` | **Modified** — export new types |
-| `test/input/file_expander_test.dart` | **New** — expansion tests |
-| `test/ui/at_file_hint_test.dart` | **New** — overlay tests |
+| File                                 | Change                                                     |
+| ------------------------------------ | ---------------------------------------------------------- |
+| `lib/src/input/file_expander.dart`   | **New** — `expandFileRefs`, `extractFileRefs`              |
+| `lib/src/ui/at_file_hint.dart`       | **New** — `AtFileHint` overlay                             |
+| `lib/src/app.dart`                   | **Modified** — expand on submit, wire `AtFileHint` overlay |
+| `lib/glue.dart`                      | **Modified** — export new types                            |
+| `test/input/file_expander_test.dart` | **New** — expansion tests                                  |
+| `test/ui/at_file_hint_test.dart`     | **New** — overlay tests                                    |
 
 ---
 

@@ -8,18 +8,22 @@ purely a **pre-send transformation** — the LLM sees the file contents inline i
 user message.
 
 Example:
+
 ```
 > explain the bug in @lib/src/agent/agent_core.dart
 ```
+
 Gets sent to the agent as:
-```
+
+````
 explain the bug in
 
 [lib/src/agent/agent_core.dart]
 ```dart
 ... full file contents ...
-```
-```
+````
+
+````
 
 ---
 
@@ -50,18 +54,19 @@ String expandFileRefs(String input);
 // Returns all @<token> substrings found in [input], regardless of whether
 // the paths are valid. Used by the autocomplete/hint layer.
 List<String> extractFileRefs(String input);
-```
+````
 
 **Expansion format** per reference:
 
-```
+````
 @lib/src/foo.dart          →     [lib/src/foo.dart]
                                  ```dart
                                  <file contents>
                                  ```
-```
+````
 
 Rules:
+
 - Token regex: `@([\w./\-]+)` — stops at whitespace and shell-special chars.
 - Cap file size at **100 KB**; emit a warning and skip expansion if larger.
 - Use the file extension to pick a fenced code-block language tag (`dart`, `json`,
@@ -124,6 +129,7 @@ Methods:
 ```
 
 Logic in `update`:
+
 1. Walk backwards from `cursor` to find the start of a `@...` token.
 2. Extract the partial path after `@`.
 3. Split into `dir` + `prefix` (everything after the last `/`).
@@ -143,7 +149,7 @@ start of the buffer.
   - Handle `Up`/`Down`/`Tab`/`Enter`/`Escape` for the hint overlay (same pattern
     as `SlashAutocomplete`).
   - On accept, call `editor.setText(editor.text.replaceRange(tokenStart, cursor,
-    accepted))`.
+accepted))`.
 - In `_doRender`, paint the `AtFileHint` overlay via `layout.paintOverlay(...)` —
   same slot used by `SlashAutocomplete`. Only one overlay shows at a time:
   `SlashAutocomplete` wins if `buffer.startsWith('/')`.
@@ -152,40 +158,40 @@ start of the buffer.
 
 ### 5. Tests — `test/input/file_expander_test.dart`
 
-| Test case | What it checks |
-|---|---|
-| Single `@path` expansion | Token replaced with fenced file contents |
-| Multiple tokens in one message | All tokens expanded independently |
-| Missing file | Token left as-is, warning appended |
-| File too large (>100 KB) | Token left as-is, size warning appended |
-| No `@` tokens | Input returned unchanged |
+| Test case                        | What it checks                           |
+| -------------------------------- | ---------------------------------------- |
+| Single `@path` expansion         | Token replaced with fenced file contents |
+| Multiple tokens in one message   | All tokens expanded independently        |
+| Missing file                     | Token left as-is, warning appended       |
+| File too large (>100 KB)         | Token left as-is, size warning appended  |
+| No `@` tokens                    | Input returned unchanged                 |
 | Extension → language tag mapping | `.dart` → `dart`, `.json` → `json`, etc. |
-| Paths with subdirectories | `@lib/src/foo.dart` handled correctly |
+| Paths with subdirectories        | `@lib/src/foo.dart` handled correctly    |
 
 And `test/ui/at_file_hint_test.dart` mirroring the structure of
 `test/slash_autocomplete_test.dart`:
 
-| Test case | What it checks |
-|---|---|
-| Inactive when no `@` present | `active == false` |
-| Activates on `@` followed by valid prefix | `active == true`, matches populated |
-| Up/down navigation wraps | Selection cycles correctly |
-| Accept inserts completion | Returned string is the completed path |
-| Dismiss clears state | `active == false`, matches empty |
-| Render output count | `overlayHeight == min(matches, 8)` |
+| Test case                                 | What it checks                        |
+| ----------------------------------------- | ------------------------------------- |
+| Inactive when no `@` present              | `active == false`                     |
+| Activates on `@` followed by valid prefix | `active == true`, matches populated   |
+| Up/down navigation wraps                  | Selection cycles correctly            |
+| Accept inserts completion                 | Returned string is the completed path |
+| Dismiss clears state                      | `active == false`, matches empty      |
+| Render output count                       | `overlayHeight == min(matches, 8)`    |
 
 ---
 
 ## File Changelist
 
-| File | Change |
-|---|---|
-| `lib/src/input/file_expander.dart` | **New** — `expandFileRefs`, `extractFileRefs` |
-| `lib/src/ui/at_file_hint.dart` | **New** — `AtFileHint` overlay widget |
-| `lib/src/app.dart` | **Modified** — expand on submit; wire `AtFileHint` |
-| `lib/glue.dart` | **Modified** — export `AtFileHint` if needed publicly |
-| `test/input/file_expander_test.dart` | **New** — unit tests for expansion logic |
-| `test/ui/at_file_hint_test.dart` | **New** — unit tests for hint overlay |
+| File                                 | Change                                                |
+| ------------------------------------ | ----------------------------------------------------- |
+| `lib/src/input/file_expander.dart`   | **New** — `expandFileRefs`, `extractFileRefs`         |
+| `lib/src/ui/at_file_hint.dart`       | **New** — `AtFileHint` overlay widget                 |
+| `lib/src/app.dart`                   | **Modified** — expand on submit; wire `AtFileHint`    |
+| `lib/glue.dart`                      | **Modified** — export `AtFileHint` if needed publicly |
+| `test/input/file_expander_test.dart` | **New** — unit tests for expansion logic              |
+| `test/ui/at_file_hint_test.dart`     | **New** — unit tests for hint overlay                 |
 
 ---
 

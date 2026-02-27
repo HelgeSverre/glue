@@ -1,4 +1,6 @@
 import 'package:test/test.dart';
+import 'package:glue/src/shell/host_executor.dart';
+import 'package:glue/src/shell/shell_config.dart';
 import 'package:glue/src/shell/shell_job_manager.dart';
 
 void main() {
@@ -39,7 +41,7 @@ void main() {
     late ShellJobManager manager;
 
     setUp(() {
-      manager = ShellJobManager();
+      manager = ShellJobManager(HostExecutor(ShellConfig()));
     });
 
     tearDown(() async {

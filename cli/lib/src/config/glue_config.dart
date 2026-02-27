@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:yaml/yaml.dart';
 import 'constants.dart';
+import '../shell/shell_config.dart';
 
 /// Supported LLM providers.
 enum LlmProvider { anthropic, openai, ollama }
@@ -37,6 +38,7 @@ class GlueConfig {
   final Map<String, AgentProfile> profiles;
   final int maxSubagentDepth;
   final int bashMaxLines;
+  final ShellConfig shellConfig;
 
   GlueConfig({
     LlmProvider? provider,
@@ -47,8 +49,10 @@ class GlueConfig {
     this.profiles = const {},
     this.maxSubagentDepth = AppConstants.maxSubagentDepth,
     this.bashMaxLines = AppConstants.bashMaxLinesDefault,
+    ShellConfig? shellConfig,
   })  : provider = provider ?? LlmProvider.anthropic,
-        model = model ?? _defaultModel(provider ?? LlmProvider.anthropic);
+        model = model ?? _defaultModel(provider ?? LlmProvider.anthropic),
+        shellConfig = shellConfig ?? const ShellConfig();
 
   static String _defaultModel(LlmProvider provider) => switch (provider) {
         LlmProvider.anthropic => 'claude-sonnet-4-6',
@@ -132,6 +136,21 @@ class GlueConfig {
     final bashMaxLines = (fileConfig?['bash'] as Map?)?['max_lines'] as int? ??
         AppConstants.bashMaxLinesDefault;
 
+    // 2b. Resolve shell configuration.
+    final shellSection = fileConfig?['shell'] as Map?;
+    final shellExe = Platform.environment['GLUE_SHELL'] ??
+        shellSection?['executable'] as String?;
+    final shellModeStr = Platform.environment['GLUE_SHELL_MODE'] ??
+        shellSection?['mode'] as String?;
+    final shellMode = shellModeStr != null
+        ? ShellMode.fromString(shellModeStr)
+        : ShellMode.nonInteractive;
+    final shellConfig = ShellConfig.detect(
+      explicit: shellExe,
+      shellEnv: Platform.environment['SHELL'],
+      mode: shellMode,
+    );
+
     // 3. Parse profiles.
     final profiles = <String, AgentProfile>{};
     final profilesYaml = fileConfig?['profiles'] as Map?;
@@ -155,6 +174,7 @@ class GlueConfig {
       openaiApiKey: openaiKey,
       profiles: profiles,
       bashMaxLines: bashMaxLines,
+      shellConfig: shellConfig,
     );
   }
 }

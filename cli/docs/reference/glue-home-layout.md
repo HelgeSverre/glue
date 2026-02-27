@@ -1,0 +1,68 @@
+# `~/.glue/` Directory Layout
+
+The `~/.glue/` directory is the user's Glue home. It stores configuration, session history, and logs. Managed by `GlueHome` (`lib/src/storage/glue_home.dart`).
+
+## Directory Structure
+
+```
+~/.glue/
+├── config.yaml          # User-edited configuration (provider, model, shell, docker, etc.)
+├── config.json          # Machine-managed runtime state (trusted tools, debug flag)
+├── sessions/
+│   └── <session-id>/
+│       ├── meta.json          # Session identity (immutable after creation)
+│       ├── conversation.jsonl # Conversation log (append-only)
+│       └── state.json         # Mutable session-scoped runtime state
+└── logs/
+    └── ...                    # Debug logs
+```
+
+## Files
+
+### `config.yaml` — User Configuration
+
+**Owner:** User (hand-edited or set via CLI flags).  
+**Format:** YAML.  
+**Schema:** See [config-yaml.md](config-yaml.md).
+
+Loaded once at startup by `GlueConfig.load()`. Resolution order: CLI args → env vars → config.yaml → defaults.
+
+### `config.json` — Runtime Configuration Store
+
+**Owner:** Glue application (machine-written).  
+**Format:** JSON.  
+**Schema:** See [config-store-json.md](config-store-json.md).  
+**Stability:** Internal; may change between versions.
+
+Managed by `ConfigStore` (`lib/src/storage/config_store.dart`). Read on demand with filesystem-change detection (mtime + size). Written atomically via tmp-file rename.
+
+### `sessions/<id>/meta.json` — Session Identity
+
+**Owner:** `SessionStore` (written once at creation, updated on close).  
+**Format:** JSON.  
+**Schema:** See [session-storage.md](session-storage.md).
+
+Contains immutable session metadata: id, cwd, model, provider, timestamps.
+
+### `sessions/<id>/conversation.jsonl` — Conversation Log
+
+**Owner:** `SessionStore` (append-only during session).  
+**Format:** JSONL (one JSON object per line).  
+**Schema:** See [session-storage.md](session-storage.md).
+
+Each line is a timestamped event record with a `type` field.
+
+### `sessions/<id>/state.json` — Session Runtime State
+
+**Owner:** Application (read/written during session).  
+**Format:** JSON.  
+**Schema:** See [session-storage.md](session-storage.md).  
+**Lifecycle:** Created on first write. Missing file = empty/default state.
+
+Stores mutable, session-scoped settings such as Docker mount whitelist. Survives session resume. Deleted when the session directory is garbage-collected.
+
+## Lifecycle & Cleanup
+
+- **Creation:** `GlueHome.ensureDirectories()` creates `sessions/` and `logs/` on startup.
+- **Session directories** accumulate over time. No automatic GC yet — future `/sessions prune` command.
+- **Deletion:** Removing a session directory removes all its files (`meta.json`, `conversation.jsonl`, `state.json`).

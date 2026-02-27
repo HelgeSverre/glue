@@ -20,7 +20,7 @@ the definitive answer — the agent needs to follow a link.
 
 ### Option B — `research` Tool (Headless Subagent with Browser Access)
 
-Spawns a focused subagent whose *only* job is to answer a factual question. That subagent is
+Spawns a focused subagent whose _only_ job is to answer a factual question. That subagent is
 given `web_search` + `fetch_url` tools and runs its own ReAct loop until it has a confident
 answer, then returns structured output.
 
@@ -48,6 +48,7 @@ Agent receives question
 ## Tool 1 — `web_search`
 
 ### Purpose
+
 Query a search engine and get back a list of result titles, URLs, and snippets.
 
 ### Schema
@@ -90,12 +91,12 @@ Plain text, numbered, one blank line between results. Easy for the LLM to parse.
 
 ### Provider options (in order of preference)
 
-| Provider | Notes |
-|---|---|
-| **Brave Search API** | Privacy-respecting, generous free tier (2000 req/month), clean JSON. First choice. |
-| **Serper.dev** | Cheap, Google results, 2500 free credits. Good fallback. |
-| **DuckDuckGo Instant Answer API** | No key required, but limited — only instant answers, not full SERPs. Last resort. |
-| **SerpAPI** | Gold standard quality but expensive. Enterprise option. |
+| Provider                          | Notes                                                                              |
+| --------------------------------- | ---------------------------------------------------------------------------------- |
+| **Brave Search API**              | Privacy-respecting, generous free tier (2000 req/month), clean JSON. First choice. |
+| **Serper.dev**                    | Cheap, Google results, 2500 free credits. Good fallback.                           |
+| **DuckDuckGo Instant Answer API** | No key required, but limited — only instant answers, not full SERPs. Last resort.  |
+| **SerpAPI**                       | Gold standard quality but expensive. Enterprise option.                            |
 
 Config resolution: `GLUE_SEARCH_API_KEY` env var → `~/.glue/config.yaml` `search.api_key` →
 error if none set.
@@ -105,6 +106,7 @@ error if none set.
 ## Tool 2 — `fetch_url`
 
 ### Purpose
+
 Fetch a URL and return its text content, stripped of HTML tags and scripts. Lets the agent
 read documentation pages, API references, changelogs, etc.
 
@@ -157,7 +159,7 @@ New keys in `~/.glue/config.yaml` and `GlueConfig`:
 
 ```yaml
 search:
-  provider: brave          # brave | serper | ddg
+  provider: brave # brave | serper | ddg
   api_key: YOUR_KEY_HERE
   max_results: 5
   fetch_max_chars: 8000
@@ -234,7 +236,7 @@ A named **research profile** in config makes this ergonomic:
 profiles:
   research:
     provider: anthropic
-    model: claude-haiku-4-5   # fast + cheap for web lookups
+    model: claude-haiku-4-5 # fast + cheap for web lookups
 ```
 
 The main agent can then `spawn_subagent(..., profile: 'research')` for any web question.
@@ -243,13 +245,13 @@ The main agent can then `spawn_subagent(..., profile: 'research')` for any web q
 
 ## Security & Safety
 
-| Concern | Mitigation |
-|---|---|
-| SSRF (fetch internal IPs) | Blocklist: `localhost`, `127.*`, `10.*`, `192.168.*`, `169.254.*` |
-| Credential leakage via URL | Warn if URL contains `?token=` / `?key=` patterns |
-| Malicious page content | Content is plain text only — no execution, no parsing of scripts |
-| API key exposure in logs | Keys never logged; config masked in `/config` command output |
-| Rate limiting | Honour `Retry-After` headers; surface errors cleanly |
+| Concern                    | Mitigation                                                        |
+| -------------------------- | ----------------------------------------------------------------- |
+| SSRF (fetch internal IPs)  | Blocklist: `localhost`, `127.*`, `10.*`, `192.168.*`, `169.254.*` |
+| Credential leakage via URL | Warn if URL contains `?token=` / `?key=` patterns                 |
+| Malicious page content     | Content is plain text only — no execution, no parsing of scripts  |
+| API key exposure in logs   | Keys never logged; config masked in `/config` command output      |
+| Rate limiting              | Honour `Retry-After` headers; surface errors cleanly              |
 
 ---
 
@@ -268,32 +270,36 @@ Error: web_search API error (429 Too Many Requests) — rate limit hit, try late
 
 ## File Changes
 
-| File | Change |
-|---|---|
-| `lib/src/tools/web_tools.dart` | **New** — `WebSearchTool`, `FetchUrlTool`, `SearchConfig` |
-| `lib/src/config/glue_config.dart` | Add `SearchConfig? search`, parse from env/file |
-| `lib/src/agent/agent_core.dart` | Register tools conditionally on `config.search != null` |
-| `lib/glue.dart` | Export `WebSearchTool`, `FetchUrlTool` |
-| `pubspec.yaml` | Add `http: ^1.2.0` dependency |
-| `test/tools/web_tools_test.dart` | **New** — mock HTTP, test snippet formatting, truncation, error paths |
-| `README.md` | Document `GLUE_SEARCH_API_KEY` setup, provider options |
+| File                              | Change                                                                |
+| --------------------------------- | --------------------------------------------------------------------- |
+| `lib/src/tools/web_tools.dart`    | **New** — `WebSearchTool`, `FetchUrlTool`, `SearchConfig`             |
+| `lib/src/config/glue_config.dart` | Add `SearchConfig? search`, parse from env/file                       |
+| `lib/src/agent/agent_core.dart`   | Register tools conditionally on `config.search != null`               |
+| `lib/glue.dart`                   | Export `WebSearchTool`, `FetchUrlTool`                                |
+| `pubspec.yaml`                    | Add `http: ^1.2.0` dependency                                         |
+| `test/tools/web_tools_test.dart`  | **New** — mock HTTP, test snippet formatting, truncation, error paths |
+| `README.md`                       | Document `GLUE_SEARCH_API_KEY` setup, provider options                |
 
 ---
 
 ## Implementation Phases
 
 ### Phase 1 — `fetch_url` (no API key needed)
+
 Start here. Pure HTTP, immediately useful for "read this doc page for me" tasks.
 Validates the HTML-stripping and truncation logic in isolation.
 
 ### Phase 2 — `web_search` with Brave
+
 Wire up Brave Search API. Nail the output format. Add config parsing.
 
 ### Phase 3 — Research profile
+
 Document the `research` profile pattern. Add example to README.
 Optionally add a `/search <query>` slash command as syntactic sugar.
 
 ### Phase 4 — DuckDuckGo fallback
+
 No-key fallback using DDG Instant Answer API for users who don't want to set up an API key.
 Limited but better than nothing.
 

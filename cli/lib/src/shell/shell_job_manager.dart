@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'command_executor.dart';
 import 'line_ring_buffer.dart';
 
 enum JobStatus { running, exited, failed, killed }
@@ -45,9 +46,12 @@ class ShellJob {
 }
 
 class ShellJobManager {
+  final CommandExecutor executor;
   int _nextId = 1;
   final _jobs = <int, ShellJob>{};
   final _events = StreamController<JobEvent>.broadcast();
+
+  ShellJobManager(this.executor);
 
   Stream<JobEvent> get events => _events.stream;
 
@@ -56,7 +60,8 @@ class ShellJobManager {
 
   Future<ShellJob> start(String command) async {
     final id = _nextId++;
-    final process = await Process.start('sh', ['-c', command]);
+    final running = await executor.startStreaming(command);
+    final process = running.process;
 
     final job = ShellJob(
       id: id,

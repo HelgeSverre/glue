@@ -12,3 +12,10 @@ build: (cli::build)
 
 # Clean all build artifacts
 clean: (cli::clean)
+
+# Full check: analyze + test everything
+check: (cli::check)
+
+# Fuzzy-pick a recipe to run
+pick:
+    @just --choose

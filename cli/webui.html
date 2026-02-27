@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>glue · server</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --yellow:#FACC15;--gold:#EAB308;--amber:#F59E0B;
+  --bg:#050506;--surface:#0a0a0c;--surface-el:#101012;--surface-hi:#161618;
+  --border:#1a1a1e;--border-br:#252529;
+  --text:#d8d8dc;--text-sec:#7a7a84;--text-mut:#44444c;--text-dim:#2e2e34;
+  --success:#22C55E;--error:#EF4444;--warning:#F59E0B;--info:#3B82F6;
+  --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;
+}
+html{font-size:13px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
+::selection{background:rgba(250,204,21,.2);color:var(--yellow)}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-br);border-radius:1px}
+
+/* ═══ Accent line ═══ */
+.accent-line{height:1px;width:100%;flex-shrink:0;background:var(--yellow);opacity:.3}
+.accent-line-v{width:1px;flex-shrink:0;background:var(--yellow);opacity:.15}
+
+/* ═══ App Shell ═══ */
+.app{display:flex;height:100vh;flex-direction:column}
+.app-body{display:flex;flex:1;overflow:hidden}
+
+/* ═══ Rail (Session sidebar) ═══ */
+.rail{width:240px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.rail-head{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.rail-logo{font-family:var(--mono);font-weight:800;font-size:14px;color:var(--yellow);letter-spacing:-0.5px}
+.rail-logo span{color:var(--text-mut);font-weight:400}
+.rail-meta{margin-left:auto;font-size:9px;color:var(--text-mut);font-family:var(--mono)}
+
+.rail-section{border-bottom:1px solid var(--border)}
+.rail-section-head{
+  padding:6px 12px;font-family:var(--mono);font-size:9px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.08em;color:var(--text-mut);
+  display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none;
+}
+.rail-section-head:hover{color:var(--text-sec)}
+.rail-section-head .chev{font-size:7px;width:8px;text-align:center;transition:transform .12s}
+.rail-section-head .chev.open{transform:rotate(90deg)}
+.rail-section-head .badge{margin-left:auto;font-size:8px;padding:1px 5px;background:var(--border);color:var(--text-sec);font-weight:500}
+
+.rail-new{
+  margin:8px 10px;padding:6px 0;border:1px dashed var(--border-br);
+  background:transparent;color:var(--text-mut);font-size:10px;font-family:var(--mono);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;
+  text-transform:uppercase;letter-spacing:.04em;font-weight:600;transition:all .12s;
+}
+.rail-new:hover{border-color:var(--yellow);color:var(--yellow);background:rgba(250,204,21,.02)}
+
+.rail-list{overflow-y:auto;flex:1}
+
+/* Session item */
+.s-item{padding:7px 12px;cursor:pointer;border-left:2px solid transparent;transition:all .08s;position:relative}
+.s-item:hover{background:var(--surface-el)}
+.s-item.active{background:var(--surface-el);border-left-color:var(--yellow)}
+.s-item-top{display:flex;align-items:center;gap:5px;margin-bottom:2px}
+.s-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.s-dot.alive{background:var(--success);box-shadow:0 0 4px rgba(34,197,94,.3)}
+.s-dot.idle{background:var(--text-mut)}
+.s-dot.dead{background:var(--border)}
+.s-name{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text-sec);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s-item.active .s-name{color:var(--yellow)}
+.s-provider{font-size:8px;color:var(--text-mut);font-family:var(--mono)}
+.s-preview{font-family:var(--mono);font-size:9px;color:var(--text-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.s-preview .pr{color:var(--yellow)}
+.s-meta{font-size:8px;color:var(--text-dim);font-family:var(--mono);margin-top:1px}
+.s-close{position:absolute;right:8px;top:7px;width:14px;height:14px;border:none;background:transparent;color:var(--text-mut);cursor:pointer;font-size:10px;display:none;align-items:center;justify-content:center}
+.s-item:hover .s-close{display:flex}
+.s-close:hover{color:var(--text)}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.s-dot.alive{animation:pulse 2.5s infinite}
+
+/* Worktree item (pending) */
+.wt-item{padding:5px 12px 5px 20px;font-family:var(--mono);font-size:9px;color:var(--text-dim);display:flex;align-items:center;gap:5px}
+.wt-item .wt-icon{color:var(--text-dim);font-size:8px}
+.wt-item .wt-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wt-item.current{color:var(--text-mut)}
+.wt-item.current .wt-icon{color:var(--yellow)}
+.wt-pending-tag{
+  font-family:var(--mono);font-size:7px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.06em;padding:1px 4px;
+  background:rgba(250,204,21,.06);
+  color:var(--text-mut);border:1px solid var(--border);
+}
+
+.rail-foot{padding:6px 12px;border-top:1px solid var(--border);font-size:8px;color:var(--text-dim);font-family:var(--mono);display:flex;align-items:center;gap:6px}
+.rail-foot .conn-dot{width:4px;height:4px;border-radius:50%;flex-shrink:0}
+.rail-foot .conn-dot.ok{background:var(--success);animation:pulse 2s infinite}
+.rail-foot .conn-dot.err{background:var(--error)}
+
+/* ═══ Viewport (main terminal area) ═══ */
+.viewport{flex:1;display:flex;flex-direction:column;background:var(--bg);min-width:0}
+
+/* Output zone */
+.zone-output{
+  flex:1;overflow-y:auto;padding:14px 18px;font-family:var(--mono);font-size:11.5px;
+  line-height:1.65;color:var(--text-sec);position:relative;
+}
+.zone-output::after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,255,255,.003) 2px,rgba(255,255,255,.003) 4px);
+}
+
+/* Conversation blocks */
+.blk{margin-bottom:14px}
+.blk-user{color:var(--text-mut);margin-bottom:3px}
+.blk-user .pr{color:var(--yellow);font-weight:700}
+.blk-user .msg{color:var(--text)}
+.blk-assistant{color:var(--text-sec);white-space:pre-wrap}
+.blk-tool{margin:6px 0;padding:5px 9px;border-left:2px solid var(--border);font-size:10px}
+.blk-tool .t-head{display:flex;align-items:center;gap:6px;margin-bottom:2px}
+.blk-tool .t-name{color:var(--yellow);font-weight:700}
+.blk-tool .t-status{font-size:8px;padding:1px 5px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.blk-tool .t-status.ok{color:var(--success);background:rgba(34,197,94,.06)}
+.blk-tool .t-status.pending{color:var(--warning);background:rgba(245,158,11,.06)}
+.blk-tool .t-status.needs-approval{color:var(--amber);background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.15)}
+.blk-tool .t-status.error{color:var(--error);background:rgba(239,68,68,.06)}
+.blk-tool .t-args{color:var(--text-dim);font-size:9px}
+.blk-tool .t-summary{color:var(--text-mut);font-size:9px;margin-top:2px}
+.t-cursor{display:inline-block;width:6px;height:12px;background:var(--yellow);animation:blink 1s step-end infinite;vertical-align:text-bottom;margin-left:1px}
+@keyframes blink{50%{opacity:0}}
+
+/* Overlay zone */
+.zone-overlay{
+  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  background:var(--surface);padding:0;max-height:200px;overflow-y:auto;flex-shrink:0;
+}
+.overlay-head{
+  padding:5px 12px;font-family:var(--mono);font-size:9px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--text-mut);
+  border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;
+  background:var(--surface-el);
+}
+.overlay-head .tag{font-size:7px;padding:1px 4px;background:rgba(250,204,21,.08);color:var(--yellow)}
+.overlay-item{
+  padding:4px 12px;font-family:var(--mono);font-size:10px;color:var(--text-sec);
+  display:flex;align-items:center;gap:8px;cursor:pointer;border-left:2px solid transparent;
+}
+.overlay-item:hover{background:var(--surface-el)}
+.overlay-item.selected{background:var(--surface-el);border-left-color:var(--yellow);color:var(--yellow)}
+.overlay-item .key{font-size:8px;color:var(--text-dim);min-width:16px}
+.overlay-search{
+  padding:5px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;
+}
+.overlay-search input{
+  flex:1;background:transparent;border:none;outline:none;color:var(--text);
+  font-family:var(--mono);font-size:10px;caret-color:var(--yellow);
+}
+.overlay-search input::placeholder{color:var(--text-dim)}
+.overlay-search .slash{color:var(--yellow);font-size:11px;font-weight:700}
+
+/* Status zone (1 line) */
+.zone-status{
+  height:20px;background:var(--yellow);color:var(--bg);
+  display:flex;align-items:center;padding:0 12px;font-size:9px;
+  font-family:var(--mono);font-weight:600;gap:10px;flex-shrink:0;
+  letter-spacing:.02em;
+}
+.zone-status .sep{color:rgba(5,5,6,.3)}
+.zone-status .right{margin-left:auto;display:flex;gap:10px;font-weight:500}
+.zone-status .dim{opacity:.5}
+.zone-status .err-count{color:var(--bg);background:var(--error);padding:0 4px;font-size:8px;font-weight:700}
+
+/* Input zone */
+.zone-input{
+  border-top:1px solid var(--border);padding:8px 14px;display:flex;align-items:flex-start;gap:6px;
+  background:var(--surface);flex-shrink:0;
+}
+.zone-input .pr{color:var(--yellow);font-family:var(--mono);font-size:13px;font-weight:700;line-height:1.6;flex-shrink:0}
+.zone-input textarea{
+  flex:1;background:transparent;border:none;outline:none;color:var(--text);
+  font-family:var(--mono);font-size:11px;line-height:1.6;caret-color:var(--yellow);
+  resize:none;min-height:18px;max-height:96px;
+}
+.zone-input textarea::placeholder{color:var(--text-dim)}
+.zone-input .input-hint{font-size:8px;color:var(--text-dim);font-family:var(--mono);align-self:flex-end;white-space:nowrap;flex-shrink:0}
+
+/* ═══ Tool Sidecar ═══ */
+.sidecar-wrap{display:flex;flex:1;overflow:hidden}
+.sidecar{
+  width:220px;background:var(--surface);border-left:1px solid var(--border);
+  display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;
+}
+.sidecar-head{
+  padding:5px 10px;font-family:var(--mono);font-size:9px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--text-mut);
+  border-bottom:1px solid var(--border);display:flex;align-items:center;gap:5px;
+  background:var(--surface-el);
+}
+.sidecar-head .count{margin-left:auto;color:var(--text-dim)}
+.sidecar-list{overflow-y:auto;flex:1}
+.sc-item{padding:5px 10px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:9px;cursor:pointer;transition:background .08s}
+.sc-item:hover{background:var(--surface-el)}
+.sc-item.highlight{background:rgba(250,204,21,.03)}
+.sc-item .sc-name{color:var(--yellow);font-weight:600;margin-bottom:1px}
+.sc-item .sc-path{color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-item .sc-result{font-size:8px;margin-top:1px}
+.sc-item .sc-result.ok{color:var(--success)}
+.sc-item .sc-result.pending{color:var(--warning)}
+.sc-item .sc-result.needs-approval{color:var(--amber)}
+.sc-item .sc-result.error{color:var(--error)}
+.sc-item .sc-time{font-size:7px;color:var(--text-dim);margin-top:1px}
+
+/* ═══ Empty state ═══ */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;color:var(--text-dim);gap:10px}
+.empty .glyph{font-family:var(--mono);font-size:36px;font-weight:900;color:var(--yellow);opacity:.08}
+.empty .msg{font-size:11px;font-family:var(--mono)}
+.empty .hint{font-size:9px;color:var(--text-dim);font-family:var(--mono)}
+.empty-btn{
+  padding:5px 14px;border:1px dashed var(--border-br);background:transparent;
+  color:var(--text-mut);font-size:9px;font-family:var(--mono);cursor:pointer;
+  text-transform:uppercase;letter-spacing:.04em;font-weight:600;transition:all .12s;
+}
+.empty-btn:hover{border-color:var(--yellow);color:var(--yellow)}
+
+/* ═══ Modal (Panel) ═══ */
+.modal-bg{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center}
+.modal-bg.dim{background:rgba(5,5,6,.8)}
+.modal-bg.obscure{background:rgba(5,5,6,.92);backdrop-filter:blur(4px)}
+
+.panel{background:var(--surface);border:1px solid var(--border);width:420px;max-width:90vw;overflow:hidden}
+.panel.accent{border-top:2px solid var(--yellow)}
+.panel.accent .panel-head{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px}
+.panel.simple .panel-head{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px}
+.panel.heavy .panel-head{padding:10px 14px;border-bottom:2px solid var(--yellow);display:flex;align-items:center;gap:6px}
+.panel-title{font-family:var(--mono);font-weight:700;font-size:12px;color:var(--yellow);text-transform:uppercase;letter-spacing:.03em}
+.panel-close{margin-left:auto;background:none;border:none;color:var(--text-mut);cursor:pointer;font-size:13px;padding:2px}
+.panel-close:hover{color:var(--text)}
+.panel-body{padding:14px 16px}
+.panel-foot{padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:6px;justify-content:flex-end}
+
+/* Form elements */
+.f-group{margin-bottom:12px}
+.f-label{font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-mut);margin-bottom:4px}
+.f-select,.f-input{
+  width:100%;padding:6px 8px;background:var(--bg);border:1px solid var(--border);
+  color:var(--text);font-family:var(--mono);font-size:10px;outline:none;
+}
+.f-select:focus,.f-input:focus{border-color:var(--yellow)}
+.f-select{cursor:pointer;appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%2344444c'%3E%3Cpath d='M2 3l3 4 3-4'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 8px center}
+.f-select option{background:var(--surface);color:var(--text)}
+.f-input::placeholder{color:var(--text-dim)}
+.f-hint{font-size:8px;color:var(--text-dim);margin-top:3px;font-family:var(--mono)}
+.f-divider{border:none;border-top:1px solid var(--border);margin:12px 0}
+
+.btn{
+  padding:5px 14px;font-size:10px;font-weight:700;cursor:pointer;
+  border:1px solid var(--border);background:transparent;color:var(--text-sec);
+  font-family:var(--mono);text-transform:uppercase;letter-spacing:.03em;transition:all .1s;
+}
+.btn:hover{border-color:var(--border-br);color:var(--text)}
+.btn.primary{background:var(--yellow);color:var(--bg);border-color:var(--yellow)}
+.btn.primary:hover{background:var(--gold)}
+.btn:disabled{opacity:.3;cursor:not-allowed}
+
+/* ═══ Responsive ═══ */
+@media(max-width:700px){
+  .rail{width:48px}
+  .s-preview,.s-meta,.s-provider,.s-close,.rail-meta,.wt-item,.rail-section-head .badge,.wt-pending-tag{display:none}
+  .s-name{font-size:9px}
+  .sidecar{display:none}
+}
+</style>
+</head>
+<body>
+<div class="app" x-data="glueServer()" @keydown.window="handleKeys($event)">
+  <div class="accent-line"></div>
+
+  <div class="app-body">
+    <!-- ═══ Rail ═══ -->
+    <aside class="rail">
+      <div class="rail-head">
+        <span class="rail-logo">GLUE<span> server</span></span>
+        <span class="rail-meta" x-text="sessions.length"></span>
+      </div>
+
+      <button class="rail-new" @click="openModal('newSession')">+ new session</button>
+
+      <div class="rail-list">
+        <!-- Sessions -->
+        <div class="rail-section">
+          <div class="rail-section-head" @click="railSections.sessions = !railSections.sessions">
+            <span class="chev" :class="railSections.sessions && 'open'">▶</span>
+            <span>Sessions</span>
+            <span class="badge" x-text="sessions.filter(s => s.alive).length + ' active'"></span>
+          </div>
+          <template x-if="railSections.sessions">
+            <div>
+              <template x-for="group in groupedSessions()" :key="group.project">
+                <div>
+                  <div class="rail-section-head" style="padding-left:18px;font-size:8px;color:var(--text-dim)" @click="group.open = !group.open">
+                    <span class="chev" :class="group.open && 'open'" style="font-size:6px">▶</span>
+                    <span x-text="group.project"></span>
+                  </div>
+                  <template x-if="group.open">
+                    <div>
+                      <template x-for="s in group.sessions" :key="s.id">
+                        <div class="s-item" :class="activeId === s.id && 'active'" @click="switchTo(s.id)">
+                          <div class="s-item-top">
+                            <span class="s-dot" :class="s.alive ? 'alive' : s.recent ? 'idle' : 'dead'"></span>
+                            <span class="s-name" x-text="sessionTitle(s)"></span>
+                            <span class="s-provider" x-text="s.provider"></span>
+                          </div>
+                          <div class="s-preview"><span class="pr">❯ </span><span x-text="s.lastInput"></span></div>
+                          <div class="s-meta" x-text="s.model + ' · ' + s.time"></div>
+                          <button class="s-close" @click.stop="closeSession(s.id)">×</button>
+                        </div>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+
+        <!-- Worktrees (pending) -->
+        <div class="rail-section">
+          <div class="rail-section-head" @click="railSections.worktrees = !railSections.worktrees">
+            <span class="chev" :class="railSections.worktrees && 'open'">▶</span>
+            <span>Worktrees</span>
+            <span class="wt-pending-tag">pending</span>
+          </div>
+          <template x-if="railSections.worktrees">
+            <div>
+              <template x-for="wt in worktrees" :key="wt.branch">
+                <div class="wt-item" :class="wt.current && 'current'">
+                  <span class="wt-icon" x-text="wt.current ? '●' : '○'"></span>
+                  <span class="wt-name" x-text="wt.branch"></span>
+                </div>
+              </template>
+              <div style="padding:4px 12px 6px 20px">
+                <button class="rail-new" style="margin:0;padding:4px 0;font-size:8px" disabled>+ new worktree</button>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <div class="rail-foot">
+        <span class="conn-dot" :class="server.connected ? 'ok' : 'err'"></span>
+        <span x-text="server.connected ? server.url : 'disconnected'"></span>
+      </div>
+    </aside>
+
+    <div class="accent-line-v"></div>
+
+    <!-- ═══ Viewport ═══ -->
+    <div class="viewport">
+      <template x-if="activeSession()">
+        <div style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+          <div class="sidecar-wrap">
+            <!-- Output Zone -->
+            <div class="zone-output" x-ref="outputScroll">
+              <template x-for="(block, i) in activeSession().blocks" :key="i">
+                <div class="blk">
+                  <template x-if="block.type === 'user'">
+                    <div class="blk-user"><span class="pr">❯ </span><span class="msg" x-text="block.text"></span></div>
+                  </template>
+                  <template x-if="block.type === 'assistant'">
+                    <div class="blk-assistant" x-html="block.text + (block.streaming ? '<span class=\'t-cursor\'></span>' : '')"></div>
+                  </template>
+                  <template x-if="block.type === 'tool'">
+                    <div class="blk-tool">
+                      <div class="t-head">
+                        <span class="t-name" x-text="'▸ ' + block.name"></span>
+                        <span class="t-status" :class="block.status" x-text="block.status === 'needs-approval' ? '⏳ approve?' : block.status"></span>
+                      </div>
+                      <div class="t-args" x-text="block.args"></div>
+                      <div class="t-summary" x-text="block.summary"></div>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </div>
+
+            <!-- Tool Sidecar -->
+            <template x-if="showSidecar">
+              <div class="sidecar">
+                <div class="sidecar-head">
+                  <span>Tools</span>
+                  <span class="count" x-text="toolCalls().length"></span>
+                </div>
+                <div class="sidecar-list">
+                  <template x-for="(tc, i) in toolCalls()" :key="i">
+                    <div class="sc-item" :class="tc.status === 'needs-approval' && 'highlight'">
+                      <div class="sc-name" x-text="tc.name"></div>
+                      <div class="sc-path" x-text="tc.args"></div>
+                      <div class="sc-result" :class="tc.status" x-text="tc.summary || tc.status"></div>
+                      <div class="sc-time" x-text="tc.ts"></div>
+                    </div>
+                  </template>
+                  <template x-if="toolCalls().length === 0">
+                    <div style="padding:12px 10px;font-family:var(--mono);font-size:9px;color:var(--text-dim);text-align:center">no tool calls yet</div>
+                  </template>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- Overlay Zone -->
+          <template x-if="overlay.open">
+            <div class="zone-overlay">
+              <div class="overlay-head">
+                <span x-text="overlay.kind === 'palette' ? 'Command Palette' : overlay.kind === 'approvals' ? 'Pending Approvals' : 'Help'"></span>
+                <span class="tag" x-text="overlay.kind === 'palette' ? '/' : overlay.kind === 'approvals' ? overlay.items.length : '?'"></span>
+              </div>
+              <template x-if="overlay.kind === 'palette'">
+                <div class="overlay-search">
+                  <span class="slash">❯</span>
+                  <input type="text" placeholder="type to filter..." x-model="overlay.query" @keydown.escape="overlay.open = false" x-ref="overlayInput">
+                </div>
+              </template>
+              <template x-for="(item, i) in filteredOverlayItems()" :key="i">
+                <div class="overlay-item" :class="overlay.selected === i && 'selected'" @click="executeOverlayItem(item)">
+                  <span class="key" x-text="item.key || ''"></span>
+                  <span x-text="item.label"></span>
+                </div>
+              </template>
+            </div>
+          </template>
+
+          <!-- Status Zone (1 line, yellow bar) -->
+          <div class="zone-status">
+            <span x-text="'▸ ' + activeSession().id.substring(0, 8)"></span>
+            <span class="sep">│</span>
+            <span x-text="activeSession().cwd"></span>
+            <span class="sep">│</span>
+            <span x-text="activeSession().provider + '/' + activeSession().model"></span>
+            <template x-if="pendingApprovals().length > 0">
+              <span class="err-count" x-text="pendingApprovals().length + ' pending'"></span>
+            </template>
+            <div class="right">
+              <span class="dim" x-text="activeSession().tokens + ' tok'"></span>
+              <span class="sep">│</span>
+              <span x-text="activeSession().time"></span>
+              <span class="sep">│</span>
+              <span x-text="showSidecar ? '[t] hide tools' : '[t] show tools'"></span>
+            </div>
+          </div>
+
+          <!-- Input Zone -->
+          <div class="zone-input">
+            <span class="pr">❯</span>
+            <textarea rows="1" placeholder="message..." x-model="inputText"
+              @keydown.enter.prevent="if(!$event.shiftKey) sendMessage(); else inputText += '\n'"
+              @input="autoGrow($event.target)"
+            ></textarea>
+            <span class="input-hint" x-text="'enter=send · /=palette · t=tools'"></span>
+          </div>
+        </div>
+      </template>
+
+      <!-- Empty state -->
+      <template x-if="!activeSession()">
+        <div class="empty">
+          <div class="glyph">❯_</div>
+          <div class="msg">no active session</div>
+          <div class="hint">create a session or select from the rail</div>
+          <button class="empty-btn" @click="openModal('newSession')">+ new session</button>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- ═══ Modal (Panel) ═══ -->
+  <template x-if="modal.open">
+    <div class="modal-bg" :class="modal.barrier" @click.self="modal.open = false">
+      <!-- New Session -->
+      <template x-if="modal.kind === 'newSession'">
+        <div class="panel" :class="modal.style" @click.stop>
+          <div class="panel-head">
+            <span class="panel-title">▸ new session</span>
+            <button class="panel-close" @click="modal.open = false">×</button>
+          </div>
+          <div class="panel-body">
+            <div class="f-group">
+              <div class="f-label">Working Directory</div>
+              <select class="f-select" x-model="modal.form.cwd">
+                <option value="">select...</option>
+                <template x-for="p in availableProjects" :key="p.path">
+                  <option :value="p.path" x-text="p.name + ' — ' + p.path"></option>
+                </template>
+              </select>
+            </div>
+            <div class="f-group">
+              <div class="f-label">Worktree / Branch</div>
+              <select class="f-select" x-model="modal.form.branch" :disabled="!modal.form.cwd">
+                <option value="">select...</option>
+                <template x-for="wt in branchesForCwd()" :key="wt">
+                  <option :value="wt" x-text="wt"></option>
+                </template>
+                <option value="__new__">+ new worktree...</option>
+              </select>
+              <div class="f-hint">worktree management is a pending feature</div>
+            </div>
+            <template x-if="modal.form.branch === '__new__'">
+              <div class="f-group">
+                <div class="f-label">Branch Name</div>
+                <input class="f-input" type="text" placeholder="feat/my-feature" x-model="modal.form.newBranch">
+              </div>
+            </template>
+            <hr class="f-divider">
+            <div class="f-group">
+              <div class="f-label">Provider</div>
+              <select class="f-select" x-model="modal.form.provider">
+                <option value="anthropic">anthropic</option>
+                <option value="openai">openai</option>
+                <option value="google">google</option>
+                <option value="ollama">ollama (local)</option>
+              </select>
+            </div>
+            <div class="f-group">
+              <div class="f-label">Model</div>
+              <select class="f-select" x-model="modal.form.model">
+                <template x-for="m in modelsForProvider()" :key="m">
+                  <option :value="m" x-text="m"></option>
+                </template>
+              </select>
+            </div>
+            <hr class="f-divider">
+            <div class="f-group">
+              <div class="f-label">Initial Prompt</div>
+              <input class="f-input" type="text" placeholder="e.g. refactor the auth module..." x-model="modal.form.prompt">
+            </div>
+          </div>
+          <div class="panel-foot">
+            <button class="btn" @click="modal.open = false">cancel</button>
+            <button class="btn primary" @click="createSession()" :disabled="!modal.form.cwd">create</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Worktree Manager -->
+      <template x-if="modal.kind === 'worktreeManager'">
+        <div class="panel heavy" @click.stop>
+          <div class="panel-head">
+            <span class="panel-title">▸ worktree manager</span>
+            <span class="wt-pending-tag" style="margin-left:8px">pending</span>
+            <button class="panel-close" @click="modal.open = false">×</button>
+          </div>
+          <div class="panel-body" style="color:var(--text-sec);font-family:var(--mono);font-size:10px">
+            <p style="margin-bottom:12px;color:var(--text-mut)">Worktree management will allow creating isolated git worktrees per session, enabling parallel work across branches.</p>
+            <template x-for="wt in worktrees" :key="wt.branch">
+              <div style="padding:6px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+                <span :style="wt.current ? 'color:var(--yellow)' : 'color:var(--text-dim)'" x-text="wt.current ? '●' : '○'"></span>
+                <span :style="wt.current ? 'color:var(--yellow);font-weight:600' : ''" x-text="wt.branch"></span>
+                <span style="margin-left:auto;font-size:8px;color:var(--text-dim)" x-text="wt.path"></span>
+              </div>
+            </template>
+            <div style="margin-top:12px;display:flex;gap:6px">
+              <button class="btn" disabled>+ create</button>
+              <button class="btn" disabled>prune</button>
+              <button class="btn" disabled>switch</button>
+            </div>
+          </div>
+          <div class="panel-foot">
+            <button class="btn" @click="modal.open = false">close</button>
+          </div>
+        </div>
+      </template>
+    </div>
+  </template>
+</div>
+
+<script>
+function glueServer() {
+  let nextId = 100;
+  return {
+    activeId: 'S-7f3a01',
+    showSidecar: true,
+    inputText: '',
+
+    server: { connected: true, url: '127.0.0.1:8787', version: 'glue dev' },
+
+    railSections: { sessions: true, worktrees: true },
+
+    overlay: { open: false, kind: 'palette', query: '', items: [], selected: 0 },
+
+    modal: {
+      open: false,
+      kind: 'newSession',
+      style: 'accent',
+      barrier: 'obscure',
+      form: { cwd: '', branch: '', newBranch: '', provider: 'anthropic', model: 'claude-4-sonnet', prompt: '' },
+    },
+
+    availableProjects: [
+      { name: 'glue', path: '~/code/glue/cli' },
+      { name: 'api-server', path: '~/code/api-server' },
+      { name: 'docs', path: '~/code/docs' },
+    ],
+
+    projectBranches: {
+      '~/code/glue/cli': ['main', 'feat/tui-overhaul', 'feat/mcp-support', 'fix/input-parsing'],
+      '~/code/api-server': ['main', 'feat/auth', 'feat/graphql'],
+      '~/code/docs': ['main'],
+    },
+
+    providerModels: {
+      anthropic: ['claude-4-sonnet', 'claude-4-opus', 'claude-4-haiku'],
+      openai: ['gpt-5', 'gpt-4.1', 'o3'],
+      google: ['gemini-3-pro', 'gemini-3-flash'],
+      ollama: ['llama4', 'qwen3:32b', 'deepseek-r2:14b'],
+    },
+
+    worktrees: [
+      { branch: 'main', path: '~/code/glue/cli', current: true },
+      { branch: 'feat/tui-overhaul', path: '~/code/glue/.worktrees/feat-tui-overhaul', current: false },
+      { branch: 'feat/mcp-support', path: '~/code/glue/.worktrees/feat-mcp-support', current: false },
+      { branch: 'fix/input-parsing', path: '~/code/glue/.worktrees/fix-input-parsing', current: false },
+    ],
+
+    sessions: [
+      {
+        id: 'S-7f3a01', project: 'glue', cwd: '~/code/glue/cli', model: 'claude-4-sonnet', provider: 'anthropic',
+        alive: true, recent: true, time: '2m ago', tokens: 4521, lastInput: 'implement screen buffer',
+        blocks: [
+          { type: 'user', text: 'implement the screen buffer with diff-based rendering', ts: '15:12:01' },
+          { type: 'assistant', text: 'I\'ll implement a virtual screen buffer that tracks changes between frames for flicker-free rendering.\n\nLet me first look at the current terminal implementation.', streaming: false, ts: '15:12:02' },
+          { type: 'tool', name: 'read_file', args: 'lib/src/terminal/terminal.dart', status: 'ok', summary: '✓ 156 lines read', ts: '15:12:03' },
+          { type: 'assistant', text: 'Now I\'ll create the ScreenBuffer class with a Cell-based grid system.\n\nEach cell stores a character and its style. We keep two buffers — current and previous — and only write the diff to the real terminal.', streaming: false, ts: '15:12:05' },
+          { type: 'tool', name: 'write_file', args: 'lib/src/terminal/screen_buffer.dart', status: 'ok', summary: '✓ created (89 lines)', ts: '15:12:06' },
+          { type: 'tool', name: 'read_file', args: 'lib/src/terminal/layout.dart', status: 'ok', summary: '✓ 162 lines read', ts: '15:12:07' },
+          { type: 'assistant', text: 'Created the screen buffer. The key method is `flush()` which compares `_current` against `_previous` and only emits ANSI escape sequences for cells that changed.\n\nThis eliminates flicker during streaming output. Want me to update the Layout class to use this buffer?', streaming: false, ts: '15:12:08' },
+        ],
+      },
+      {
+        id: 'S-a2c4e8', project: 'glue', cwd: '~/code/glue/cli', model: 'claude-4-sonnet', provider: 'anthropic',
+        alive: true, recent: true, time: '1m ago', tokens: 1892, lastInput: 'add MCP server discovery',
+        blocks: [
+          { type: 'user', text: 'add MCP server discovery and connection management', ts: '15:14:22' },
+          { type: 'assistant', text: 'I\'ll add MCP server discovery. Let me check the existing configuration...', streaming: true, ts: '15:14:23' },
+          { type: 'tool', name: 'read_file', args: '.glue/mcp.json', status: 'ok', summary: '✓ 24 lines', ts: '15:14:24' },
+        ],
+      },
+      {
+        id: 'S-d91b35', project: 'glue', cwd: '~/code/glue/cli', model: 'gpt-5', provider: 'openai',
+        alive: true, recent: true, time: '3m ago', tokens: 3107, lastInput: 'fix UTF-8 parsing bug',
+        blocks: [
+          { type: 'user', text: 'fix the UTF-8 multi-byte character parsing bug in terminal input', ts: '15:11:44' },
+          { type: 'assistant', text: 'Found the issue — `_decodeUtf8Char` doesn\'t handle surrogate pairs correctly. Applied the fix.', streaming: false, ts: '15:11:46' },
+          { type: 'tool', name: 'edit_file', args: 'lib/src/input/line_editor.dart', status: 'ok', summary: '✓ 3 lines changed', ts: '15:11:47' },
+          { type: 'tool', name: 'bash', args: 'dart analyze lib/', status: 'needs-approval', summary: '⏳ awaiting approval', ts: '15:11:48' },
+        ],
+      },
+      {
+        id: 'S-f04c22', project: 'api-server', cwd: '~/code/api-server', model: 'claude-4-sonnet', provider: 'anthropic',
+        alive: true, recent: true, time: '1m ago', tokens: 2890, lastInput: 'implement JWT auth',
+        blocks: [
+          { type: 'user', text: 'implement JWT authentication middleware with refresh token rotation', ts: '15:13:55' },
+          { type: 'tool', name: 'read_file', args: 'lib/src/routes/api.dart', status: 'ok', summary: '✓ 142 lines', ts: '15:13:56' },
+          { type: 'assistant', text: 'Creating the middleware with RS256 JWT verification and automatic refresh token rotation...', streaming: true, ts: '15:13:58' },
+        ],
+      },
+      {
+        id: 'S-b88e17', project: 'api-server', cwd: '~/code/api-server', model: 'gpt-5', provider: 'openai',
+        alive: true, recent: true, time: '55s ago', tokens: 1456, lastInput: 'generate GraphQL schema',
+        blocks: [
+          { type: 'user', text: 'generate GraphQL schema and resolvers from existing REST endpoints', ts: '15:14:40' },
+          { type: 'assistant', text: 'Analyzing your REST routes to generate matching GraphQL types and resolvers...', streaming: true, ts: '15:14:41' },
+        ],
+      },
+      {
+        id: 'S-cc0091', project: 'glue', cwd: '~/code/glue/cli', model: 'claude-4-haiku', provider: 'anthropic',
+        alive: false, recent: true, time: '12m ago', tokens: 987, lastInput: 'update the README',
+        blocks: [
+          { type: 'user', text: 'update the README with install instructions', ts: '15:02:11' },
+          { type: 'assistant', text: 'Done. Updated README.md with installation via `dart pub global activate`, quick start guide, and architecture overview.', streaming: false, ts: '15:02:14' },
+        ],
+      },
+    ],
+
+    // ── Computed ──
+    sessionTitle(s) { return s.cwd.split('/').pop() + '/' + s.id.substring(2, 8); },
+
+    activeSession() { return this.sessions.find(s => s.id === this.activeId) || null; },
+
+    groupedSessions() {
+      const g = {};
+      this.sessions.forEach(s => {
+        if (!g[s.project]) g[s.project] = { project: s.project, open: true, sessions: [] };
+        g[s.project].sessions.push(s);
+      });
+      return Object.values(g);
+    },
+
+    toolCalls() {
+      const s = this.activeSession();
+      return s ? s.blocks.filter(b => b.type === 'tool') : [];
+    },
+
+    pendingApprovals() {
+      const s = this.activeSession();
+      return s ? s.blocks.filter(b => b.type === 'tool' && b.status === 'needs-approval') : [];
+    },
+
+    branchesForCwd() { return this.projectBranches[this.modal.form.cwd] || []; },
+    modelsForProvider() { return this.providerModels[this.modal.form.provider] || []; },
+
+    filteredOverlayItems() {
+      if (!this.overlay.query) return this.overlay.items;
+      const q = this.overlay.query.toLowerCase();
+      return this.overlay.items.filter(i => i.label.toLowerCase().includes(q));
+    },
+
+    // ── Actions ──
+    switchTo(id) { this.activeId = id; },
+
+    closeSession(id) {
+      this.sessions = this.sessions.filter(s => s.id !== id);
+      if (this.activeId === id) this.activeId = this.sessions[0]?.id || null;
+    },
+
+    openModal(kind) {
+      this.modal.kind = kind;
+      this.modal.style = kind === 'worktreeManager' ? 'heavy' : 'accent';
+      this.modal.barrier = 'obscure';
+      this.modal.open = true;
+      if (kind === 'newSession') {
+        this.modal.form = { cwd: '', branch: '', newBranch: '', provider: 'anthropic', model: 'claude-4-sonnet', prompt: '' };
+      }
+    },
+
+    createSession() {
+      const branch = this.modal.form.branch === '__new__' ? this.modal.form.newBranch : this.modal.form.branch;
+      const proj = this.availableProjects.find(p => p.path === this.modal.form.cwd);
+      const id = 'S-' + (nextId++).toString(16).padStart(6, '0');
+      const s = {
+        id, project: proj?.name || 'unknown', cwd: this.modal.form.cwd, model: this.modal.form.model,
+        provider: this.modal.form.provider, alive: true, recent: true, time: 'now', tokens: 0,
+        lastInput: this.modal.form.prompt || '(new)',
+        blocks: this.modal.form.prompt
+          ? [{ type: 'user', text: this.modal.form.prompt, ts: 'now' }, { type: 'assistant', text: 'Looking at your project...', streaming: true, ts: 'now' }]
+          : [],
+      };
+      this.sessions.push(s);
+      this.activeId = s.id;
+      this.modal.open = false;
+    },
+
+    sendMessage() {
+      if (!this.inputText.trim() || !this.activeSession()) return;
+      const s = this.activeSession();
+      s.blocks.forEach(b => { if (b.streaming) b.streaming = false; });
+      s.blocks.push({ type: 'user', text: this.inputText, ts: 'now' });
+      s.blocks.push({ type: 'assistant', text: 'Processing...', streaming: true, ts: 'now' });
+      s.lastInput = this.inputText.substring(0, 30);
+      s.time = 'now';
+      this.inputText = '';
+    },
+
+    openPalette() {
+      this.overlay.kind = 'palette';
+      this.overlay.query = '';
+      this.overlay.selected = 0;
+      this.overlay.items = [
+        { key: 'n', label: 'New session', action: () => this.openModal('newSession') },
+        { key: 'w', label: 'Worktree manager (pending)', action: () => this.openModal('worktreeManager') },
+        { key: 't', label: 'Toggle tool sidecar', action: () => { this.showSidecar = !this.showSidecar; } },
+        { key: 'a', label: 'Show pending approvals', action: () => this.openApprovals() },
+        ...this.sessions.map(s => ({ key: '', label: `Switch to ${this.sessionTitle(s)} (${s.model})`, action: () => this.switchTo(s.id) })),
+      ];
+      this.overlay.open = true;
+      this.$nextTick(() => { this.$refs.overlayInput?.focus(); });
+    },
+
+    openApprovals() {
+      this.overlay.kind = 'approvals';
+      this.overlay.selected = 0;
+      const approvals = [];
+      this.sessions.forEach(s => {
+        s.blocks.forEach(b => {
+          if (b.type === 'tool' && b.status === 'needs-approval') {
+            approvals.push({ key: 'a', label: `${s.id.substring(2,8)} · ${b.name}: ${b.args}`, action: () => { b.status = 'ok'; b.summary = '✓ approved'; } });
+          }
+        });
+      });
+      this.overlay.items = approvals.length ? approvals : [{ key: '', label: 'No pending approvals' }];
+      this.overlay.open = true;
+    },
+
+    executeOverlayItem(item) {
+      if (item.action) item.action();
+      this.overlay.open = false;
+    },
+
+    handleKeys(e) {
+      if (this.modal.open) {
+        if (e.key === 'Escape') { this.modal.open = false; e.preventDefault(); }
+        return;
+      }
+      if (this.overlay.open) {
+        if (e.key === 'Escape') { this.overlay.open = false; e.preventDefault(); }
+        else if (e.key === 'ArrowDown') { this.overlay.selected = Math.min(this.overlay.selected + 1, this.filteredOverlayItems().length - 1); e.preventDefault(); }
+        else if (e.key === 'ArrowUp') { this.overlay.selected = Math.max(this.overlay.selected - 1, 0); e.preventDefault(); }
+        else if (e.key === 'Enter') { const items = this.filteredOverlayItems(); if (items[this.overlay.selected]) this.executeOverlayItem(items[this.overlay.selected]); e.preventDefault(); }
+        return;
+      }
+      // Global shortcuts (only when not typing in input)
+      const tag = e.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.key === '/') { e.preventDefault(); this.openPalette(); }
+      else if (e.key === 't') { this.showSidecar = !this.showSidecar; }
+      else if (e.key === 'a') { e.preventDefault(); this.openApprovals(); }
+    },
+
+    autoGrow(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 96) + 'px';
+    },
+  };
+}
+</script>
+</body>
+</html>
