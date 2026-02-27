@@ -177,8 +177,8 @@ class AgentCore {
   final List<Message> _conversation = [];
   int tokenCount = 0;
 
-  /// Completer used to feed tool results back into the agent loop.
-  Completer<ToolResult>? _toolResultCompleter;
+  /// Completers keyed by tool call ID for parallel tool execution.
+  final Map<String, Completer<ToolResult>> _pendingToolResults = {};
 
   AgentCore({required this.llm, required this.tools, this.modelName = 'unknown'});
 
@@ -219,18 +219,30 @@ class AgentCore {
         // No tool calls → turn is complete.
         if (toolCalls.isEmpty) break;
 
-        // Execute each tool and feed results back to the LLM.
+        // Create completers and capture futures before yielding
+        final futures = <Future<ToolResult>>[];
         for (final call in toolCalls) {
-          _toolResultCompleter = Completer<ToolResult>();
-          final resultFuture = _toolResultCompleter!.future;
+          final completer = Completer<ToolResult>();
+          _pendingToolResults[call.id] = completer;
+          futures.add(completer.future);
+        }
+
+        // Emit all tool calls
+        for (final call in toolCalls) {
           yield AgentToolCall(call);
-          final result = await resultFuture;
+        }
+
+        // Wait for all results
+        final results = await Future.wait(futures);
+
+        // Add results to conversation and yield events
+        for (var i = 0; i < toolCalls.length; i++) {
           _conversation.add(Message.toolResult(
-            callId: call.id,
-            content: result.content,
-            toolName: call.name,
+            callId: toolCalls[i].id,
+            content: results[i].content,
+            toolName: toolCalls[i].name,
           ));
-          yield AgentToolResult(result);
+          yield AgentToolResult(results[i]);
         }
 
         // Loop: send tool results back to the LLM.
@@ -240,12 +252,14 @@ class AgentCore {
     } on Object catch (e) {
       yield AgentError(e);
     } finally {
-      if (_toolResultCompleter != null && !_toolResultCompleter!.isCompleted) {
-        _toolResultCompleter!.completeError(
-          StateError('Agent stream cancelled while awaiting tool result'),
-        );
+      for (final completer in _pendingToolResults.values) {
+        if (!completer.isCompleted) {
+          completer.completeError(
+            StateError('Agent stream cancelled while awaiting tool result'),
+          );
+        }
       }
-      _toolResultCompleter = null;
+      _pendingToolResults.clear();
     }
   }
 
@@ -254,11 +268,9 @@ class AgentCore {
   /// Called by the application after the user approves (or denies) a tool
   /// invocation.
   void completeToolCall(ToolResult result) {
-    if (_toolResultCompleter == null || _toolResultCompleter!.isCompleted) {
-      return;
-    }
-    _toolResultCompleter!.complete(result);
-    _toolResultCompleter = null;
+    final completer = _pendingToolResults.remove(result.callId);
+    if (completer == null || completer.isCompleted) return;
+    completer.complete(result);
   }
 
   /// Execute a [call] directly using the registered tool.

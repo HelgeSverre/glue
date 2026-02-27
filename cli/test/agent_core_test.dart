@@ -263,4 +263,50 @@ void main() {
     expect(events[2], isA<AgentTextDelta>());
     expect((events[2] as AgentTextDelta).delta, 'Understood');
   });
+
+  test('emits all tool calls before awaiting results (parallel)', () async {
+    final toolCall1 = ToolCall(
+      id: 'tc1',
+      name: 'test_tool',
+      arguments: {'path': 'a.txt'},
+    );
+    final toolCall2 = ToolCall(
+      id: 'tc2',
+      name: 'test_tool',
+      arguments: {'path': 'b.txt'},
+    );
+
+    // First LLM call: returns 2 tool calls
+    mockLlm.responses.add([
+      TextDelta('thinking'),
+      ToolCallDelta(toolCall1),
+      ToolCallDelta(toolCall2),
+    ]);
+    // Second LLM call: text response after results
+    mockLlm.responses.add([TextDelta('done')]);
+
+    final events = <AgentEvent>[];
+
+    await for (final event in agent.run('test')) {
+      events.add(event);
+      if (event is AgentToolCall) {
+        unawaited(Future(() async {
+          final result = await agent.executeTool(event.call);
+          agent.completeToolCall(result);
+        }));
+      }
+    }
+
+    // Both AgentToolCall events should appear before any AgentToolResult
+    final toolCallIndices = <int>[];
+    final toolResultIndices = <int>[];
+    for (var i = 0; i < events.length; i++) {
+      if (events[i] is AgentToolCall) toolCallIndices.add(i);
+      if (events[i] is AgentToolResult) toolResultIndices.add(i);
+    }
+    expect(toolCallIndices.length, 2);
+    expect(toolResultIndices.length, 2);
+    // All tool calls emitted before first result
+    expect(toolCallIndices.last, lessThan(toolResultIndices.first));
+  });
 }
