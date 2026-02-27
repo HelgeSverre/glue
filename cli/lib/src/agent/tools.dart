@@ -145,6 +145,12 @@ class BashTool extends Tool {
           type: 'string',
           description: 'The shell command to execute.',
         ),
+        ToolParameter(
+          name: 'timeout_seconds',
+          type: 'integer',
+          description: 'Timeout in seconds. 0 for no timeout. Default: 30.',
+          required: false,
+        ),
       ];
 
   @override
@@ -153,9 +159,13 @@ class BashTool extends Tool {
     if (command is! String || command.isEmpty) {
       return 'Error: no command provided';
     }
+    final t = args['timeout_seconds'];
+    final timeoutSeconds = (t is num) ? t.toInt() : 30;
     try {
-      final result = await Process.run('sh', ['-c', command])
-          .timeout(const Duration(seconds: 30));
+      final future = Process.run('sh', ['-c', command]);
+      final result = timeoutSeconds == 0
+          ? await future
+          : await future.timeout(Duration(seconds: timeoutSeconds));
       final buf = StringBuffer();
       if ((result.stdout as String).isNotEmpty) {
         buf.writeln(result.stdout);
@@ -166,7 +176,7 @@ class BashTool extends Tool {
       buf.writeln('Exit code: ${result.exitCode}');
       return buf.toString();
     } on TimeoutException {
-      return 'Error: command timed out after 30 seconds';
+      return 'Error: command timed out after $timeoutSeconds seconds';
     }
   }
 }
