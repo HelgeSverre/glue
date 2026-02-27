@@ -491,9 +491,7 @@ class App {
         if (_autoApprovedTools.contains(call.name)) {
           _mode = AppMode.toolRunning;
           _render();
-          agent.executeTool(call).then((result) {
-            agent.completeToolCall(result);
-          });
+          unawaited(_executeAndCompleteTool(call));
           return;
         }
 
@@ -520,16 +518,12 @@ class App {
             case 0: // Yes
               _mode = AppMode.toolRunning;
               _render();
-              agent.executeTool(call).then((result) {
-                agent.completeToolCall(result);
-              });
+              unawaited(_executeAndCompleteTool(call));
             case 2: // Always
               _autoApprovedTools.add(call.name);
               _mode = AppMode.toolRunning;
               _render();
-              agent.executeTool(call).then((result) {
-                agent.completeToolCall(result);
-              });
+              unawaited(_executeAndCompleteTool(call));
             default: // No
               _mode = AppMode.streaming;
               agent.completeToolCall(ToolResult.denied(call.id));
@@ -556,6 +550,19 @@ class App {
         _blocks.add(_ConversationEntry.error(error.toString()));
         _mode = AppMode.idle;
         _render();
+    }
+  }
+
+  Future<void> _executeAndCompleteTool(ToolCall call) async {
+    try {
+      final result = await agent.executeTool(call);
+      agent.completeToolCall(result);
+    } catch (e) {
+      agent.completeToolCall(ToolResult(
+        callId: call.id,
+        content: 'Tool error: $e',
+        success: false,
+      ));
     }
   }
 
