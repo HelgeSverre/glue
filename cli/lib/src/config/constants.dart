@@ -31,6 +31,7 @@ class AppConstants {
 
   // Terminal/Layout
   static const int inputAreaDivisor = 3; // Input area = terminal.rows ~/ 3
+  static const int maxInputVisibleLines = 10;
 
   AppConstants._(); // Prevent instantiation
 }

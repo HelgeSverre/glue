@@ -51,7 +51,8 @@ class SlashAutocomplete {
     if (buffer.isEmpty ||
         !buffer.startsWith('/') ||
         cursor != buffer.length ||
-        buffer.contains(' ')) {
+        buffer.contains(' ') ||
+        buffer.contains('\n')) {
       dismiss();
       return;
     }

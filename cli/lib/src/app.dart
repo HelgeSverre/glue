@@ -3,7 +3,8 @@ import 'dart:io';
 
 import 'terminal/terminal.dart';
 import 'terminal/layout.dart';
-import 'input/line_editor.dart';
+import 'input/line_editor.dart' show InputAction;
+import 'input/text_area_editor.dart';
 import 'agent/agent_core.dart';
 import 'agent/agent_manager.dart';
 import 'agent/prompts.dart';
@@ -87,7 +88,7 @@ class UserResize extends AppEvent {
 class App {
   final Terminal terminal;
   final Layout layout;
-  final LineEditor editor;
+  final TextAreaEditor editor;
   final AgentCore agent;
   final _events = StreamController<AppEvent>.broadcast();
 
@@ -191,7 +192,7 @@ class App {
 
     final terminal = Terminal();
     final layout = Layout(terminal);
-    final editor = LineEditor();
+    final editor = TextAreaEditor();
 
     final systemPrompt = Prompts.build(cwd: Directory.current.path);
     final llmFactory = LlmClientFactory();
@@ -656,7 +657,7 @@ class App {
             }
             return;
           }
-          // Swallow Enter during streaming — keep buffer intact for when agent finishes.
+          // Swallow Enter/Shift+Enter during streaming — keep buffer intact for when agent finishes.
           if (event case KeyEvent(key: Key.enter)) return;
           // Pre-typing: buffer other keystrokes.
           final action = editor.handle(event);
@@ -804,6 +805,19 @@ class App {
           if (_liquidSim != null) {
             _handleSplashClick(x, y);
           }
+        }
+
+      case PasteEvent():
+        // Dismiss popups before inserting paste content.
+        _autocomplete.dismiss();
+        _atHint.dismiss();
+        final action = editor.handle(event);
+        if (action == InputAction.changed) {
+          _autocomplete.update(editor.text, editor.cursor);
+          if (!_autocomplete.active) {
+            _atHint.update(editor.text, editor.cursor);
+          }
+          _render();
         }
     }
   }
@@ -1405,7 +1419,7 @@ class App {
       _ => AnsiStyle.dim,
     };
     final showCursor = !(_mode == AppMode.confirming && _activeModal != null);
-    layout.paintInput(prompt, editor.text, editor.cursor,
+    layout.paintInput(prompt, editor.lines, editor.cursorRow, editor.cursorCol,
         showCursor: showCursor, promptStyle: promptStyle);
   }
 }
