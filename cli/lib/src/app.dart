@@ -21,7 +21,9 @@ import 'ui/modal.dart';
 import 'ui/panel_modal.dart';
 import 'input/file_expander.dart';
 import 'ui/at_file_hint.dart';
+import 'ui/shell_autocomplete.dart';
 import 'ui/slash_autocomplete.dart';
+import 'shell/shell_completer.dart';
 import 'storage/glue_home.dart';
 import 'storage/session_store.dart';
 import 'storage/config_store.dart';
@@ -134,6 +136,7 @@ class App {
   final ShellJobManager _jobManager;
   late final SlashAutocomplete _autocomplete;
   late final AtFileHint _atHint;
+  late final ShellAutocomplete _shellComplete;
   SessionStore? _sessionStore;
   bool _bashMode = false;
   Process? _bashRunProcess;
@@ -176,6 +179,7 @@ class App {
     _initCommands();
     _autocomplete = SlashAutocomplete(_commands);
     _atHint = AtFileHint();
+    _shellComplete = ShellAutocomplete(ShellCompleter());
   }
 
   /// Convenience factory that creates a fully wired [App] with real
@@ -639,6 +643,7 @@ class App {
               event.key == Key.backspace &&
               editor.cursor == 0) {
             _bashMode = false;
+            _shellComplete.dismiss();
             _render();
             return;
           }
@@ -704,6 +709,33 @@ class App {
           }
         }
 
+        // Shell completion intercepts keys when active (bash mode).
+        if (_shellComplete.active) {
+          if (event case KeyEvent(key: Key.up)) {
+            _shellComplete.moveUp();
+            _render();
+            return;
+          }
+          if (event case KeyEvent(key: Key.down)) {
+            _shellComplete.moveDown();
+            _render();
+            return;
+          }
+          if (event case KeyEvent(key: Key.tab) || KeyEvent(key: Key.enter)) {
+            final result = _shellComplete.accept();
+            if (result != null) {
+              editor.setText(result.text, cursor: result.cursor);
+            }
+            _render();
+            return;
+          }
+          if (event case KeyEvent(key: Key.escape)) {
+            _shellComplete.dismiss();
+            _render();
+            return;
+          }
+        }
+
         // @file hint intercepts keys when active.
         if (_atHint.active) {
           if (event case KeyEvent(key: Key.up)) {
@@ -743,6 +775,7 @@ class App {
           case InputAction.submit:
             _autocomplete.dismiss();
             _atHint.dismiss();
+            _shellComplete.dismiss();
             final text = editor.lastSubmitted;
             if (text.isNotEmpty) {
               _events.add(UserSubmit(text));
@@ -761,13 +794,23 @@ class App {
               _render();
             }
           case InputAction.changed:
-            _autocomplete.update(editor.text, editor.cursor);
-            if (!_autocomplete.active) {
-              _atHint.update(editor.text, editor.cursor);
+            if (_bashMode) {
+              _shellComplete.dismiss();
             } else {
-              _atHint.dismiss();
+              _autocomplete.update(editor.text, editor.cursor);
+              if (!_autocomplete.active) {
+                _atHint.update(editor.text, editor.cursor);
+              } else {
+                _atHint.dismiss();
+              }
             }
             _render();
+          case InputAction.requestCompletion:
+            if (_bashMode) {
+              _shellComplete
+                  .requestCompletions(editor.text, editor.cursor)
+                  .then((_) => _render());
+            }
           default:
             break;
         }
@@ -1349,9 +1392,11 @@ class App {
     _renderedPanelLastFrame = false;
 
     // 2. Reserve overlay space for autocomplete (before computing viewport).
-    final overlayHeight = _autocomplete.active
-        ? _autocomplete.overlayHeight
-        : _atHint.overlayHeight;
+    final overlayHeight = _shellComplete.active
+        ? _shellComplete.overlayHeight
+        : _autocomplete.active
+            ? _autocomplete.overlayHeight
+            : _atHint.overlayHeight;
     layout.setOverlayHeight(overlayHeight);
 
     // 3. Compute visible window.
@@ -1369,8 +1414,10 @@ class App {
 
     layout.paintOutputViewport(visibleLines);
 
-    // 4. Autocomplete / @file overlay.
-    if (_autocomplete.active) {
+    // 4. Autocomplete / @file / shell overlay.
+    if (_shellComplete.active) {
+      layout.paintOverlay(_shellComplete.render(terminal.columns));
+    } else if (_autocomplete.active) {
       layout.paintOverlay(_autocomplete.render(terminal.columns));
     } else if (_atHint.active) {
       layout.paintOverlay(_atHint.render(terminal.columns));

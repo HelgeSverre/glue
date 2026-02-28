@@ -278,8 +278,9 @@ class MarkdownRenderer {
   List<String> _parseTableRow(String line) {
     var trimmed = line.trim();
     if (trimmed.startsWith('|')) trimmed = trimmed.substring(1);
-    if (trimmed.endsWith('|'))
+    if (trimmed.endsWith('|')) {
       trimmed = trimmed.substring(0, trimmed.length - 1);
+    }
     return trimmed.split('|').map((c) => c.trim()).toList();
   }
 
