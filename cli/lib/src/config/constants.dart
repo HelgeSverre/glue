@@ -14,6 +14,7 @@ class AppConstants {
 
   // LLM configuration
   static const String defaultOllamaBaseUrl = 'http://localhost:11434';
+  static const String defaultTitleModel = 'claude-haiku-4-5-20251001';
 
   // UI limits
   static const int maxVisibleDropdownItems = 8;

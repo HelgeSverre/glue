@@ -9,6 +9,7 @@ class SessionMeta {
   final String provider;
   final DateTime startTime;
   DateTime? endTime;
+  String? title;
 
   SessionMeta({
     required this.id,
@@ -17,6 +18,7 @@ class SessionMeta {
     required this.provider,
     required this.startTime,
     this.endTime,
+    this.title,
   });
 
   Map<String, dynamic> toJson() => {
@@ -26,6 +28,7 @@ class SessionMeta {
         'provider': provider,
         'start_time': startTime.toIso8601String(),
         if (endTime != null) 'end_time': endTime!.toIso8601String(),
+        if (title != null) 'title': title,
       };
 }
 
@@ -44,6 +47,11 @@ class SessionStore {
     const encoder = JsonEncoder.withIndent('  ');
     File(p.join(sessionDir, 'meta.json'))
         .writeAsStringSync(encoder.convert(meta.toJson()));
+  }
+
+  void setTitle(String title) {
+    meta.title = title;
+    _writeMeta();
   }
 
   void logEvent(String type, Map<String, dynamic> data) {
@@ -84,6 +92,7 @@ class SessionStore {
           endTime: json['end_time'] != null
               ? DateTime.parse(json['end_time'] as String)
               : null,
+          title: json['title'] as String?,
         ));
       } catch (_) {}
     }

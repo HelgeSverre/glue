@@ -29,6 +29,8 @@ import 'storage/glue_home.dart';
 import 'storage/session_id.dart';
 import 'storage/session_store.dart';
 import 'storage/config_store.dart';
+import 'llm/title_generator.dart';
+import 'package:http/http.dart' as http;
 
 // ---------------------------------------------------------------------------
 // Application state
@@ -140,6 +142,7 @@ class App {
   late final AtFileHint _atHint;
   late final ShellAutocomplete _shellComplete;
   SessionStore? _sessionStore;
+  bool _titleGenerated = false;
   bool _bashMode = false;
   Process? _bashRunProcess;
   DateTime? _lastCtrlC;
@@ -496,7 +499,52 @@ class App {
       }
     }
 
+    // Backfill title for resumed sessions that lack one.
+    if (!_titleGenerated) {
+      if (session.title != null) {
+        _titleGenerated = true;
+      } else if (userCount > 0) {
+        for (final e in events) {
+          if (e['type'] == 'user_message' &&
+              ((e['text'] as String?) ?? '').isNotEmpty) {
+            _titleGenerated = true;
+            _generateTitle(e['text'] as String);
+            break;
+          }
+        }
+      }
+    }
+
     return 'Restored $userCount user + $assistantCount assistant messages.';
+  }
+
+  /// Fire-and-forget: generate a session title in the background.
+  void _generateTitle(String userMessage) {
+    final apiKey = _config?.anthropicApiKey;
+    if (apiKey == null || apiKey.isEmpty) return;
+
+    final sessionStore = _sessionStore;
+    if (sessionStore == null) return;
+
+    final model = _config?.titleModel ?? AppConstants.defaultTitleModel;
+
+    unawaited(() async {
+      final client = http.Client();
+      try {
+        final generator = TitleGenerator(
+          httpClient: client,
+          apiKey: apiKey,
+          model: model,
+        );
+        final title = await generator.generate(userMessage);
+        if (title != null) {
+          sessionStore.setTitle(title);
+          sessionStore.logEvent('title_generated', {'title': title});
+        }
+      } finally {
+        client.close();
+      }
+    }());
   }
 
   static String _timeAgo(DateTime time) {
@@ -587,9 +635,10 @@ class App {
     for (final s in sessions) {
       final ago = _timeAgo(s.startTime);
       final shortCwd = _shortenPath(s.cwd);
-      final displayId = s.id.length > idW
-          ? '${s.id.substring(0, idW - 1)}…'
-          : s.id.padRight(idW);
+      final displayId = s.title ??
+          (s.id.length > idW
+              ? '${s.id.substring(0, idW - 1)}…'
+              : s.id.padRight(idW));
       final model = s.model.length > modelW
           ? '${s.model.substring(0, modelW - 1)}…'
           : s.model;
@@ -907,6 +956,10 @@ class App {
         } else {
           final expanded = expandFileRefs(text);
           _sessionStore?.logEvent('user_message', {'text': expanded});
+          if (!_titleGenerated) {
+            _titleGenerated = true;
+            _generateTitle(expanded);
+          }
           _startAgent(text,
               expandedMessage: expanded != text ? expanded : null);
         }
