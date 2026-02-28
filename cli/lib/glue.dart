@@ -60,7 +60,15 @@ export 'src/ui/panel_modal.dart'
         PanelFluid;
 export 'src/storage/glue_home.dart' show GlueHome;
 export 'src/storage/session_store.dart' show SessionStore, SessionMeta;
-export 'src/storage/debug_logger.dart' show DebugLogger;
+export 'src/observability/observability.dart' show Observability, ObservabilitySink, ObservabilitySpan;
+export 'src/observability/debug_controller.dart' show DebugController;
+export 'src/observability/file_sink.dart' show FileSink;
+export 'src/observability/otel_sink.dart' show OtelSink;
+export 'src/observability/langfuse_sink.dart' show LangfuseSink;
+export 'src/observability/logging_http_client.dart' show LoggingHttpClient;
+export 'src/observability/observed_llm_client.dart' show ObservedLlmClient;
+export 'src/observability/observed_tool.dart' show ObservedTool, wrapToolsWithObservability;
+export 'src/observability/observability_config.dart' show ObservabilityConfig, LangfuseConfig, TelemetryProvider;
 export 'src/storage/config_store.dart' show ConfigStore;
 export 'src/input/file_expander.dart' show expandFileRefs, extractFileRefs;
 export 'src/ui/at_file_hint.dart' show AtFileHint;

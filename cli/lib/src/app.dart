@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:http/http.dart' as http;
 import 'package:glue/src/terminal/terminal.dart';
 import 'package:glue/src/terminal/layout.dart';
 import 'package:glue/src/input/line_editor.dart';
@@ -38,6 +39,14 @@ import 'package:glue/src/ui/slash_autocomplete.dart';
 import 'package:glue/src/storage/glue_home.dart';
 import 'package:glue/src/storage/session_store.dart';
 import 'package:glue/src/storage/config_store.dart';
+import 'package:glue/src/observability/debug_controller.dart';
+import 'package:glue/src/observability/observability.dart';
+import 'package:glue/src/observability/file_sink.dart';
+import 'package:glue/src/observability/langfuse_sink.dart';
+import 'package:glue/src/observability/otel_sink.dart';
+import 'package:glue/src/observability/logging_http_client.dart';
+import 'package:glue/src/observability/observed_llm_client.dart';
+import 'package:glue/src/observability/observed_tool.dart';
 
 // ---------------------------------------------------------------------------
 // Application state
@@ -161,6 +170,8 @@ class App {
 
   final bool _startupResume;
   final bool _startupContinue;
+  final Observability? _obs;
+  final DebugController? _debugController;
 
   App({
     required this.terminal,
@@ -178,6 +189,8 @@ class App {
     ShellJobManager? jobManager,
     bool startupResume = false,
     bool startupContinue = false,
+    Observability? obs,
+    DebugController? debugController,
   })  : _modelName = modelName,
         _manager = manager,
         _llmFactory = llmFactory,
@@ -188,6 +201,8 @@ class App {
         _jobManager = jobManager ?? ShellJobManager(executor ?? HostExecutor(const ShellConfig())),
         _startupResume = startupResume,
         _startupContinue = startupContinue,
+        _obs = obs,
+        _debugController = debugController,
         _cwd = Directory.current.path {
     if (extraTrustedTools != null) {
       _autoApprovedTools.addAll(extraTrustedTools);
@@ -204,6 +219,7 @@ class App {
     String? model,
     bool startupResume = false,
     bool startupContinue = false,
+    bool debug = false,
   }) async {
     final config = GlueConfig.load(cliProvider: provider, cliModel: model);
     config.validate();
@@ -213,11 +229,31 @@ class App {
     final editor = LineEditor();
 
     final systemPrompt = Prompts.build(cwd: Directory.current.path);
-    final llmFactory = LlmClientFactory();
-    final llm = llmFactory.createFromConfig(config, systemPrompt: systemPrompt);
+
+    final debugController = DebugController(
+      enabled: debug || config.observability.debug,
+    );
+    final obs = Observability(debugController: debugController);
 
     final home = GlueHome();
     home.ensureDirectories();
+
+    obs.addSink(FileSink(logsDir: home.logsDir));
+    if (config.observability.langfuse.isConfigured) {
+      obs.addSink(LangfuseSink(config: config.observability.langfuse));
+    }
+    if (config.observability.otel.isConfigured) {
+      obs.addSink(OtelSink(config: config.observability.otel));
+    }
+
+    final httpClient = LoggingHttpClient(
+      inner: http.Client(),
+      obs: obs,
+    );
+    final llmFactory = LlmClientFactory(httpClient: httpClient);
+    final rawLlm = llmFactory.createFromConfig(config, systemPrompt: systemPrompt);
+    final llm = ObservedLlmClient(inner: rawLlm, obs: obs);
+
     final configStore = ConfigStore(home.configPath);
 
     final sessionId = '${DateTime.now().millisecondsSinceEpoch}-'
@@ -252,7 +288,7 @@ class App {
       ),
     ]);
 
-    final tools = <String, Tool>{
+    final rawTools = <String, Tool>{
       'read_file': ReadFileTool(),
       'write_file': WriteFileTool(),
       'edit_file': EditFileTool(),
@@ -262,6 +298,7 @@ class App {
       'web_fetch': WebFetchTool(config.webConfig.fetch),
       'web_search': WebSearchTool(searchRouter),
     };
+    final tools = wrapToolsWithObservability(rawTools, obs);
 
     final agent = AgentCore(llm: llm, tools: tools, modelName: config.model);
 
@@ -291,6 +328,8 @@ class App {
       jobManager: ShellJobManager(executor),
       startupResume: startupResume,
       startupContinue: startupContinue,
+      obs: obs,
+      debugController: debugController,
     );
   }
 
@@ -355,6 +394,8 @@ class App {
       // Stop all event sources before touching terminal state.
       _stopSplashAnimation();
       _stopSpinner();
+      await _obs?.flush();
+      await _obs?.close();
       await _sessionStore?.close();
       await jobSub.cancel();
       await _jobManager.shutdown();
@@ -505,6 +546,18 @@ class App {
       execute: (args) {
         _openResumePanel();
         return '';
+      },
+    ));
+
+    _commands.register(SlashCommand(
+      name: 'debug',
+      description: 'Toggle debug mode (verbose logging)',
+      execute: (args) {
+        if (_debugController != null) {
+          _debugController.toggle();
+          return 'Debug mode: ${_debugController.enabled}';
+        }
+        return 'Debug mode: unavailable';
       },
     ));
   }

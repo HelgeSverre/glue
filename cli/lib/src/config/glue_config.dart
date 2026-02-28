@@ -1,10 +1,11 @@
 import 'dart:io';
 import 'package:yaml/yaml.dart';
-import 'constants.dart';
-import 'model_registry.dart';
-import '../shell/docker_config.dart';
-import '../shell/shell_config.dart';
-import '../web/web_config.dart';
+import 'package:glue/src/config/constants.dart';
+import 'package:glue/src/config/model_registry.dart';
+import 'package:glue/src/shell/docker_config.dart';
+import 'package:glue/src/shell/shell_config.dart';
+import 'package:glue/src/web/web_config.dart';
+import 'package:glue/src/observability/observability_config.dart';
 
 /// Supported LLM providers.
 enum LlmProvider { anthropic, openai, ollama }
@@ -44,6 +45,7 @@ class GlueConfig {
   final ShellConfig shellConfig;
   final DockerConfig dockerConfig;
   final WebConfig webConfig;
+  final ObservabilityConfig observability;
 
   GlueConfig({
     LlmProvider? provider,
@@ -57,6 +59,7 @@ class GlueConfig {
     ShellConfig? shellConfig,
     DockerConfig? dockerConfig,
     WebConfig? webConfig,
+    this.observability = const ObservabilityConfig(),
   })  : provider = provider ?? LlmProvider.anthropic,
         model = model ?? _defaultModel(provider ?? LlmProvider.anthropic),
         shellConfig = shellConfig ?? const ShellConfig(),
@@ -70,6 +73,7 @@ class GlueConfig {
   GlueConfig copyWith({
     LlmProvider? provider,
     String? model,
+    ObservabilityConfig? observability,
   }) {
     return GlueConfig(
       provider: provider ?? this.provider,
@@ -83,6 +87,7 @@ class GlueConfig {
       shellConfig: shellConfig,
       dockerConfig: dockerConfig,
       webConfig: webConfig,
+      observability: observability ?? this.observability,
     );
   }
 
@@ -267,6 +272,55 @@ class GlueConfig {
       search: webSearchConfig,
     );
 
+    // 2e. Resolve observability configuration.
+    final debug = Platform.environment['GLUE_DEBUG'] == '1' ||
+        (fileConfig?['debug'] as bool? ?? false);
+
+    final telemetrySection = fileConfig?['telemetry'] as Map?;
+    final langfuseSection = telemetrySection?['langfuse'] as Map?;
+    final otelSection = telemetrySection?['otel'] as Map?;
+
+    final langfuseConfig = LangfuseConfig(
+      enabled: langfuseSection?['enabled'] as bool? ?? false,
+      baseUrl: Platform.environment['LANGFUSE_BASE_URL'] ??
+          langfuseSection?['base_url'] as String?,
+      publicKey: Platform.environment['LANGFUSE_PUBLIC_KEY'] ??
+          langfuseSection?['public_key'] as String?,
+      secretKey: Platform.environment['LANGFUSE_SECRET_KEY'] ??
+          langfuseSection?['secret_key'] as String?,
+    );
+
+    final otelEndpoint = Platform.environment['OTEL_EXPORTER_OTLP_ENDPOINT'] ??
+        otelSection?['endpoint'] as String?;
+    final otelHeadersEnv = Platform.environment['OTEL_EXPORTER_OTLP_HEADERS'];
+    final otelHeaders = <String, String>{};
+    if (otelHeadersEnv != null && otelHeadersEnv.isNotEmpty) {
+      for (final pair in otelHeadersEnv.split(',')) {
+        final idx = pair.indexOf('=');
+        if (idx > 0) {
+          otelHeaders[pair.substring(0, idx).trim()] =
+              pair.substring(idx + 1).trim();
+        }
+      }
+    } else if (otelSection?['headers'] is Map) {
+      final h = otelSection!['headers'] as Map;
+      for (final e in h.entries) {
+        otelHeaders[e.key as String] = e.value as String;
+      }
+    }
+
+    final otelConfig = OtelConfig(
+      enabled: otelSection?['enabled'] as bool? ?? false,
+      endpoint: otelEndpoint,
+      headers: otelHeaders,
+    );
+
+    final observabilityConfig = ObservabilityConfig(
+      debug: debug,
+      langfuse: langfuseConfig,
+      otel: otelConfig,
+    );
+
     // 3. Parse profiles.
     final profiles = <String, AgentProfile>{};
     final profilesYaml = fileConfig?['profiles'] as Map?;
@@ -293,6 +347,7 @@ class GlueConfig {
       shellConfig: shellConfig,
       dockerConfig: dockerConfig,
       webConfig: webConfig,
+      observability: observabilityConfig,
     );
   }
 }

@@ -24,7 +24,9 @@ void main(List<String> args) async {
     ..addFlag('resume',
         negatable: false, help: 'Start with session picker open.')
     ..addFlag('continue',
-        negatable: false, help: 'Resume most recent session.');
+        negatable: false, help: 'Resume most recent session.')
+    ..addFlag('debug',
+        abbr: 'd', negatable: false, help: 'Enable debug mode (verbose logging).');
 
   final ArgResults results;
   try {
@@ -61,6 +63,7 @@ void main(List<String> args) async {
     model: model,
     startupResume: results.flag('resume'),
     startupContinue: results.flag('continue'),
+    debug: results.flag('debug'),
   );
 
   final sigintSub =

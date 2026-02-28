@@ -6,15 +6,53 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Added
 
+- **Observability & debug system** — pluggable telemetry with zero
+  changes to business logic. Three wrapper layers instrument all
+  activity without polluting core code:
+  - `LoggingHttpClient` — wraps `http.Client`, logs every outbound
+    HTTP request (method, URL, status, duration).
+  - `ObservedLlmClient` — wraps `LlmClient`, tracks provider, model,
+    message count, token usage, tool calls, and latency per generation.
+  - `ObservedTool` — wraps each `Tool`, tracks execution time, args,
+    and output size.
+- **`/debug` slash command** — toggles verbose debug mode at runtime.
+  Also available via `--debug` / `-d` CLI flag or `GLUE_DEBUG=1` env var.
+- **File-based debug logging** — daily-rotating log files at
+  `~/.glue/logs/glue-debug-YYYY-MM-DD.log` with timestamped entries
+  for HTTP calls, LLM generations, tool executions, and span lifecycle.
+- **Generic OpenTelemetry OTLP/HTTP sink** — sends spans as JSON to
+  any OTEL-compatible collector. Works out of the box with LLMFlow,
+  Langfuse (OTEL endpoint), Opik, Helicone, Laminar, Grafana Tempo,
+  Jaeger, and any standard OTLP receiver. Configurable via
+  `telemetry.otel.*` in config.yaml or `OTEL_EXPORTER_OTLP_ENDPOINT`
+  / `OTEL_EXPORTER_OTLP_HEADERS` env vars.
+- **Langfuse native sink** — uses the Langfuse Ingestion REST API for
+  richer LLM observability (generation-level tracking with model,
+  token usage, cost, sessions). Configurable via `telemetry.langfuse.*`
+  in config.yaml or `LANGFUSE_BASE_URL` / `LANGFUSE_PUBLIC_KEY` /
+  `LANGFUSE_SECRET_KEY` env vars.
+- **`Observability` facade** — composite dispatcher that fans out to
+  multiple sinks (file, OTEL, Langfuse). Sinks are independently
+  enabled/disabled. The facade provides `log()`, `startSpan()`,
+  `flush()`, and `close()` methods.
+- **`ObservabilityConfig`** — configuration model for debug and
+  telemetry settings, parsed from config file and env vars following
+  the existing resolution chain.
+
 - **Terminology standardization** — established canonical glossary
-  (`docs/architecture/glossary.md`). "Workspace" is the primary unit of
-  work (an agent context with directory, model, optional branch, and
-  conversation history). "Project" is a registered directory (git or
-  non-git) that workspaces run against. "Session" is retired as a
-  UI-facing term. See glossary for full definitions, lifecycle states,
-  settings hierarchy, and CLI resumption semantics.
-
-
+  (`docs/architecture/glossary.md`). Two-level hierarchy: **Project**
+  (registered directory) → **Session** (resumable agent conversation).
+  Sessions are independent and carry their own model, worktree, branch,
+  and conversation history. No intermediate "workspace" layer — matches
+  the data model used by Claude Code, Codex CLI, and Cline.
+- **Enhanced `SessionMeta` (schema v2)** — sessions now store rich
+  metadata: `project_path`, `worktree_path`, `branch`, `base_branch`,
+  `repo_remote`, `head_sha`, `title`, `tags`, `pr_url`, `pr_status`,
+  `token_count`, `cost`, `summary`. All new fields are optional;
+  schema v1 files are read with permissive defaults. Added
+  `SessionMeta.fromJson` factory for consistent deserialization and
+  `SessionStore.updateMeta()` for mid-session metadata writes.
+  Timestamps now consistently use UTC.
 - **Model registry & picker** — curated `ModelRegistry` catalog of 7 models
   across Anthropic, OpenAI, and Ollama with capability, cost, and speed
   metadata. `/model` with no args opens a selectable panel picker grouped
