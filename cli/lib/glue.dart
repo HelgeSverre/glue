@@ -62,8 +62,7 @@ export 'src/agent/tools.dart'
 export 'src/config/constants.dart' show AppConstants;
 export 'src/config/glue_config.dart'
     show GlueConfig, LlmProvider, AgentProfile, ConfigError, splitPathList;
-export 'src/config/permission_mode.dart'
-    show PermissionMode, PermissionModeExt;
+export 'src/config/permission_mode.dart' show PermissionMode, PermissionModeExt;
 export 'src/config/model_registry.dart'
     show ModelRegistry, ModelEntry, ModelCapability, CostTier, SpeedTier;
 export 'src/llm/llm_factory.dart' show LlmClientFactory;
