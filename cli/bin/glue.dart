@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:glue/glue.dart';
+import 'package:glue/src/dev/devtools.dart';
 
 const version = '0.1.0';
 
@@ -62,6 +63,8 @@ void main(List<String> args) async {
     startupResume: results.flag('resume'),
     startupContinue: results.flag('continue'),
   );
+
+  GlueDev.registerExtensions(app.devtoolsState);
 
   final sigintSub =
       ProcessSignal.sigint.watch().listen((_) => app.requestExit());
