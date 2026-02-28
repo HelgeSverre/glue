@@ -13,7 +13,7 @@
   --yellow:#FACC15;--gold:#EAB308;--amber:#F59E0B;
   --bg:#050506;--surface:#0a0a0c;--surface-el:#101012;--surface-hi:#161618;
   --border:#1a1a1e;--border-br:#2a2a30;
-  --text:#d8d8dc;--text-sec:#7e7e88;--text-mut:#808088;--text-dim:#6a6a72;
+  --text:#d8d8dc;--text-sec:#7e7e88;--text-mut:#808088;--text-dim:#8a8a92;
   --success:#22C55E;--error:#EF4444;--warning:#F59E0B;--info:#3B82F6;
   --mono:Menlo,Monaco,'Cascadia Mono',Consolas,'Liberation Mono',monospace;--sans:'Inter',system-ui,-apple-system,sans-serif;
 }
@@ -2044,7 +2044,8 @@ function glue() {
     },
 
     fbUpdatePath() {
-      const path = this.fb.path.replace(/\/+$/, '') || '~';
+      const rawPath = this.fb.path;
+      const path = rawPath.replace(/\/+$/, '') || '~';
       this.fb.expandedPath = this.fbExpandTilde(path);
 
       const lastSlash = path.lastIndexOf('/');
@@ -2065,6 +2066,7 @@ function glue() {
 
       if (this.mockFs[path]) {
         this.fbNavigateTo(path);
+        this.fb.path = rawPath;
       }
     },
 
