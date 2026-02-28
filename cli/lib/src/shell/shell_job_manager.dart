@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import '../dev/devtools.dart';
 import 'line_ring_buffer.dart';
 
 enum JobStatus { running, exited, failed, killed }
@@ -67,6 +68,7 @@ class ShellJobManager {
     );
     _jobs[id] = job;
     _events.add(JobStarted(id, command));
+    GlueDev.log('shell.job', 'started [$id]: $command');
 
     process.stdout.transform(const SystemEncoding().decoder).listen(
           (chunk) => job.output.addText(chunk),
@@ -82,10 +84,12 @@ class ShellJobManager {
         if (job.status == JobStatus.killed) return;
         job.status = code == 0 ? JobStatus.exited : JobStatus.failed;
         _events.add(JobExited(id, code));
+        GlueDev.log('shell.job', 'exited [$id]: code=$code');
       } catch (e) {
         if (job.status == JobStatus.killed) return;
         job.status = JobStatus.failed;
         _events.add(JobError(id, e));
+        GlueDev.log('shell.job', 'error [$id]: $e', level: 1000);
       }
     }());
 

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../dev/devtools.dart';
 import 'agent_core.dart';
 import 'agent_runner.dart';
 import 'tools.dart';
@@ -77,6 +78,9 @@ class AgentManager {
       );
     }
 
+    GlueDev.log('agent.subagent', 'spawning at depth=$currentDepth: $task');
+    final sw = Stopwatch()..start();
+
     final effectiveProfile =
         profile ?? AgentProfile(provider: config.provider, model: config.model);
 
@@ -120,7 +124,9 @@ class AgentManager {
       )),
     );
 
-    return runner.runToCompletion(task);
+    final result = await runner.runToCompletion(task);
+    GlueDev.log('agent.subagent', 'completed in ${sw.elapsedMilliseconds}ms: $task');
+    return result;
   }
 
   /// Spawn [tasks] in parallel, each as an independent subagent.
