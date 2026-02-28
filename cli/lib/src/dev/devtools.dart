@@ -116,6 +116,8 @@ class GlueDev {
   }
 
   /// Post render metrics event.
+  // TODO(Phase B): Wire this into App._doRender() when the custom
+  // DevTools extension is ready to consume these events.
   static void postRenderMetrics({
     required double frameMs,
     required int blockCount,

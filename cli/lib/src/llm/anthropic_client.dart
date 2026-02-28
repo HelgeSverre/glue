@@ -93,10 +93,10 @@ class AnthropicClient implements LlmClient {
     final totalMs = stopwatch.elapsedMilliseconds;
     stopwatch.stop();
     task.finish(arguments: {
-      'ttfbMs': (ttfbMs ?? totalMs).toString(),
-      'totalMs': totalMs.toString(),
-      'inputTokens': inputTokens.toString(),
-      'outputTokens': outputTokens.toString(),
+      'ttfbMs': ttfbMs ?? totalMs,
+      'totalMs': totalMs,
+      'inputTokens': inputTokens,
+      'outputTokens': outputTokens,
     });
     GlueDev.postLlmRequest(
       provider: 'anthropic',

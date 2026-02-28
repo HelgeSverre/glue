@@ -277,7 +277,7 @@ class AgentCore {
         // Loop: send tool results back to the LLM.
       }
 
-      reactTask.finish(arguments: {'iterations': iteration.toString()});
+      reactTask.finish(arguments: {'iterations': iteration});
       GlueDev.log('agent.loop',
           'ReAct completed: $iteration iterations, $tokenCount tokens');
 
