@@ -14,6 +14,16 @@ Minor issues to batch-fix later.
 
 ---
 
+### `/skills` command uses stale skills data
+
+**File:** wherever `/skills` is handled (likely `lib/src/commands/` or `lib/src/app.dart`)
+
+The `/skills` command displays the list of available skills, but the skills are loaded once at startup and not reloaded when the command is triggered. If the user adds, removes, or edits a skill file in `~/.glue/skills/` during a session, `/skills` will show stale data — missing new skills, showing deleted ones, or displaying outdated descriptions.
+
+**Fix:** Re-scan the skills directory on every `/skills` invocation instead of reading from the cached in-memory list.
+
+---
+
 ### Bash mode has no shell tab-completion
 
 **File:** `lib/src/app.dart` (bash mode), `lib/src/input/line_editor.dart`

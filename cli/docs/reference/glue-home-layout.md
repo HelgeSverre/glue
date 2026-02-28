@@ -42,7 +42,7 @@ Managed by `ConfigStore` (`lib/src/storage/config_store.dart`). Read on demand w
 **Format:** JSON.  
 **Schema:** See [session-storage.md](session-storage.md).
 
-Contains immutable session metadata: id, cwd, model, provider, timestamps.
+Contains session metadata: id, project path, model, provider, git context (worktree, branch, remote, SHA), timestamps, tags, PR lifecycle, and metrics. See session-storage.md for the full schema.
 
 ### `sessions/<id>/conversation.jsonl` — Conversation Log
 

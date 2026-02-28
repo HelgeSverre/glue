@@ -2,70 +2,110 @@
 
 Canonical terminology for the Glue CLI and web UI. Use these terms consistently in code, UI strings, documentation, and agent instructions.
 
+## Hierarchy
+
+```
+Project (registered directory / git root)
+ └─ Session (resumable chat conversation, optionally with its own worktree/branch)
+```
+
+A project can have many sessions. Sessions are independent — different models, different tasks, different branches — they just happen to run against the same project directory.
+
 ## Core Concepts
 
 ### Project
 
-A registered directory that workspaces run against. Typically a git repository, but can be any local directory. A project has:
+A registered directory that sessions run against. Typically a git repository, but can be any local directory. A project has:
 
 - A **name** (display name, e.g. `glue`)
 - A **path** (local filesystem path, e.g. `~/code/glue`)
 - **Detected metadata** (default branch from git, if applicable)
-- **Settings overrides** (per-project overrides for provider, model, base branch, workspace mode, branch prefix)
+- **Settings overrides** (per-project overrides for provider, model, base branch, isolation mode, branch prefix)
 
-The sidebar groups workspaces by project. The project switcher filters visible workspaces.
+The sidebar groups sessions by project. The project switcher filters visible sessions.
 
-### Workspace
+### Session
 
-The top-level unit of work. A workspace is an agent context that combines:
+The primary unit of work. A session is a resumable agent conversation that combines:
 
-- A **directory** where the agent operates (project root or a git worktree)
+- A **project directory** where the agent operates (or a git worktree within it)
 - An **LLM provider and model** (e.g. `anthropic/claude-4-sonnet`)
-- Optionally a **git branch** (created on demand or pre-existing)
+- Optionally a **git branch** and **worktree** for isolation
 - A **conversation history** (user messages, assistant responses, tool calls)
-- A unique **ID** (e.g. `W-01`) used for resumption
+- A unique **ID** used for resumption
+- **Metrics** (token count, estimated cost, timing)
+- Optionally a **PR URL** and **status** for conductor-style lifecycle tracking
 
-A workspace is created via the "New Workspace" wizard and listed in the left sidebar. It has a lifecycle: **active → archived → deleted**.
+Sessions are fully independent from each other — one session may be writing docs using GPT-5 while another reviews a PR using Claude, both in the same project but on different branches.
 
-UI strings: `+ new workspace`, `Archive workspace`, `Workspace W-01`.
+UI strings: `+ new session`, `Archive session`, `Resume session`.
+
+> **Note:** The Dart backend classes `SessionStore` and `SessionMeta` represent session data. `SessionMeta` stores identity, git context, metrics, and PR lifecycle. Conversation logs are stored separately in `conversation.jsonl`.
 
 ### Worktree
 
-A git worktree created for workspace isolation. When a workspace uses a worktree, the agent operates in a separate working directory branched from a base branch, avoiding conflicts with the main working tree.
+A git worktree created for session isolation. When a session uses a worktree, the agent operates in a separate working directory branched from a base branch, avoiding conflicts with the main working tree.
 
 Worktrees live under `.worktrees/` relative to the project root.
 
-A workspace may or may not use a worktree — it can also run directly in the project root (on the current branch).
+A session may or may not use a worktree — it can also run directly in the project root (on the current branch).
 
 ### Git Branch
 
-An optional git branch associated with a workspace. Branches are **not created by default** — the workspace runs on the current HEAD. The user can opt in to creating a branch at workspace creation time, using a configurable prefix (e.g. `glue/`, `feature/`).
+An optional git branch associated with a session. Branches are **not created by default** — the session runs on the current HEAD. The user can opt in to creating a branch at session creation time, using a configurable prefix (e.g. `glue/`, `feature/`).
 
 After a few messages, Glue may propose renaming the auto-generated branch to something descriptive (e.g. `feat/screen-buffer-diffing`), shown as a rename toast in the sidebar.
+
+## Session Metadata
+
+Each session stores rich metadata in `meta.json` (see `SessionMeta` in `lib/src/storage/session_store.dart`):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `schema_version` | int | Metadata schema version (current: 2) |
+| `id` | string | Unique session identifier |
+| `cwd` | string | Launch directory (where `glue` was invoked) |
+| `project_path` | string? | Project root (git root or registered directory) |
+| `model` | string | LLM model used |
+| `provider` | string | LLM provider name |
+| `start_time` | ISO 8601 | Session creation timestamp (UTC) |
+| `end_time` | ISO 8601? | Session close timestamp (UTC) |
+| `worktree_path` | string? | Git worktree path if isolated |
+| `branch` | string? | Current git branch |
+| `base_branch` | string? | Base branch for worktree/PR |
+| `repo_remote` | string? | Git remote URL (e.g. origin) |
+| `head_sha` | string? | Commit SHA at session start |
+| `title` | string? | Display title (user-set or auto-generated) |
+| `tags` | string[]? | User-defined tags for grouping/filtering |
+| `pr_url` | string? | GitHub PR URL if created |
+| `pr_status` | string? | PR status (open/merged/closed) |
+| `token_count` | int? | Total tokens used |
+| `cost` | double? | Estimated cost in USD |
+| `summary` | string? | Auto-generated summary of work done |
 
 ## Lifecycle
 
 ### Active
 
-A workspace that is currently running or ready to accept messages. Shown with a green pulsing dot in the sidebar.
+A session that is currently running or ready to accept messages. Shown with a green pulsing dot in the sidebar.
 
 ### Idle
 
-A workspace that exists but has no active agent loop running. Shown with a gray dot.
+A session that exists but has no active agent loop running. Shown with a gray dot.
 
 ### Archived
 
-A workspace that has been stopped and hidden from the default sidebar view. Archived workspaces are preserved (logs, metadata) but no longer listed under "Active". When archiving a workspace with a worktree, the user may be prompted to delete the worktree (configurable via `onArchiveWorktree`: `ask` | `keep` | `delete`).
+A session that has been stopped and hidden from the default sidebar view. Archived sessions are preserved (logs, metadata) but no longer listed under "Active". When archiving a session with a worktree, the user may be prompted to delete the worktree (configurable via `onArchiveWorktree`: `ask` | `keep` | `delete`).
 
 ### Deleted
 
-A workspace that has been permanently removed, along with its worktree (if any) and conversation history. This is destructive and irreversible.
+A session that has been permanently removed, along with its worktree (if any) and conversation history. This is destructive and irreversible.
 
 ## Settings Hierarchy
 
 Settings resolve in layers (highest priority first):
 
-1. **Workspace-level** — overrides set during creation (in the wizard)
+1. **Session-level** — model/provider set for this specific conversation
 2. **Project-level** — per-project overrides (in Settings → Per-Project Overrides)
 3. **Global defaults** — user-wide defaults (in Settings → Global Defaults)
 4. **App defaults** — hardcoded fallbacks
@@ -74,35 +114,46 @@ Overridable settings: `provider`, `model`, `isolationMode` (worktree vs project 
 
 ## CLI Resumption
 
+### `glue --resume`
+
+Opens an interactive session picker showing sessions filtered to the current project directory. Use `--all` to show sessions across all projects.
+
 ### `glue --resume <ID>`
 
-Resumes an existing workspace by ID. By default, `--resume` is **scoped to the current working directory** — it only lists/matches workspaces whose project path matches `cwd`. Use `--all` (or a key combo in the interactive session picker) to show workspaces across all projects.
+Resumes a specific session by ID. Glue changes into the correct directory (project root or worktree path) automatically.
 
-When resuming a workspace from a different directory, Glue changes into the correct workspace directory (project root or worktree path) automatically.
+### `glue --continue`
 
-> **Note:** cwd-scoping for `--resume` is planned but not yet implemented. Current behavior shows all workspaces regardless of cwd.
+Resumes the most recent session in the current project directory. If that session used a worktree, Glue silently changes into the worktree directory.
+
+> **Note:** cwd-scoping for `--resume` is planned but not yet implemented. Current behavior shows all sessions regardless of cwd.
 
 ## UI Zones
 
 ### Rail (Left Sidebar)
 
-Lists workspaces grouped by project. Contains the project switcher (with "All Projects" option), "New Workspace" button, workspace list (active/archived), and connection status footer with settings button.
+Lists **sessions** grouped by project. Each session row shows: title/ID, branch, status dot, and relative time. Contains:
+
+- Project switcher (with "All Projects" option)
+- `+ New session` button
+- Session list (active/idle/archived)
+- Connection status footer with settings button
 
 ### Viewport (Center)
 
-The main conversation area. Contains the output zone (messages), overlay zone (command palette, popups), status bar (yellow), and input zone (prompt textarea with slash completion).
+The main conversation area for the active session. Contains the output zone (messages), overlay zone (command palette, popups), status bar (yellow), and input zone (prompt textarea with slash completion).
 
 ### Sidecar (Right Sidebar)
 
-Workspace details panel. Contains:
+Session details panel. Contains:
 
-- **Header** — "Workspace" label with workspace ID (click to copy)
-- **Info section** — key-value definition list: root dir, worktree dir, branch, model, status, tokens, messages, started, last active
+- **Header** — "Session" label with session ID (click to copy)
+- **Info section** — key-value list: project, directory, worktree, branch, model, status, tokens, cost, messages, started, last active
 - **Tool Calls** — collapsible list of tool invocations with status indicators
 
 ### Status Bar
 
-The yellow bar between output and input zones. Shows workspace name, branch, provider/model, token count, and relative time.
+The yellow bar between output and input zones. Shows session title, branch, provider/model, token count, and relative time.
 
 ## Configuration
 
@@ -112,7 +163,7 @@ User-edited global configuration file. See `docs/reference/config-yaml.md` for t
 
 ### `onArchiveWorktree`
 
-Global setting controlling worktree cleanup when archiving a workspace:
+Global setting controlling worktree cleanup when archiving a session:
 
 - `ask` — prompt the user each time (default)
 - `keep` — always keep the worktree
@@ -120,11 +171,11 @@ Global setting controlling worktree cleanup when archiving a workspace:
 
 ### `branchPrefix`
 
-Global setting for the default git branch name prefix when creating a branch at workspace creation. Examples: `glue/`, `feature/`, `wip/`. Default: `glue/`.
+Global setting for the default git branch name prefix when creating a branch at session creation. Examples: `glue/`, `feature/`, `wip/`. Default: `glue/`.
 
 ### `isolationMode`
 
-How a workspace is isolated from the project:
+How a session is isolated from the project:
 
 - `new-worktree` — create a new git worktree (recommended for git projects)
 - `existing-worktree` — use an existing worktree
