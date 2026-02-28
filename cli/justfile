@@ -39,13 +39,13 @@ check: analyze test
 deps:
     dart pub get
 
-# Generate API docs
+# Generate API docs (→ doc/api)
 docs:
-    dart doc --output ./dartdoc --validate-links
+    dart doc --output doc/api --validate-links
 
 # Generate and serve API docs
 docs-serve: docs
-    npx serve ./dartdoc/
+    npx serve doc/api
 
 # Bump version, build, tag, and print summary
 [confirm: "Release a new version?"]
@@ -65,4 +65,4 @@ release version:
 # Remove build artifacts
 clean:
     rm -f glue
-    rm -rf dartdoc
+    rm -rf doc/api

@@ -1,5 +1,6 @@
 mod cli
 mod website
+mod devdocs
 
 default:
     @just --list --list-submodules
@@ -15,7 +16,3 @@ clean: (cli::clean)
 
 # Full check: analyze + test everything
 check: (cli::check)
-
-# Fuzzy-pick a recipe to run
-pick:
-    @just --choose
