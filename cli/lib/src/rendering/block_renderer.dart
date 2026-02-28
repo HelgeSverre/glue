@@ -17,9 +17,9 @@ class BlockRenderer {
   /// Render a user message block.
   String renderUser(String text) {
     final header = ' \x1b[1m\x1b[34m❯ You\x1b[0m';
-    final body = ansiWrap(text, _inner - 2);
-    final indented = body.split('\n').map((l) => '   $l').join('\n');
-    return '$header\n$indented';
+    final body =
+        wrapIndented(text, _inner, firstPrefix: '   ', nextPrefix: '   ');
+    return '$header\n$body';
   }
 
   /// Render an assistant message block.
@@ -55,10 +55,11 @@ class BlockRenderer {
   /// Render an error block.
   String renderError(String message) {
     final header = ' \x1b[1m\x1b[31m✗ Error\x1b[0m';
-    final body = ansiWrap(message, _inner - 2);
-    final indented =
-        body.split('\n').map((l) => '    \x1b[31m$l\x1b[0m').join('\n');
-    return '$header\n$indented';
+    final body = wrapIndented(message, _inner,
+        firstPrefix: '    \x1b[31m', nextPrefix: '    \x1b[31m');
+    // Close color on each line
+    final colored = body.split('\n').map((l) => '$l\x1b[0m').join('\n');
+    return '$header\n$colored';
   }
 
   /// Render a subagent activity entry (indented + dimmed to show hierarchy).

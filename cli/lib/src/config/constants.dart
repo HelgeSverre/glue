@@ -10,6 +10,7 @@ class AppConstants {
   // Tool timeouts
   static const int bashTimeoutSeconds = 30;
   static const int grepTimeoutSeconds = 15;
+  static const int shellCompletionTimeoutMs = 2000;
 
   // LLM configuration
   static const String defaultOllamaBaseUrl = 'http://localhost:11434';

@@ -65,23 +65,33 @@ class MarkdownRenderer {
 
       _flushTable(tableLines, output);
 
-      // Headings
+      // Headings — wrap raw text first, then style each line so
+      // continuation lines retain bold+yellow.
       if (line.startsWith('### ')) {
-        output.add('\x1b[1m\x1b[33m${line.substring(4)}\x1b[0m');
+        final wrapped = ansiWrap(line.substring(4), width);
+        output.addAll(wrapped.split('\n').map(
+            (l) => '\x1b[1m\x1b[33m$l\x1b[0m'));
         continue;
       }
       if (line.startsWith('## ')) {
-        output.add('\x1b[1m\x1b[33m${line.substring(3)}\x1b[0m');
+        final wrapped = ansiWrap(line.substring(3), width);
+        output.addAll(wrapped.split('\n').map(
+            (l) => '\x1b[1m\x1b[33m$l\x1b[0m'));
         continue;
       }
       if (line.startsWith('# ')) {
-        output.add('\x1b[1m\x1b[33m${line.substring(2)}\x1b[0m');
+        final wrapped = ansiWrap(line.substring(2), width);
+        output.addAll(wrapped.split('\n').map(
+            (l) => '\x1b[1m\x1b[33m$l\x1b[0m'));
         continue;
       }
 
       // Blockquote
       if (line.startsWith('> ')) {
-        output.add('\x1b[90m│ ${_renderInline(line.substring(2))}\x1b[0m');
+        final content = _renderInline(line.substring(2));
+        final wrapped = wrapIndented(content, width,
+            firstPrefix: '\x1b[90m│ \x1b[0m', nextPrefix: '\x1b[90m│ \x1b[0m');
+        output.addAll(wrapped.split('\n'));
         continue;
       }
 
@@ -90,7 +100,11 @@ class MarkdownRenderer {
       if (ulMatch != null) {
         final indent = ulMatch.group(1)!;
         final content = _renderInline(ulMatch.group(2)!);
-        output.add('$indent• $content');
+        final bullet = '$indent• ';
+        final contPad = '$indent  ';
+        final wrapped = wrapIndented(content, width,
+            firstPrefix: bullet, nextPrefix: contPad);
+        output.addAll(wrapped.split('\n'));
         continue;
       }
 
@@ -100,7 +114,11 @@ class MarkdownRenderer {
         final indent = olMatch.group(1)!;
         final num = olMatch.group(2)!;
         final content = _renderInline(olMatch.group(3)!);
-        output.add('$indent$num. $content');
+        final prefix = '$indent$num. ';
+        final contPad = '$indent${' ' * (num.length + 2)}';
+        final wrapped = wrapIndented(content, width,
+            firstPrefix: prefix, nextPrefix: contPad);
+        output.addAll(wrapped.split('\n'));
         continue;
       }
 
@@ -108,7 +126,7 @@ class MarkdownRenderer {
       if (line.isEmpty) {
         output.add('');
       } else {
-        output.add(_renderInline(line));
+        output.addAll(ansiWrap(_renderInline(line), width).split('\n'));
       }
     }
 

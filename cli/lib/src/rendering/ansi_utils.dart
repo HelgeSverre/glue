@@ -1,3 +1,5 @@
+import 'dart:math';
+
 /// Strip all ANSI escape sequences from [text].
 String stripAnsi(String text) {
   return text.replaceAll(RegExp(r'\x1b\[[0-9;]*[a-zA-Z]'), '');
@@ -58,6 +60,13 @@ String ansiTruncate(String text, int maxVisible) {
 
 /// Word-wrap [text] to fit within [maxWidth] visible columns.
 /// Preserves ANSI sequences and existing newlines.
+///
+/// ```
+/// ansiWrap("The quick brown fox jumped over the lazy dog", 20)
+/// →  The quick brown fox
+///    jumped over the
+///    lazy dog
+/// ```
 String ansiWrap(String text, int maxWidth) {
   if (maxWidth <= 0) return text;
   final lines = <String>[];
@@ -93,6 +102,52 @@ String ansiWrap(String text, int maxWidth) {
     if (currentWidth > 0) lines.add(currentLine.toString());
   }
   return lines.join('\n');
+}
+
+/// Word-wrap [text] to [width] visible columns, prepending [firstPrefix]
+/// to the first line and [nextPrefix] to continuation lines.
+///
+/// Unlike [ansiWrap] which only breaks long lines, this also handles
+/// prefixed/indented content where continuation lines need alignment.
+///
+/// ```
+/// // Plain indentation (firstPrefix & nextPrefix = '   '):
+/// wrapIndented("The quick brown fox jumped", 20,
+///     firstPrefix: '   ', nextPrefix: '   ')
+/// →     The quick brown
+///       fox jumped
+///
+/// // List bullet (firstPrefix = '• ', nextPrefix = '  '):
+/// wrapIndented("The quick brown fox jumped", 20,
+///     firstPrefix: '• ', nextPrefix: '  ')
+/// →  • The quick brown
+///      fox jumped
+///
+/// // Blockquote (firstPrefix & nextPrefix = '│ '):
+/// wrapIndented("The quick brown fox jumped", 20,
+///     firstPrefix: '│ ', nextPrefix: '│ ')
+/// →  │ The quick brown
+///    │ fox jumped
+/// ```
+String wrapIndented(
+  String text,
+  int width, {
+  String firstPrefix = '',
+  String nextPrefix = '',
+}) {
+  final prefixWidth =
+      max(visibleLength(firstPrefix), visibleLength(nextPrefix));
+  final contentWidth = width - prefixWidth;
+  if (contentWidth <= 0) return '$firstPrefix$text';
+  final wrapped = ansiWrap(text, contentWidth);
+  final lines = wrapped.split('\n');
+  if (lines.isEmpty) return firstPrefix;
+  final buf = StringBuffer(firstPrefix);
+  buf.write(lines.first);
+  for (var i = 1; i < lines.length; i++) {
+    buf.write('\n$nextPrefix${lines[i]}');
+  }
+  return buf.toString();
 }
 
 /// Terminal column width of a single Unicode code point.

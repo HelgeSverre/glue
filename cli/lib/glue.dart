@@ -42,21 +42,17 @@ export 'src/agent/agent_runner.dart' show AgentRunner, ToolApprovalPolicy;
 export 'src/agent/agent_manager.dart' show AgentManager;
 export 'src/agent/prompts.dart' show Prompts;
 export 'src/rendering/ansi_utils.dart'
-    show stripAnsi, visibleLength, ansiTruncate, ansiWrap;
+    show stripAnsi, visibleLength, ansiTruncate, ansiWrap, wrapIndented;
 export 'src/rendering/block_renderer.dart' show BlockRenderer;
 export 'src/rendering/markdown_renderer.dart' show MarkdownRenderer;
 export 'src/commands/slash_commands.dart'
     show SlashCommand, SlashCommandRegistry;
 export 'src/ui/modal.dart' show ConfirmModal, ModalChoice;
+export 'src/ui/box.dart' show Box;
 export 'src/ui/panel_modal.dart'
-    show
-        PanelModal,
-        PanelStyle,
-        BarrierStyle,
-        PanelSize,
-        PanelFixed,
-        PanelFluid;
+    show PanelModal, BarrierStyle, PanelSize, PanelFixed, PanelFluid;
 export 'src/storage/glue_home.dart' show GlueHome;
+export 'src/storage/session_id.dart' show generateSessionId;
 export 'src/storage/session_store.dart' show SessionStore, SessionMeta;
 export 'src/storage/debug_logger.dart' show DebugLogger;
 export 'src/storage/config_store.dart' show ConfigStore;

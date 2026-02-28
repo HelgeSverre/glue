@@ -20,9 +20,13 @@ import 'tools/subagent_tools.dart';
 import 'ui/modal.dart';
 import 'ui/panel_modal.dart';
 import 'input/file_expander.dart';
+import 'input/streaming_input_handler.dart';
 import 'ui/at_file_hint.dart';
+import 'ui/shell_autocomplete.dart';
 import 'ui/slash_autocomplete.dart';
+import 'shell/shell_completer.dart';
 import 'storage/glue_home.dart';
+import 'storage/session_id.dart';
 import 'storage/session_store.dart';
 import 'storage/config_store.dart';
 import 'llm/title_generator.dart';
@@ -136,6 +140,7 @@ class App {
   final ShellJobManager _jobManager;
   late final SlashAutocomplete _autocomplete;
   late final AtFileHint _atHint;
+  late final ShellAutocomplete _shellComplete;
   SessionStore? _sessionStore;
   bool _titleGenerated = false;
   bool _bashMode = false;
@@ -179,6 +184,7 @@ class App {
     _initCommands();
     _autocomplete = SlashAutocomplete(_commands);
     _atHint = AtFileHint();
+    _shellComplete = ShellAutocomplete(ShellCompleter());
   }
 
   /// Convenience factory that creates a fully wired [App] with real
@@ -225,8 +231,7 @@ class App {
     home.ensureDirectories();
     final configStore = ConfigStore(home.configPath);
 
-    final sessionId = '${DateTime.now().millisecondsSinceEpoch}-'
-        '${DateTime.now().microsecond.toRadixString(36)}';
+    final sessionId = generateSessionId();
     final sessionStore = SessionStore(
       sessionDir: home.sessionDir(sessionId),
       meta: SessionMeta(
@@ -463,7 +468,7 @@ class App {
     }
 
     _blocks.add(_ConversationEntry.system(
-      'Resuming session ${session.id.substring(0, 8)}… '
+      'Resuming session ${session.id} '
       '(${session.model}, ${_timeAgo(session.startTime)})',
     ));
 
@@ -589,7 +594,6 @@ class App {
     _activePanel = PanelModal(
       title: 'HELP',
       lines: lines,
-      style: PanelStyle.simple,
       barrier: BarrierStyle.dim,
       height: PanelFluid(0.5, 10),
     );
@@ -605,36 +609,66 @@ class App {
       return;
     }
 
+    const dim = '\x1b[90m';
+    const yellow = '\x1b[33m';
+    const rst = '\x1b[0m';
+    const idW = 12;
+    const modelW = 20;
+    const pathW = 30;
+    const ageW = 10;
+    const gap = '  ';
+
     final displayLines = <String>[];
+
+    // Header
+    displayLines.add(
+      '$dim${'ID'.padRight(idW)}$gap'
+      '${'MODEL'.padRight(modelW)}$gap'
+      '${'DIRECTORY'.padRight(pathW)}$gap'
+      '${'AGE'.padRight(ageW)}$rst',
+    );
+    // Separator
+    displayLines.add(
+      '$dim${'─' * (idW + 2 + modelW + 2 + pathW + 2 + ageW)}$rst',
+    );
+
     for (final s in sessions) {
       final ago = _timeAgo(s.startTime);
-      if (s.title != null) {
-        displayLines.add('${s.title}  ${s.model}  $ago');
-      } else {
-        final shortCwd = _shortenPath(s.cwd);
-        final id = s.id.length > 8 ? s.id.substring(0, 8) : s.id;
-        displayLines.add('$id…  ${s.model}  $shortCwd  $ago');
-      }
+      final shortCwd = _shortenPath(s.cwd);
+      final displayId = s.title ??
+          (s.id.length > idW
+              ? '${s.id.substring(0, idW - 1)}…'
+              : s.id.padRight(idW));
+      final model = s.model.length > modelW
+          ? '${s.model.substring(0, modelW - 1)}…'
+          : s.model;
+
+      displayLines.add(
+        '$yellow${displayId.padRight(idW)}$rst$gap'
+        '${model.padRight(modelW)}$gap'
+        '$dim${shortCwd.padRight(pathW)}$rst$gap'
+        '$dim${ago.padRight(ageW)}$rst',
+      );
     }
 
     final panel = PanelModal(
       title: 'Resume Session',
       lines: displayLines,
-      style: PanelStyle.simple,
       barrier: BarrierStyle.dim,
       height: PanelFluid(0.5, 10),
       selectable: true,
+      initialIndex: 2,
     );
     _activePanel = panel;
     _render();
 
     panel.selection.then((idx) {
       _activePanel = null;
-      if (idx == null) {
+      if (idx == null || idx < 2) {
         _render();
         return;
       }
-      final result = _resumeSession(sessions[idx]);
+      final result = _resumeSession(sessions[idx - 2]);
       if (result.isNotEmpty) {
         _blocks.add(_ConversationEntry.system(result));
       }
@@ -691,6 +725,7 @@ class App {
               event.key == Key.backspace &&
               editor.cursor == 0) {
             _bashMode = false;
+            _shellComplete.dismiss();
             _render();
             return;
           }
@@ -699,20 +734,27 @@ class App {
         if (_mode == AppMode.streaming ||
             _mode == AppMode.toolRunning ||
             _mode == AppMode.bashRunning) {
-          if (event
-              case KeyEvent(key: Key.ctrlC) || KeyEvent(key: Key.escape)) {
-            if (_mode == AppMode.bashRunning) {
-              _cancelBash();
-            } else {
-              _cancelAgent();
-            }
-            return;
+          final result = handleStreamingInput(
+            event: event,
+            isBashRunning: _mode == AppMode.bashRunning,
+            editor: editor,
+            autocomplete: _autocomplete,
+            commands: _commands,
+          );
+          if (result.commandOutput != null &&
+              result.commandOutput!.isNotEmpty) {
+            _blocks.add(_ConversationEntry.system(result.commandOutput!));
           }
-          // Swallow Enter during streaming — keep buffer intact for when agent finishes.
-          if (event case KeyEvent(key: Key.enter)) return;
-          // Pre-typing: buffer other keystrokes.
-          final action = editor.handle(event);
-          if (action == InputAction.changed) _render();
+          switch (result.action) {
+            case StreamingAction.render:
+              _render();
+            case StreamingAction.swallowed:
+              break;
+            case StreamingAction.cancelAgent:
+              _cancelAgent();
+            case StreamingAction.cancelBash:
+              _cancelBash();
+          }
           return;
         }
 
@@ -751,6 +793,33 @@ class App {
           }
           if (event case KeyEvent(key: Key.escape)) {
             _autocomplete.dismiss();
+            _render();
+            return;
+          }
+        }
+
+        // Shell completion intercepts keys when active (bash mode).
+        if (_shellComplete.active) {
+          if (event case KeyEvent(key: Key.up)) {
+            _shellComplete.moveUp();
+            _render();
+            return;
+          }
+          if (event case KeyEvent(key: Key.down)) {
+            _shellComplete.moveDown();
+            _render();
+            return;
+          }
+          if (event case KeyEvent(key: Key.tab) || KeyEvent(key: Key.enter)) {
+            final result = _shellComplete.accept();
+            if (result != null) {
+              editor.setText(result.text, cursor: result.cursor);
+            }
+            _render();
+            return;
+          }
+          if (event case KeyEvent(key: Key.escape)) {
+            _shellComplete.dismiss();
             _render();
             return;
           }
@@ -795,6 +864,7 @@ class App {
           case InputAction.submit:
             _autocomplete.dismiss();
             _atHint.dismiss();
+            _shellComplete.dismiss();
             final text = editor.lastSubmitted;
             if (text.isNotEmpty) {
               _events.add(UserSubmit(text));
@@ -813,13 +883,23 @@ class App {
               _render();
             }
           case InputAction.changed:
-            _autocomplete.update(editor.text, editor.cursor);
-            if (!_autocomplete.active) {
-              _atHint.update(editor.text, editor.cursor);
+            if (_bashMode) {
+              _shellComplete.dismiss();
             } else {
-              _atHint.dismiss();
+              _autocomplete.update(editor.text, editor.cursor);
+              if (!_autocomplete.active) {
+                _atHint.update(editor.text, editor.cursor);
+              } else {
+                _atHint.dismiss();
+              }
             }
             _render();
+          case InputAction.requestCompletion:
+            if (_bashMode) {
+              _shellComplete
+                  .requestCompletions(editor.text, editor.cursor)
+                  .then((_) => _render());
+            }
           default:
             break;
         }
@@ -1405,9 +1485,11 @@ class App {
     _renderedPanelLastFrame = false;
 
     // 2. Reserve overlay space for autocomplete (before computing viewport).
-    final overlayHeight = _autocomplete.active
-        ? _autocomplete.overlayHeight
-        : _atHint.overlayHeight;
+    final overlayHeight = _shellComplete.active
+        ? _shellComplete.overlayHeight
+        : _autocomplete.active
+            ? _autocomplete.overlayHeight
+            : _atHint.overlayHeight;
     layout.setOverlayHeight(overlayHeight);
 
     // 3. Compute visible window.
@@ -1425,8 +1507,10 @@ class App {
 
     layout.paintOutputViewport(visibleLines);
 
-    // 4. Autocomplete / @file overlay.
-    if (_autocomplete.active) {
+    // 4. Autocomplete / @file / shell overlay.
+    if (_shellComplete.active) {
+      layout.paintOverlay(_shellComplete.render(terminal.columns));
+    } else if (_autocomplete.active) {
       layout.paintOverlay(_autocomplete.render(terminal.columns));
     } else if (_atHint.active) {
       layout.paintOverlay(_atHint.render(terminal.columns));
