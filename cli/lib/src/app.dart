@@ -23,6 +23,7 @@ import 'input/file_expander.dart';
 import 'ui/at_file_hint.dart';
 import 'ui/slash_autocomplete.dart';
 import 'storage/glue_home.dart';
+import 'storage/session_id.dart';
 import 'storage/session_store.dart';
 import 'storage/config_store.dart';
 
@@ -222,8 +223,7 @@ class App {
     home.ensureDirectories();
     final configStore = ConfigStore(home.configPath);
 
-    final sessionId = '${DateTime.now().millisecondsSinceEpoch}-'
-        '${DateTime.now().microsecond.toRadixString(36)}';
+    final sessionId = generateSessionId();
     final sessionStore = SessionStore(
       sessionDir: home.sessionDir(sessionId),
       meta: SessionMeta(
@@ -460,7 +460,7 @@ class App {
     }
 
     _blocks.add(_ConversationEntry.system(
-      'Resuming session ${session.id.substring(0, 8)}… '
+      'Resuming session ${session.id} '
       '(${session.model}, ${_timeAgo(session.startTime)})',
     ));
 
@@ -541,7 +541,6 @@ class App {
     _activePanel = PanelModal(
       title: 'HELP',
       lines: lines,
-      style: PanelStyle.simple,
       barrier: BarrierStyle.dim,
       height: PanelFluid(0.5, 10),
     );
@@ -557,32 +556,65 @@ class App {
       return;
     }
 
+    const dim = '\x1b[90m';
+    const yellow = '\x1b[33m';
+    const rst = '\x1b[0m';
+    const idW = 12;
+    const modelW = 20;
+    const pathW = 30;
+    const ageW = 10;
+    const gap = '  ';
+
     final displayLines = <String>[];
+
+    // Header
+    displayLines.add(
+      '$dim${'ID'.padRight(idW)}$gap'
+      '${'MODEL'.padRight(modelW)}$gap'
+      '${'DIRECTORY'.padRight(pathW)}$gap'
+      '${'AGE'.padRight(ageW)}$rst',
+    );
+    // Separator
+    displayLines.add(
+      '$dim${'─' * (idW + 2 + modelW + 2 + pathW + 2 + ageW)}$rst',
+    );
+
     for (final s in sessions) {
       final ago = _timeAgo(s.startTime);
       final shortCwd = _shortenPath(s.cwd);
-      final id = s.id.length > 8 ? s.id.substring(0, 8) : s.id;
-      displayLines.add('$id…  ${s.model}  $shortCwd  $ago');
+      final displayId = s.id.length > idW
+          ? '${s.id.substring(0, idW - 1)}…'
+          : s.id.padRight(idW);
+      final model = s.model.length > modelW
+          ? '${s.model.substring(0, modelW - 1)}…'
+          : s.model;
+
+      displayLines.add(
+        '$yellow${displayId.padRight(idW)}$rst$gap'
+        '${model.padRight(modelW)}$gap'
+        '$dim${shortCwd.padRight(pathW)}$rst$gap'
+        '$dim${ago.padRight(ageW)}$rst',
+      );
     }
 
     final panel = PanelModal(
       title: 'Resume Session',
       lines: displayLines,
-      style: PanelStyle.simple,
       barrier: BarrierStyle.dim,
       height: PanelFluid(0.5, 10),
       selectable: true,
+      initialIndex: 2,
     );
     _activePanel = panel;
     _render();
 
     panel.selection.then((idx) {
       _activePanel = null;
-      if (idx == null) {
+      if (idx == null || idx < 2) {
         _render();
         return;
       }
-      final result = _resumeSession(sessions[idx]);
+      final result = _resumeSession(sessions[idx - 2]);
       if (result.isNotEmpty) {
         _blocks.add(_ConversationEntry.system(result));
       }
