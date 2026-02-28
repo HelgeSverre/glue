@@ -24,6 +24,12 @@ import 'shell/shell_config.dart';
 import 'shell/shell_job_manager.dart';
 import 'storage/session_state.dart';
 import 'tools/subagent_tools.dart';
+import 'tools/web_fetch_tool.dart';
+import 'tools/web_search_tool.dart';
+import 'web/search/search_router.dart';
+import 'web/search/providers/brave_provider.dart';
+import 'web/search/providers/tavily_provider.dart';
+import 'web/search/providers/firecrawl_provider.dart';
 import 'ui/modal.dart';
 import 'ui/panel_modal.dart';
 import 'input/file_expander.dart';
@@ -134,6 +140,8 @@ class App {
     'grep',
     'spawn_subagent',
     'spawn_parallel_subagents',
+    'web_fetch',
+    'web_search',
   };
   final AgentManager? _manager;
   final LlmClientFactory? _llmFactory;
@@ -234,6 +242,16 @@ class App {
       sessionMounts: sessionState.dockerMounts,
     );
 
+    final searchRouter = SearchRouter([
+      BraveSearchProvider(apiKey: config.webConfig.search.braveApiKey),
+      TavilySearchProvider(apiKey: config.webConfig.search.tavilyApiKey),
+      FirecrawlSearchProvider(
+        apiKey: config.webConfig.search.firecrawlApiKey,
+        baseUrl: config.webConfig.search.firecrawlBaseUrl ??
+            'https://api.firecrawl.dev',
+      ),
+    ]);
+
     final tools = <String, Tool>{
       'read_file': ReadFileTool(),
       'write_file': WriteFileTool(),
@@ -241,6 +259,8 @@ class App {
       'bash': BashTool(executor),
       'grep': GrepTool(),
       'list_directory': ListDirectoryTool(),
+      'web_fetch': WebFetchTool(config.webConfig.fetch),
+      'web_search': WebSearchTool(searchRouter),
     };
 
     final agent = AgentCore(llm: llm, tools: tools, modelName: config.model);
@@ -1177,6 +1197,7 @@ class App {
         state.phase = _ToolPhase.error;
       }
     }
+    agent.repairConversation();
     _render();
   }
 

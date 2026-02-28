@@ -38,6 +38,20 @@ All notable changes to Glue CLI will be documented in this file.
 - `KeyEvent` and `CharEvent` carry an `alt` flag for modifier-aware
   input handling.
 
+- **`web_fetch` tool** — fetches a URL and returns clean markdown for the
+  LLM. Three-stage pipeline: (1) try `Accept: text/markdown` header,
+  (2) HTML fetch → Readability-style content extraction → HTML-to-markdown
+  conversion, (3) optional Jina Reader API fallback. Configurable timeout,
+  max bytes, and token budget. Auto-approved (read-only).
+- **`web_search` tool** — searches the web via configurable providers
+  (Brave, Tavily, Firecrawl) with unified result model. Auto-detects
+  provider from available API keys (priority: Brave → Tavily → Firecrawl)
+  with automatic fallback on error. Supports explicit provider selection
+  via parameter. Configured via `web.search.*` in config.yaml or
+  `BRAVE_API_KEY`/`TAVILY_API_KEY`/`FIRECRAWL_API_KEY` env vars.
+- **`WebConfig`** — web tool configuration model with `WebFetchConfig`
+  and `WebSearchConfig`, wired into `GlueConfig` with env var and config
+  file resolution following existing patterns.
 - **Hidden aliases** for slash commands — `SlashCommand` now supports
   `hiddenAliases` that resolve on execution but are excluded from
   autocomplete and `/help`. `/q` is now a hidden alias for `/exit`.

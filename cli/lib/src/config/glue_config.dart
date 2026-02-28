@@ -4,6 +4,7 @@ import 'constants.dart';
 import 'model_registry.dart';
 import '../shell/docker_config.dart';
 import '../shell/shell_config.dart';
+import '../web/web_config.dart';
 
 /// Supported LLM providers.
 enum LlmProvider { anthropic, openai, ollama }
@@ -42,6 +43,7 @@ class GlueConfig {
   final int bashMaxLines;
   final ShellConfig shellConfig;
   final DockerConfig dockerConfig;
+  final WebConfig webConfig;
 
   GlueConfig({
     LlmProvider? provider,
@@ -54,10 +56,12 @@ class GlueConfig {
     this.bashMaxLines = AppConstants.bashMaxLinesDefault,
     ShellConfig? shellConfig,
     DockerConfig? dockerConfig,
+    WebConfig? webConfig,
   })  : provider = provider ?? LlmProvider.anthropic,
         model = model ?? _defaultModel(provider ?? LlmProvider.anthropic),
         shellConfig = shellConfig ?? const ShellConfig(),
-        dockerConfig = dockerConfig ?? const DockerConfig();
+        dockerConfig = dockerConfig ?? const DockerConfig(),
+        webConfig = webConfig ?? const WebConfig();
 
   static String _defaultModel(LlmProvider provider) =>
       ModelRegistry.defaultModelId(provider);
@@ -78,6 +82,7 @@ class GlueConfig {
       bashMaxLines: bashMaxLines,
       shellConfig: shellConfig,
       dockerConfig: dockerConfig,
+      webConfig: webConfig,
     );
   }
 
@@ -210,6 +215,58 @@ class GlueConfig {
       mounts: dockerMounts,
     );
 
+    // 2d. Resolve web configuration.
+    final webSection = fileConfig?['web'] as Map?;
+    final fetchSection = webSection?['fetch'] as Map?;
+    final searchSection = webSection?['search'] as Map?;
+
+    final jinaApiKey = Platform.environment['JINA_API_KEY'] ??
+        fetchSection?['jina_api_key'] as String?;
+    final braveApiKey = Platform.environment['BRAVE_API_KEY'] ??
+        searchSection?['brave_api_key'] as String?;
+    final tavilyApiKey = Platform.environment['TAVILY_API_KEY'] ??
+        searchSection?['tavily_api_key'] as String?;
+    final firecrawlApiKey = Platform.environment['FIRECRAWL_API_KEY'] ??
+        searchSection?['firecrawl_api_key'] as String?;
+
+    final searchProviderStr = Platform.environment['GLUE_SEARCH_PROVIDER'] ??
+        searchSection?['provider'] as String?;
+    final searchProvider = searchProviderStr != null
+        ? WebSearchProviderType.values.firstWhere(
+            (p) => p.name == searchProviderStr,
+            orElse: () => WebSearchProviderType.brave,
+          )
+        : null;
+
+    final webFetchConfig = WebFetchConfig(
+      jinaApiKey: jinaApiKey,
+      allowJinaFallback:
+          fetchSection?['allow_jina_fallback'] as bool? ?? true,
+      timeoutSeconds: fetchSection?['timeout_seconds'] as int? ??
+          AppConstants.webFetchTimeoutSeconds,
+      maxBytes: fetchSection?['max_bytes'] as int? ??
+          AppConstants.webFetchMaxBytes,
+      defaultMaxTokens: fetchSection?['max_tokens'] as int? ??
+          AppConstants.webFetchDefaultMaxTokens,
+    );
+
+    final webSearchConfig = WebSearchConfig(
+      provider: searchProvider,
+      braveApiKey: braveApiKey,
+      tavilyApiKey: tavilyApiKey,
+      firecrawlApiKey: firecrawlApiKey,
+      firecrawlBaseUrl: searchSection?['firecrawl_base_url'] as String?,
+      timeoutSeconds: searchSection?['timeout_seconds'] as int? ??
+          AppConstants.webSearchTimeoutSeconds,
+      defaultMaxResults: searchSection?['max_results'] as int? ??
+          AppConstants.webSearchDefaultMaxResults,
+    );
+
+    final webConfig = WebConfig(
+      fetch: webFetchConfig,
+      search: webSearchConfig,
+    );
+
     // 3. Parse profiles.
     final profiles = <String, AgentProfile>{};
     final profilesYaml = fileConfig?['profiles'] as Map?;
@@ -235,6 +292,7 @@ class GlueConfig {
       bashMaxLines: bashMaxLines,
       shellConfig: shellConfig,
       dockerConfig: dockerConfig,
+      webConfig: webConfig,
     );
   }
 }

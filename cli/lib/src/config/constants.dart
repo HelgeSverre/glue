@@ -32,5 +32,12 @@ class AppConstants {
   // Terminal/Layout
   static const int inputAreaDivisor = 3; // Input area = terminal.rows ~/ 3
 
+  // Web tool configuration
+  static const int webFetchTimeoutSeconds = 30;
+  static const int webFetchMaxBytes = 5 * 1024 * 1024; // 5MB
+  static const int webFetchDefaultMaxTokens = 50000;
+  static const int webSearchTimeoutSeconds = 15;
+  static const int webSearchDefaultMaxResults = 5;
+
   AppConstants._(); // Prevent instantiation
 }
