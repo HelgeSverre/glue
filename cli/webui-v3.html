@@ -1,0 +1,1845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>glue · server</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --yellow:#FACC15;--gold:#EAB308;--amber:#F59E0B;
+  --bg:#050506;--surface:#0a0a0c;--surface-el:#101012;--surface-hi:#161618;
+  --border:#1a1a1e;--border-br:#2a2a30;
+  --text:#d8d8dc;--text-sec:#7e7e88;--text-mut:#808088;--text-dim:#6a6a72;
+  --success:#22C55E;--error:#EF4444;--warning:#F59E0B;--info:#3B82F6;
+  --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;
+}
+html{font-size:13px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
+::selection{background:rgba(250,204,21,.2);color:var(--yellow)}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-br);border-radius:1px}
+
+.accent-line{height:1px;width:100%;flex-shrink:0;background:var(--yellow);opacity:.25}
+
+/* ═══ Shell ═══ */
+.app{display:flex;height:100vh;flex-direction:column}
+.app-body{display:flex;flex:1;overflow:hidden}
+
+/* ═══ Rail ═══ */
+.rail{width:260px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+
+/* Repo switcher */
+.repo-switch{padding:8px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;position:relative}
+.repo-btn{
+  flex:1;padding:6px 10px;background:var(--surface-el);border:1px solid var(--border);
+  color:var(--text);font-family:var(--mono);font-size:11px;font-weight:600;
+  cursor:pointer;display:flex;align-items:center;gap:6px;transition:border-color .1s;
+  text-align:left;white-space:nowrap;overflow:hidden;
+}
+.repo-btn:hover{border-color:var(--border-br)}
+.repo-btn .repo-icon{color:var(--yellow);font-size:12px;flex-shrink:0}
+.repo-btn .repo-name{flex:1;overflow:hidden;text-overflow:ellipsis}
+.repo-btn .repo-chev{color:var(--text-dim);font-size:8px;flex-shrink:0}
+.repo-add-btn{
+  width:30px;height:30px;border:1px dashed var(--border-br);background:transparent;
+  color:var(--text-dim);cursor:pointer;font-size:14px;font-family:var(--mono);
+  display:flex;align-items:center;justify-content:center;transition:all .1s;flex-shrink:0;
+}
+.repo-add-btn:hover{border-color:var(--yellow);color:var(--yellow)}
+
+/* Repo dropdown */
+.repo-dropdown{
+  position:absolute;top:100%;left:10px;right:10px;z-index:50;
+  background:var(--surface-el);border:1px solid var(--border-br);
+  max-height:260px;overflow-y:auto;
+}
+.repo-dd-search{padding:6px 10px;border-bottom:1px solid var(--border)}
+.repo-dd-search input{
+  width:100%;background:transparent;border:none;outline:none;
+  color:var(--text);font-family:var(--mono);font-size:10px;caret-color:var(--yellow);
+}
+.repo-dd-search input::placeholder{color:var(--text-dim)}
+.repo-dd-item{
+  padding:7px 10px;cursor:pointer;display:flex;align-items:center;gap:8px;
+  font-family:var(--mono);font-size:11px;transition:background .06s;
+}
+.repo-dd-item:hover{background:var(--surface-hi)}
+.repo-dd-item.active{color:var(--yellow)}
+.repo-dd-item .dd-name{font-weight:600}
+.repo-dd-item .dd-path{color:var(--text-dim);font-size:9px;margin-left:auto}
+.repo-dd-item .dd-badge{
+  font-size:8px;padding:1px 4px;background:var(--border);color:var(--text-dim);
+  font-weight:600;margin-left:4px;
+}
+.repo-dd-add{color:var(--yellow);border-top:1px solid var(--border)}
+
+/* New session button */
+.new-sess{
+  margin:8px 10px;padding:8px 12px;border:1px dashed var(--border-br);
+  background:transparent;color:var(--text-mut);font-size:11px;font-family:var(--mono);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;
+  font-weight:600;transition:all .12s;
+}
+.new-sess:hover{border-color:var(--yellow);color:var(--yellow);background:rgba(250,204,21,.02)}
+
+/* Session list */
+.sess-list{overflow-y:auto;flex:1}
+.sess-group-head{
+  padding:6px 12px;font-family:var(--mono);font-size:9px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);
+  display:flex;align-items:center;gap:5px;
+}
+.sess-group-head .count{margin-left:auto}
+
+.s-item{
+  padding:8px 12px;cursor:pointer;border-left:2px solid transparent;
+  transition:all .08s;position:relative;
+}
+.s-item:hover{background:var(--surface-el)}
+.s-item.active{background:var(--surface-el);border-left-color:var(--yellow)}
+.s-row{display:flex;align-items:center;gap:6px}
+.s-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.s-dot.alive{background:var(--success);box-shadow:0 0 4px rgba(34,197,94,.3)}
+.s-dot.idle{background:var(--text-dim)}
+.s-dot.dead{background:var(--border-br)}
+.s-title{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text-sec);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s-item.active .s-title{color:var(--yellow)}
+.s-branch{
+  margin-top:3px;padding-left:12px;font-family:var(--mono);font-size:10px;
+  color:var(--text-dim);display:flex;align-items:center;gap:4px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.s-branch .branch-icon{color:var(--text-dim)}
+.s-item.active .s-branch .branch-icon{color:var(--yellow)}
+.s-info{
+  margin-top:2px;padding-left:12px;font-family:var(--mono);font-size:9px;
+  color:var(--text-dim);display:flex;gap:8px;
+}
+.s-close{
+  position:absolute;right:8px;top:8px;width:16px;height:16px;border:none;
+  background:transparent;color:var(--text-dim);cursor:pointer;font-size:11px;
+  display:none;align-items:center;justify-content:center;
+}
+.s-item:hover .s-close{display:flex}
+.s-close:hover{color:var(--text)}
+
+/* Rename toast */
+.rename-toast{
+  margin:0 10px 6px;padding:6px 10px;background:var(--surface-el);
+  border:1px solid var(--border-br);font-family:var(--mono);font-size:10px;
+  display:flex;align-items:center;gap:6px;
+}
+.rename-toast .old{color:var(--text-dim);text-decoration:line-through}
+.rename-toast .arrow{color:var(--text-dim)}
+.rename-toast .new{color:var(--yellow);font-weight:600}
+.rename-toast .actions{margin-left:auto;display:flex;gap:4px}
+.rename-toast button{
+  background:transparent;border:1px solid var(--border);color:var(--text-dim);
+  font-family:var(--mono);font-size:8px;padding:2px 6px;cursor:pointer;
+  text-transform:uppercase;font-weight:600;
+}
+.rename-toast button:hover{color:var(--text);border-color:var(--border-br)}
+.rename-toast button.accept{color:var(--yellow);border-color:var(--yellow)}
+.rename-toast button.accept:hover{background:rgba(250,204,21,.06)}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.s-dot.alive{animation:pulse 2.5s infinite}
+
+/* Wrap-up menu */
+.wrapup-menu{
+  position:absolute;right:10px;top:24px;z-index:10;
+  background:var(--surface-el);border:1px solid var(--border-br);
+  min-width:160px;font-family:var(--mono);font-size:10px;
+}
+.wrapup-item{
+  padding:6px 10px;cursor:pointer;display:flex;align-items:center;gap:6px;
+  color:var(--text-sec);transition:background .06s;
+}
+.wrapup-item:hover{background:var(--surface-hi)}
+.wrapup-item .wi-icon{width:14px;text-align:center}
+.wrapup-item.danger{color:var(--error)}
+
+.rail-foot{padding:8px 12px;border-top:1px solid var(--border);font-size:9px;color:var(--text-dim);font-family:var(--mono);display:flex;align-items:center;gap:6px}
+.rail-foot .conn-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.rail-foot .conn-dot.ok{background:var(--success);animation:pulse 2s infinite}
+
+/* ═══ Viewport ═══ */
+.viewport{flex:1;display:flex;flex-direction:column;background:var(--bg);min-width:0}
+
+.zone-output{
+  flex:1;overflow-y:auto;padding:14px 18px;font-family:var(--mono);font-size:11.5px;
+  line-height:1.65;color:var(--text-sec);position:relative;
+}
+.zone-output::after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,255,255,.003) 2px,rgba(255,255,255,.003) 4px);
+}
+.blk{margin-bottom:14px}
+.blk-user{color:var(--text-mut);margin-bottom:3px}
+.blk-user .pr{color:var(--yellow);font-weight:700}
+.blk-user .msg{color:var(--text)}
+.blk-assistant{color:var(--text-sec);white-space:pre-wrap}
+.blk-tool{margin:6px 0;padding:5px 9px;border-left:2px solid var(--border);font-size:10px}
+.blk-tool .t-head{display:flex;align-items:center;gap:6px;margin-bottom:2px}
+.blk-tool .t-name{color:var(--yellow);font-weight:700}
+.blk-tool .t-status{font-size:9px;padding:1px 5px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.blk-tool .t-status.ok{color:var(--success);background:rgba(34,197,94,.06)}
+.blk-tool .t-status.pending{color:var(--warning);background:rgba(245,158,11,.06)}
+.blk-tool .t-status.needs-approval{color:var(--amber);background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.15)}
+.blk-tool .t-status.error{color:var(--error);background:rgba(239,68,68,.06)}
+.blk-tool .t-args{color:var(--text-dim);font-size:10px}
+.blk-tool .t-summary{color:var(--text-mut);font-size:10px;margin-top:2px}
+.t-cursor{display:inline-block;width:6px;height:12px;background:var(--yellow);animation:blink 1s step-end infinite;vertical-align:text-bottom;margin-left:1px}
+@keyframes blink{50%{opacity:0}}
+
+.sidecar-wrap{display:flex;flex:1;overflow:hidden}
+.sidecar{
+  width:220px;background:var(--surface);border-left:1px solid var(--border);
+  display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;
+}
+.sidecar-head{
+  padding:6px 10px;font-family:var(--mono);font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--text-mut);
+  border-bottom:1px solid var(--border);display:flex;align-items:center;gap:5px;
+  background:var(--surface-el);
+}
+.sidecar-head .count{margin-left:auto;color:var(--text-dim)}
+.sidecar-list{overflow-y:auto;flex:1}
+.sc-item{padding:6px 10px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:10px;cursor:pointer;transition:background .08s}
+.sc-item:hover{background:var(--surface-el)}
+.sc-item.highlight{background:rgba(250,204,21,.03)}
+.sc-item .sc-name{color:var(--yellow);font-weight:600;margin-bottom:1px}
+.sc-item .sc-path{color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-item .sc-result{font-size:9px;margin-top:1px}
+.sc-item .sc-result.ok{color:var(--success)}
+.sc-item .sc-result.pending{color:var(--warning)}
+.sc-item .sc-result.needs-approval{color:var(--amber)}
+.sc-item .sc-result.error{color:var(--error)}
+.sc-item .sc-time{font-size:9px;color:var(--text-dim);margin-top:1px}
+
+.zone-overlay{
+  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  background:var(--surface);padding:0;max-height:200px;overflow-y:auto;flex-shrink:0;
+}
+.overlay-head{
+  padding:5px 12px;font-family:var(--mono);font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--text-mut);
+  border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;
+  background:var(--surface-el);
+}
+.overlay-head .tag{font-size:8px;padding:1px 5px;background:rgba(250,204,21,.08);color:var(--yellow)}
+.overlay-item{
+  padding:5px 12px;font-family:var(--mono);font-size:11px;color:var(--text-sec);
+  display:flex;align-items:center;gap:8px;cursor:pointer;border-left:2px solid transparent;
+}
+.overlay-item:hover{background:var(--surface-el)}
+.overlay-item.selected{background:var(--surface-el);border-left-color:var(--yellow);color:var(--yellow)}
+.overlay-item .key{font-size:9px;color:var(--text-dim);min-width:16px}
+.overlay-search{padding:5px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px}
+.overlay-search input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:var(--mono);font-size:11px;caret-color:var(--yellow)}
+.overlay-search input::placeholder{color:var(--text-dim)}
+.overlay-search .slash{color:var(--yellow);font-size:12px;font-weight:700}
+
+.zone-status{
+  height:22px;background:var(--yellow);color:var(--bg);
+  display:flex;align-items:center;padding:0 12px;font-size:10px;
+  font-family:var(--mono);font-weight:600;gap:10px;flex-shrink:0;
+}
+.zone-status .sep{color:rgba(5,5,6,.3)}
+.zone-status .right{margin-left:auto;display:flex;gap:10px;font-weight:500}
+.zone-status .dim{opacity:.5}
+
+.zone-input{
+  border-top:1px solid var(--border);padding:8px 14px;display:flex;align-items:flex-start;gap:6px;
+  background:var(--surface);flex-shrink:0;
+}
+.zone-input .pr{color:var(--yellow);font-family:var(--mono);font-size:13px;font-weight:700;line-height:1.6;flex-shrink:0}
+.zone-input textarea{
+  flex:1;background:transparent;border:none;outline:none;color:var(--text);
+  font-family:var(--mono);font-size:11px;line-height:1.6;caret-color:var(--yellow);
+  resize:none;min-height:18px;max-height:140px;
+}
+.zone-input textarea::placeholder{color:var(--text-dim)}
+.zone-input .input-hint{font-size:9px;color:var(--text-dim);font-family:var(--mono);align-self:flex-end;white-space:nowrap;flex-shrink:0}
+
+/* Empty state */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;color:var(--text-dim);gap:10px}
+.empty .glyph{font-family:var(--mono);font-size:36px;font-weight:900;color:var(--yellow);opacity:.08}
+.empty .msg{font-size:12px;font-family:var(--mono)}
+.empty .hint{font-size:10px;color:var(--text-dim);font-family:var(--mono)}
+
+/* ═══ Modal ═══ */
+.modal-bg{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:rgba(5,5,6,.92);backdrop-filter:blur(4px)}
+.panel{background:var(--surface);border:1px solid var(--border);border-top:2px solid var(--yellow);width:480px;max-width:92vw;overflow:hidden}
+.panel-head{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px}
+.panel-title{font-family:var(--mono);font-weight:700;font-size:12px;color:var(--yellow);text-transform:uppercase;letter-spacing:.03em}
+.panel-close{margin-left:auto;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;padding:2px}
+.panel-close:hover{color:var(--text)}
+.panel-body{padding:16px 18px}
+.panel-foot{padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:6px;justify-content:flex-end;align-items:center}
+.panel-foot .foot-hint{font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-right:auto}
+
+.f-group{margin-bottom:14px}
+.f-label{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-mut);margin-bottom:5px}
+.f-select,.f-input,.f-textarea{
+  width:100%;padding:7px 10px;background:var(--bg);border:1px solid var(--border);
+  color:var(--text);font-family:var(--mono);font-size:11px;outline:none;
+}
+.f-select:focus,.f-input:focus,.f-textarea:focus{border-color:var(--yellow)}
+.f-select{cursor:pointer;appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%236a6a72'%3E%3Cpath d='M2 3l3 4 3-4'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 8px center}
+.f-select option{background:var(--surface);color:var(--text)}
+.f-input::placeholder,.f-textarea::placeholder{color:var(--text-dim)}
+.f-textarea{resize:vertical;min-height:80px;line-height:1.5}
+.f-hint{font-size:9px;color:var(--text-dim);margin-top:4px;font-family:var(--mono)}
+.f-divider{border:none;border-top:1px solid var(--border);margin:14px 0}
+.f-row{display:flex;gap:10px}
+.f-row .f-group{flex:1}
+.f-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+.f-toggle:hover{color:var(--text-sec)}
+.f-toggle .arrow{font-size:8px;transition:transform .12s}
+.f-toggle .arrow.open{transform:rotate(90deg)}
+
+/* Worktree name preview */
+.wt-preview{
+  padding:8px 10px;background:var(--bg);border:1px solid var(--border);
+  font-family:var(--mono);font-size:10px;display:flex;align-items:center;gap:8px;
+  margin-top:6px;
+}
+.wt-preview .wt-icon{color:var(--yellow)}
+.wt-preview .wt-branch{color:var(--text)}
+.wt-preview .wt-path{color:var(--text-dim);margin-left:auto;font-size:9px}
+.wt-preview .wt-refresh{
+  background:none;border:none;color:var(--text-dim);cursor:pointer;
+  font-size:11px;padding:0 2px;
+}
+.wt-preview .wt-refresh:hover{color:var(--yellow)}
+
+.btn{
+  padding:6px 16px;font-size:10px;font-weight:700;cursor:pointer;
+  border:1px solid var(--border);background:transparent;color:var(--text-sec);
+  font-family:var(--mono);text-transform:uppercase;letter-spacing:.03em;transition:all .1s;
+}
+.btn:hover{border-color:var(--border-br);color:var(--text)}
+.btn.primary{background:var(--yellow);color:var(--bg);border-color:var(--yellow)}
+.btn.primary:hover{background:var(--gold)}
+.btn:disabled{opacity:.3;cursor:not-allowed}
+
+/* ═══ File Browser ═══ */
+.fb-path-row{display:flex;gap:4px}
+.fb-path-row .f-input{flex:1}
+.fb-home-btn{
+  width:32px;flex-shrink:0;background:var(--bg);border:1px solid var(--border);
+  color:var(--text-dim);cursor:pointer;font-size:13px;font-family:var(--mono);
+  display:flex;align-items:center;justify-content:center;transition:all .1s;
+}
+.fb-home-btn:hover{border-color:var(--yellow);color:var(--yellow)}
+.fb-suggestions{
+  margin-top:2px;background:var(--surface-el);border:1px solid var(--border);
+  max-height:120px;overflow-y:auto;
+}
+.fb-sugg-item{
+  padding:4px 10px;font-family:var(--mono);font-size:10px;color:var(--text-sec);
+  cursor:pointer;transition:background .06s;
+}
+.fb-sugg-item:hover{background:var(--surface-hi);color:var(--yellow)}
+.fb-tree{
+  margin-top:8px;background:var(--bg);border:1px solid var(--border);
+  max-height:200px;overflow-y:auto;
+}
+.fb-breadcrumb{
+  padding:5px 10px;border-bottom:1px solid var(--border);
+  font-family:var(--mono);font-size:10px;color:var(--text-dim);
+  display:flex;align-items:center;flex-wrap:wrap;gap:1px;
+}
+.fb-bc-sep{color:var(--text-dim);margin:0 1px}
+.fb-bc-part{cursor:pointer;color:var(--text-sec);transition:color .06s}
+.fb-bc-part:hover{color:var(--yellow)}
+.fb-bc-part:last-child{color:var(--yellow);font-weight:600}
+.fb-listing{font-family:var(--mono);font-size:10px}
+.fb-item{
+  padding:3px 10px;display:flex;align-items:center;gap:6px;
+  cursor:pointer;transition:background .06s;
+}
+.fb-item:hover{background:var(--surface-el)}
+.fb-item.selected{background:var(--surface-hi)}
+.fb-chev{color:var(--text-dim);font-size:8px;width:10px;text-align:center;flex-shrink:0}
+.fb-name{color:var(--text-sec)}
+.fb-name.dir{color:var(--text);font-weight:500}
+.fb-badge{
+  font-size:8px;padding:1px 5px;color:var(--success);background:rgba(34,197,94,.08);
+  margin-left:auto;font-weight:600;
+}
+.fb-empty{padding:10px;color:var(--text-dim);text-align:center;font-family:var(--mono);font-size:10px}
+.fb-git-badge{
+  margin-top:8px;padding:6px 10px;background:rgba(34,197,94,.04);border:1px solid rgba(34,197,94,.15);
+  font-family:var(--mono);font-size:10px;color:var(--success);
+  display:flex;align-items:center;gap:6px;
+}
+.fb-git-dot{width:6px;height:6px;border-radius:50%;background:var(--success)}
+
+/* ═══ Slash Completion ═══ */
+.slash-popup{
+  position:absolute;bottom:100%;left:0;right:0;z-index:10;
+  background:var(--surface-el);border:1px solid var(--border-br);border-bottom:none;
+  max-height:200px;overflow-y:auto;
+}
+.slash-item{
+  padding:5px 12px;display:flex;align-items:center;gap:10px;
+  font-family:var(--mono);font-size:10px;cursor:pointer;transition:background .06s;
+}
+.slash-item:hover{background:var(--surface-hi)}
+.slash-item.selected{background:var(--surface-hi);border-left:2px solid var(--yellow)}
+.slash-cmd{color:var(--yellow);font-weight:700;min-width:80px}
+.slash-desc{color:var(--text-sec);flex:1}
+.slash-alias{color:var(--text-dim);font-size:9px;margin-left:auto}
+
+/* ═══ Focus ═══ */
+:where(button, a, [tabindex]):focus-visible{outline:none;box-shadow:0 0 0 1px var(--yellow),0 0 0 3px rgba(250,204,21,.18)}
+.f-select:focus-visible,.f-input:focus-visible,.f-textarea:focus-visible{box-shadow:0 0 0 1px var(--yellow),0 0 0 3px rgba(250,204,21,.18)}
+.zone-input:focus-within{box-shadow:inset 0 1px 0 rgba(250,204,21,.15)}
+.fb-tree:focus-within{border-color:var(--yellow)}
+
+/* ═══ Wizard ═══ */
+.wiz-steps{display:flex;align-items:center;gap:4px;margin-left:auto;margin-right:8px}
+.wiz-step{font-family:var(--mono);font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-dim);padding:2px 6px;transition:color .1s}
+.wiz-step.active{color:var(--yellow)}
+.wiz-step.current{color:var(--yellow);background:rgba(250,204,21,.08)}
+.wiz-sep{color:var(--text-dim);font-size:7px}
+.wiz-summary{font-family:var(--mono);font-size:10px;color:var(--text-dim);padding:8px 10px;background:var(--bg);border:1px solid var(--border);margin-bottom:14px}
+.wiz-summary .ws-label{color:var(--text-mut);min-width:70px;display:inline-block}
+.wiz-summary .ws-value{color:var(--text)}
+.wiz-summary .ws-row{margin-bottom:2px}
+
+/* ═══ Settings ═══ */
+.settings-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:11px;margin-left:auto;padding:2px;transition:color .1s}
+.settings-btn:hover{color:var(--yellow)}
+
+.set-section{margin-bottom:16px}
+.set-section:last-child{margin-bottom:0}
+.set-section-head{
+  font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--text-mut);margin-bottom:10px;display:flex;align-items:center;gap:6px;
+  padding-bottom:6px;border-bottom:1px solid var(--border);
+}
+.set-section-head .set-icon{color:var(--yellow);font-size:10px}
+
+.set-repo-picker{margin-bottom:12px;position:relative}
+.set-repo-picker select{font-weight:600}
+.set-override{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.set-override:last-child{margin-bottom:0}
+.set-override-toggle{
+  width:14px;height:14px;border:1px solid var(--border-br);background:var(--bg);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:9px;color:transparent;transition:all .1s;flex-shrink:0;
+}
+.set-override-toggle.on{border-color:var(--yellow);color:var(--yellow);background:rgba(250,204,21,.06)}
+.set-override-toggle:hover{border-color:var(--yellow)}
+.set-override-field{flex:1;display:flex;flex-direction:column;gap:3px}
+.set-override-field .f-label{margin-bottom:0}
+.set-override-field .f-select:disabled,.set-override-field .f-input:disabled{opacity:.3;cursor:not-allowed}
+.set-override-hint{font-family:var(--mono);font-size:9px;color:var(--text-dim)}
+
+.set-bulk{
+  margin-top:10px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;
+}
+.set-bulk-label{color:var(--text-dim);white-space:nowrap}
+.set-bulk-btn{
+  background:transparent;border:1px solid var(--border);color:var(--text-sec);
+  font-family:var(--mono);font-size:9px;padding:2px 8px;cursor:pointer;
+  font-weight:600;transition:all .1s;
+}
+.set-bulk-btn:hover{border-color:var(--yellow);color:var(--yellow)}
+.set-bulk-btn.active{border-color:var(--yellow);color:var(--yellow);background:rgba(250,204,21,.06)}
+
+@media(max-width:700px){
+  .rail{width:48px}
+  .s-branch,.s-info,.s-close,.repo-btn .repo-name,.repo-add-btn,.rename-toast{display:none}
+  .s-title{font-size:9px}
+  .sidecar{display:none}
+}
+</style>
+</head>
+<body>
+<div class="app" x-data="glue()" @keydown.window="handleKeys($event)" @click="closeDropdowns($event)">
+  <div class="accent-line"></div>
+  <div class="app-body">
+
+    <!-- ═══ Rail ═══ -->
+    <aside class="rail">
+      <!-- Repo switcher -->
+      <div class="repo-switch">
+        <button class="repo-btn" @click.stop="showRepoDD = !showRepoDD">
+          <span class="repo-icon">⬡</span>
+          <span class="repo-name" x-text="currentRepo().name"></span>
+          <span class="repo-chev">▼</span>
+        </button>
+        <button class="repo-add-btn" @click="openWizardAddRepo()" title="Add repo">+</button>
+
+        <template x-if="showRepoDD">
+          <div class="repo-dropdown" @click.stop>
+            <div class="repo-dd-search">
+              <input type="text" placeholder="search repos..." x-model="repoSearch" x-ref="repoSearchInput">
+            </div>
+            <template x-for="r in filteredRepos()" :key="r.path">
+              <div class="repo-dd-item" :class="r.path === activeRepoPath && 'active'" @click="switchRepo(r.path)">
+                <span class="dd-name" x-text="r.name"></span>
+                <span class="dd-badge" x-text="sessionsForRepo(r.path).length" x-show="sessionsForRepo(r.path).length > 0"></span>
+                <span class="dd-path" x-text="r.shortPath"></span>
+              </div>
+            </template>
+            <div class="repo-dd-item repo-dd-add" @click="showRepoDD = false; openWizardAddRepo()">
+              <span>+ Add repository...</span>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- New session -->
+      <button class="new-sess" @click="openModal('wizard')">+ new session</button>
+
+      <!-- Rename toast demo -->
+      <template x-for="s in sessionsForCurrentRepo().filter(s => s.renameProposal)" :key="s.id + '-rename'">
+        <div class="rename-toast">
+          <span class="old" x-text="s.tempName"></span>
+          <span class="arrow">→</span>
+          <span class="new" x-text="s.renameProposal"></span>
+          <div class="actions">
+            <button class="accept" @click="acceptRename(s)">✓</button>
+            <button @click="dismissRename(s)">✗</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Sessions for current repo -->
+      <div class="sess-list">
+        <template x-if="activeSessions().length > 0">
+          <div>
+            <div class="sess-group-head">
+              <span>Active</span>
+              <span class="count" x-text="activeSessions().length"></span>
+            </div>
+            <template x-for="s in activeSessions()" :key="s.id">
+              <div class="s-item" :class="activeId === s.id && 'active'" @click="switchTo(s.id)">
+                <div class="s-row">
+                  <span class="s-dot" :class="s.alive ? 'alive' : 'idle'"></span>
+                  <span class="s-title" x-text="s.title || s.tempName"></span>
+                </div>
+                <div class="s-branch">
+                  <span class="branch-icon">⑂</span>
+                  <span x-text="s.branch"></span>
+                </div>
+                <div class="s-info">
+                  <span x-text="s.model"></span>
+                  <span x-text="s.time"></span>
+                </div>
+                <button class="s-close" @click.stop="showWrapup = showWrapup === s.id ? null : s.id">⋯</button>
+                <template x-if="showWrapup === s.id">
+                  <div class="wrapup-menu" @click.stop>
+                    <div class="wrapup-item" @click="showWrapup = null"><span class="wi-icon">↗</span> Create PR</div>
+                    <div class="wrapup-item" @click="showWrapup = null"><span class="wi-icon">↓</span> Merge locally</div>
+                    <div class="wrapup-item" @click="archiveSession(s.id)"><span class="wi-icon">▪</span> Archive</div>
+                    <div class="wrapup-item danger" @click="deleteSession(s.id)"><span class="wi-icon">×</span> Delete worktree</div>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+        </template>
+
+        <template x-if="archivedSessions().length > 0">
+          <div>
+            <div class="sess-group-head" style="cursor:pointer" @click="showArchived = !showArchived">
+              <span>Archived</span>
+              <span class="count" x-text="archivedSessions().length"></span>
+            </div>
+            <template x-if="showArchived">
+              <div>
+                <template x-for="s in archivedSessions()" :key="s.id">
+                  <div class="s-item" :class="activeId === s.id && 'active'" @click="switchTo(s.id)">
+                    <div class="s-row">
+                      <span class="s-dot dead"></span>
+                      <span class="s-title" x-text="s.title || s.tempName"></span>
+                    </div>
+                    <div class="s-branch">
+                      <span class="branch-icon">⑂</span>
+                      <span x-text="s.branch"></span>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+
+      <div class="rail-foot">
+        <span class="conn-dot ok"></span>
+        <span>127.0.0.1:8787</span>
+        <button class="settings-btn" @click="openModal('settings')" title="Settings">⚙</button>
+      </div>
+    </aside>
+
+    <!-- ═══ Viewport ═══ -->
+    <div class="viewport">
+      <template x-if="activeSession()">
+        <div style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+          <div class="sidecar-wrap">
+            <div class="zone-output" x-ref="output">
+              <template x-for="(block, i) in activeSession().blocks" :key="i">
+                <div class="blk">
+                  <template x-if="block.type === 'user'">
+                    <div class="blk-user"><span class="pr">❯ </span><span class="msg" x-text="block.text"></span></div>
+                  </template>
+                  <template x-if="block.type === 'assistant'">
+                    <div class="blk-assistant" x-html="block.text + (block.streaming ? '<span class=\'t-cursor\'></span>' : '')"></div>
+                  </template>
+                  <template x-if="block.type === 'tool'">
+                    <div class="blk-tool">
+                      <div class="t-head">
+                        <span class="t-name" x-text="'▸ ' + block.name"></span>
+                        <span class="t-status" :class="block.status" x-text="block.status === 'needs-approval' ? '⏳ approve?' : block.status"></span>
+                      </div>
+                      <div class="t-args" x-text="block.args"></div>
+                      <div class="t-summary" x-text="block.summary"></div>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </div>
+            <template x-if="showSidecar">
+              <div class="sidecar">
+                <div class="sidecar-head"><span>Tools</span><span class="count" x-text="toolCalls().length"></span></div>
+                <div class="sidecar-list">
+                  <template x-for="(tc, i) in toolCalls()" :key="i">
+                    <div class="sc-item" :class="tc.status === 'needs-approval' && 'highlight'">
+                      <div class="sc-name" x-text="tc.name"></div>
+                      <div class="sc-path" x-text="tc.args"></div>
+                      <div class="sc-result" :class="tc.status" x-text="tc.summary || tc.status"></div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <template x-if="overlay.open">
+            <div class="zone-overlay">
+              <div class="overlay-head">
+                <span x-text="overlay.title"></span>
+                <span class="tag" x-text="overlay.tag"></span>
+              </div>
+              <div class="overlay-search">
+                <span class="slash">❯</span>
+                <input type="text" placeholder="type to filter..." x-model="overlay.query" @keydown.escape="overlay.open = false" x-ref="overlayInput">
+              </div>
+              <template x-for="(item, i) in filteredOverlayItems()" :key="i">
+                <div class="overlay-item" :class="overlay.selected === i && 'selected'" @click="executeOverlay(item)">
+                  <span class="key" x-text="item.key || ''"></span>
+                  <span x-text="item.label"></span>
+                </div>
+              </template>
+            </div>
+          </template>
+
+          <div class="zone-status">
+            <span x-text="'▸ ' + (activeSession().title || activeSession().tempName)"></span>
+            <span class="sep">│</span>
+            <span x-text="'⑂ ' + activeSession().branch"></span>
+            <span class="sep">│</span>
+            <span x-text="activeSession().provider + '/' + activeSession().model"></span>
+            <div class="right">
+              <span class="dim" x-text="activeSession().tokens + ' tok'"></span>
+              <span class="sep">│</span>
+              <span x-text="activeSession().time"></span>
+            </div>
+          </div>
+
+          <div class="zone-input" style="position:relative">
+            <template x-if="slashActive">
+              <div class="slash-popup">
+                <template x-for="(cmd, i) in slashMatches" :key="cmd.name">
+                  <div class="slash-item" :class="slashSelected === i && 'selected'"
+                       @mousedown.prevent="acceptSlash(cmd)">
+                    <span class="slash-cmd" x-text="'/' + cmd.name"></span>
+                    <span class="slash-desc" x-text="cmd.description"></span>
+                    <span class="slash-alias" x-show="cmd.aliases" x-text="cmd.aliases"></span>
+                  </div>
+                </template>
+              </div>
+            </template>
+            <span class="pr">❯</span>
+            <textarea x-ref="mainInput" rows="1" placeholder="message..." x-model="inputText"
+              @keydown="handleInputKeydown($event)"
+              @input="autoGrow($event.target); updateSlash()"></textarea>
+            <span class="input-hint">enter=send · /=commands · tab=accept</span>
+          </div>
+        </div>
+      </template>
+
+      <template x-if="!activeSession()">
+        <div class="empty">
+          <div class="glyph">❯_</div>
+          <div class="msg">no active session</div>
+          <div class="hint">press + or Ctrl+N to start</div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- ═══ Modals ═══ -->
+  <template x-if="modal.open">
+    <div class="modal-bg" @click.self="modal.open = false">
+
+      <!-- Session Wizard -->
+      <template x-if="modal.kind === 'wizard'">
+        <div class="panel" style="width:520px" @click.stop>
+          <div class="panel-head">
+            <span class="panel-title">▸ new session</span>
+            <div class="wiz-steps">
+              <span class="wiz-step" :class="{'active': modal.step >= 1, 'current': modal.step === 1}">repo</span>
+              <span class="wiz-sep">→</span>
+              <span class="wiz-step" :class="{'active': modal.step >= 2, 'current': modal.step === 2}">workspace</span>
+              <span class="wiz-sep">→</span>
+              <span class="wiz-step" :class="{'active': modal.step >= 3, 'current': modal.step === 3}">prompt</span>
+            </div>
+            <button class="panel-close" @click="modal.open = false">×</button>
+          </div>
+          <div class="panel-body">
+
+            <!-- Step 1: Repository -->
+            <template x-if="modal.step === 1">
+              <div>
+                <template x-if="!modal.repoMode">
+                  <div>
+                    <div class="f-group">
+                      <div class="f-label">Repository</div>
+                      <select class="f-select" x-model="modal.form.repoPath">
+                        <template x-for="r in repos" :key="r.path">
+                          <option :value="r.path" x-text="r.name + '  ·  ' + r.shortPath"></option>
+                        </template>
+                      </select>
+                    </div>
+                    <div class="f-toggle" @click="modal.repoMode = true; fbInit()" style="margin-top:-4px">
+                      <span class="arrow">▶</span>
+                      <span>+ Add new repository...</span>
+                    </div>
+                  </div>
+                </template>
+                <template x-if="modal.repoMode">
+                  <div>
+                    <div class="f-toggle" @click="modal.repoMode = false" style="margin-bottom:10px">
+                      <span class="arrow open">▶</span>
+                      <span>← Use existing repo</span>
+                    </div>
+                    <div class="f-group">
+                      <div class="f-label">Local Path</div>
+                      <div class="fb-path-row">
+                        <input class="f-input" type="text" placeholder="~/code/my-project"
+                          x-model="fb.path"
+                          @input="fbUpdatePath()"
+                          @keydown.tab="fb.suggestions.length && ($event.preventDefault(), fbAcceptSuggestion())"
+                          @keydown.enter.prevent="fbNavigateTo(fb.path)">
+                        <button class="fb-home-btn" @click="fbNavigateTo(fb.serverCwd)" title="Server working directory">⌂</button>
+                      </div>
+                      <div class="f-hint" x-show="fb.expandedPath && fb.expandedPath !== fb.path"
+                        x-text="'→ ' + fb.expandedPath"></div>
+                      <template x-if="fb.suggestions.length > 0">
+                        <div class="fb-suggestions">
+                          <template x-for="s in fb.suggestions" :key="s">
+                            <div class="fb-sugg-item" @click="fbAcceptPath(s)" x-text="s"></div>
+                          </template>
+                        </div>
+                      </template>
+                    </div>
+                    <div class="fb-tree" tabindex="0" x-ref="fbTree" @keydown="fbHandleKeys($event)">
+                      <div class="fb-breadcrumb">
+                        <template x-for="(part, i) in fbBreadcrumbs()" :key="i">
+                          <span>
+                            <span class="fb-bc-sep" x-show="i > 0">/</span>
+                            <span class="fb-bc-part" @click="fbNavigateTo(part.path)" x-text="part.name"></span>
+                          </span>
+                        </template>
+                      </div>
+                      <div class="fb-listing" x-ref="fbListing">
+                        <template x-if="fb.parentPath !== null">
+                          <div class="fb-item" :class="fb.cursor === 0 && 'selected'" @click="fbNavigateTo(fb.parentPath)">
+                            <span class="fb-chev">◂</span>
+                            <span class="fb-name">..</span>
+                          </div>
+                        </template>
+                        <template x-for="(item, idx) in fb.listing" :key="item.name">
+                          <div class="fb-item"
+                               :class="fb.cursor === idx + (fb.parentPath !== null ? 1 : 0) && 'selected'"
+                               @click="item.isDir ? fbNavigateTo(item.fullPath) : null">
+                            <span class="fb-chev" x-text="item.isDir ? '▸' : ''"></span>
+                            <span class="fb-name" :class="item.isDir && 'dir'" x-text="item.name"></span>
+                            <span class="fb-badge" x-show="item.hasGit">git</span>
+                          </div>
+                        </template>
+                        <template x-if="fb.listing.length === 0">
+                          <div class="fb-empty">empty directory</div>
+                        </template>
+                      </div>
+                    </div>
+                    <template x-if="fb.isGitRepo">
+                      <div class="fb-git-badge">
+                        <span class="fb-git-dot"></span>
+                        <span>Git repository detected</span>
+                      </div>
+                    </template>
+                    <div class="f-group" style="margin-top:14px;margin-bottom:0">
+                      <div class="f-label">Display Name</div>
+                      <input class="f-input" type="text" placeholder="auto-detected from folder" x-model="modal.form.addName">
+                      <div class="f-hint" x-text="fb.path ? 'Will use: ' + (modal.form.addName || fb.path.split('/').filter(Boolean).pop() || '') : ''"></div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </template>
+
+            <!-- Step 2: Workspace -->
+            <template x-if="modal.step === 2">
+              <div>
+                <div class="f-group">
+                  <div class="f-label">Workspace</div>
+                  <select class="f-select" x-model="modal.form.wsMode">
+                    <option value="new-worktree">New worktree (recommended)</option>
+                    <option value="existing-worktree">Existing worktree</option>
+                    <option value="main">Use repo root (no worktree)</option>
+                  </select>
+                </div>
+                <template x-if="modal.form.wsMode === 'new-worktree'">
+                  <div>
+                    <div class="wt-preview">
+                      <span class="wt-icon">⑂</span>
+                      <span class="wt-branch" x-text="'glue/' + modal.form.generatedName"></span>
+                      <span class="wt-path" x-text="'.worktrees/' + modal.form.generatedName"></span>
+                      <button class="wt-refresh" @click="modal.form.generatedName = generateName()" title="Regenerate name">↻</button>
+                    </div>
+                    <div class="f-hint">Branch auto-renames after a few messages based on context</div>
+                  </div>
+                </template>
+                <template x-if="modal.form.wsMode === 'existing-worktree'">
+                  <div class="f-group" style="margin-top:8px">
+                    <select class="f-select" x-model="modal.form.existingWt">
+                      <option value="">select worktree...</option>
+                      <template x-for="wt in worktreesFor(modal.form.repoPath)" :key="wt.branch">
+                        <option :value="wt.branch" x-text="'⑂ ' + wt.branch"></option>
+                      </template>
+                    </select>
+                  </div>
+                </template>
+                <hr class="f-divider">
+                <div class="f-row">
+                  <div class="f-group">
+                    <div class="f-label">Provider</div>
+                    <select class="f-select" x-model="modal.form.provider" @change="validateWizardModel()">
+                      <option value="anthropic">anthropic</option>
+                      <option value="openai">openai</option>
+                      <option value="google">google</option>
+                      <option value="ollama">ollama (local)</option>
+                    </select>
+                  </div>
+                  <div class="f-group">
+                    <div class="f-label">Model</div>
+                    <select class="f-select" x-model="modal.form.model">
+                      <template x-for="m in modelsFor(modal.form.provider)" :key="m">
+                        <option :value="m" x-text="m"></option>
+                      </template>
+                    </select>
+                  </div>
+                </div>
+                <template x-if="modal.form.wsMode === 'new-worktree'">
+                  <div class="f-group" style="margin-bottom:0">
+                    <div class="f-label">Base Branch</div>
+                    <select class="f-select" x-model="modal.form.baseBranch">
+                      <option value="main">main</option>
+                      <option value="HEAD">HEAD (current)</option>
+                    </select>
+                  </div>
+                </template>
+              </div>
+            </template>
+
+            <!-- Step 3: Prompt -->
+            <template x-if="modal.step === 3">
+              <div>
+                <div class="wiz-summary">
+                  <div class="ws-row"><span class="ws-label">Repo</span> <span class="ws-value" x-text="modal.form.repoPath.split('/').pop()"></span></div>
+                  <div class="ws-row"><span class="ws-label">Branch</span> <span class="ws-value" x-text="modal.form.wsMode === 'new-worktree' ? 'glue/' + modal.form.generatedName : modal.form.wsMode === 'main' ? 'main' : modal.form.existingWt || '...'"></span></div>
+                  <div class="ws-row"><span class="ws-label">Model</span> <span class="ws-value" x-text="modal.form.provider + '/' + modal.form.model"></span></div>
+                </div>
+                <div class="f-group" style="margin-bottom:0">
+                  <div class="f-label">Initial Prompt <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></div>
+                  <textarea class="f-textarea" rows="5" style="min-height:120px" placeholder="What should the agent work on?&#10;&#10;e.g. Refactor the auth module to use JWT refresh tokens..." x-model="modal.form.prompt"></textarea>
+                </div>
+              </div>
+            </template>
+
+          </div>
+          <div class="panel-foot">
+            <span class="foot-hint" x-text="wizardHint()"></span>
+            <button class="btn" x-show="modal.step > 1" @click="wizardBack()">back</button>
+            <button class="btn" @click="modal.open = false">cancel</button>
+            <button class="btn primary" x-show="modal.step < 3" @click="wizardNext()" :disabled="!wizardCanNext()">next</button>
+            <button class="btn primary" x-show="modal.step === 3" @click="createSession()">start</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Settings -->
+      <template x-if="modal.kind === 'settings'">
+        <div class="panel" style="width:480px" @click.stop>
+          <div class="panel-head">
+            <span class="panel-title">▸ settings</span>
+            <button class="panel-close" @click="modal.open = false">×</button>
+          </div>
+          <div class="panel-body" style="max-height:70vh;overflow-y:auto">
+
+            <!-- Section 1: Global Defaults -->
+            <div class="set-section">
+              <div class="set-section-head"><span class="set-icon">◆</span> Global Defaults</div>
+              <div class="f-row">
+                <div class="f-group">
+                  <div class="f-label">Provider</div>
+                  <select class="f-select" x-model="config.globalDefaults.provider" @change="validateGlobalModel()">
+                    <option value="anthropic">anthropic</option>
+                    <option value="openai">openai</option>
+                    <option value="google">google</option>
+                    <option value="ollama">ollama (local)</option>
+                  </select>
+                </div>
+                <div class="f-group">
+                  <div class="f-label">Model</div>
+                  <select class="f-select" x-model="config.globalDefaults.model">
+                    <template x-for="m in modelsFor(config.globalDefaults.provider)" :key="m">
+                      <option :value="m" x-text="m"></option>
+                    </template>
+                  </select>
+                </div>
+              </div>
+              <div class="f-row">
+                <div class="f-group">
+                  <div class="f-label">Workspace Mode</div>
+                  <select class="f-select" x-model="config.globalDefaults.wsMode">
+                    <option value="new-worktree">New worktree</option>
+                    <option value="existing-worktree">Existing worktree</option>
+                    <option value="main">Repo root (no worktree)</option>
+                  </select>
+                </div>
+                <div class="f-group">
+                  <div class="f-label">Base Branch</div>
+                  <select class="f-select" x-model="config.globalDefaults.baseBranch">
+                    <option value="main">main</option>
+                    <option value="master">master</option>
+                    <option value="develop">develop</option>
+                    <option value="HEAD">HEAD (current)</option>
+                  </select>
+                  <div class="f-hint">Fallback when repo has no override</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 2: Per-Repo Overrides -->
+            <div class="set-section">
+              <div class="set-section-head"><span class="set-icon">⬡</span> Per-Repo Overrides</div>
+
+              <!-- Repo picker -->
+              <div class="set-repo-picker">
+                <select class="f-select" x-model="settingsRepoPath">
+                  <template x-for="r in repos" :key="r.path">
+                    <option :value="r.path" x-text="r.name + '  ·  ' + r.shortPath"></option>
+                  </template>
+                </select>
+              </div>
+
+              <template x-if="settingsRepo()">
+                <div>
+                  <!-- Base Branch override -->
+                  <div class="set-override">
+                    <div class="set-override-toggle" :class="hasOverride('baseBranch') && 'on'"
+                         @click="toggleOverride('baseBranch', config.globalDefaults.baseBranch)">✓</div>
+                    <div class="set-override-field">
+                      <div class="f-label">Base Branch</div>
+                      <select class="f-select" :disabled="!hasOverride('baseBranch')"
+                              :value="getOverride('baseBranch')" @change="setOverride('baseBranch', $event.target.value)">
+                        <option value="main">main</option>
+                        <option value="master">master</option>
+                        <option value="develop">develop</option>
+                        <option value="HEAD">HEAD (current)</option>
+                      </select>
+                      <div class="set-override-hint" x-show="!hasOverride('baseBranch')"
+                           x-text="'Using global: ' + config.globalDefaults.baseBranch"></div>
+                      <div class="set-override-hint" x-show="settingsRepo().detected?.defaultBranch"
+                           x-text="'Detected: ' + (settingsRepo().detected?.defaultBranch || '')"></div>
+                    </div>
+                  </div>
+
+                  <!-- Provider override -->
+                  <div class="set-override">
+                    <div class="set-override-toggle" :class="hasOverride('provider') && 'on'"
+                         @click="toggleOverride('provider', config.globalDefaults.provider); if(!hasOverride('provider')) clearOverride('model')">✓</div>
+                    <div class="set-override-field">
+                      <div class="f-label">Provider</div>
+                      <select class="f-select" :disabled="!hasOverride('provider')"
+                              :value="getOverride('provider')" @change="setOverride('provider', $event.target.value); validateRepoModel()">
+                        <option value="anthropic">anthropic</option>
+                        <option value="openai">openai</option>
+                        <option value="google">google</option>
+                        <option value="ollama">ollama (local)</option>
+                      </select>
+                      <div class="set-override-hint" x-show="!hasOverride('provider')"
+                           x-text="'Using global: ' + config.globalDefaults.provider"></div>
+                    </div>
+                  </div>
+
+                  <!-- Model override -->
+                  <div class="set-override">
+                    <div class="set-override-toggle" :class="hasOverride('model') && 'on'"
+                         @click="toggleOverride('model', effectiveForRepo('model'))">✓</div>
+                    <div class="set-override-field">
+                      <div class="f-label">Model</div>
+                      <select class="f-select" :disabled="!hasOverride('model')"
+                              :value="getOverride('model')" @change="setOverride('model', $event.target.value)">
+                        <template x-for="m in modelsFor(effectiveForRepo('provider'))" :key="m">
+                          <option :value="m" x-text="m"></option>
+                        </template>
+                      </select>
+                      <div class="set-override-hint" x-show="!hasOverride('model')"
+                           x-text="'Using global: ' + config.globalDefaults.model"></div>
+                    </div>
+                  </div>
+
+                  <!-- Workspace mode override -->
+                  <div class="set-override">
+                    <div class="set-override-toggle" :class="hasOverride('wsMode') && 'on'"
+                         @click="toggleOverride('wsMode', config.globalDefaults.wsMode)">✓</div>
+                    <div class="set-override-field">
+                      <div class="f-label">Workspace Mode</div>
+                      <select class="f-select" :disabled="!hasOverride('wsMode')"
+                              :value="getOverride('wsMode')" @change="setOverride('wsMode', $event.target.value)">
+                        <option value="new-worktree">New worktree</option>
+                        <option value="existing-worktree">Existing worktree</option>
+                        <option value="main">Repo root (no worktree)</option>
+                      </select>
+                      <div class="set-override-hint" x-show="!hasOverride('wsMode')"
+                           x-text="'Using global: ' + config.globalDefaults.wsMode"></div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+
+              <!-- Bulk actions -->
+              <div class="set-bulk">
+                <span class="set-bulk-label">Set all base branches:</span>
+                <button class="set-bulk-btn" @click="bulkSetBaseBranch('main')">main</button>
+                <button class="set-bulk-btn" @click="bulkSetBaseBranch('master')">master</button>
+                <button class="set-bulk-btn" @click="bulkSetBaseBranch('develop')">develop</button>
+                <button class="set-bulk-btn" @click="bulkClearOverride('baseBranch')" style="margin-left:auto">clear all</button>
+              </div>
+            </div>
+
+          </div>
+          <div class="panel-foot">
+            <span class="foot-hint">Saved to browser storage</span>
+            <button class="btn" @click="modal.open = false">close</button>
+            <button class="btn primary" @click="saveConfig()">save</button>
+          </div>
+        </div>
+      </template>
+
+    </div>
+  </template>
+</div>
+
+<script>
+// ── Name generator ──
+const ADJECTIVES = ['swift','bold','calm','dark','keen','warm','cool','wild','soft','fast','bright','quiet','sharp','vivid','pale','dry','raw','slim','tall','deep'];
+const COLORS = ['red','blue','jade','gold','teal','plum','sage','rust','mint','rose','amber','coral','slate','ivory','onyx','opal','lime','pine','sand','dusk'];
+const ANIMALS = ['fox','owl','elk','ram','jay','eel','yak','cod','ant','bee','cat','dog','bat','hen','pig','ray','ape','gnu','koi','pug'];
+
+function generateName() {
+  const a = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
+  const c = COLORS[Math.floor(Math.random() * COLORS.length)];
+  const n = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
+  return a + '-' + c + '-' + n;
+}
+
+function glue() {
+  let nextId = 100;
+
+  return {
+    activeId: 'S-01',
+    activeRepoPath: '~/code/glue',
+    showSidecar: true,
+    showRepoDD: false,
+    showWrapup: null,
+    showArchived: false,
+    repoSearch: '',
+    inputText: '',
+
+    // Slash completion
+    slashCommands: [
+      { name: 'help', description: 'Show available commands and keybindings', aliases: '' },
+      { name: 'clear', description: 'Clear conversation history', aliases: '' },
+      { name: 'exit', description: 'Exit session', aliases: 'quit, q' },
+      { name: 'model', description: 'Show or set the current model', aliases: '' },
+      { name: 'info', description: 'Show session info', aliases: 'status' },
+      { name: 'tools', description: 'List available tools', aliases: '' },
+      { name: 'history', description: 'Show input history', aliases: '' },
+      { name: 'compact', description: 'Compact conversation context', aliases: '' },
+      { name: 'approve', description: 'Approve pending tool calls', aliases: '' },
+    ],
+    slashActive: false,
+    slashMatches: [],
+    slashSelected: 0,
+
+    // Layered config (localStorage-backed)
+    config: JSON.parse(localStorage.getItem('glue-config') || 'null') || {
+      globalDefaults: {
+        provider: 'anthropic',
+        model: 'claude-4-sonnet',
+        wsMode: 'new-worktree',
+        baseBranch: 'main',
+      },
+    },
+
+    // Settings modal: which repo is selected
+    settingsRepoPath: '~/code/glue',
+
+    // File browser
+    fb: {
+      path: '~/code',
+      currentDir: '~/code',
+      serverCwd: '~/code',
+      serverHome: '/Users/helge',
+      listing: [],
+      suggestions: [],
+      parentPath: null,
+      isGitRepo: false,
+      expandedPath: '/Users/helge/code',
+      cursor: 0,
+    },
+
+    mockFs: {
+      '~': { dirs: ['code', 'Documents', 'Desktop', 'Downloads', '.config', '.glue'], files: ['.zshrc', '.gitconfig'] },
+      '~/code': { dirs: ['glue', 'api-server', 'docs', 'personal', 'experiments', 'oss'], files: [] },
+      '~/code/glue': { dirs: ['.git', 'cli', 'website', 'agents', '.conductor'], files: ['README.md', 'justfile', '.gitignore'] },
+      '~/code/glue/cli': { dirs: ['lib', 'test', 'bin'], files: ['pubspec.yaml', 'analysis_options.yaml'] },
+      '~/code/api-server': { dirs: ['.git', 'src', 'tests', 'node_modules'], files: ['package.json', 'README.md', 'tsconfig.json'] },
+      '~/code/docs': { dirs: ['.git', 'content', 'static', 'layouts'], files: ['hugo.toml', 'README.md'] },
+      '~/code/personal': { dirs: ['notes', 'scripts', 'dotfiles'], files: [] },
+      '~/code/personal/notes': { dirs: ['.git', 'daily', 'archive'], files: ['ideas.md'] },
+      '~/code/personal/dotfiles': { dirs: ['.git', 'nvim', 'zsh', 'tmux'], files: ['install.sh', 'README.md'] },
+      '~/code/experiments': { dirs: ['ml-sandbox', 'rust-playground'], files: [] },
+      '~/code/experiments/ml-sandbox': { dirs: ['.git', 'models', 'data'], files: ['requirements.txt'] },
+      '~/code/oss': { dirs: ['neovim', 'alacritty'], files: [] },
+      '~/code/oss/neovim': { dirs: ['.git', 'src', 'runtime'], files: ['CMakeLists.txt'] },
+    },
+
+    overlay: { open: false, title: '', tag: '', query: '', items: [], selected: 0 },
+
+    modal: {
+      open: false,
+      kind: 'wizard',
+      step: 1,
+      repoMode: false,
+      form: {
+        repoPath: '~/code/glue',
+        wsMode: 'new-worktree',
+        existingWt: '',
+        generatedName: generateName(),
+        baseBranch: 'main',
+        provider: 'anthropic',
+        model: 'claude-4-sonnet',
+        prompt: '',
+        showAdvanced: false,
+        addPath: '',
+        addName: '',
+      },
+    },
+
+    repos: [
+      { name: 'glue', path: '~/code/glue', shortPath: '~/code/glue', detected: { defaultBranch: 'main' }, overrides: {} },
+      { name: 'api-server', path: '~/code/api-server', shortPath: '~/code/api-server', detected: { defaultBranch: 'main' }, overrides: { baseBranch: 'develop' } },
+      { name: 'docs-site', path: '~/code/docs', shortPath: '~/code/docs', detected: { defaultBranch: 'master' }, overrides: { baseBranch: 'master', provider: 'ollama', model: 'llama4' } },
+    ],
+
+    providerModels: {
+      anthropic: ['claude-4-sonnet', 'claude-4-opus', 'claude-4-haiku'],
+      openai: ['gpt-5', 'gpt-4.1', 'o3'],
+      google: ['gemini-3-pro', 'gemini-3-flash'],
+      ollama: ['llama4', 'qwen3:32b', 'deepseek-r2:14b'],
+    },
+
+    worktrees: [
+      { repo: '~/code/glue', branch: 'feat/tui-overhaul', path: '.worktrees/feat-tui-overhaul' },
+      { repo: '~/code/glue', branch: 'feat/mcp-support', path: '.worktrees/feat-mcp-support' },
+      { repo: '~/code/api-server', branch: 'feat/auth', path: '.worktrees/feat-auth' },
+    ],
+
+    sessions: [
+      {
+        id: 'S-01', repo: '~/code/glue', branch: 'glue/swift-jade-fox', tempName: 'swift-jade-fox',
+        title: null, renameProposal: 'feat/screen-buffer-diffing',
+        model: 'claude-4-sonnet', provider: 'anthropic',
+        alive: true, archived: false, time: '2m ago', tokens: 4521,
+        blocks: [
+          { type: 'user', text: 'implement the screen buffer with diff-based rendering', ts: '15:12:01' },
+          { type: 'assistant', text: 'I\'ll implement a virtual screen buffer that tracks changes between frames for flicker-free rendering.\n\nLet me first look at the current terminal implementation.', streaming: false },
+          { type: 'tool', name: 'read_file', args: 'lib/src/terminal/terminal.dart', status: 'ok', summary: '✓ 156 lines read' },
+          { type: 'assistant', text: 'Now I\'ll create the ScreenBuffer class with a Cell-based grid system.\n\nEach cell stores a character and its style. We keep two buffers — current and previous — and only write the diff to the real terminal.', streaming: false },
+          { type: 'tool', name: 'write_file', args: 'lib/src/terminal/screen_buffer.dart', status: 'ok', summary: '✓ created (89 lines)' },
+          { type: 'assistant', text: 'Created the screen buffer. The key method is `flush()` which compares `_current` against `_previous` and only emits ANSI escape sequences for cells that changed.\n\nThis eliminates flicker during streaming output. Want me to update the Layout class to use this buffer?', streaming: false },
+        ],
+      },
+      {
+        id: 'S-02', repo: '~/code/glue', branch: 'glue/bold-teal-owl', tempName: 'bold-teal-owl',
+        title: 'MCP server discovery', renameProposal: null,
+        model: 'claude-4-sonnet', provider: 'anthropic',
+        alive: true, archived: false, time: '1m ago', tokens: 1892,
+        blocks: [
+          { type: 'user', text: 'add MCP server discovery and connection management', ts: '15:14:22' },
+          { type: 'assistant', text: 'I\'ll add MCP server discovery. Let me check the existing configuration...', streaming: true },
+          { type: 'tool', name: 'read_file', args: '.glue/mcp.json', status: 'ok', summary: '✓ 24 lines' },
+        ],
+      },
+      {
+        id: 'S-03', repo: '~/code/glue', branch: 'glue/calm-red-elk', tempName: 'calm-red-elk',
+        title: null, renameProposal: null,
+        model: 'gpt-5', provider: 'openai',
+        alive: true, archived: false, time: '3m ago', tokens: 3107,
+        blocks: [
+          { type: 'user', text: 'fix the UTF-8 multi-byte character parsing bug in terminal input', ts: '15:11:44' },
+          { type: 'assistant', text: 'Found the issue — `_decodeUtf8Char` doesn\'t handle surrogate pairs correctly. Applied the fix.', streaming: false },
+          { type: 'tool', name: 'edit_file', args: 'lib/src/input/line_editor.dart', status: 'ok', summary: '✓ 3 lines changed' },
+          { type: 'tool', name: 'bash', args: 'dart analyze lib/', status: 'needs-approval', summary: '⏳ awaiting approval' },
+        ],
+      },
+      {
+        id: 'S-04', repo: '~/code/api-server', branch: 'glue/keen-amber-jay', tempName: 'keen-amber-jay',
+        title: 'JWT auth middleware', renameProposal: null,
+        model: 'claude-4-sonnet', provider: 'anthropic',
+        alive: true, archived: false, time: '1m ago', tokens: 2890,
+        blocks: [
+          { type: 'user', text: 'implement JWT authentication middleware with refresh token rotation', ts: '15:13:55' },
+          { type: 'assistant', text: 'Creating the middleware with RS256 JWT verification and automatic refresh token rotation...', streaming: true },
+        ],
+      },
+      {
+        id: 'S-05', repo: '~/code/glue', branch: 'glue/warm-plum-ant', tempName: 'warm-plum-ant',
+        title: 'README update', renameProposal: null,
+        model: 'claude-4-haiku', provider: 'anthropic',
+        alive: false, archived: true, time: '20m ago', tokens: 987,
+        blocks: [
+          { type: 'user', text: 'update the README with install instructions', ts: '15:02:11' },
+          { type: 'assistant', text: 'Done. Updated README.md with installation via `dart pub global activate`, quick start guide, and architecture overview.', streaming: false },
+        ],
+      },
+    ],
+
+    // ── Repo helpers ──
+    currentRepo() { return this.repos.find(r => r.path === this.activeRepoPath) || this.repos[0]; },
+    filteredRepos() {
+      if (!this.repoSearch) return this.repos;
+      const q = this.repoSearch.toLowerCase();
+      return this.repos.filter(r => r.name.toLowerCase().includes(q) || r.path.toLowerCase().includes(q));
+    },
+    switchRepo(path) {
+      this.activeRepoPath = path;
+      this.showRepoDD = false;
+      this.repoSearch = '';
+      const s = this.sessionsForRepo(path).find(s => s.alive);
+      if (s) this.activeId = s.id;
+      else this.activeId = null;
+    },
+    sessionsForRepo(path) { return this.sessions.filter(s => s.repo === path); },
+    sessionsForCurrentRepo() { return this.sessionsForRepo(this.activeRepoPath); },
+    activeSessions() { return this.sessionsForCurrentRepo().filter(s => !s.archived); },
+    archivedSessions() { return this.sessionsForCurrentRepo().filter(s => s.archived); },
+    worktreesFor(repo) { return this.worktrees.filter(w => w.repo === repo); },
+    modelsFor(provider) { return this.providerModels[provider] || []; },
+
+    // ── Session helpers ──
+    activeSession() { return this.sessions.find(s => s.id === this.activeId) || null; },
+    toolCalls() { const s = this.activeSession(); return s ? s.blocks.filter(b => b.type === 'tool') : []; },
+    switchTo(id) { this.activeId = id; },
+
+    // ── Actions ──
+    // ── Settings resolution ──
+    effectiveSettings(repoPath) {
+      const repo = this.repos.find(r => r.path === repoPath);
+      return { ...this.config.globalDefaults, ...(repo?.overrides ?? {}) };
+    },
+
+    openModal(kind) {
+      this.modal.kind = kind;
+      this.modal.open = true;
+      if (kind === 'wizard') {
+        this.modal.step = 1;
+        this.modal.repoMode = false;
+        this.modal.form.repoPath = this.activeRepoPath;
+        const eff = this.effectiveSettings(this.activeRepoPath);
+        this.modal.form.wsMode = eff.wsMode;
+        this.modal.form.existingWt = '';
+        this.modal.form.generatedName = generateName();
+        this.modal.form.baseBranch = eff.baseBranch;
+        this.modal.form.provider = eff.provider;
+        this.modal.form.model = eff.model;
+        if (!this.modelsFor(this.modal.form.provider).includes(this.modal.form.model)) {
+          this.modal.form.model = this.modelsFor(this.modal.form.provider)[0];
+        }
+        this.modal.form.prompt = '';
+        this.modal.form.addName = '';
+      }
+      if (kind === 'settings') {
+        this.settingsRepoPath = this.activeRepoPath;
+      }
+    },
+
+    openWizardAddRepo() {
+      this.openModal('wizard');
+      this.modal.repoMode = true;
+      this.fbInit();
+    },
+
+    createSession() {
+      const f = this.modal.form;
+      let branch, tempName;
+      if (f.wsMode === 'new-worktree') {
+        branch = 'glue/' + f.generatedName;
+        tempName = f.generatedName;
+        this.worktrees.push({ repo: f.repoPath, branch, path: '.worktrees/' + f.generatedName });
+      } else if (f.wsMode === 'existing-worktree') {
+        branch = f.existingWt;
+        tempName = f.existingWt.split('/').pop();
+      } else {
+        branch = 'main';
+        tempName = 'main';
+      }
+      const id = 'S-' + (nextId++).toString(16).padStart(2, '0');
+      const s = {
+        id, repo: f.repoPath, branch, tempName,
+        title: null, renameProposal: null,
+        model: f.model, provider: f.provider,
+        alive: true, archived: false, time: 'now', tokens: 0,
+        blocks: f.prompt
+          ? [{ type: 'user', text: f.prompt }, { type: 'assistant', text: 'Looking at your project...', streaming: true }]
+          : [],
+      };
+      this.sessions.push(s);
+      this.activeRepoPath = f.repoPath;
+      this.activeId = s.id;
+      this.modal.open = false;
+      this.$nextTick(() => {
+        const el = this.$refs.mainInput;
+        if (el) { el.focus(); this.autoGrow(el); }
+      });
+    },
+
+    addRepo() {
+      const f = this.modal.form;
+      const name = f.addName || f.addPath.split('/').pop();
+      this.repos.push({ name, path: f.addPath, shortPath: f.addPath, detected: { defaultBranch: 'main' }, overrides: {} });
+      this.activeRepoPath = f.addPath;
+      this.modal.open = false;
+      this.$nextTick(() => this.openModal('newSession'));
+    },
+
+    addRepoFromBrowser() {
+      const path = this.fb.path;
+      const name = this.modal.form.addName || path.split('/').filter(Boolean).pop();
+      this.repos.push({ name, path, shortPath: path, detected: { defaultBranch: 'main' }, overrides: {} });
+      this.activeRepoPath = path;
+      this.modal.open = false;
+      this.$nextTick(() => this.openModal('newSession'));
+    },
+
+    acceptRename(s) {
+      s.branch = s.renameProposal;
+      s.title = s.renameProposal.replace(/^(feat|fix|refactor|docs|chore)\//, '').replace(/-/g, ' ');
+      s.renameProposal = null;
+    },
+    dismissRename(s) { s.renameProposal = null; },
+
+    archiveSession(id) {
+      const s = this.sessions.find(s => s.id === id);
+      if (s) { s.archived = true; s.alive = false; }
+      this.showWrapup = null;
+      if (this.activeId === id) {
+        const next = this.activeSessions().find(s => s.id !== id);
+        this.activeId = next?.id || null;
+      }
+    },
+    deleteSession(id) {
+      this.sessions = this.sessions.filter(s => s.id !== id);
+      this.showWrapup = null;
+      if (this.activeId === id) this.activeId = this.activeSessions()[0]?.id || null;
+    },
+
+    sendMessage() {
+      if (!this.inputText.trim() || !this.activeSession()) return;
+      const s = this.activeSession();
+      const text = this.inputText.trim();
+
+      // Handle slash commands
+      if (text.startsWith('/')) {
+        const cmdName = text.substring(1).split(/\s+/)[0].toLowerCase();
+        const cmd = this.slashCommands.find(c =>
+          c.name === cmdName || (c.aliases && c.aliases.split(', ').includes(cmdName))
+        );
+        if (cmd) {
+          s.blocks.forEach(b => { if (b.streaming) b.streaming = false; });
+          s.blocks.push({ type: 'user', text });
+          s.blocks.push({ type: 'assistant', text: this.executeSlashCommand(cmd.name, s), streaming: false });
+          this.inputText = '';
+          this.slashActive = false;
+          this.$nextTick(() => { const el = this.$refs.mainInput; if (el) this.autoGrow(el); });
+          return;
+        }
+      }
+
+      s.blocks.forEach(b => { if (b.streaming) b.streaming = false; });
+      s.blocks.push({ type: 'user', text });
+      s.blocks.push({ type: 'assistant', text: 'Processing...', streaming: true });
+      s.time = 'now';
+      this.inputText = '';
+      this.$nextTick(() => { const el = this.$refs.mainInput; if (el) this.autoGrow(el); });
+      // Simulate auto-rename after 3rd user message
+      const userMsgs = s.blocks.filter(b => b.type === 'user').length;
+      if (userMsgs >= 3 && !s.title && !s.renameProposal && s.branch.startsWith('glue/')) {
+        setTimeout(() => {
+          const words = s.blocks.filter(b => b.type === 'user').map(b => b.text).join(' ');
+          const slug = words.split(/\s+/).slice(0, 3).join('-').toLowerCase().replace(/[^a-z0-9-]/g, '');
+          s.renameProposal = 'feat/' + slug;
+        }, 500);
+      }
+    },
+
+    executeSlashCommand(name, s) {
+      switch (name) {
+        case 'help': return '/help      Show available commands\n/clear     Clear conversation\n/exit      Exit session\n/model     Show/set model\n/info      Session info\n/tools     List tools\n/history   Input history\n/compact   Compact context\n/approve   Approve tool calls';
+        case 'clear': return '✓ Conversation cleared.';
+        case 'info': case 'status': return `Session: ${s.tempName}\nBranch: ${s.branch}\nModel: ${s.provider}/${s.model}\nTokens: ${s.tokens}`;
+        case 'model': return `Current model: ${s.provider}/${s.model}`;
+        case 'tools': return 'Available tools:\n  read_file     Read file contents\n  write_file    Write to file\n  edit_file     Edit file\n  bash          Run shell command\n  glob          Find files\n  grep          Search in files';
+        case 'history': return 'Input history:\n  ' + s.blocks.filter(b => b.type === 'user').map(b => b.text).join('\n  ');
+        case 'compact': return '✓ Context compacted. Removed 12 tool results.';
+        case 'approve': return '✓ All pending tool calls approved.';
+        case 'exit': return '✓ Session ended.';
+        default: return `Unknown command: /${name}`;
+      }
+    },
+
+    // ── Keyboard / palette ──
+    openPalette() {
+      this.overlay.title = 'Command Palette';
+      this.overlay.tag = '/';
+      this.overlay.query = '';
+      this.overlay.selected = 0;
+      this.overlay.items = [
+        { key: 'n', label: 'New session', action: () => this.openModal('wizard') },
+        { key: 'r', label: 'Switch repo', action: () => { this.showRepoDD = true; this.$nextTick(() => this.$refs.repoSearchInput?.focus()); } },
+        { key: 't', label: 'Toggle tool sidecar', action: () => { this.showSidecar = !this.showSidecar; } },
+        { key: 's', label: 'Settings', action: () => this.openModal('settings') },
+        ...this.sessions.filter(s => !s.archived).map(s => ({
+          key: '', label: (s.title || s.tempName) + ' · ' + s.model,
+          action: () => { this.activeRepoPath = s.repo; this.switchTo(s.id); },
+        })),
+      ];
+      this.overlay.open = true;
+      this.$nextTick(() => this.$refs.overlayInput?.focus());
+    },
+    filteredOverlayItems() {
+      if (!this.overlay.query) return this.overlay.items;
+      const q = this.overlay.query.toLowerCase();
+      return this.overlay.items.filter(i => i.label.toLowerCase().includes(q));
+    },
+    executeOverlay(item) { if (item.action) item.action(); this.overlay.open = false; },
+
+    handleKeys(e) {
+      if (this.modal.open) { if (e.key === 'Escape') { this.modal.open = false; e.preventDefault(); } return; }
+      if (this.overlay.open) {
+        if (e.key === 'Escape') { this.overlay.open = false; e.preventDefault(); }
+        else if (e.key === 'ArrowDown') { this.overlay.selected = Math.min(this.overlay.selected + 1, this.filteredOverlayItems().length - 1); e.preventDefault(); }
+        else if (e.key === 'ArrowUp') { this.overlay.selected = Math.max(this.overlay.selected - 1, 0); e.preventDefault(); }
+        else if (e.key === 'Enter') { const items = this.filteredOverlayItems(); if (items[this.overlay.selected]) this.executeOverlay(items[this.overlay.selected]); e.preventDefault(); }
+        return;
+      }
+      if (this.showRepoDD && e.key === 'Escape') { this.showRepoDD = false; e.preventDefault(); return; }
+      const tag = e.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.key === '/') { e.preventDefault(); this.openPalette(); }
+      else if (e.key === 't') this.showSidecar = !this.showSidecar;
+      else if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); this.openModal('wizard'); }
+    },
+
+    closeDropdowns(e) { this.showRepoDD = false; this.showWrapup = null; },
+
+    autoGrow(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 140) + 'px'; },
+
+    // ── Slash completion ──
+    updateSlash() {
+      const text = this.inputText;
+      if (!text.startsWith('/') || /\s/.test(text.slice(1))) {
+        this.slashActive = false;
+        this.slashMatches = [];
+        this.slashSelected = 0;
+        return;
+      }
+      const prefix = text.substring(1).toLowerCase();
+      const matches = this.slashCommands.filter(cmd =>
+        cmd.name.startsWith(prefix) ||
+        (cmd.aliases && cmd.aliases.split(', ').some(a => a.startsWith(prefix)))
+      );
+      if (matches.length > 0) {
+        this.slashActive = true;
+        this.slashMatches = matches;
+        this.slashSelected = Math.min(this.slashSelected, matches.length - 1);
+      } else {
+        this.slashActive = false;
+        this.slashMatches = [];
+        this.slashSelected = 0;
+      }
+    },
+
+    acceptSlash(cmd) {
+      this.inputText = '/' + cmd.name + ' ';
+      this.slashActive = false;
+      this.slashMatches = [];
+      this.slashSelected = 0;
+      this.$nextTick(() => {
+        const el = this.$refs.mainInput;
+        if (el) { el.focus(); this.autoGrow(el); }
+      });
+    },
+
+    handleInputKeydown(e) {
+      if (this.slashActive && this.slashMatches.length > 0) {
+        switch (e.key) {
+          case 'ArrowUp':
+            e.preventDefault();
+            this.slashSelected = (this.slashSelected - 1 + this.slashMatches.length) % this.slashMatches.length;
+            return;
+          case 'ArrowDown':
+            e.preventDefault();
+            this.slashSelected = (this.slashSelected + 1) % this.slashMatches.length;
+            return;
+          case 'Tab':
+            e.preventDefault();
+            this.acceptSlash(this.slashMatches[this.slashSelected]);
+            return;
+          case 'Enter':
+            if (!e.shiftKey) {
+              e.preventDefault();
+              this.acceptSlash(this.slashMatches[this.slashSelected]);
+              return;
+            }
+            break;
+          case 'Escape':
+            e.preventDefault();
+            this.slashActive = false;
+            return;
+        }
+      }
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        this.sendMessage();
+      }
+    },
+
+    // ── File browser ──
+    fbInit() {
+      this.fb.path = this.fb.serverCwd;
+      this.fb.currentDir = this.fb.serverCwd;
+      this.fb.suggestions = [];
+      this.fb.isGitRepo = false;
+      this.fb.expandedPath = this.fbExpandTilde(this.fb.serverCwd);
+      this.fbNavigateTo(this.fb.serverCwd);
+    },
+
+    fbExpandTilde(path) {
+      if (path.startsWith('~/')) return this.fb.serverHome + path.substring(1);
+      if (path === '~') return this.fb.serverHome;
+      return path;
+    },
+
+    fbNavigateTo(path) {
+      path = path.replace(/\/+$/, '') || '~';
+      this.fb.path = path;
+      this.fb.currentDir = path;
+      this.fb.expandedPath = this.fbExpandTilde(path);
+      this.fb.suggestions = [];
+      this.fb.cursor = 0;
+
+      const parts = path.split('/');
+      this.fb.parentPath = parts.length > 1 ? parts.slice(0, -1).join('/') || '~' : null;
+      if (path === '~') this.fb.parentPath = null;
+
+      const entry = this.mockFs[path];
+      if (entry) {
+        this.fb.listing = [];
+        for (const d of entry.dirs) {
+          if (d === '.git') continue;
+          const childPath = path + '/' + d;
+          const childEntry = this.mockFs[childPath];
+          const hasGit = childEntry ? childEntry.dirs.includes('.git') : false;
+          this.fb.listing.push({ name: d + '/', isDir: true, fullPath: childPath, hasGit });
+        }
+        for (const f of entry.files) {
+          this.fb.listing.push({ name: f, isDir: false, fullPath: path + '/' + f, hasGit: false });
+        }
+        this.fb.isGitRepo = entry.dirs.includes('.git');
+      } else {
+        this.fb.listing = [];
+        this.fb.isGitRepo = false;
+      }
+    },
+
+    fbUpdatePath() {
+      const path = this.fb.path.replace(/\/+$/, '') || '~';
+      this.fb.expandedPath = this.fbExpandTilde(path);
+
+      const lastSlash = path.lastIndexOf('/');
+      if (lastSlash >= 0) {
+        const parentDir = path.substring(0, lastSlash) || '~';
+        const partial = path.substring(lastSlash + 1).toLowerCase();
+        const parentEntry = this.mockFs[parentDir];
+        if (parentEntry && partial) {
+          this.fb.suggestions = parentEntry.dirs
+            .filter(d => d !== '.git' && d.toLowerCase().startsWith(partial))
+            .map(d => parentDir + '/' + d);
+        } else {
+          this.fb.suggestions = [];
+        }
+      } else {
+        this.fb.suggestions = [];
+      }
+
+      if (this.mockFs[path]) {
+        this.fbNavigateTo(path);
+      }
+    },
+
+    fbAcceptSuggestion() {
+      if (this.fb.suggestions.length > 0) {
+        this.fbAcceptPath(this.fb.suggestions[0]);
+      }
+    },
+
+    fbAcceptPath(path) {
+      this.fb.path = path;
+      this.fb.suggestions = [];
+      this.fbNavigateTo(path);
+    },
+
+    fbBreadcrumbs() {
+      const path = this.fb.currentDir;
+      if (!path || path === '~') return [{ name: '~', path: '~' }];
+      const parts = path.split('/');
+      const crumbs = [];
+      let accumulated = '';
+      for (let i = 0; i < parts.length; i++) {
+        accumulated = i === 0 ? parts[0] : accumulated + '/' + parts[i];
+        crumbs.push({ name: parts[i], path: accumulated });
+      }
+      return crumbs;
+    },
+
+    fbHandleKeys(e) {
+      const hasParent = this.fb.parentPath !== null;
+      const totalItems = this.fb.listing.length + (hasParent ? 1 : 0);
+      if (totalItems === 0) return;
+
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault();
+          this.fb.cursor = Math.max(0, this.fb.cursor - 1);
+          this.$nextTick(() => {
+            const items = this.$refs.fbListing?.querySelectorAll('.fb-item');
+            items?.[this.fb.cursor]?.scrollIntoView({ block: 'nearest' });
+          });
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          this.fb.cursor = Math.min(totalItems - 1, this.fb.cursor + 1);
+          this.$nextTick(() => {
+            const items = this.$refs.fbListing?.querySelectorAll('.fb-item');
+            items?.[this.fb.cursor]?.scrollIntoView({ block: 'nearest' });
+          });
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (hasParent && this.fb.cursor === 0) {
+            this.fbNavigateTo(this.fb.parentPath);
+          } else {
+            const idx = this.fb.cursor - (hasParent ? 1 : 0);
+            const item = this.fb.listing[idx];
+            if (item?.isDir) this.fbNavigateTo(item.fullPath);
+          }
+          break;
+        case 'ArrowLeft':
+        case 'Backspace':
+          if (this.fb.parentPath) {
+            e.preventDefault();
+            this.fbNavigateTo(this.fb.parentPath);
+          }
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          if (hasParent && this.fb.cursor === 0) break;
+          const ridx = this.fb.cursor - (hasParent ? 1 : 0);
+          const ritem = this.fb.listing[ridx];
+          if (ritem?.isDir) this.fbNavigateTo(ritem.fullPath);
+          break;
+      }
+    },
+
+    // ── Wizard navigation ──
+    wizardNext() {
+      if (!this.wizardCanNext()) return;
+      if (this.modal.step === 1 && this.modal.repoMode) {
+        const path = this.fb.path;
+        const name = this.modal.form.addName || path.split('/').filter(Boolean).pop();
+        if (!this.repos.find(r => r.path === path)) {
+          this.repos.push({ name, path, shortPath: path, detected: { defaultBranch: 'main' }, overrides: {} });
+        }
+        this.modal.form.repoPath = path;
+        this.modal.repoMode = false;
+      }
+      // Re-resolve effective settings when entering step 2
+      if (this.modal.step === 1) {
+        const eff = this.effectiveSettings(this.modal.form.repoPath);
+        this.modal.form.provider = eff.provider;
+        this.modal.form.model = eff.model;
+        this.modal.form.wsMode = eff.wsMode;
+        this.modal.form.baseBranch = eff.baseBranch;
+        if (!this.modelsFor(this.modal.form.provider).includes(this.modal.form.model)) {
+          this.modal.form.model = this.modelsFor(this.modal.form.provider)[0];
+        }
+      }
+      this.modal.step = Math.min(3, this.modal.step + 1);
+    },
+
+    wizardBack() {
+      this.modal.step = Math.max(1, this.modal.step - 1);
+    },
+
+    wizardCanNext() {
+      if (this.modal.step === 1) {
+        if (this.modal.repoMode) return !!this.fb.path && this.fb.path !== '~';
+        return !!this.modal.form.repoPath;
+      }
+      if (this.modal.step === 2) {
+        if (this.modal.form.wsMode === 'existing-worktree') return !!this.modal.form.existingWt;
+        return true;
+      }
+      return true;
+    },
+
+    wizardHint() {
+      if (this.modal.step === 1) {
+        if (this.modal.repoMode) {
+          return this.fb.isGitRepo ? '● repository ready' : 'browse to a git repository';
+        }
+        return this.modal.form.repoPath.split('/').pop();
+      }
+      if (this.modal.step === 2) {
+        if (this.modal.form.wsMode === 'new-worktree') return '⑂ glue/' + this.modal.form.generatedName;
+        if (this.modal.form.wsMode === 'main') return 'no worktree';
+        return this.modal.form.existingWt || '...';
+      }
+      return 'step 3 of 3';
+    },
+
+    validateWizardModel() {
+      const models = this.modelsFor(this.modal.form.provider);
+      if (!models.includes(this.modal.form.model)) {
+        this.modal.form.model = models[0];
+      }
+    },
+
+    // ── Settings helpers ──
+    settingsRepo() {
+      return this.repos.find(r => r.path === this.settingsRepoPath) || null;
+    },
+
+    hasOverride(key) {
+      const repo = this.settingsRepo();
+      return repo && repo.overrides[key] !== undefined;
+    },
+
+    getOverride(key) {
+      const repo = this.settingsRepo();
+      return repo?.overrides[key] ?? this.config.globalDefaults[key];
+    },
+
+    setOverride(key, value) {
+      const repo = this.settingsRepo();
+      if (repo) repo.overrides[key] = value;
+    },
+
+    clearOverride(key) {
+      const repo = this.settingsRepo();
+      if (repo) delete repo.overrides[key];
+    },
+
+    toggleOverride(key, fallbackValue) {
+      if (this.hasOverride(key)) {
+        this.clearOverride(key);
+      } else {
+        this.setOverride(key, fallbackValue);
+      }
+    },
+
+    effectiveForRepo(key) {
+      const repo = this.settingsRepo();
+      return repo?.overrides[key] ?? this.config.globalDefaults[key];
+    },
+
+    validateGlobalModel() {
+      const models = this.modelsFor(this.config.globalDefaults.provider);
+      if (!models.includes(this.config.globalDefaults.model)) {
+        this.config.globalDefaults.model = models[0];
+      }
+    },
+
+    validateRepoModel() {
+      const repo = this.settingsRepo();
+      if (!repo || !repo.overrides.model) return;
+      const provider = repo.overrides.provider ?? this.config.globalDefaults.provider;
+      const models = this.modelsFor(provider);
+      if (!models.includes(repo.overrides.model)) {
+        repo.overrides.model = models[0];
+      }
+    },
+
+    bulkSetBaseBranch(branch) {
+      for (const r of this.repos) {
+        r.overrides.baseBranch = branch;
+      }
+    },
+
+    bulkClearOverride(key) {
+      for (const r of this.repos) {
+        delete r.overrides[key];
+      }
+    },
+
+    saveConfig() {
+      localStorage.setItem('glue-config', JSON.stringify(this.config));
+      this.modal.open = false;
+    },
+  };
+}
+</script>
+</body>
+</html>
