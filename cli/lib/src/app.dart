@@ -125,7 +125,7 @@ class App {
   String _modelName;
   final String _cwd;
   ConfirmModal? _activeModal;
-  PanelModal? _activePanel;
+  final List<PanelModal> _panelStack = [];
   bool _renderedPanelLastFrame = false;
   final Set<String> _autoApprovedTools = {
     'read_file',
@@ -581,13 +581,19 @@ class App {
     lines.add('  ${'@path/to/file'.padRight(16)}Attach file to message');
     lines.add('  ${'@dir/'.padRight(16)}Browse directory');
 
-    _activePanel = PanelModal(
+    final panel = PanelModal(
       title: 'HELP',
       lines: lines,
       barrier: BarrierStyle.dim,
       height: PanelFluid(0.5, 10),
     );
+    _panelStack.add(panel);
     _render();
+
+    panel.result.then((_) {
+      _panelStack.remove(panel);
+      _render();
+    });
   }
 
   void _openResumePanel() {
@@ -651,11 +657,11 @@ class App {
       selectable: true,
       initialIndex: 2,
     );
-    _activePanel = panel;
+    _panelStack.add(panel);
     _render();
 
     panel.selection.then((idx) {
-      _activePanel = null;
+      _panelStack.remove(panel);
       if (idx == null || idx < 2) {
         _render();
         return;
@@ -695,15 +701,16 @@ class App {
       height: PanelFluid(0.5, 10),
       selectable: true,
     );
-    _activePanel = panel;
+    _panelStack.add(panel);
     _render();
 
     panel.selection.then((idx) {
-      _activePanel = null;
       if (idx == null) {
+        _panelStack.remove(panel);
         _render();
         return;
       }
+      // Keep history panel on stack so it's visible behind the action panel.
       _openHistoryActionPanel(
         userBlocks[idx].$2.text,
         idx, // user message index (0-based)
@@ -720,11 +727,11 @@ class App {
       width: PanelFixed(30),
       selectable: true,
     );
-    _activePanel = panel;
+    _panelStack.add(panel);
     _render();
 
     panel.selection.then((idx) {
-      _activePanel = null;
+      _panelStack.clear();
       if (idx == null) {
         _render();
         return;
@@ -835,9 +842,8 @@ class App {
     switch (event) {
       case CharEvent() || KeyEvent():
         // Panel modal gets first crack at input.
-        if (_activePanel != null && !_activePanel!.isComplete) {
-          if (_activePanel!.handleEvent(event)) {
-            if (_activePanel!.isComplete) _activePanel = null;
+        if (_panelStack.isNotEmpty && !_panelStack.last.isComplete) {
+          if (_panelStack.last.handleEvent(event)) {
             _doRender();
             return;
           }
@@ -1526,7 +1532,7 @@ class App {
   void _doRender() {
     _lastRender = DateTime.now();
 
-    final panelActive = _activePanel != null && !_activePanel!.isComplete;
+    final panelActive = _panelStack.isNotEmpty;
     if (_renderedPanelLastFrame && !panelActive) {
       terminal.resetScrollRegion();
       terminal.clearScreen();
@@ -1618,19 +1624,18 @@ class App {
     // Trailing blank line so content doesn't butt against the status bar.
     outputLines.add('');
 
-    // Panel modal takes over the full viewport.
+    // Panel stack takes over the full viewport.
     if (panelActive) {
       _renderedPanelLastFrame = true;
-      final panelGrid = _activePanel!.render(
-        terminal.columns,
-        terminal.rows,
-        outputLines,
-      );
+      var grid = outputLines;
+      for (final panel in _panelStack) {
+        grid = panel.render(terminal.columns, terminal.rows, grid);
+      }
       terminal.hideCursor();
-      for (var i = 0; i < panelGrid.length && i < terminal.rows; i++) {
+      for (var i = 0; i < grid.length && i < terminal.rows; i++) {
         terminal.moveTo(i + 1, 1);
         terminal.clearLine();
-        terminal.write(panelGrid[i]);
+        terminal.write(grid[i]);
       }
       return;
     }
