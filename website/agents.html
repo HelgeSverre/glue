@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glue — Agents & Orchestration</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <nav class="nav">
+    <a href="index.html" class="nav-logo">GLUE</a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="docs.html">Docs</a></li>
+      <li><a href="agents.html" class="active">Agents</a></li>
+      <li><a href="worktrees.html">Worktrees</a></li>
+      <li><a href="app.html">Web UI</a></li>
+      <li><a href="brand.html">Brand</a></li>
+    </ul>
+  </nav>
+
+  <!-- ─── Hero ─── -->
+  <section class="block">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">◇ Agents</div>
+        <h2 class="block-heading">Smarter Together.<br>Not Harder.</h2>
+        <p class="block-sub">Glue doesn't just run one LLM in a loop — it orchestrates specialized agents, each with the right model, tools, and focus for the job.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="tape"></div>
+
+  <!-- ─── Orchestration ─── -->
+  <section class="block block-dark">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">01 · Orchestration</div>
+        <h2 class="block-heading">One Agent Leads.<br>Many Execute.</h2>
+      </div>
+      <div class="two-col">
+        <div class="prose reveal rd1" style="color: #ccc;">
+          <h3 style="color: var(--yellow);">Automatic Delegation</h3>
+          <p>Your main agent recognizes when a task benefits from specialization and spawns the right subagent — a fast Scout for exploration, a thorough Reviewer for code quality, or a powerful Planner for architecture decisions.</p>
+          <h3 style="color: var(--yellow);">Fresh Context, Focused Scope</h3>
+          <p>Each subagent starts with a clean context window and a targeted system prompt. No conversation history bloat, no distraction. It does one job, returns the result, and the orchestrator synthesizes everything.</p>
+        </div>
+        <div class="reveal rd2">
+          <div class="terminal">
+            <div class="terminal-bar">▸ glue — Agent Orchestration</div>
+            <div class="terminal-body">
+              <span class="line"><span class="p">❯</span> <span class="c">Review the auth module and plan improvements</span></span>
+              <span class="blank"></span>
+              <span class="line"><span class="d">  Spawning Scout agent...</span></span>
+              <span class="line"><span class="tc">┌ ▸ scout</span> <span class="d">[claude-haiku-4-5]</span></span>
+              <span class="line"><span class="tc">│</span> <span class="d">Exploring auth module structure</span></span>
+              <span class="line"><span class="tc">│</span> <span class="d">Found 12 files, 1,847 lines</span></span>
+              <span class="line"><span class="tc">└</span> <span class="s">✓ done · 3.2s</span></span>
+              <span class="blank"></span>
+              <span class="line"><span class="d">  Spawning Reviewer agent...</span></span>
+              <span class="line"><span class="tc">┌ ▸ reviewer</span> <span class="d">[claude-sonnet-4-6]</span></span>
+              <span class="line"><span class="tc">│</span> <span class="d">Analyzing auth/jwt.dart</span></span>
+              <span class="line"><span class="tc">│</span> <span class="d">Analyzing auth/middleware.dart</span></span>
+              <span class="line"><span class="tc">│</span> <span class="d">Found 3 issues (1 critical, 2 medium)</span></span>
+              <span class="line"><span class="tc">└</span> <span class="s">✓ done · 8.1s</span></span>
+              <span class="blank"></span>
+              <span class="line"><span class="d">  Spawning Planner agent...</span></span>
+              <span class="line"><span class="tc">┌ ▸ planner</span> <span class="d">[claude-opus-4-6]</span></span>
+              <span class="line"><span class="tc">│</span> <span class="d">Designing improvement plan</span></span>
+              <span class="line"><span class="tc">│</span> <span class="d">4 phases, 6 files affected</span></span>
+              <span class="line"><span class="tc">└</span> <span class="s">✓ done · 12.4s</span></span>
+              <span class="blank"></span>
+              <span class="line"><span class="s">✓</span> <span class="a">Review complete. Here's the plan...</span><span class="cursor"></span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="tape"></div>
+
+  <!-- ─── Agent Roster ─── -->
+  <section class="block">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">02 · Specialized Agents</div>
+        <h2 class="block-heading">The Right Agent<br>For Every Task</h2>
+        <p class="block-sub">Each agent type has its own system prompt, tool access, and model selection — optimized for a specific kind of work.</p>
+      </div>
+      <div class="grid grid-2">
+        <div class="cell reveal">
+          <div class="cell-num">◈</div>
+          <div class="cell-title">Scout</div>
+          <div class="cell-text">Fast codebase exploration. Maps file structures, traces dependencies, finds relevant code in seconds. The first agent dispatched on most tasks.</div>
+          <div style="margin-top: 16px;">
+            <span class="tag tag-filled" style="margin-right: 4px;">Fast Model</span>
+            <span class="tag">Read-Only</span>
+          </div>
+        </div>
+        <div class="cell reveal rd1">
+          <div class="cell-num">△</div>
+          <div class="cell-title">Reviewer</div>
+          <div class="cell-text">Code review specialist. Identifies bugs, security vulnerabilities, and style violations with specific line references and severity ratings.</div>
+          <div style="margin-top: 16px;">
+            <span class="tag tag-filled" style="margin-right: 4px;">Balanced Model</span>
+            <span class="tag">Read + Analyze</span>
+          </div>
+        </div>
+        <div class="cell reveal rd2">
+          <div class="cell-num">◆</div>
+          <div class="cell-title">Planner</div>
+          <div class="cell-text">Software architect. Analyzes codebase structure, considers trade-offs and dependencies, produces structured implementation plans.</div>
+          <div style="margin-top: 16px;">
+            <span class="tag tag-filled" style="margin-right: 4px;">Powerful Model</span>
+            <span class="tag">Read-Only</span>
+          </div>
+        </div>
+        <div class="cell reveal rd3">
+          <div class="cell-num">▸</div>
+          <div class="cell-title">Builder</div>
+          <div class="cell-text">General-purpose implementation. Reads, writes, edits, and tests. For complex multi-step tasks that need fresh context and full tool access.</div>
+          <div style="margin-top: 16px;">
+            <span class="tag tag-filled" style="margin-right: 4px;">Balanced Model</span>
+            <span class="tag">Full Access</span>
+          </div>
+        </div>
+        <div class="cell reveal rd4">
+          <div class="cell-num">◇</div>
+          <div class="cell-title">Researcher</div>
+          <div class="cell-text">Documentation and API reference lookup. Finds best practices, reads external docs, and summarizes findings with source links.</div>
+          <div style="margin-top: 16px;">
+            <span class="tag tag-filled" style="margin-right: 4px;">Fast Model</span>
+            <span class="tag">Web + Read</span>
+          </div>
+        </div>
+        <div class="cell reveal rd5">
+          <div class="cell-num">■</div>
+          <div class="cell-title">Fixer</div>
+          <div class="cell-text">CI/CD debugging specialist. Analyzes build logs, traces GitHub Actions failures, resolves environment and configuration issues.</div>
+          <div style="margin-top: 16px;">
+            <span class="tag tag-filled" style="margin-right: 4px;">Balanced Model</span>
+            <span class="tag">Analysis Tools</span>
+          </div>
+        </div>
+        <div class="cell reveal rd6">
+          <div class="cell-num">●</div>
+          <div class="cell-title">Scaffolder</div>
+          <div class="cell-text">Project setup and boilerplate. Initializes projects, configures build tools, sets up testing frameworks following community best practices.</div>
+          <div style="margin-top: 16px;">
+            <span class="tag tag-filled" style="margin-right: 4px;">Balanced Model</span>
+            <span class="tag">Full Access</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="tape"></div>
+
+  <!-- ─── Capabilities Table ─── -->
+  <section class="block block-dark">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">03 · Capabilities</div>
+        <h2 class="block-heading">What Each Agent Gets</h2>
+      </div>
+      <div class="reveal rd1">
+        <table class="brutal-table" style="border-color: var(--yellow);">
+          <thead>
+            <tr><th>Agent</th><th>Model Tier</th><th>Tools</th><th>Use Case</th></tr>
+          </thead>
+          <tbody style="color: #ccc;">
+            <tr>
+              <td style="border-color: var(--yellow);"><strong style="color: var(--yellow);">Scout</strong></td>
+              <td style="border-color: var(--yellow);">Fast</td>
+              <td style="border-color: var(--yellow);"><span class="tag" style="border-color: var(--yellow); color: var(--yellow); margin: 2px;">read_file</span> <span class="tag" style="border-color: var(--yellow); color: var(--yellow); margin: 2px;">list_dir</span> <span class="tag" style="border-color: var(--yellow); color: var(--yellow); margin: 2px;">grep</span></td>
+              <td style="border-color: var(--yellow);">Codebase exploration, file discovery</td>
+            </tr>
+            <tr>
+              <td style="border-color: var(--yellow);"><strong style="color: var(--yellow);">Reviewer</strong></td>
+              <td style="border-color: var(--yellow);">Balanced</td>
+              <td style="border-color: var(--yellow);"><span class="tag" style="border-color: var(--yellow); color: var(--yellow); margin: 2px;">read_file</span> <span class="tag" style="border-color: var(--yellow); color: var(--yellow); margin: 2px;">grep</span> <span class="tag" style="border-color: var(--yellow); color: var(--yellow); margin: 2px;">bash</span></td>
+              <td style="border-color: var(--yellow);">Code review, security analysis</td>
+            </tr>
+            <tr>
+              <td style="border-color: var(--yellow);"><strong style="color: var(--yellow);">Planner</strong></td>
+              <td style="border-color: var(--yellow);">Powerful</td>
+              <td style="border-color: var(--yellow);"><span class="tag" style="border-color: var(--yellow); color: var(--yellow); margin: 2px;">read_file</span> <span class="tag" style="border-color: var(--yellow); color: var(--yellow); margin: 2px;">list_dir</span> <span class="tag" style="border-color: var(--yellow); color: var(--yellow); margin: 2px;">grep</span></td>
+              <td style="border-color: var(--yellow);">Architecture, implementation planning</td>
+            </tr>
+            <tr>
+              <td style="border-color: var(--yellow);"><strong style="color: var(--yellow);">Builder</strong></td>
+              <td style="border-color: var(--yellow);">Balanced</td>
+              <td style="border-color: var(--yellow);"><span class="tag tag-filled" style="margin: 2px;">all tools</span></td>
+              <td style="border-color: var(--yellow);">Multi-step feature implementation</td>
+            </tr>
+            <tr>
+              <td style="border-color: var(--yellow);"><strong style="color: var(--yellow);">Researcher</strong></td>
+              <td style="border-color: var(--yellow);">Fast</td>
+              <td style="border-color: var(--yellow);"><span class="tag" style="border-color: var(--yellow); color: var(--yellow); margin: 2px;">bash</span> <span class="tag" style="border-color: var(--yellow); color: var(--yellow); margin: 2px;">read_file</span></td>
+              <td style="border-color: var(--yellow);">Documentation lookup, API references</td>
+            </tr>
+            <tr>
+              <td style="border-color: var(--yellow);"><strong style="color: var(--yellow);">Fixer</strong></td>
+              <td style="border-color: var(--yellow);">Balanced</td>
+              <td style="border-color: var(--yellow);"><span class="tag" style="border-color: var(--yellow); color: var(--yellow); margin: 2px;">read_file</span> <span class="tag" style="border-color: var(--yellow); color: var(--yellow); margin: 2px;">bash</span> <span class="tag" style="border-color: var(--yellow); color: var(--yellow); margin: 2px;">grep</span> <span class="tag" style="border-color: var(--yellow); color: var(--yellow); margin: 2px;">edit_file</span></td>
+              <td style="border-color: var(--yellow);">CI/CD debugging, build failures</td>
+            </tr>
+            <tr>
+              <td style="border-color: var(--yellow);"><strong style="color: var(--yellow);">Scaffolder</strong></td>
+              <td style="border-color: var(--yellow);">Balanced</td>
+              <td style="border-color: var(--yellow);"><span class="tag tag-filled" style="margin: 2px;">all tools</span></td>
+              <td style="border-color: var(--yellow);">Project setup, boilerplate generation</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <div class="tape"></div>
+
+  <!-- ─── Parallel Execution ─── -->
+  <section class="block">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">04 · Parallel Execution</div>
+        <h2 class="block-heading">Fan Out.<br>Gather Back.</h2>
+      </div>
+      <div class="two-col">
+        <div class="reveal rd1">
+          <div class="terminal">
+            <div class="terminal-bar">▸ Parallel Agents</div>
+            <div class="terminal-body">
+              <span class="line"><span class="p">❯</span> <span class="c">Explore auth, payments, and notifications</span></span>
+              <span class="blank"></span>
+              <span class="line"><span class="d">  Spawning 3 Scout agents in parallel...</span></span>
+              <span class="blank"></span>
+              <span class="line"><span class="tc">┌ ▸ scout [1/3]</span> <span class="d">— auth module</span></span>
+              <span class="line"><span class="tc">│</span> <span class="d">12 files, 1,847 lines</span></span>
+              <span class="line"><span class="tc">└</span> <span class="s">✓ 2.8s</span></span>
+              <span class="blank"></span>
+              <span class="line"><span class="tc">┌ ▸ scout [2/3]</span> <span class="d">— payments module</span></span>
+              <span class="line"><span class="tc">│</span> <span class="d">8 files, 2,103 lines</span></span>
+              <span class="line"><span class="tc">└</span> <span class="s">✓ 3.1s</span></span>
+              <span class="blank"></span>
+              <span class="line"><span class="tc">┌ ▸ scout [3/3]</span> <span class="d">— notifications module</span></span>
+              <span class="line"><span class="tc">│</span> <span class="d">6 files, 891 lines</span></span>
+              <span class="line"><span class="tc">└</span> <span class="s">✓ 2.2s</span></span>
+              <span class="blank"></span>
+              <span class="line"><span class="s">✓</span> <span class="a">All 3 scouts complete.</span> <span class="d">Total: 3.1s (parallel)</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="prose reveal rd2">
+          <h3>Independent & Concurrent</h3>
+          <p>Spawn multiple agents of the same type to explore different parts of your codebase simultaneously. Read-only agents have no shared state conflicts — they execute in parallel and results come back in order.</p>
+          <h3>Nested Delegation</h3>
+          <p>Agents can spawn sub-agents up to two levels deep. A Planner can dispatch Scouts to gather context before designing. A Fixer can spawn a Researcher to look up documentation. The orchestrator prevents infinite nesting.</p>
+          <h3>Cost-Efficient</h3>
+          <p>Fast models for Scouts mean exploring three modules in parallel costs less than a single turn of a powerful model. Use the right tier for the job.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="tape"></div>
+
+  <!-- ─── Custom Configuration ─── -->
+  <section class="block block-dark">
+    <div class="block-inner">
+      <div class="reveal">
+        <div class="block-label">05 · Configuration</div>
+        <h2 class="block-heading">Your Models.<br>Your Rules.</h2>
+      </div>
+      <div class="two-col">
+        <div class="reveal rd1">
+          <div class="code-block"><span class="comment"># .glue/config.yaml</span>
+
+<span class="hl">agents</span>:
+  <span class="hl">scout</span>:
+    provider: <span class="string">anthropic</span>
+    model: <span class="string">claude-haiku-4-5</span>
+
+  <span class="hl">reviewer</span>:
+    provider: <span class="string">google</span>
+    model: <span class="string">gemini-3-pro</span>
+
+  <span class="hl">planner</span>:
+    provider: <span class="string">anthropic</span>
+    model: <span class="string">claude-opus-4-6</span>
+
+  <span class="hl">builder</span>:
+    provider: <span class="string">openai</span>
+    model: <span class="string">gpt-5</span>
+
+  <span class="hl">researcher</span>:
+    provider: <span class="string">google</span>
+    model: <span class="string">gemini-3-flash</span></div>
+        </div>
+        <div class="prose reveal rd2" style="color: #ccc;">
+          <h3 style="color: var(--yellow);">Mix & Match Providers</h3>
+          <p>Every agent type can use a different model and provider. Use Claude for planning, GPT for building, Gemini for reviewing — whatever combination works best for your workflow.</p>
+          <h3 style="color: var(--yellow);">Per-Project Overrides</h3>
+          <p>Global defaults live in <code>~/.glue/config.yaml</code>. Project-level overrides in <code>.glue/config.yaml</code>. A Python project might use different agents than a Dart project.</p>
+          <h3 style="color: var(--yellow);">Coming Soon: Custom Roles</h3>
+          <p>Define entirely new agent roles with Markdown files — custom system prompts, tool restrictions, and model selection. Think: a <code>security-auditor</code> agent that only runs static analysis, or a <code>docs-writer</code> that generates API documentation.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="tape"></div>
+  <footer class="footer">GLUE · MIT · <a href="#">GitHub</a> <a href="#">Docs</a> <a href="#">Discord</a></footer>
+  <div class="tape"></div>
+
+  <script>
+    const reveals = document.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+    reveals.forEach(el => observer.observe(el));
+  </script>
+</body>
+</html>
