@@ -133,7 +133,14 @@ List<String> applyBarrier(BarrierStyle style, List<String> lines) {
   };
 }
 
-class PanelModal {
+abstract class PanelOverlay {
+  bool get isComplete;
+  bool handleEvent(TerminalEvent event);
+  List<String> render(int termWidth, int termHeight, List<String> backgroundLines);
+  void cancel();
+}
+
+class PanelModal implements PanelOverlay {
   final String title;
   final List<String> lines;
   final PanelStyle style;
@@ -166,6 +173,7 @@ class PanelModal {
   }
 
   int get scrollOffset => _scrollOffset;
+  @override
   bool get isComplete => _completer.isCompleted;
   Future<void> get result => _completer.future;
   int get selectedIndex => selectable ? _selectedIndex : -1;
@@ -179,6 +187,10 @@ class PanelModal {
     }
   }
 
+  @override
+  void cancel() => dismiss();
+
+  @override
   bool handleEvent(TerminalEvent event) {
     if (isComplete) return false;
 
@@ -239,6 +251,7 @@ class PanelModal {
     }
   }
 
+  @override
   List<String> render(
       int termWidth, int termHeight, List<String> backgroundLines) {
     final panelW = _width.resolve(termWidth);

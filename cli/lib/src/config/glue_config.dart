@@ -47,6 +47,7 @@ class GlueConfig {
   final DockerConfig dockerConfig;
   final WebConfig webConfig;
   final ObservabilityConfig observability;
+  final List<String> skillPaths;
 
   GlueConfig({
     LlmProvider? provider,
@@ -61,6 +62,7 @@ class GlueConfig {
     DockerConfig? dockerConfig,
     WebConfig? webConfig,
     this.observability = const ObservabilityConfig(),
+    this.skillPaths = const [],
   })  : provider = provider ?? LlmProvider.anthropic,
         model = model ?? _defaultModel(provider ?? LlmProvider.anthropic),
         shellConfig = shellConfig ?? const ShellConfig(),
@@ -402,6 +404,18 @@ class GlueConfig {
       }
     }
 
+    // 4. Parse skill paths.
+    final skillPaths = <String>[];
+    final envSkillPaths = Platform.environment['GLUE_SKILLS_PATHS'];
+    if (envSkillPaths != null && envSkillPaths.isNotEmpty) {
+      skillPaths.addAll(envSkillPaths.split(';').where((s) => s.isNotEmpty));
+    }
+    final skillsSection = fileConfig?['skills'] as Map?;
+    final fileSkillPaths = skillsSection?['paths'] as List?;
+    if (fileSkillPaths != null) {
+      skillPaths.addAll(fileSkillPaths.cast<String>());
+    }
+
     return GlueConfig(
       provider: provider,
       model: model,
@@ -413,6 +427,7 @@ class GlueConfig {
       dockerConfig: dockerConfig,
       webConfig: webConfig,
       observability: observabilityConfig,
+      skillPaths: skillPaths,
     );
   }
 }

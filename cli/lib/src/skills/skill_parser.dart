@@ -1,0 +1,148 @@
+import 'dart:io';
+
+import 'package:yaml/yaml.dart';
+
+enum SkillSource { project, global, custom }
+
+class SkillParseError implements Exception {
+  final String message;
+  SkillParseError(this.message);
+
+  @override
+  String toString() => 'SkillParseError: $message';
+}
+
+class SkillMeta {
+  final String name;
+  final String description;
+  final String? license;
+  final String? compatibility;
+  final String? allowedTools;
+  final Map<String, String> metadata;
+  final String skillDir;
+  final String skillMdPath;
+  final SkillSource source;
+
+  SkillMeta({
+    required this.name,
+    required this.description,
+    this.license,
+    this.compatibility,
+    this.allowedTools,
+    this.metadata = const {},
+    required this.skillDir,
+    required this.skillMdPath,
+    required this.source,
+  });
+}
+
+const _allowedFields = {
+  'name',
+  'description',
+  'license',
+  'allowed-tools',
+  'metadata',
+  'compatibility',
+};
+
+final _namePatternMulti = RegExp(r'^[a-z0-9]([a-z0-9-]*[a-z0-9])?$');
+final _namePatternSingle = RegExp(r'^[a-z0-9]$');
+
+SkillMeta parseSkillFrontmatter(
+  String content,
+  String skillDir,
+  String skillMdPath,
+  SkillSource source,
+) {
+  if (!content.startsWith('---')) {
+    throw SkillParseError('Missing frontmatter delimiter');
+  }
+
+  final parts = content.split('---');
+  if (parts.length < 3) {
+    throw SkillParseError('Unclosed frontmatter');
+  }
+
+  final yamlStr = parts[1];
+  final parsed = loadYaml(yamlStr);
+  if (parsed is! YamlMap) {
+    throw SkillParseError('Frontmatter is not a valid YAML map');
+  }
+
+  final keys = parsed.keys.cast<String>().toSet();
+  final unknown = keys.difference(_allowedFields);
+  if (unknown.isNotEmpty) {
+    throw SkillParseError('Unknown frontmatter fields: ${unknown.join(', ')}');
+  }
+
+  final name = parsed['name'];
+  if (name == null || name is! String || name.isEmpty) {
+    throw SkillParseError('Missing or empty "name" field');
+  }
+  if (name.length > 64) {
+    throw SkillParseError('Name exceeds 64 characters');
+  }
+
+  final namePattern = name.length == 1 ? _namePatternSingle : _namePatternMulti;
+  if (!namePattern.hasMatch(name)) {
+    throw SkillParseError('Invalid name "$name": must be lowercase alphanumeric with hyphens');
+  }
+  if (name.contains('--')) {
+    throw SkillParseError('Invalid name "$name": consecutive hyphens not allowed');
+  }
+
+  final dirName = Uri.parse(skillDir).pathSegments.last;
+  if (name != dirName) {
+    throw SkillParseError('Name "$name" does not match directory "$dirName"');
+  }
+
+  final description = parsed['description'];
+  if (description == null || description is! String || description.isEmpty) {
+    throw SkillParseError('Missing or empty "description" field');
+  }
+  if (description.length > 1024) {
+    throw SkillParseError('Description exceeds 1024 characters');
+  }
+
+  final compatibility = parsed['compatibility']?.toString();
+  if (compatibility != null && compatibility.length > 500) {
+    throw SkillParseError('Compatibility exceeds 500 characters');
+  }
+
+  final license = parsed['license']?.toString();
+  final allowedTools = parsed['allowed-tools']?.toString();
+
+  final rawMeta = parsed['metadata'];
+  final metadata = <String, String>{};
+  if (rawMeta is YamlMap) {
+    for (final entry in rawMeta.entries) {
+      metadata[entry.key.toString()] = entry.value.toString();
+    }
+  }
+
+  return SkillMeta(
+    name: name,
+    description: description,
+    license: license,
+    compatibility: compatibility,
+    allowedTools: allowedTools,
+    metadata: metadata,
+    skillDir: skillDir,
+    skillMdPath: skillMdPath,
+    source: source,
+  );
+}
+
+String loadSkillBody(String skillMdPath) {
+  final content = File(skillMdPath).readAsStringSync();
+  if (!content.startsWith('---')) {
+    throw SkillParseError('Missing frontmatter delimiter');
+  }
+
+  final parts = content.split('---');
+  if (parts.length < 3) {
+    throw SkillParseError('Unclosed frontmatter');
+  }
+
+  return parts.sublist(2).join('---').trimLeft();
+}
