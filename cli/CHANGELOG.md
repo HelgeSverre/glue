@@ -77,8 +77,26 @@ All notable changes to Glue CLI will be documented in this file.
   skipped by default, run with `dart test --run-skipped -t e2e`.
   Retry wrapper handles small-model non-determinism.
 
+- **Tool call intent indicator** — the UI now shows
+  `▶ Tool: write_file (preparing…)` as soon as the LLM begins generating
+  a tool call, rather than waiting for the full arguments to stream.
+  Tool calls progress through visible phases: preparing → running → done
+  (or denied/error). Eliminates the "hanging spinner" feel during large
+  tool argument generation.
+- **Eager tool call emission** — `AgentToolCall` events are emitted during
+  LLM streaming (not after stream end), so auto-approved tools can start
+  executing while the model may still be finishing the response.
+- **`ToolCallStart` LLM chunk** — Anthropic and OpenAI clients now yield
+  a `ToolCallStart` chunk at `content_block_start` / first tool delta,
+  surfacing the tool name before arguments finish streaming.
+
 ### Fixed
 
+- **Cancel no longer corrupts conversation** — cancelling (Escape) while
+  a tool was executing left the conversation with `tool_use` blocks but
+  no matching `tool_result` messages, causing the next API call to fail
+  with a 400 error. `ensureToolResultsComplete()` now injects synthetic
+  `[cancelled by user]` results for any unmatched tool calls.
 - `/model` switch now updates `_config` (provider + model) via `copyWith`,
   fixing stale config bug where session metadata and subagent spawning
   read outdated values.
