@@ -29,6 +29,17 @@ void main() {
       expect(client, isA<OpenAiClient>());
     });
 
+    test('creates OpenAiClient for mistral provider', () {
+      final factory = LlmClientFactory();
+      final client = factory.create(
+        provider: LlmProvider.mistral,
+        model: 'mistral-large-latest',
+        apiKey: 'mk-test',
+        systemPrompt: 'test',
+      );
+      expect(client, isA<OpenAiClient>());
+    });
+
     test('creates OllamaClient for ollama provider', () {
       final factory = LlmClientFactory();
       final client = factory.create(

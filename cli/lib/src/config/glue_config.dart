@@ -20,7 +20,7 @@ List<String> splitPathList(String value, {bool? isWindows}) {
 /// Supported LLM providers.
 ///
 /// {@category Core}
-enum LlmProvider { anthropic, openai, ollama }
+enum LlmProvider { anthropic, openai, mistral, ollama }
 
 /// An agent profile specifying provider and model for a particular role.
 class AgentProfile {
@@ -50,6 +50,7 @@ class GlueConfig {
   final String model;
   final String? anthropicApiKey;
   final String? openaiApiKey;
+  final String? mistralApiKey;
   final String ollamaBaseUrl;
   final Map<String, AgentProfile> profiles;
   final int maxSubagentDepth;
@@ -66,6 +67,7 @@ class GlueConfig {
     String? model,
     this.anthropicApiKey,
     this.openaiApiKey,
+    this.mistralApiKey,
     this.ollamaBaseUrl = AppConstants.defaultOllamaBaseUrl,
     this.profiles = const {},
     this.maxSubagentDepth = AppConstants.maxSubagentDepth,
@@ -96,6 +98,7 @@ class GlueConfig {
       model: model ?? this.model,
       anthropicApiKey: anthropicApiKey,
       openaiApiKey: openaiApiKey,
+      mistralApiKey: mistralApiKey,
       ollamaBaseUrl: ollamaBaseUrl,
       profiles: profiles,
       maxSubagentDepth: maxSubagentDepth,
@@ -115,13 +118,19 @@ class GlueConfig {
     final key = switch (provider) {
       LlmProvider.anthropic => anthropicApiKey,
       LlmProvider.openai => openaiApiKey,
+      LlmProvider.mistral => mistralApiKey,
       LlmProvider.ollama => '', // unreachable
     };
     if (key == null || key.isEmpty) {
+      final envVar = switch (provider) {
+        LlmProvider.anthropic => 'ANTHROPIC_API_KEY',
+        LlmProvider.openai => 'OPENAI_API_KEY',
+        LlmProvider.mistral => 'MISTRAL_API_KEY',
+        LlmProvider.ollama => '',
+      };
       throw ConfigError(
         'Missing API key for provider ${provider.name}. '
-        'Set ${provider == LlmProvider.anthropic ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY"} '
-        'or add it to ~/.glue/config.yaml',
+        'Set $envVar or add it to ~/.glue/config.yaml',
       );
     }
   }
@@ -133,6 +142,7 @@ class GlueConfig {
     return switch (provider) {
       LlmProvider.anthropic => anthropicApiKey!,
       LlmProvider.openai => openaiApiKey!,
+      LlmProvider.mistral => mistralApiKey!,
       LlmProvider.ollama => '',
     };
   }
@@ -179,6 +189,10 @@ class GlueConfig {
     final openaiKey = Platform.environment['OPENAI_API_KEY'] ??
         Platform.environment['GLUE_OPENAI_API_KEY'] ??
         (fileConfig?['openai'] as Map?)?['api_key'] as String?;
+
+    final mistralKey = Platform.environment['MISTRAL_API_KEY'] ??
+        Platform.environment['GLUE_MISTRAL_API_KEY'] ??
+        (fileConfig?['mistral'] as Map?)?['api_key'] as String?;
 
     final bashMaxLines = (fileConfig?['bash'] as Map?)?['max_lines'] as int? ??
         AppConstants.bashMaxLinesDefault;
@@ -441,6 +455,7 @@ class GlueConfig {
       model: model,
       anthropicApiKey: anthropicKey,
       openaiApiKey: openaiKey,
+      mistralApiKey: mistralKey,
       profiles: profiles,
       bashMaxLines: bashMaxLines,
       shellConfig: shellConfig,

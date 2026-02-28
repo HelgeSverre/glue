@@ -14,7 +14,7 @@ class LlmClientFactory {
   LlmClientFactory({http.Client? httpClient})
       : _httpClient = httpClient ?? http.Client();
 
-  /// Create an [LlmClient] for the given provider and model.
+  /// Creates an [LlmClient] for the given provider and model.
   LlmClient create({
     required LlmProvider provider,
     required String model,
@@ -35,6 +35,13 @@ class LlmClientFactory {
           model: model,
           systemPrompt: systemPrompt,
         ),
+      LlmProvider.mistral => OpenAiClient(
+          httpClient: _httpClient,
+          apiKey: apiKey,
+          model: model,
+          systemPrompt: systemPrompt,
+          baseUrl: 'https://api.mistral.ai',
+        ),
       LlmProvider.ollama => OllamaClient(
           httpClient: _httpClient,
           model: model,
@@ -44,7 +51,7 @@ class LlmClientFactory {
     };
   }
 
-  /// Create an [LlmClient] from a [GlueConfig] using its defaults.
+  /// Creates an [LlmClient] from a [GlueConfig] using its defaults.
   LlmClient createFromConfig(GlueConfig config,
       {required String systemPrompt}) {
     return create(
@@ -56,7 +63,7 @@ class LlmClientFactory {
     );
   }
 
-  /// Create an [LlmClient] from a [ModelEntry] with keys from config.
+  /// Creates an [LlmClient] from a [ModelEntry] with keys from config.
   LlmClient createFromEntry(
     ModelEntry entry,
     GlueConfig config, {
@@ -65,6 +72,7 @@ class LlmClientFactory {
     final apiKey = switch (entry.provider) {
       LlmProvider.anthropic => config.anthropicApiKey ?? '',
       LlmProvider.openai => config.openaiApiKey ?? '',
+      LlmProvider.mistral => config.mistralApiKey ?? '',
       LlmProvider.ollama => '',
     };
     return create(
@@ -76,7 +84,7 @@ class LlmClientFactory {
     );
   }
 
-  /// Create an [LlmClient] from an [AgentProfile] with keys from config.
+  /// Creates an [LlmClient] from an [AgentProfile] with keys from config.
   LlmClient createFromProfile(
     AgentProfile profile,
     GlueConfig config, {
@@ -85,6 +93,7 @@ class LlmClientFactory {
     final apiKey = switch (profile.provider) {
       LlmProvider.anthropic => config.anthropicApiKey ?? '',
       LlmProvider.openai => config.openaiApiKey ?? '',
+      LlmProvider.mistral => config.mistralApiKey ?? '',
       LlmProvider.ollama => '',
     };
     return create(

@@ -190,6 +190,7 @@ class AgentManager {
   String _apiKeyFor(LlmProvider provider) => switch (provider) {
         LlmProvider.anthropic => config.anthropicApiKey ?? '',
         LlmProvider.openai => config.openaiApiKey ?? '',
+        LlmProvider.mistral => config.mistralApiKey ?? '',
         LlmProvider.ollama => '',
       };
 }

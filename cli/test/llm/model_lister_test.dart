@@ -11,12 +11,14 @@ void main() {
       test('parses /api/tags response', () async {
         final client = http_testing.MockClient((req) async {
           expect(req.url.path, '/api/tags');
-          return http.Response(jsonEncode({
-            'models': [
-              {'name': 'llama3.2:latest', 'size': 2147483648},
-              {'name': 'qwen2.5:7b', 'size': 4831838208},
-            ]
-          }), 200);
+          return http.Response(
+              jsonEncode({
+                'models': [
+                  {'name': 'llama3.2:latest', 'size': 2147483648},
+                  {'name': 'qwen2.5:7b', 'size': 4831838208},
+                ]
+              }),
+              200);
         });
         final lister = ModelLister(httpClient: client);
         final models = await lister.list(
@@ -45,13 +47,15 @@ void main() {
         final client = http_testing.MockClient((req) async {
           expect(req.url.path, '/v1/models');
           expect(req.headers['Authorization'], 'Bearer test-key');
-          return http.Response(jsonEncode({
-            'data': [
-              {'id': 'gpt-4.1'},
-              {'id': 'gpt-4.1-mini'},
-              {'id': 'gpt-3.5-turbo'},
-            ]
-          }), 200);
+          return http.Response(
+              jsonEncode({
+                'data': [
+                  {'id': 'gpt-4.1'},
+                  {'id': 'gpt-4.1-mini'},
+                  {'id': 'gpt-3.5-turbo'},
+                ]
+              }),
+              200);
         });
         final lister = ModelLister(httpClient: client);
         final models = await lister.list(
@@ -72,12 +76,14 @@ void main() {
           expect(req.url.path, '/v1/models');
           expect(req.headers['x-api-key'], 'test-key');
           expect(req.headers['anthropic-version'], '2023-06-01');
-          return http.Response(jsonEncode({
-            'data': [
-              {'id': 'claude-sonnet-4-6'},
-              {'id': 'claude-haiku-4'},
-            ]
-          }), 200);
+          return http.Response(
+              jsonEncode({
+                'data': [
+                  {'id': 'claude-sonnet-4-6'},
+                  {'id': 'claude-haiku-4'},
+                ]
+              }),
+              200);
         });
         final lister = ModelLister(httpClient: client);
         final models = await lister.list(
@@ -87,6 +93,35 @@ void main() {
         expect(models, hasLength(2));
         expect(models[0].id, 'claude-haiku-4');
         expect(models[1].id, 'claude-sonnet-4-6');
+      });
+    });
+
+    group('Mistral', () {
+      test('parses /v1/models response with Bearer auth', () async {
+        final client = http_testing.MockClient((req) async {
+          expect(req.url.host, 'api.mistral.ai');
+          expect(req.url.path, '/v1/models');
+          expect(req.headers['Authorization'], 'Bearer test-key');
+          return http.Response(
+              jsonEncode({
+                'data': [
+                  {'id': 'mistral-large-latest'},
+                  {'id': 'mistral-small-latest'},
+                  {'id': 'codestral-latest'},
+                ]
+              }),
+              200);
+        });
+        final lister = ModelLister(httpClient: client);
+        final models = await lister.list(
+          provider: LlmProvider.mistral,
+          apiKey: 'test-key',
+        );
+        expect(models, hasLength(3));
+        // Sorted alphabetically
+        expect(models[0].id, 'codestral-latest');
+        expect(models[1].id, 'mistral-large-latest');
+        expect(models[2].id, 'mistral-small-latest');
       });
     });
 

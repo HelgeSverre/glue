@@ -13,8 +13,7 @@ class ModelInfo {
 class ModelLister {
   final http.Client _http;
 
-  ModelLister({http.Client? httpClient})
-      : _http = httpClient ?? http.Client();
+  ModelLister({http.Client? httpClient}) : _http = httpClient ?? http.Client();
 
   Future<List<ModelInfo>> list({
     required LlmProvider provider,
@@ -23,15 +22,17 @@ class ModelLister {
   }) async {
     return switch (provider) {
       LlmProvider.ollama => _listOllama(ollamaBaseUrl),
-      LlmProvider.openai => _listOpenAi(apiKey ?? ''),
+      LlmProvider.openai =>
+        _listOpenAiCompat(apiKey ?? '', 'https://api.openai.com'),
+      LlmProvider.mistral =>
+        _listOpenAiCompat(apiKey ?? '', 'https://api.mistral.ai'),
       LlmProvider.anthropic => _listAnthropic(apiKey ?? ''),
     };
   }
 
   Future<List<ModelInfo>> _listOllama(String baseUrl) async {
     final uri = Uri.parse(baseUrl).resolve('/api/tags');
-    final response = await _http.get(uri)
-        .timeout(const Duration(seconds: 10));
+    final response = await _http.get(uri).timeout(const Duration(seconds: 10));
     if (response.statusCode != 200) {
       throw Exception('Ollama API error ${response.statusCode}');
     }
@@ -46,8 +47,9 @@ class ModelLister {
     }).toList();
   }
 
-  Future<List<ModelInfo>> _listOpenAi(String apiKey) async {
-    final uri = Uri.parse('https://api.openai.com/v1/models');
+  Future<List<ModelInfo>> _listOpenAiCompat(
+      String apiKey, String baseUrl) async {
+    final uri = Uri.parse(baseUrl).resolve('/v1/models');
     final response = await _http.get(uri, headers: {
       'Authorization': 'Bearer $apiKey',
     }).timeout(const Duration(seconds: 10));

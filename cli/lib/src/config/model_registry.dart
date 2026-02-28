@@ -121,6 +121,36 @@ class ModelRegistry {
       tagline: 'Deep reasoning',
     ),
 
+    // ── Mistral ─────────────────────────────────────────────────
+    ModelEntry(
+      displayName: 'Mistral Large',
+      modelId: 'mistral-large-latest',
+      provider: LlmProvider.mistral,
+      capabilities: {ModelCapability.coding, ModelCapability.reasoning},
+      cost: CostTier.high,
+      speed: SpeedTier.standard,
+      tagline: 'Flagship multimodal',
+      isDefault: true,
+    ),
+    ModelEntry(
+      displayName: 'Mistral Small',
+      modelId: 'mistral-small-latest',
+      provider: LlmProvider.mistral,
+      capabilities: {ModelCapability.fast, ModelCapability.coding},
+      cost: CostTier.low,
+      speed: SpeedTier.fast,
+      tagline: 'Fast and efficient',
+    ),
+    ModelEntry(
+      displayName: 'Codestral',
+      modelId: 'codestral-latest',
+      provider: LlmProvider.mistral,
+      capabilities: {ModelCapability.coding, ModelCapability.fast},
+      cost: CostTier.medium,
+      speed: SpeedTier.fast,
+      tagline: 'Code specialist',
+    ),
+
     // ── Ollama ─────────────────────────────────────────────────
     ModelEntry(
       displayName: 'Llama 3.2',
@@ -134,7 +164,7 @@ class ModelRegistry {
     ),
   ];
 
-  /// Find a model by its exact ID, or null.
+  /// Finds a model by its exact ID, or returns null.
   static ModelEntry? findById(String modelId) {
     for (final m in models) {
       if (m.modelId == modelId) return m;
@@ -142,7 +172,7 @@ class ModelRegistry {
     return null;
   }
 
-  /// Find a model by fuzzy match on modelId or displayName (case-insensitive).
+  /// Finds a model by fuzzy match on [ModelEntry.modelId] or [ModelEntry.displayName].
   static ModelEntry? findByName(String query) {
     final q = query.toLowerCase();
     // Exact modelId match first.
@@ -175,6 +205,8 @@ class ModelRegistry {
           config.anthropicApiKey != null && config.anthropicApiKey!.isNotEmpty,
         LlmProvider.openai =>
           config.openaiApiKey != null && config.openaiApiKey!.isNotEmpty,
+        LlmProvider.mistral =>
+          config.mistralApiKey != null && config.mistralApiKey!.isNotEmpty,
         LlmProvider.ollama => true,
       };
     }).toList();

@@ -45,7 +45,8 @@ void main() {
     test('forProvider filters correctly', () {
       final anthropic = ModelRegistry.forProvider(LlmProvider.anthropic);
       expect(anthropic, isNotEmpty);
-      expect(anthropic.every((m) => m.provider == LlmProvider.anthropic), isTrue);
+      expect(
+          anthropic.every((m) => m.provider == LlmProvider.anthropic), isTrue);
 
       final openai = ModelRegistry.forProvider(LlmProvider.openai);
       expect(openai, isNotEmpty);
@@ -86,14 +87,39 @@ void main() {
       );
     });
 
-    test('available includes all providers when both keys set', () {
-      final configBoth = GlueConfig(
+    test('available includes all providers when all keys set', () {
+      final configAll = GlueConfig(
         anthropicApiKey: 'sk-ant',
         openaiApiKey: 'sk-oai',
+        mistralApiKey: 'mk-test',
       );
-      final available = ModelRegistry.available(configBoth);
+      final available = ModelRegistry.available(configAll);
       final providers = available.map((m) => m.provider).toSet();
       expect(providers, containsAll(LlmProvider.values));
+    });
+
+    test('contains Mistral models', () {
+      final mistral = ModelRegistry.forProvider(LlmProvider.mistral);
+      expect(mistral.length, 3);
+      expect(mistral.any((m) => m.modelId == 'mistral-large-latest'), isTrue);
+      expect(mistral.any((m) => m.modelId == 'codestral-latest'), isTrue);
+    });
+
+    test('Mistral default model is mistral-large-latest', () {
+      final def = ModelRegistry.defaultFor(LlmProvider.mistral);
+      expect(def.modelId, 'mistral-large-latest');
+    });
+
+    test('available includes Mistral when key set', () {
+      final config = GlueConfig(mistralApiKey: 'test-key');
+      final available = ModelRegistry.available(config);
+      expect(available.any((m) => m.provider == LlmProvider.mistral), isTrue);
+    });
+
+    test('available excludes Mistral when key missing', () {
+      final config = GlueConfig();
+      final available = ModelRegistry.available(config);
+      expect(available.any((m) => m.provider == LlmProvider.mistral), isFalse);
     });
 
     test('withCapability filters correctly', () {
