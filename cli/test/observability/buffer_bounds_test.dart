@@ -70,8 +70,7 @@ void main() {
       final lastRequest = mockClient.requests.last as http.Request;
       final payload = jsonDecode(lastRequest.body) as Map<String, dynamic>;
       final resourceSpans = payload['resourceSpans'] as List;
-      final scopeSpans =
-          (resourceSpans[0] as Map)['scopeSpans'] as List;
+      final scopeSpans = (resourceSpans[0] as Map)['scopeSpans'] as List;
       final spans = (scopeSpans[0] as Map)['spans'] as List;
       expect(spans.length, 1000);
     });
@@ -89,8 +88,7 @@ void main() {
       final lastRequest = mockClient.requests.last as http.Request;
       final payload = jsonDecode(lastRequest.body) as Map<String, dynamic>;
       final resourceSpans = payload['resourceSpans'] as List;
-      final scopeSpans =
-          (resourceSpans[0] as Map)['scopeSpans'] as List;
+      final scopeSpans = (resourceSpans[0] as Map)['scopeSpans'] as List;
       final spans = (scopeSpans[0] as Map)['spans'] as List;
       // First span in the flushed batch should be span-500 (oldest kept).
       expect((spans.first as Map)['name'], 'span-500');
@@ -109,8 +107,7 @@ void main() {
       final lastRequest = mockClient.requests.last as http.Request;
       final payload = jsonDecode(lastRequest.body) as Map<String, dynamic>;
       final resourceSpans = payload['resourceSpans'] as List;
-      final scopeSpans =
-          (resourceSpans[0] as Map)['scopeSpans'] as List;
+      final scopeSpans = (resourceSpans[0] as Map)['scopeSpans'] as List;
       final spans = (scopeSpans[0] as Map)['spans'] as List;
       expect(spans.length, 50);
     });
@@ -135,8 +132,7 @@ void main() {
       final lastRequest = mockClient.requests.last as http.Request;
       final payload = jsonDecode(lastRequest.body) as Map<String, dynamic>;
       final resourceSpans = payload['resourceSpans'] as List;
-      final scopeSpans =
-          (resourceSpans[0] as Map)['scopeSpans'] as List;
+      final scopeSpans = (resourceSpans[0] as Map)['scopeSpans'] as List;
       final spans = (scopeSpans[0] as Map)['spans'] as List;
       expect(spans.length, 1000);
       // Oldest 200 old-spans should have been dropped.
@@ -193,9 +189,11 @@ void main() {
       final payload = jsonDecode(lastRequest.body) as Map<String, dynamic>;
       final batch = payload['batch'] as List;
       // First event body should be span-500 (oldest kept).
-      expect((batch.first as Map)['body']['name'], 'span-500');
+      final firstEvent = batch.first as Map<String, dynamic>;
+      final lastEvent = batch.last as Map<String, dynamic>;
+      expect((firstEvent['body'] as Map<String, dynamic>)['name'], 'span-500');
       // Last event body should be span-1499 (newest).
-      expect((batch.last as Map)['body']['name'], 'span-1499');
+      expect((lastEvent['body'] as Map<String, dynamic>)['name'], 'span-1499');
     });
 
     test('normal operation unaffected below limit', () async {
@@ -210,7 +208,8 @@ void main() {
       final payload = jsonDecode(lastRequest.body) as Map<String, dynamic>;
       final batch = payload['batch'] as List;
       // Each span produces trace-create + span-create = 100 events for 50 spans.
-      final spanEvents = batch.cast<Map<String, dynamic>>()
+      final spanEvents = batch
+          .cast<Map<String, dynamic>>()
           .where((e) => e['type'] == 'span-create')
           .toList();
       expect(spanEvents.length, 50);
@@ -233,12 +232,15 @@ void main() {
       final payload = jsonDecode(lastRequest.body) as Map<String, dynamic>;
       final batch = payload['batch'] as List;
       // 1000 spans in buffer, each produces trace-create + span-create.
-      final spanEvents = batch.cast<Map<String, dynamic>>()
+      final spanEvents = batch
+          .cast<Map<String, dynamic>>()
           .where((e) => e['type'] == 'span-create')
           .toList();
       expect(spanEvents.length, 1000);
-      expect(spanEvents.first['body']['name'], 'old-200');
-      expect(spanEvents.last['body']['name'], 'new-399');
+      expect((spanEvents.first['body'] as Map<String, dynamic>)['name'],
+          'old-200');
+      expect((spanEvents.last['body'] as Map<String, dynamic>)['name'],
+          'new-399');
     });
   });
 }

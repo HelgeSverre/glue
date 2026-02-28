@@ -9,9 +9,9 @@ class FileSink extends ObservabilitySink {
 
   FileSink({required String logsDir})
       : _sink = (File(p.join(
-            logsDir,
-            'spans-${DateTime.now().toIso8601String().substring(0, 10)}.jsonl',
-          ))
+          logsDir,
+          'spans-${DateTime.now().toIso8601String().substring(0, 10)}.jsonl',
+        ))
               ..parent.createSync(recursive: true))
             .openWrite(mode: FileMode.append);
 

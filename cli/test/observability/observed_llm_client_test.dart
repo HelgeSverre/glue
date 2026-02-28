@@ -64,9 +64,7 @@ void main() {
       TextDelta(' world'),
     ]);
 
-    final chunks = await client
-        .stream([Message.user('hi')])
-        .toList();
+    final chunks = await client.stream([Message.user('hi')]).toList();
 
     expect(chunks, hasLength(2));
     expect((chunks[0] as TextDelta).text, 'Hello');
@@ -153,7 +151,8 @@ void main() {
     await client.stream([Message.user('hi')]).toList();
 
     expect(sink.spans.first.attributes['gen_ai.system'], 'anthropic');
-    expect(sink.spans.first.attributes['gen_ai.request.model'], 'claude-sonnet-4-20250514');
+    expect(sink.spans.first.attributes['gen_ai.request.model'],
+        'claude-sonnet-4-20250514');
   });
 
   test('records gen_ai.usage attributes from UsageInfo', () async {
@@ -176,6 +175,7 @@ void main() {
     await plainClient.stream([Message.user('hi')]).toList();
 
     expect(sink.spans.first.attributes.containsKey('gen_ai.system'), isFalse);
-    expect(sink.spans.first.attributes.containsKey('gen_ai.request.model'), isFalse);
+    expect(sink.spans.first.attributes.containsKey('gen_ai.request.model'),
+        isFalse);
   });
 }

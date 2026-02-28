@@ -13,8 +13,7 @@ class LangfuseConfig {
     this.secretKey,
   });
 
-  bool get isConfigured =>
-      enabled && publicKey != null && secretKey != null;
+  bool get isConfigured => enabled && publicKey != null && secretKey != null;
 }
 
 class OtelConfig {

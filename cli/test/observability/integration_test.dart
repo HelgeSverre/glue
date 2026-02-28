@@ -120,8 +120,7 @@ void main() {
         inner: _MockLlmClient(),
         obs: obs,
       );
-      final chunks =
-          await llmClient.stream([Message.user('test')]).toList();
+      final chunks = await llmClient.stream([Message.user('test')]).toList();
       expect(chunks, hasLength(3));
 
       final tool = ObservedTool(inner: _MockTool(), obs: obs);
@@ -139,11 +138,10 @@ void main() {
       final resourceSpans = otelPayload['resourceSpans'] as List<dynamic>;
       expect(resourceSpans, isNotEmpty);
 
-      final scopeSpans =
-          (resourceSpans.first as Map<String, dynamic>)['scopeSpans']
-              as List<dynamic>;
-      final spans = (scopeSpans.first as Map<String, dynamic>)['spans']
-          as List<dynamic>;
+      final scopeSpans = (resourceSpans.first
+          as Map<String, dynamic>)['scopeSpans'] as List<dynamic>;
+      final spans =
+          (scopeSpans.first as Map<String, dynamic>)['spans'] as List<dynamic>;
 
       expect(spans.length, greaterThanOrEqualTo(3));
 
@@ -244,12 +242,10 @@ void main() {
 
       expect(otelPayloads, isNotEmpty);
       final payload = otelPayloads.first;
-      final spans =
-          ((payload['resourceSpans'] as List<dynamic>).first
-              as Map<String, dynamic>)['scopeSpans'];
+      final spans = ((payload['resourceSpans'] as List<dynamic>).first
+          as Map<String, dynamic>)['scopeSpans'];
       final spanList = ((spans as List<dynamic>).first
-              as Map<String, dynamic>)['spans']
-          as List<dynamic>;
+          as Map<String, dynamic>)['spans'] as List<dynamic>;
 
       expect(spanList, hasLength(2));
 

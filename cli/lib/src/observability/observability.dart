@@ -5,8 +5,9 @@ import 'package:glue/src/observability/debug_controller.dart';
 
 final _random = Random.secure();
 
-String _hexId(int bytes) =>
-    List.generate(bytes, (_) => _random.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+String _hexId(int bytes) => List.generate(
+        bytes, (_) => _random.nextInt(256).toRadixString(16).padLeft(2, '0'))
+    .join();
 
 /// A span representing a unit of work in the observability trace.
 ///
@@ -61,6 +62,7 @@ class ObservabilitySpan {
 abstract class ObservabilitySink {
   /// Receives a completed [span] for processing.
   void onSpan(ObservabilitySpan span);
+
   /// Flushes any buffered spans to the backend.
   Future<void> flush();
 

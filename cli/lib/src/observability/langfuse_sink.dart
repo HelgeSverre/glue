@@ -167,10 +167,8 @@ class LangfuseSink extends ObservabilitySink {
         'startTime': span.start.toUtc().toIso8601String(),
         if (span.endTime != null)
           'endTime': span.endTime!.toUtc().toIso8601String(),
-        if (span.parentSpanId != null)
-          'parentObservationId': span.parentSpanId,
-        'metadata': Map<String, dynamic>.from(span.attributes)
-          ..remove('error'),
+        if (span.parentSpanId != null) 'parentObservationId': span.parentSpanId,
+        'metadata': Map<String, dynamic>.from(span.attributes)..remove('error'),
         if (span.attributes.containsKey('error'))
           'level': 'ERROR'
         else

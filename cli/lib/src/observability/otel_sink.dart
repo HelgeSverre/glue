@@ -105,11 +105,9 @@ class OtelSink extends ObservabilitySink {
       if (span.parentSpanId != null) 'parentSpanId': span.parentSpanId,
       'name': span.name,
       'kind': otlpKind,
-      'startTimeUnixNano':
-          '${span.start.microsecondsSinceEpoch * 1000}',
+      'startTimeUnixNano': '${span.start.microsecondsSinceEpoch * 1000}',
       if (span.endTime != null)
-        'endTimeUnixNano':
-            '${span.endTime!.microsecondsSinceEpoch * 1000}',
+        'endTimeUnixNano': '${span.endTime!.microsecondsSinceEpoch * 1000}',
       'attributes': span.attributes.entries
           .map((e) => _toOtlpAttr(e.key, e.value))
           .toList(),

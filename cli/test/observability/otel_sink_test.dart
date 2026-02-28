@@ -81,8 +81,7 @@ void main() {
 
     await sink.flush();
 
-    final payload =
-        jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
+    final payload = jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
     final resourceSpans = payload['resourceSpans'] as List<dynamic>;
     expect(resourceSpans, hasLength(1));
 
@@ -115,8 +114,7 @@ void main() {
 
       await sink.flush();
 
-      final payload =
-          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
+      final payload = jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
       final otlpSpan = _extractFirstSpan(payload);
       expect(otlpSpan['traceId'], span.traceId);
       expect(otlpSpan['spanId'], span.spanId);
@@ -131,8 +129,8 @@ void main() {
 
       await sink.flush();
 
-      final otlpSpan =
-          _extractFirstSpan(jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
+      final otlpSpan = _extractFirstSpan(
+          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
       expect(otlpSpan['kind'], 3);
     });
 
@@ -144,8 +142,8 @@ void main() {
 
       await sink.flush();
 
-      final otlpSpan =
-          _extractFirstSpan(jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
+      final otlpSpan = _extractFirstSpan(
+          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
       expect(otlpSpan['kind'], 3);
     });
 
@@ -157,8 +155,8 @@ void main() {
 
       await sink.flush();
 
-      final otlpSpan =
-          _extractFirstSpan(jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
+      final otlpSpan = _extractFirstSpan(
+          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
       expect(otlpSpan['kind'], 1);
     });
 
@@ -170,8 +168,8 @@ void main() {
 
       await sink.flush();
 
-      final otlpSpan =
-          _extractFirstSpan(jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
+      final otlpSpan = _extractFirstSpan(
+          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
       expect(otlpSpan['kind'], 1);
     });
 
@@ -183,8 +181,8 @@ void main() {
 
       await sink.flush();
 
-      final otlpSpan =
-          _extractFirstSpan(jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
+      final otlpSpan = _extractFirstSpan(
+          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
       expect(otlpSpan['startTimeUnixNano'], isA<String>());
       expect(int.tryParse(otlpSpan['startTimeUnixNano'] as String), isNotNull);
     });
@@ -197,8 +195,8 @@ void main() {
 
       await sink.flush();
 
-      final otlpSpan =
-          _extractFirstSpan(jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
+      final otlpSpan = _extractFirstSpan(
+          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
       expect(otlpSpan['endTimeUnixNano'], isA<String>());
     });
 
@@ -214,8 +212,8 @@ void main() {
 
       await sink.flush();
 
-      final otlpSpan =
-          _extractFirstSpan(jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
+      final otlpSpan = _extractFirstSpan(
+          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
       expect(otlpSpan['parentSpanId'], 'parent123');
     });
 
@@ -227,8 +225,8 @@ void main() {
 
       await sink.flush();
 
-      final otlpSpan =
-          _extractFirstSpan(jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
+      final otlpSpan = _extractFirstSpan(
+          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
       expect(otlpSpan.containsKey('parentSpanId'), isFalse);
     });
   });
@@ -246,8 +244,8 @@ void main() {
 
       await sink.flush();
 
-      final otlpSpan =
-          _extractFirstSpan(jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
+      final otlpSpan = _extractFirstSpan(
+          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
       final attr = _findAttribute(otlpSpan, 'count');
       expect((attr['value'] as Map<String, dynamic>)['intValue'], '42');
     });
@@ -264,8 +262,8 @@ void main() {
 
       await sink.flush();
 
-      final otlpSpan =
-          _extractFirstSpan(jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
+      final otlpSpan = _extractFirstSpan(
+          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
       final attr = _findAttribute(otlpSpan, 'method');
       expect((attr['value'] as Map<String, dynamic>)['stringValue'], 'GET');
     });
@@ -282,8 +280,8 @@ void main() {
 
       await sink.flush();
 
-      final otlpSpan =
-          _extractFirstSpan(jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
+      final otlpSpan = _extractFirstSpan(
+          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
       final attr = _findAttribute(otlpSpan, 'success');
       expect((attr['value'] as Map<String, dynamic>)['boolValue'], true);
     });
@@ -300,8 +298,8 @@ void main() {
 
       await sink.flush();
 
-      final otlpSpan =
-          _extractFirstSpan(jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
+      final otlpSpan = _extractFirstSpan(
+          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
       final attr = _findAttribute(otlpSpan, 'ratio');
       expect((attr['value'] as Map<String, dynamic>)['doubleValue'], 0.75);
     });
@@ -320,8 +318,8 @@ void main() {
 
       await sink.flush();
 
-      final otlpSpan =
-          _extractFirstSpan(jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
+      final otlpSpan = _extractFirstSpan(
+          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
       final status = otlpSpan['status'] as Map<String, dynamic>;
       expect(status['code'], 2);
       expect(status['message'], 'something went wrong');
@@ -335,8 +333,8 @@ void main() {
 
       await sink.flush();
 
-      final otlpSpan =
-          _extractFirstSpan(jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
+      final otlpSpan = _extractFirstSpan(
+          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>);
       final status = otlpSpan['status'] as Map<String, dynamic>;
       expect(status['code'], 1);
       expect(status.containsKey('message'), isFalse);
@@ -425,8 +423,7 @@ Map<String, dynamic> _extractFirstSpan(Map<String, dynamic> payload) {
   return spans[0] as Map<String, dynamic>;
 }
 
-Map<String, dynamic> _findAttribute(
-    Map<String, dynamic> otlpSpan, String key) {
+Map<String, dynamic> _findAttribute(Map<String, dynamic> otlpSpan, String key) {
   final attrs = otlpSpan['attributes'] as List<dynamic>;
   return attrs.firstWhere(
     (a) => (a as Map<String, dynamic>)['key'] == key,

@@ -34,15 +34,10 @@ LangfuseConfig _configured() => const LangfuseConfig(
     );
 
 Map<String, dynamic> _findByType(List<dynamic> batch, String type) =>
-    batch
-        .cast<Map<String, dynamic>>()
-        .firstWhere((e) => e['type'] == type);
+    batch.cast<Map<String, dynamic>>().firstWhere((e) => e['type'] == type);
 
 List<Map<String, dynamic>> _allByType(List<dynamic> batch, String type) =>
-    batch
-        .cast<Map<String, dynamic>>()
-        .where((e) => e['type'] == type)
-        .toList();
+    batch.cast<Map<String, dynamic>>().where((e) => e['type'] == type).toList();
 
 void main() {
   late _MockHttpClient mockHttp;
@@ -121,8 +116,7 @@ void main() {
       sink.onSpan(span);
       await sink.flush();
 
-      final payload =
-          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
+      final payload = jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
       final batch = payload['batch'] as List<dynamic>;
       final traceEvent = _findByType(batch, 'trace-create');
       final body = traceEvent['body'] as Map<String, dynamic>;
@@ -148,8 +142,7 @@ void main() {
       sink.onSpan(span2);
       await sink.flush();
 
-      final payload =
-          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
+      final payload = jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
       final batch = payload['batch'] as List<dynamic>;
       final traceEvents = _allByType(batch, 'trace-create');
       expect(traceEvents, hasLength(1));
@@ -174,8 +167,7 @@ void main() {
       sink.onSpan(span);
       await sink.flush();
 
-      final payload =
-          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
+      final payload = jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
       final batch = payload['batch'] as List<dynamic>;
       final traceEvent = _findByType(batch, 'trace-create');
       final body = traceEvent['body'] as Map<String, dynamic>;
@@ -201,8 +193,7 @@ void main() {
 
       await sink.flush();
 
-      final payload =
-          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
+      final payload = jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
       final batch = payload['batch'] as List<dynamic>;
       expect(batch, hasLength(2));
       final event = _findByType(batch, 'generation-create');
@@ -221,8 +212,7 @@ void main() {
 
       await sink.flush();
 
-      final payload =
-          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
+      final payload = jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
       final batch = payload['batch'] as List<dynamic>;
       final body = _findByType(batch, 'generation-create')['body']
           as Map<String, dynamic>;
@@ -247,8 +237,7 @@ void main() {
 
       await sink.flush();
 
-      final payload =
-          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
+      final payload = jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
       final batch = payload['batch'] as List<dynamic>;
       final body = _findByType(batch, 'generation-create')['body']
           as Map<String, dynamic>;
@@ -268,8 +257,7 @@ void main() {
 
       await sink.flush();
 
-      final payload =
-          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
+      final payload = jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
       final batch = payload['batch'] as List<dynamic>;
       expect(batch, hasLength(2));
       final event = _findByType(batch, 'span-create');
@@ -284,8 +272,7 @@ void main() {
 
       await sink.flush();
 
-      final payload =
-          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
+      final payload = jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
       final batch = payload['batch'] as List<dynamic>;
       final event = _findByType(batch, 'span-create');
       expect(event['type'], 'span-create');
@@ -301,8 +288,7 @@ void main() {
 
       await sink.flush();
 
-      final payload =
-          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
+      final payload = jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
       final batch = payload['batch'] as List<dynamic>;
       final event = _findByType(batch, 'span-create');
       expect(event.containsKey('id'), isTrue);
@@ -321,11 +307,10 @@ void main() {
 
       await sink.flush();
 
-      final payload =
-          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
+      final payload = jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
       final batch = payload['batch'] as List<dynamic>;
-      final body = _findByType(batch, 'span-create')['body']
-          as Map<String, dynamic>;
+      final body =
+          _findByType(batch, 'span-create')['body'] as Map<String, dynamic>;
       expect(body['id'], span.spanId);
       expect(body['traceId'], span.traceId);
       expect(body['name'], 'test');
@@ -345,11 +330,10 @@ void main() {
 
       await sink.flush();
 
-      final payload =
-          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
+      final payload = jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
       final batch = payload['batch'] as List<dynamic>;
-      final body = _findByType(batch, 'span-create')['body']
-          as Map<String, dynamic>;
+      final body =
+          _findByType(batch, 'span-create')['body'] as Map<String, dynamic>;
       expect(body['parentObservationId'], 'parent-abc');
     });
 
@@ -361,11 +345,10 @@ void main() {
 
       await sink.flush();
 
-      final payload =
-          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
+      final payload = jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
       final batch = payload['batch'] as List<dynamic>;
-      final body = _findByType(batch, 'span-create')['body']
-          as Map<String, dynamic>;
+      final body =
+          _findByType(batch, 'span-create')['body'] as Map<String, dynamic>;
       expect(body.containsKey('parentObservationId'), isFalse);
     });
   });
@@ -383,11 +366,10 @@ void main() {
 
       await sink.flush();
 
-      final payload =
-          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
+      final payload = jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
       final batch = payload['batch'] as List<dynamic>;
-      final body = _findByType(batch, 'span-create')['body']
-          as Map<String, dynamic>;
+      final body =
+          _findByType(batch, 'span-create')['body'] as Map<String, dynamic>;
       expect(body['level'], 'ERROR');
       expect(body['statusMessage'], 'something failed');
     });
@@ -400,11 +382,10 @@ void main() {
 
       await sink.flush();
 
-      final payload =
-          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
+      final payload = jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
       final batch = payload['batch'] as List<dynamic>;
-      final body = _findByType(batch, 'span-create')['body']
-          as Map<String, dynamic>;
+      final body =
+          _findByType(batch, 'span-create')['body'] as Map<String, dynamic>;
       expect(body['level'], 'DEFAULT');
       expect(body.containsKey('statusMessage'), isFalse);
     });
@@ -421,8 +402,7 @@ void main() {
 
       await sink.flush();
 
-      final payload =
-          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
+      final payload = jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
       final batch = payload['batch'] as List<dynamic>;
       final body = _findByType(batch, 'generation-create')['body']
           as Map<String, dynamic>;
@@ -442,11 +422,10 @@ void main() {
 
       await sink.flush();
 
-      final payload =
-          jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
+      final payload = jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
       final batch = payload['batch'] as List<dynamic>;
-      final body = _findByType(batch, 'span-create')['body']
-          as Map<String, dynamic>;
+      final body =
+          _findByType(batch, 'span-create')['body'] as Map<String, dynamic>;
       final metadata = body['metadata'] as Map<String, dynamic>;
       expect(metadata.containsKey('error'), isFalse);
       expect(metadata['other'], 'kept');
@@ -512,8 +491,7 @@ void main() {
     await sink.flush();
 
     expect(mockHttp.requests, hasLength(1));
-    final payload =
-        jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
+    final payload = jsonDecode(mockHttp.bodies.first) as Map<String, dynamic>;
     final batch = payload['batch'] as List<dynamic>;
     // 2 unique traceIds = 2 trace-create + 2 observation events
     expect(batch, hasLength(4));
