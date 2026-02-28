@@ -32,6 +32,27 @@ All notable changes to Glue CLI will be documented in this file.
 - **Hidden aliases** for slash commands — `SlashCommand` now supports
   `hiddenAliases` that resolve on execution but are excluded from
   autocomplete and `/help`. `/q` is now a hidden alias for `/exit`.
+- **Multi-shell support** — unified `CommandExecutor` abstraction with
+  `HostExecutor` that respects the user's shell via `$SHELL`,
+  `GLUE_SHELL`/`GLUE_SHELL_MODE` env vars, or `shell.*` in config.yaml.
+  Supports bash, zsh, fish, pwsh with correct flag mapping for
+  interactive/login/non-interactive modes.
+- **Docker sandbox** — `DockerExecutor` runs agent commands in ephemeral
+  `docker run --rm` containers with bind-mounted directories. Uses
+  cidfile-based container termination with retry for race conditions.
+  `ExecutorFactory` handles Docker availability detection with automatic
+  host fallback. Configurable via `docker.*` in config.yaml or
+  `GLUE_DOCKER_*` env vars.
+- **Session-scoped Docker mounts** — `SessionState` persists directory
+  whitelist additions in `state.json` per session, merged with config
+  mounts at executor creation.
+- **`/models` command** — lists available models from the current
+  provider (Ollama `/api/tags`, OpenAI `/v1/models`, Anthropic
+  `/v1/models`). Shows model name, size (Ollama), and marks current.
+- **E2E integration tests** — headless agent loop tests via
+  `AgentRunner` with real Ollama (`qwen2.5:7b`). Tagged `@e2e`,
+  skipped by default, run with `dart test --run-skipped -t e2e`.
+  Retry wrapper handles small-model non-determinism.
 
 ### Fixed
 
