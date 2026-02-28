@@ -2,6 +2,44 @@ import 'package:glue/glue.dart';
 import 'package:test/test.dart';
 
 void main() {
+  // ── osc8Link ────────────────────────────────────────────────────────
+
+  group('osc8Link', () {
+    test('wraps URL with OSC 8 escape sequences', () {
+      final result = osc8Link('https://example.com');
+      expect(
+        result,
+        equals('\x1b]8;;https://example.com\x07'
+            'https://example.com'
+            '\x1b]8;;\x07'),
+      );
+    });
+
+    test('uses custom display text when provided', () {
+      final result = osc8Link('https://example.com', 'click here');
+      expect(
+        result,
+        equals('\x1b]8;;https://example.com\x07'
+            'click here'
+            '\x1b]8;;\x07'),
+      );
+    });
+
+    test('handles empty URL', () {
+      final result = osc8Link('');
+      expect(result, equals('\x1b]8;;\x07\x1b]8;;\x07'));
+    });
+
+    test('handles URL with special characters', () {
+      final url = 'https://example.com/path?q=hello&x=1#frag';
+      final result = osc8Link(url, 'link');
+      expect(
+        result,
+        equals('\x1b]8;;$url\x07link\x1b]8;;\x07'),
+      );
+    });
+  });
+
   // ── visibleLength ─────────────────────────────────────────────────────
 
   group('visibleLength', () {
@@ -75,6 +113,18 @@ void main() {
       // Ａ = U+FF21 (fullwidth A)
       expect(visibleLength('\uFF21\uFF22'), 4);
     });
+
+    test('returns correct length for OSC 8 wrapped text', () {
+      final linked =
+          '\x1b]8;;https://example.com\x07click\x1b]8;;\x07';
+      expect(visibleLength(linked), equals(5)); // "click" = 5
+    });
+
+    test('returns correct length for mixed CSI + OSC text', () {
+      final text =
+          '\x1b[31m\x1b]8;;https://x.com\x07hi\x1b]8;;\x07\x1b[0m';
+      expect(visibleLength(text), equals(2)); // "hi" = 2
+    });
   });
 
   // ── stripAnsi ─────────────────────────────────────────────────────────
@@ -90,6 +140,23 @@ void main() {
 
     test('removes multiple sequences', () {
       expect(stripAnsi('\x1b[33mfoo\x1b[39m \x1b[1mbar\x1b[22m'), 'foo bar');
+    });
+
+    test('strips OSC 8 hyperlink sequences', () {
+      final linked =
+          '\x1b]8;;https://example.com\x07click\x1b]8;;\x07';
+      expect(stripAnsi(linked), equals('click'));
+    });
+
+    test('strips mixed CSI and OSC sequences', () {
+      final text = '\x1b[1m\x1b]8;;https://x.com\x07bold link\x1b]8;;\x07\x1b[0m';
+      expect(stripAnsi(text), equals('bold link'));
+    });
+
+    test('strips OSC with complex URL', () {
+      final linked =
+          '\x1b]8;;file:///tmp/foo.dart\x07foo.dart\x1b]8;;\x07';
+      expect(stripAnsi(linked), equals('foo.dart'));
     });
   });
 
@@ -128,6 +195,35 @@ void main() {
       final result = ansiTruncate('blåbærsyltetøy er godt', 10);
       expect(visibleLength(result), lessThanOrEqualTo(10));
     });
+
+    test('does not truncate OSC-linked text when it fits', () {
+      final linked =
+          '\x1b]8;;https://example.com\x07abc\x1b]8;;\x07';
+      expect(ansiTruncate(linked, 10), equals(linked));
+    });
+
+    test('truncates OSC-linked text preserving escape sequences', () {
+      final linked =
+          '\x1b]8;;https://example.com\x07abcdefghij\x1b]8;;\x07';
+      final result = ansiTruncate(linked, 5);
+      expect(result, contains('\x1b]8;;https://example.com\x07'));
+      expect(visibleLength(result), equals(5));
+    });
+
+    test('truncates mixed CSI + OSC sequences', () {
+      final text =
+          '\x1b[1m\x1b]8;;https://x.com\x07hello world\x1b]8;;\x07\x1b[0m';
+      final result = ansiTruncate(text, 6);
+      expect(visibleLength(result), equals(6));
+      expect(result, contains('\x1b[1m'));
+      expect(result, contains('\x1b]8;;https://x.com\x07'));
+    });
+
+    test('handles plain text truncation unchanged', () {
+      final result = ansiTruncate('abcdefghij', 5);
+      expect(result, equals('abcd…'));
+      expect(visibleLength(result), equals(5));
+    });
   });
 
   // ── ansiWrap ──────────────────────────────────────────────────────────
@@ -159,9 +255,7 @@ void main() {
     });
 
     test('handles single long word that exceeds width', () {
-      // A word longer than maxWidth can't be split (no spaces)
       final result = ansiWrap('superlongword', 5);
-      // The word should still appear (can't break it)
       expect(result, contains('superlongword'));
     });
 
@@ -169,7 +263,6 @@ void main() {
       final result = ansiWrap('\x1b[1mbold text here\x1b[0m', 10);
       final lines = result.split('\n');
       expect(lines.length, greaterThan(1));
-      // First line should contain the ANSI open
       expect(lines.first, contains('\x1b[1m'));
     });
 
@@ -189,7 +282,6 @@ void main() {
     });
 
     test('wraps text with CJK characters at double-width', () {
-      // Each CJK char is 2 columns
       final result = ansiWrap('漢字 テスト 日本語', 8);
       for (final line in result.split('\n')) {
         expect(visibleLength(line), lessThanOrEqualTo(8));
@@ -204,7 +296,6 @@ void main() {
     });
 
     test('wraps text with combining marks (zalgo)', () {
-      // Zalgo text: visible width is just the base characters
       final zalgo = 'h\u0335e\u0344l\u0334l\u0337o\u0336 '
           'w\u0321o\u0359r\u0319l\u0320d\u0326';
       final result = ansiWrap(zalgo, 6);
@@ -227,7 +318,6 @@ void main() {
     });
 
     test('multiple spaces between words', () {
-      // split(' ') produces empty strings between consecutive spaces
       final result = ansiWrap('hello  world', 20);
       expect(result, contains('hello'));
       expect(result, contains('world'));
@@ -328,7 +418,6 @@ void main() {
     test('handles very narrow width gracefully', () {
       final result =
           wrapIndented('hello world', 3, firstPrefix: '', nextPrefix: '');
-      // Should not crash, content should still be present
       expect(result, contains('hello'));
     });
 
@@ -379,7 +468,6 @@ void main() {
       expect(lines.length, greaterThan(1),
           reason: 'Heading should wrap at width 15');
       for (final line in lines) {
-        // Each line should have bold+yellow open and reset close
         expect(line, contains('\x1b[1m'),
             reason: 'Missing bold on line: "$line"');
         expect(line, contains('\x1b[33m'),
@@ -426,7 +514,6 @@ void main() {
       final stripped = lines.map(stripAnsi).toList();
       expect(stripped.first, startsWith('1. '));
       for (var i = 1; i < stripped.length; i++) {
-        // Continuation should be indented by "1. ".length = 3
         expect(stripped[i], startsWith('   '),
             reason: 'Continuation not aligned: "${stripped[i]}"');
       }
@@ -439,7 +526,6 @@ void main() {
       final r = MarkdownRenderer(20);
       final result = r.render(
           '```\nthis_is_a_long_line_of_code_no_spaces\n```');
-      // Code block should contain box drawing chars, not be word-wrapped
       expect(stripAnsi(result), contains('╭'));
       expect(stripAnsi(result), contains('╰'));
     });
