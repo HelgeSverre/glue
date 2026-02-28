@@ -14,6 +14,7 @@ class SkillRegistry {
   factory SkillRegistry.discover({
     required String cwd,
     List<String> extraPaths = const [],
+    String? home,
   }) {
     final skills = <SkillMeta>[];
     final seen = <String>{};
@@ -57,7 +58,7 @@ class SkillRegistry {
 
     scanDir(p.join(cwd, '.glue', 'skills'), SkillSource.project);
 
-    final home = Platform.environment['HOME'] ?? '';
+    home ??= Platform.environment['HOME'] ?? '';
     if (home.isNotEmpty) {
       scanDir(p.join(home, '.glue', 'skills'), SkillSource.global);
     }

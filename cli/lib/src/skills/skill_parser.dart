@@ -1,9 +1,12 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
+/// Where a skill was discovered.
 enum SkillSource { project, global, custom }
 
+/// An error thrown when a SKILL.md file cannot be parsed.
 class SkillParseError implements Exception {
   final String message;
   SkillParseError(this.message);
@@ -12,6 +15,7 @@ class SkillParseError implements Exception {
   String toString() => 'SkillParseError: $message';
 }
 
+/// Parsed metadata from a skill's YAML frontmatter.
 class SkillMeta {
   final String name;
   final String description;
@@ -48,6 +52,7 @@ const _allowedFields = {
 final _namePatternMulti = RegExp(r'^[a-z0-9]([a-z0-9-]*[a-z0-9])?$');
 final _namePatternSingle = RegExp(r'^[a-z0-9]$');
 
+/// Parses YAML frontmatter from a SKILL.md file into a [SkillMeta].
 SkillMeta parseSkillFrontmatter(
   String content,
   String skillDir,
@@ -85,13 +90,15 @@ SkillMeta parseSkillFrontmatter(
 
   final namePattern = name.length == 1 ? _namePatternSingle : _namePatternMulti;
   if (!namePattern.hasMatch(name)) {
-    throw SkillParseError('Invalid name "$name": must be lowercase alphanumeric with hyphens');
+    throw SkillParseError(
+        'Invalid name "$name": must be lowercase alphanumeric with hyphens');
   }
   if (name.contains('--')) {
-    throw SkillParseError('Invalid name "$name": consecutive hyphens not allowed');
+    throw SkillParseError(
+        'Invalid name "$name": consecutive hyphens not allowed');
   }
 
-  final dirName = Uri.parse(skillDir).pathSegments.last;
+  final dirName = p.basename(skillDir);
   if (name != dirName) {
     throw SkillParseError('Name "$name" does not match directory "$dirName"');
   }
@@ -133,6 +140,7 @@ SkillMeta parseSkillFrontmatter(
   );
 }
 
+/// Loads the body content of a SKILL.md file (everything after the frontmatter).
 String loadSkillBody(String skillMdPath) {
   final content = File(skillMdPath).readAsStringSync();
   if (!content.startsWith('---')) {
