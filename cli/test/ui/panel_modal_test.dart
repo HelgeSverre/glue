@@ -130,7 +130,7 @@ void main() {
       expect(result.length, testLines.length);
       for (final line in result) {
         expect(line, startsWith('\x1b[2m'));
-        expect(line, endsWith('\x1b[0m'));
+        expect(line, endsWith('\x1b[22m'));
       }
     });
 

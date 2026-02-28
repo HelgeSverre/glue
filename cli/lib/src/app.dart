@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'terminal/styled.dart';
 import 'terminal/terminal.dart';
 import 'terminal/layout.dart';
 import 'input/line_editor.dart';
@@ -124,7 +125,7 @@ class App {
   String _modelName;
   final String _cwd;
   ConfirmModal? _activeModal;
-  PanelModal? _activePanel;
+  final List<PanelModal> _panelStack = [];
   bool _renderedPanelLastFrame = false;
   final Set<String> _autoApprovedTools = {
     'read_file',
@@ -436,17 +437,10 @@ class App {
 
     _commands.register(SlashCommand(
       name: 'history',
-      description: 'Show input history',
+      description: 'Browse conversation history',
       execute: (args) {
-        final n = args.isNotEmpty ? int.tryParse(args[0]) ?? 10 : 10;
-        final hist = editor.history;
-        if (hist.isEmpty) return 'No history.';
-        final recent = hist.length > n ? hist.sublist(hist.length - n) : hist;
-        final buf = StringBuffer('Recent inputs:\n');
-        for (var i = 0; i < recent.length; i++) {
-          buf.writeln('  ${i + 1}. ${recent[i]}');
-        }
-        return buf.toString();
+        _openHistoryPanel();
+        return '';
       },
     ));
 
@@ -557,24 +551,20 @@ class App {
   }
 
   void _openHelpPanel() {
-    const yellow = '\x1b[33m';
-    const rst = '\x1b[0m';
-    const dim = '\x1b[90m';
-
     final lines = <String>[];
 
-    lines.add('$yellow■ COMMANDS$rst');
+    lines.add('${'■ COMMANDS'.styled.yellow}');
     lines.add('');
     for (final cmd in _commands.commands) {
       final aliases = cmd.aliases.isNotEmpty
-          ? ' $dim(${cmd.aliases.map((a) => '/$a').join(', ')})$rst'
+          ? ' ${'(${cmd.aliases.map((a) => '/$a').join(', ')})'.styled.gray}'
           : '';
       final name = '/${cmd.name}'.padRight(16);
-      lines.add('  $yellow$name$rst${cmd.description}$aliases');
+      lines.add('  ${name.styled.yellow}${cmd.description}$aliases');
     }
 
     lines.add('');
-    lines.add('$yellow■ KEYBINDINGS$rst');
+    lines.add('${'■ KEYBINDINGS'.styled.yellow}');
     lines.add('');
     lines.add('  ${'Ctrl+C'.padRight(16)}Cancel / Exit');
     lines.add('  ${'Escape'.padRight(16)}Cancel generation');
@@ -586,18 +576,24 @@ class App {
     lines.add('  ${'Tab'.padRight(16)}Accept completion');
 
     lines.add('');
-    lines.add('$yellow■ FILE REFERENCES$rst');
+    lines.add('${'■ FILE REFERENCES'.styled.yellow}');
     lines.add('');
     lines.add('  ${'@path/to/file'.padRight(16)}Attach file to message');
     lines.add('  ${'@dir/'.padRight(16)}Browse directory');
 
-    _activePanel = PanelModal(
+    final panel = PanelModal(
       title: 'HELP',
       lines: lines,
       barrier: BarrierStyle.dim,
       height: PanelFluid(0.5, 10),
     );
+    _panelStack.add(panel);
     _render();
+
+    panel.result.then((_) {
+      _panelStack.remove(panel);
+      _render();
+    });
   }
 
   void _openResumePanel() {
@@ -642,9 +638,11 @@ class App {
       final model = s.model.length > modelW
           ? '${s.model.substring(0, modelW - 1)}…'
           : s.model;
+      final forkBadge =
+          s.forkedFrom != null ? '${'[F]'.styled.fg256(208)} ' : '';
 
       displayLines.add(
-        '$yellow${displayId.padRight(idW)}$rst$gap'
+        '$forkBadge$yellow${displayId.padRight(idW)}$rst$gap'
         '${model.padRight(modelW)}$gap'
         '$dim${shortCwd.padRight(pathW)}$rst$gap'
         '$dim${ago.padRight(ageW)}$rst',
@@ -659,11 +657,11 @@ class App {
       selectable: true,
       initialIndex: 2,
     );
-    _activePanel = panel;
+    _panelStack.add(panel);
     _render();
 
     panel.selection.then((idx) {
-      _activePanel = null;
+      _panelStack.remove(panel);
       if (idx == null || idx < 2) {
         _render();
         return;
@@ -676,15 +674,176 @@ class App {
     });
   }
 
+  void _openHistoryPanel() {
+    final userBlocks = <(int, _ConversationEntry)>[];
+    for (var i = 0; i < _blocks.length; i++) {
+      if (_blocks[i].kind == _EntryKind.user) {
+        userBlocks.add((i, _blocks[i]));
+      }
+    }
+
+    if (userBlocks.isEmpty) {
+      _blocks.add(_ConversationEntry.system('No conversation history.'));
+      _render();
+      return;
+    }
+
+    final displayLines = <String>[];
+    for (var i = 0; i < userBlocks.length; i++) {
+      final text = userBlocks[i].$2.text.replaceAll('\n', ' ');
+      displayLines.add('${(i + 1).toString().padLeft(3)}. $text');
+    }
+
+    final panel = PanelModal(
+      title: 'History',
+      lines: displayLines,
+      barrier: BarrierStyle.dim,
+      height: PanelFluid(0.5, 10),
+      selectable: true,
+    );
+    _panelStack.add(panel);
+    _render();
+
+    panel.selection.then((idx) {
+      if (idx == null) {
+        _panelStack.remove(panel);
+        _render();
+        return;
+      }
+      // Keep history panel on stack so it's visible behind the action panel.
+      _openHistoryActionPanel(
+        userBlocks[idx].$2.text,
+        idx, // user message index (0-based)
+      );
+    });
+  }
+
+  void _openHistoryActionPanel(String messageText, int userMessageIndex) {
+    final panel = PanelModal(
+      title: 'Action',
+      lines: ['Fork conversation', 'Copy to clipboard'],
+      barrier: BarrierStyle.dim,
+      height: PanelFixed(4),
+      width: PanelFixed(30),
+      selectable: true,
+    );
+    _panelStack.add(panel);
+    _render();
+
+    panel.selection.then((idx) {
+      _panelStack.clear();
+      if (idx == null) {
+        _render();
+        return;
+      }
+      switch (idx) {
+        case 0:
+          _forkSession(userMessageIndex, messageText);
+        case 1:
+          Process.start('pbcopy', []).then((proc) {
+            proc.stdin.write(messageText);
+            return proc.stdin.close();
+          }).catchError((_) {});
+          _blocks.add(_ConversationEntry.system('Copied to clipboard.'));
+          _render();
+      }
+    });
+  }
+
+  void _forkSession(int userMessageIndex, String messageText) {
+    final oldStore = _sessionStore;
+    if (oldStore == null) return;
+
+    final oldSessionId = oldStore.meta.id;
+    final home = GlueHome();
+
+    // Load events from current session and truncate at the selected user message.
+    final allEvents = SessionStore.loadConversation(oldStore.sessionDir);
+    var userCount = 0;
+    final truncatedEvents = <Map<String, dynamic>>[];
+    for (final event in allEvents) {
+      truncatedEvents.add(event);
+      if (event['type'] == 'user_message') {
+        if (userCount == userMessageIndex) break;
+        userCount++;
+      }
+    }
+
+    // Close the old session.
+    oldStore.close();
+
+    // Create a new session.
+    final newId = '${DateTime.now().millisecondsSinceEpoch}-'
+        '${DateTime.now().microsecond.toRadixString(36)}';
+    final newStore = SessionStore(
+      sessionDir: home.sessionDir(newId),
+      meta: SessionMeta(
+        id: newId,
+        cwd: oldStore.meta.cwd,
+        model: oldStore.meta.model,
+        provider: oldStore.meta.provider,
+        startTime: DateTime.now(),
+        forkedFrom: oldSessionId,
+      ),
+    );
+
+    // Write truncated events to new session.
+    for (final event in truncatedEvents) {
+      final type = event['type'] as String? ?? '';
+      final data = Map<String, dynamic>.from(event)
+        ..remove('type')
+        ..remove('timestamp');
+      newStore.logEvent(type, data);
+    }
+
+    // Clear UI and agent state.
+    _blocks.clear();
+    agent.clearConversation();
+
+    // Replay truncated events into blocks and agent.
+    final shortId =
+        oldSessionId.length > 8 ? oldSessionId.substring(0, 8) : oldSessionId;
+    _blocks.add(_ConversationEntry.system(
+      'Forked from session $shortId…',
+    ));
+
+    for (final event in truncatedEvents) {
+      final type = event['type'] as String?;
+      final text = event['text'] as String? ?? '';
+      switch (type) {
+        case 'user_message':
+          if (text.isEmpty) continue;
+          agent.addMessage(Message.user(text));
+          _blocks.add(_ConversationEntry.user(text));
+        case 'assistant_message':
+          if (text.isEmpty) continue;
+          agent.addMessage(Message.assistant(text: text));
+          _blocks.add(_ConversationEntry.assistant(text));
+        case 'tool_call':
+          final name = event['name'] as String? ?? '';
+          final args = event['arguments'] as Map<String, dynamic>? ?? {};
+          if (name.isNotEmpty) {
+            _blocks.add(_ConversationEntry.toolCall(name, args));
+          }
+        default:
+          break;
+      }
+    }
+
+    // Swap session store and set editor buffer.
+    _sessionStore = newStore;
+    editor.setText(messageText);
+    _render();
+  }
+
   // ── Terminal event handling ─────────────────────────────────────────────
 
   void _handleTerminalEvent(TerminalEvent event) {
     switch (event) {
       case CharEvent() || KeyEvent():
         // Panel modal gets first crack at input.
-        if (_activePanel != null && !_activePanel!.isComplete) {
-          if (_activePanel!.handleEvent(event)) {
-            if (_activePanel!.isComplete) _activePanel = null;
+        if (_panelStack.isNotEmpty && !_panelStack.last.isComplete) {
+          if (_panelStack.last.handleEvent(event)) {
             _doRender();
             return;
           }
@@ -1373,7 +1532,7 @@ class App {
   void _doRender() {
     _lastRender = DateTime.now();
 
-    final panelActive = _activePanel != null && !_activePanel!.isComplete;
+    final panelActive = _panelStack.isNotEmpty;
     if (_renderedPanelLastFrame && !panelActive) {
       terminal.resetScrollRegion();
       terminal.clearScreen();
@@ -1465,19 +1624,18 @@ class App {
     // Trailing blank line so content doesn't butt against the status bar.
     outputLines.add('');
 
-    // Panel modal takes over the full viewport.
+    // Panel stack takes over the full viewport.
     if (panelActive) {
       _renderedPanelLastFrame = true;
-      final panelGrid = _activePanel!.render(
-        terminal.columns,
-        terminal.rows,
-        outputLines,
-      );
+      var grid = outputLines;
+      for (final panel in _panelStack) {
+        grid = panel.render(terminal.columns, terminal.rows, grid);
+      }
       terminal.hideCursor();
-      for (var i = 0; i < panelGrid.length && i < terminal.rows; i++) {
+      for (var i = 0; i < grid.length && i < terminal.rows; i++) {
         terminal.moveTo(i + 1, 1);
         terminal.clearLine();
-        terminal.write(panelGrid[i]);
+        terminal.write(grid[i]);
       }
       return;
     }

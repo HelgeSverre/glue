@@ -150,12 +150,12 @@ void main() {
       final output = renderer.renderSystem('System info');
       expect(output, contains('\x1b[90m'));
       expect(output, contains('System info'));
-      expect(output, endsWith('\x1b[0m'));
+      expect(output, endsWith('\x1b[39m'));
     });
 
     test('handles empty text', () {
       final output = renderer.renderSystem('');
-      expect(output, equals(' \x1b[90m\x1b[0m'));
+      expect(output, equals(' \x1b[90m\x1b[39m'));
     });
   });
 

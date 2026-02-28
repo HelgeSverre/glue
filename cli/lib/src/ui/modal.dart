@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../terminal/styled.dart';
 import '../terminal/terminal.dart';
 
 /// A choice in a confirmation modal.
@@ -87,8 +88,8 @@ class ConfirmModal {
         ? '${contextStr.substring(0, maxContext - 1)}…'
         : contextStr;
     lines.add(
-      ' \x1b[43m\x1b[30m$titleContent\x1b[0m'
-      '  \x1b[90m${truncContext.trim()}\x1b[0m',
+      ' ${titleContent.styled.black.bgYellow}'
+      '  ${truncContext.trim().styled.gray}',
     );
 
     // Extra body lines (if more than one arg).
@@ -97,7 +98,7 @@ class ConfirmModal {
       final truncated = line.length > terminalWidth - 6
           ? '${line.substring(0, terminalWidth - 7)}…'
           : line;
-      lines.add('    \x1b[90m$truncated\x1b[0m');
+      lines.add('    ${truncated.styled.gray}');
     }
 
     lines.add('');
@@ -108,7 +109,7 @@ class ConfirmModal {
       final choice = choices[i];
       if (i == _selected) {
         choiceBuf
-            .write('\x1b[7m  (${choice.hotkey}) ${choice.label}  \x1b[27m ');
+            .write('${'  (${choice.hotkey}) ${choice.label}  '.styled.inverse} ');
       } else {
         choiceBuf.write('  (${choice.hotkey}) ${choice.label}  ');
       }

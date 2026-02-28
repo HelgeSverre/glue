@@ -1,6 +1,7 @@
 // Liquid simulation + ASCII renderer for the Glue mascot splash screen.
 
 import 'dart:math';
+import '../terminal/styled.dart';
 import 'mascot_physics.dart';
 import 'mascot_sprite.dart';
 
@@ -98,7 +99,7 @@ List<String> renderMascot(LiquidSim sim) {
         final g = pixel[1];
         final b = pixel[2];
         final ch = String.fromCharCode(pixel[3]);
-        buf.write('\x1b[38;2;$r;$g;${b}m$ch\x1b[0m');
+        buf.write(ch.styled.rgb(r, g, b));
       }
     }
     lines.add(buf.toString());

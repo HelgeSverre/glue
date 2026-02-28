@@ -479,7 +479,7 @@ void main() {
             reason: 'Missing bold on line: "$line"');
         expect(line, contains('\x1b[33m'),
             reason: 'Missing yellow on line: "$line"');
-        expect(line, endsWith('\x1b[0m'),
+        expect(line, anyOf(endsWith('\x1b[0m'), endsWith('\x1b[39m\x1b[22m')),
             reason: 'Missing reset on line: "$line"');
       }
     });
