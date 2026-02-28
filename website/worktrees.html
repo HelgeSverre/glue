@@ -50,16 +50,16 @@
             <div class="terminal-bar">▸ Parallel Sessions</div>
             <div class="terminal-body">
               <span class="line"><span class="d"># Session 1: feature work (already running)</span></span>
-              <span class="line"><span class="p">❯</span> <span class="c">glue -w feat/auth</span></span>
+              <span class="line"><span class="p">❯</span> <span class="c">cd worktree/feat/auth && glue</span></span>
               <span class="blank"></span>
               <span class="line"><span class="d"># Session 2: hotfix (new terminal)</span></span>
-              <span class="line"><span class="p">❯</span> <span class="c">glue --new-worktree fix/crash-on-login</span></span>
+              <span class="line"><span class="p">❯</span> <span class="c">cd worktree/fix/crash && glue</span></span>
               <span class="blank"></span>
               <span class="line"><span class="d"># Session 3: refactor (another terminal)</span></span>
-              <span class="line"><span class="p">❯</span> <span class="c">glue --new-worktree refactor/db-layer</span></span>
+              <span class="line"><span class="p">❯</span> <span class="c">cd worktree/refactor/db && glue</span></span>
               <span class="blank"></span>
               <span class="line"><span class="d"># All running simultaneously</span></span>
-              <span class="line"><span class="p">❯</span> <span class="c">glue --list</span></span>
+              <span class="line"><span class="p">❯</span> <span class="c">glue --resume</span></span>
               <span class="line"><span class="s">●</span> <span class="a">feat/auth</span>       <span class="d">claude-4-sonnet  4.5K tok</span></span>
               <span class="line"><span class="s">●</span> <span class="a">fix/crash</span>       <span class="d">claude-4-haiku   1.2K tok</span></span>
               <span class="line"><span class="s">●</span> <span class="a">refactor/db</span>     <span class="d">gpt-5            3.1K tok</span></span>
@@ -108,7 +108,7 @@
         <div class="cell reveal rd5">
           <div class="cell-num">06</div>
           <div class="cell-title">Session Dashboard</div>
-          <div class="cell-text">See all active sessions, their status, token usage, and last activity at a glance with <code>glue --list</code>.</div>
+          <div class="cell-text">See all active sessions, their status, token usage, and last activity at a glance with <code>glue --resume</code>.</div>
         </div>
       </div>
     </div>

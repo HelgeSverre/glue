@@ -18,7 +18,7 @@ class _StubTool extends Tool {
   List<ToolParameter> get parameters => const [];
   @override
   Future<List<ContentPart>> execute(Map<String, dynamic> args) async =>
-      [TextPart('ok')];
+      [const TextPart('ok')];
   @override
   ToolTrust get trust => _trust;
 }

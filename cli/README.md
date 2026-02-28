@@ -15,7 +15,7 @@ Glue is a terminal-native coding agent CLI built in Dart. It streams LLM respons
 
 ## Features
 
-- **Multi-provider LLM support** — Anthropic, OpenAI, and Ollama out of the box
+- **Multi-provider LLM support** — Anthropic, OpenAI, Mistral, and Ollama out of the box
 - **Streaming tool use** — read/write/edit files, run shell commands, grep, list directories
 - **Multi-shell support** — respects `$SHELL` with bash/zsh/fish/pwsh flag mapping and interactive/login modes
 - **Docker sandbox** — run agent commands in ephemeral containers with configurable mounts and auto host fallback
@@ -59,7 +59,7 @@ glue --help                             # show all options
 | ------------ | ----- | ---------------------------------------------- |
 | `--help`     | `-h`  | Show usage information                         |
 | `--version`  | `-v`  | Print version                                  |
-| `--provider` | `-p`  | LLM provider (`anthropic`, `openai`, `ollama`) |
+| `--provider` | `-p`  | LLM provider (`anthropic`, `openai`, `mistral`, `ollama`) |
 | `--model`    | `-m`  | LLM model to use                               |
 | `--debug`    | `-d`  | Enable debug mode (verbose logging)            |
 | `--resume`   |       | Start with session picker open                 |
@@ -91,15 +91,16 @@ For PowerShell, Glue updates the profile returned by
 
 Config is resolved in order: **CLI flags → env vars → `~/.glue/config.yaml` → defaults**.
 
-Environment variables: `GLUE_PROVIDER`, `GLUE_MODEL`, `GLUE_DEBUG`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GLUE_SHELL`, `GLUE_SHELL_MODE`, `GLUE_DOCKER_ENABLED`, `GLUE_DOCKER_IMAGE`, `GLUE_DOCKER_SHELL`, `GLUE_DOCKER_MOUNTS`, `LANGFUSE_BASE_URL`, `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`.
+Environment variables: `GLUE_PROVIDER`, `GLUE_MODEL`, `GLUE_DEBUG`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `MISTRAL_API_KEY`, `GLUE_SHELL`, `GLUE_SHELL_MODE`, `GLUE_DOCKER_ENABLED`, `GLUE_DOCKER_IMAGE`, `GLUE_DOCKER_SHELL`, `GLUE_DOCKER_MOUNTS`, `BRAVE_API_KEY`, `TAVILY_API_KEY`, `FIRECRAWL_API_KEY`, `LANGFUSE_BASE_URL`, `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`.
 
 Default models per provider:
 
-| Provider  | Default model       |
-| --------- | ------------------- |
-| anthropic | `claude-sonnet-4-6` |
-| openai    | `gpt-4.1`           |
-| ollama    | `llama3.2`          |
+| Provider  | Default model          |
+| --------- | ---------------------- |
+| anthropic | `claude-sonnet-4-6`    |
+| openai    | `gpt-4.1`              |
+| mistral   | `mistral-large-latest` |
+| ollama    | `llama3.2`             |
 
 ### Shell configuration
 
@@ -212,16 +213,20 @@ dart test --run-skipped -t e2e         # run e2e tests
 
 The agent has access to these tools:
 
-| Tool                       | Description                               |
-| -------------------------- | ----------------------------------------- |
-| `read_file`                | Read file contents                        |
-| `write_file`               | Create or overwrite a file                |
-| `edit_file`                | Apply targeted find-and-replace edits     |
-| `bash`                     | Run shell commands (configurable timeout) |
-| `grep`                     | Search file contents with regex           |
-| `list_directory`           | List directory entries                    |
-| `spawn_subagent`           | Spawn a child agent for a subtask         |
-| `spawn_parallel_subagents` | Run multiple subagents concurrently       |
+| Tool                       | Description                                                       |
+| -------------------------- | ----------------------------------------------------------------- |
+| `read_file`                | Read file contents                                                |
+| `write_file`               | Create or overwrite a file                                        |
+| `edit_file`                | Apply targeted find-and-replace edits                             |
+| `bash`                     | Run shell commands (configurable timeout)                         |
+| `grep`                     | Search file contents with regex                                   |
+| `list_directory`           | List directory entries                                            |
+| `spawn_subagent`           | Spawn a child agent for a subtask                                 |
+| `spawn_parallel_subagents` | Run multiple subagents concurrently                               |
+| `web_fetch`                | Fetch URL content as markdown, handles PDFs with OCR fallback     |
+| `web_search`               | Search the web via Brave, Tavily, or Firecrawl backends           |
+| `web_browser`              | Browser automation via Chrome DevTools Protocol (screenshots, navigation, interaction) |
+| `skill`                    | List or activate Agent Skills from agentskills.io-compatible definitions |
 
 ## Architecture
 
@@ -233,11 +238,19 @@ Terminal (raw I/O, ANSI parsing, mouse/resize events)
 LineEditor (readline-style input, history, word navigation)
 App (event bus, state machine, render loop @ 60fps)
   ├─ AgentCore (LLM streaming, tool loop, parallel tool calls)
-  │    ├─ Tools (read_file, write_file, edit_file, bash, grep, list_directory)
+  │    ├─ Tools (read_file, write_file, edit_file, bash, grep, list_directory,
+  │    │         web_fetch, web_search, web_browser, skill, subagents)
   │    └─ AgentManager (subagent lifecycle, depth-limited recursion)
   ├─ CommandExecutor (shell abstraction)
   │    ├─ HostExecutor (native shell: bash/zsh/fish/pwsh via ShellConfig)
   │    └─ DockerExecutor (ephemeral containers, cidfile tracking)
+  ├─ Web (fetch, search, browser automation)
+  │    ├─ Fetch (HTML-to-markdown, PDF text extraction, OCR fallback via Mistral/OpenAI)
+  │    ├─ Search (Brave, Tavily, Firecrawl backends via SearchRouter)
+  │    └─ Browser (CDP automation: local Chrome, Docker, Browserless, Browserbase, Steel)
+  ├─ Skills (agentskills.io-compatible skill loading)
+  │    ├─ SkillRegistry (discover from ~/.glue/skills/ and .glue/skills/)
+  │    └─ SkillParser (YAML frontmatter + markdown body)
   ├─ Observability (pluggable telemetry)
   │    ├─ LoggingHttpClient (wraps http.Client)
   │    ├─ ObservedLlmClient (wraps LlmClient)

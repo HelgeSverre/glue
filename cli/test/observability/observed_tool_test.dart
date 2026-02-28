@@ -45,7 +45,7 @@ class _MockTool extends Tool {
   @override
   Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
     if (handler != null) return [TextPart(handler!(args))];
-    return [TextPart('mock result')];
+    return [const TextPart('mock result')];
   }
 }
 

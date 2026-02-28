@@ -37,7 +37,6 @@ void main() {
     setUp(() {
       mockClient = _CapturingClient();
       client = OllamaClient(
-        httpClient: mockClient,
         model: 'test',
         systemPrompt: '',
         requestClientFactory: () => mockClient,

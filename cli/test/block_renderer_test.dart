@@ -227,8 +227,7 @@ void main() {
     });
 
     test('tool call without path arg renders normally', () {
-      final result =
-          renderer.renderToolCall('bash', {'command': 'ls -la'});
+      final result = renderer.renderToolCall('bash', {'command': 'ls -la'});
       expect(result, isNot(contains('\x1b]8;;file://')));
     });
 
@@ -241,15 +240,14 @@ void main() {
 
   group('renderToolResult grep output links', () {
     test('grep-style file:line output gets file path linked', () {
-      final result = renderer.renderToolResult(
-          'src/main.dart:42:  print("hello");');
+      final result =
+          renderer.renderToolResult('src/main.dart:42:  print("hello");');
       expect(result, contains('\x1b]8;;file://src/main.dart\x07'));
       expect(result, contains('src/main.dart'));
     });
 
     test('multiple grep lines each get linked', () {
-      final result = renderer.renderToolResult(
-          'a.dart:1: foo\nb.dart:2: bar');
+      final result = renderer.renderToolResult('a.dart:1: foo\nb.dart:2: bar');
       expect(result, contains('\x1b]8;;file://a.dart\x07'));
       expect(result, contains('\x1b]8;;file://b.dart\x07'));
     });

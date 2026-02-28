@@ -1,7 +1,7 @@
 // Liquid simulation + ASCII renderer for the Glue mascot splash screen.
 
 import 'dart:math';
-import '../terminal/styled.dart';
+import 'package:glue/src/terminal/styled.dart';
 import 'package:glue/src/rendering/mascot_physics.dart';
 import 'package:glue/src/rendering/mascot_sprite.dart';
 

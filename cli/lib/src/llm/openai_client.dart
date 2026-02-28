@@ -21,7 +21,6 @@ class OpenAiClient implements LlmClient {
   static const _defaultBaseUrl = 'https://api.openai.com';
 
   OpenAiClient({
-    required http.Client httpClient,
     required this.apiKey,
     required this.model,
     required this.systemPrompt,

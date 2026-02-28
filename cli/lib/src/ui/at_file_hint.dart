@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-import '../config/constants.dart';
-import '../rendering/ansi_utils.dart';
-import '../terminal/styled.dart';
+import 'package:glue/src/config/constants.dart';
+import 'package:glue/src/rendering/ansi_utils.dart';
+import 'package:glue/src/terminal/styled.dart';
 
 class _Candidate {
   final String displayName;

@@ -1,7 +1,7 @@
-import '../commands/slash_commands.dart';
-import '../config/constants.dart';
-import '../rendering/ansi_utils.dart';
-import '../terminal/styled.dart';
+import 'package:glue/src/commands/slash_commands.dart';
+import 'package:glue/src/config/constants.dart';
+import 'package:glue/src/rendering/ansi_utils.dart';
+import 'package:glue/src/terminal/styled.dart';
 
 /// A candidate in the autocomplete list.
 class _Candidate {

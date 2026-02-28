@@ -22,7 +22,6 @@ class AnthropicClient implements LlmClient {
   static const _defaultBaseUrl = 'https://api.anthropic.com';
 
   AnthropicClient({
-    required http.Client httpClient,
     required this.apiKey,
     required this.model,
     required this.systemPrompt,

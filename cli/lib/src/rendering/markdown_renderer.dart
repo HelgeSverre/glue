@@ -1,7 +1,7 @@
 import 'dart:math';
 
-import 'ansi_utils.dart';
-import '../terminal/styled.dart';
+import 'package:glue/src/rendering/ansi_utils.dart';
+import 'package:glue/src/terminal/styled.dart';
 
 /// Renders a subset of Markdown to ANSI-styled terminal text.
 ///
@@ -81,20 +81,20 @@ class MarkdownRenderer {
       // continuation lines retain bold+yellow.
       if (line.startsWith('### ')) {
         final wrapped = ansiWrap(line.substring(4), width);
-        output.addAll(wrapped.split('\n').map(
-            (l) => l.styled.bold.yellow.toString()));
+        output.addAll(
+            wrapped.split('\n').map((l) => l.styled.bold.yellow.toString()));
         continue;
       }
       if (line.startsWith('## ')) {
         final wrapped = ansiWrap(line.substring(3), width);
-        output.addAll(wrapped.split('\n').map(
-            (l) => l.styled.bold.yellow.toString()));
+        output.addAll(
+            wrapped.split('\n').map((l) => l.styled.bold.yellow.toString()));
         continue;
       }
       if (line.startsWith('# ')) {
         final wrapped = ansiWrap(line.substring(2), width);
-        output.addAll(wrapped.split('\n').map(
-            (l) => l.styled.bold.yellow.toString()));
+        output.addAll(
+            wrapped.split('\n').map((l) => l.styled.bold.yellow.toString()));
         continue;
       }
 

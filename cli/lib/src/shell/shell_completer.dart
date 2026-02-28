@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import '../config/constants.dart';
+import 'package:glue/src/config/constants.dart';
 
 /// The type of shell detected on the system.
 enum ShellType { bash, fish, zsh, sh }
@@ -95,7 +95,7 @@ class ShellCompleter {
       // Command completion.
       final lines = await _runShellCommand(
           'bash', ['-c', 'compgen -c -- ${_shellEscape(token)}']);
-      return lines.map((l) => ShellCandidate(l)).toList();
+      return lines.map(ShellCandidate.new).toList();
     }
 
     // File completion — also get directory list to mark dirs.
@@ -131,7 +131,7 @@ class ShellCompleter {
       final result = await Process.run(executable, args,
               environment: {'LC_ALL': 'C'}, runInShell: false)
           .timeout(
-        Duration(milliseconds: AppConstants.shellCompletionTimeoutMs),
+        const Duration(milliseconds: AppConstants.shellCompletionTimeoutMs),
       );
       if (result.exitCode != 0) return [];
       final output = (result.stdout as String).trim();

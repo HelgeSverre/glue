@@ -331,25 +331,27 @@ Terminal.events (raw bytes → TerminalEvent)
 
 ## 8. LLM Client & Streaming Architecture
 
-Three LLM providers implement the `LlmClient` interface, each with different streaming formats:
+Four LLM providers implement the `LlmClient` interface, each with different streaming formats:
 
 ```
-           LlmClient (abstract)
-           Stream<LlmChunk> stream(messages, tools)
-                    │
-        ┌───────────┼───────────────┐
-        ▼           ▼               ▼
-  Anthropic      OpenAI          Ollama
-  Client         Client          Client
-    │               │               │
-    ▼               ▼               ▼
-  SSE decoder    SSE decoder    NDJSON decoder
-    │               │               │
-    ▼               ▼               ▼
-  TextDelta      TextDelta      TextDelta
-  ToolCallDelta  ToolCallDelta  ToolCallDelta
-  UsageInfo      UsageInfo      UsageInfo
+              LlmClient (abstract)
+              Stream<LlmChunk> stream(messages, tools)
+                       │
+        ┌──────────────┼───────────────┬──────────────┐
+        ▼              ▼               ▼              ▼
+  Anthropic         OpenAI          Ollama         Mistral
+  Client            Client          Client         (via OpenAI)
+    │                  │               │              │
+    ▼                  ▼               ▼              ▼
+  SSE decoder       SSE decoder    NDJSON decoder  SSE decoder
+    │                  │               │              │
+    ▼                  ▼               ▼              ▼
+  TextDelta         TextDelta      TextDelta      TextDelta
+  ToolCallDelta     ToolCallDelta  ToolCallDelta  ToolCallDelta
+  UsageInfo         UsageInfo      UsageInfo      UsageInfo
 ```
+
+Mistral uses the OpenAI-compatible API format, so it is served by `OpenAiClient` with a different base URL. `LlmClientFactory` resolves the correct client based on the `LlmProvider` enum.
 
 ### Streaming decoders
 
@@ -495,3 +497,145 @@ flush():
 ```
 
 Each `Cell` stores a character + optional `AnsiStyle`. Only changed cells produce ANSI output, eliminating flicker even at high refresh rates.
+
+---
+
+## 13. Web Tools Architecture
+
+The agent has three web-facing tools that share infrastructure in `lib/src/web/`:
+
+```
+┌───────────────────────────────────────────────────────────────────────┐
+│                          Tool Layer                                    │
+│   WebFetchTool          WebSearchTool          WebBrowserTool          │
+│   (web_fetch)           (web_search)           (web_browser)          │
+└──────┬──────────────────────┬────────────────────────┬────────────────┘
+       │                      │                        │
+       ▼                      ▼                        ▼
+┌──────────────┐    ┌────────────────┐    ┌──────────────────────┐
+│ WebFetchClient│    │ SearchRouter   │    │ BrowserManager       │
+│              │    │   │            │    │   │                  │
+│ HtmlExtractor│    │   ├─ Brave     │    │ BrowserEndpoint      │
+│ HtmlToMarkdown│   │   ├─ Tavily    │    │ Provider             │
+│ PdfTextExtract│   │   └─ Firecrawl │    │   ├─ Local           │
+│ OcrClient    │    │                │    │   ├─ Docker          │
+│ JinaReader   │    └────────────────┘    │   ├─ Browserbase     │
+│ Truncation   │                          │   ├─ Browserless     │
+└──────────────┘                          │   └─ Steel           │
+                                          └──────────────────────┘
+```
+
+### Fetch pipeline
+
+`WebFetchClient.fetch(url)` performs content-type detection:
+- **HTML** → `HtmlExtractor.extract()` strips nav/footer/ads → `HtmlToMarkdown.convert()` → `TokenTruncation.truncate()`
+- **PDF** → `PdfTextExtractor` shells out to `pdftotext`; if the result is empty (scanned PDF), falls back to `OcrClient` which sends page images to Mistral OCR Small or OpenAI vision
+- **Jina mode** → delegates entirely to `JinaReaderClient` (proxied through `reader.jina.ai`)
+
+### Browser lifecycle
+
+`BrowserManager` is session-scoped. On first use, it provisions a Chrome instance via the configured `BrowserEndpointProvider`. The CDP WebSocket connection persists across tool calls within the same session. `dispose()` tears down the browser when the session ends.
+
+Browser actions (`navigate`, `screenshot`, `click`, `type`, `extract_text`, `evaluate`) are dispatched inside `WebBrowserTool._dispatch()`. Screenshots return multimodal results (`ImagePart` + `TextPart`).
+
+---
+
+## 14. Skills System
+
+Skills extend the agent's behavior with user-authored instructions following the [agentskills.io](https://agentskills.io/specification) standard.
+
+```
+Startup
+│
+├─ SkillRegistry.discover(cwd, extraPaths)
+│   ├─ Scan .glue/skills/ (project-local)
+│   ├─ Scan ~/.glue/skills/ (global)
+│   └─ Scan extra paths from config/env
+│
+├─ Prompts.build(skills: registry.list())
+│   └─ Append <available_skills> XML block to system prompt
+│
+└─ Register SkillTool(registry)
+    └─ Tool: "skill"
+        ├─ No args → list available skills
+        └─ name arg → load SKILL.md body into conversation
+```
+
+Each skill directory contains a `SKILL.md` with YAML frontmatter (`name`, `description`, optional `license`, `compatibility`, `allowed-tools`, `metadata`). The body is loaded lazily on activation — only frontmatter is parsed at discovery time.
+
+Name collisions: first match wins (project-local > global > extra paths).
+
+The `/skills` slash command opens a `SplitPanelModal` with a two-pane browser (skill list on left, detail view on right). Pressing Enter activates the selected skill.
+
+---
+
+## 15. Observability & Tracing
+
+The observability subsystem wraps LLM calls and tool executions in spans for debugging and telemetry export.
+
+```
+AgentCore.run()
+│
+├─ ObservedLlmClient.stream()
+│   ├─ startSpan("llm.stream", kind: "llm")
+│   ├─ Delegate to inner LlmClient
+│   ├─ Capture token usage from UsageInfo chunks
+│   └─ endSpan() with token attributes
+│
+├─ ObservedTool.execute()
+│   ├─ startSpan("tool.<name>", kind: "tool")
+│   ├─ Delegate to inner Tool
+│   └─ endSpan() with result_length
+│
+└─ Observability coordinator
+    ├─ Maintains trace context (traceId, parentSpanId)
+    ├─ Routes completed spans to registered sinks:
+    │   ├─ FileSink → append to ~/.glue/traces/<session>.jsonl
+    │   ├─ OtelSink → POST spans to OpenTelemetry collector
+    │   └─ LangfuseSink → POST as Langfuse generations
+    └─ Auto-flush timer (default 30s)
+```
+
+`wrapToolsWithObservability(tools, obs)` wraps every tool in the tool map with `ObservedTool`, so tracing is transparent to the rest of the system.
+
+Configuration is via `ObservabilityConfig` in `~/.glue/config.yaml`:
+
+```yaml
+observability:
+  debug: false
+  flush_interval_seconds: 30
+  langfuse:
+    enabled: true
+    public_key: pk-...
+    secret_key: sk-...
+  otel:
+    enabled: true
+    endpoint: http://localhost:4318/v1/traces
+```
+
+---
+
+## 16. Permission Modes & Tool Approval
+
+Permission modes control the degree of human-in-the-loop oversight for tool execution. The current mode is shown in the status bar and cycled with Shift+Tab.
+
+```
+PermissionMode (enum)
+│
+├─ confirm         — default; ask for untrusted tools
+├─ acceptEdits     — auto-approve file edits, ask for shell
+├─ ignorePermissions — auto-approve everything (YOLO)
+└─ readOnly        — deny all mutating tools (not sent to LLM)
+```
+
+Each `Tool` declares a `ToolTrust` level:
+
+| ToolTrust | Auto-approved when | Examples |
+|-----------|-------------------|----------|
+| `safe` | Always (except readOnly) | `read_file`, `grep`, `skill`, `web_search`, `web_fetch` |
+| `fileEdit` | `acceptEdits` or `ignorePermissions` | `write_file`, `edit_file` |
+| `command` | `ignorePermissions` only | `bash` |
+
+The approval flow (section 10) consults both the permission mode and the tool's trust level to decide whether to auto-approve, show a confirmation modal, or deny outright.
+
+In `readOnly` mode, tools with trust `fileEdit` or `command` are excluded from the tool list sent to the LLM, so the model cannot even attempt to call them.

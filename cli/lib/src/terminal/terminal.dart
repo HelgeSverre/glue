@@ -44,10 +44,7 @@ class KeyEvent extends TerminalEvent {
   final bool shift;
   final int? charCode;
   KeyEvent(this.key,
-      {this.ctrl = false,
-      this.alt = false,
-      this.shift = false,
-      this.charCode});
+      {this.ctrl = false, this.alt = false, this.shift = false, this.charCode});
 
   @override
   String toString() =>
@@ -418,14 +415,10 @@ class Terminal {
     final isCtrl = (modifier - 1) & 0x04 != 0;
 
     return switch (keycode) {
-      13 => KeyEvent(Key.enter,
-          shift: isShift, alt: isAlt, ctrl: isCtrl),
-      9 => KeyEvent(Key.tab,
-          shift: isShift, alt: isAlt, ctrl: isCtrl),
-      27 => KeyEvent(Key.escape,
-          shift: isShift, alt: isAlt, ctrl: isCtrl),
-      127 => KeyEvent(Key.backspace,
-          shift: isShift, alt: isAlt, ctrl: isCtrl),
+      13 => KeyEvent(Key.enter, shift: isShift, alt: isAlt, ctrl: isCtrl),
+      9 => KeyEvent(Key.tab, shift: isShift, alt: isAlt, ctrl: isCtrl),
+      27 => KeyEvent(Key.escape, shift: isShift, alt: isAlt, ctrl: isCtrl),
+      127 => KeyEvent(Key.backspace, shift: isShift, alt: isAlt, ctrl: isCtrl),
       _ => keycode >= 32 && keycode < 127
           ? CharEvent(String.fromCharCode(keycode), alt: isAlt)
           : KeyEvent(Key.unknown, charCode: keycode),
@@ -467,14 +460,11 @@ class Terminal {
       final isCtrl = (modifier - 1) & 0x04 != 0;
 
       return switch (keycode) {
-        13 => KeyEvent(Key.enter,
-            shift: isShift, alt: isAlt, ctrl: isCtrl),
-        9 => KeyEvent(Key.tab,
-            shift: isShift, alt: isAlt, ctrl: isCtrl),
-        27 => KeyEvent(Key.escape,
-            shift: isShift, alt: isAlt, ctrl: isCtrl),
-        127 => KeyEvent(Key.backspace,
-            shift: isShift, alt: isAlt, ctrl: isCtrl),
+        13 => KeyEvent(Key.enter, shift: isShift, alt: isAlt, ctrl: isCtrl),
+        9 => KeyEvent(Key.tab, shift: isShift, alt: isAlt, ctrl: isCtrl),
+        27 => KeyEvent(Key.escape, shift: isShift, alt: isAlt, ctrl: isCtrl),
+        127 =>
+          KeyEvent(Key.backspace, shift: isShift, alt: isAlt, ctrl: isCtrl),
         _ => keycode >= 32 && keycode < 127
             ? CharEvent(String.fromCharCode(keycode), alt: isAlt)
             : KeyEvent(Key.unknown, charCode: keycode),

@@ -95,7 +95,9 @@ void main() {
       type('helloworld');
       // Move cursor to position 5
       key(Key.home);
-      for (var i = 0; i < 5; i++) key(Key.right);
+      for (var i = 0; i < 5; i++) {
+        key(Key.right);
+      }
       key(Key.enter, shift: true);
       expect(editor.lines, ['hello', 'world']);
       expect(editor.cursorRow, 1);
@@ -345,7 +347,9 @@ void main() {
       type('world');
       // Move cursor to position 3 in 'world'
       key(Key.home);
-      for (var i = 0; i < 3; i++) key(Key.right);
+      for (var i = 0; i < 3; i++) {
+        key(Key.right);
+      }
       key(Key.ctrlU);
       expect(editor.lines[1], 'ld');
       expect(editor.cursorCol, 0);
@@ -358,7 +362,9 @@ void main() {
       key(Key.enter, shift: true);
       type('world');
       key(Key.home);
-      for (var i = 0; i < 2; i++) key(Key.right);
+      for (var i = 0; i < 2; i++) {
+        key(Key.right);
+      }
       key(Key.ctrlK);
       expect(editor.lines[1], 'wo');
       expect(editor.cursorCol, 2);
@@ -376,7 +382,9 @@ void main() {
     test('single-line paste inserts inline', () {
       type('hello');
       key(Key.home);
-      for (var i = 0; i < 3; i++) key(Key.right);
+      for (var i = 0; i < 3; i++) {
+        key(Key.right);
+      }
       final action = editor.handle(PasteEvent('XY'));
       expect(action, InputAction.changed);
       expect(editor.text, 'helXYlo');
@@ -386,7 +394,9 @@ void main() {
     test('multiline paste splits across lines', () {
       type('hello');
       key(Key.home);
-      for (var i = 0; i < 3; i++) key(Key.right);
+      for (var i = 0; i < 3; i++) {
+        key(Key.right);
+      }
       editor.handle(PasteEvent('X\nY\nZ'));
       expect(editor.lines, ['helX', 'Y', 'Zlo']);
       expect(editor.cursorRow, 2);

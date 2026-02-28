@@ -3,71 +3,70 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
-import 'terminal/styled.dart';
-import 'terminal/terminal.dart';
-import 'terminal/layout.dart';
-import 'input/line_editor.dart' show InputAction;
-import 'input/text_area_editor.dart';
-import 'input/streaming_input_handler.dart';
-import 'input/file_expander.dart';
-import 'agent/agent_core.dart';
-import 'agent/agent_manager.dart';
-import 'agent/prompts.dart';
-import 'agent/tools.dart';
-import 'commands/slash_commands.dart';
-import 'config/constants.dart';
-import 'config/glue_config.dart';
-import 'config/model_registry.dart';
-import 'config/permission_mode.dart';
-import 'llm/llm_factory.dart';
-import 'llm/model_lister.dart';
-import 'llm/title_generator.dart';
-import 'rendering/block_renderer.dart';
-import 'rendering/ansi_utils.dart';
-import 'rendering/mascot.dart';
-import 'shell/command_executor.dart';
-import 'shell/executor_factory.dart';
-import 'shell/host_executor.dart';
-import 'shell/shell_config.dart';
-import 'shell/shell_job_manager.dart';
-import 'shell/shell_completer.dart';
-import 'storage/glue_home.dart';
-import 'storage/session_id.dart';
-import 'storage/session_store.dart';
-import 'storage/session_state.dart';
-import 'storage/config_store.dart';
-import 'tools/subagent_tools.dart';
-import 'tools/web_fetch_tool.dart';
-import 'tools/web_browser_tool.dart';
-import 'tools/web_search_tool.dart';
-import 'web/browser/browser_config.dart';
-import 'web/browser/browser_manager.dart';
-import 'web/browser/providers/local_provider.dart';
-import 'web/browser/providers/docker_browser_provider.dart';
-import 'web/browser/providers/steel_provider.dart';
-import 'web/browser/providers/browserbase_provider.dart';
-import 'web/browser/providers/browserless_provider.dart';
-import 'web/search/search_router.dart';
-import 'web/search/providers/brave_provider.dart';
-import 'web/search/providers/tavily_provider.dart';
-import 'web/search/providers/firecrawl_provider.dart';
-import 'skills/skill_parser.dart';
-import 'skills/skill_registry.dart';
-import 'skills/skill_tool.dart';
-import 'ui/modal.dart';
-import 'ui/panel_modal.dart';
-import 'ui/split_panel_modal.dart';
-import 'ui/at_file_hint.dart';
-import 'ui/shell_autocomplete.dart';
-import 'ui/slash_autocomplete.dart';
-import 'observability/debug_controller.dart';
-import 'observability/observability.dart';
-import 'observability/file_sink.dart';
-import 'observability/langfuse_sink.dart';
-import 'observability/otel_sink.dart';
-import 'observability/logging_http_client.dart';
-import 'observability/observed_llm_client.dart';
-import 'observability/observed_tool.dart';
+import 'package:glue/src/terminal/styled.dart';
+import 'package:glue/src/terminal/terminal.dart';
+import 'package:glue/src/terminal/layout.dart';
+import 'package:glue/src/input/line_editor.dart' show InputAction;
+import 'package:glue/src/input/text_area_editor.dart';
+import 'package:glue/src/input/streaming_input_handler.dart';
+import 'package:glue/src/input/file_expander.dart';
+import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/agent_manager.dart';
+import 'package:glue/src/agent/prompts.dart';
+import 'package:glue/src/agent/tools.dart';
+import 'package:glue/src/commands/slash_commands.dart';
+import 'package:glue/src/config/constants.dart';
+import 'package:glue/src/config/glue_config.dart';
+import 'package:glue/src/config/model_registry.dart';
+import 'package:glue/src/config/permission_mode.dart';
+import 'package:glue/src/llm/llm_factory.dart';
+import 'package:glue/src/llm/model_lister.dart';
+import 'package:glue/src/llm/title_generator.dart';
+import 'package:glue/src/rendering/block_renderer.dart';
+import 'package:glue/src/rendering/ansi_utils.dart';
+import 'package:glue/src/rendering/mascot.dart';
+import 'package:glue/src/shell/command_executor.dart';
+import 'package:glue/src/shell/executor_factory.dart';
+import 'package:glue/src/shell/host_executor.dart';
+import 'package:glue/src/shell/shell_config.dart';
+import 'package:glue/src/shell/shell_job_manager.dart';
+import 'package:glue/src/shell/shell_completer.dart';
+import 'package:glue/src/storage/glue_home.dart';
+import 'package:glue/src/storage/session_store.dart';
+import 'package:glue/src/storage/session_state.dart';
+import 'package:glue/src/storage/config_store.dart';
+import 'package:glue/src/tools/subagent_tools.dart';
+import 'package:glue/src/tools/web_fetch_tool.dart';
+import 'package:glue/src/tools/web_browser_tool.dart';
+import 'package:glue/src/tools/web_search_tool.dart';
+import 'package:glue/src/web/browser/browser_config.dart';
+import 'package:glue/src/web/browser/browser_manager.dart';
+import 'package:glue/src/web/browser/providers/local_provider.dart';
+import 'package:glue/src/web/browser/providers/docker_browser_provider.dart';
+import 'package:glue/src/web/browser/providers/steel_provider.dart';
+import 'package:glue/src/web/browser/providers/browserbase_provider.dart';
+import 'package:glue/src/web/browser/providers/browserless_provider.dart';
+import 'package:glue/src/web/search/search_router.dart';
+import 'package:glue/src/web/search/providers/brave_provider.dart';
+import 'package:glue/src/web/search/providers/tavily_provider.dart';
+import 'package:glue/src/web/search/providers/firecrawl_provider.dart';
+import 'package:glue/src/skills/skill_parser.dart';
+import 'package:glue/src/skills/skill_registry.dart';
+import 'package:glue/src/skills/skill_tool.dart';
+import 'package:glue/src/ui/modal.dart';
+import 'package:glue/src/ui/panel_modal.dart';
+import 'package:glue/src/ui/split_panel_modal.dart';
+import 'package:glue/src/ui/at_file_hint.dart';
+import 'package:glue/src/ui/shell_autocomplete.dart';
+import 'package:glue/src/ui/slash_autocomplete.dart';
+import 'package:glue/src/observability/debug_controller.dart';
+import 'package:glue/src/observability/observability.dart';
+import 'package:glue/src/observability/file_sink.dart';
+import 'package:glue/src/observability/langfuse_sink.dart';
+import 'package:glue/src/observability/otel_sink.dart';
+import 'package:glue/src/observability/logging_http_client.dart';
+import 'package:glue/src/observability/observed_llm_client.dart';
+import 'package:glue/src/observability/observed_tool.dart';
 
 // ---------------------------------------------------------------------------
 // Application state
@@ -419,22 +418,6 @@ class App {
     );
     tools['spawn_subagent'] = SpawnSubagentTool(manager);
     tools['spawn_parallel_subagents'] = SpawnParallelSubagentsTool(manager);
-
-    final home = GlueHome();
-    home.ensureDirectories();
-    final configStore = ConfigStore(home.configPath);
-
-    final sessionId = generateSessionId();
-    final sessionStore = SessionStore(
-      sessionDir: home.sessionDir(sessionId),
-      meta: SessionMeta(
-        id: sessionId,
-        cwd: Directory.current.path,
-        model: config.model,
-        provider: config.provider.name,
-        startTime: DateTime.now(),
-      ),
-    );
 
     return App(
       terminal: terminal,
@@ -1160,7 +1143,7 @@ class App {
     final panel = PanelModal(
       title: 'Switch Model',
       lines: flatLines,
-      style: PanelStyle.simple,
+
       barrier: BarrierStyle.dim,
       height: PanelFluid(0.5, 8),
       selectable: true,
@@ -1250,7 +1233,7 @@ class App {
       title: 'SKILLS',
       leftItems: leftItems,
       buildRightLines: buildDetail,
-      style: PanelStyle.simple,
+
       barrier: BarrierStyle.dim,
       height: PanelFluid(0.6, 12),
     );

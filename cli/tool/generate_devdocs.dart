@@ -9,6 +9,8 @@
 ///
 /// Usage:
 ///   dart run tool/generate_devdocs.dart
+library;
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -468,7 +470,9 @@ DartFile _parseFile(File file, String relativePath, String module) {
     if (name.startsWith('_')) continue;
     // Skip class/enum keywords captured accidentally.
     if (['class', 'enum', 'mixin', 'import', 'export', 'if', 'for', 'while']
-        .contains(returnType)) continue;
+        .contains(returnType)) {
+      continue;
+    }
     if (['class', 'enum', 'mixin', 'import', 'export'].contains(name)) {
       continue;
     }
@@ -836,7 +840,7 @@ void main() {
   // Generate sidebar.
   final sidebar = _generateSidebar(modules);
   sidebarFile.parent.createSync(recursive: true);
-  final encoder = JsonEncoder.withIndent('  ');
+  const encoder = JsonEncoder.withIndent('  ');
   sidebarFile.writeAsStringSync(encoder.convert(sidebar));
 
   // Generate index.

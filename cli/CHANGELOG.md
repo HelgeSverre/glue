@@ -69,8 +69,8 @@ All notable changes to Glue CLI will be documented in this file.
   `SessionMeta.fromJson` factory for consistent deserialization and
   `SessionStore.updateMeta()` for mid-session metadata writes.
   Timestamps now consistently use UTC.
-- **Model registry & picker** — curated `ModelRegistry` catalog of 7 models
-  across Anthropic, OpenAI, and Ollama with capability, cost, and speed
+- **Model registry & picker** — curated `ModelRegistry` catalog of 10 models
+  across Anthropic, OpenAI, Mistral, and Ollama with capability, cost, and speed
   metadata. `/model` with no args opens a selectable panel picker grouped
   by provider; `/model <name>` does fuzzy lookup by ID or display name.
   Only models with configured API keys are shown.
@@ -152,6 +152,42 @@ All notable changes to Glue CLI will be documented in this file.
   `package:glue/` imports across 51 files. Applied `dart fix` auto-fixes
   for const correctness, unnecessary lambdas, and parentheses.
 
+- **Mistral LLM provider** — fourth provider alongside Anthropic, OpenAI,
+  and Ollama. Uses OpenAI-compatible API with Mistral-specific base URL.
+  Three curated models: Mistral Large (default), Mistral Small, and
+  Codestral. Configurable via `MISTRAL_API_KEY` env var or
+  `mistral.api_key` in config.yaml.
+
+- **Permission modes** — four escalating trust levels: `confirm` (default,
+  approve each tool), `acceptEdits` (auto-approve read-only tools, confirm
+  writes), `yolo` (auto-approve everything), and `readOnly` (filter out
+  write tools entirely). Cycle modes with Shift+Tab. Each tool declares a
+  `ToolTrust` level (readOnly, write, dangerous) for granular filtering.
+
+- **Agent Skills** (`agentskills.io` spec) — discover and activate reusable
+  skill definitions from `.glue/skills/` (project-local),
+  `~/.glue/skills/` (global), and extra paths via config/env. Skill parser
+  validates YAML frontmatter. `skill` tool lists or activates skills.
+  `/skills` slash command opens a two-pane `SplitPanelModal` browser.
+  Configurable via `skills.paths` in config.yaml or `GLUE_SKILLS_PATHS`
+  env var.
+
+- **Browser tool infrastructure** — `BrowserManager` with pluggable
+  `BrowserProvider` abstraction for Chrome DevTools Protocol connections.
+  Five provider implementations: local Chrome, Docker container,
+  Browserbase (cloud), Browserless (cloud), and Steel (cloud).
+  `BrowserConfig` with auto-detection priority chain.
+
+- **PDF text extraction** — `web_fetch` now handles PDF URLs with a
+  two-stage pipeline: (1) direct text extraction from PDF bytes, (2) OCR
+  fallback via Mistral Pixtral or OpenAI GPT-4o vision models for
+  scanned/image-heavy PDFs.
+
+- **GitHub Actions CI/CD** — six workflows: Dart checks (analyze, format,
+  test), multi-OS matrix (Ubuntu/macOS/Windows), docs build validation,
+  nightly e2e integration tests, release tag builds, and auto-labeling.
+  Dependabot configured for Dart and GitHub Actions dependency updates.
+
 ### Fixed
 
 - **Unused `callId` parameter** in `_ConversationEntry.toolResult` — was
@@ -164,6 +200,13 @@ All notable changes to Glue CLI will be documented in this file.
 - `/model` switch now updates `_config` (provider + model) via `copyWith`,
   fixing stale config bug where session metadata and subagent spawning
   read outdated values.
+- **ANSI codes in split panel highlight** — reverse-video selection
+  highlight in `SplitPanelModal` now strips ANSI escape sequences before
+  applying highlight.
+- **Skill discovery trailing-slash safety** — skill directory paths ending
+  with `/` no longer produce empty skill names.
+- **Exit message styling** — exit prompt now shows the yellow diamond brand
+  mark with session ID.
 
 ### Changed
 

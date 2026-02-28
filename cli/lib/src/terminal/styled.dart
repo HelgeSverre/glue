@@ -77,8 +77,7 @@ class Styled {
   Styled bg256(int n) => _add('\x1b[48;5;${n}m', '\x1b[49m');
 
   /// 24-bit RGB foreground.
-  Styled rgb(int r, int g, int b) =>
-      _add('\x1b[38;2;$r;$g;${b}m', '\x1b[39m');
+  Styled rgb(int r, int g, int b) => _add('\x1b[38;2;$r;$g;${b}m', '\x1b[39m');
 
   /// 24-bit RGB background.
   Styled bgRgb(int r, int g, int b) =>

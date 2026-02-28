@@ -37,7 +37,7 @@ class WebFetchTool extends Tool {
   Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
     final url = args['url'];
     if (url is! String || url.isEmpty) {
-      return [TextPart('Error: no URL provided')];
+      return [const TextPart('Error: no URL provided')];
     }
 
     final maxTokens = args['max_tokens'] as int?;

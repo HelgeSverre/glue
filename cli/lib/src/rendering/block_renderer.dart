@@ -1,6 +1,6 @@
-import 'ansi_utils.dart';
-import 'markdown_renderer.dart';
-import '../terminal/styled.dart';
+import 'package:glue/src/rendering/ansi_utils.dart';
+import 'package:glue/src/rendering/markdown_renderer.dart';
+import 'package:glue/src/terminal/styled.dart';
 
 /// The lifecycle phase of a tool call, used to drive the status suffix
 /// displayed next to the tool name in the terminal (e.g. "running…", "denied").
@@ -118,18 +118,18 @@ class BlockRenderer {
       }
       return l;
     });
-    final indented =
-        linked.map((l) => '    ${l.styled.gray}').join('\n');
+    final indented = linked.map((l) => '    ${l.styled.gray}').join('\n');
     return '$header\n$indented';
   }
 
   /// Render an error block.
   String renderError(String message) {
     final header = ' ${'✗ Error'.styled.bold.red}';
-    final body = wrapIndented(message, _inner,
-        firstPrefix: '    ', nextPrefix: '    ');
+    final body =
+        wrapIndented(message, _inner, firstPrefix: '    ', nextPrefix: '    ');
     // Apply red styling to each line
-    final colored = body.split('\n').map((l) => l.styled.red.toString()).join('\n');
+    final colored =
+        body.split('\n').map((l) => l.styled.red.toString()).join('\n');
     return '$header\n$colored';
   }
 

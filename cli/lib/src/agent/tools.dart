@@ -136,7 +136,7 @@ class ReadFileTool extends Tool {
   Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
     final path = args['path'];
     if (path is! String || path.isEmpty) {
-      return [TextPart('Error: no path provided')];
+      return [const TextPart('Error: no path provided')];
     }
     final file = File(path);
     if (!await file.exists()) {
@@ -183,9 +183,10 @@ class WriteFileTool extends Tool {
     final path = args['path'];
     final content = args['content'];
     if (path is! String || path.isEmpty) {
-      return [TextPart('Error: no path provided')];
+      return [const TextPart('Error: no path provided')];
     }
-    if (content is! String) return [TextPart('Error: no content provided')];
+    if (content is! String)
+      return [const TextPart('Error: no content provided')];
     final file = File(path);
     await file.parent.create(recursive: true);
     await file.writeAsString(content);
@@ -228,7 +229,7 @@ class BashTool extends Tool {
   Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
     final command = args['command'];
     if (command is! String || command.isEmpty) {
-      return [TextPart('Error: no command provided')];
+      return [const TextPart('Error: no command provided')];
     }
     final t = args['timeout_seconds'];
     final timeoutSeconds =
@@ -280,7 +281,7 @@ class GrepTool extends Tool {
   Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
     final pattern = args['pattern'];
     if (pattern is! String || pattern.isEmpty) {
-      return [TextPart('Error: no pattern provided')];
+      return [const TextPart('Error: no pattern provided')];
     }
     final path = args['path'];
     final dir = (path is String && path.isNotEmpty) ? path : '.';
@@ -296,12 +297,12 @@ class GrepTool extends Tool {
       final result = await Process.run(executable, arguments)
           .timeout(const Duration(seconds: AppConstants.grepTimeoutSeconds));
       if ((result.stdout as String).isEmpty) {
-        return [TextPart('No matches found.')];
+        return [const TextPart('No matches found.')];
       }
       return [TextPart(result.stdout as String)];
     } on TimeoutException {
       return [
-        TextPart(
+        const TextPart(
             'Error: grep timed out after ${AppConstants.grepTimeoutSeconds} seconds')
       ];
     }
@@ -357,7 +358,7 @@ class EditFileTool extends Tool {
   Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
     final path = args['path'];
     if (path is! String || path.isEmpty) {
-      return [TextPart('Error: no path provided')];
+      return [const TextPart('Error: no path provided')];
     }
     final oldString = args['old_string'] as String? ?? '';
     final newString = args['new_string'] as String? ?? '';
@@ -429,7 +430,7 @@ class ListDirectoryTool extends Tool {
   Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
     final path = args['path'];
     if (path is! String || path.isEmpty) {
-      return [TextPart('Error: no path provided')];
+      return [const TextPart('Error: no path provided')];
     }
     final dir = Directory(path);
     if (!await dir.exists()) {

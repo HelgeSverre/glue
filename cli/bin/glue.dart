@@ -383,7 +383,7 @@ void _installPowerShellCompletion(String executableName) {
   final startMarker = '# >>> $executableName completions (powershell) >>>';
   final endMarker = '# <<< $executableName completions (powershell) <<<';
   final sourceLine =
-      "if (Test-Path ${_psSingleQuoted(scriptFile.path)}) { . ${_psSingleQuoted(scriptFile.path)} }";
+      'if (Test-Path ${_psSingleQuoted(scriptFile.path)}) { . ${_psSingleQuoted(scriptFile.path)} }';
   _upsertManagedBlock(profileFile, startMarker, endMarker, sourceLine);
 
   stdout.writeln('Installed PowerShell completion: ${scriptFile.path}');

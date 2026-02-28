@@ -1,6 +1,6 @@
 import 'dart:async';
-import '../terminal/styled.dart';
-import '../terminal/terminal.dart';
+import 'package:glue/src/terminal/styled.dart';
+import 'package:glue/src/terminal/terminal.dart';
 
 /// A choice in a confirmation modal.
 class ModalChoice {
@@ -108,8 +108,8 @@ class ConfirmModal {
     for (var i = 0; i < choices.length; i++) {
       final choice = choices[i];
       if (i == _selected) {
-        choiceBuf
-            .write('${'  (${choice.hotkey}) ${choice.label}  '.styled.inverse} ');
+        choiceBuf.write(
+            '${'  (${choice.hotkey}) ${choice.label}  '.styled.inverse} ');
       } else {
         choiceBuf.write('  (${choice.hotkey}) ${choice.label}  ');
       }

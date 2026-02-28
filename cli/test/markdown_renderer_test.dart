@@ -166,8 +166,8 @@ void main() {
     test('URLs with query strings and fragments', () {
       final result =
           renderer.render('Go to https://example.com/page?q=1&b=2#top');
-      expect(result,
-          contains('\x1b]8;;https://example.com/page?q=1&b=2#top\x07'));
+      expect(
+          result, contains('\x1b]8;;https://example.com/page?q=1&b=2#top\x07'));
     });
 
     test('URL followed by period does not include trailing period', () {

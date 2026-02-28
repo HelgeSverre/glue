@@ -48,7 +48,7 @@ class MockTool extends Tool {
 
   @override
   Future<List<ContentPart>> execute(Map<String, dynamic> args) async =>
-      [TextPart('mock result')];
+      [const TextPart('mock result')];
 }
 
 class ThrowingTool extends Tool {

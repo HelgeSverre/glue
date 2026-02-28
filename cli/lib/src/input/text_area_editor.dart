@@ -1,6 +1,6 @@
-import '../rendering/ansi_utils.dart';
-import '../terminal/terminal.dart';
-import 'line_editor.dart' show InputAction;
+import 'package:glue/src/rendering/ansi_utils.dart';
+import 'package:glue/src/terminal/terminal.dart';
+import 'package:glue/src/input/line_editor.dart' show InputAction;
 
 /// Maximum number of logical lines before rejecting further input.
 const _maxLines = 500;

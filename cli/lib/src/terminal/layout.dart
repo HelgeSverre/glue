@@ -235,7 +235,7 @@ class Layout {
     }
 
     // Scrolling: keep cursor visible within the viewport.
-    final maxVisible = AppConstants.maxInputVisibleLines;
+    const maxVisible = AppConstants.maxInputVisibleLines;
     final totalVisual = visualLines.length;
     var scrollOffset = _inputScrollOffset;
 
@@ -251,9 +251,7 @@ class Layout {
     }
     _inputScrollOffset = scrollOffset;
 
-    final visibleCount = totalVisual <= maxVisible
-        ? totalVisual
-        : maxVisible;
+    final visibleCount = totalVisual <= maxVisible ? totalVisual : maxVisible;
 
     // Update the input height in the layout.
     setInputHeight(visibleCount);
@@ -287,7 +285,8 @@ class Layout {
     }
 
     // Position cursor.
-    if (showCursor && cursorVisualRow >= scrollOffset &&
+    if (showCursor &&
+        cursorVisualRow >= scrollOffset &&
         cursorVisualRow < scrollOffset + visibleCount) {
       final screenRow = inputTop + (cursorVisualRow - scrollOffset);
       terminal.moveTo(screenRow, cursorScreenCol.clamp(1, cols));

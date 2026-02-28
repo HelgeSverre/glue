@@ -31,7 +31,7 @@ void main() {
     });
 
     test('handles URL with special characters', () {
-      final url = 'https://example.com/path?q=hello&x=1#frag';
+      const url = 'https://example.com/path?q=hello&x=1#frag';
       final result = osc8Link(url, 'link');
       expect(
         result,
@@ -81,7 +81,7 @@ void main() {
 
     test('zalgo text — combining marks are zero-width', () {
       // "hello" with stacked combining marks
-      final zalgo = 'h\u0335\u0321\u0353e\u0344\u0359l\u0334\u0319'
+      const zalgo = 'h\u0335\u0321\u0353e\u0344\u0359l\u0334\u0319'
           'l\u0337\u0320o\u0336\u0326';
       expect(visibleLength(zalgo), 5);
     });
@@ -115,14 +115,12 @@ void main() {
     });
 
     test('returns correct length for OSC 8 wrapped text', () {
-      final linked =
-          '\x1b]8;;https://example.com\x07click\x1b]8;;\x07';
+      const linked = '\x1b]8;;https://example.com\x07click\x1b]8;;\x07';
       expect(visibleLength(linked), equals(5)); // "click" = 5
     });
 
     test('returns correct length for mixed CSI + OSC text', () {
-      final text =
-          '\x1b[31m\x1b]8;;https://x.com\x07hi\x1b]8;;\x07\x1b[0m';
+      const text = '\x1b[31m\x1b]8;;https://x.com\x07hi\x1b]8;;\x07\x1b[0m';
       expect(visibleLength(text), equals(2)); // "hi" = 2
     });
   });
@@ -143,19 +141,18 @@ void main() {
     });
 
     test('strips OSC 8 hyperlink sequences', () {
-      final linked =
-          '\x1b]8;;https://example.com\x07click\x1b]8;;\x07';
+      const linked = '\x1b]8;;https://example.com\x07click\x1b]8;;\x07';
       expect(stripAnsi(linked), equals('click'));
     });
 
     test('strips mixed CSI and OSC sequences', () {
-      final text = '\x1b[1m\x1b]8;;https://x.com\x07bold link\x1b]8;;\x07\x1b[0m';
+      const text =
+          '\x1b[1m\x1b]8;;https://x.com\x07bold link\x1b]8;;\x07\x1b[0m';
       expect(stripAnsi(text), equals('bold link'));
     });
 
     test('strips OSC with complex URL', () {
-      final linked =
-          '\x1b]8;;file:///tmp/foo.dart\x07foo.dart\x1b]8;;\x07';
+      const linked = '\x1b]8;;file:///tmp/foo.dart\x07foo.dart\x1b]8;;\x07';
       expect(stripAnsi(linked), equals('foo.dart'));
     });
   });
@@ -197,21 +194,19 @@ void main() {
     });
 
     test('does not truncate OSC-linked text when it fits', () {
-      final linked =
-          '\x1b]8;;https://example.com\x07abc\x1b]8;;\x07';
+      const linked = '\x1b]8;;https://example.com\x07abc\x1b]8;;\x07';
       expect(ansiTruncate(linked, 10), equals(linked));
     });
 
     test('truncates OSC-linked text preserving escape sequences', () {
-      final linked =
-          '\x1b]8;;https://example.com\x07abcdefghij\x1b]8;;\x07';
+      const linked = '\x1b]8;;https://example.com\x07abcdefghij\x1b]8;;\x07';
       final result = ansiTruncate(linked, 5);
       expect(result, contains('\x1b]8;;https://example.com\x07'));
       expect(visibleLength(result), equals(5));
     });
 
     test('truncates mixed CSI + OSC sequences', () {
-      final text =
+      const text =
           '\x1b[1m\x1b]8;;https://x.com\x07hello world\x1b]8;;\x07\x1b[0m';
       final result = ansiTruncate(text, 6);
       expect(visibleLength(result), equals(6));
@@ -296,7 +291,7 @@ void main() {
     });
 
     test('wraps text with combining marks (zalgo)', () {
-      final zalgo = 'h\u0335e\u0344l\u0334l\u0337o\u0336 '
+      const zalgo = 'h\u0335e\u0344l\u0334l\u0337o\u0336 '
           'w\u0321o\u0359r\u0319l\u0320d\u0326';
       final result = ansiWrap(zalgo, 6);
       for (final line in result.split('\n')) {
@@ -331,8 +326,7 @@ void main() {
     });
 
     test('preserves OSC 8 links when text fits on one line', () {
-      final text =
-          'see \x1b]8;;https://x.com\x07link\x1b]8;;\x07 end';
+      const text = 'see \x1b]8;;https://x.com\x07link\x1b]8;;\x07 end';
       final result = ansiWrap(text, 80);
       expect(result, equals(text));
     });
@@ -387,16 +381,14 @@ void main() {
     });
 
     test('handles empty text', () {
-      final result =
-          wrapIndented('', 20, firstPrefix: '• ', nextPrefix: '  ');
+      final result = wrapIndented('', 20, firstPrefix: '• ', nextPrefix: '  ');
       expect(result, startsWith('• '));
     });
 
     test('handles ANSI prefixes (visible width computed correctly)', () {
       final result = wrapIndented(
           'The quick brown fox jumped over the lazy dog', 25,
-          firstPrefix: '\x1b[90m│ \x1b[0m',
-          nextPrefix: '\x1b[90m│ \x1b[0m');
+          firstPrefix: '\x1b[90m│ \x1b[0m', nextPrefix: '\x1b[90m│ \x1b[0m');
       final lines = result.split('\n');
       for (final line in lines) {
         expect(visibleLength(line), lessThanOrEqualTo(25));
@@ -429,8 +421,8 @@ void main() {
     });
 
     test('contentWidth <= 0 returns prefix + text as-is', () {
-      final result = wrapIndented('hello', 2,
-          firstPrefix: '>>> ', nextPrefix: '>>> ');
+      final result =
+          wrapIndented('hello', 2, firstPrefix: '>>> ', nextPrefix: '>>> ');
       expect(result, '>>> hello');
     });
 
@@ -459,8 +451,7 @@ void main() {
 
     test('headings wrap to width', () {
       final r = MarkdownRenderer(20);
-      final result =
-          r.render('# This is a very long heading that should wrap');
+      final result = r.render('# This is a very long heading that should wrap');
       for (final line in result.split('\n')) {
         expect(visibleLength(line), lessThanOrEqualTo(20),
             reason: 'Heading line too wide: "$line"');
@@ -469,8 +460,7 @@ void main() {
 
     test('heading continuation lines retain bold+yellow styling', () {
       final r = MarkdownRenderer(15);
-      final result =
-          r.render('# Short heading that wraps');
+      final result = r.render('# Short heading that wraps');
       final lines = result.split('\n');
       expect(lines.length, greaterThan(1),
           reason: 'Heading should wrap at width 15');
@@ -486,8 +476,8 @@ void main() {
 
     test('blockquotes wrap within prefix', () {
       final r = MarkdownRenderer(25);
-      final result = r.render(
-          '> This is a long blockquote that should wrap nicely');
+      final result =
+          r.render('> This is a long blockquote that should wrap nicely');
       final lines = result.split('\n');
       for (final line in lines) {
         expect(visibleLength(line), lessThanOrEqualTo(25),
@@ -499,8 +489,8 @@ void main() {
 
     test('unordered list items wrap with aligned continuation', () {
       final r = MarkdownRenderer(25);
-      final result = r.render(
-          '- This is a long list item that should wrap and align');
+      final result =
+          r.render('- This is a long list item that should wrap and align');
       final lines = result.split('\n');
       final stripped = lines.map(stripAnsi).toList();
       expect(stripped.first, startsWith('• '));
@@ -515,8 +505,8 @@ void main() {
 
     test('ordered list items wrap with aligned continuation', () {
       final r = MarkdownRenderer(25);
-      final result = r.render(
-          '1. This is a long ordered list item that should wrap');
+      final result =
+          r.render('1. This is a long ordered list item that should wrap');
       final lines = result.split('\n');
       final stripped = lines.map(stripAnsi).toList();
       expect(stripped.first, startsWith('1. '));
@@ -531,16 +521,16 @@ void main() {
 
     test('code blocks are NOT wrapped (truncated instead)', () {
       final r = MarkdownRenderer(20);
-      final result = r.render(
-          '```\nthis_is_a_long_line_of_code_no_spaces\n```');
+      final result =
+          r.render('```\nthis_is_a_long_line_of_code_no_spaces\n```');
       expect(stripAnsi(result), contains('╭'));
       expect(stripAnsi(result), contains('╰'));
     });
 
     test('paragraph with Norwegian characters wraps', () {
       final r = MarkdownRenderer(25);
-      final result = r.render(
-          'Blåbærsyltetøy og rømme er veldig godt på vafler med is');
+      final result =
+          r.render('Blåbærsyltetøy og rømme er veldig godt på vafler med is');
       for (final line in result.split('\n')) {
         expect(visibleLength(line), lessThanOrEqualTo(25),
             reason: 'Line too wide: "$line"');
@@ -549,8 +539,7 @@ void main() {
 
     test('paragraph with emoji wraps at correct width', () {
       final r = MarkdownRenderer(15);
-      final result =
-          r.render('Hello 🎉 this is 🚀 a test 🌍 of emoji');
+      final result = r.render('Hello 🎉 this is 🚀 a test 🌍 of emoji');
       for (final line in result.split('\n')) {
         expect(visibleLength(line), lessThanOrEqualTo(15),
             reason: 'Line too wide: "$line"');
@@ -568,7 +557,7 @@ void main() {
 
     test('mixed content wraps each element correctly', () {
       final r = MarkdownRenderer(25);
-      final md = '''# Long heading that wraps
+      const md = '''# Long heading that wraps
 Some long paragraph text that definitely needs wrapping.
 
 - A list item with enough text to wrap
@@ -621,8 +610,7 @@ Some long paragraph text that definitely needs wrapping.
 
     test('renderUser with emoji content fits width', () {
       final r = BlockRenderer(30);
-      final result =
-          r.renderUser('🎉 party 🚀 rocket 🌍 earth 🎊 tada 🦊 fox');
+      final result = r.renderUser('🎉 party 🚀 rocket 🌍 earth 🎊 tada 🦊 fox');
       for (final line in result.split('\n')) {
         expect(visibleLength(line), lessThanOrEqualTo(30),
             reason: 'Line too wide: "$line"');

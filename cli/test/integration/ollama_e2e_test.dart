@@ -59,7 +59,6 @@ void main() {
 
   AgentCore makeAgent({Map<String, Tool>? tools}) {
     final llm = OllamaClient(
-      httpClient: http.Client(),
       model: _model,
       systemPrompt: _systemPrompt(),
       baseUrl: _ollamaUrl,

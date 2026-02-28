@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:math';
 
-import '../rendering/ansi_utils.dart';
-import '../terminal/styled.dart';
-import '../terminal/terminal.dart';
-import 'box.dart';
+import 'package:glue/src/rendering/ansi_utils.dart';
+import 'package:glue/src/terminal/styled.dart';
+import 'package:glue/src/terminal/terminal.dart';
+import 'package:glue/src/ui/box.dart';
 
 enum PanelStyle { tape, simple, heavy }
 
@@ -122,7 +122,6 @@ String _repeatTape(String pattern, int length) {
   }
   return buf.toString();
 }
-
 
 List<String> applyBarrier(BarrierStyle style, List<String> lines) {
   return switch (style) {
@@ -320,8 +319,7 @@ class PanelModal implements PanelOverlay {
 
         final isSelected =
             selectable && (contentIdx + _scrollOffset) == _selectedIndex;
-        final styledContent =
-            isSelected ? '${padded.styled.inverse}' : padded;
+        final styledContent = isSelected ? '${padded.styled.inverse}' : padded;
 
         final (leftBorder, rightBorder) = box.styledSides(color: borderColor);
 

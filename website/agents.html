@@ -286,8 +286,8 @@
     model: <span class="string">claude-haiku-4-5</span>
 
   <span class="hl">reviewer</span>:
-    provider: <span class="string">google</span>
-    model: <span class="string">gemini-3-pro</span>
+    provider: <span class="string">mistral</span>
+    model: <span class="string">mistral-large-latest</span>
 
   <span class="hl">planner</span>:
     provider: <span class="string">anthropic</span>
@@ -298,12 +298,12 @@
     model: <span class="string">gpt-5</span>
 
   <span class="hl">researcher</span>:
-    provider: <span class="string">google</span>
-    model: <span class="string">gemini-3-flash</span></div>
+    provider: <span class="string">ollama</span>
+    model: <span class="string">llama3.2</span></div>
         </div>
         <div class="prose reveal rd2" style="color: #ccc;">
           <h3 style="color: var(--yellow);">Mix & Match Providers</h3>
-          <p>Every agent type can use a different model and provider. Use Claude for planning, GPT for building, Gemini for reviewing — whatever combination works best for your workflow.</p>
+          <p>Every agent type can use a different model and provider. Use Claude for planning, GPT for building, Mistral for reviewing — whatever combination works best for your workflow.</p>
           <h3 style="color: var(--yellow);">Per-Project Overrides</h3>
           <p>Global defaults live in <code>~/.glue/config.yaml</code>. Project-level overrides in <code>.glue/config.yaml</code>. A Python project might use different agents than a Dart project.</p>
           <h3 style="color: var(--yellow);">Coming Soon: Custom Roles</h3>

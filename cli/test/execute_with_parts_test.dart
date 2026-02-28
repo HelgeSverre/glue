@@ -14,7 +14,7 @@ class _TextTool extends Tool {
 
   @override
   Future<List<ContentPart>> execute(Map<String, dynamic> args) async =>
-      [TextPart('hello')];
+      [const TextPart('hello')];
 }
 
 /// A tool that returns images alongside text.

@@ -22,7 +22,6 @@ class OllamaClient implements LlmClient {
   final Uri _baseUri;
 
   OllamaClient({
-    required http.Client httpClient,
     required this.model,
     required this.systemPrompt,
     String baseUrl = 'http://localhost:11434',

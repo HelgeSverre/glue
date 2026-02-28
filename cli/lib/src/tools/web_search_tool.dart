@@ -43,7 +43,7 @@ class WebSearchTool extends Tool {
   Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
     final query = args['query'];
     if (query is! String || query.isEmpty) {
-      return [TextPart('Error: no query provided')];
+      return [const TextPart('Error: no query provided')];
     }
 
     final maxResults = (args['max_results'] as num?)?.toInt() ?? 5;

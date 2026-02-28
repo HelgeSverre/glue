@@ -24,26 +24,26 @@ class LlmClientFactory {
   }) {
     return switch (provider) {
       LlmProvider.anthropic => AnthropicClient(
-          httpClient: _httpClient,
+          requestClientFactory: () => _httpClient,
           apiKey: apiKey,
           model: model,
           systemPrompt: systemPrompt,
         ),
       LlmProvider.openai => OpenAiClient(
-          httpClient: _httpClient,
+          requestClientFactory: () => _httpClient,
           apiKey: apiKey,
           model: model,
           systemPrompt: systemPrompt,
         ),
       LlmProvider.mistral => OpenAiClient(
-          httpClient: _httpClient,
+          requestClientFactory: () => _httpClient,
           apiKey: apiKey,
           model: model,
           systemPrompt: systemPrompt,
           baseUrl: 'https://api.mistral.ai',
         ),
       LlmProvider.ollama => OllamaClient(
-          httpClient: _httpClient,
+          requestClientFactory: () => _httpClient,
           model: model,
           systemPrompt: systemPrompt,
           baseUrl: ollamaBaseUrl,

@@ -1,8 +1,8 @@
-import '../commands/slash_commands.dart';
-import '../terminal/terminal.dart';
-import '../ui/slash_autocomplete.dart';
-import 'line_editor.dart' show InputAction;
-import 'text_area_editor.dart';
+import 'package:glue/src/commands/slash_commands.dart';
+import 'package:glue/src/terminal/terminal.dart';
+import 'package:glue/src/ui/slash_autocomplete.dart';
+import 'package:glue/src/input/line_editor.dart' show InputAction;
+import 'package:glue/src/input/text_area_editor.dart';
 
 /// Action to take after handling a terminal event during streaming mode.
 enum StreamingAction {
@@ -20,7 +20,10 @@ enum StreamingAction {
 }
 
 /// Result of handling a terminal event during streaming mode.
-typedef StreamingInputResult = ({StreamingAction action, String? commandOutput});
+typedef StreamingInputResult = ({
+  StreamingAction action,
+  String? commandOutput
+});
 
 /// Handle a terminal event while in a non-idle mode (streaming, tool running,
 /// or bash running).

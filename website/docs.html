@@ -82,8 +82,8 @@
 <span class="comment"># OpenAI</span>
 <span class="p">❯</span> export <span class="hl">OPENAI_API_KEY</span>=<span class="string">sk-...</span>
 
-<span class="comment"># Google</span>
-<span class="p">❯</span> export <span class="hl">GOOGLE_API_KEY</span>=<span class="string">...</span></div>
+<span class="comment"># Mistral</span>
+<span class="p">❯</span> export <span class="hl">MISTRAL_API_KEY</span>=<span class="string">...</span></div>
 
       <h3>CLI Flags</h3>
       <table class="brutal-table">
@@ -91,12 +91,8 @@
         <tbody>
           <tr><td><code>glue "prompt"</code></td><td>Start with an initial prompt</td><td><code>glue "add auth endpoint"</code></td></tr>
           <tr><td><code>--model, -m</code></td><td>Select model</td><td><code>glue -m gpt-5</code></td></tr>
-          <tr><td><code>--worktree, -w</code></td><td>Run in a git worktree</td><td><code>glue -w feat/auth</code></td></tr>
-          <tr><td><code>--new-worktree</code></td><td>Create worktree and start session</td><td><code>glue --new-worktree feat/api</code></td></tr>
-          <tr><td><code>--approve-all</code></td><td>Auto-approve all tool calls</td><td><code>glue --approve-all</code></td></tr>
-          <tr><td><code>--resume, -r</code></td><td>Open session picker</td><td><code>glue -r</code></td></tr>
+          <tr><td><code>--resume</code></td><td>Open session picker</td><td><code>glue --resume</code></td></tr>
           <tr><td><code>--continue</code></td><td>Resume most recent session</td><td><code>glue --continue</code></td></tr>
-          <tr><td><code>--list</code></td><td>List all active sessions</td><td><code>glue --list</code></td></tr>
         </tbody>
       </table>
 
@@ -109,7 +105,7 @@
       <h3>Full Schema</h3>
       <div class="code-block"><span class="comment"># ~/.glue/config.yaml</span>
 
-<span class="hl">provider</span>: <span class="string">"anthropic"</span>          <span class="comment"># anthropic | openai | ollama</span>
+<span class="hl">provider</span>: <span class="string">"anthropic"</span>          <span class="comment"># anthropic | openai | mistral | ollama</span>
 <span class="hl">model</span>: <span class="string">"claude-sonnet-4-6"</span>     <span class="comment"># model name</span>
 
 <span class="hl">anthropic</span>:
@@ -135,7 +131,7 @@
         <tbody>
           <tr><td><code>ANTHROPIC_API_KEY</code></td><td>Anthropic API key</td></tr>
           <tr><td><code>OPENAI_API_KEY</code></td><td>OpenAI API key</td></tr>
-          <tr><td><code>GOOGLE_API_KEY</code></td><td>Google AI API key</td></tr>
+          <tr><td><code>MISTRAL_API_KEY</code></td><td>Mistral API key</td></tr>
           <tr><td><code>GLUE_PROVIDER</code></td><td>Override default provider</td></tr>
           <tr><td><code>GLUE_MODEL</code></td><td>Override default model</td></tr>
         </tbody>
@@ -157,6 +153,7 @@
         <tbody>
           <tr><td>Anthropic</td><td><code>claude-sonnet-4-6</code></td></tr>
           <tr><td>OpenAI</td><td><code>gpt-4.1</code></td></tr>
+          <tr><td>Mistral</td><td><code>mistral-large-latest</code></td></tr>
           <tr><td>Ollama</td><td><code>llama3.2</code> (localhost:11434)</td></tr>
         </tbody>
       </table>
@@ -289,12 +286,12 @@
       <ul>
         <li><strong>Yes</strong> — approve this specific call</li>
         <li><strong>No</strong> — deny this call, the agent gets an error and can try something else</li>
-        <li><strong>Always</strong> — permanently trust this tool (saved to <code>~/.glue/config.json</code>)</li>
+        <li><strong>Always</strong> — permanently trust this tool (saved to <code>~/.glue/config.yaml</code>)</li>
       </ul>
 
       <div class="info-box">
         <div class="info-box-label">▲ Note</div>
-        <p>The <code>--approve-all</code> CLI flag auto-approves everything. Use with caution — the agent can run arbitrary shell commands.</p>
+        <p>You can configure permanent tool trust in <code>~/.glue/config.yaml</code>. Use with caution — the agent can run arbitrary shell commands.</p>
       </div>
 
       <!-- ─── Sessions ─── -->
@@ -316,7 +313,6 @@
           <tr><td><code>glue --resume</code></td><td>Open interactive session picker</td></tr>
           <tr><td><code>glue --continue</code></td><td>Auto-resume the most recent session</td></tr>
           <tr><td><code>/resume</code></td><td>Open session picker during a session</td></tr>
-          <tr><td><code>glue --list</code></td><td>List all sessions (model, directory, time)</td></tr>
         </tbody>
       </table>
 
