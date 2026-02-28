@@ -13,6 +13,8 @@ import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/config/model_registry.dart';
+import 'package:glue/src/config/permission_mode.dart';
+import 'package:path/path.dart' as p;
 import 'package:glue/src/llm/llm_factory.dart';
 import 'package:glue/src/llm/model_lister.dart';
 import 'package:glue/src/rendering/block_renderer.dart';
@@ -83,6 +85,9 @@ enum AppMode {
   /// A bash command is currently executing.
   bashRunning,
 }
+
+/// Outcome of the permission check for a tool call.
+enum _Approval { allow, ask, deny }
 
 // ---------------------------------------------------------------------------
 // Application event bus
@@ -192,6 +197,8 @@ class App {
   ObservabilitySpan? _turnSpan;
   final DebugController? _debugController;
   final SkillRegistry? _skillRegistry;
+  PermissionMode _permissionMode;
+  final Set<String> _earlyApprovedIds = {};
 
   App({
     required this.terminal,
@@ -219,12 +226,14 @@ class App {
         _systemPrompt = systemPrompt,
         _sessionStore = sessionStore,
         _executor = executor ?? HostExecutor(const ShellConfig()),
-        _jobManager = jobManager ?? ShellJobManager(executor ?? HostExecutor(const ShellConfig())),
+        _jobManager = jobManager ??
+            ShellJobManager(executor ?? HostExecutor(const ShellConfig())),
         _startupResume = startupResume,
         _startupContinue = startupContinue,
         _obs = obs,
         _debugController = debugController,
         _skillRegistry = skillRegistry,
+        _permissionMode = config?.permissionMode ?? PermissionMode.confirm,
         _cwd = Directory.current.path {
     if (extraTrustedTools != null) {
       _autoApprovedTools.addAll(extraTrustedTools);
@@ -232,6 +241,7 @@ class App {
     _initCommands();
     _autocomplete = SlashAutocomplete(_commands);
     _atHint = AtFileHint();
+    _syncToolFilter();
   }
 
   /// Convenience factory that creates a fully wired [App] with real
@@ -309,7 +319,8 @@ class App {
       obs: obs,
     );
     final llmFactory = LlmClientFactory(httpClient: httpClient);
-    final rawLlm = llmFactory.createFromConfig(config, systemPrompt: systemPrompt);
+    final rawLlm =
+        llmFactory.createFromConfig(config, systemPrompt: systemPrompt);
     final llm = ObservedLlmClient(
       inner: rawLlm,
       obs: obs,
@@ -378,8 +389,8 @@ class App {
       'bash': BashTool(executor),
       'grep': GrepTool(),
       'list_directory': ListDirectoryTool(),
-      'web_fetch': WebFetchTool(config.webConfig.fetch,
-          pdfConfig: config.webConfig.pdf),
+      'web_fetch':
+          WebFetchTool(config.webConfig.fetch, pdfConfig: config.webConfig.pdf),
       'web_search': WebSearchTool(searchRouter),
       'web_browser': WebBrowserTool(browserManager),
       'skill': SkillTool(skillRegistry),
@@ -514,8 +525,8 @@ class App {
       terminal.disableRawMode();
       final sessionId = _sessionStore?.meta.id;
       if (sessionId != null) {
-        stdout.writeln('\nTo resume this session:');
-        stdout.writeln('  \$ glue --resume $sessionId');
+        stdout.writeln('\n\x1b[33m◆\x1b[0m Holding it together till next time.');
+        stdout.writeln('  \x1b[90m\$ glue --resume $sessionId\x1b[0m');
       }
       terminal.dispose();
     }
@@ -575,9 +586,8 @@ class App {
         final query = args.join(' ');
         final entry = ModelRegistry.findByName(query);
         if (entry == null) {
-          final suggestions = ModelRegistry.models
-              .map((m) => m.modelId)
-              .join(', ');
+          final suggestions =
+              ModelRegistry.models.map((m) => m.modelId).join(', ');
           return 'Unknown model: $query\nAvailable: $suggestions';
         }
         return _switchToModelEntry(entry);
@@ -614,6 +624,7 @@ class App {
         buf.writeln('  Tokens used:  ${agent.tokenCount}');
         buf.writeln('  Messages:     ${agent.conversation.length}');
         buf.writeln('  Tools:        ${agent.tools.length} registered');
+        buf.writeln('  Permissions:  ${_permissionMode.label} (Shift+Tab to cycle)');
         buf.writeln('  Auto-approve: ${trustedList.join(", ")}');
         return buf.toString();
       },
@@ -848,7 +859,8 @@ class App {
 
     final entries = ModelRegistry.available(config);
     if (entries.isEmpty) {
-      _blocks.add(_ConversationEntry.system('No models available (no API keys configured).'));
+      _blocks.add(_ConversationEntry.system(
+          'No models available (no API keys configured).'));
       _render();
       return;
     }
@@ -911,8 +923,7 @@ class App {
   void _openSkillsPanel() {
     final registry = _skillRegistry;
     if (registry == null || registry.isEmpty) {
-      _blocks.add(_ConversationEntry.system(
-          'No skills found.\n\n'
+      _blocks.add(_ConversationEntry.system('No skills found.\n\n'
           'To add skills, create directories with SKILL.md files in:\n'
           '  ~/.glue/skills/<skill-name>/SKILL.md (global)\n'
           '  .glue/skills/<skill-name>/SKILL.md (project-local)'));
@@ -926,8 +937,8 @@ class App {
     const green = '\x1b[32m';
     const rst = '\x1b[0m';
 
-    final maxNameLen = skills.fold<int>(
-        0, (m, s) => s.name.length > m ? s.name.length : m);
+    final maxNameLen =
+        skills.fold<int>(0, (m, s) => s.name.length > m ? s.name.length : m);
     final leftItems = skills.map((s) {
       final tag = switch (s.source) {
         SkillSource.project => '${green}project$rst',
@@ -990,8 +1001,8 @@ class App {
       final skill = skills[idx];
       try {
         final body = registry.loadBody(skill.name);
-        _blocks.add(_ConversationEntry.system(
-            '# Skill: ${skill.name}\n\n$body'));
+        _blocks
+            .add(_ConversationEntry.system('# Skill: ${skill.name}\n\n$body'));
       } on SkillParseError catch (e) {
         _blocks.add(_ConversationEntry.system(
             'Error loading skill "${skill.name}": $e'));
@@ -1053,6 +1064,14 @@ class App {
             _render();
             return;
           }
+        }
+
+        // Permission mode cycling — works in all modes.
+        if (event case KeyEvent(key: Key.shiftTab)) {
+          _permissionMode = _permissionMode.next;
+          _syncToolFilter();
+          _render();
+          return;
         }
 
         // Scroll handling — works in all modes.
@@ -1352,6 +1371,47 @@ class App {
         }
         _toolUi[id] = _ToolCallUiState(id: id, name: name);
         _blocks.add(_ConversationEntry.toolCallRef(id));
+
+        // Early confirmation — ask before arguments finish streaming.
+        if (_needsEarlyConfirmation(name)) {
+          _toolUi[id]?.phase = _ToolPhase.awaitingApproval;
+          _stopSpinner();
+          _mode = AppMode.confirming;
+          _activeModal = ConfirmModal(
+            title: 'Allow $name?',
+            bodyLines: ['(arguments still streaming\u2026)'],
+            choices: [
+              const ModalChoice('Yes', 'y'),
+              const ModalChoice('No', 'n'),
+              const ModalChoice('Always', 'a'),
+            ],
+          );
+          _render();
+
+          _activeModal!.result.then((choiceIndex) {
+            _activeModal = null;
+            switch (choiceIndex) {
+              case 0: // Yes
+                _earlyApprovedIds.add(id);
+                _toolUi[id]?.phase = _ToolPhase.preparing;
+                _mode = AppMode.streaming;
+                _startSpinner();
+                _render();
+              case 2: // Always
+                _persistTrustedTool(name);
+                _earlyApprovedIds.add(id);
+                _toolUi[id]?.phase = _ToolPhase.preparing;
+                _mode = AppMode.streaming;
+                _startSpinner();
+                _render();
+              default: // No
+                _cancelAgent();
+                agent.completeToolCall(ToolResult.denied(id));
+            }
+          });
+          return;
+        }
+
         _render();
 
       case AgentToolCall(:final call):
@@ -1377,68 +1437,25 @@ class App {
           'arguments': call.arguments,
         });
 
-        // Auto-approve safe tools.
-        if (_autoApprovedTools.contains(call.name)) {
-          _toolUi[call.id]?.phase = _ToolPhase.running;
-          _stopSpinner();
-          _mode = AppMode.toolRunning;
-          _render();
-          unawaited(_executeAndCompleteTool(call));
-          return;
+        // Early-approved at ToolCallPending time — re-check with full args.
+        if (_earlyApprovedIds.remove(call.id)) {
+          final approval = _resolveApproval(call);
+          if (approval == _Approval.allow) {
+            _approveTool(call);
+            return;
+          }
+          // Path outside CWD in acceptEdits → fall through to modal.
         }
 
-        // Show confirmation modal.
-        _toolUi[call.id]?.phase = _ToolPhase.awaitingApproval;
-        _stopSpinner();
-        _mode = AppMode.confirming;
-        final bodyLines =
-            call.arguments.entries.map((e) => '${e.key}: ${e.value}').toList();
-        if (bodyLines.isEmpty) bodyLines.add('(no arguments)');
-        _activeModal = ConfirmModal(
-          title: 'Approve tool: ${call.name}',
-          bodyLines: bodyLines,
-          choices: [
-            const ModalChoice('Yes', 'y'),
-            const ModalChoice('No', 'n'),
-            const ModalChoice('Always', 'a'),
-          ],
-        );
-        _render();
-
-        _activeModal!.result.then((choiceIndex) {
-          _activeModal = null;
-          switch (choiceIndex) {
-            case 0: // Yes
-              _toolUi[call.id]?.phase = _ToolPhase.running;
-              _mode = AppMode.toolRunning;
-              _render();
-              unawaited(_executeAndCompleteTool(call));
-            case 2: // Always
-              _autoApprovedTools.add(call.name);
-              try {
-                final home = GlueHome();
-                final store = ConfigStore(home.configPath);
-                store.update((c) {
-                  final tools =
-                      (c['trusted_tools'] as List?)?.cast<String>() ?? [];
-                  if (!tools.contains(call.name)) {
-                    tools.add(call.name);
-                    c['trusted_tools'] = tools;
-                  }
-                });
-              } catch (_) {}
-              _toolUi[call.id]?.phase = _ToolPhase.running;
-              _mode = AppMode.toolRunning;
-              _render();
-              unawaited(_executeAndCompleteTool(call));
-            default: // No
-              _toolUi[call.id]?.phase = _ToolPhase.denied;
-              _mode = AppMode.streaming;
-              _startSpinner();
-              agent.completeToolCall(ToolResult.denied(call.id));
-              _render();
-          }
-        });
+        // Permission-based approval.
+        switch (_resolveApproval(call)) {
+          case _Approval.allow:
+            _approveTool(call);
+          case _Approval.deny:
+            _denyTool(call);
+          case _Approval.ask:
+            _showToolConfirmModal(call);
+        }
 
       case AgentToolResult(:final result):
         _toolUi[result.callId]?.phase = _ToolPhase.done;
@@ -1497,6 +1514,135 @@ class App {
     }
     agent.ensureToolResultsComplete();
     _render();
+  }
+
+  // ── Permission mode ──────────────────────────────────────────────────
+
+  void _syncToolFilter() {
+    switch (_permissionMode) {
+      case PermissionMode.readOnly:
+        agent.toolFilter = (tool) => !tool.isMutating;
+      default:
+        agent.toolFilter = null;
+    }
+  }
+
+  _Approval _resolveApproval(ToolCall call) {
+    final tool = agent.tools[call.name];
+
+    switch (_permissionMode) {
+      case PermissionMode.ignorePermissions:
+        return _Approval.allow;
+
+      case PermissionMode.readOnly:
+        if (tool != null && tool.isMutating) return _Approval.deny;
+        return _Approval.allow;
+
+      case PermissionMode.acceptEdits:
+        if (_isTrusted(call.name)) return _Approval.allow;
+        if (tool != null && tool.trust == ToolTrust.fileEdit) {
+          if (_targetsPathOutsideCwd(call)) return _Approval.ask;
+          return _Approval.allow;
+        }
+        return _Approval.ask;
+
+      case PermissionMode.confirm:
+        if (_isTrusted(call.name)) return _Approval.allow;
+        return _Approval.ask;
+    }
+  }
+
+  bool _isTrusted(String toolName) => _autoApprovedTools.contains(toolName);
+
+  bool _targetsPathOutsideCwd(ToolCall call) {
+    final path = call.arguments['path'] as String? ??
+        call.arguments['file_path'] as String?;
+    if (path == null) return false;
+    final resolved = File(path).absolute.path;
+    return !p.isWithin(_cwd, resolved) && resolved != _cwd;
+  }
+
+  /// Whether this tool needs a confirmation prompt at ToolCallPending time
+  /// (before arguments have streamed).
+  bool _needsEarlyConfirmation(String toolName) {
+    final tool = agent.tools[toolName];
+
+    switch (_permissionMode) {
+      case PermissionMode.ignorePermissions:
+      case PermissionMode.readOnly:
+        // ignorePermissions: everything allowed.
+        // readOnly: mutating tools denied (not asked).
+        return false;
+      case PermissionMode.acceptEdits:
+        if (_isTrusted(toolName)) return false;
+        if (tool != null && tool.trust == ToolTrust.fileEdit) return false;
+        return true;
+      case PermissionMode.confirm:
+        return !_isTrusted(toolName);
+    }
+  }
+
+  void _persistTrustedTool(String name) {
+    _autoApprovedTools.add(name);
+    try {
+      final home = GlueHome();
+      final store = ConfigStore(home.configPath);
+      store.update((c) {
+        final tools = (c['trusted_tools'] as List?)?.cast<String>() ?? [];
+        if (!tools.contains(name)) {
+          tools.add(name);
+          c['trusted_tools'] = tools;
+        }
+      });
+    } catch (_) {}
+  }
+
+  void _approveTool(ToolCall call) {
+    _toolUi[call.id]?.phase = _ToolPhase.running;
+    _stopSpinner();
+    _mode = AppMode.toolRunning;
+    _render();
+    unawaited(_executeAndCompleteTool(call));
+  }
+
+  void _denyTool(ToolCall call) {
+    _toolUi[call.id]?.phase = _ToolPhase.denied;
+    _mode = AppMode.streaming;
+    _startSpinner();
+    agent.completeToolCall(ToolResult.denied(call.id));
+    _render();
+  }
+
+  void _showToolConfirmModal(ToolCall call) {
+    _toolUi[call.id]?.phase = _ToolPhase.awaitingApproval;
+    _stopSpinner();
+    _mode = AppMode.confirming;
+    final bodyLines =
+        call.arguments.entries.map((e) => '${e.key}: ${e.value}').toList();
+    if (bodyLines.isEmpty) bodyLines.add('(no arguments)');
+    _activeModal = ConfirmModal(
+      title: 'Approve tool: ${call.name}',
+      bodyLines: bodyLines,
+      choices: [
+        const ModalChoice('Yes', 'y'),
+        const ModalChoice('No', 'n'),
+        const ModalChoice('Always', 'a'),
+      ],
+    );
+    _render();
+
+    _activeModal!.result.then((choiceIndex) {
+      _activeModal = null;
+      switch (choiceIndex) {
+        case 0: // Yes
+          _approveTool(call);
+        case 2: // Always
+          _persistTrustedTool(call.name);
+          _approveTool(call);
+        default: // No
+          _denyTool(call);
+      }
+    });
   }
 
   // ── Bash mode ─────────────────────────────────────────────────────────
@@ -1758,8 +1904,8 @@ class App {
         _EntryKind.user => renderer.renderUser(block.text),
         _EntryKind.assistant => renderer.renderAssistant(block.text),
         _EntryKind.toolCall => renderer.renderToolCall(block.text, block.args),
-        _EntryKind.toolCallRef => renderer.renderToolCallRef(
-            _toolUi[block.text]?.toRenderState()),
+        _EntryKind.toolCallRef =>
+          renderer.renderToolCallRef(_toolUi[block.text]?.toRenderState()),
         _EntryKind.toolResult => renderer.renderToolResult(block.text),
         _EntryKind.error => renderer.renderError(block.text),
         _EntryKind.subagent => renderer.renderSubagent(block.text),
@@ -1888,7 +2034,8 @@ class App {
       AppMode.bashRunning => '! Running',
     };
     final shortCwd = _shortenPath(_cwd);
-    final statusLeft = ' $modeIndicator  $_modelName  $shortCwd';
+    final permLabel = '[${_permissionMode.label}]';
+    final statusLeft = ' $modeIndicator  $_modelName  $permLabel  $shortCwd';
 
     final scrollIndicator = _scrollOffset > 0 ? '↑$_scrollOffset  ' : '';
     final statusRight = '${scrollIndicator}tok ${agent.tokenCount} ';
@@ -1994,18 +2141,21 @@ class _ToolCallUiState {
   final String name;
   Map<String, dynamic>? args;
   _ToolPhase phase;
-  _ToolCallUiState({required this.id, required this.name, this.phase = _ToolPhase.preparing});
+  _ToolCallUiState(
+      {required this.id,
+      required this.name,
+      this.phase = _ToolPhase.preparing});
 
   ToolCallRenderState toRenderState() => ToolCallRenderState(
-    name: name,
-    args: args,
-    phase: switch (phase) {
-      _ToolPhase.preparing => ToolCallPhase.preparing,
-      _ToolPhase.awaitingApproval => ToolCallPhase.awaitingApproval,
-      _ToolPhase.running => ToolCallPhase.running,
-      _ToolPhase.done => ToolCallPhase.done,
-      _ToolPhase.denied => ToolCallPhase.denied,
-      _ToolPhase.error => ToolCallPhase.error,
-    },
-  );
+        name: name,
+        args: args,
+        phase: switch (phase) {
+          _ToolPhase.preparing => ToolCallPhase.preparing,
+          _ToolPhase.awaitingApproval => ToolCallPhase.awaitingApproval,
+          _ToolPhase.running => ToolCallPhase.running,
+          _ToolPhase.done => ToolCallPhase.done,
+          _ToolPhase.denied => ToolCallPhase.denied,
+          _ToolPhase.error => ToolCallPhase.error,
+        },
+      );
 }
