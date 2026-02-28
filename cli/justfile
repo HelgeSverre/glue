@@ -29,13 +29,13 @@ docs:
 
 # Run with DevTools observability (JIT mode, dev only)
 dev *ARGS:
-    dart run --enable-vm-service --timeline_streams=Dart bin/glue.dart {{ARGS}}
+    dart --enable-vm-service --timeline-streams=Dart run bin/glue.dart {{ARGS}}
 
 # Run with DevTools, paused at start for debugger attachment
 dev-pause *ARGS:
-    dart run --enable-vm-service --pause-isolates-on-start --timeline_streams=Dart bin/glue.dart {{ARGS}}
+    dart --enable-vm-service --pause-isolates-on-start --timeline-streams=Dart run bin/glue.dart {{ARGS}}
 
 # Run with full profiling streams (VM, Isolate, GC, Dart)
 dev-profile *ARGS:
     @echo "Starting Glue with full profiling..."
-    dart run --enable-vm-service --timeline_streams=VM,Isolate,GC,Dart bin/glue.dart {{ARGS}}
+    dart --enable-vm-service --timeline-streams=VM,Isolate,GC,Dart run bin/glue.dart {{ARGS}}
