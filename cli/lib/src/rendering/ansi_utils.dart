@@ -12,12 +12,16 @@ String osc8Link(String url, [String? text]) {
   return '\x1b]8;;$url\x07$display\x1b]8;;\x07';
 }
 
+// Precompiled patterns for ANSI escape sequence matching.
+final _oscPattern = RegExp(r'\x1b\][^\x07]*\x07');
+final _csiPattern = RegExp(r'\x1b\[[0-9;]*[a-zA-Z]');
+
 /// Strip all ANSI escape sequences from [text],
 /// including CSI sequences and OSC sequences (e.g. hyperlinks).
 String stripAnsi(String text) {
   return text
-      .replaceAll(RegExp(r'\x1b\][^\x07]*\x07'), '') // OSC (BEL-terminated)
-      .replaceAll(RegExp(r'\x1b\[[0-9;]*[a-zA-Z]'), ''); // CSI
+      .replaceAll(_oscPattern, '') // OSC (BEL-terminated)
+      .replaceAll(_csiPattern, ''); // CSI
 }
 
 /// Compute the visible column width of [text] in a terminal,
@@ -33,24 +37,23 @@ int visibleLength(String text) {
 }
 
 /// Truncate [text] to [maxVisible] visible columns, preserving ANSI
-/// sequences and handling wide characters. Appends '…' if truncated.
+/// sequences (both CSI and OSC) and handling wide characters.
+/// Appends '…' if truncated.
 String ansiTruncate(String text, int maxVisible) {
   if (visibleLength(text) <= maxVisible) return text;
   final buf = StringBuffer();
   int visible = 0;
-  final csiPattern = RegExp(r'\x1b\[[0-9;]*[a-zA-Z]');
-  final oscPattern = RegExp(r'\x1b\][^\x07]*\x07');
   var i = 0;
   while (i < text.length && visible < maxVisible - 1) {
     // Skip CSI sequences
-    final csiMatch = csiPattern.matchAsPrefix(text, i);
+    final csiMatch = _csiPattern.matchAsPrefix(text, i);
     if (csiMatch != null) {
       buf.write(csiMatch.group(0));
       i += csiMatch.group(0)!.length;
       continue;
     }
     // Skip OSC sequences
-    final oscMatch = oscPattern.matchAsPrefix(text, i);
+    final oscMatch = _oscPattern.matchAsPrefix(text, i);
     if (oscMatch != null) {
       buf.write(oscMatch.group(0));
       i += oscMatch.group(0)!.length;

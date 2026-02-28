@@ -226,6 +226,7 @@ void main() {
     });
   });
 
+<<<<<<< HEAD
   // ── ansiWrap ──────────────────────────────────────────────────────────
 
   group('ansiWrap', () {
@@ -328,6 +329,13 @@ void main() {
       for (final line in result.split('\n')) {
         expect(visibleLength(line), lessThanOrEqualTo(12));
       }
+    });
+
+    test('preserves OSC 8 links when text fits on one line', () {
+      final text =
+          'see \x1b]8;;https://x.com\x07link\x1b]8;;\x07 end';
+      final result = ansiWrap(text, 80);
+      expect(result, equals(text));
     });
   });
 
