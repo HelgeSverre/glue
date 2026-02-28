@@ -150,12 +150,12 @@ void main() {
       final output = renderer.renderSystem('System info');
       expect(output, contains('\x1b[90m'));
       expect(output, contains('System info'));
-      expect(output, endsWith('\x1b[0m'));
+      expect(output, endsWith('\x1b[39m'));
     });
 
     test('handles empty text', () {
       final output = renderer.renderSystem('');
-      expect(output, equals(' \x1b[90m\x1b[0m'));
+      expect(output, equals(' \x1b[90m\x1b[39m'));
     });
   });
 
@@ -208,6 +208,55 @@ void main() {
       for (final line in output.split('\n')) {
         expect(stripAnsi(line).length, lessThanOrEqualTo(50));
       }
+    });
+  });
+
+  group('renderToolCall file path links', () {
+    test('tool call with path arg wraps in OSC 8 file:// link', () {
+      final result =
+          renderer.renderToolCall('read_file', {'path': '/src/main.dart'});
+      expect(result, contains('\x1b]8;;file:///src/main.dart\x07'));
+      expect(result, contains('/src/main.dart'));
+      expect(result, contains('\x1b]8;;\x07'));
+    });
+
+    test('tool call with relative path arg wraps in OSC 8 link', () {
+      final result =
+          renderer.renderToolCall('read_file', {'path': 'lib/foo.dart'});
+      expect(result, contains('\x1b]8;;file://lib/foo.dart\x07'));
+    });
+
+    test('tool call without path arg renders normally', () {
+      final result =
+          renderer.renderToolCall('bash', {'command': 'ls -la'});
+      expect(result, isNot(contains('\x1b]8;;file://')));
+    });
+
+    test('tool call with null args renders header only', () {
+      final result = renderer.renderToolCall('bash', null);
+      expect(result, contains('Tool: bash'));
+      expect(result, isNot(contains('\x1b]8;;')));
+    });
+  });
+
+  group('renderToolResult grep output links', () {
+    test('grep-style file:line output gets file path linked', () {
+      final result = renderer.renderToolResult(
+          'src/main.dart:42:  print("hello");');
+      expect(result, contains('\x1b]8;;file://src/main.dart\x07'));
+      expect(result, contains('src/main.dart'));
+    });
+
+    test('multiple grep lines each get linked', () {
+      final result = renderer.renderToolResult(
+          'a.dart:1: foo\nb.dart:2: bar');
+      expect(result, contains('\x1b]8;;file://a.dart\x07'));
+      expect(result, contains('\x1b]8;;file://b.dart\x07'));
+    });
+
+    test('non-grep lines are not linked', () {
+      final result = renderer.renderToolResult('No matches found.');
+      expect(result, isNot(contains('\x1b]8;;file://')));
     });
   });
 

@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'ansi_utils.dart';
+import '../terminal/styled.dart';
 
 /// Renders a subset of Markdown to ANSI-styled terminal text.
 ///
@@ -20,6 +21,15 @@ class MarkdownRenderer {
 
   static final _tableRowPattern = RegExp(r'^\s*\|.*\|\s*$');
   static final _tableSepPattern = RegExp(r'^\s*\|[\s:?\-|]+\|\s*$');
+  // ')' is excluded to avoid capturing trailing parens in prose like "(see https://...)".
+  // URLs containing literal parens (e.g. Wikipedia links) will be truncated at the
+  // first ')'. This is the standard trade-off for bare URL heuristics.
+  // The lookbehinds prevent re-matching URLs already inside OSC 8 sequences:
+  //   - (?<!\x1b\]8;;) skips URLs in the href position
+  //   - (?<!\x07) skips URLs in the display text position
+  static final _bareUrlPattern = RegExp(
+    r'(?<!\x1b\]8;;)(?<!\x07)https?://[^\s<>\[\])`\x07\x1b' "'" r'"]+',
+  );
 
   MarkdownRenderer(this.width);
 
@@ -65,23 +75,34 @@ class MarkdownRenderer {
 
       _flushTable(tableLines, output);
 
-      // Headings
+      // Headings — wrap raw text first, then style each line so
+      // continuation lines retain bold+yellow.
       if (line.startsWith('### ')) {
-        output.add('\x1b[1m\x1b[33m${line.substring(4)}\x1b[0m');
+        final wrapped = ansiWrap(line.substring(4), width);
+        output.addAll(wrapped.split('\n').map(
+            (l) => l.styled.bold.yellow.toString()));
         continue;
       }
       if (line.startsWith('## ')) {
-        output.add('\x1b[1m\x1b[33m${line.substring(3)}\x1b[0m');
+        final wrapped = ansiWrap(line.substring(3), width);
+        output.addAll(wrapped.split('\n').map(
+            (l) => l.styled.bold.yellow.toString()));
         continue;
       }
       if (line.startsWith('# ')) {
-        output.add('\x1b[1m\x1b[33m${line.substring(2)}\x1b[0m');
+        final wrapped = ansiWrap(line.substring(2), width);
+        output.addAll(wrapped.split('\n').map(
+            (l) => l.styled.bold.yellow.toString()));
         continue;
       }
 
       // Blockquote
       if (line.startsWith('> ')) {
-        output.add('\x1b[90m│ ${_renderInline(line.substring(2))}\x1b[0m');
+        final content = _renderInline(line.substring(2));
+        final prefix = '│ '.styled.gray.toString();
+        final wrapped = wrapIndented(content, width,
+            firstPrefix: prefix, nextPrefix: prefix);
+        output.addAll(wrapped.split('\n'));
         continue;
       }
 
@@ -90,7 +111,11 @@ class MarkdownRenderer {
       if (ulMatch != null) {
         final indent = ulMatch.group(1)!;
         final content = _renderInline(ulMatch.group(2)!);
-        output.add('$indent• $content');
+        final bullet = '$indent• ';
+        final contPad = '$indent  ';
+        final wrapped = wrapIndented(content, width,
+            firstPrefix: bullet, nextPrefix: contPad);
+        output.addAll(wrapped.split('\n'));
         continue;
       }
 
@@ -100,7 +125,11 @@ class MarkdownRenderer {
         final indent = olMatch.group(1)!;
         final num = olMatch.group(2)!;
         final content = _renderInline(olMatch.group(3)!);
-        output.add('$indent$num. $content');
+        final prefix = '$indent$num. ';
+        final contPad = '$indent${' ' * (num.length + 2)}';
+        final wrapped = wrapIndented(content, width,
+            firstPrefix: prefix, nextPrefix: contPad);
+        output.addAll(wrapped.split('\n'));
         continue;
       }
 
@@ -108,7 +137,7 @@ class MarkdownRenderer {
       if (line.isEmpty) {
         output.add('');
       } else {
-        output.add(_renderInline(line));
+        output.addAll(ansiWrap(_renderInline(line), width).split('\n'));
       }
     }
 
@@ -133,7 +162,7 @@ class MarkdownRenderer {
       final m = codeRe.firstMatch(remaining);
       if (m == null) break;
       segments.add(_renderInlineSegment(remaining.substring(0, m.start)));
-      segments.add('\x1b[33m${m.group(1)}\x1b[39m');
+      segments.add('${m.group(1)!.styled.yellow}');
       remaining = remaining.substring(m.end);
     }
     segments.add(_renderInlineSegment(remaining));
@@ -144,17 +173,34 @@ class MarkdownRenderer {
     // Bold: **text**
     text = text.replaceAllMapped(
       RegExp(r'\*\*(.+?)\*\*'),
-      (m) => '\x1b[1m${m.group(1)}\x1b[22m',
+      (m) => '${m.group(1)!.styled.bold}',
     );
     // Italic: *text* (but not inside **)
     text = text.replaceAllMapped(
       RegExp(r'(?<!\*)\*([^*]+?)\*(?!\*)'),
-      (m) => '\x1b[3m${m.group(1)}\x1b[23m',
+      (m) => '${m.group(1)!.styled.italic}',
     );
-    // Links: [text](url)
+    // Links: [text](url) → OSC 8 clickable link, underlined
     text = text.replaceAllMapped(
       RegExp(r'\[(.+?)\]\((.+?)\)'),
-      (m) => '${m.group(1)} \x1b[90m(${m.group(2)})\x1b[0m',
+      (m) => '${osc8Link(m.group(2)!, m.group(1)).styled.underline}',
+    );
+    // Bare URLs: https://... and http://...
+    // Runs after markdown links. The lookbehinds prevent re-matching URLs
+    // already inside OSC 8 sequences (href position after \x1b]8;; and
+    // display text position after \x07).
+    text = text.replaceAllMapped(
+      _bareUrlPattern,
+      (m) {
+        var url = m.group(0)!;
+        // Strip trailing punctuation that's likely not part of the URL
+        var suffix = '';
+        while (url.isNotEmpty && '.,;:!?)'.contains(url[url.length - 1])) {
+          suffix = url[url.length - 1] + suffix;
+          url = url.substring(0, url.length - 1);
+        }
+        return '${osc8Link(url)}$suffix';
+      },
     );
     return text;
   }
@@ -167,16 +213,16 @@ class MarkdownRenderer {
     final headerRule = headerRuleLen > 0 ? '─' * headerRuleLen : '';
 
     final output = <String>[];
-    output.add('\x1b[90m╭─$label$headerRule╮\x1b[0m');
+    output.add('${'╭─$label$headerRule╮'.styled.gray}');
     for (final line in lines) {
       final truncated = visibleLength(line) > codeWidth - 4
           ? ansiTruncate(line, codeWidth - 4)
           : line;
       final pad = (codeWidth - 4) - visibleLength(truncated);
       final padded = pad > 0 ? '$truncated${' ' * pad}' : truncated;
-      output.add('\x1b[90m│\x1b[0m \x1b[2m$padded\x1b[22m \x1b[90m│\x1b[0m');
+      output.add('${'│'.styled.gray} ${padded.styled.dim} ${'│'.styled.gray}');
     }
-    output.add('\x1b[90m╰${'─' * (codeWidth - 2)}╯\x1b[0m');
+    output.add('${'╰${'─' * (codeWidth - 2)}╯'.styled.gray}');
     return output;
   }
 
@@ -260,18 +306,20 @@ class MarkdownRenderer {
   List<String> _parseTableRow(String line) {
     var trimmed = line.trim();
     if (trimmed.startsWith('|')) trimmed = trimmed.substring(1);
-    if (trimmed.endsWith('|'))
+    if (trimmed.endsWith('|')) {
       trimmed = trimmed.substring(0, trimmed.length - 1);
+    }
     return trimmed.split('|').map((c) => c.trim()).toList();
   }
 
   String _tableRule(List<int> widths, String left, String mid, String right) {
     final parts = widths.map((w) => '─' * (w + 2));
-    return '\x1b[90m$left${parts.join(mid)}$right\x1b[0m';
+    return '${'$left${parts.join(mid)}$right'.styled.gray}';
   }
 
   String _tableDataRow(List<String> cells, List<int> widths,
       {bool bold = false}) {
+    final pipe = '${'│'.styled.gray}';
     final parts = <String>[];
     for (var c = 0; c < cells.length; c++) {
       final cell = cells[c];
@@ -280,9 +328,9 @@ class MarkdownRenderer {
       final display = vis > colW ? ansiTruncate(cell, colW) : cell;
       final pad = colW - (vis > colW ? colW : vis);
       final content =
-          bold ? '\x1b[1m$display\x1b[22m${' ' * pad}' : '$display${' ' * pad}';
+          bold ? '${display.styled.bold}${' ' * pad}' : '$display${' ' * pad}';
       parts.add(' $content ');
     }
-    return '\x1b[90m│\x1b[0m${parts.join('\x1b[90m│\x1b[0m')}\x1b[90m│\x1b[0m';
+    return '$pipe${parts.join(pipe)}$pipe';
   }
 }

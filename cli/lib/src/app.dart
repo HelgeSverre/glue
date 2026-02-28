@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'terminal/styled.dart';
 import 'terminal/terminal.dart';
 import 'terminal/layout.dart';
 import 'input/line_editor.dart' show InputAction;
@@ -21,11 +22,17 @@ import 'tools/subagent_tools.dart';
 import 'ui/modal.dart';
 import 'ui/panel_modal.dart';
 import 'input/file_expander.dart';
+import 'input/streaming_input_handler.dart';
 import 'ui/at_file_hint.dart';
+import 'ui/shell_autocomplete.dart';
 import 'ui/slash_autocomplete.dart';
+import 'shell/shell_completer.dart';
 import 'storage/glue_home.dart';
+import 'storage/session_id.dart';
 import 'storage/session_store.dart';
 import 'storage/config_store.dart';
+import 'llm/title_generator.dart';
+import 'package:http/http.dart' as http;
 
 // ---------------------------------------------------------------------------
 // Application state
@@ -119,7 +126,7 @@ class App {
   String _modelName;
   final String _cwd;
   ConfirmModal? _activeModal;
-  PanelModal? _activePanel;
+  final List<PanelModal> _panelStack = [];
   bool _renderedPanelLastFrame = false;
   final Set<String> _autoApprovedTools = {
     'read_file',
@@ -135,7 +142,9 @@ class App {
   final ShellJobManager _jobManager;
   late final SlashAutocomplete _autocomplete;
   late final AtFileHint _atHint;
+  late final ShellAutocomplete _shellComplete;
   SessionStore? _sessionStore;
+  bool _titleGenerated = false;
   bool _bashMode = false;
   Process? _bashRunProcess;
   DateTime? _lastCtrlC;
@@ -177,6 +186,7 @@ class App {
     _initCommands();
     _autocomplete = SlashAutocomplete(_commands);
     _atHint = AtFileHint();
+    _shellComplete = ShellAutocomplete(ShellCompleter());
   }
 
   /// Convenience factory that creates a fully wired [App] with real
@@ -223,8 +233,7 @@ class App {
     home.ensureDirectories();
     final configStore = ConfigStore(home.configPath);
 
-    final sessionId = '${DateTime.now().millisecondsSinceEpoch}-'
-        '${DateTime.now().microsecond.toRadixString(36)}';
+    final sessionId = generateSessionId();
     final sessionStore = SessionStore(
       sessionDir: home.sessionDir(sessionId),
       meta: SessionMeta(
@@ -429,17 +438,10 @@ class App {
 
     _commands.register(SlashCommand(
       name: 'history',
-      description: 'Show input history',
+      description: 'Browse conversation history',
       execute: (args) {
-        final n = args.isNotEmpty ? int.tryParse(args[0]) ?? 10 : 10;
-        final hist = editor.history;
-        if (hist.isEmpty) return 'No history.';
-        final recent = hist.length > n ? hist.sublist(hist.length - n) : hist;
-        final buf = StringBuffer('Recent inputs:\n');
-        for (var i = 0; i < recent.length; i++) {
-          buf.writeln('  ${i + 1}. ${recent[i]}');
-        }
-        return buf.toString();
+        _openHistoryPanel();
+        return '';
       },
     ));
 
@@ -461,7 +463,7 @@ class App {
     }
 
     _blocks.add(_ConversationEntry.system(
-      'Resuming session ${session.id.substring(0, 8)}… '
+      'Resuming session ${session.id} '
       '(${session.model}, ${_timeAgo(session.startTime)})',
     ));
 
@@ -492,7 +494,52 @@ class App {
       }
     }
 
+    // Backfill title for resumed sessions that lack one.
+    if (!_titleGenerated) {
+      if (session.title != null) {
+        _titleGenerated = true;
+      } else if (userCount > 0) {
+        for (final e in events) {
+          if (e['type'] == 'user_message' &&
+              ((e['text'] as String?) ?? '').isNotEmpty) {
+            _titleGenerated = true;
+            _generateTitle(e['text'] as String);
+            break;
+          }
+        }
+      }
+    }
+
     return 'Restored $userCount user + $assistantCount assistant messages.';
+  }
+
+  /// Fire-and-forget: generate a session title in the background.
+  void _generateTitle(String userMessage) {
+    final apiKey = _config?.anthropicApiKey;
+    if (apiKey == null || apiKey.isEmpty) return;
+
+    final sessionStore = _sessionStore;
+    if (sessionStore == null) return;
+
+    final model = _config?.titleModel ?? AppConstants.defaultTitleModel;
+
+    unawaited(() async {
+      final client = http.Client();
+      try {
+        final generator = TitleGenerator(
+          httpClient: client,
+          apiKey: apiKey,
+          model: model,
+        );
+        final title = await generator.generate(userMessage);
+        if (title != null) {
+          sessionStore.setTitle(title);
+          sessionStore.logEvent('title_generated', {'title': title});
+        }
+      } finally {
+        client.close();
+      }
+    }());
   }
 
   static String _timeAgo(DateTime time) {
@@ -505,24 +552,20 @@ class App {
   }
 
   void _openHelpPanel() {
-    const yellow = '\x1b[33m';
-    const rst = '\x1b[0m';
-    const dim = '\x1b[90m';
-
     final lines = <String>[];
 
-    lines.add('$yellow■ COMMANDS$rst');
+    lines.add('${'■ COMMANDS'.styled.yellow}');
     lines.add('');
     for (final cmd in _commands.commands) {
       final aliases = cmd.aliases.isNotEmpty
-          ? ' $dim(${cmd.aliases.map((a) => '/$a').join(', ')})$rst'
+          ? ' ${'(${cmd.aliases.map((a) => '/$a').join(', ')})'.styled.gray}'
           : '';
       final name = '/${cmd.name}'.padRight(16);
-      lines.add('  $yellow$name$rst${cmd.description}$aliases');
+      lines.add('  ${name.styled.yellow}${cmd.description}$aliases');
     }
 
     lines.add('');
-    lines.add('$yellow■ KEYBINDINGS$rst');
+    lines.add('${'■ KEYBINDINGS'.styled.yellow}');
     lines.add('');
     lines.add('  ${'Ctrl+C'.padRight(16)}Cancel / Exit');
     lines.add('  ${'Escape'.padRight(16)}Cancel generation');
@@ -534,19 +577,24 @@ class App {
     lines.add('  ${'Tab'.padRight(16)}Accept completion');
 
     lines.add('');
-    lines.add('$yellow■ FILE REFERENCES$rst');
+    lines.add('${'■ FILE REFERENCES'.styled.yellow}');
     lines.add('');
     lines.add('  ${'@path/to/file'.padRight(16)}Attach file to message');
     lines.add('  ${'@dir/'.padRight(16)}Browse directory');
 
-    _activePanel = PanelModal(
+    final panel = PanelModal(
       title: 'HELP',
       lines: lines,
-      style: PanelStyle.simple,
       barrier: BarrierStyle.dim,
       height: PanelFluid(0.5, 10),
     );
+    _panelStack.add(panel);
     _render();
+
+    panel.result.then((_) {
+      _panelStack.remove(panel);
+      _render();
+    });
   }
 
   void _openResumePanel() {
@@ -558,37 +606,235 @@ class App {
       return;
     }
 
+    const dim = '\x1b[90m';
+    const yellow = '\x1b[33m';
+    const rst = '\x1b[0m';
+    const idW = 12;
+    const modelW = 20;
+    const pathW = 30;
+    const ageW = 10;
+    const gap = '  ';
+
     final displayLines = <String>[];
+
+    // Header
+    displayLines.add(
+      '$dim${'ID'.padRight(idW)}$gap'
+      '${'MODEL'.padRight(modelW)}$gap'
+      '${'DIRECTORY'.padRight(pathW)}$gap'
+      '${'AGE'.padRight(ageW)}$rst',
+    );
+    // Separator
+    displayLines.add(
+      '$dim${'─' * (idW + 2 + modelW + 2 + pathW + 2 + ageW)}$rst',
+    );
+
     for (final s in sessions) {
       final ago = _timeAgo(s.startTime);
       final shortCwd = _shortenPath(s.cwd);
-      final id = s.id.length > 8 ? s.id.substring(0, 8) : s.id;
-      displayLines.add('$id…  ${s.model}  $shortCwd  $ago');
+      final displayId = s.title ??
+          (s.id.length > idW
+              ? '${s.id.substring(0, idW - 1)}…'
+              : s.id.padRight(idW));
+      final model = s.model.length > modelW
+          ? '${s.model.substring(0, modelW - 1)}…'
+          : s.model;
+      final forkBadge =
+          s.forkedFrom != null ? '${'[F]'.styled.fg256(208)} ' : '';
+
+      displayLines.add(
+        '$forkBadge$yellow${displayId.padRight(idW)}$rst$gap'
+        '${model.padRight(modelW)}$gap'
+        '$dim${shortCwd.padRight(pathW)}$rst$gap'
+        '$dim${ago.padRight(ageW)}$rst',
+      );
     }
 
     final panel = PanelModal(
       title: 'Resume Session',
       lines: displayLines,
-      style: PanelStyle.simple,
       barrier: BarrierStyle.dim,
       height: PanelFluid(0.5, 10),
       selectable: true,
+      initialIndex: 2,
     );
-    _activePanel = panel;
+    _panelStack.add(panel);
     _render();
 
     panel.selection.then((idx) {
-      _activePanel = null;
-      if (idx == null) {
+      _panelStack.remove(panel);
+      if (idx == null || idx < 2) {
         _render();
         return;
       }
-      final result = _resumeSession(sessions[idx]);
+      final result = _resumeSession(sessions[idx - 2]);
       if (result.isNotEmpty) {
         _blocks.add(_ConversationEntry.system(result));
       }
       _render();
     });
+  }
+
+  void _openHistoryPanel() {
+    final userBlocks = <(int, _ConversationEntry)>[];
+    for (var i = 0; i < _blocks.length; i++) {
+      if (_blocks[i].kind == _EntryKind.user) {
+        userBlocks.add((i, _blocks[i]));
+      }
+    }
+
+    if (userBlocks.isEmpty) {
+      _blocks.add(_ConversationEntry.system('No conversation history.'));
+      _render();
+      return;
+    }
+
+    final displayLines = <String>[];
+    for (var i = 0; i < userBlocks.length; i++) {
+      final text = userBlocks[i].$2.text.replaceAll('\n', ' ');
+      displayLines.add('${(i + 1).toString().padLeft(3)}. $text');
+    }
+
+    final panel = PanelModal(
+      title: 'History',
+      lines: displayLines,
+      barrier: BarrierStyle.dim,
+      height: PanelFluid(0.5, 10),
+      selectable: true,
+    );
+    _panelStack.add(panel);
+    _render();
+
+    panel.selection.then((idx) {
+      if (idx == null) {
+        _panelStack.remove(panel);
+        _render();
+        return;
+      }
+      // Keep history panel on stack so it's visible behind the action panel.
+      _openHistoryActionPanel(
+        userBlocks[idx].$2.text,
+        idx, // user message index (0-based)
+      );
+    });
+  }
+
+  void _openHistoryActionPanel(String messageText, int userMessageIndex) {
+    final panel = PanelModal(
+      title: 'Action',
+      lines: ['Fork conversation', 'Copy to clipboard'],
+      barrier: BarrierStyle.dim,
+      height: PanelFixed(4),
+      width: PanelFixed(30),
+      selectable: true,
+    );
+    _panelStack.add(panel);
+    _render();
+
+    panel.selection.then((idx) {
+      _panelStack.clear();
+      if (idx == null) {
+        _render();
+        return;
+      }
+      switch (idx) {
+        case 0:
+          _forkSession(userMessageIndex, messageText);
+        case 1:
+          Process.start('pbcopy', []).then((proc) {
+            proc.stdin.write(messageText);
+            return proc.stdin.close();
+          }).catchError((_) {});
+          _blocks.add(_ConversationEntry.system('Copied to clipboard.'));
+          _render();
+      }
+    });
+  }
+
+  void _forkSession(int userMessageIndex, String messageText) {
+    final oldStore = _sessionStore;
+    if (oldStore == null) return;
+
+    final oldSessionId = oldStore.meta.id;
+    final home = GlueHome();
+
+    // Load events from current session and truncate at the selected user message.
+    final allEvents = SessionStore.loadConversation(oldStore.sessionDir);
+    var userCount = 0;
+    final truncatedEvents = <Map<String, dynamic>>[];
+    for (final event in allEvents) {
+      truncatedEvents.add(event);
+      if (event['type'] == 'user_message') {
+        if (userCount == userMessageIndex) break;
+        userCount++;
+      }
+    }
+
+    // Close the old session.
+    oldStore.close();
+
+    // Create a new session.
+    final newId = '${DateTime.now().millisecondsSinceEpoch}-'
+        '${DateTime.now().microsecond.toRadixString(36)}';
+    final newStore = SessionStore(
+      sessionDir: home.sessionDir(newId),
+      meta: SessionMeta(
+        id: newId,
+        cwd: oldStore.meta.cwd,
+        model: oldStore.meta.model,
+        provider: oldStore.meta.provider,
+        startTime: DateTime.now(),
+        forkedFrom: oldSessionId,
+      ),
+    );
+
+    // Write truncated events to new session.
+    for (final event in truncatedEvents) {
+      final type = event['type'] as String? ?? '';
+      final data = Map<String, dynamic>.from(event)
+        ..remove('type')
+        ..remove('timestamp');
+      newStore.logEvent(type, data);
+    }
+
+    // Clear UI and agent state.
+    _blocks.clear();
+    agent.clearConversation();
+
+    // Replay truncated events into blocks and agent.
+    final shortId =
+        oldSessionId.length > 8 ? oldSessionId.substring(0, 8) : oldSessionId;
+    _blocks.add(_ConversationEntry.system(
+      'Forked from session $shortId…',
+    ));
+
+    for (final event in truncatedEvents) {
+      final type = event['type'] as String?;
+      final text = event['text'] as String? ?? '';
+      switch (type) {
+        case 'user_message':
+          if (text.isEmpty) continue;
+          agent.addMessage(Message.user(text));
+          _blocks.add(_ConversationEntry.user(text));
+        case 'assistant_message':
+          if (text.isEmpty) continue;
+          agent.addMessage(Message.assistant(text: text));
+          _blocks.add(_ConversationEntry.assistant(text));
+        case 'tool_call':
+          final name = event['name'] as String? ?? '';
+          final args = event['arguments'] as Map<String, dynamic>? ?? {};
+          if (name.isNotEmpty) {
+            _blocks.add(_ConversationEntry.toolCall(name, args));
+          }
+        default:
+          break;
+      }
+    }
+
+    // Swap session store and set editor buffer.
+    _sessionStore = newStore;
+    editor.setText(messageText);
+    _render();
   }
 
   // ── Terminal event handling ─────────────────────────────────────────────
@@ -597,9 +843,8 @@ class App {
     switch (event) {
       case CharEvent() || KeyEvent():
         // Panel modal gets first crack at input.
-        if (_activePanel != null && !_activePanel!.isComplete) {
-          if (_activePanel!.handleEvent(event)) {
-            if (_activePanel!.isComplete) _activePanel = null;
+        if (_panelStack.isNotEmpty && !_panelStack.last.isComplete) {
+          if (_panelStack.last.handleEvent(event)) {
             _doRender();
             return;
           }
@@ -640,6 +885,7 @@ class App {
               event.key == Key.backspace &&
               editor.cursor == 0) {
             _bashMode = false;
+            _shellComplete.dismiss();
             _render();
             return;
           }
@@ -648,20 +894,27 @@ class App {
         if (_mode == AppMode.streaming ||
             _mode == AppMode.toolRunning ||
             _mode == AppMode.bashRunning) {
-          if (event
-              case KeyEvent(key: Key.ctrlC) || KeyEvent(key: Key.escape)) {
-            if (_mode == AppMode.bashRunning) {
-              _cancelBash();
-            } else {
-              _cancelAgent();
-            }
-            return;
+          final result = handleStreamingInput(
+            event: event,
+            isBashRunning: _mode == AppMode.bashRunning,
+            editor: editor,
+            autocomplete: _autocomplete,
+            commands: _commands,
+          );
+          if (result.commandOutput != null &&
+              result.commandOutput!.isNotEmpty) {
+            _blocks.add(_ConversationEntry.system(result.commandOutput!));
           }
-          // Swallow Enter/Shift+Enter during streaming — keep buffer intact for when agent finishes.
-          if (event case KeyEvent(key: Key.enter)) return;
-          // Pre-typing: buffer other keystrokes.
-          final action = editor.handle(event);
-          if (action == InputAction.changed) _render();
+          switch (result.action) {
+            case StreamingAction.render:
+              _render();
+            case StreamingAction.swallowed:
+              break;
+            case StreamingAction.cancelAgent:
+              _cancelAgent();
+            case StreamingAction.cancelBash:
+              _cancelBash();
+          }
           return;
         }
 
@@ -700,6 +953,33 @@ class App {
           }
           if (event case KeyEvent(key: Key.escape)) {
             _autocomplete.dismiss();
+            _render();
+            return;
+          }
+        }
+
+        // Shell completion intercepts keys when active (bash mode).
+        if (_shellComplete.active) {
+          if (event case KeyEvent(key: Key.up)) {
+            _shellComplete.moveUp();
+            _render();
+            return;
+          }
+          if (event case KeyEvent(key: Key.down)) {
+            _shellComplete.moveDown();
+            _render();
+            return;
+          }
+          if (event case KeyEvent(key: Key.tab) || KeyEvent(key: Key.enter)) {
+            final result = _shellComplete.accept();
+            if (result != null) {
+              editor.setText(result.text, cursor: result.cursor);
+            }
+            _render();
+            return;
+          }
+          if (event case KeyEvent(key: Key.escape)) {
+            _shellComplete.dismiss();
             _render();
             return;
           }
@@ -744,6 +1024,7 @@ class App {
           case InputAction.submit:
             _autocomplete.dismiss();
             _atHint.dismiss();
+            _shellComplete.dismiss();
             final text = editor.lastSubmitted;
             if (text.isNotEmpty) {
               _events.add(UserSubmit(text));
@@ -762,13 +1043,23 @@ class App {
               _render();
             }
           case InputAction.changed:
-            _autocomplete.update(editor.text, editor.cursor);
-            if (!_autocomplete.active) {
-              _atHint.update(editor.text, editor.cursor);
+            if (_bashMode) {
+              _shellComplete.dismiss();
             } else {
-              _atHint.dismiss();
+              _autocomplete.update(editor.text, editor.cursor);
+              if (!_autocomplete.active) {
+                _atHint.update(editor.text, editor.cursor);
+              } else {
+                _atHint.dismiss();
+              }
             }
             _render();
+          case InputAction.requestCompletion:
+            if (_bashMode) {
+              _shellComplete
+                  .requestCompletions(editor.text, editor.cursor)
+                  .then((_) => _render());
+            }
           default:
             break;
         }
@@ -838,6 +1129,10 @@ class App {
         } else {
           final expanded = expandFileRefs(text);
           _sessionStore?.logEvent('user_message', {'text': expanded});
+          if (!_titleGenerated) {
+            _titleGenerated = true;
+            _generateTitle(expanded);
+          }
           _startAgent(text,
               expandedMessage: expanded != text ? expanded : null);
         }
@@ -1251,7 +1546,7 @@ class App {
   void _doRender() {
     _lastRender = DateTime.now();
 
-    final panelActive = _activePanel != null && !_activePanel!.isComplete;
+    final panelActive = _panelStack.isNotEmpty;
     if (_renderedPanelLastFrame && !panelActive) {
       terminal.resetScrollRegion();
       terminal.clearScreen();
@@ -1343,19 +1638,18 @@ class App {
     // Trailing blank line so content doesn't butt against the status bar.
     outputLines.add('');
 
-    // Panel modal takes over the full viewport.
+    // Panel stack takes over the full viewport.
     if (panelActive) {
       _renderedPanelLastFrame = true;
-      final panelGrid = _activePanel!.render(
-        terminal.columns,
-        terminal.rows,
-        outputLines,
-      );
+      var grid = outputLines;
+      for (final panel in _panelStack) {
+        grid = panel.render(terminal.columns, terminal.rows, grid);
+      }
       terminal.hideCursor();
-      for (var i = 0; i < panelGrid.length && i < terminal.rows; i++) {
+      for (var i = 0; i < grid.length && i < terminal.rows; i++) {
         terminal.moveTo(i + 1, 1);
         terminal.clearLine();
-        terminal.write(panelGrid[i]);
+        terminal.write(grid[i]);
       }
       return;
     }
@@ -1363,9 +1657,11 @@ class App {
     _renderedPanelLastFrame = false;
 
     // 2. Reserve overlay space for autocomplete (before computing viewport).
-    final overlayHeight = _autocomplete.active
-        ? _autocomplete.overlayHeight
-        : _atHint.overlayHeight;
+    final overlayHeight = _shellComplete.active
+        ? _shellComplete.overlayHeight
+        : _autocomplete.active
+            ? _autocomplete.overlayHeight
+            : _atHint.overlayHeight;
     layout.setOverlayHeight(overlayHeight);
 
     // 3. Compute visible window.
@@ -1383,8 +1679,10 @@ class App {
 
     layout.paintOutputViewport(visibleLines);
 
-    // 4. Autocomplete / @file overlay.
-    if (_autocomplete.active) {
+    // 4. Autocomplete / @file / shell overlay.
+    if (_shellComplete.active) {
+      layout.paintOverlay(_shellComplete.render(terminal.columns));
+    } else if (_autocomplete.active) {
       layout.paintOverlay(_autocomplete.render(terminal.columns));
     } else if (_atHint.active) {
       layout.paintOverlay(_atHint.render(terminal.columns));

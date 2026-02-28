@@ -44,6 +44,7 @@ glue                           # start a new session
 glue -p anthropic -m claude-sonnet-4-6   # choose provider & model
 glue --resume                  # open session picker
 glue --continue                # resume most recent session
+glue completions install       # install shell completions for current shell
 glue --help                    # show all options
 ```
 
@@ -57,6 +58,28 @@ glue --help                    # show all options
 | `--model` | `-m` | LLM model to use |
 | `--resume` | | Start with session picker open |
 | `--continue` | | Resume most recent session |
+
+### Shell completions
+
+```bash
+glue completions install
+glue completions install --shell zsh
+glue completions install --shell bash
+glue completions install --shell fish
+glue completions install --shell powershell
+glue completions install --shell pwsh
+glue completions uninstall
+glue completions uninstall --shell zsh
+```
+
+`install` and `uninstall` auto-detect your shell by default. You can override it
+with `--shell`.
+
+Supported shells: `zsh`, `bash`, `fish`, and `powershell` (`pwsh` alias).
+`sh` does not provide a standard programmable completion API and is not supported.
+
+For PowerShell, Glue updates the profile returned by
+`$PROFILE.CurrentUserAllHosts` when `pwsh`/`powershell` is available.
 
 ### Configuration
 
