@@ -10,6 +10,7 @@ This stack runs entirely with Docker Compose from `infra/` and gives you:
   4. OpenObserve
   5. Aspire Dashboard
 - Optional **LiteLLM proxy** for API-key centralization + routing/cost controls.
+- Optional **extra observability toolbox** (profile-based) for local UI exploration.
 
 ## Quick Start
 
@@ -25,6 +26,21 @@ Optional (includes LiteLLM):
 just up-llm
 ```
 
+Optional (includes all extra tools):
+
+```bash
+just up-extras
+```
+
+Optional (single extra tool profile):
+
+```bash
+# examples:
+just up-tool llmflow
+just up-tool langfuse
+just up-tool opik
+```
+
 ## URLs
 
 - OTEL Collector health: `http://localhost:13133/`
@@ -35,6 +51,8 @@ just up-llm
 - OpenObserve: `http://localhost:5080`
 - Aspire Dashboard: `http://localhost:18888`
 - LiteLLM proxy (optional): `http://localhost:4000`
+
+Extra tool URLs/logins are documented in [`wip.md`](./wip.md).
 
 ## Glue Configuration
 
@@ -73,8 +91,9 @@ Current Glue config uses provider-native base URLs for OpenAI/Anthropic/Mistral,
 ```bash
 just up         # start observability stack
 just up-llm     # start observability + litellm profile
+just up-extras # start observability + all extra tool profiles
+just up-tool X # start one extra profile (e.g. langfuse, opik, phoenix)
 just ps
 just logs
 just down
 ```
-

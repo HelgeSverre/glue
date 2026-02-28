@@ -5,12 +5,12 @@ GRAFANA_ADMIN_USER=admin
 GRAFANA_ADMIN_PASSWORD=admin
 
 # OpenObserve admin login
-ZO_ROOT_USER_EMAIL=root@example.com
-ZO_ROOT_USER_PASSWORD=observability123
+ZO_ROOT_USER_EMAIL=helge.sverre@gmail.com
+ZO_ROOT_USER_PASSWORD=123456
 
 # Basic auth for OpenObserve OTLP ingestion:
-# "root@example.com:observability123" base64 => cm9vdEBleGFtcGxlLmNvbTpvYnNlcnZhYmlsaXR5MTIz
-OPENOBSERVE_AUTH_HEADER=Basic cm9vdEBleGFtcGxlLmNvbTpvYnNlcnZhYmlsaXR5MTIz
+# "helge.sverre@gmail.com:123456" base64 => aGVsZ2Uuc3ZlcnJlQGdtYWlsLmNvbToxMjM0NTY=
+OPENOBSERVE_AUTH_HEADER=Basic aGVsZ2Uuc3ZlcnJlQGdtYWlsLmNvbToxMjM0NTY=
 
 # Collector local file exporter path (inside collector container)
 OTEL_EXPORTER_FILE_PATH=/var/lib/otel/traces.jsonl
@@ -20,3 +20,19 @@ LITELLM_MASTER_KEY=sk-local-dev-master-key
 OPENAI_API_KEY=
 ANTHROPIC_API_KEY=
 MISTRAL_API_KEY=
+
+# Langfuse bootstrap login (profile: tool-langfuse / extras)
+LANGFUSE_INIT_USER_EMAIL=helge.sverre@gmail.com
+LANGFUSE_INIT_USER_NAME=Helge
+LANGFUSE_INIT_USER_PASSWORD=123456
+LANGFUSE_INIT_ORG_ID=default
+LANGFUSE_INIT_ORG_NAME=Glue Local
+LANGFUSE_INIT_PROJECT_ID=glue
+LANGFUSE_INIT_PROJECT_NAME=Glue Local
+LANGFUSE_NEXTAUTH_SECRET=langfuse-nextauth-secret
+LANGFUSE_SALT=langfuse-salt
+LANGFUSE_ENCRYPTION_KEY=12345678901234567890123456789012
+
+# Opik MinIO bootstrap (profile: tool-opik / extras)
+OPIK_MINIO_ROOT_USER=THAAIOSFODNN7EXAMPLE
+OPIK_MINIO_ROOT_PASSWORD=LESlrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
