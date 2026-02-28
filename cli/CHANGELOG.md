@@ -6,6 +6,15 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Added
 
+- **Terminology standardization** — established canonical glossary
+  (`docs/architecture/glossary.md`). "Workspace" is the primary unit of
+  work (an agent context with directory, model, optional branch, and
+  conversation history). "Project" is a registered directory (git or
+  non-git) that workspaces run against. "Session" is retired as a
+  UI-facing term. See glossary for full definitions, lifecycle states,
+  settings hierarchy, and CLI resumption semantics.
+
+
 - **Model registry & picker** — curated `ModelRegistry` catalog of 7 models
   across Anthropic, OpenAI, and Ollama with capability, cost, and speed
   metadata. `/model` with no args opens a selectable panel picker grouped
