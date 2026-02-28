@@ -20,6 +20,7 @@ import 'tools/subagent_tools.dart';
 import 'ui/modal.dart';
 import 'ui/panel_modal.dart';
 import 'input/file_expander.dart';
+import 'input/streaming_input_handler.dart';
 import 'ui/at_file_hint.dart';
 import 'ui/shell_autocomplete.dart';
 import 'ui/slash_autocomplete.dart';
@@ -684,20 +685,27 @@ class App {
         if (_mode == AppMode.streaming ||
             _mode == AppMode.toolRunning ||
             _mode == AppMode.bashRunning) {
-          if (event
-              case KeyEvent(key: Key.ctrlC) || KeyEvent(key: Key.escape)) {
-            if (_mode == AppMode.bashRunning) {
-              _cancelBash();
-            } else {
-              _cancelAgent();
-            }
-            return;
+          final result = handleStreamingInput(
+            event: event,
+            isBashRunning: _mode == AppMode.bashRunning,
+            editor: editor,
+            autocomplete: _autocomplete,
+            commands: _commands,
+          );
+          if (result.commandOutput != null &&
+              result.commandOutput!.isNotEmpty) {
+            _blocks.add(_ConversationEntry.system(result.commandOutput!));
           }
-          // Swallow Enter during streaming — keep buffer intact for when agent finishes.
-          if (event case KeyEvent(key: Key.enter)) return;
-          // Pre-typing: buffer other keystrokes.
-          final action = editor.handle(event);
-          if (action == InputAction.changed) _render();
+          switch (result.action) {
+            case StreamingAction.render:
+              _render();
+            case StreamingAction.swallowed:
+              break;
+            case StreamingAction.cancelAgent:
+              _cancelAgent();
+            case StreamingAction.cancelBash:
+              _cancelBash();
+          }
           return;
         }
 
