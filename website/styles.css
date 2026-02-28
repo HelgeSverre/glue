@@ -63,7 +63,7 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 }
 .nav-logo {
   font-family: var(--mono); font-weight: 800; font-size: 22px;
-  color: var(--yellow); text-decoration: none; letter-spacing: -1px;
+  color: var(--yellow); text-decoration: none;
 }
 .nav-links { display: flex; gap: 20px; list-style: none; align-items: center; }
 .nav-links a {
@@ -323,3 +323,121 @@ h3.section-title {
 
 .spacer { height: 48px; }
 .spacer-sm { height: 24px; }
+
+/* ─── Docs Layout ─── */
+.docs-page { background: #141416; }
+.docs-nav {
+  top: 0; border-bottom: 4px solid var(--yellow);
+}
+
+.docs-layout {
+  display: flex; min-height: calc(100vh - 60px);
+}
+.docs-sidebar {
+  width: 240px; flex-shrink: 0;
+  background: var(--black); color: var(--yellow);
+  border-right: 1px solid #252528;
+  position: sticky; top: 55px; height: calc(100vh - 55px);
+  overflow-y: auto; padding: 24px 0;
+}
+.docs-sidebar::-webkit-scrollbar { width: 3px; }
+.docs-sidebar::-webkit-scrollbar-thumb { background: #333; }
+.docs-sidebar-group { margin-bottom: 8px; }
+.docs-sidebar-label {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.12em;
+  color: #555; padding: 8px 20px 4px;
+}
+.docs-sidebar a {
+  display: block; padding: 5px 20px;
+  font-family: var(--mono); font-size: 12px; font-weight: 500;
+  color: #777; text-decoration: none;
+  border-left: 2px solid transparent;
+  transition: all 0.1s;
+}
+.docs-sidebar a:hover { color: #bbb; background: rgba(255,255,255,0.02); }
+.docs-sidebar a.active {
+  color: var(--yellow); font-weight: 700;
+  border-left-color: var(--yellow); background: rgba(250,204,21,0.04);
+}
+.docs-content {
+  flex: 1; min-width: 0;
+  padding: 48px 56px 80px;
+  max-width: 860px;
+  color: #c8c8cc;
+}
+.docs-content a { color: var(--yellow); }
+.docs-content h2 {
+  font-family: var(--mono); font-size: 28px; font-weight: 900;
+  text-transform: uppercase; letter-spacing: -0.03em;
+  margin: 64px 0 16px; padding-top: 16px;
+  border-top: 1px solid #2a2a2e;
+  color: #e8e8ec;
+}
+.docs-content h2:first-child { margin-top: 0; border-top: none; }
+.docs-content h3 {
+  font-family: var(--mono); font-size: 17px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: -0.01em;
+  margin: 36px 0 12px;
+  color: #e0e0e4;
+}
+.docs-content p {
+  font-size: 15px; line-height: 1.7; margin-bottom: 16px;
+  max-width: 640px;
+}
+.docs-content strong { color: #e0e0e4; }
+.docs-content ul, .docs-content ol {
+  margin: 12px 0 20px 20px; font-size: 14px; line-height: 1.7;
+}
+.docs-content li { margin-bottom: 6px; }
+.docs-content code {
+  font-family: var(--mono); font-size: 12px;
+  background: rgba(255,255,255,0.06); padding: 2px 6px;
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--yellow);
+}
+.docs-content .code-block {
+  margin: 16px 0 24px;
+  background: #0c0c0e; border-color: #1e1e22;
+}
+.docs-content .brutal-table {
+  margin: 16px 0 24px;
+}
+.docs-content .brutal-table th {
+  background: #0c0c0e; color: var(--yellow);
+  border-color: #2a2a2e;
+}
+.docs-content .brutal-table td {
+  border-color: #2a2a2e; color: #b0b0b4;
+}
+.docs-content .brutal-table tr:hover td {
+  background: rgba(255,255,255,0.02);
+}
+.docs-content .info-box {
+  margin: 16px 0 24px;
+  border-color: #2a2a2e; background: rgba(255,255,255,0.02);
+}
+.docs-content .info-box-label { color: var(--yellow); }
+.docs-content .info-box p { color: #999; }
+
+/* Docs mobile toggle */
+.docs-menu-toggle {
+  display: none; background: var(--black); color: var(--yellow);
+  border: none; padding: 10px 20px; width: 100%;
+  font-family: var(--mono); font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  cursor: pointer; text-align: left;
+}
+@media (max-width: 768px) {
+  .docs-layout { flex-direction: column; }
+  .docs-sidebar {
+    width: 100%; position: static; height: auto;
+    max-height: 0; overflow: hidden;
+    border-right: none; border-bottom: 1px solid #252528;
+    transition: max-height 0.3s;
+  }
+  .docs-sidebar.open { max-height: 80vh; overflow-y: auto; }
+  .docs-menu-toggle { display: block; }
+  .docs-content { padding: 32px 20px 60px; }
+  .docs-content h2 { font-size: 22px; }
+}
