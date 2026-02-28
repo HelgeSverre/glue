@@ -8,17 +8,24 @@ import 'package:glue/src/observability/observability_config.dart';
 class OtelSink extends ObservabilitySink {
   final OtelConfig _config;
   final http.Client _httpClient;
+  final int maxBufferSize;
+  final Map<String, String> resourceAttributes;
   final List<ObservabilitySpan> _buffer = [];
 
   OtelSink({
     required OtelConfig config,
     http.Client? httpClient,
+    this.maxBufferSize = 1000,
+    this.resourceAttributes = const {},
   })  : _config = config,
         _httpClient = httpClient ?? http.Client();
 
   @override
   void onSpan(ObservabilitySpan span) {
     _buffer.add(span);
+    if (_buffer.length > maxBufferSize) {
+      _buffer.removeRange(0, _buffer.length - maxBufferSize);
+    }
   }
 
   @override
@@ -38,6 +45,9 @@ class OtelSink extends ObservabilitySink {
       if (response.statusCode >= 400) {
         // Re-enqueue on server error for retry on next flush.
         _buffer.insertAll(0, spans);
+        if (_buffer.length > maxBufferSize) {
+          _buffer.removeRange(0, _buffer.length - maxBufferSize);
+        }
         stderr.writeln(
           'glue: otel export failed (${response.statusCode})',
         );
@@ -45,6 +55,9 @@ class OtelSink extends ObservabilitySink {
     } catch (e) {
       // Re-enqueue for retry on next flush.
       _buffer.insertAll(0, spans);
+      if (_buffer.length > maxBufferSize) {
+        _buffer.removeRange(0, _buffer.length - maxBufferSize);
+      }
       stderr.writeln('glue: otel export error: $e');
     }
   }
@@ -61,6 +74,8 @@ class OtelSink extends ObservabilitySink {
           'resource': {
             'attributes': [
               _stringAttr('service.name', 'glue-cli'),
+              for (final e in resourceAttributes.entries)
+                _stringAttr(e.key, e.value),
             ],
           },
           'scopeSpans': [

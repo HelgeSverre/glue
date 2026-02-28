@@ -19,6 +19,9 @@ class ObservedTool extends Tool {
   List<ToolParameter> get parameters => _inner.parameters;
 
   @override
+  Future<void> dispose() => _inner.dispose();
+
+  @override
   Future<String> execute(Map<String, dynamic> args) async {
     final span = _obs.startSpan(
       'tool.${_inner.name}',

@@ -263,12 +263,34 @@ class App {
     final home = GlueHome();
     home.ensureDirectories();
 
+    final sessionId = '${DateTime.now().millisecondsSinceEpoch}-'
+        '${DateTime.now().microsecond.toRadixString(36)}';
+
+    final cwd = Directory.current.path;
+    final resourceAttrs = <String, String>{
+      'glue.session.id': sessionId,
+      'glue.cwd': cwd,
+      'gen_ai.system': config.provider.name,
+      'gen_ai.request.model': config.model,
+      'os.type': Platform.operatingSystem,
+      'os.version': Platform.operatingSystemVersion,
+      'host.arch': _hostArch(),
+      'process.pid': '$pid',
+      'deployment.environment.name': Platform.environment['GLUE_ENV'] ?? 'dev',
+    };
+
     obs.addSink(FileSink(logsDir: home.logsDir));
     if (config.observability.langfuse.isConfigured) {
-      obs.addSink(LangfuseSink(config: config.observability.langfuse));
+      obs.addSink(LangfuseSink(
+        config: config.observability.langfuse,
+        resourceAttributes: resourceAttrs,
+      ));
     }
     if (config.observability.otel.isConfigured) {
-      obs.addSink(OtelSink(config: config.observability.otel));
+      obs.addSink(OtelSink(
+        config: config.observability.otel,
+        resourceAttributes: resourceAttrs,
+      ));
     }
 
     final httpClient = LoggingHttpClient(
@@ -281,8 +303,6 @@ class App {
 
     final configStore = ConfigStore(home.configPath);
 
-    final sessionId = '${DateTime.now().millisecondsSinceEpoch}-'
-        '${DateTime.now().microsecond.toRadixString(36)}';
     final sessionDir = home.sessionDir(sessionId);
     final sessionStore = SessionStore(
       sessionDir: sessionDir,
@@ -385,6 +405,14 @@ class App {
     );
   }
 
+  static String _hostArch() {
+    // Dart doesn't expose arch directly; infer from OS version string.
+    final ver = Platform.operatingSystemVersion.toLowerCase();
+    if (ver.contains('arm64') || ver.contains('aarch64')) return 'arm64';
+    if (ver.contains('x86_64') || ver.contains('amd64')) return 'x86_64';
+    return 'unknown';
+  }
+
   String _shortenPath(String path) {
     final home = Platform.environment['HOME'] ?? '';
     if (home.isNotEmpty && path.startsWith(home)) {
@@ -446,6 +474,12 @@ class App {
       // Stop all event sources before touching terminal state.
       _stopSplashAnimation();
       _stopSpinner();
+      // Dispose tools (closes browser sessions, containers, etc.).
+      for (final tool in agent.tools.values) {
+        try {
+          await tool.dispose();
+        } catch (_) {}
+      }
       await _obs?.flush();
       await _obs?.close();
       await _sessionStore?.close();
@@ -871,13 +905,15 @@ class App {
     const green = '\x1b[32m';
     const rst = '\x1b[0m';
 
+    final maxNameLen = skills.fold<int>(
+        0, (m, s) => s.name.length > m ? s.name.length : m);
     final leftItems = skills.map((s) {
       final tag = switch (s.source) {
         SkillSource.project => '${green}project$rst',
         SkillSource.global => '${cyan}global$rst',
         SkillSource.custom => '${cyan}custom$rst',
       };
-      return '${s.name}  $tag';
+      return '${s.name.padRight(maxNameLen)}  $tag';
     }).toList();
 
     List<String> buildDetail(int idx, int width) {
@@ -931,8 +967,14 @@ class App {
         return;
       }
       final skill = skills[idx];
-      _blocks.add(_ConversationEntry.system(
-          'Activated skill: ${skill.name}'));
+      try {
+        final body = registry.loadBody(skill.name);
+        _blocks.add(_ConversationEntry.system(
+            '# Skill: ${skill.name}\n\n$body'));
+      } on SkillParseError catch (e) {
+        _blocks.add(_ConversationEntry.system(
+            'Error loading skill "${skill.name}": $e'));
+      }
       _render();
     }));
   }
