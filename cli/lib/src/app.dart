@@ -1143,7 +1143,6 @@ class App {
     final panel = PanelModal(
       title: 'Switch Model',
       lines: flatLines,
-
       barrier: BarrierStyle.dim,
       height: PanelFluid(0.5, 8),
       selectable: true,
@@ -1233,7 +1232,6 @@ class App {
       title: 'SKILLS',
       leftItems: leftItems,
       buildRightLines: buildDetail,
-
       barrier: BarrierStyle.dim,
       height: PanelFluid(0.6, 12),
     );

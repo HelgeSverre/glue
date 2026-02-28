@@ -42,6 +42,7 @@ void main() {
       createSkill(extraDir.path, 'extra-skill');
       final registry = SkillRegistry.discover(
         cwd: tempDir.path,
+        home: tempDir.path,
         extraPaths: [extraDir.path],
       );
       expect(registry.length, 1);
@@ -57,6 +58,7 @@ void main() {
       createSkill(extraDir.path, 'dupe', description: 'Extra version.');
       final registry = SkillRegistry.discover(
         cwd: tempDir.path,
+        home: tempDir.path,
         extraPaths: [extraDir.path],
       );
       expect(registry.length, 1);
