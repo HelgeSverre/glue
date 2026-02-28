@@ -13,7 +13,16 @@ class BlockRenderer {
   /// Usable content width (excluding 1-char left + right margin).
   int get _inner => (width - 2).clamp(1, width);
 
+  /// Matches grep-style output: file:line:content
+  static final _grepLinePattern = RegExp(r'^(\S+?):(\d+):');
+
   BlockRenderer(this.width);
+
+  /// Wrap a file path in an OSC 8 file:// hyperlink.
+  String _linkPath(String path) {
+    final uri = 'file://$path';
+    return osc8Link(uri, path);
+  }
 
   /// Render a user message block.
   String renderUser(String text) {
@@ -36,9 +45,14 @@ class BlockRenderer {
   String renderToolCall(String name, Map<String, dynamic>? args) {
     final header = ' ${'▶ Tool: $name'.styled.bold.yellow}';
     if (args == null || args.isEmpty) return header;
-    final argsStr = args.entries
-        .map((e) => '${e.key}: ${ansiTruncate('${e.value}', _inner - 6)}')
-        .join(', ');
+    final argsStr = args.entries.map((e) {
+      final val = '${e.value}';
+      final display = ansiTruncate(val, _inner - 6);
+      if (e.key == 'path') {
+        return '${e.key}: ${_linkPath(display)}';
+      }
+      return '${e.key}: $display';
+    }).join(', ');
     return '$header\n    ${argsStr.styled.gray}';
   }
 
@@ -49,8 +63,18 @@ class BlockRenderer {
     final header =
         ' ${success ? headerText.styled.bold.green : headerText.styled.bold.red}';
     final truncated = _truncateLines(content, 20, _inner - 2);
+    final lines = truncated.split('\n');
+    final linked = lines.map((l) {
+      final m = _grepLinePattern.firstMatch(l);
+      if (m != null) {
+        final path = m.group(1)!;
+        final rest = l.substring(m.start + path.length);
+        return '${_linkPath(path)}$rest';
+      }
+      return l;
+    });
     final indented =
-        truncated.split('\n').map((l) => '    ${l.styled.gray}').join('\n');
+        linked.map((l) => '    ${l.styled.gray}').join('\n');
     return '$header\n$indented';
   }
 

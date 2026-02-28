@@ -1,8 +1,27 @@
 import 'dart:math';
 
-/// Strip all ANSI escape sequences from [text].
+/// Wrap [text] in an OSC 8 terminal hyperlink pointing to [url].
+///
+/// Modern terminals (iTerm2, Ghostty, Kitty, WezTerm, Windows Terminal)
+/// render this as a clickable link. Terminals that don't support OSC 8
+/// simply show the visible text — graceful degradation.
+///
+/// Protocol: \x1b]8;;URL\x07VISIBLE_TEXT\x1b]8;;\x07
+String osc8Link(String url, [String? text]) {
+  final display = text ?? url;
+  return '\x1b]8;;$url\x07$display\x1b]8;;\x07';
+}
+
+// Precompiled patterns for ANSI escape sequence matching.
+final _oscPattern = RegExp(r'\x1b\][^\x07]*\x07');
+final _csiPattern = RegExp(r'\x1b\[[0-9;]*[a-zA-Z]');
+
+/// Strip all ANSI escape sequences from [text],
+/// including CSI sequences and OSC sequences (e.g. hyperlinks).
 String stripAnsi(String text) {
-  return text.replaceAll(RegExp(r'\x1b\[[0-9;]*[a-zA-Z]'), '');
+  return text
+      .replaceAll(_oscPattern, '') // OSC (BEL-terminated)
+      .replaceAll(_csiPattern, ''); // CSI
 }
 
 /// Compute the visible column width of [text] in a terminal,
@@ -18,41 +37,49 @@ int visibleLength(String text) {
 }
 
 /// Truncate [text] to [maxVisible] visible columns, preserving ANSI
-/// sequences and handling wide characters. Appends '…' if truncated.
+/// sequences (both CSI and OSC) and handling wide characters.
+/// Appends '…' if truncated.
 String ansiTruncate(String text, int maxVisible) {
   if (visibleLength(text) <= maxVisible) return text;
   final buf = StringBuffer();
   int visible = 0;
-  final ansiPattern = RegExp(r'\x1b\[[0-9;]*[a-zA-Z]');
   var i = 0;
   while (i < text.length && visible < maxVisible - 1) {
-    final match = ansiPattern.matchAsPrefix(text, i);
-    if (match != null) {
-      buf.write(match.group(0));
-      i += match.group(0)!.length;
-    } else {
-      final codeUnit = text.codeUnitAt(i);
-      int cp;
-      int advance;
-      if (codeUnit >= 0xD800 && codeUnit <= 0xDBFF && i + 1 < text.length) {
-        final low = text.codeUnitAt(i + 1);
-        cp = 0x10000 + ((codeUnit - 0xD800) << 10) + (low - 0xDC00);
-        advance = 2;
-      } else {
-        cp = codeUnit;
-        advance = 1;
-      }
-      final w = _charWidth(cp);
-      if (w == 0) {
-        buf.write(text.substring(i, i + advance));
-        i += advance;
-        continue;
-      }
-      if (visible + w > maxVisible - 1) break;
-      buf.write(text.substring(i, i + advance));
-      visible += w;
-      i += advance;
+    // Skip CSI sequences
+    final csiMatch = _csiPattern.matchAsPrefix(text, i);
+    if (csiMatch != null) {
+      buf.write(csiMatch.group(0));
+      i += csiMatch.group(0)!.length;
+      continue;
     }
+    // Skip OSC sequences
+    final oscMatch = _oscPattern.matchAsPrefix(text, i);
+    if (oscMatch != null) {
+      buf.write(oscMatch.group(0));
+      i += oscMatch.group(0)!.length;
+      continue;
+    }
+    final codeUnit = text.codeUnitAt(i);
+    int cp;
+    int advance;
+    if (codeUnit >= 0xD800 && codeUnit <= 0xDBFF && i + 1 < text.length) {
+      final low = text.codeUnitAt(i + 1);
+      cp = 0x10000 + ((codeUnit - 0xD800) << 10) + (low - 0xDC00);
+      advance = 2;
+    } else {
+      cp = codeUnit;
+      advance = 1;
+    }
+    final w = _charWidth(cp);
+    if (w == 0) {
+      buf.write(text.substring(i, i + advance));
+      i += advance;
+      continue;
+    }
+    if (visible + w > maxVisible - 1) break;
+    buf.write(text.substring(i, i + advance));
+    visible += w;
+    i += advance;
   }
   buf.write('…');
   return buf.toString();
