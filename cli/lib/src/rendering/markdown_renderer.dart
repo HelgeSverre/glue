@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'ansi_utils.dart';
+import 'package:glue/src/rendering/ansi_utils.dart';
 
 /// Renders a subset of Markdown to ANSI-styled terminal text.
 ///

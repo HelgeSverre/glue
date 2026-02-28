@@ -1,4 +1,5 @@
-import '../config/constants.dart';
+import 'package:glue/src/config/constants.dart';
+import 'package:glue/src/web/browser/browser_config.dart';
 
 class WebFetchConfig {
   final int timeoutSeconds;
@@ -56,12 +57,50 @@ class WebSearchConfig {
   }
 }
 
+/// Supported OCR providers for scanned PDF fallback.
+enum OcrProviderType { mistral, openai }
+
+/// Configuration for PDF text extraction.
+class PdfConfig {
+  final int maxBytes;
+  final int timeoutSeconds;
+  final bool enableOcrFallback;
+  final OcrProviderType ocrProvider;
+  final String? mistralApiKey;
+  final String mistralModel;
+  final String? openaiApiKey;
+  final String openaiModel;
+
+  const PdfConfig({
+    this.maxBytes = AppConstants.pdfMaxBytes,
+    this.timeoutSeconds = AppConstants.pdfTimeoutSeconds,
+    this.enableOcrFallback = true,
+    this.ocrProvider = OcrProviderType.mistral,
+    this.mistralApiKey,
+    this.mistralModel = 'mistral-ocr-small',
+    this.openaiApiKey,
+    this.openaiModel = 'gpt-4.1-mini',
+  });
+
+  /// Whether OCR is available (has at least one API key configured).
+  bool get hasOcrCredentials {
+    if (ocrProvider == OcrProviderType.mistral) {
+      return mistralApiKey != null && mistralApiKey!.isNotEmpty;
+    }
+    return openaiApiKey != null && openaiApiKey!.isNotEmpty;
+  }
+}
+
 class WebConfig {
   final WebFetchConfig fetch;
   final WebSearchConfig search;
+  final PdfConfig pdf;
+  final BrowserConfig browser;
 
   const WebConfig({
     this.fetch = const WebFetchConfig(),
     this.search = const WebSearchConfig(),
+    this.pdf = const PdfConfig(),
+    this.browser = const BrowserConfig(),
   });
 }

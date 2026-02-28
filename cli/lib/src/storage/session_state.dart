@@ -1,15 +1,18 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as p;
-import '../shell/docker_config.dart';
+import 'package:glue/src/shell/docker_config.dart';
 
 class SessionState {
   final String _dir;
   final List<MountEntry> _dockerMounts = [];
+  final List<String> _browserContainerIds = [];
 
   SessionState._(this._dir);
 
   List<MountEntry> get dockerMounts => List.unmodifiable(_dockerMounts);
+  List<String> get browserContainerIds =>
+      List.unmodifiable(_browserContainerIds);
 
   factory SessionState.load(String sessionDir) {
     final state = SessionState._(sessionDir);
@@ -24,6 +27,14 @@ class SessionState {
           for (final m in mounts) {
             state._dockerMounts
                 .add(MountEntry.fromJson(m as Map<String, dynamic>));
+          }
+        }
+        final browserIds =
+            (json['browser'] as Map<String, dynamic>?)?['container_ids']
+                as List?;
+        if (browserIds != null) {
+          for (final id in browserIds) {
+            state._browserContainerIds.add(id as String);
           }
         }
       } catch (_) {}
@@ -42,6 +53,18 @@ class SessionState {
     _persist();
   }
 
+  void addBrowserContainerId(String containerId) {
+    if (!_browserContainerIds.contains(containerId)) {
+      _browserContainerIds.add(containerId);
+      _persist();
+    }
+  }
+
+  void removeBrowserContainerId(String containerId) {
+    _browserContainerIds.remove(containerId);
+    _persist();
+  }
+
   void _persist() {
     final file = File(p.join(_dir, 'state.json'));
     file.parent.createSync(recursive: true);
@@ -50,6 +73,9 @@ class SessionState {
       'version': 1,
       'docker': {
         'mounts': _dockerMounts.map((m) => m.toJson()).toList(),
+      },
+      'browser': {
+        'container_ids': _browserContainerIds,
       },
     }));
   }

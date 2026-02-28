@@ -1,4 +1,4 @@
-import 'glue_config.dart';
+import 'package:glue/src/config/glue_config.dart';
 
 /// What a model is good at.
 enum ModelCapability { coding, reasoning, research, fast, cheap, vision }

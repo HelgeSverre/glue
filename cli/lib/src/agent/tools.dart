@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
-import '../config/constants.dart';
-import '../shell/command_executor.dart';
+import 'package:glue/src/config/constants.dart';
+import 'package:glue/src/shell/command_executor.dart';
 
 /// Schema for a single tool parameter.
 class ToolParameter {
@@ -229,7 +229,7 @@ class GrepTool extends Tool {
 
     try {
       final result = await Process.run(executable, arguments)
-          .timeout(Duration(seconds: AppConstants.grepTimeoutSeconds));
+          .timeout(const Duration(seconds: AppConstants.grepTimeoutSeconds));
       if ((result.stdout as String).isEmpty) {
         return 'No matches found.';
       }

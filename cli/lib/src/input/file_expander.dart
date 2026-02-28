@@ -1,5 +1,5 @@
 import 'dart:io';
-import '../config/constants.dart';
+import 'package:glue/src/config/constants.dart';
 
 import 'package:path/path.dart' as p;
 

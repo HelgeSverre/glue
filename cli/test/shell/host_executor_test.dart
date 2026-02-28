@@ -8,7 +8,7 @@ void main() {
     late HostExecutor executor;
 
     setUp(() {
-      executor = HostExecutor(ShellConfig(executable: 'sh'));
+      executor = HostExecutor(const ShellConfig(executable: 'sh'));
     });
 
     test('runCapture captures stdout', () async {
@@ -30,7 +30,7 @@ void main() {
     test('runCapture times out', () async {
       final result = await executor.runCapture(
         'sleep 10',
-        timeout: Duration(milliseconds: 100),
+        timeout: const Duration(milliseconds: 100),
       );
       expect(result.exitCode, -1);
     });

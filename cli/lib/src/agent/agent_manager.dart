@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'agent_core.dart';
-import 'agent_runner.dart';
-import 'tools.dart';
-import '../config/glue_config.dart';
-import '../llm/llm_factory.dart';
-import '../tools/subagent_tools.dart';
+import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/agent_runner.dart';
+import 'package:glue/src/agent/tools.dart';
+import 'package:glue/src/config/glue_config.dart';
+import 'package:glue/src/llm/llm_factory.dart';
+import 'package:glue/src/tools/subagent_tools.dart';
 
 /// Tools that are safe for subagents to execute without user approval.
 const safeSubagentTools = {'read_file', 'list_directory', 'grep'};

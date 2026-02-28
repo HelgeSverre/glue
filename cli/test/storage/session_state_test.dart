@@ -31,7 +31,7 @@ void main() {
 
       final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
       expect(json['version'], 1);
-      expect((json['docker']['mounts'] as List), hasLength(1));
+      expect(json['docker']['mounts'] as List, hasLength(1));
     });
 
     test('removeMount removes by path', () {

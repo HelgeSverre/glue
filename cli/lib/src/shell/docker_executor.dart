@@ -3,12 +3,16 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-import 'command_executor.dart';
-import 'docker_config.dart';
+import 'package:glue/src/shell/command_executor.dart';
+import 'package:glue/src/shell/docker_config.dart';
 
+/// Handles volume mounting, working directory setup, and container lifecycle.
 class DockerExecutor implements CommandExecutor {
   final DockerConfig config;
+
+  /// Mounted into the container as `/work`.
   final String cwd;
+
   final List<MountEntry> mounts;
 
   DockerExecutor({
@@ -17,6 +21,7 @@ class DockerExecutor implements CommandExecutor {
     required this.mounts,
   });
 
+  /// [cidfilePath]: file where Docker writes the container ID.
   List<String> buildDockerArgs(String command, String cidfilePath) {
     final args = <String>[
       'run',
@@ -123,6 +128,7 @@ Future<String?> _readCidWithRetry(File cidfile) async {
   return null;
 }
 
+/// Stops the container and cleans up the CID file on exit or kill.
 class DockerRunningCommand extends RunningCommand {
   final File _cidfile;
 

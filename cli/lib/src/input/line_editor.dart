@@ -1,4 +1,4 @@
-import '../terminal/terminal.dart';
+import 'package:glue/src/terminal/terminal.dart';
 
 /// Actions that the line editor signals back to its owner.
 enum InputAction {

@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-import '../agent/agent_core.dart';
-import '../agent/tools.dart';
-import 'ndjson.dart';
-import 'tool_schema.dart';
+import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/tools.dart';
+import 'package:glue/src/llm/ndjson.dart';
+import 'package:glue/src/llm/tool_schema.dart';
 
 /// LLM client for Ollama local API with streaming.
 ///

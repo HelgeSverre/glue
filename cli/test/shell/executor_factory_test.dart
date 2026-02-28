@@ -10,8 +10,8 @@ void main() {
   group('ExecutorFactory', () {
     test('returns HostExecutor when docker disabled', () async {
       final executor = await ExecutorFactory.create(
-        shellConfig: ShellConfig(),
-        dockerConfig: DockerConfig(enabled: false),
+        shellConfig: const ShellConfig(),
+        dockerConfig: const DockerConfig(enabled: false),
         cwd: Directory.current.path,
       );
       expect(executor, isA<HostExecutor>());
@@ -20,8 +20,8 @@ void main() {
     test('returns HostExecutor with fallback when docker unavailable',
         () async {
       final executor = await ExecutorFactory.create(
-        shellConfig: ShellConfig(),
-        dockerConfig: DockerConfig(enabled: true, fallbackToHost: true),
+        shellConfig: const ShellConfig(),
+        dockerConfig: const DockerConfig(enabled: true, fallbackToHost: true),
         cwd: Directory.current.path,
         dockerAvailable: false,
       );
@@ -31,8 +31,8 @@ void main() {
     test('throws when docker required but unavailable', () async {
       expect(
         () => ExecutorFactory.create(
-          shellConfig: ShellConfig(),
-          dockerConfig: DockerConfig(enabled: true, fallbackToHost: false),
+          shellConfig: const ShellConfig(),
+          dockerConfig: const DockerConfig(enabled: true, fallbackToHost: false),
           cwd: Directory.current.path,
           dockerAvailable: false,
         ),
@@ -42,8 +42,8 @@ void main() {
 
     test('returns DockerExecutor when docker enabled and available', () async {
       final executor = await ExecutorFactory.create(
-        shellConfig: ShellConfig(),
-        dockerConfig: DockerConfig(enabled: true, image: 'alpine:latest'),
+        shellConfig: const ShellConfig(),
+        dockerConfig: const DockerConfig(enabled: true, image: 'alpine:latest'),
         cwd: '/test/cwd',
         dockerAvailable: true,
       );
@@ -52,7 +52,7 @@ void main() {
 
     test('merges config and session mounts', () async {
       final executor = await ExecutorFactory.create(
-        shellConfig: ShellConfig(),
+        shellConfig: const ShellConfig(),
         dockerConfig: DockerConfig(
           enabled: true,
           mounts: [MountEntry(hostPath: '/config/mount')],

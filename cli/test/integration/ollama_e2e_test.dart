@@ -26,7 +26,7 @@ For file paths, use paths relative to the current directory (e.g. "pubspec.yaml"
 Future<bool> _ollamaAvailable() async {
   try {
     final r = await http.get(Uri.parse('$_ollamaUrl/api/tags'))
-        .timeout(Duration(seconds: 3));
+        .timeout(const Duration(seconds: 3));
     if (r.statusCode != 200) return false;
     return r.body.contains(_model);
   } catch (_) {
@@ -93,7 +93,7 @@ void main() {
         'What is 2 + 2? Reply with just the number.',
       );
       expect(result, contains('4'));
-    }, timeout: Timeout(Duration(seconds: 30)));
+    }, timeout: const Timeout(Duration(seconds: 30)));
 
     test('read_file tool call', () async {
       if (!available) {
@@ -114,7 +114,7 @@ void main() {
         expect(toolResults, isNotEmpty, reason: 'read_file should be called');
         expect(result.toLowerCase(), contains('glue'));
       });
-    }, timeout: Timeout(Duration(seconds: 120)));
+    }, timeout: const Timeout(Duration(seconds: 120)));
 
     test('list_directory tool call', () async {
       if (!available) {
@@ -129,7 +129,7 @@ void main() {
         'Use the list_directory tool to list "." and tell me if pubspec.yaml exists.',
       );
       expect(result.toLowerCase(), anyOf(contains('yes'), contains('pubspec')));
-    }, timeout: Timeout(Duration(seconds: 60)));
+    }, timeout: const Timeout(Duration(seconds: 60)));
 
     // Note: bash tool test omitted — qwen2.5:7b refuses to call a tool
     // literally named "bash" (safety training). The bash tool works fine
@@ -150,6 +150,6 @@ void main() {
         );
         expect(result.toLowerCase(), contains('agent_core'));
       });
-    }, timeout: Timeout(Duration(seconds: 120)));
+    }, timeout: const Timeout(Duration(seconds: 120)));
   });
 }

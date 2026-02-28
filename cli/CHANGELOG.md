@@ -128,8 +128,18 @@ All notable changes to Glue CLI will be documented in this file.
   a `ToolCallStart` chunk at `content_block_start` / first tool delta,
   surfacing the tool name before arguments finish streaming.
 
+- **Dart analyzer hardening** — expanded `analysis_options.yaml` with
+  `always_use_package_imports`, `strict-casts`, `strict-raw-types`,
+  `avoid_dynamic_calls`, `prefer_const_constructors`, `unawaited_futures`,
+  `discarded_futures`, and other safety/style rules on top of
+  `package:lints/recommended.yaml`. Converted all relative imports to
+  `package:glue/` imports across 51 files. Applied `dart fix` auto-fixes
+  for const correctness, unnecessary lambdas, and parentheses.
+
 ### Fixed
 
+- **Unused `callId` parameter** in `_ConversationEntry.toolResult` — was
+  accepted but silently discarded; removed the dead parameter.
 - **Cancel no longer corrupts conversation** — cancelling (Escape) while
   a tool was executing left the conversation with `tool_use` blocks but
   no matching `tool_result` messages, causing the next API call to fail

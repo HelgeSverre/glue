@@ -77,7 +77,7 @@ void main() {
 
   group('DockerConfig', () {
     test('defaults', () {
-      final c = DockerConfig();
+      const c = DockerConfig();
       expect(c.enabled, false);
       expect(c.image, 'ubuntu:24.04');
       expect(c.shell, 'sh');

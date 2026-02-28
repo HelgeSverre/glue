@@ -5,6 +5,7 @@ import 'package:glue/src/config/model_registry.dart';
 import 'package:glue/src/shell/docker_config.dart';
 import 'package:glue/src/shell/shell_config.dart';
 import 'package:glue/src/web/web_config.dart';
+import 'package:glue/src/web/browser/browser_config.dart';
 import 'package:glue/src/observability/observability_config.dart';
 
 /// Supported LLM providers.
@@ -267,12 +268,76 @@ class GlueConfig {
           AppConstants.webSearchDefaultMaxResults,
     );
 
+    // 2e. Resolve PDF configuration.
+    final pdfSection = webSection?['pdf'] as Map?;
+    final mistralApiKey = Platform.environment['MISTRAL_API_KEY'] ??
+        pdfSection?['mistral_api_key'] as String?;
+    final pdfOpenaiApiKey = Platform.environment['OPENAI_API_KEY'] ??
+        pdfSection?['openai_api_key'] as String?;
+    final ocrProviderStr = Platform.environment['GLUE_OCR_PROVIDER'] ??
+        pdfSection?['ocr_provider'] as String?;
+    final ocrProvider = ocrProviderStr != null
+        ? OcrProviderType.values.firstWhere(
+            (p) => p.name == ocrProviderStr,
+            orElse: () => OcrProviderType.mistral,
+          )
+        : OcrProviderType.mistral;
+
+    final pdfConfig = PdfConfig(
+      maxBytes:
+          pdfSection?['max_bytes'] as int? ?? AppConstants.pdfMaxBytes,
+      timeoutSeconds: pdfSection?['timeout_seconds'] as int? ??
+          AppConstants.pdfTimeoutSeconds,
+      enableOcrFallback:
+          pdfSection?['enable_ocr_fallback'] as bool? ?? true,
+      ocrProvider: ocrProvider,
+      mistralApiKey: mistralApiKey,
+      openaiApiKey: pdfOpenaiApiKey,
+    );
+
+    // 2f. Resolve browser configuration.
+    final browserSection = webSection?['browser'] as Map?;
+    final dockerBrowserSection = browserSection?['docker'] as Map?;
+    final steelSection = browserSection?['steel'] as Map?;
+    final browserbaseSection = browserSection?['browserbase'] as Map?;
+    final browserlessSection = browserSection?['browserless'] as Map?;
+
+    final browserBackendStr = Platform.environment['GLUE_BROWSER_BACKEND'] ??
+        browserSection?['backend'] as String?;
+    final browserBackend = browserBackendStr != null
+        ? BrowserBackend.values.firstWhere(
+            (b) => b.name == browserBackendStr,
+            orElse: () => BrowserBackend.local,
+          )
+        : BrowserBackend.local;
+
+    final browserConfig = BrowserConfig(
+      backend: browserBackend,
+      headed: browserSection?['headed'] as bool? ?? false,
+      dockerImage: dockerBrowserSection?['image'] as String? ??
+          AppConstants.browserDockerImage,
+      dockerPort: dockerBrowserSection?['port'] as int? ??
+          AppConstants.browserDockerPort,
+      steelApiKey: Platform.environment['STEEL_API_KEY'] ??
+          steelSection?['api_key'] as String?,
+      browserbaseApiKey: Platform.environment['BROWSERBASE_API_KEY'] ??
+          browserbaseSection?['api_key'] as String?,
+      browserbaseProjectId: Platform.environment['BROWSERBASE_PROJECT_ID'] ??
+          browserbaseSection?['project_id'] as String?,
+      browserlessBaseUrl:
+          browserlessSection?['base_url'] as String?,
+      browserlessApiKey: Platform.environment['BROWSERLESS_API_KEY'] ??
+          browserlessSection?['api_key'] as String?,
+    );
+
     final webConfig = WebConfig(
       fetch: webFetchConfig,
       search: webSearchConfig,
+      pdf: pdfConfig,
+      browser: browserConfig,
     );
 
-    // 2e. Resolve observability configuration.
+    // 2g. Resolve observability configuration.
     final debug = Platform.environment['GLUE_DEBUG'] == '1' ||
         (fileConfig?['debug'] as bool? ?? false);
 

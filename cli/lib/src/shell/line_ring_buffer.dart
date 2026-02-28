@@ -1,16 +1,23 @@
 import 'dart:collection';
 
+/// Circular buffer capped by line count and byte size.
+///
+/// Partial lines (text without a trailing newline) are buffered until
+/// the next call to [addText]. Oldest lines are evicted first.
 class LineRingBuffer {
   final int maxLines;
   final int maxBytes;
+
   final _lines = ListQueue<String>();
   int _bytes = 0;
   String _partial = '';
 
   LineRingBuffer({required this.maxLines, required this.maxBytes});
 
+  /// Includes any buffered partial line in the count.
   int get lineCount => _lines.length + (_partial.isNotEmpty ? 1 : 0);
 
+  /// Splits on newlines; a trailing incomplete line is buffered until the next call.
   void addText(String text) {
     if (text.isEmpty) return;
     final parts = text.split('\n');
@@ -32,7 +39,7 @@ class LineRingBuffer {
     while (_lines.length > maxLines || _bytes > maxBytes) {
       if (_lines.isEmpty) break;
       final removed = _lines.removeFirst();
-      _bytes -= (removed.length + 1);
+      _bytes -= removed.length + 1;
     }
   }
 

@@ -52,11 +52,11 @@ void main() {
         anthropicApiKey: 'sk-ant',
         openaiApiKey: 'sk-oai',
         profiles: {
-          'architect': AgentProfile(
+          'architect': const AgentProfile(
               provider: LlmProvider.anthropic, model: 'claude-opus-4-6'),
           'editor':
-              AgentProfile(provider: LlmProvider.openai, model: 'gpt-4.1-mini'),
-          'local': AgentProfile(
+              const AgentProfile(provider: LlmProvider.openai, model: 'gpt-4.1-mini'),
+          'local': const AgentProfile(
               provider: LlmProvider.ollama, model: 'qwen2.5-coder'),
         },
       );

@@ -19,7 +19,7 @@ Key directories: `agent/` (core loop, runner, manager), `llm/` (provider clients
 ## Code Style
 
 - Use `package:lints/recommended.yaml`. Run `dart analyze` — zero warnings policy.
-- Relative imports within lib/src/. Barrel export via lib/glue.dart.
+- Use `package:glue/` imports everywhere (enforced by `always_use_package_imports` lint). Barrel export via lib/glue.dart.
 - Sealed classes for event/chunk unions (`AgentEvent`, `LlmChunk`, `TerminalEvent`). Pattern match with `switch`/`case` destructuring.
 - Private fields with underscore prefix. Named constructors and factory constructors preferred.
 - No comments unless complex logic. No over-engineering — minimal changes only.
@@ -34,3 +34,10 @@ Key directories: `agent/` (core loop, runner, manager), `llm/` (provider clients
 - E2E tests are tagged `@Tags(['e2e'])` and skipped by default via `dart_test.yaml`
 - Small models are non-deterministic; e2e tests use a retry wrapper (3 attempts) for tool-calling tests
 - Note: `qwen2.5:7b` refuses to call a tool named "bash" (safety training); other tools work reliably
+
+## TUI Mockups
+
+- Store TUI prototypes as executable shell scripts in `mockups/descriptive-name.sh`
+- `chmod +x` so the user can run them in another terminal to preview layouts
+- Use ANSI escape codes to render borders, colors, reverse-video selection, etc.
+- Name mockups descriptively: `mockups/skills-panel.sh`, `mockups/settings-panel.sh`, etc.

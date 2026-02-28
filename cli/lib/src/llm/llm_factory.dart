@@ -1,11 +1,11 @@
 import 'package:http/http.dart' as http;
 
-import '../agent/agent_core.dart';
-import '../config/glue_config.dart';
-import '../config/model_registry.dart';
-import 'anthropic_client.dart';
-import 'openai_client.dart';
-import 'ollama_client.dart';
+import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/config/glue_config.dart';
+import 'package:glue/src/config/model_registry.dart';
+import 'package:glue/src/llm/anthropic_client.dart';
+import 'package:glue/src/llm/openai_client.dart';
+import 'package:glue/src/llm/ollama_client.dart';
 
 /// Creates [LlmClient] instances from configuration.
 class LlmClientFactory {

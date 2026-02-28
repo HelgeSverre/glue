@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'command_executor.dart';
-import 'shell_config.dart';
+import 'package:glue/src/shell/command_executor.dart';
+import 'package:glue/src/shell/shell_config.dart';
 
+/// Runs commands via the local shell, as opposed to [DockerExecutor].
 class HostExecutor implements CommandExecutor {
   final ShellConfig shellConfig;
 

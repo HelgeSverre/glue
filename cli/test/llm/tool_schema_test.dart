@@ -7,7 +7,7 @@ void main() {
 
   group('AnthropicToolEncoder', () {
     test('produces Anthropic-native schema', () {
-      final encoder = AnthropicToolEncoder();
+      const encoder = AnthropicToolEncoder();
       final schemas = encoder.encodeAll([tool]);
 
       expect(schemas, hasLength(1));
@@ -22,7 +22,7 @@ void main() {
 
   group('OpenAiToolEncoder', () {
     test('produces OpenAI function-calling schema', () {
-      final encoder = OpenAiToolEncoder();
+      const encoder = OpenAiToolEncoder();
       final schemas = encoder.encodeAll([tool]);
 
       expect(schemas, hasLength(1));

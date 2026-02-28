@@ -1,10 +1,21 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'command_executor.dart';
-import 'line_ring_buffer.dart';
+import 'package:glue/src/shell/command_executor.dart';
+import 'package:glue/src/shell/line_ring_buffer.dart';
 
-enum JobStatus { running, exited, failed, killed }
+enum JobStatus {
+  running,
+
+  /// Exit code 0.
+  exited,
+
+  /// Non-zero exit code or error.
+  failed,
+
+  /// Terminated by explicit kill request (vs process exit).
+  killed
+}
 
 sealed class JobEvent {}
 
@@ -31,6 +42,8 @@ class ShellJob {
   final String command;
   final DateTime startTime;
   final Process process;
+
+  /// Combined stdout and stderr.
   final LineRingBuffer output;
 
   JobStatus status = JobStatus.running;
@@ -45,8 +58,10 @@ class ShellJob {
   });
 }
 
+/// Tracks background jobs, captures their output, and emits [JobEvent]s.
 class ShellJobManager {
   final CommandExecutor executor;
+
   int _nextId = 1;
   final _jobs = <int, ShellJob>{};
   final _events = StreamController<JobEvent>.broadcast();
@@ -55,9 +70,11 @@ class ShellJobManager {
 
   Stream<JobEvent> get events => _events.stream;
 
+  /// Sorted by ID.
   List<ShellJob> get jobs =>
       _jobs.values.toList()..sort((a, b) => a.id.compareTo(b.id));
 
+  /// Output is automatically captured into the job's [LineRingBuffer].
   Future<ShellJob> start(String command) async {
     final id = _nextId++;
     final running = await executor.startStreaming(command);
@@ -74,10 +91,10 @@ class ShellJobManager {
     _events.add(JobStarted(id, command));
 
     process.stdout.transform(const SystemEncoding().decoder).listen(
-          (chunk) => job.output.addText(chunk),
+          job.output.addText,
         );
     process.stderr.transform(const SystemEncoding().decoder).listen(
-          (chunk) => job.output.addText(chunk),
+          job.output.addText,
         );
 
     unawaited(() async {
@@ -99,6 +116,7 @@ class ShellJobManager {
 
   ShellJob? getJob(int id) => _jobs[id];
 
+  /// Sends [ProcessSignal.sigterm].
   Future<void> kill(int id) async {
     final job = _jobs[id];
     if (job == null || job.status != JobStatus.running) return;
@@ -106,6 +124,10 @@ class ShellJobManager {
     job.process.kill(ProcessSignal.sigterm);
   }
 
+  /// Shuts down the manager, killing all running jobs.
+  ///
+  /// It first sends [ProcessSignal.sigterm] and then [ProcessSignal.sigkill]
+  /// after a short delay if processes are still running.
   Future<void> shutdown() async {
     final running =
         _jobs.values.where((j) => j.status == JobStatus.running).toList();

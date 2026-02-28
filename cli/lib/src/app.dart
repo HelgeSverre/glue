@@ -26,7 +26,15 @@ import 'package:glue/src/shell/shell_job_manager.dart';
 import 'package:glue/src/storage/session_state.dart';
 import 'package:glue/src/tools/subagent_tools.dart';
 import 'package:glue/src/tools/web_fetch_tool.dart';
+import 'package:glue/src/tools/web_browser_tool.dart';
 import 'package:glue/src/tools/web_search_tool.dart';
+import 'package:glue/src/web/browser/browser_config.dart';
+import 'package:glue/src/web/browser/browser_manager.dart';
+import 'package:glue/src/web/browser/providers/local_provider.dart';
+import 'package:glue/src/web/browser/providers/docker_browser_provider.dart';
+import 'package:glue/src/web/browser/providers/steel_provider.dart';
+import 'package:glue/src/web/browser/providers/browserbase_provider.dart';
+import 'package:glue/src/web/browser/providers/browserless_provider.dart';
 import 'package:glue/src/web/search/search_router.dart';
 import 'package:glue/src/web/search/providers/brave_provider.dart';
 import 'package:glue/src/web/search/providers/tavily_provider.dart';
@@ -151,6 +159,7 @@ class App {
     'spawn_parallel_subagents',
     'web_fetch',
     'web_search',
+    'web_browser',
   };
   final AgentManager? _manager;
   final LlmClientFactory? _llmFactory;
@@ -288,6 +297,28 @@ class App {
       ),
     ]);
 
+    // Create browser provider based on config.
+    final browserProvider = switch (config.webConfig.browser.backend) {
+      BrowserBackend.local => LocalProvider(config.webConfig.browser),
+      BrowserBackend.docker => DockerBrowserProvider(
+          image: config.webConfig.browser.dockerImage,
+          port: config.webConfig.browser.dockerPort,
+          sessionId: sessionId,
+        ),
+      BrowserBackend.steel => SteelProvider(
+          apiKey: config.webConfig.browser.steelApiKey,
+        ),
+      BrowserBackend.browserbase => BrowserbaseProvider(
+          apiKey: config.webConfig.browser.browserbaseApiKey,
+          projectId: config.webConfig.browser.browserbaseProjectId,
+        ),
+      BrowserBackend.browserless => BrowserlessProvider(
+          apiKey: config.webConfig.browser.browserlessApiKey,
+          baseUrl: config.webConfig.browser.browserlessBaseUrl ?? '',
+        ),
+    };
+    final browserManager = BrowserManager(provider: browserProvider);
+
     final rawTools = <String, Tool>{
       'read_file': ReadFileTool(),
       'write_file': WriteFileTool(),
@@ -295,8 +326,10 @@ class App {
       'bash': BashTool(executor),
       'grep': GrepTool(),
       'list_directory': ListDirectoryTool(),
-      'web_fetch': WebFetchTool(config.webConfig.fetch),
+      'web_fetch': WebFetchTool(config.webConfig.fetch,
+          pdfConfig: config.webConfig.pdf),
       'web_search': WebSearchTool(searchRouter),
+      'web_browser': WebBrowserTool(browserManager),
     };
     final tools = wrapToolsWithObservability(rawTools, obs);
 

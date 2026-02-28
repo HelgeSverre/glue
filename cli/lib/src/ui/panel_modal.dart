@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:math';
 
-import '../rendering/ansi_utils.dart';
-import '../terminal/terminal.dart';
+import 'package:glue/src/rendering/ansi_utils.dart';
+import 'package:glue/src/terminal/terminal.dart';
 
 enum PanelStyle { tape, simple, heavy }
 
@@ -90,8 +90,8 @@ List<String> _renderTape(int width, int height, String title) {
   final innerWidth = width - 2;
 
   final titleStr = ' $title ';
-  final tapePattern = '▚▞';
-  final prefixLen = 2;
+  const tapePattern = '▚▞';
+  const prefixLen = 2;
   final suffixLen = max(width - titleStr.length - prefixLen, 0);
   final prefixTape = _repeatTape(tapePattern, prefixLen);
   final suffixTape = _repeatTape(tapePattern, suffixLen);

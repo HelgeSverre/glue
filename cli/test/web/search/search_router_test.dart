@@ -84,7 +84,7 @@ void main() {
     });
 
     test('search with explicit provider name', () async {
-      final specificResponse = WebSearchResponse(
+      const specificResponse = WebSearchResponse(
         provider: 'specific',
         query: 'test',
         results: [],

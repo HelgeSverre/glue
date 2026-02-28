@@ -41,7 +41,7 @@ void main() {
     late ShellJobManager manager;
 
     setUp(() {
-      manager = ShellJobManager(HostExecutor(ShellConfig()));
+      manager = ShellJobManager(HostExecutor(const ShellConfig()));
     });
 
     tearDown(() async {
@@ -59,13 +59,13 @@ void main() {
       final events = <JobEvent>[];
       manager.events.listen(events.add);
       await manager.start('echo hi');
-      await Future.delayed(Duration(milliseconds: 50));
+      await Future.delayed(const Duration(milliseconds: 50));
       expect(events.whereType<JobStarted>(), isNotEmpty);
     });
 
     test('job captures stdout in output buffer', () async {
       final job = await manager.start('echo hello');
-      await Future.delayed(Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 500));
       expect(job.output.dump(), contains('hello'));
     });
 
@@ -73,7 +73,7 @@ void main() {
       final events = <JobEvent>[];
       manager.events.listen(events.add);
       await manager.start('echo done');
-      await Future.delayed(Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 500));
       final exits = events.whereType<JobExited>().toList();
       expect(exits, isNotEmpty);
       expect(exits.first.exitCode, 0);
@@ -98,9 +98,9 @@ void main() {
 
     test('kill sends signal and updates status', () async {
       final job = await manager.start('sleep 30');
-      await Future.delayed(Duration(milliseconds: 100));
+      await Future.delayed(const Duration(milliseconds: 100));
       await manager.kill(job.id);
-      await Future.delayed(Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 500));
       expect(job.status,
           anyOf(JobStatus.killed, JobStatus.exited, JobStatus.failed));
     });
@@ -108,7 +108,7 @@ void main() {
     test('shutdown terminates all running jobs', () async {
       await manager.start('sleep 30');
       await manager.start('sleep 30');
-      await Future.delayed(Duration(milliseconds: 100));
+      await Future.delayed(const Duration(milliseconds: 100));
       await manager.shutdown();
       for (final job in manager.jobs) {
         expect(job.status, isNot(JobStatus.running));

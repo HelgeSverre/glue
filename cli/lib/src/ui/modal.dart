@@ -1,5 +1,5 @@
 import 'dart:async';
-import '../terminal/terminal.dart';
+import 'package:glue/src/terminal/terminal.dart';
 
 /// A choice in a confirmation modal.
 class ModalChoice {

@@ -52,7 +52,7 @@ void main() {
     });
 
     test('empty results produce clear message', () {
-      final response = WebSearchResponse(
+      const response = WebSearchResponse(
         provider: 'brave',
         query: 'nothing',
         results: [],

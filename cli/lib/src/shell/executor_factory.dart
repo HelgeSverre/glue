@@ -1,12 +1,14 @@
 import 'dart:io';
 
-import 'command_executor.dart';
-import 'docker_config.dart';
-import 'docker_executor.dart';
-import 'host_executor.dart';
-import 'shell_config.dart';
+import 'package:glue/src/shell/command_executor.dart';
+import 'package:glue/src/shell/docker_config.dart';
+import 'package:glue/src/shell/docker_executor.dart';
+import 'package:glue/src/shell/host_executor.dart';
+import 'package:glue/src/shell/shell_config.dart';
 
 class ExecutorFactory {
+  /// Returns a [DockerExecutor] when Docker is enabled and available,
+  /// otherwise a [HostExecutor]. Throws if Docker is required but missing.
   static Future<CommandExecutor> create({
     required ShellConfig shellConfig,
     required DockerConfig dockerConfig,
@@ -27,6 +29,7 @@ class ExecutorFactory {
     }
 
     final allMounts = [...dockerConfig.mounts, ...sessionMounts];
+    
     return DockerExecutor(
       config: dockerConfig,
       cwd: cwd,

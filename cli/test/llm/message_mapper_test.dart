@@ -13,7 +13,7 @@ void main() {
 
   group('AnthropicMessageMapper', () {
     test('maps user message', () {
-      final mapper = AnthropicMessageMapper();
+      const mapper = AnthropicMessageMapper();
       final result =
           mapper.mapMessages(messages, systemPrompt: 'You are Glue.');
       // System prompt is returned separately.
@@ -22,7 +22,7 @@ void main() {
     });
 
     test('maps tool result as user role', () {
-      final mapper = AnthropicMessageMapper();
+      const mapper = AnthropicMessageMapper();
       final result = mapper.mapMessages(messages, systemPrompt: '');
       final toolResultMsg = result.messages.last;
       expect(toolResultMsg['role'], 'user');
@@ -35,7 +35,7 @@ void main() {
 
   group('OpenAiMessageMapper', () {
     test('prepends system message', () {
-      final mapper = OpenAiMessageMapper();
+      const mapper = OpenAiMessageMapper();
       final result =
           mapper.mapMessages(messages, systemPrompt: 'You are Glue.');
       expect(result.messages.first['role'], 'system');
@@ -43,7 +43,7 @@ void main() {
     });
 
     test('serializes tool call arguments as JSON string', () {
-      final mapper = OpenAiMessageMapper();
+      const mapper = OpenAiMessageMapper();
       final messages = [
         Message.assistant(
           text: '',
@@ -63,7 +63,7 @@ void main() {
     });
 
     test('maps tool result as tool role', () {
-      final mapper = OpenAiMessageMapper();
+      const mapper = OpenAiMessageMapper();
       final result = mapper.mapMessages(messages, systemPrompt: '');
       final toolResultMsg = result.messages.last;
       expect(toolResultMsg['role'], 'tool');

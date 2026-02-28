@@ -7,7 +7,7 @@ void main() {
   group('DockerExecutor', () {
     test('buildDockerArgs constructs correct argument list', () {
       final executor = DockerExecutor(
-        config: DockerConfig(image: 'alpine:latest', shell: 'sh'),
+        config: const DockerConfig(image: 'alpine:latest', shell: 'sh'),
         cwd: '/home/user/project',
         mounts: [
           MountEntry(hostPath: '/home/user/libs', mode: MountMode.rw),
@@ -38,7 +38,7 @@ void main() {
 
     test('buildDockerArgs with no extra mounts', () {
       final executor = DockerExecutor(
-        config: DockerConfig(image: 'ubuntu:24.04', shell: 'bash'),
+        config: const DockerConfig(image: 'ubuntu:24.04', shell: 'bash'),
         cwd: '/my/project',
         mounts: [],
       );
@@ -59,7 +59,7 @@ void main() {
 
     test('buildDockerArgs deduplicates identical mounts', () {
       final executor = DockerExecutor(
-        config: DockerConfig(image: 'alpine:latest', shell: 'sh'),
+        config: const DockerConfig(image: 'alpine:latest', shell: 'sh'),
         cwd: '/project',
         mounts: [
           MountEntry(hostPath: '/shared', mode: MountMode.rw),
@@ -88,7 +88,7 @@ void main() {
       }
 
       final executor = DockerExecutor(
-        config: DockerConfig(image: 'alpine:latest', shell: 'sh'),
+        config: const DockerConfig(image: 'alpine:latest', shell: 'sh'),
         cwd: Directory.current.path,
         mounts: [],
       );
@@ -96,6 +96,6 @@ void main() {
       final r = await executor.runCapture('echo hello');
       expect(r.stdout.trim(), 'hello');
       expect(r.exitCode, 0);
-    }, timeout: Timeout(Duration(seconds: 30)));
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

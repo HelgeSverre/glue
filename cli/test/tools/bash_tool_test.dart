@@ -8,7 +8,7 @@ void main() {
     late BashTool tool;
 
     setUp(() {
-      tool = BashTool(HostExecutor(ShellConfig()));
+      tool = BashTool(HostExecutor(const ShellConfig()));
     });
 
     test('executes command with default timeout', () async {

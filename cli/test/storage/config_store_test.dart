@@ -80,7 +80,7 @@ void main() {
     expect(store.defaultModel, 'gpt-4');
 
     // Simulate external edit — wait a moment for mtime to differ
-    await Future.delayed(Duration(milliseconds: 50));
+    await Future.delayed(const Duration(milliseconds: 50));
     const encoder = JsonEncoder.withIndent('  ');
     File(configPath).writeAsStringSync(
       encoder.convert({'default_model': 'claude-sonnet'}),

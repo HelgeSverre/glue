@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-import '../config/glue_config.dart';
+import 'package:glue/src/config/glue_config.dart';
 
 class ModelInfo {
   final String id;
@@ -31,7 +31,7 @@ class ModelLister {
   Future<List<ModelInfo>> _listOllama(String baseUrl) async {
     final uri = Uri.parse(baseUrl).resolve('/api/tags');
     final response = await _http.get(uri)
-        .timeout(Duration(seconds: 10));
+        .timeout(const Duration(seconds: 10));
     if (response.statusCode != 200) {
       throw Exception('Ollama API error ${response.statusCode}');
     }
@@ -50,7 +50,7 @@ class ModelLister {
     final uri = Uri.parse('https://api.openai.com/v1/models');
     final response = await _http.get(uri, headers: {
       'Authorization': 'Bearer $apiKey',
-    }).timeout(Duration(seconds: 10));
+    }).timeout(const Duration(seconds: 10));
     if (response.statusCode != 200) {
       throw Exception('OpenAI API error ${response.statusCode}');
     }
@@ -69,7 +69,7 @@ class ModelLister {
     final response = await _http.get(uri, headers: {
       'x-api-key': apiKey,
       'anthropic-version': '2023-06-01',
-    }).timeout(Duration(seconds: 10));
+    }).timeout(const Duration(seconds: 10));
     if (response.statusCode != 200) {
       throw Exception('Anthropic API error ${response.statusCode}');
     }

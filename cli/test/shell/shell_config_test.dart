@@ -16,18 +16,18 @@ void main() {
 
   group('ShellConfig', () {
     test('defaults to sh and nonInteractive', () {
-      final config = ShellConfig();
+      const config = ShellConfig();
       expect(config.executable, 'sh');
       expect(config.mode, ShellMode.nonInteractive);
     });
 
     test('buildArgs for bash nonInteractive', () {
-      final config = ShellConfig(executable: 'bash');
+      const config = ShellConfig(executable: 'bash');
       expect(config.buildArgs('echo hi'), ['bash', '-c', 'echo hi']);
     });
 
     test('buildArgs for zsh interactive', () {
-      final config = ShellConfig(
+      const config = ShellConfig(
         executable: 'zsh',
         mode: ShellMode.interactive,
       );
@@ -35,7 +35,7 @@ void main() {
     });
 
     test('buildArgs for bash login', () {
-      final config = ShellConfig(
+      const config = ShellConfig(
         executable: 'bash',
         mode: ShellMode.login,
       );
@@ -43,7 +43,7 @@ void main() {
     });
 
     test('buildArgs for fish interactive', () {
-      final config = ShellConfig(
+      const config = ShellConfig(
         executable: 'fish',
         mode: ShellMode.interactive,
       );
@@ -51,7 +51,7 @@ void main() {
     });
 
     test('buildArgs for pwsh nonInteractive', () {
-      final config = ShellConfig(executable: 'pwsh');
+      const config = ShellConfig(executable: 'pwsh');
       expect(
         config.buildArgs('echo hi'),
         ['pwsh', '-NoProfile', '-Command', 'echo hi'],
@@ -59,7 +59,7 @@ void main() {
     });
 
     test('buildArgs for pwsh interactive', () {
-      final config = ShellConfig(
+      const config = ShellConfig(
         executable: 'pwsh',
         mode: ShellMode.interactive,
       );
