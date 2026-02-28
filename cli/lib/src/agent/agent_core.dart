@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:developer' show Flow, Timeline;
 
+import '../dev/devtools.dart';
 import 'tools.dart';
 
 // ---------------------------------------------------------------------------
@@ -198,10 +200,20 @@ class AgentCore {
   Stream<AgentEvent> run(String userMessage) async* {
     _conversation.add(Message.user(userMessage));
 
+    final reactTask = GlueDev.startAsync('ReActLoop');
+    int iteration = 0;
+
     try {
+
       while (true) {
+        iteration++;
+
         final assistantText = StringBuffer();
         final toolCalls = <ToolCall>[];
+
+        final flow = Flow.begin();
+        Timeline.startSync('LlmStream', flow: flow);
+        final tokensBefore = tokenCount;
 
         await for (final chunk in llm.stream(
           _conversation,
@@ -218,15 +230,24 @@ class AgentCore {
           }
         }
 
+        Timeline.finishSync();
+
         _conversation.add(Message.assistant(
           text: assistantText.toString(),
           toolCalls: toolCalls,
         ));
 
+        GlueDev.postAgentStep(
+          iteration: iteration,
+          toolsChosen: toolCalls.map((c) => c.name).toList(),
+          tokenDelta: tokenCount - tokensBefore,
+        );
+
         // No tool calls → turn is complete.
         if (toolCalls.isEmpty) break;
 
         // Create completers and capture futures before yielding
+        Timeline.startSync('ToolExecution', flow: Flow.end(flow.id));
         final futures = <Future<ToolResult>>[];
         for (final call in toolCalls) {
           final completer = Completer<ToolResult>();
@@ -241,6 +262,7 @@ class AgentCore {
 
         // Wait for all results
         final results = await Future.wait(futures);
+        Timeline.finishSync();
 
         // Add results to conversation and yield events
         for (var i = 0; i < toolCalls.length; i++) {
@@ -255,8 +277,13 @@ class AgentCore {
         // Loop: send tool results back to the LLM.
       }
 
+      reactTask.finish(arguments: {'iterations': iteration.toString()});
+      GlueDev.log('agent.loop',
+          'ReAct completed: $iteration iterations, $tokenCount tokens');
+
       yield AgentDone();
     } on Object catch (e) {
+      reactTask.finish(arguments: {'error': e.toString()});
       yield AgentError(e);
     } finally {
       for (final completer in _pendingToolResults.values) {
