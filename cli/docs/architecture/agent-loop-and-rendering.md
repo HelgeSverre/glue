@@ -2,6 +2,9 @@
 
 This document describes how Glue's core agent loop and terminal UI rendering work together.
 
+> **Incoming changes:** Several feature branches are pending merge that affect
+> this architecture. Each section notes planned changes where applicable.
+
 ---
 
 ## 1. High-Level System Overview
@@ -22,9 +25,11 @@ The application is built around three independent subsystems that communicate th
                                      └──────────────┘
 ```
 
-- **Terminal** — owns raw stdin/stdout, parses bytes into `TerminalEvent`s (keys, chars, mouse, resize).
+- **Terminal** — owns raw stdin/stdout, parses bytes into `TerminalEvent`s (keys, chars, mouse, resize, paste).
 - **App** — the central controller. Subscribes to both terminal events and agent events, manages `AppMode` state transitions, and calls `_render()` after every state change.
 - **AgentCore** — the LLM ↔ tool execution ReAct loop. Yields `AgentEvent`s as an `async*` stream.
+
+> **Pending:** `HelgeSverre/multiline-prompt-input` adds `PasteEvent` to `TerminalEvent` for bracketed paste support, and `shift` field to `KeyEvent` for Shift+Enter detection.
 
 ---
 
@@ -71,6 +76,8 @@ yield AgentDone()
 - **Parallel tool execution** — Multiple tool calls from a single LLM turn create independent `Completer<ToolResult>`s that are awaited with `Future.wait`, allowing concurrent execution.
 - **Decoupled approval** — The agent yields `AgentToolCall` and suspends. The App decides whether to auto-approve, show a modal, or deny. It calls `completeToolCall(result)` to resume the loop.
 - **Generator-based** — The entire loop is an `async*` generator, so the App can cancel mid-stream by cancelling the `StreamSubscription`.
+
+> **Pending:** `HelgeSverre/history-dialog-panel` adds `clearConversation()` to `AgentCore` to support session forking (clearing history when branching from a previous point).
 
 ---
 
@@ -204,6 +211,8 @@ Row N    └──────────────────────�
 
 The scroll region trick (`terminal.setScrollRegion(outputTop, outputBottom)`) lets the output zone scroll naturally while status bar and input stay pinned.
 
+> **Pending:** `HelgeSverre/multiline-prompt-input` significantly extends the Input Zone. `paintInput` now accepts `List<String> lines` + `cursorRow`/`cursorCol` instead of flat `text`/`cursor`. It performs visual line wrapping (respecting Unicode character widths), renders continuation lines with a dimmed `·` indicator, and scrolls a viewport of up to `maxInputVisibleLines` (10) rows. The input height dynamically adjusts via `setInputHeight()`.
+
 ---
 
 ## 6. Render Pipeline (`_doRender`)
@@ -249,26 +258,30 @@ _render()
    │      layout.paintOutputViewport(visibleLines)   ← Output
    │      layout.paintOverlay(autocomplete/atHint)   ← Overlay
    │      layout.paintStatus(left, right)            ← Status bar
-   │      layout.paintInput(prompt, text, cursor)    ← Input (LAST for cursor)
+   │      layout.paintInput(prompt, text, cursor)     ← Input (LAST for cursor)
    │
    └─ Done — cursor lands in input area
-```
+   ```
 
-### BlockRenderer
+   ### BlockRenderer
 
-The `BlockRenderer` converts `_ConversationEntry` objects into ANSI-styled strings. It reserves a 1-character margin on each side and delegates markdown content to `MarkdownRenderer`:
+   The `BlockRenderer` converts `_ConversationEntry` objects into ANSI-styled strings. It reserves a 1-character margin on each side and delegates markdown content to `MarkdownRenderer`:
 
-```
-BlockRenderer(terminalWidth)
-│
-├─ renderUser(text)      → "❯ You\n   wrapped text"
-├─ renderAssistant(text) → "◆ Glue\n   markdown rendered"
-├─ renderToolCall(name)  → "▶ Tool: name\n   args"
-├─ renderToolResult()    → "✓ Tool result\n   truncated output"
-├─ renderError(msg)      → "✗ Error\n   red message"
-├─ renderBash(cmd, out)  → boxed output with ┌─command─┐ border
-└─ renderSystem(text)    → dimmed gray text
-```
+   ```
+   BlockRenderer(terminalWidth)
+   │
+   ├─ renderUser(text)      → "❯ You\n   wrapped text"
+   ├─ renderAssistant(text) → "◆ Glue\n   markdown rendered"
+   ├─ renderToolCall(name)  → "▶ Tool: name\n   args"
+   ├─ renderToolResult()    → "✓ Tool result\n   truncated output"
+   ├─ renderError(msg)      → "✗ Error\n   red message"
+   ├─ renderBash(cmd, out)  → boxed output with ┌─command─┐ border
+   └─ renderSystem(text)    → dimmed gray text
+   ```
+
+   > **Pending:** `HelgeSverre/tui-text-wrapping` adds `wrapIndented()` helper to `ansi_utils.dart` and uses it in `renderUser` and `renderError` for proper word-wrapping with prefix alignment. `MarkdownRenderer` also gains wrapping for paragraphs, headings, list items, and blockquotes (previously only code blocks/tables were wrapped).
+   >
+   > **Pending:** `HelgeSverre/history-dialog-panel` introduces a `Styled` fluent ANSI builder (`'text'.styled.bold.yellow`) in `terminal/styled.dart`, migrating raw `\x1b[...]` escape codes across `BlockRenderer`, `MarkdownRenderer`, modals, and autocomplete to use composable style chains with proper close codes.
 
 ---
 
@@ -304,13 +317,15 @@ Terminal.events (raw bytes → TerminalEvent)
    │      Up/Down → navigate, Tab/Enter → accept, Esc → dismiss
    │
    └─ 8. LineEditor (normal editing)
-         handle(event) → InputAction
-         │
-         ├─ submit → UserSubmit(text) → agent or slash command
-         ├─ interrupt → double Ctrl+C detection → exit
-         ├─ changed → update autocomplete/atHint → _render()
-         └─ none → no-op
-```
+        handle(event) → InputAction
+        │
+        ├─ submit → UserSubmit(text) → agent or slash command
+        ├─ interrupt → double Ctrl+C detection → exit
+        ├─ changed → update autocomplete/atHint → _render()
+        └─ none → no-op
+   ```
+
+   > **Pending:** `HelgeSverre/multiline-prompt-input` replaces `LineEditor` with `TextAreaEditor` — a multiline editor with `List<String>` data model, Shift+Enter for newlines, bracketed paste support (`PasteEvent`), cross-line cursor movement, and word-level operations across line boundaries. Recognizes Shift+Enter from Ghostty (xterm modifyOtherKeys), Kitty (CSI u), and iTerm2 (ESC+CR). A new step 8 (PasteEvent handling) is inserted before the editor.
 
 ---
 
@@ -435,18 +450,29 @@ The `SessionStore` logs conversation events to disk for session resume:
 ```
 ~/.glue/sessions/<session-id>/
 ├── meta.json           ← SessionMeta (id, cwd, model, provider, startTime)
-├── conversation.jsonl  ← Append-only event log
-│     {"type": "user_message", "text": "..."}
-│     {"type": "assistant_message", "text": "..."}
-│     {"type": "tool_call", "name": "...", "arguments": {...}}
-└── state.json          ← SessionState (docker mounts, etc.)
+└── conversation.jsonl  ← Append-only event log
+      {"type": "user_message", "text": "..."}
+      {"type": "assistant_message", "text": "..."}
+      {"type": "tool_call", "name": "...", "arguments": {...}}
 ```
 
+> **Note:** All pending branches remove the Docker sandbox and `CommandExecutor`
+> abstraction (`DockerExecutor`, `ExecutorFactory`, `ShellConfig`, `SessionState`).
+> Bash commands run directly via `Process.start('sh', ['-c', command])`.
+> The `state.json` file and `SessionState` class are removed. `App.create()`
+> becomes a synchronous `factory` constructor (no longer `async`).
+
 Resume flow: `/resume` → PanelModal listing → select session → `_resumeSession()` → replay events into `AgentCore._conversation` and `_blocks`.
+
+> **Pending:** `HelgeSverre/session-thread-titles` adds auto-generated session titles. On first user message, a fire-and-forget background call to a lightweight model (claude-haiku) generates a short title (max 7 words). Titles are persisted to `meta.json` and displayed in the resume panel instead of session IDs. Also backfills titles for resumed sessions that lack one. Adds `TitleGenerator` service (`llm/title_generator.dart`).
+>
+> **Pending:** `HelgeSverre/history-dialog-panel` replaces the `/history` command (which listed input history) with an interactive history browser panel. Selecting a user message offers "Fork conversation" or "Copy to clipboard". Session forking creates a new session with conversation truncated at the selected message, replays into agent/UI, and tags the new session with `forkedFrom` in `SessionMeta`.
 
 ---
 
 ## 12. Double-Buffer Rendering (ScreenBuffer)
+
+> **Note:** `ScreenBuffer` exists in `terminal/screen_buffer.dart` but is **not currently wired into the App**. The App renders directly via `Layout.paintOutputViewport()` / `paintStatus()` / `paintInput()` which write to terminal via ANSI escape sequences. `ScreenBuffer` is available as a utility for future use.
 
 The `ScreenBuffer` provides flicker-free rendering through a double-buffered virtual terminal grid:
 
