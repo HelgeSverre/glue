@@ -192,6 +192,9 @@ class AgentCore {
   /// Add a message directly to the conversation history (for session resume).
   void addMessage(Message message) => _conversation.add(message);
 
+  /// Clear all conversation history (for session fork).
+  void clearConversation() => _conversation.clear();
+
   /// Run a [userMessage] through the agent loop.
   ///
   /// Returns a stream of [AgentEvent]s that the UI subscribes to.
