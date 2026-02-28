@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:yaml/yaml.dart';
 import 'constants.dart';
+import '../shell/docker_config.dart';
 import '../shell/shell_config.dart';
 
 /// Supported LLM providers.
@@ -39,6 +40,7 @@ class GlueConfig {
   final int maxSubagentDepth;
   final int bashMaxLines;
   final ShellConfig shellConfig;
+  final DockerConfig dockerConfig;
 
   GlueConfig({
     LlmProvider? provider,
@@ -50,9 +52,11 @@ class GlueConfig {
     this.maxSubagentDepth = AppConstants.maxSubagentDepth,
     this.bashMaxLines = AppConstants.bashMaxLinesDefault,
     ShellConfig? shellConfig,
+    DockerConfig? dockerConfig,
   })  : provider = provider ?? LlmProvider.anthropic,
         model = model ?? _defaultModel(provider ?? LlmProvider.anthropic),
-        shellConfig = shellConfig ?? const ShellConfig();
+        shellConfig = shellConfig ?? const ShellConfig(),
+        dockerConfig = dockerConfig ?? const DockerConfig();
 
   static String _defaultModel(LlmProvider provider) => switch (provider) {
         LlmProvider.anthropic => 'claude-sonnet-4-6',
@@ -151,6 +155,44 @@ class GlueConfig {
       mode: shellMode,
     );
 
+    // 2c. Resolve Docker configuration.
+    final dockerSection = fileConfig?['docker'] as Map?;
+    final dockerEnabled =
+        Platform.environment['GLUE_DOCKER_ENABLED'] == '1' ||
+            (dockerSection?['enabled'] as bool? ?? false);
+    final dockerImage = Platform.environment['GLUE_DOCKER_IMAGE'] ??
+        dockerSection?['image'] as String? ??
+        'ubuntu:24.04';
+    final dockerShell = Platform.environment['GLUE_DOCKER_SHELL'] ??
+        dockerSection?['shell'] as String? ??
+        'sh';
+    final dockerFallback =
+        dockerSection?['fallback_to_host'] as bool? ?? true;
+
+    final dockerMounts = <MountEntry>[];
+    final envMounts = Platform.environment['GLUE_DOCKER_MOUNTS'];
+    if (envMounts != null && envMounts.isNotEmpty) {
+      for (final spec in envMounts.split(';')) {
+        if (spec.trim().isNotEmpty) {
+          dockerMounts.add(MountEntry.parse(spec.trim()));
+        }
+      }
+    }
+    final fileMounts = dockerSection?['mounts'] as List?;
+    if (fileMounts != null) {
+      for (final m in fileMounts) {
+        dockerMounts.add(MountEntry.parse(m as String));
+      }
+    }
+
+    final dockerConfig = DockerConfig(
+      enabled: dockerEnabled,
+      image: dockerImage,
+      shell: dockerShell,
+      fallbackToHost: dockerFallback,
+      mounts: dockerMounts,
+    );
+
     // 3. Parse profiles.
     final profiles = <String, AgentProfile>{};
     final profilesYaml = fileConfig?['profiles'] as Map?;
@@ -175,6 +217,7 @@ class GlueConfig {
       profiles: profiles,
       bashMaxLines: bashMaxLines,
       shellConfig: shellConfig,
+      dockerConfig: dockerConfig,
     );
   }
 }

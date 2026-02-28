@@ -56,7 +56,7 @@ void main(List<String> args) async {
   final provider = results.option('provider');
   final model = results.option('model');
 
-  final app = App.create(
+  final app = await App.create(
     provider: provider,
     model: model,
     startupResume: results.flag('resume'),

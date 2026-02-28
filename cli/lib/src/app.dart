@@ -16,9 +16,11 @@ import 'rendering/block_renderer.dart';
 import 'rendering/ansi_utils.dart';
 import 'rendering/mascot.dart';
 import 'shell/command_executor.dart';
+import 'shell/executor_factory.dart';
 import 'shell/host_executor.dart';
 import 'shell/shell_config.dart';
 import 'shell/shell_job_manager.dart';
+import 'storage/session_state.dart';
 import 'tools/subagent_tools.dart';
 import 'ui/modal.dart';
 import 'ui/panel_modal.dart';
@@ -186,12 +188,12 @@ class App {
 
   /// Convenience factory that creates a fully wired [App] with real
   /// LLM provider and subagent system.
-  factory App.create({
+  static Future<App> create({
     String? provider,
     String? model,
     bool startupResume = false,
     bool startupContinue = false,
-  }) {
+  }) async {
     final config = GlueConfig.load(cliProvider: provider, cliModel: model);
     config.validate();
 
@@ -203,7 +205,31 @@ class App {
     final llmFactory = LlmClientFactory();
     final llm = llmFactory.createFromConfig(config, systemPrompt: systemPrompt);
 
-    final executor = HostExecutor(config.shellConfig);
+    final home = GlueHome();
+    home.ensureDirectories();
+    final configStore = ConfigStore(home.configPath);
+
+    final sessionId = '${DateTime.now().millisecondsSinceEpoch}-'
+        '${DateTime.now().microsecond.toRadixString(36)}';
+    final sessionDir = home.sessionDir(sessionId);
+    final sessionStore = SessionStore(
+      sessionDir: sessionDir,
+      meta: SessionMeta(
+        id: sessionId,
+        cwd: Directory.current.path,
+        model: config.model,
+        provider: config.provider.name,
+        startTime: DateTime.now(),
+      ),
+    );
+
+    final sessionState = SessionState.load(sessionDir);
+    final executor = await ExecutorFactory.create(
+      shellConfig: config.shellConfig,
+      dockerConfig: config.dockerConfig,
+      cwd: Directory.current.path,
+      sessionMounts: sessionState.dockerMounts,
+    );
 
     final tools = <String, Tool>{
       'read_file': ReadFileTool(),
@@ -225,23 +251,6 @@ class App {
     );
     tools['spawn_subagent'] = SpawnSubagentTool(manager);
     tools['spawn_parallel_subagents'] = SpawnParallelSubagentsTool(manager);
-
-    final home = GlueHome();
-    home.ensureDirectories();
-    final configStore = ConfigStore(home.configPath);
-
-    final sessionId = '${DateTime.now().millisecondsSinceEpoch}-'
-        '${DateTime.now().microsecond.toRadixString(36)}';
-    final sessionStore = SessionStore(
-      sessionDir: home.sessionDir(sessionId),
-      meta: SessionMeta(
-        id: sessionId,
-        cwd: Directory.current.path,
-        model: config.model,
-        provider: config.provider.name,
-        startTime: DateTime.now(),
-      ),
-    );
 
     return App(
       terminal: terminal,
