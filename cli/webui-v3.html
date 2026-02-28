@@ -38,7 +38,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
 .repo-btn{
   flex:1;padding:6px 10px;background:var(--surface-el);border:1px solid var(--border);
   color:var(--text);font-family:var(--mono);font-size:11px;font-weight:600;
-  cursor:pointer;display:flex;align-items:center;gap:6px;transition:border-color .1s;
+  cursor:pointer;display:flex;align-items:center;gap:6px;transition:border-color .15s;
   text-align:left;white-space:nowrap;overflow:hidden;
 }
 .repo-btn:hover{border-color:var(--border-br)}
@@ -83,7 +83,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
   margin:8px 10px;padding:8px 12px;border:1px dashed var(--border-br);
   background:transparent;color:var(--text-mut);font-size:11px;font-family:var(--mono);
   cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;
-  font-weight:600;transition:all .12s;
+  font-weight:600;transition:all .15s;
 }
 .new-sess:hover{border-color:var(--yellow);color:var(--yellow);background:rgba(250,204,21,.02)}
 
@@ -98,7 +98,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
 
 .s-item{
   padding:8px 12px;cursor:pointer;border-left:2px solid transparent;
-  transition:all .08s;position:relative;
+  transition:all .15s;position:relative;
 }
 .s-item:hover{background:var(--surface-el)}
 .s-item.active{background:var(--surface-el);border-left-color:var(--yellow)}
@@ -116,9 +116,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
 }
 .s-branch .branch-icon{color:var(--text-dim)}
 .s-item.active .s-branch .branch-icon{color:var(--yellow)}
-.s-info{
+.s-time{
   margin-top:2px;padding-left:12px;font-family:var(--mono);font-size:9px;
-  color:var(--text-dim);display:flex;gap:8px;
+  color:var(--text-dim);
 }
 .s-close{
   position:absolute;right:8px;top:8px;width:16px;height:16px;border:none;
@@ -164,9 +164,18 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
 .wrapup-item .wi-icon{width:14px;text-align:center}
 .wrapup-item.danger{color:var(--error)}
 
-.rail-foot{padding:8px 12px;border-top:1px solid var(--border);font-size:9px;color:var(--text-dim);font-family:var(--mono);display:flex;align-items:center;gap:6px}
+.rail-foot{padding:8px 10px;border-top:1px solid var(--border);font-size:9px;color:var(--text-dim);font-family:var(--mono);display:flex;align-items:center;gap:6px}
 .rail-foot .conn-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
 .rail-foot .conn-dot.ok{background:var(--success);animation:pulse 2s infinite}
+.rail-foot .conn-label{flex:1}
+
+/* Settings button (matches new-sess style) */
+.settings-btn{
+  width:30px;height:30px;border:1px dashed var(--border-br);background:transparent;
+  color:var(--text-dim);cursor:pointer;font-size:14px;font-family:var(--mono);
+  display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;
+}
+.settings-btn:hover{border-color:var(--yellow);color:var(--yellow)}
 
 /* ═══ Viewport ═══ */
 .viewport{flex:1;display:flex;flex-direction:column;background:var(--bg);min-width:0}
@@ -199,18 +208,35 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
 
 .sidecar-wrap{display:flex;flex:1;overflow:hidden}
 .sidecar{
-  width:220px;background:var(--surface);border-left:1px solid var(--border);
+  width:240px;background:var(--bg);border-left:1px solid var(--border);
   display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;
 }
-.sidecar-head{
-  padding:6px 10px;font-family:var(--mono);font-size:10px;font-weight:700;
-  text-transform:uppercase;letter-spacing:.06em;color:var(--text-mut);
+
+/* Sidecar section headers (collapsible) */
+.sc-section-head{
+  padding:6px 10px;font-family:var(--mono);font-size:9px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);
   border-bottom:1px solid var(--border);display:flex;align-items:center;gap:5px;
-  background:var(--surface-el);
+  cursor:pointer;transition:color .15s;user-select:none;
 }
-.sidecar-head .count{margin-left:auto;color:var(--text-dim)}
-.sidecar-list{overflow-y:auto;flex:1}
-.sc-item{padding:6px 10px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:10px;cursor:pointer;transition:background .08s}
+.sc-section-head:hover{color:var(--text-sec)}
+.sc-section-head .sc-chev{font-size:7px;transition:transform .15s}
+.sc-section-head .sc-chev.open{transform:rotate(90deg)}
+.sc-section-head .count{margin-left:auto;color:var(--text-dim);font-weight:500}
+
+/* Session info key-value list */
+.sc-info{padding:6px 0;border-bottom:1px solid var(--border)}
+.sc-info-row{
+  padding:2px 10px;font-family:var(--mono);font-size:10px;display:flex;gap:6px;
+  line-height:1.5;
+}
+.sc-info-key{color:var(--text-dim);min-width:52px;flex-shrink:0}
+.sc-info-val{color:var(--text-sec);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-info-val.accent{color:var(--yellow)}
+
+/* Tool calls list */
+.sc-list{overflow-y:auto;flex:1}
+.sc-item{padding:6px 10px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:10px;cursor:pointer;transition:background .15s}
 .sc-item:hover{background:var(--surface-el)}
 .sc-item.highlight{background:rgba(250,204,21,.03)}
 .sc-item .sc-name{color:var(--yellow);font-weight:600;margin-bottom:1px}
@@ -220,7 +246,20 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
 .sc-item .sc-result.pending{color:var(--warning)}
 .sc-item .sc-result.needs-approval{color:var(--amber)}
 .sc-item .sc-result.error{color:var(--error)}
-.sc-item .sc-time{font-size:9px;color:var(--text-dim);margin-top:1px}
+
+/* Sidecar stats footer (sticky) */
+.sc-footer{
+  border-top:1px solid var(--border);padding:6px 10px;font-family:var(--mono);font-size:9px;
+  color:var(--text-dim);flex-shrink:0;display:flex;flex-direction:column;gap:3px;
+}
+.sc-footer-row{display:flex;align-items:center;gap:6px}
+.sc-footer-row .sep{color:var(--border-br)}
+.sc-footer-id{
+  display:flex;align-items:center;gap:4px;cursor:pointer;transition:color .15s;
+}
+.sc-footer-id:hover{color:var(--yellow)}
+.sc-footer-id .copy-icon{font-size:8px;opacity:0;transition:opacity .15s}
+.sc-footer-id:hover .copy-icon{opacity:1}
 
 .zone-overlay{
   border-top:1px solid var(--border);border-bottom:1px solid var(--border);
@@ -417,10 +456,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
 .wiz-summary .ws-value{color:var(--text)}
 .wiz-summary .ws-row{margin-bottom:2px}
 
-/* ═══ Settings ═══ */
-.settings-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:11px;margin-left:auto;padding:2px;transition:color .1s}
-.settings-btn:hover{color:var(--yellow)}
-
+/* ═══ Settings Modal ═══ */
 .set-section{margin-bottom:16px}
 .set-section:last-child{margin-bottom:0}
 .set-section-head{
@@ -461,7 +497,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
 
 @media(max-width:700px){
   .rail{width:48px}
-  .s-branch,.s-info,.s-close,.repo-btn .repo-name,.repo-add-btn,.rename-toast{display:none}
+  .s-branch,.s-time,.s-close,.repo-btn .repo-name,.repo-add-btn,.rename-toast{display:none}
   .s-title{font-size:9px}
   .sidecar{display:none}
 }
@@ -536,10 +572,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
                   <span class="branch-icon">⑂</span>
                   <span x-text="s.branch"></span>
                 </div>
-                <div class="s-info">
-                  <span x-text="s.model"></span>
-                  <span x-text="s.time"></span>
-                </div>
+                <div class="s-time" x-text="s.time"></div>
                 <button class="s-close" @click.stop="showWrapup = showWrapup === s.id ? null : s.id">⋯</button>
                 <template x-if="showWrapup === s.id">
                   <div class="wrapup-menu" @click.stop>
@@ -582,7 +615,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
 
       <div class="rail-foot">
         <span class="conn-dot ok"></span>
-        <span>127.0.0.1:8787</span>
+        <span class="conn-label">127.0.0.1:8787</span>
         <button class="settings-btn" @click="openModal('settings')" title="Settings">⚙</button>
       </div>
     </aside>
@@ -616,15 +649,45 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
             </div>
             <template x-if="showSidecar">
               <div class="sidecar">
-                <div class="sidecar-head"><span>Tools</span><span class="count" x-text="toolCalls().length"></span></div>
-                <div class="sidecar-list">
-                  <template x-for="(tc, i) in toolCalls()" :key="i">
-                    <div class="sc-item" :class="tc.status === 'needs-approval' && 'highlight'">
-                      <div class="sc-name" x-text="tc.name"></div>
-                      <div class="sc-path" x-text="tc.args"></div>
-                      <div class="sc-result" :class="tc.status" x-text="tc.summary || tc.status"></div>
-                    </div>
-                  </template>
+                <!-- Session info -->
+                <div class="sc-info">
+                  <div class="sc-info-row"><span class="sc-info-key">branch</span><span class="sc-info-val accent" x-text="activeSession().branch"></span></div>
+                  <div class="sc-info-row"><span class="sc-info-key">model</span><span class="sc-info-val" x-text="activeSession().provider + '/' + activeSession().model"></span></div>
+                  <div class="sc-info-row"><span class="sc-info-key">repo</span><span class="sc-info-val" x-text="activeSession().repo.split('/').pop()"></span></div>
+                  <div class="sc-info-row"><span class="sc-info-key">status</span><span class="sc-info-val" x-text="activeSession().alive ? '● active' : '○ idle'" :style="activeSession().alive && 'color:var(--success)'"></span></div>
+                </div>
+
+                <!-- Tool calls (collapsible) -->
+                <div class="sc-section-head" @click="showToolCalls = !showToolCalls">
+                  <span class="sc-chev" :class="showToolCalls && 'open'">▶</span>
+                  <span>Tool Calls</span>
+                  <span class="count" x-text="toolCalls().length"></span>
+                </div>
+                <template x-if="showToolCalls">
+                  <div class="sc-list">
+                    <template x-for="(tc, i) in toolCalls()" :key="i">
+                      <div class="sc-item" :class="tc.status === 'needs-approval' && 'highlight'">
+                        <div class="sc-name" x-text="tc.name"></div>
+                        <div class="sc-path" x-text="tc.args"></div>
+                        <div class="sc-result" :class="tc.status" x-text="tc.summary || tc.status"></div>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+
+                <!-- Stats footer (sticky) -->
+                <div class="sc-footer">
+                  <div class="sc-footer-row">
+                    <span x-text="formatTokens(activeSession().tokens) + ' tok'"></span>
+                    <span class="sep">·</span>
+                    <span x-text="msgCount(activeSession()) + ' msgs'"></span>
+                    <span class="sep">·</span>
+                    <span x-text="activeSession().time"></span>
+                  </div>
+                  <div class="sc-footer-id" @click="copySessionId(activeSession().id)" :title="'glue --resume ' + activeSession().id">
+                    <span x-text="activeSession().id"></span>
+                    <span class="copy-icon">⎘</span>
+                  </div>
                 </div>
               </div>
             </template>
@@ -1080,6 +1143,7 @@ function glue() {
     activeId: 'S-01',
     activeRepoPath: '~/code/glue',
     showSidecar: true,
+    showToolCalls: true,
     showRepoDD: false,
     showWrapup: null,
     showArchived: false,
@@ -1271,6 +1335,16 @@ function glue() {
     // ── Session helpers ──
     activeSession() { return this.sessions.find(s => s.id === this.activeId) || null; },
     toolCalls() { const s = this.activeSession(); return s ? s.blocks.filter(b => b.type === 'tool') : []; },
+    msgCount(s) { return s ? s.blocks.filter(b => b.type === 'user' || b.type === 'assistant').length : 0; },
+    formatTokens(n) {
+      if (n >= 1000000) return (n / 1000000).toFixed(1) + 'm';
+      if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+      return String(n);
+    },
+    copySessionId(id) {
+      const cmd = 'glue --resume ' + id;
+      navigator.clipboard?.writeText(cmd);
+    },
     switchTo(id) { this.activeId = id; },
 
     // ── Actions ──
