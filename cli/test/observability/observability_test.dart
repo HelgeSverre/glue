@@ -214,5 +214,45 @@ void main() {
       debugController.disable();
       expect(obs.debugEnabled, isFalse);
     });
+
+    test('startAutoFlush creates periodic flush and close cancels it',
+        () async {
+      final sink = _MockSink();
+      obs.addSink(sink);
+      obs.startAutoFlush(const Duration(milliseconds: 10));
+
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      final countBeforeClose = sink.flushCount;
+      expect(countBeforeClose, greaterThanOrEqualTo(1));
+
+      await obs.close();
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(sink.flushCount, countBeforeClose);
+    });
+
+    test('activeSpan is used as default parent', () {
+      final parent = obs.startSpan('parent');
+      obs.activeSpan = parent;
+      final child = obs.startSpan('child');
+      expect(child.traceId, equals(parent.traceId));
+      expect(child.parentSpanId, equals(parent.spanId));
+      obs.activeSpan = null;
+    });
+
+    test('explicit parent overrides activeSpan', () {
+      final active = obs.startSpan('active');
+      obs.activeSpan = active;
+      final explicit = obs.startSpan('explicit-parent');
+      final child = obs.startSpan('child', parent: explicit);
+      expect(child.traceId, equals(explicit.traceId));
+      expect(child.parentSpanId, equals(explicit.spanId));
+      obs.activeSpan = null;
+    });
+
+    test('startSpan without activeSpan generates fresh traceId', () {
+      obs.activeSpan = null;
+      final span = obs.startSpan('test');
+      expect(span.parentSpanId, isNull);
+    });
   });
 }

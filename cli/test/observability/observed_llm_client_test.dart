@@ -50,7 +50,12 @@ void main() {
     sink = _MockSink();
     obs = Observability(debugController: DebugController());
     obs.addSink(sink);
-    client = ObservedLlmClient(inner: mockLlm, obs: obs);
+    client = ObservedLlmClient(
+      inner: mockLlm,
+      obs: obs,
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-20250514',
+    );
   });
 
   test('yields all chunks from inner stream', () async {
@@ -140,5 +145,37 @@ void main() {
 
     expect(sink.spans, hasLength(1));
     expect(sink.spans.first.endTime, isNotNull);
+  });
+
+  test('records gen_ai.system and gen_ai.request.model', () async {
+    mockLlm.responses.add([TextDelta('ok')]);
+
+    await client.stream([Message.user('hi')]).toList();
+
+    expect(sink.spans.first.attributes['gen_ai.system'], 'anthropic');
+    expect(sink.spans.first.attributes['gen_ai.request.model'], 'claude-sonnet-4-20250514');
+  });
+
+  test('records gen_ai.usage attributes from UsageInfo', () async {
+    mockLlm.responses.add([
+      TextDelta('ok'),
+      UsageInfo(inputTokens: 100, outputTokens: 50),
+    ]);
+
+    await client.stream([Message.user('hi')]).toList();
+
+    expect(sink.spans.first.attributes['gen_ai.usage.input_tokens'], 100);
+    expect(sink.spans.first.attributes['gen_ai.usage.output_tokens'], 50);
+    expect(sink.spans.first.attributes['gen_ai.usage.total_tokens'], 150);
+  });
+
+  test('omits gen_ai attributes when provider and model are empty', () async {
+    final plainClient = ObservedLlmClient(inner: mockLlm, obs: obs);
+    mockLlm.responses.add([TextDelta('ok')]);
+
+    await plainClient.stream([Message.user('hi')]).toList();
+
+    expect(sink.spans.first.attributes.containsKey('gen_ai.system'), isFalse);
+    expect(sink.spans.first.attributes.containsKey('gen_ai.request.model'), isFalse);
   });
 }
