@@ -723,16 +723,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
                   <span class="sc-header-title">Session</span>
                 </div>
 
-                <!-- Lifecycle widget (top) -->
+                <!-- Lifecycle action -->
                 <template x-if="activeSession().branch && activeSession().vcs">
                   <div class="sc-lifecycle">
-                    <div class="sc-lc-steps">
-                      <span class="sc-lc-step" :class="lcStepClass(activeSession(), 'commit')">commit</span>
-                      <span class="sc-lc-step" :class="lcStepClass(activeSession(), 'push')">push</span>
-                      <span class="sc-lc-step" :class="lcStepClass(activeSession(), 'pr')">pr</span>
-                      <span class="sc-lc-step" :class="lcStepClass(activeSession(), 'checks')">checks</span>
-                      <span class="sc-lc-step" :class="lcStepClass(activeSession(), 'merge')">merge</span>
-                    </div>
                     <template x-if="lcWarning(activeSession())">
                       <div class="sc-lc-warn">
                         <span>⚠</span>
