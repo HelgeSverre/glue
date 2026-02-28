@@ -10,10 +10,12 @@ export 'src/terminal/terminal.dart'
         CharEvent,
         ResizeEvent,
         MouseEvent,
+        PasteEvent,
         Key,
         AnsiStyle;
 export 'src/terminal/layout.dart' show Layout;
 export 'src/input/line_editor.dart' show LineEditor, InputAction;
+export 'src/input/text_area_editor.dart' show TextAreaEditor;
 export 'src/agent/agent_core.dart'
     show
         AgentCore,
@@ -42,7 +44,7 @@ export 'src/agent/agent_runner.dart' show AgentRunner, ToolApprovalPolicy;
 export 'src/agent/agent_manager.dart' show AgentManager;
 export 'src/agent/prompts.dart' show Prompts;
 export 'src/rendering/ansi_utils.dart'
-    show osc8Link, stripAnsi, visibleLength, ansiTruncate, ansiWrap, wrapIndented;
+    show osc8Link, stripAnsi, visibleLength, ansiTruncate, ansiWrap, wrapIndented, charWidth;
 export 'src/rendering/block_renderer.dart' show BlockRenderer;
 export 'src/rendering/markdown_renderer.dart' show MarkdownRenderer;
 export 'src/commands/slash_commands.dart'

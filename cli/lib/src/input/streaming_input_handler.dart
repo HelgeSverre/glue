@@ -1,7 +1,8 @@
 import '../commands/slash_commands.dart';
 import '../terminal/terminal.dart';
 import '../ui/slash_autocomplete.dart';
-import 'line_editor.dart';
+import 'line_editor.dart' show InputAction;
+import 'text_area_editor.dart';
 
 /// Action to take after handling a terminal event during streaming mode.
 enum StreamingAction {
@@ -32,7 +33,7 @@ typedef StreamingInputResult = ({StreamingAction action, String? commandOutput})
 StreamingInputResult handleStreamingInput({
   required TerminalEvent event,
   required bool isBashRunning,
-  required LineEditor editor,
+  required TextAreaEditor editor,
   required SlashAutocomplete autocomplete,
   required SlashCommandRegistry commands,
 }) {

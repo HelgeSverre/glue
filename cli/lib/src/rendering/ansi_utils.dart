@@ -31,7 +31,7 @@ int visibleLength(String text) {
   final stripped = stripAnsi(text);
   var width = 0;
   for (final cp in stripped.runes) {
-    width += _charWidth(cp);
+    width += charWidth(cp);
   }
   return width;
 }
@@ -70,7 +70,7 @@ String ansiTruncate(String text, int maxVisible) {
       cp = codeUnit;
       advance = 1;
     }
-    final w = _charWidth(cp);
+    final w = charWidth(cp);
     if (w == 0) {
       buf.write(text.substring(i, i + advance));
       i += advance;
@@ -178,7 +178,7 @@ String wrapIndented(
 }
 
 /// Terminal column width of a single Unicode code point.
-int _charWidth(int cp) {
+int charWidth(int cp) {
   // Zero-width: combining marks, variation selectors, joiners
   if ((cp >= 0x0300 && cp <= 0x036F) ||
       (cp >= 0x1AB0 && cp <= 0x1AFF) ||
