@@ -9,8 +9,10 @@ import 'package:glue/src/llm/sse.dart';
 import 'package:glue/src/llm/tool_schema.dart';
 
 /// LLM client for OpenAI Chat Completions API with streaming.
+///
+/// {@category LLM Providers}
 class OpenAiClient implements LlmClient {
-  final http.Client _http;
+  final http.Client Function() _requestClientFactory;
   final String apiKey;
   final String model;
   final String systemPrompt;
@@ -24,49 +26,57 @@ class OpenAiClient implements LlmClient {
     required this.model,
     required this.systemPrompt,
     String baseUrl = _defaultBaseUrl,
-  })  : _http = httpClient,
+    http.Client Function()? requestClientFactory,
+  })  : _requestClientFactory = requestClientFactory ?? http.Client.new,
         _baseUri = Uri.parse(baseUrl);
 
   @override
   Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
-    const mapper = OpenAiMessageMapper();
-    final mapped = mapper.mapMessages(messages, systemPrompt: systemPrompt);
+    // Per-request client: closing it aborts the TCP connection when the
+    // stream subscription is cancelled, saving output tokens.
+    final requestClient = _requestClientFactory();
+    try {
+      const mapper = OpenAiMessageMapper();
+      final mapped = mapper.mapMessages(messages, systemPrompt: systemPrompt);
 
-    final body = <String, dynamic>{
-      'model': model,
-      'stream': true,
-      'stream_options': {'include_usage': true},
-      'messages': mapped.messages,
-    };
+      final body = <String, dynamic>{
+        'model': model,
+        'stream': true,
+        'stream_options': {'include_usage': true},
+        'messages': mapped.messages,
+      };
 
-    if (tools != null && tools.isNotEmpty) {
-      body['tools'] = const OpenAiToolEncoder().encodeAll(tools);
-    }
+      if (tools != null && tools.isNotEmpty) {
+        body['tools'] = const OpenAiToolEncoder().encodeAll(tools);
+      }
 
-    final request = http.Request(
-      'POST',
-      _baseUri.resolve('/v1/chat/completions'),
-    );
-    request.headers.addAll({
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $apiKey',
-    });
-    request.body = jsonEncode(body);
-
-    final response = await _http.send(request);
-
-    if (response.statusCode != 200) {
-      final errorBody = await response.stream.bytesToString();
-      throw Exception(
-        'OpenAI API error ${response.statusCode}: $errorBody',
+      final request = http.Request(
+        'POST',
+        _baseUri.resolve('/v1/chat/completions'),
       );
-    }
+      request.headers.addAll({
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $apiKey',
+      });
+      request.body = jsonEncode(body);
 
-    yield* parseStreamEvents(
-      decodeSse(response.stream).map(
-        (e) => jsonDecode(e.data) as Map<String, dynamic>,
-      ),
-    );
+      final response = await requestClient.send(request);
+
+      if (response.statusCode != 200) {
+        final errorBody = await response.stream.bytesToString();
+        throw Exception(
+          'OpenAI API error ${response.statusCode}: $errorBody',
+        );
+      }
+
+      yield* parseStreamEvents(
+        decodeSse(response.stream).map(
+          (e) => jsonDecode(e.data) as Map<String, dynamic>,
+        ),
+      );
+    } finally {
+      requestClient.close();
+    }
   }
 
   /// Parse OpenAI streaming chunks into [LlmChunk]s.

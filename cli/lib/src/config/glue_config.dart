@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:yaml/yaml.dart';
 import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/config/model_registry.dart';
+import 'package:glue/src/config/permission_mode.dart';
 import 'package:glue/src/shell/docker_config.dart';
 import 'package:glue/src/shell/shell_config.dart';
 import 'package:glue/src/web/web_config.dart';
@@ -58,6 +59,7 @@ class GlueConfig {
   final WebConfig webConfig;
   final ObservabilityConfig observability;
   final List<String> skillPaths;
+  final PermissionMode permissionMode;
 
   GlueConfig({
     LlmProvider? provider,
@@ -73,6 +75,7 @@ class GlueConfig {
     WebConfig? webConfig,
     this.observability = const ObservabilityConfig(),
     this.skillPaths = const [],
+    this.permissionMode = PermissionMode.confirm,
   })  : provider = provider ?? LlmProvider.anthropic,
         model = model ?? _defaultModel(provider ?? LlmProvider.anthropic),
         shellConfig = shellConfig ?? const ShellConfig(),
@@ -197,17 +200,15 @@ class GlueConfig {
 
     // 2c. Resolve Docker configuration.
     final dockerSection = fileConfig?['docker'] as Map?;
-    final dockerEnabled =
-        Platform.environment['GLUE_DOCKER_ENABLED'] == '1' ||
-            (dockerSection?['enabled'] as bool? ?? false);
+    final dockerEnabled = Platform.environment['GLUE_DOCKER_ENABLED'] == '1' ||
+        (dockerSection?['enabled'] as bool? ?? false);
     final dockerImage = Platform.environment['GLUE_DOCKER_IMAGE'] ??
         dockerSection?['image'] as String? ??
         'ubuntu:24.04';
     final dockerShell = Platform.environment['GLUE_DOCKER_SHELL'] ??
         dockerSection?['shell'] as String? ??
         'sh';
-    final dockerFallback =
-        dockerSection?['fallback_to_host'] as bool? ?? true;
+    final dockerFallback = dockerSection?['fallback_to_host'] as bool? ?? true;
 
     final dockerMounts = <MountEntry>[];
     final envMounts = Platform.environment['GLUE_DOCKER_MOUNTS'];
@@ -258,12 +259,11 @@ class GlueConfig {
 
     final webFetchConfig = WebFetchConfig(
       jinaApiKey: jinaApiKey,
-      allowJinaFallback:
-          fetchSection?['allow_jina_fallback'] as bool? ?? true,
+      allowJinaFallback: fetchSection?['allow_jina_fallback'] as bool? ?? true,
       timeoutSeconds: fetchSection?['timeout_seconds'] as int? ??
           AppConstants.webFetchTimeoutSeconds,
-      maxBytes: fetchSection?['max_bytes'] as int? ??
-          AppConstants.webFetchMaxBytes,
+      maxBytes:
+          fetchSection?['max_bytes'] as int? ?? AppConstants.webFetchMaxBytes,
       defaultMaxTokens: fetchSection?['max_tokens'] as int? ??
           AppConstants.webFetchDefaultMaxTokens,
     );
@@ -296,12 +296,10 @@ class GlueConfig {
         : OcrProviderType.mistral;
 
     final pdfConfig = PdfConfig(
-      maxBytes:
-          pdfSection?['max_bytes'] as int? ?? AppConstants.pdfMaxBytes,
+      maxBytes: pdfSection?['max_bytes'] as int? ?? AppConstants.pdfMaxBytes,
       timeoutSeconds: pdfSection?['timeout_seconds'] as int? ??
           AppConstants.pdfTimeoutSeconds,
-      enableOcrFallback:
-          pdfSection?['enable_ocr_fallback'] as bool? ?? true,
+      enableOcrFallback: pdfSection?['enable_ocr_fallback'] as bool? ?? true,
       ocrProvider: ocrProvider,
       mistralApiKey: mistralApiKey,
       openaiApiKey: pdfOpenaiApiKey,
@@ -336,8 +334,7 @@ class GlueConfig {
           browserbaseSection?['api_key'] as String?,
       browserbaseProjectId: Platform.environment['BROWSERBASE_PROJECT_ID'] ??
           browserbaseSection?['project_id'] as String?,
-      browserlessBaseUrl:
-          browserlessSection?['base_url'] as String?,
+      browserlessBaseUrl: browserlessSection?['base_url'] as String?,
       browserlessApiKey: Platform.environment['BROWSERLESS_API_KEY'] ??
           browserlessSection?['api_key'] as String?,
     );
@@ -417,7 +414,17 @@ class GlueConfig {
       }
     }
 
-    // 4. Parse skill paths.
+    // 4. Parse permission mode.
+    final permModeStr = Platform.environment['GLUE_PERMISSION_MODE'] ??
+        fileConfig?['permission_mode'] as String?;
+    final permissionMode = permModeStr != null
+        ? PermissionMode.values.firstWhere(
+            (m) => m.name == permModeStr || m.label == permModeStr,
+            orElse: () => PermissionMode.confirm,
+          )
+        : PermissionMode.confirm;
+
+    // 5. Parse skill paths.
     final skillPaths = <String>[];
     final envSkillPaths = Platform.environment['GLUE_SKILLS_PATHS'];
     if (envSkillPaths != null && envSkillPaths.isNotEmpty) {
@@ -441,6 +448,7 @@ class GlueConfig {
       webConfig: webConfig,
       observability: observabilityConfig,
       skillPaths: skillPaths,
+      permissionMode: permissionMode,
     );
   }
 }

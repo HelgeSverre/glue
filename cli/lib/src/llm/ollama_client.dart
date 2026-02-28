@@ -16,7 +16,7 @@ import 'package:glue/src/llm/tool_schema.dart';
 ///
 /// {@category LLM Providers}
 class OllamaClient implements LlmClient {
-  final http.Client _http;
+  final http.Client Function() _requestClientFactory;
   final String model;
   final String systemPrompt;
   final Uri _baseUri;
@@ -26,14 +26,15 @@ class OllamaClient implements LlmClient {
     required this.model,
     required this.systemPrompt,
     String baseUrl = 'http://localhost:11434',
-  })  : _http = httpClient,
+    http.Client Function()? requestClientFactory,
+  })  : _requestClientFactory = requestClientFactory ?? http.Client.new,
         _baseUri = Uri.parse(baseUrl);
 
   @override
   Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
     // Per-request client: closing it aborts the TCP connection when the
     // stream subscription is cancelled, saving output tokens.
-    final requestClient = http.Client();
+    final requestClient = _requestClientFactory();
     try {
       final mappedMessages = <Map<String, dynamic>>[];
 

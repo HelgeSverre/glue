@@ -9,8 +9,10 @@ import 'package:glue/src/llm/sse.dart';
 import 'package:glue/src/llm/tool_schema.dart';
 
 /// LLM client for the Anthropic Messages API with streaming.
+///
+/// {@category LLM Providers}
 class AnthropicClient implements LlmClient {
-  final http.Client _http;
+  final http.Client Function() _requestClientFactory;
   final String apiKey;
   final String model;
   final String systemPrompt;
@@ -25,51 +27,59 @@ class AnthropicClient implements LlmClient {
     required this.model,
     required this.systemPrompt,
     String baseUrl = _defaultBaseUrl,
-  })  : _http = httpClient,
+    http.Client Function()? requestClientFactory,
+  })  : _requestClientFactory = requestClientFactory ?? http.Client.new,
         _baseUri = Uri.parse(baseUrl);
 
   @override
   Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
-    const mapper = AnthropicMessageMapper();
-    final mapped = mapper.mapMessages(messages, systemPrompt: systemPrompt);
+    // Per-request client: closing it aborts the TCP connection when the
+    // stream subscription is cancelled, saving output tokens.
+    final requestClient = _requestClientFactory();
+    try {
+      const mapper = AnthropicMessageMapper();
+      final mapped = mapper.mapMessages(messages, systemPrompt: systemPrompt);
 
-    final body = <String, dynamic>{
-      'model': model,
-      'max_tokens': 8192,
-      'stream': true,
-      'system': mapped.systemPrompt,
-      'messages': mapped.messages,
-    };
+      final body = <String, dynamic>{
+        'model': model,
+        'max_tokens': 8192,
+        'stream': true,
+        'system': mapped.systemPrompt,
+        'messages': mapped.messages,
+      };
 
-    if (tools != null && tools.isNotEmpty) {
-      body['tools'] = const AnthropicToolEncoder().encodeAll(tools);
-    }
+      if (tools != null && tools.isNotEmpty) {
+        body['tools'] = const AnthropicToolEncoder().encodeAll(tools);
+      }
 
-    final request = http.Request(
-      'POST',
-      _baseUri.resolve('/v1/messages'),
-    );
-    request.headers.addAll({
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': _apiVersion,
-    });
-    request.body = jsonEncode(body);
-
-    final response = await _http.send(request);
-
-    if (response.statusCode != 200) {
-      final errorBody = await response.stream.bytesToString();
-      throw Exception(
-        'Anthropic API error ${response.statusCode}: $errorBody',
+      final request = http.Request(
+        'POST',
+        _baseUri.resolve('/v1/messages'),
       );
-    }
+      request.headers.addAll({
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': _apiVersion,
+      });
+      request.body = jsonEncode(body);
 
-    yield* parseStreamEvents(
-      decodeSse(response.stream).map(
-        (e) => jsonDecode(e.data) as Map<String, dynamic>,
-      ),
-    );
+      final response = await requestClient.send(request);
+
+      if (response.statusCode != 200) {
+        final errorBody = await response.stream.bytesToString();
+        throw Exception(
+          'Anthropic API error ${response.statusCode}: $errorBody',
+        );
+      }
+
+      yield* parseStreamEvents(
+        decodeSse(response.stream).map(
+          (e) => jsonDecode(e.data) as Map<String, dynamic>,
+        ),
+      );
+    } finally {
+      requestClient.close();
+    }
   }
 
   /// Parse Anthropic SSE event payloads into [LlmChunk]s.

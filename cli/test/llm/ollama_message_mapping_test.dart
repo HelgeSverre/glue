@@ -40,6 +40,7 @@ void main() {
         httpClient: mockClient,
         model: 'test',
         systemPrompt: '',
+        requestClientFactory: () => mockClient,
       );
     });
 
