@@ -1,8 +1,14 @@
 import 'package:glue/src/rendering/ansi_utils.dart';
 import 'package:glue/src/rendering/markdown_renderer.dart';
 
+/// The lifecycle phase of a tool call, used to drive the status suffix
+/// displayed next to the tool name in the terminal (e.g. "running…", "denied").
 enum ToolCallPhase { preparing, awaitingApproval, running, done, denied, error }
 
+/// Snapshot of a tool call's display state, passed to [BlockRenderer.renderToolCallRef].
+///
+/// Keeps rendering concerns separate from the agent event model — the renderer
+/// never needs to know about [AgentEvent] directly.
 class ToolCallRenderState {
   final String name;
   final Map<String, dynamic>? args;
@@ -50,10 +56,14 @@ class BlockRenderer {
     return '$header\n    \x1b[90m$argsStr\x1b[0m';
   }
 
-  /// Render a tool call block with phase indicator.
+  /// Renders a tool call header with a phase-dependent status suffix.
   ///
-  /// [phase] controls the suffix: preparing, running, done, etc.
-  /// If [state] is null, renders a fallback.
+  /// The [ToolCallRenderState.phase] determines what appears after the tool
+  /// name — for example `(preparing…)`, `(running…)`, or nothing at all
+  /// when the phase is [ToolCallPhase.done].
+  ///
+  /// When [state] is null (e.g. the call ID wasn't found), renders a
+  /// placeholder `"Tool: ???"` so the UI never breaks.
   String renderToolCallRef(ToolCallRenderState? state) {
     if (state == null) {
       return ' \x1b[1m\x1b[33m▶ Tool: ???\x1b[0m';

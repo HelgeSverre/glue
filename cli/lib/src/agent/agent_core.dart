@@ -59,16 +59,24 @@ class TextDelta extends LlmChunk {
   TextDelta(this.text);
 }
 
-/// Emitted as soon as a tool call begins (name/ID known, arguments still
-/// streaming). Not all providers emit this — Ollama delivers fully formed
-/// tool calls without incremental streaming.
+/// The model has started a tool call, but the arguments are still streaming in.
+///
+/// Use this to show early UI feedback (e.g. "preparing read_file…") before the
+/// full [ToolCallDelta] arrives with parsed arguments.
+///
+/// Not every provider emits this — Ollama delivers tool calls fully formed, so
+/// you may only receive [ToolCallDelta]. Always treat this event as optional.
 class ToolCallStart extends LlmChunk {
   final String id;
   final String name;
   ToolCallStart({required this.id, required this.name});
 }
 
-/// A completed tool call requested by the model (arguments fully parsed).
+/// A fully-formed tool call with parsed arguments, ready to execute.
+///
+// TODO(rename): Consider renaming to `ToolCallComplete` — the "Delta" name
+// suggests an incremental update, but this is actually the final event.
+// Deferred because it touches 50+ references across source, tests, and docs.
 class ToolCallDelta extends LlmChunk {
   final ToolCall toolCall;
   ToolCallDelta(this.toolCall);
@@ -248,8 +256,9 @@ class AgentCore {
         // No tool calls → turn is complete.
         if (toolCalls.isEmpty) break;
 
-        // Wait for all results (some may already be completed if
-        // auto-approved tools started executing during streaming).
+        // Tools may have started executing as soon as they were yielded
+        // above, so some futures could already be resolved by the time we
+        // get here.
         final results = await Future.wait(toolFutures);
 
         // Add results to conversation and yield events

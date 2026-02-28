@@ -7,8 +7,13 @@ import 'package:glue/src/shell/host_executor.dart';
 import 'package:glue/src/shell/shell_config.dart';
 
 class ExecutorFactory {
-  /// Returns a [DockerExecutor] when Docker is enabled and available,
-  /// otherwise a [HostExecutor]. Throws if Docker is required but missing.
+  /// Creates the appropriate [CommandExecutor] for the current config.
+  ///
+  /// When Docker is enabled, checks that the `docker` binary is available
+  /// and returns a [DockerExecutor]. If Docker isn't installed and
+  /// [DockerConfig.fallbackToHost] is true, falls back to [HostExecutor].
+  ///
+  /// Throws [StateError] if Docker is required (no fallback) but not found.
   static Future<CommandExecutor> create({
     required ShellConfig shellConfig,
     required DockerConfig dockerConfig,

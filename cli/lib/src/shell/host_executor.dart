@@ -4,7 +4,10 @@ import 'dart:io';
 import 'package:glue/src/shell/command_executor.dart';
 import 'package:glue/src/shell/shell_config.dart';
 
-/// Runs commands via the local shell, as opposed to [DockerExecutor].
+/// Runs commands directly on the host machine via the configured shell.
+///
+/// This is the default executor when Docker is disabled. Shell flags
+/// (interactive, login) are determined by [ShellConfig.mode].
 class HostExecutor implements CommandExecutor {
   final ShellConfig shellConfig;
 

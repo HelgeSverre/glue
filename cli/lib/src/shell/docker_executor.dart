@@ -6,11 +6,19 @@ import 'package:path/path.dart' as p;
 import 'package:glue/src/shell/command_executor.dart';
 import 'package:glue/src/shell/docker_config.dart';
 
-/// Handles volume mounting, working directory setup, and container lifecycle.
+/// Runs shell commands inside a Docker container.
+///
+/// The project's working directory is bind-mounted at `/work`, and any
+/// additional [MountEntry]s from config or the session are added as volumes.
+/// Container cleanup (CID file removal, `docker stop`) is handled
+/// automatically on timeout or kill.
 class DockerExecutor implements CommandExecutor {
   final DockerConfig config;
 
-  /// Mounted into the container as `/work`.
+  /// The host directory to use as the container's working directory.
+  ///
+  /// Bind-mounted as `/work` inside the container — this is where all
+  /// commands execute by default.
   final String cwd;
 
   final List<MountEntry> mounts;
@@ -21,7 +29,11 @@ class DockerExecutor implements CommandExecutor {
     required this.mounts,
   });
 
-  /// [cidfilePath]: file where Docker writes the container ID.
+  /// Builds the full `docker run` argument list for [command].
+  ///
+  /// [cidfilePath] is passed to `--cidfile` so Docker writes the container ID
+  /// to disk — this lets us `docker stop` the container on timeout or kill
+  /// without needing to parse `docker ps`.
   List<String> buildDockerArgs(String command, String cidfilePath) {
     final args = <String>[
       'run',
@@ -128,7 +140,10 @@ Future<String?> _readCidWithRetry(File cidfile) async {
   return null;
 }
 
-/// Stops the container and cleans up the CID file on exit or kill.
+/// A [RunningCommand] backed by a Docker container.
+///
+/// Extends the base kill behavior to `docker stop` the container before
+/// sending SIGTERM, and cleans up the CID temp file on process exit.
 class DockerRunningCommand extends RunningCommand {
   final File _cidfile;
 

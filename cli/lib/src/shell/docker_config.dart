@@ -5,7 +5,13 @@ enum MountMode { ro, rw }
 class MountEntry {
   final String hostPath;
   final MountMode mode;
+
+  /// Where to mount this path inside the container.
+  ///
+  /// When null, the [hostPath] is used as the container path too, so
+  /// `/home/me/project` mounts at `/home/me/project` inside the container.
   final String? containerPath;
+
   final DateTime? addedAt;
 
   MountEntry({
@@ -15,6 +21,18 @@ class MountEntry {
     this.addedAt,
   });
 
+  /// Parses a Docker-style mount spec into a [MountEntry].
+  ///
+  /// The format mirrors Docker's `-v` syntax for familiarity:
+  ///
+  /// ```
+  /// /host/path                       → rw, same container path
+  /// /host/path:/container/path       → rw, explicit container path
+  /// /host/path:ro                    → read-only, same container path
+  /// /host/path:/container/path:ro    → read-only, explicit container path
+  /// ```
+  ///
+  /// Throws [ArgumentError] if the spec is empty or the host path isn't absolute.
   factory MountEntry.parse(String spec) {
     var s = spec.trim();
     if (s.isEmpty) throw ArgumentError('Mount spec cannot be empty');
@@ -61,11 +79,21 @@ class MountEntry {
     return false;
   }
 
+  /// Formats this entry as a Docker `-v` volume argument.
+  ///
+  /// ```dart
+  /// MountEntry(hostPath: '/src', mode: MountMode.ro).toDockerArg()
+  /// // => '/src:/src:ro'
+  /// ```
   String toDockerArg() {
     final target = containerPath ?? hostPath;
     return '$hostPath:$target:${mode.name}';
   }
 
+  /// Removes duplicate mounts, keeping the last entry for each unique path/mode combo.
+  ///
+  /// Applied before building Docker args so that config-level mounts and
+  /// session-level mounts can overlap without producing duplicate `-v` flags.
   static List<MountEntry> dedup(List<MountEntry> entries) {
     final map = <String, MountEntry>{};
     for (final e in entries) {

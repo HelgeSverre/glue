@@ -16,7 +16,7 @@ linter:
     unnecessary_parenthesis: true
     unnecessary_to_list_in_spreads: true
 
-    # Error prevention
+    # Error prevention — catch common mistakes at analysis time
     cancel_subscriptions: true
     close_sinks: true
     literal_only_boolean_expressions: true
@@ -25,7 +25,7 @@ linter:
     throw_in_finally: true
     unnecessary_statements: true
 
-    # Async best practices
+    # Async safety — flag forgotten awaits that cause silent failures
     unawaited_futures: true
     discarded_futures: true
 
@@ -33,7 +33,7 @@ linter:
     avoid_dynamic_calls: true
     unnecessary_nullable_for_final_variable_declarations: true
 
-    # Code hygiene
+    # Code hygiene — keep the codebase tidy and avoid subtle bugs
     avoid_print: true
     avoid_unused_constructor_parameters: true
     join_return_with_assignment: true
