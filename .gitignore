@@ -28,3 +28,6 @@ cli/dartdoc/
 # Environment
 .env
 .env.local
+
+# Worktrees
+.worktrees/
