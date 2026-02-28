@@ -12,6 +12,7 @@ import 'commands/slash_commands.dart';
 import 'config/constants.dart';
 import 'config/glue_config.dart';
 import 'llm/llm_factory.dart';
+import 'llm/model_lister.dart';
 import 'rendering/block_renderer.dart';
 import 'rendering/ansi_utils.dart';
 import 'rendering/mascot.dart';
@@ -414,6 +415,17 @@ class App {
     ));
 
     _commands.register(SlashCommand(
+      name: 'models',
+      description: 'List available models from the current provider',
+      execute: (_) {
+        if (_config == null) return 'No config available.';
+        final config = _config;
+        unawaited(_fetchModels(config));
+        return 'Fetching ${config.provider.name} models…';
+      },
+    ));
+
+    _commands.register(SlashCommand(
       name: 'info',
       description: 'Show session info',
       aliases: ['status'],
@@ -469,6 +481,32 @@ class App {
         return '';
       },
     ));
+  }
+
+  Future<void> _fetchModels(GlueConfig config) async {
+    try {
+      final lister = ModelLister();
+      final models = await lister.list(
+        provider: config.provider,
+        apiKey: config.provider == LlmProvider.ollama ? null : config.apiKey,
+        ollamaBaseUrl: config.ollamaBaseUrl,
+      );
+      if (models.isEmpty) {
+        _blocks.add(_ConversationEntry.system('No models found.'));
+      } else {
+        final buf = StringBuffer('${config.provider.name} models '
+            '(${models.length}):\n');
+        for (final m in models) {
+          final current = m.id == _modelName ? ' ← current' : '';
+          final size = m.size != null ? ' (${m.size})' : '';
+          buf.writeln('  ${m.id}$size$current');
+        }
+        _blocks.add(_ConversationEntry.system(buf.toString()));
+      }
+    } catch (e) {
+      _blocks.add(_ConversationEntry.system('Error fetching models: $e'));
+    }
+    _render();
   }
 
   String _resumeSession(SessionMeta session) {
