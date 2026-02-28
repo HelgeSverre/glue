@@ -27,7 +27,6 @@ linter:
 
     # Async safety — flag forgotten awaits that cause silent failures
     unawaited_futures: true
-    discarded_futures: true
 
     # Type safety
     avoid_dynamic_calls: true

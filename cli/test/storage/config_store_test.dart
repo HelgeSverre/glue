@@ -70,7 +70,8 @@ void main() {
     store.save({'key': 'value'});
 
     expect(File(nestedPath).existsSync(), isTrue);
-    final loaded = jsonDecode(File(nestedPath).readAsStringSync());
+    final loaded =
+        jsonDecode(File(nestedPath).readAsStringSync()) as Map<String, dynamic>;
     expect(loaded['key'], 'value');
   });
 
@@ -102,7 +103,8 @@ void main() {
 
     expect(store.trustedTools, ['read_file', 'bash']);
     // Verify persisted to disk
-    final onDisk = jsonDecode(File(configPath).readAsStringSync());
+    final onDisk =
+        jsonDecode(File(configPath).readAsStringSync()) as Map<String, dynamic>;
     expect(onDisk['trusted_tools'], ['read_file', 'bash']);
   });
 

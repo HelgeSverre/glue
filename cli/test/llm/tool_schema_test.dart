@@ -15,8 +15,9 @@ void main() {
       expect(s['name'], 'read_file');
       expect(s['description'], isNotEmpty);
       expect(s, contains('input_schema'));
-      expect(s['input_schema']['type'], 'object');
-      expect(s['input_schema']['properties'], contains('path'));
+      final inputSchema = s['input_schema'] as Map<String, dynamic>;
+      expect(inputSchema['type'], 'object');
+      expect(inputSchema['properties'], contains('path'));
     });
   });
 
@@ -28,10 +29,12 @@ void main() {
       expect(schemas, hasLength(1));
       final s = schemas.first;
       expect(s['type'], 'function');
-      expect(s['function']['name'], 'read_file');
-      expect(s['function']['description'], isNotEmpty);
-      expect(s['function']['parameters']['type'], 'object');
-      expect(s['function']['parameters']['properties'], contains('path'));
+      final fn = s['function'] as Map<String, dynamic>;
+      expect(fn['name'], 'read_file');
+      expect(fn['description'], isNotEmpty);
+      final params = fn['parameters'] as Map<String, dynamic>;
+      expect(params['type'], 'object');
+      expect(params['properties'], contains('path'));
     });
   });
 }
