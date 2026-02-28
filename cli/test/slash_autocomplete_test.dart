@@ -27,6 +27,8 @@ SlashCommandRegistry _makeRegistry() {
   reg.register(SlashCommand(
     name: 'exit',
     description: 'Exit the application',
+    aliases: ['quit'],
+    hiddenAliases: ['q'],
     execute: (_) => '',
   ));
   return reg;
@@ -48,7 +50,7 @@ void main() {
     test('activates on "/" prefix', () {
       ac.update('/', 1);
       expect(ac.active, isTrue);
-      expect(ac.matchCount, 5);
+      expect(ac.matchCount, 6); // 5 commands + quit alias
     });
 
     test('filters by prefix', () {
@@ -93,7 +95,7 @@ void main() {
     test('moveDown wraps around', () {
       ac.update('/', 1);
       expect(ac.selected, 0);
-      for (var i = 0; i < 5; i++) {
+      for (var i = 0; i < 6; i++) {
         ac.moveDown();
       }
       expect(ac.selected, 0); // wrapped
@@ -103,7 +105,7 @@ void main() {
       ac.update('/', 1);
       expect(ac.selected, 0);
       ac.moveUp(); // wraps to last
-      expect(ac.selected, 4);
+      expect(ac.selected, 5);
     });
 
     test('accept returns selected command', () {
@@ -126,6 +128,13 @@ void main() {
       expect(result, isNull);
     });
 
+    test('hidden aliases do not appear in autocomplete', () {
+      ac.update('/q', 2);
+      expect(ac.active, isTrue);
+      expect(ac.selectedText, '/quit'); // /quit matches, not /q
+      expect(ac.matchCount, 1); // only /quit, not /q
+    });
+
     test('dismiss resets state', () {
       ac.update('/', 1);
       ac.moveDown();
@@ -146,7 +155,7 @@ void main() {
     test('render produces correct number of lines', () {
       ac.update('/', 1);
       final lines = ac.render(80);
-      expect(lines, hasLength(5));
+      expect(lines, hasLength(6));
     });
 
     test('render returns empty when inactive', () {
@@ -156,7 +165,7 @@ void main() {
 
     test('overlayHeight matches match count', () {
       ac.update('/', 1);
-      expect(ac.overlayHeight, 5);
+      expect(ac.overlayHeight, 6);
       ac.update('/he', 3);
       expect(ac.overlayHeight, 1);
       ac.dismiss();

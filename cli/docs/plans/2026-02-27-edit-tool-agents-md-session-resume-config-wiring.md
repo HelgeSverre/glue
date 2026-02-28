@@ -13,6 +13,7 @@
 ## Task 1: `EditFileTool` — find-and-replace with multi-line support
 
 **Files:**
+
 - Modify: `lib/src/agent/tools.dart`
 - Create: `test/tools/edit_file_tool_test.dart`
 
@@ -281,6 +282,7 @@ git commit -m "feat: add edit_file tool with multi-line find-and-replace"
 ## Task 2: AGENTS.md / CLAUDE.md auto-loading into system prompt
 
 **Files:**
+
 - Modify: `lib/src/agent/prompts.dart`
 - Create: `test/agent/prompts_test.dart`
 
@@ -452,6 +454,7 @@ git commit -m "feat: auto-load AGENTS.md and CLAUDE.md into system prompt"
 This has three sub-parts: reading saved sessions, presenting a selection list, and replaying into `AgentCore`.
 
 **Files:**
+
 - Modify: `lib/src/storage/session_store.dart` (add `listSessions`, `loadConversation`)
 - Modify: `lib/src/app.dart` (add `/resume` command, wire session store into lifecycle)
 - Create: `test/storage/session_resume_test.dart`
@@ -632,6 +635,7 @@ git commit -m "feat: add session listing and conversation loading to SessionStor
 ### Sub-step 3b: Wire `/resume` command into App
 
 **Files:**
+
 - Modify: `lib/src/app.dart`
 
 **Step 1: Add `/resume` slash command**
@@ -744,6 +748,7 @@ git commit -m "feat: add /resume command for session history"
 ## Task 4: Wire trusted tools persistence
 
 **Files:**
+
 - Modify: `lib/src/app.dart`
 
 **Step 1: Load trusted tools from config on startup**
@@ -857,6 +862,7 @@ git commit -m "feat: persist trusted tool approvals to ~/.glue/config.json"
 ## Task 5: Slash command cleanup — add `/info`, remove `/tokens`
 
 **Files:**
+
 - Modify: `lib/src/app.dart`
 
 **Step 1: Replace `/tokens` with `/info`**
@@ -864,6 +870,7 @@ git commit -m "feat: persist trusted tool approvals to ~/.glue/config.json"
 In `_initCommands()`, remove the `/tokens` command registration and add `/info`:
 
 Remove:
+
 ```dart
     _commands.register(SlashCommand(
       name: 'tokens',
@@ -873,6 +880,7 @@ Remove:
 ```
 
 Add in its place:
+
 ```dart
     _commands.register(SlashCommand(
       name: 'info',
@@ -919,6 +927,7 @@ git commit -m "feat: add /info command, remove /tokens (info covers it)"
 ## Task 6: Log events to SessionStore during app lifecycle
 
 **Files:**
+
 - Modify: `lib/src/app.dart`
 
 This task wires the existing `SessionStore` into the app lifecycle so sessions are actually saved and can be resumed later.
@@ -1018,11 +1027,13 @@ git commit -m "feat: wire SessionStore into app lifecycle for conversation loggi
 ## Execution Order
 
 **Group A (independent, can be parallel):**
+
 - Task 1: edit_file tool (tools.dart, new test file)
 - Task 2: AGENTS.md / CLAUDE.md loading (prompts.dart, new test file)
 - Task 3a: Session listing/loading (session_store.dart, new test file)
 
 **Group B (depends on A for app.dart):**
+
 - Task 3b: /resume command (app.dart)
 - Task 4: Trusted tools wiring (app.dart)
 - Task 5: Slash command cleanup (app.dart)

@@ -1,0 +1,2739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>glue · server</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<!--
+  Font alternatives (swap via --sans / --mono):
+  Sans:  Geist Sans (vercel.com/font), Switzer (fontshare.com), Public Sans, Space Grotesk, Supreme
+  Mono:  Geist Mono (vercel.com/font), Berkeley Mono, IBM Plex Mono, Fira Code, Monaspace
+-->
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  /* ── OKLCH color palette (perceptually uniform, no pure black/white) ── */
+  --yellow:oklch(0.866 0.19 91.7);
+  --bg:oklch(0.11 0.008 286);--surface:oklch(0.15 0.010 286);--surface-el:oklch(0.19 0.012 286);--surface-hi:oklch(0.23 0.014 286);
+  --border:oklch(0.27 0.012 280);--border-br:oklch(0.36 0.016 274);
+  --text:oklch(0.92 0.008 286);--text-sec:oklch(0.74 0.012 274);--text-dim:oklch(0.56 0.012 274);
+  /* ── Elevation ── */
+  --ring:0 0 0 1px oklch(0.36 0.016 274);--shadow-sm:0 1px 3px oklch(0.06 0.015 286 / 0.45);--shadow-md:0 4px 12px oklch(0.06 0.015 286 / 0.6);
+  --radius:2px;
+  --success:oklch(0.723 0.191 149);--error:oklch(0.627 0.222 25);--warning:oklch(0.80 0.165 75);--info:oklch(0.62 0.18 261);
+  --cyan:oklch(0.79 0.134 200);--cyan-dim:oklch(0.87 0.107 204);--purple:oklch(0.586 0.24 299);
+  /* ── Type scale ── */
+  --fs-2xs:10px; /* badges, pills — absolute minimum */
+  --fs-xs:10px;  /* timestamps, tiny hints */
+  --fs-sm:11px;  /* sidebar details, form labels, metadata */
+  --fs-base:12px;/* session titles, form inputs, primary UI text */
+  --fs-md:12.5px;/* output blocks, main content */
+  --fs-lg:13px;  /* headings, emphasis */
+  /* ── Font stacks ── */
+  --mono:'JetBrains Mono',Menlo,Monaco,'Cascadia Mono',Consolas,monospace;
+  --sans:'Inter',system-ui,-apple-system,sans-serif;
+}
+html{font-size:var(--fs-lg);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-feature-settings:'cv01','cv02','ss01'}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
+::selection{background:oklch(0.866 0.19 91.7 / 0.2);color:var(--yellow)}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-br);border-radius:1px}
+
+.accent-line{height:1px;width:100%;flex-shrink:0;background:var(--yellow);opacity:.25}
+
+/* ═══ Shell ═══ */
+.app{display:flex;height:100vh;flex-direction:column}
+.app-body{display:flex;flex:1;overflow:hidden}
+
+/* ═══ Rail ═══ */
+.rail{width:280px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+
+/* Project switcher */
+.repo-switch{padding:8px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;position:relative}
+.repo-btn{
+  flex:1;padding:6px 10px;background:var(--surface-el);border:1px solid var(--border);border-radius:var(--radius);
+  color:var(--text);font-family:var(--mono);font-size:12px;font-weight:500;
+  cursor:pointer;display:flex;align-items:center;gap:6px;transition:border-color .15s;
+  text-align:left;white-space:nowrap;overflow:hidden;
+}
+.repo-btn:hover{border-color:var(--border-br)}
+.repo-btn .repo-icon{color:var(--yellow);font-size:13px;flex-shrink:0}
+.repo-btn .repo-name{flex:1;overflow:hidden;text-overflow:ellipsis}
+.repo-btn .repo-chev{color:var(--text-dim);font-size:10px;flex-shrink:0}
+.repo-add-btn{
+  width:30px;height:30px;border:1px dashed var(--border-br);border-radius:var(--radius);background:transparent;
+  color:var(--text-dim);cursor:pointer;font-size:14px;font-family:var(--mono);
+  display:flex;align-items:center;justify-content:center;transition:all .1s;flex-shrink:0;
+}
+.repo-add-btn:hover{border-color:var(--yellow);color:var(--yellow)}
+
+/* Project dropdown */
+.repo-dropdown{
+  position:absolute;top:100%;left:10px;right:10px;z-index:50;
+  background:var(--surface-el);border:1px solid var(--border-br);border-radius:var(--radius);
+  max-height:260px;overflow-y:auto;box-shadow:var(--shadow-md);
+}
+.repo-dd-search{padding:6px 10px;border-bottom:1px solid var(--border)}
+.repo-dd-search input{
+  width:100%;background:transparent;border:none;outline:none;
+  color:var(--text);font-family:var(--mono);font-size:11px;caret-color:var(--yellow);
+}
+.repo-dd-search input::placeholder{color:var(--text-dim)}
+.repo-dd-item{
+  padding:7px 10px;cursor:pointer;display:flex;align-items:center;gap:8px;
+  font-family:var(--mono);font-size:12px;transition:background .06s;
+}
+.repo-dd-item:hover{background:var(--surface-hi)}
+.repo-dd-item.active{color:var(--yellow)}
+.repo-dd-item .dd-name{color:var(--text)}
+.repo-dd-item .dd-path{color:var(--text-dim);font-size:10px;margin-left:auto}
+.repo-dd-item .dd-badge{
+  font-size:10px;padding:1px 4px;background:var(--border);color:var(--text-dim);border-radius:var(--radius);
+  font-weight:500;margin-left:4px;
+}
+.repo-dd-add{color:var(--yellow);border-top:1px solid var(--border)}
+
+/* New session button */
+.new-sess{
+  margin:8px 10px;padding:8px 12px;border:1px dashed var(--border-br);border-radius:var(--radius);
+  background:transparent;color:var(--text-sec);font-size:12px;font-family:var(--mono);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;
+  font-weight:500;transition:all .15s;
+}
+.new-sess:hover{border-color:var(--yellow);color:var(--yellow);background:oklch(0.866 0.19 91.7 / 0.02)}
+
+/* Session list */
+.sess-list{overflow-y:auto;flex:1}
+.sess-group-head{
+  padding:6px 12px;font-family:var(--mono);font-size:10px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--text-sec);
+  display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none;
+}
+.sess-group-head:hover{color:var(--text)}
+.sess-group-head .count{margin-left:auto;color:var(--text-dim);font-weight:500}
+.sess-group-head .sg-chev{font-size:9px;color:var(--text-dim);transition:transform .12s}
+.sess-group-head .sg-chev.open{transform:rotate(90deg)}
+
+.s-item{
+  padding:8px 12px;cursor:pointer;border-left:2px solid transparent;
+  transition:all .15s;position:relative;
+}
+.s-item:hover{background:var(--surface-el)}
+.s-item.active{background:var(--surface-el);border-left-color:var(--yellow)}
+.s-row{display:flex;align-items:center;gap:6px}
+.s-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.s-dot.alive{background:var(--yellow)}
+.s-dot.idle{background:var(--success)}
+.s-dot.dead{background:var(--border-br)}
+.s-dot.error{background:var(--error)}
+.s-title{font-family:var(--mono);font-size:12px;font-weight:400;color:var(--text-sec);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s-item.active .s-title{color:var(--yellow)}
+.s-branch{
+  margin-top:3px;padding-left:12px;font-family:var(--mono);font-size:11px;
+  color:var(--text-dim);display:flex;align-items:center;gap:4px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.s-branch .branch-icon{color:var(--text-dim)}
+.s-item.active .s-branch .branch-icon{color:var(--yellow)}
+.s-time{
+  margin-top:2px;padding-left:12px;font-family:var(--mono);font-size:10px;
+  color:var(--text-dim);
+}
+.s-close{
+  position:absolute;right:8px;top:8px;width:16px;height:16px;border:none;
+  background:transparent;color:var(--text-dim);cursor:pointer;font-size:12px;
+  display:none;align-items:center;justify-content:center;
+}
+.s-item:hover .s-close{display:flex}
+.s-close:hover{color:var(--text)}
+
+/* Session VCS indicators */
+.s-meta{display:flex;align-items:center;gap:5px;flex-shrink:0;font-family:var(--mono);margin-left:auto}
+.s-pr-pill{
+  font-size:10px;padding:1px 5px;font-weight:500;letter-spacing:.03em;border-radius:var(--radius);
+  border:1px solid var(--border);background:transparent;color:var(--text-dim);white-space:nowrap;
+}
+.s-pr-pill.open{color:var(--success);background:oklch(0.723 0.191 149 / 0.08);border-color:oklch(0.723 0.191 149 / 0.18)}
+.s-pr-pill.merged{color:var(--purple);background:oklch(0.586 0.24 299 / 0.08);border-color:oklch(0.586 0.24 299 / 0.18)}
+.s-pr-pill.closed{color:var(--error);background:oklch(0.627 0.222 25 / 0.06);border-color:oklch(0.627 0.222 25 / 0.18)}
+.s-checks{font-size:10px;color:var(--text-dim);white-space:nowrap}
+.s-checks.running{color:var(--warning)}
+.s-checks.success{color:var(--success)}
+.s-checks.failure{color:var(--error)}
+.s-mark{width:6px;height:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1;color:var(--purple)}
+
+/* Rename toast */
+.rename-toast{
+  margin:0 10px 6px;padding:6px 10px;background:var(--surface-el);border-radius:var(--radius);
+  border:1px solid var(--border-br);font-family:var(--mono);font-size:11px;
+  display:flex;align-items:center;gap:6px;
+}
+.rename-toast .old{color:var(--text-dim);text-decoration:line-through}
+.rename-toast .arrow{color:var(--text-dim)}
+.rename-toast .new{color:var(--yellow)}
+.rename-toast .actions{margin-left:auto;display:flex;gap:4px}
+.rename-toast button{
+  background:transparent;border:1px solid var(--border);border-radius:var(--radius);color:var(--text-dim);
+  font-family:var(--mono);font-size:10px;padding:2px 6px;cursor:pointer;
+  text-transform:uppercase;font-weight:500;
+}
+.rename-toast button:hover{color:var(--text);border-color:var(--border-br)}
+.rename-toast button.accept{color:var(--yellow);border-color:var(--yellow)}
+.rename-toast button.accept:hover{background:oklch(0.866 0.19 91.7 / 0.06)}
+
+/* Wrap-up menu */
+.wrapup-menu{
+  position:absolute;right:10px;top:24px;z-index:10;
+  background:var(--surface-el);border:1px solid var(--border-br);border-radius:var(--radius);
+  min-width:160px;font-family:var(--mono);font-size:11px;box-shadow:var(--shadow-md);
+}
+.wrapup-item{
+  padding:6px 10px;cursor:pointer;display:flex;align-items:center;gap:6px;
+  color:var(--text-sec);transition:background .06s;
+}
+.wrapup-item:hover{background:var(--surface-hi)}
+.wrapup-item .wi-icon{width:14px;text-align:center}
+.wrapup-item.danger{color:var(--error)}
+
+.rail-foot{padding:8px 10px;border-top:1px solid var(--border);font-size:10px;color:var(--text-dim);font-family:var(--mono);display:flex;align-items:center;gap:6px}
+.rail-foot .conn-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.rail-foot .conn-dot.ok{background:var(--success)}
+.rail-foot .conn-label{flex:1}
+
+/* Settings button (matches new-sess style) */
+.settings-btn{
+  width:30px;height:30px;border:1px dashed var(--border-br);border-radius:var(--radius);background:transparent;
+  color:var(--text-dim);cursor:pointer;font-size:14px;font-family:var(--mono);
+  display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;
+}
+.settings-btn:hover{border-color:var(--yellow);color:var(--yellow)}
+
+/* ═══ Viewport ═══ */
+.viewport{flex:1;display:flex;flex-direction:column;background:var(--bg);min-width:0}
+
+.zone-output{
+  flex:1;overflow-y:auto;padding:14px 18px;font-family:var(--mono);font-size:12.5px;
+  line-height:1.65;color:var(--text-sec);position:relative;
+}
+.zone-output::after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,oklch(0.94 0.02 91.7 / 0.004) 2px,oklch(0.94 0.02 91.7 / 0.004) 4px);
+}
+/* ═══ Block layout (mirrors CLI BlockRenderer) ═══ */
+.blk{margin-bottom:14px}
+.blk__head{
+  padding-left:1ch;font-family:var(--mono);font-weight:500;font-size:12.5px;
+  display:flex;gap:1ch;align-items:baseline;line-height:1.35;
+}
+.blk__body{
+  padding-left:3ch;margin-top:2px;font-family:var(--mono);font-size:12.5px;
+  line-height:1.65;white-space:pre-wrap;color:var(--text);
+}
+.blk__meta{
+  padding-left:4ch;margin-top:2px;font-family:var(--mono);
+  color:var(--text-dim);font-size:11px;
+}
+
+/* User: blue ❯ You */
+.blk--user .blk__label{color:var(--info);font-weight:500}
+.blk--user .blk__body{color:var(--text)}
+
+/* Assistant: yellow ◆ Glue */
+.blk--assistant .blk__label{color:var(--yellow);font-weight:500}
+.blk--assistant .blk__body{color:var(--text-sec)}
+
+/* Tool call: yellow ▶ Tool: name */
+.blk--toolcall .blk__label{color:var(--yellow);font-weight:500}
+.blk--toolcall .blk__toolname{color:var(--yellow)}
+.blk__suffix{font-weight:400;font-size:11px;margin-left:2px}
+.phase--preparing{color:var(--text-dim)}
+.phase--awaitingApproval{color:var(--yellow)}
+.phase--running{color:var(--cyan)}
+.phase--done{display:none}
+.phase--denied,.phase--error{color:var(--error)}
+
+/* Tool result: green ✓ or red ✗ */
+.blk--toolresult .blk__label{font-weight:500}
+.blk--toolresult.is-success .blk__label{color:var(--success)}
+.blk--toolresult.is-fail .blk__label{color:var(--error)}
+.blk--toolresult .blk__body{color:var(--text-dim);font-size:11px;padding-left:4ch}
+
+/* Error: red ✗ Error */
+.blk--error .blk__label{color:var(--error);font-weight:500}
+.blk--error .blk__body{color:var(--error);padding-left:4ch}
+
+/* Bash: framed output */
+.blk--bash .blk__frame{
+  padding-left:1ch;font-family:var(--mono);font-size:12px;
+  white-space:pre;color:var(--text-dim);line-height:1.5;
+}
+.blk--bash .bash-legend{color:var(--text);font-weight:500}
+.blk--bash .bash-border{color:var(--text-dim)}
+.blk--bash .bash-content{color:var(--text-sec)}
+.blk--bash .bash-notice{color:var(--text-dim)}
+
+/* System: dim */
+.blk--system .blk__body{color:var(--text-dim);padding-left:1ch;font-size:11px}
+
+/* Subagent: dim cyan with hierarchy indicator */
+.blk--subagent .blk__label{color:var(--cyan-dim);font-weight:500}
+.blk--subagent .blk__body{color:var(--cyan-dim);opacity:.65;padding-left:4ch;font-size:11px}
+
+/* Markdown inside assistant body */
+.md__h{color:var(--yellow);font-weight:600;margin:2px 0}
+.md__quote{color:var(--text-dim)}
+.md__quotebar{color:var(--text-dim);margin-right:.5ch}
+.md__li{display:flex;gap:.5ch}
+.md__bullet{color:var(--text-dim);flex-shrink:0}
+.md__code{color:var(--yellow);font-family:var(--mono)}
+.md__bold{font-weight:600;color:var(--text)}
+.md__italic{font-style:italic}
+.md__link-url{color:var(--text-dim)}
+.md__codeframe{
+  font-family:var(--mono);font-size:11px;white-space:pre;
+  color:var(--text-dim);line-height:1.5;margin:4px 0;
+}
+.md__codeframe .cf-border{color:var(--text-dim)}
+.md__codeframe .cf-lang{color:var(--text-sec);font-weight:500}
+.md__codeframe .cf-line{color:var(--text-sec);opacity:.85}
+
+.t-cursor{display:inline-block;width:6px;height:12px;background:var(--yellow);animation:blink 1s step-end infinite;vertical-align:text-bottom;margin-left:1px}
+@keyframes blink{50%{opacity:0}}
+
+.sidecar-wrap{display:flex;flex:1;overflow:hidden}
+.sidecar{
+  width:270px;background:var(--bg);border-left:1px solid var(--border);
+  display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;
+}
+
+/* Sidecar section headers (collapsible) */
+.sc-section-head{
+  padding:6px 10px;font-family:var(--mono);font-size:10px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);
+  border-bottom:1px solid var(--border);display:flex;align-items:center;gap:5px;
+  cursor:pointer;transition:color .15s;user-select:none;
+}
+.sc-section-head:hover{color:var(--text-sec)}
+.sc-section-head .sc-chev{font-size:9px;transition:transform .15s}
+.sc-section-head .sc-chev.open{transform:rotate(90deg)}
+.sc-section-head .count{margin-left:auto;color:var(--text-dim);font-weight:500}
+
+/* Sidecar header */
+.sc-header{
+  padding:8px 10px;border-bottom:1px solid var(--border);
+  font-family:var(--mono);font-size:10px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);
+}
+.sc-header-title{color:var(--text-sec)}
+
+/* Session info key-value list */
+.sc-info{padding:4px 0;border-bottom:1px solid var(--border)}
+.sc-info-row{
+  padding:2px 10px;font-family:var(--mono);font-size:11px;display:flex;gap:6px;
+  line-height:1.5;transition:background .15s;
+}
+.sc-info-row.copyable{cursor:pointer}
+.sc-info-row.copyable:hover{background:var(--surface-el)}
+.sc-info-key{color:var(--text-dim);min-width:60px;flex-shrink:0}
+.sc-info-val{color:var(--text-sec);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-info-val.accent{color:var(--yellow)}
+.sc-info-copy{font-size:10px;color:var(--text-dim);opacity:0;transition:all .15s;flex-shrink:0;min-width:12px;text-align:center}
+.sc-info-row.copyable:hover .sc-info-copy{opacity:1}
+.sc-info-copy.copied{opacity:1;color:var(--success)}
+
+/* Tool calls list */
+.sc-list{overflow-y:auto;flex:1}
+.sc-item{padding:6px 10px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;cursor:pointer;transition:background .15s}
+.sc-item:hover{background:var(--surface-el)}
+.sc-item.highlight{background:oklch(0.866 0.19 91.7 / 0.03)}
+.sc-item .sc-name{color:var(--yellow);margin-bottom:1px}
+.sc-item .sc-path{color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-item .sc-result{font-size:10px;margin-top:1px}
+.sc-item .sc-result.ok{color:var(--success)}
+.sc-item .sc-result.pending{color:var(--warning)}
+.sc-item .sc-result.needs-approval{color:var(--warning)}
+.sc-item .sc-result.error{color:var(--error)}
+
+/* Sidecar stats footer (sticky) */
+.sc-footer{
+  border-top:1px solid var(--border);padding:6px 10px;font-family:var(--mono);font-size:10px;
+  color:var(--text-dim);flex-shrink:0;display:flex;flex-direction:column;gap:3px;
+}
+.sc-footer-row{display:flex;align-items:center;gap:6px}
+.sc-footer-row .sep{color:var(--border-br)}
+.sc-footer-id{
+  display:flex;align-items:center;gap:4px;cursor:pointer;transition:color .15s;
+}
+.sc-footer-id:hover{color:var(--yellow)}
+.sc-footer-id .copy-icon{font-size:10px;opacity:0;transition:opacity .15s}
+.sc-footer-id:hover .copy-icon{opacity:1}
+
+.zone-overlay{
+  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  background:var(--surface);padding:0;max-height:200px;overflow-y:auto;flex-shrink:0;
+}
+.overlay-head{
+  padding:5px 12px;font-family:var(--mono);font-size:11px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--text-sec);
+  border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;
+  background:var(--surface-el);
+}
+.overlay-head .tag{font-size:10px;padding:1px 5px;background:oklch(0.866 0.19 91.7 / 0.08);color:var(--yellow);border-radius:var(--radius)}
+.overlay-item{
+  padding:5px 12px;font-family:var(--mono);font-size:12px;color:var(--text-sec);
+  display:flex;align-items:center;gap:8px;cursor:pointer;border-left:2px solid transparent;
+}
+.overlay-item:hover{background:var(--surface-el)}
+.overlay-item.selected{background:var(--surface-el);border-left-color:var(--yellow);color:var(--yellow)}
+.overlay-item .key{font-size:10px;color:var(--text-dim);min-width:16px}
+.overlay-search{padding:5px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px}
+.overlay-search input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:var(--mono);font-size:12px;caret-color:var(--yellow)}
+.overlay-search input::placeholder{color:var(--text-dim)}
+.overlay-search .slash{color:var(--yellow);font-size:13px;font-weight:600}
+
+.zone-status{
+  height:22px;background:var(--yellow);color:var(--bg);
+  display:flex;align-items:center;padding:0 12px;font-size:11px;
+  font-family:var(--mono);font-weight:500;gap:10px;flex-shrink:0;
+}
+.zone-status .sep{color:oklch(0.11 0.008 286 / 0.3)}
+.zone-status .right{margin-left:auto;display:flex;gap:10px;font-weight:500}
+.zone-status .dim{opacity:.5}
+
+.zone-input{
+  border-top:1px solid var(--border);padding:8px 14px;display:flex;align-items:flex-start;gap:6px;
+  background:var(--surface);flex-shrink:0;position:relative;
+}
+.zone-input .pr{color:var(--yellow);font-family:var(--mono);font-size:13px;font-weight:600;line-height:1.6;flex-shrink:0}
+.zone-input textarea{
+  flex:1;background:transparent;border:none;outline:none;color:var(--text);
+  font-family:var(--mono);font-size:12px;line-height:1.6;caret-color:var(--yellow);
+  resize:none;min-height:18px;max-height:140px;
+}
+.zone-input textarea::placeholder{color:var(--text-dim)}
+.zone-input .input-hint{font-size:10px;color:var(--text-dim);font-family:var(--mono);align-self:flex-end;white-space:nowrap;flex-shrink:0}
+
+/* Empty state */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;color:var(--text-dim);gap:10px}
+.empty .glyph{font-family:var(--mono);font-size:36px;font-weight:500;color:var(--yellow);opacity:.08}
+.empty .msg{font-size:13px;font-family:var(--mono)}
+.empty .hint{font-size:11px;color:var(--text-dim);font-family:var(--mono)}
+
+/* ═══ Modal ═══ */
+.modal-bg{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:oklch(0.11 0.008 286 / 0.92);backdrop-filter:blur(4px)}
+.panel{background:var(--surface);border:1px solid var(--border);border-top:2px solid var(--yellow);border-radius:var(--radius);width:480px;max-width:92vw;overflow:hidden;box-shadow:var(--shadow-md)}
+.panel-head{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px}
+.panel-title{font-family:var(--mono);font-weight:600;font-size:13px;color:var(--yellow);text-transform:uppercase;letter-spacing:.03em}
+.panel-close{margin-left:auto;background:none;border:1px solid var(--border);border-radius:var(--radius);color:var(--text-dim);cursor:pointer;font-size:14px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;text-align:center;flex-shrink:0}
+.panel-close:hover{color:var(--text);border-color:var(--yellow)}
+.panel-body{padding:16px 18px}
+.panel-foot{padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:6px;justify-content:flex-end;align-items:center}
+.panel-foot .foot-hint{font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-right:auto}
+
+.f-group{margin-bottom:14px}
+.f-label{font-family:var(--mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-sec);margin-bottom:5px}
+.f-select,.f-input,.f-textarea{
+  width:100%;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);
+  color:var(--text);font-family:var(--mono);font-size:12px;outline:none;
+}
+.f-select:focus,.f-input:focus,.f-textarea:focus{border-color:var(--yellow)}
+.f-select{cursor:pointer;appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%238a8a92'%3E%3Cpath d='M2 3l3 4 3-4'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 8px center}
+.f-select option{background:var(--surface);color:var(--text)}
+.f-input::placeholder,.f-textarea::placeholder{color:var(--text-dim)}
+.f-textarea{resize:vertical;min-height:80px;line-height:1.5}
+.f-hint{font-size:10px;color:var(--text-dim);margin-top:4px;font-family:var(--mono)}
+.f-divider{border:none;border-top:1px solid var(--border);margin:14px 0}
+.f-row{display:flex;gap:10px}
+.f-row .f-group{flex:1}
+.f-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--text-dim)}
+.f-toggle:hover{color:var(--text-sec)}
+.f-toggle .arrow{font-size:10px;transition:transform .12s}
+.f-toggle .arrow.open{transform:rotate(90deg)}
+
+/* Worktree name preview */
+.wt-preview{
+  padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);
+  font-family:var(--mono);font-size:11px;display:flex;align-items:center;gap:8px;
+  margin-top:6px;
+}
+.wt-preview .wt-icon{color:var(--yellow)}
+.wt-preview .wt-branch{color:var(--text)}
+.wt-preview .wt-path{color:var(--text-dim);margin-left:auto;font-size:10px}
+.wt-preview .wt-refresh{
+  background:none;border:none;color:var(--text-dim);cursor:pointer;
+  font-size:13px;padding:0 2px;
+}
+.wt-preview .wt-refresh:hover{color:var(--yellow)}
+
+.btn{
+  padding:6px 16px;font-size:11px;font-weight:600;cursor:pointer;border-radius:var(--radius);
+  border:1px solid var(--border);background:transparent;color:var(--text-sec);
+  font-family:var(--mono);text-transform:uppercase;letter-spacing:.03em;transition:all .1s;
+}
+.btn:hover{border-color:var(--border-br);color:var(--text)}
+.btn.primary{background:var(--yellow);color:var(--bg);border-color:var(--yellow)}
+.btn.primary:hover{background:oklch(0.78 0.17 91.7)}
+.btn:disabled{opacity:.3;cursor:not-allowed}
+
+/* ═══ File Browser ═══ */
+.fb-path-row{display:flex;gap:4px}
+.fb-path-row .f-input{flex:1}
+.fb-home-btn{
+  width:32px;flex-shrink:0;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);
+  color:var(--text-dim);cursor:pointer;font-size:14px;font-family:var(--mono);
+  display:flex;align-items:center;justify-content:center;transition:all .1s;
+}
+.fb-home-btn:hover{border-color:var(--yellow);color:var(--yellow)}
+.fb-suggestions{
+  margin-top:2px;background:var(--surface-el);border:1px solid var(--border);border-radius:var(--radius);
+  max-height:120px;overflow-y:auto;box-shadow:var(--shadow-sm);
+}
+.fb-sugg-item{
+  padding:4px 10px;font-family:var(--mono);font-size:11px;color:var(--text-sec);
+  cursor:pointer;transition:background .06s;
+}
+.fb-sugg-item:hover{background:var(--surface-hi);color:var(--yellow)}
+.fb-tree{
+  margin-top:8px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);
+  max-height:200px;overflow-y:auto;
+}
+.fb-breadcrumb{
+  padding:5px 10px;border-bottom:1px solid var(--border);
+  font-family:var(--mono);font-size:11px;color:var(--text-dim);
+  display:flex;align-items:center;flex-wrap:wrap;gap:1px;
+}
+.fb-bc-sep{color:var(--text-dim);margin:0 1px}
+.fb-bc-part{cursor:pointer;color:var(--text-sec);transition:color .06s}
+.fb-bc-part:hover{color:var(--yellow)}
+.fb-bc-part:last-child{color:var(--yellow);font-weight:500}
+.fb-listing{font-family:var(--mono);font-size:11px}
+.fb-item{
+  padding:3px 10px;display:flex;align-items:center;gap:6px;
+  cursor:pointer;transition:background .06s;
+}
+.fb-item:hover{background:var(--surface-el)}
+.fb-item.selected{background:var(--surface-hi)}
+.fb-chev{color:var(--text-dim);font-size:10px;width:10px;text-align:center;flex-shrink:0}
+.fb-name{color:var(--text-sec)}
+.fb-name.dir{color:var(--text);font-weight:500}
+.fb-badge{
+  font-size:10px;padding:1px 5px;color:var(--success);background:oklch(0.723 0.191 149 / 0.08);border-radius:var(--radius);
+  margin-left:auto;font-weight:500;
+}
+.fb-empty{padding:10px;color:var(--text-dim);text-align:center;font-family:var(--mono);font-size:11px}
+.fb-git-badge{
+  margin-top:8px;padding:6px 10px;background:oklch(0.723 0.191 149 / 0.04);border:1px solid oklch(0.723 0.191 149 / 0.15);border-radius:var(--radius);
+  font-family:var(--mono);font-size:11px;color:var(--success);
+  display:flex;align-items:center;gap:6px;
+}
+.fb-git-dot{width:6px;height:6px;border-radius:50%;background:var(--success)}
+
+/* ═══ Slash Completion ═══ */
+.slash-popup{
+  position:absolute;bottom:100%;left:0;right:0;z-index:10;
+  background:var(--surface-el);border:1px solid var(--border-br);border-bottom:none;border-radius:var(--radius) var(--radius) 0 0;
+  max-height:200px;overflow-y:auto;box-shadow:var(--shadow-md);
+}
+.slash-item{
+  padding:5px 12px;display:flex;align-items:center;gap:10px;
+  font-family:var(--mono);font-size:11px;cursor:pointer;transition:background .06s;
+  border-left:2px solid transparent;
+}
+.slash-item:hover{background:var(--surface-hi)}
+.slash-item.selected{background:var(--surface-hi);border-left-color:var(--yellow)}
+.slash-cmd{color:var(--yellow);font-weight:500;min-width:80px}
+.slash-desc{color:var(--text-sec);flex:1}
+.slash-alias{color:var(--text-dim);font-size:10px;margin-left:auto}
+
+/* ═══ Focus ═══ */
+:where(button, a, [tabindex]):focus-visible{outline:none;box-shadow:0 0 0 2px oklch(0.866 0.19 91.7 / 0.15)}
+.f-select:focus-visible,.f-input:focus-visible,.f-textarea:focus-visible{box-shadow:0 0 0 2px oklch(0.866 0.19 91.7 / 0.15)}
+.zone-input:focus-within{box-shadow:inset 0 1px 0 oklch(0.866 0.19 91.7 / 0.08)}
+.fb-tree:focus-within{border-color:var(--border-br)}
+
+/* ═══ Wizard ═══ */
+.wiz-steps{display:flex;align-items:center;gap:4px;margin-left:auto;margin-right:8px}
+.wiz-step{font-family:var(--mono);font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.04em;color:var(--text-dim);padding:2px 6px;transition:color .1s}
+.wiz-step.active{color:var(--yellow)}
+.wiz-step.current{color:var(--yellow);background:oklch(0.866 0.19 91.7 / 0.08)}
+.wiz-sep{color:var(--text-dim);font-size:9px}
+.wiz-summary{font-family:var(--mono);font-size:11px;color:var(--text-dim);padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px}
+.wiz-summary .ws-label{color:var(--text-sec);min-width:70px;display:inline-block}
+.wiz-summary .ws-value{color:var(--text)}
+.wiz-summary .ws-row{margin-bottom:2px}
+
+/* ═══ Lifecycle Widget (sidecar) ═══ */
+.sc-lifecycle{padding:8px 10px;border-bottom:1px solid var(--border)}
+.sc-lc-steps{display:flex;align-items:center;gap:4px;margin-bottom:8px;flex-wrap:wrap}
+.sc-lc-step{font-family:var(--mono);font-size:11px;font-weight:400;color:var(--text-dim);padding:2px 7px;border-radius:var(--radius);border:1px solid var(--border);transition:all .12s}
+.sc-lc-step.done{color:var(--text-sec);background:var(--surface-el);border-color:var(--border-br)}
+.sc-lc-step.current{color:var(--text);border-color:oklch(0.866 0.19 91.7 / 0.4);box-shadow:0 0 0 2px oklch(0.866 0.19 91.7 / 0.1)}
+.sc-lc-step.failed{color:var(--error);border-color:oklch(0.627 0.222 25 / 0.3);background:oklch(0.627 0.222 25 / 0.04)}
+.sc-action-btn{
+  width:100%;padding:6px 10px;font-family:var(--mono);font-size:11px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.04em;cursor:pointer;
+  border:1px solid var(--yellow);border-radius:var(--radius);background:oklch(0.866 0.19 91.7 / 0.06);color:var(--yellow);
+  transition:all .12s;display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.sc-action-btn:hover{background:oklch(0.866 0.19 91.7 / 0.12)}
+.sc-action-btn.success{border-color:var(--success);color:var(--success);background:oklch(0.723 0.191 149 / 0.06)}
+.sc-action-btn.success:hover{background:oklch(0.723 0.191 149 / 0.12)}
+.sc-action-btn.danger{border-color:var(--error);color:var(--error);background:oklch(0.627 0.222 25 / 0.06)}
+.sc-action-btn.danger:hover{background:oklch(0.627 0.222 25 / 0.12)}
+.sc-action-btn:disabled{opacity:.35;cursor:not-allowed}
+.sc-lc-warn{font-family:var(--mono);font-size:10px;color:var(--warning);margin-top:4px;display:flex;align-items:center;gap:4px}
+
+/* Branch edit (sidecar) */
+.sc-branch-field{
+  font-family:var(--mono);font-size:11px;color:var(--yellow);
+  background:transparent;border:1px solid transparent;outline:none;
+  padding:0 2px;margin:0;width:100%;caret-color:var(--yellow);
+  line-height:1.5;
+}
+.sc-branch-field[readonly]{cursor:pointer}
+.sc-branch-field[readonly]:hover{background:var(--surface-el)}
+.sc-branch-field:not([readonly]){border-color:var(--border-br);background:var(--surface-el)}
+.sc-branch-field:focus:not([readonly]){box-shadow:0 0 0 2px oklch(0.866 0.19 91.7 / 0.12)}
+.sc-branch-lock{color:var(--text-dim);font-size:10px;margin-left:2px}
+.sc-pr-link{font-family:var(--mono);font-size:10px;color:var(--yellow);text-decoration:none;display:flex;align-items:center;gap:4px}
+.sc-pr-link:hover{text-decoration:underline}
+.sc-pr-pill{font-size:10px;padding:1px 5px;font-weight:500;text-transform:uppercase;letter-spacing:.03em;border-radius:var(--radius)}
+.sc-pr-pill.open{color:var(--success);background:oklch(0.723 0.191 149 / 0.08)}
+.sc-pr-pill.merged{color:var(--purple);background:oklch(0.586 0.24 299 / 0.08)}
+.sc-pr-pill.closed{color:var(--error);background:oklch(0.627 0.222 25 / 0.06)}
+.sc-checks{font-family:var(--mono);font-size:10px;display:flex;align-items:center;gap:4px}
+.sc-checks.running{color:var(--warning)}
+.sc-checks.success{color:var(--success)}
+.sc-checks.failure{color:var(--error)}
+
+/* Modal confirm overlay */
+.modal-confirm{
+  position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;
+  background:oklch(0.11 0.008 286 / 0.8);
+}
+.modal-confirm-box{
+  background:var(--surface);border:1px solid var(--border-br);border-top:2px solid var(--warning);border-radius:var(--radius);
+  padding:18px;max-width:320px;font-family:var(--mono);box-shadow:var(--shadow-md);
+}
+.modal-confirm-msg{font-size:12px;color:var(--text);margin-bottom:14px;line-height:1.5}
+.modal-confirm-actions{display:flex;gap:6px;justify-content:flex-end}
+
+/* ═══ Settings Modal ═══ */
+.set-section{margin-bottom:16px}
+.set-section:last-child{margin-bottom:0}
+.set-section-head{
+  font-family:var(--mono);font-size:10px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--text-sec);margin-bottom:10px;display:flex;align-items:center;gap:6px;
+  padding-bottom:6px;border-bottom:1px solid var(--border);
+}
+.set-section-head .set-icon{color:var(--yellow);font-size:11px}
+
+.set-repo-picker{margin-bottom:12px;position:relative}
+.set-repo-picker select{font-weight:500}
+.set-override{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.set-override:last-child{margin-bottom:0}
+/* Custom checkbox */
+input[type="checkbox"].f-check{
+  -webkit-appearance:none;appearance:none;
+  width:14px;height:14px;border:1px solid var(--border-br);border-radius:var(--radius);background:var(--bg);
+  cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
+  font-size:11px;color:transparent;transition:all .1s;flex-shrink:0;vertical-align:middle;
+  margin:0;padding:0;
+}
+input[type="checkbox"].f-check:hover{border-color:var(--yellow)}
+input[type="checkbox"].f-check:checked{border-color:var(--yellow);color:var(--yellow);background:oklch(0.866 0.19 91.7 / 0.06)}
+input[type="checkbox"].f-check:checked::after{content:'✓';font-size:12px;line-height:1}
+input[type="checkbox"].f-check:focus-visible{box-shadow:0 0 0 2px oklch(0.866 0.19 91.7 / 0.15)}
+
+.set-override-toggle{
+  width:14px;height:14px;border:1px solid var(--border-br);border-radius:var(--radius);background:var(--bg);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:11px;color:transparent;transition:all .1s;flex-shrink:0;
+}
+.set-override-toggle.on{border-color:var(--yellow);color:var(--yellow);background:oklch(0.866 0.19 91.7 / 0.06)}
+.set-override-toggle:hover{border-color:var(--yellow)}
+.set-override-field{flex:1;display:flex;flex-direction:column;gap:3px}
+.set-override-field .f-label{margin-bottom:0}
+.set-override-field .f-select:disabled,.set-override-field .f-input:disabled{opacity:.3;cursor:not-allowed}
+.set-override-hint{font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+
+.set-bulk{
+  margin-top:10px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);
+  display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;
+}
+.set-bulk-label{color:var(--text-dim);white-space:nowrap}
+.set-bulk-btn{
+  background:transparent;border:1px solid var(--border);border-radius:var(--radius);color:var(--text-sec);
+  font-family:var(--mono);font-size:10px;padding:2px 8px;cursor:pointer;
+  font-weight:500;transition:all .1s;
+}
+.set-bulk-btn:hover{border-color:var(--yellow);color:var(--yellow)}
+.set-bulk-btn.active{border-color:var(--yellow);color:var(--yellow);background:oklch(0.866 0.19 91.7 / 0.06)}
+
+/* ═══ Inline style replacements ═══ */
+.viewport-col{display:flex;flex-direction:column;flex:1;overflow:hidden}
+.panel--wide{width:520px}
+.wiz-steps-bar{padding:6px 18px;border-bottom:1px solid var(--border);margin:0;display:flex;gap:4px}
+.wiz-step--clickable{cursor:pointer}
+.sc-info-row--center{align-items:center}
+.zone-input{position:relative}
+.f-group--mt{margin-top:14px}
+.f-group--mt-sm{margin-top:8px}
+.f-group--mb0{margin-bottom:0}
+.f-label--inline{display:flex;align-items:center;gap:8px}
+.f-label--check{display:flex;align-items:center;gap:6px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:11px;font-weight:400;color:var(--text-sec)}
+.f-spacer{flex:1}
+.f-advanced-detail{margin-top:10px}
+.f-textarea--tall{min-height:120px}
+.panel-body--scroll{max-height:70vh;overflow-y:auto}
+.f-toggle--mb{margin-bottom:10px}
+.f-toggle--mt-neg{margin-top:-4px}
+.f-toggle-label{font-weight:500;color:var(--text-sec)}
+.f-toggle-count{margin-left:4px;font-size:10px;color:var(--text-dim)}
+.f-hint--inline{font-weight:400;text-transform:none;letter-spacing:0}
+
+@media(max-width:700px){
+  .rail{width:48px}
+  .s-branch,.s-time,.s-close,.repo-btn .repo-name,.repo-add-btn,.rename-toast{display:none}
+  .s-title{font-size:10px}
+  .sidecar{display:none}
+  .blk__frame,.md__codeframe{overflow-x:auto;max-width:100%}
+  .blk__head{font-size:11px}
+  .blk__body{font-size:11px;padding-left:2ch}
+}
+</style>
+</head>
+<body>
+<div class="app" x-data="glue()" @keydown.window="handleKeys($event)" @click="closeDropdowns($event)">
+  <div class="accent-line"></div>
+  <div class="app-body">
+
+    <!-- ═══ Rail ═══ -->
+    <aside class="rail">
+      <!-- Project switcher -->
+      <div class="repo-switch">
+        <button class="repo-btn" @click.stop="showRepoDD = !showRepoDD">
+          <span class="repo-icon">⬡</span>
+          <span class="repo-name" x-text="activeProjectFilter === '__all__' ? 'All Projects' : currentProject().name"></span>
+          <span class="repo-chev">▼</span>
+        </button>
+        <button class="repo-add-btn" @click="openWizardAddRepo()" title="Add project">+</button>
+
+        <template x-if="showRepoDD">
+          <div class="repo-dropdown" @click.stop>
+            <div class="repo-dd-search">
+              <input type="text" placeholder="search projects..." x-model="repoSearch" x-ref="repoSearchInput">
+            </div>
+            <div class="repo-dd-item" :class="activeProjectFilter === '__all__' && 'active'" @click="switchProject('__all__')">
+              <span class="dd-name">All Projects</span>
+              <span class="dd-badge" x-text="sessions.length"></span>
+            </div>
+            <template x-for="r in filteredProjects()" :key="r.path">
+              <div class="repo-dd-item" :class="r.path === activeProjectFilter && 'active'" @click="switchProject(r.path)">
+                <span class="dd-name" x-text="r.name"></span>
+                <span class="dd-badge" x-text="sessionsForProject(r.path).length" x-show="sessionsForProject(r.path).length > 0"></span>
+                <span class="dd-path" x-text="r.shortPath"></span>
+              </div>
+            </template>
+            <div class="repo-dd-item repo-dd-add" @click="showRepoDD = false; openWizardAddRepo()">
+              <span>+ Add project...</span>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- New session -->
+      <button class="new-sess" @click="openModal('wizard')">+ new session</button>
+
+      <!-- Sessions -->
+      <div class="sess-list">
+        <template x-if="activeSessions().length > 0">
+          <div>
+            <div class="sess-group-head" @click="showActiveGroup = !showActiveGroup">
+              <span class="sg-chev" :class="showActiveGroup !== false && 'open'">▶</span>
+              <span>Active</span>
+              <span class="count" x-text="activeSessions().length"></span>
+            </div>
+            <template x-if="showActiveGroup !== false">
+              <div>
+            <template x-for="w in activeSessions()" :key="w.id">
+              <div class="s-item" :class="activeId === w.id && 'active'" @click="switchTo(w.id)">
+                <div class="s-row">
+                  <span class="s-dot" :class="w.alive ? 'alive' : 'idle'"></span>
+                  <span class="s-title" x-text="w.title || w.tempName"></span>
+                  <template x-if="w.vcs?.pr?.exists">
+                    <div class="s-meta">
+                      <span class="s-pr-pill" :class="w.vcs.pr.status" x-text="'PR#' + w.vcs.pr.number"></span>
+                      <template x-if="w.vcs.pr.checks?.state && w.vcs.pr.checks.state !== 'not_run'">
+                        <span class="s-checks" :class="w.vcs.pr.checks.state" x-text="checksLabel(w)"></span>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+                <div class="s-branch" x-show="w.branch">
+                  <span class="branch-icon">⑂</span>
+                  <span x-text="w.branch"></span>
+                </div>
+                <div class="s-time" x-text="w.time"></div>
+                <button class="s-close" @click.stop="showWrapup = showWrapup === w.id ? null : w.id">⋯</button>
+                <template x-if="showWrapup === w.id">
+                  <div class="wrapup-menu" @click.stop>
+                    <div class="wrapup-item" @click="showWrapup = null"><span class="wi-icon">↗</span> Create PR</div>
+                    <div class="wrapup-item" @click="showWrapup = null"><span class="wi-icon">↓</span> Merge locally</div>
+                    <div class="wrapup-item" @click="archiveSession(w.id)"><span class="wi-icon">▪</span> Archive</div>
+                    <div class="wrapup-item danger" @click="deleteSession(w.id)"><span class="wi-icon">×</span> Delete session</div>
+                  </div>
+                </template>
+              </div>
+            </template>
+              </div>
+            </template>
+          </div>
+        </template>
+
+        <template x-if="archivedSessions().length > 0">
+          <div>
+            <div class="sess-group-head" @click="showArchived = !showArchived">
+              <span class="sg-chev" :class="showArchived && 'open'">▶</span>
+              <span>Archived</span>
+              <span class="count" x-text="archivedSessions().length"></span>
+            </div>
+            <template x-if="showArchived">
+              <div>
+                <template x-for="w in archivedSessions()" :key="w.id">
+                  <div class="s-item" :class="activeId === w.id && 'active'" @click="switchTo(w.id)">
+                    <div class="s-row">
+                      <template x-if="w.vcs?.pr?.status === 'merged' || w.vcs?.git?.isMerged">
+                        <span class="s-mark">✓</span>
+                      </template>
+                      <template x-if="!(w.vcs?.pr?.status === 'merged' || w.vcs?.git?.isMerged)">
+                        <span class="s-dot dead"></span>
+                      </template>
+                      <span class="s-title" x-text="w.title || w.tempName"></span>
+                      <template x-if="w.vcs?.pr?.exists">
+                        <div class="s-meta">
+                          <span class="s-pr-pill" :class="w.vcs.pr.status" x-text="'PR#' + w.vcs.pr.number"></span>
+                        </div>
+                      </template>
+                    </div>
+                    <div class="s-branch" x-show="w.branch">
+                      <span class="branch-icon">⑂</span>
+                      <span x-text="w.branch"></span>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+
+      <div class="rail-foot">
+        <span class="conn-dot ok"></span>
+        <span class="conn-label">127.0.0.1:8787</span>
+        <button class="settings-btn" @click="openModal('settings')" title="Settings">⚙</button>
+      </div>
+    </aside>
+
+    <!-- ═══ Viewport ═══ -->
+    <div class="viewport">
+      <template x-if="activeSession()">
+        <div class="viewport-col">
+          <div class="sidecar-wrap">
+            <div class="zone-output" x-ref="output" @scroll="onOutputScroll()">
+              <template x-for="(block, i) in activeSession().blocks" :key="i">
+                <div class="blk">
+                  <!-- User -->
+                  <template x-if="block.type === 'user'">
+                    <div class="blk--user">
+                      <div class="blk__head"><span class="blk__label">❯ You</span></div>
+                      <div class="blk__body" x-text="block.text"></div>
+                    </div>
+                  </template>
+                  <!-- Assistant -->
+                  <template x-if="block.type === 'assistant'">
+                    <div class="blk--assistant">
+                      <div class="blk__head"><span class="blk__label">◆ Glue</span></div>
+                      <div class="blk__body" x-html="renderMd(block.text) + (block.streaming ? '<span class=\'t-cursor\'></span>' : '')"></div>
+                    </div>
+                  </template>
+                  <!-- Tool call -->
+                  <template x-if="block.type === 'tool'">
+                    <div class="blk--toolcall">
+                      <div class="blk__head">
+                        <span class="blk__label">▶ Tool: <span class="blk__toolname" x-text="block.name"></span></span>
+                        <span class="blk__suffix" :class="'phase--' + toolPhase(block.status)" x-text="toolPhaseSuffix(block.status)"></span>
+                      </div>
+                      <div class="blk__meta" x-show="block.args" x-text="block.args"></div>
+                    </div>
+                  </template>
+                  <!-- Tool result -->
+                  <template x-if="block.type === 'toolResult'">
+                    <div class="blk--toolresult" :class="block.success !== false ? 'is-success' : 'is-fail'">
+                      <div class="blk__head"><span class="blk__label" x-text="(block.success !== false ? '✓' : '✗') + ' Tool result'"></span></div>
+                      <div class="blk__body" x-text="truncLines(block.text, 20)"></div>
+                    </div>
+                  </template>
+                  <!-- Error -->
+                  <template x-if="block.type === 'error'">
+                    <div class="blk--error">
+                      <div class="blk__head"><span class="blk__label">✗ Error</span></div>
+                      <div class="blk__body" x-text="block.text"></div>
+                    </div>
+                  </template>
+                  <!-- Bash -->
+                  <template x-if="block.type === 'bash'">
+                    <div class="blk--bash">
+                      <div class="blk__frame" x-html="renderBashFrame(block.command, block.output)"></div>
+                    </div>
+                  </template>
+                  <!-- System -->
+                  <template x-if="block.type === 'system'">
+                    <div class="blk--system">
+                      <div class="blk__body" x-text="block.text"></div>
+                    </div>
+                  </template>
+                  <!-- Subagent -->
+                  <template x-if="block.type === 'subagent'">
+                    <div class="blk--subagent">
+                      <div class="blk__head"><span class="blk__label">⑂ Agent: <span x-text="block.name"></span></span> <span class="blk__suffix" :class="'phase--' + toolPhase(block.status)" x-text="toolPhaseSuffix(block.status)"></span></div>
+                      <div class="blk__body" x-text="block.text"></div>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </div>
+            <template x-if="showSidecar">
+              <div class="sidecar">
+                <!-- Lifecycle action -->
+                <template x-if="activeSession().branch && activeSession().vcs">
+                  <div class="sc-lifecycle">
+                    <template x-if="lcWarning(activeSession())">
+                      <div class="sc-lc-warn">
+                        <span>⚠</span>
+                        <span x-text="lcWarning(activeSession())"></span>
+                      </div>
+                    </template>
+                    <button class="sc-action-btn" :class="lcActionClass(activeSession())"
+                      :disabled="lcActionDisabled(activeSession())"
+                      @click="performLifecycleAction(activeSession())"
+                      x-text="deriveLifecycle(activeSession()).primary"></button>
+                  </div>
+                </template>
+
+                <!-- Session info (collapsible) -->
+                <div class="sc-section-head" @click="scShowInfo = !scShowInfo">
+                  <span class="sc-chev" :class="scShowInfo !== false && 'open'">▶</span>
+                  <span>Info</span>
+                </div>
+                <template x-if="scShowInfo !== false">
+                <div class="sc-info">
+                  <div class="sc-info-row copyable" @click="copyWithFeedback(activeSession().id, 'id')" :title="'glue --resume ' + activeSession().id">
+                    <span class="sc-info-key">id</span><span class="sc-info-val accent" x-text="activeSession().id"></span><span class="sc-info-copy" :class="copiedField === 'id' && 'copied'" x-text="copiedField === 'id' ? '✓' : '⎘'"></span>
+                  </div>
+                  <div class="sc-info-row copyable" @click="copyWithFeedback(activeSession().project, 'root')" :title="activeSession().project">
+                    <span class="sc-info-key">root</span><span class="sc-info-val" x-text="activeSession().project"></span><span class="sc-info-copy" :class="copiedField === 'root' && 'copied'" x-text="copiedField === 'root' ? '✓' : '⎘'"></span>
+                  </div>
+                  <template x-if="activeSession().worktreePath">
+                    <div class="sc-info-row copyable" @click="copyWithFeedback(activeSession().worktreePath, 'wt')" :title="'Worktree directory: ' + activeSession().worktreePath">
+                      <span class="sc-info-key">worktree</span><span class="sc-info-val" x-text="activeSession().worktreePath"></span><span class="sc-info-copy" :class="copiedField === 'wt' && 'copied'" x-text="copiedField === 'wt' ? '✓' : '⎘'"></span>
+                    </div>
+                  </template>
+                  <template x-if="activeSession().branch">
+                    <div class="sc-info-row sc-info-row--center">
+                      <span class="sc-info-key">branch</span>
+                      <input class="sc-branch-field" type="text"
+                        :value="editingBranch === activeSession().id ? branchEditValue : activeSession().branch"
+                        :readonly="lcIsMerged(activeSession()) || editingBranch !== activeSession().id"
+                        @click="!lcIsMerged(activeSession()) && startBranchEdit(activeSession())"
+                        @input="branchEditValue = $event.target.value"
+                        @keydown.enter.prevent="saveBranchEdit()"
+                        @keydown.escape.prevent="cancelBranchEdit(); $event.target.blur()"
+                        @blur="editingBranch === activeSession().id && saveBranchEdit()"
+                        x-ref="branchInput">
+                      <template x-if="lcIsMerged(activeSession())">
+                        <span class="sc-branch-lock">🔒</span>
+                      </template>
+                    </div>
+                  </template>
+                  <template x-if="activeSession().vcs?.pr?.exists">
+                    <div class="sc-info-row">
+                      <span class="sc-info-key">pr</span>
+                      <a class="sc-pr-link" :href="activeSession().vcs.pr.url || '#'" target="_blank">
+                        <span x-text="'#' + (activeSession().vcs.pr.number || '')"></span>
+                        <span class="sc-pr-pill" :class="activeSession().vcs.pr.status" x-text="activeSession().vcs.pr.status"></span>
+                      </a>
+                    </div>
+                  </template>
+                  <template x-if="activeSession().vcs?.pr?.exists && activeSession().vcs.pr.checks.state !== 'not_run'">
+                    <div class="sc-info-row">
+                      <span class="sc-info-key">checks</span>
+                      <span class="sc-checks" :class="activeSession().vcs.pr.checks.state"
+                        x-text="activeSession().vcs.pr.checks.state === 'running' ? '⏳ running…' : activeSession().vcs.pr.checks.state === 'success' ? '✓ passed' : activeSession().vcs.pr.checks.state === 'failure' ? '✗ ' + (activeSession().vcs.pr.checks.failingCount || '') + ' failed' : ''"></span>
+                    </div>
+                  </template>
+                  <div class="sc-info-row">
+                    <span class="sc-info-key">model</span><span class="sc-info-val" x-text="activeSession().provider + '/' + activeSession().model"></span>
+                  </div>
+                  <div class="sc-info-row">
+                    <span class="sc-info-key">status</span><span class="sc-info-val" x-text="activeSession().alive ? '● active' : '○ idle'" :style="activeSession().alive && 'color:var(--success)'"></span>
+                  </div>
+                  <div class="sc-info-row">
+                    <span class="sc-info-key">tokens</span><span class="sc-info-val" x-text="formatTokens(activeSession().tokens)"></span>
+                  </div>
+                  <div class="sc-info-row">
+                    <span class="sc-info-key">messages</span><span class="sc-info-val" x-text="msgCount(activeSession())"></span>
+                  </div>
+                  <div class="sc-info-row">
+                    <span class="sc-info-key">started</span><span class="sc-info-val" x-text="activeSession().time"></span>
+                  </div>
+                </div>
+                </template>
+
+                <!-- Tool activity -->
+                <div class="sc-section-head" @click="scShowTools = scShowTools === false ? true : (scShowTools === true ? false : true)">
+                  <span class="sc-chev" :class="scShowTools !== false && 'open'">▶</span>
+                  <span>Tools</span>
+                  <span class="count" x-text="activeSession().blocks.filter(b => b.type === 'tool').length"></span>
+                </div>
+                <template x-if="scShowTools !== false">
+                  <div class="sc-list" style="max-height:140px;overflow-y:auto">
+                    <template x-for="(b, i) in activeSession().blocks.filter(b => b.type === 'tool')" :key="i">
+                      <div class="sc-item">
+                        <div class="sc-name" x-text="b.name"></div>
+                        <div class="sc-path" x-text="b.args"></div>
+                        <div class="sc-result" :class="b.status" x-text="b.status === 'needs-approval' ? '⏳ awaiting approval' : b.status"></div>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+
+                <!-- Files touched -->
+                <div class="sc-section-head" @click="scShowFiles = scShowFiles === false ? true : (scShowFiles === true ? false : true)">
+                  <span class="sc-chev" :class="scShowFiles !== false && 'open'">▶</span>
+                  <span>Files</span>
+                  <span class="count" x-text="scFilesTouched().length"></span>
+                </div>
+                <template x-if="scShowFiles !== false">
+                  <div class="sc-list" style="max-height:140px;overflow-y:auto">
+                    <template x-for="f in scFilesTouched()" :key="f">
+                      <div class="sc-item">
+                        <div class="sc-name" x-text="f.split('/').pop()"></div>
+                        <div class="sc-path" x-text="f"></div>
+                      </div>
+                    </template>
+                    <template x-if="scFilesTouched().length === 0">
+                      <div class="sc-item" style="color:var(--text-dim)">No files touched yet</div>
+                    </template>
+                  </div>
+                </template>
+
+                <!-- Subagents -->
+                <template x-if="activeSession().subagents && activeSession().subagents.length > 0">
+                  <div>
+                    <div class="sc-section-head">
+                      <span class="sc-chev open">▶</span>
+                      <span>Subagents</span>
+                      <span class="count" x-text="activeSession().subagents.length"></span>
+                    </div>
+                    <div class="sc-list">
+                      <template x-for="sa in activeSession().subagents" :key="sa.id">
+                        <div class="sc-item">
+                          <div class="sc-name" x-text="sa.name"></div>
+                          <div class="sc-path" x-text="sa.task"></div>
+                          <div class="sc-result" :class="sa.status === 'done' ? 'ok' : sa.status === 'running' ? 'pending' : sa.status" x-text="sa.status === 'running' ? '⏳ running…' : sa.status === 'done' ? '✓ done' : sa.status"></div>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+
+                <!-- Context usage bar -->
+                <div class="sc-footer">
+                  <div class="sc-footer-row">
+                    <span>context</span>
+                    <span class="sep">│</span>
+                    <span x-text="formatTokens(activeSession().tokens) + ' / 200k'"></span>
+                  </div>
+                  <div style="height:3px;background:var(--border);margin-top:2px">
+                    <div :style="'height:100%;background:var(--yellow);width:' + Math.min(100, (activeSession().tokens / 200000) * 100) + '%'"></div>
+                  </div>
+                </div>
+
+              </div>
+            </template>
+          </div>
+
+          <template x-if="overlay.open">
+            <div class="zone-overlay">
+              <div class="overlay-head">
+                <span x-text="overlay.title"></span>
+                <span class="tag" x-text="overlay.tag"></span>
+              </div>
+              <div class="overlay-search">
+                <span class="slash">❯</span>
+                <input type="text" placeholder="type to filter..." x-model="overlay.query" @keydown.escape="overlay.open = false" x-ref="overlayInput">
+              </div>
+              <template x-for="(item, i) in filteredOverlayItems()" :key="i">
+                <div class="overlay-item" :class="overlay.selected === i && 'selected'" @click="executeOverlay(item)">
+                  <span class="key" x-text="item.key || ''"></span>
+                  <span x-text="item.label"></span>
+                </div>
+              </template>
+            </div>
+          </template>
+
+          <div class="zone-status">
+            <span x-text="'▸ ' + (activeSession().title || activeSession().tempName)"></span>
+            <span class="sep">│</span>
+            <span x-show="activeSession().branch" x-text="'⑂ ' + (activeSession().branch || '')"></span>
+            <span x-show="activeSession().branch" class="sep">│</span>
+            <span x-text="activeSession().provider + '/' + activeSession().model"></span>
+            <div class="right">
+              <span class="dim" x-text="formatTokens(activeSession().tokens) + ' tok'"></span>
+              <span class="sep">│</span>
+              <span x-text="activeSession().time"></span>
+            </div>
+          </div>
+
+          <div class="zone-input">
+            <template x-if="slashActive">
+              <div class="slash-popup">
+                <template x-for="(cmd, i) in slashMatches" :key="cmd.name">
+                  <div class="slash-item" :class="slashSelected === i && 'selected'"
+                       @mousedown.prevent="acceptSlash(cmd)">
+                    <span class="slash-cmd" x-text="'/' + cmd.name"></span>
+                    <span class="slash-desc" x-text="cmd.description"></span>
+                    <span class="slash-alias" x-show="cmd.aliases" x-text="cmd.aliases"></span>
+                  </div>
+                </template>
+              </div>
+            </template>
+            <span class="pr">❯</span>
+            <textarea x-ref="mainInput" rows="1" placeholder="message..." x-model="inputText"
+              @keydown="handleInputKeydown($event)"
+              @input="autoGrow($event.target); updateSlash()"></textarea>
+            <span class="input-hint">enter=send · /=commands · tab=accept</span>
+          </div>
+        </div>
+      </template>
+
+      <template x-if="!activeSession()">
+        <div class="empty">
+          <div class="glyph">❯_</div>
+          <div class="msg">no active session</div>
+          <div class="hint">press + or Ctrl+N to start</div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- ═══ Modals ═══ -->
+  <template x-if="modal.open">
+    <div class="modal-bg" @click.self="tryDismissModal()">
+
+      <!-- Session Wizard -->
+      <template x-if="modal.kind === 'wizard'">
+        <div class="panel panel--wide" @click.stop>
+          <div class="panel-head">
+            <span class="panel-title">▸ new session</span>
+            <button class="panel-close" @click="tryDismissModal()">×</button>
+          </div>
+          <div class="wiz-steps wiz-steps-bar">
+            <span class="wiz-step wiz-step--clickable" :class="{'active': modal.step >= 1, 'current': modal.step === 1}" @click="wizardGoTo(1)">project</span>
+            <span class="wiz-sep">→</span>
+            <span class="wiz-step wiz-step--clickable" :class="{'active': modal.step >= 2, 'current': modal.step === 2}" @click="wizardGoTo(2)">setup</span>
+            <span class="wiz-sep">→</span>
+            <span class="wiz-step wiz-step--clickable" :class="{'active': modal.step >= 3, 'current': modal.step === 3}" @click="wizardGoTo(3)">prompt</span>
+          </div>
+          <div class="panel-body">
+
+            <!-- Step 1: Project -->
+            <template x-if="modal.step === 1">
+              <div>
+                <template x-if="!modal.repoMode">
+                  <div>
+                    <div class="f-group">
+                      <div class="f-label">Project</div>
+                      <select class="f-select" x-model="modal.form.repoPath">
+                        <template x-for="r in repos" :key="r.path">
+                          <option :value="r.path" x-text="r.name + '  ·  ' + r.shortPath"></option>
+                        </template>
+                      </select>
+                    </div>
+                    <div class="f-toggle f-toggle--mt-neg" @click="modal.repoMode = true; fbInit()">
+                      <span class="arrow">▶</span>
+                      <span>+ Add new repository...</span>
+                    </div>
+                  </div>
+                </template>
+                <template x-if="modal.repoMode">
+                  <div>
+                    <div class="f-toggle f-toggle--mb" @click="modal.repoMode = false">
+                      <span class="arrow open">▶</span>
+                      <span>← Use existing repo</span>
+                    </div>
+                    <div class="f-group">
+                      <div class="f-label">Local Path</div>
+                      <div class="fb-path-row">
+                        <input class="f-input" type="text" placeholder="~/code/my-project"
+                          x-model="fb.path"
+                          @input="fbUpdatePath()"
+                          @keydown.tab="fb.suggestions.length && ($event.preventDefault(), fbAcceptSuggestion())"
+                          @keydown.enter.prevent="fbNavigateTo(fb.path)">
+                        <button class="fb-home-btn" @click="fbNavigateTo(fb.serverCwd)" title="Server working directory">⌂</button>
+                      </div>
+                      <div class="f-hint" x-show="fb.expandedPath && fb.expandedPath !== fb.path"
+                        x-text="'→ ' + fb.expandedPath"></div>
+                      <template x-if="fb.suggestions.length > 0">
+                        <div class="fb-suggestions">
+                          <template x-for="s in fb.suggestions" :key="s">
+                            <div class="fb-sugg-item" @click="fbAcceptPath(s)" x-text="s"></div>
+                          </template>
+                        </div>
+                      </template>
+                    </div>
+                    <div class="fb-tree" tabindex="0" x-ref="fbTree" @keydown="fbHandleKeys($event)">
+                      <div class="fb-breadcrumb">
+                        <template x-for="(part, i) in fbBreadcrumbs()" :key="i">
+                          <span>
+                            <span class="fb-bc-sep" x-show="i > 0">/</span>
+                            <span class="fb-bc-part" @click="fbNavigateTo(part.path)" x-text="part.name"></span>
+                          </span>
+                        </template>
+                      </div>
+                      <div class="fb-listing" x-ref="fbListing">
+                        <template x-if="fb.parentPath !== null">
+                          <div class="fb-item" :class="fb.cursor === 0 && 'selected'" @click="fbNavigateTo(fb.parentPath)">
+                            <span class="fb-chev">◂</span>
+                            <span class="fb-name">..</span>
+                          </div>
+                        </template>
+                        <template x-for="(item, idx) in fb.listing" :key="item.name">
+                          <div class="fb-item"
+                               :class="fb.cursor === idx + (fb.parentPath !== null ? 1 : 0) && 'selected'"
+                               @click="item.isDir ? fbNavigateTo(item.fullPath) : null">
+                            <span class="fb-chev" x-text="item.isDir ? '▸' : ''"></span>
+                            <span class="fb-name" :class="item.isDir && 'dir'" x-text="item.name"></span>
+                            <span class="fb-badge" x-show="item.hasGit">git</span>
+                          </div>
+                        </template>
+                        <template x-if="fb.listing.length === 0">
+                          <div class="fb-empty">empty directory</div>
+                        </template>
+                      </div>
+                    </div>
+                    <template x-if="fb.isGitRepo">
+                      <div class="fb-git-badge">
+                        <span class="fb-git-dot"></span>
+                        <span>Git repository detected</span>
+                      </div>
+                    </template>
+                    <div class="f-group" style="margin-top:14px;margin-bottom:0">
+                      <div class="f-label">Display Name</div>
+                      <input class="f-input" type="text" placeholder="auto-detected from folder" x-model="modal.form.addName">
+                      <div class="f-hint" x-text="fb.path ? 'Will use: ' + (modal.form.addName || fb.path.split('/').filter(Boolean).pop() || '') : ''"></div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </template>
+
+            <!-- Step 2: Setup -->
+            <template x-if="modal.step === 2">
+              <div>
+                <div class="f-group">
+                  <div class="f-label">Run in</div>
+                  <select class="f-select" x-model="modal.form.wsMode">
+                    <option value="project-root">Project root (no isolation)</option>
+                    <option value="new-worktree">New worktree</option>
+                    <option value="existing-worktree">Existing worktree</option>
+                  </select>
+                </div>
+                <template x-if="modal.form.wsMode === 'new-worktree'">
+                  <div>
+                    <div class="wt-preview">
+                      <span class="wt-icon">⑂</span>
+                      <span class="wt-branch" x-text="'.worktrees/' + modal.form.generatedName"></span>
+                      <span style="flex:1"></span>
+                      <button class="wt-refresh" @click="modal.form.generatedName = generateName()" title="Regenerate name">↻</button>
+                    </div>
+                    <template x-if="modal.form.wsMode === 'new-worktree'">
+                      <div class="f-group" style="margin-top:8px;margin-bottom:0">
+                        <div class="f-label">Base Branch</div>
+                        <select class="f-select" x-model="modal.form.baseBranch">
+                          <option value="main">main</option>
+                          <option value="master">master</option>
+                          <option value="develop">develop</option>
+                          <option value="HEAD">HEAD (current)</option>
+                        </select>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+                <template x-if="modal.form.wsMode === 'existing-worktree'">
+                  <div class="f-group" style="margin-top:8px">
+                    <select class="f-select" x-model="modal.form.existingWt">
+                      <option value="">select worktree...</option>
+                      <template x-for="wt in worktreesFor(modal.form.repoPath)" :key="wt.branch">
+                        <option :value="wt.branch" x-text="'⑂ ' + wt.branch"></option>
+                      </template>
+                    </select>
+                  </div>
+                </template>
+                <hr class="f-divider">
+                <!-- Git branch toggle -->
+                <div class="f-group">
+                  <div class="f-label" style="display:flex;align-items:center;gap:8px">
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:12px;font-weight:500;color:var(--text-sec)">
+                      <input type="checkbox" class="f-check" x-model="modal.form.createBranch">
+                      Create git branch
+                    </label>
+                  </div>
+                  <template x-if="modal.form.createBranch">
+                    <div>
+                      <input class="f-input" type="text" x-model="modal.form.branchName"
+                             :placeholder="effectiveBranchPrefix() + modal.form.generatedName">
+                      <div class="f-hint" x-text="'Prefix from settings: ' + effectiveBranchPrefix()"></div>
+                    </div>
+                  </template>
+                </div>
+                <hr class="f-divider">
+                <div class="f-toggle" @click="modal.form.showAdvanced = !modal.form.showAdvanced">
+                  <span class="arrow" :class="modal.form.showAdvanced && 'open'">▶</span>
+                  <span>Advanced · <span style="color:var(--text-dim)" x-text="modal.form.provider + '/' + modal.form.model"></span></span>
+                </div>
+                <template x-if="modal.form.showAdvanced">
+                  <div style="margin-top:10px">
+                    <div class="f-row">
+                      <div class="f-group">
+                        <div class="f-label">Provider</div>
+                        <select class="f-select" x-model="modal.form.provider" @change="validateWizardModel()">
+                          <option value="anthropic">anthropic</option>
+                          <option value="openai">openai</option>
+                          <option value="google">google</option>
+                          <option value="ollama">ollama (local)</option>
+                        </select>
+                      </div>
+                      <div class="f-group">
+                        <div class="f-label">Model</div>
+                        <select class="f-select" x-model="modal.form.model">
+                          <template x-for="m in modelsFor(modal.form.provider)" :key="m">
+                            <option :value="m" x-text="m"></option>
+                          </template>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </template>
+
+            <!-- Step 3: Prompt -->
+            <template x-if="modal.step === 3">
+              <div>
+                <div class="wiz-summary">
+                  <div class="ws-row"><span class="ws-label">Project</span> <span class="ws-value" x-text="modal.form.repoPath.split('/').pop()"></span></div>
+                  <div class="ws-row"><span class="ws-label">Run in</span> <span class="ws-value" x-text="modal.form.wsMode === 'new-worktree' ? '.worktrees/' + modal.form.generatedName : modal.form.wsMode === 'project-root' ? 'project root' : modal.form.existingWt || '...'"></span></div>
+                  <div class="ws-row" x-show="modal.form.createBranch"><span class="ws-label">Branch</span> <span class="ws-value" x-text="modal.form.branchName || effectiveBranchPrefix() + modal.form.generatedName"></span></div>
+                  <div class="ws-row"><span class="ws-label">Model</span> <span class="ws-value" x-text="modal.form.provider + '/' + modal.form.model"></span></div>
+                </div>
+                <div class="f-group" style="margin-bottom:0">
+                  <div class="f-label">Initial Prompt <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></div>
+                  <textarea class="f-textarea" rows="5" style="min-height:120px" placeholder="What should the agent work on?&#10;&#10;e.g. Refactor the auth module to use JWT refresh tokens..." x-model="modal.form.prompt"></textarea>
+                </div>
+              </div>
+            </template>
+
+          </div>
+          <div class="panel-foot">
+            <button class="btn" @click="quickCreate()" title="Create with defaults, skip all steps" style="margin-right:auto">⚡ quick</button>
+            <button class="btn" x-show="modal.step > 1" @click="wizardBack()">back</button>
+            <button class="btn" @click="tryDismissModal()">cancel</button>
+            <button class="btn primary" x-show="modal.step < 3" @click="wizardNext()" :disabled="!wizardCanNext()">next</button>
+            <button class="btn primary" x-show="modal.step === 3" @click="createSession()">start</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Settings -->
+      <template x-if="modal.kind === 'settings'">
+        <div class="panel" style="width:480px" @click.stop>
+          <div class="panel-head">
+            <span class="panel-title">▸ settings</span>
+            <button class="panel-close" @click="modal.open = false">×</button>
+          </div>
+          <div class="panel-body" style="max-height:70vh;overflow-y:auto">
+
+            <!-- Section 1: Global Defaults -->
+            <div class="set-section">
+              <div class="set-section-head"><span class="set-icon">◆</span> Global Defaults</div>
+              <div class="f-row">
+                <div class="f-group">
+                  <div class="f-label">Provider</div>
+                  <select class="f-select" x-model="config.globalDefaults.provider" @change="validateGlobalModel()">
+                    <option value="anthropic">anthropic</option>
+                    <option value="openai">openai</option>
+                    <option value="google">google</option>
+                    <option value="ollama">ollama (local)</option>
+                  </select>
+                </div>
+                <div class="f-group">
+                  <div class="f-label">Model</div>
+                  <select class="f-select" x-model="config.globalDefaults.model">
+                    <template x-for="m in modelsFor(config.globalDefaults.provider)" :key="m">
+                      <option :value="m" x-text="m"></option>
+                    </template>
+                  </select>
+                </div>
+              </div>
+              <div class="f-row">
+                <div class="f-group">
+                  <div class="f-label">Isolation</div>
+                  <select class="f-select" x-model="config.globalDefaults.wsMode">
+                    <option value="project-root">Project root</option>
+                    <option value="new-worktree">New worktree</option>
+                    <option value="existing-worktree">Existing worktree</option>
+                  </select>
+                </div>
+                <div class="f-group">
+                  <div class="f-label">Base Branch</div>
+                  <select class="f-select" x-model="config.globalDefaults.baseBranch">
+                    <option value="main">main</option>
+                    <option value="master">master</option>
+                    <option value="develop">develop</option>
+                    <option value="HEAD">HEAD (current)</option>
+                  </select>
+                  <div class="f-hint">Fallback when project has no override</div>
+                </div>
+              </div>
+              <div class="f-row">
+                <div class="f-group">
+                  <div class="f-label">Branch Prefix</div>
+                  <input class="f-input" type="text" x-model="config.globalDefaults.branchPrefix" placeholder="glue/">
+                  <div class="f-hint">Default prefix for new git branches</div>
+                </div>
+                <div class="f-group">
+                  <div class="f-label">On Archive Worktree</div>
+                  <select class="f-select" x-model="config.globalDefaults.onArchiveWorktree">
+                    <option value="ask">Ask every time</option>
+                    <option value="keep">Always keep</option>
+                    <option value="delete">Always delete</option>
+                  </select>
+                </div>
+              </div>
+              <div class="f-row">
+                <div class="f-group">
+                  <div class="f-label">Delete Branch on Merge</div>
+                  <select class="f-select" x-model="config.globalDefaults.deleteBranchOnMerge">
+                    <option value="yes">Yes — delete remote branch</option>
+                    <option value="no">No — keep branch</option>
+                    <option value="ask">Ask every time</option>
+                  </select>
+                  <div class="f-hint">Applies after PR merge via GitHub</div>
+                </div>
+                <div class="f-group">
+                  <div class="f-label">Git Host</div>
+                  <select class="f-select" x-model="config.globalDefaults.gitHost">
+                    <option value="github">GitHub</option>
+                    <option value="gitlab" disabled>GitLab (coming soon)</option>
+                    <option value="bitbucket" disabled>Bitbucket (coming soon)</option>
+                  </select>
+                  <div class="f-hint">Auth via SSH keys + gh CLI</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 2: Per-Project Overrides (collapsed) -->
+            <div class="set-section">
+              <div class="f-toggle" @click="showProjectOverrides = !showProjectOverrides" style="margin-bottom:10px">
+                <span class="arrow" :class="showProjectOverrides && 'open'">▶</span>
+                <span style="font-weight:600;color:var(--text-sec)">Per-Project Overrides</span>
+                <span style="margin-left:4px;font-size:11px;color:var(--text-dim)" x-text="repos.filter(r => Object.keys(r.overrides).length > 0).length + ' projects with overrides'"></span>
+              </div>
+              <template x-if="showProjectOverrides">
+                <div>
+                  <div class="set-repo-picker">
+                    <select class="f-select" x-model="settingsRepoPath">
+                      <template x-for="r in repos" :key="r.path">
+                        <option :value="r.path" x-text="r.name + (Object.keys(r.overrides).length ? '  (' + Object.keys(r.overrides).length + ' overrides)' : '')"></option>
+                      </template>
+                    </select>
+                  </div>
+                  <template x-if="settingsRepo()">
+                    <div>
+                      <div class="set-override">
+                        <div class="set-override-toggle" :class="hasOverride('baseBranch') && 'on'"
+                             @click="toggleOverride('baseBranch', config.globalDefaults.baseBranch)">✓</div>
+                        <div class="set-override-field">
+                          <div class="f-label">Base Branch</div>
+                          <select class="f-select" :disabled="!hasOverride('baseBranch')"
+                                  :value="getOverride('baseBranch')" @change="setOverride('baseBranch', $event.target.value)">
+                            <option value="main">main</option><option value="master">master</option>
+                            <option value="develop">develop</option><option value="HEAD">HEAD</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div class="set-override">
+                        <div class="set-override-toggle" :class="hasOverride('provider') && 'on'"
+                             @click="toggleOverride('provider', config.globalDefaults.provider); if(!hasOverride('provider')) clearOverride('model')">✓</div>
+                        <div class="set-override-field">
+                          <div class="f-label">Provider / Model</div>
+                          <div class="f-row" style="gap:6px">
+                            <select class="f-select" :disabled="!hasOverride('provider')"
+                                    :value="getOverride('provider')" @change="setOverride('provider', $event.target.value); validateRepoModel()">
+                              <option value="anthropic">anthropic</option><option value="openai">openai</option>
+                              <option value="google">google</option><option value="ollama">ollama</option>
+                            </select>
+                            <select class="f-select" :disabled="!hasOverride('provider')"
+                                    :value="getOverride('model')" @change="setOverride('model', $event.target.value)">
+                              <template x-for="m in modelsFor(effectiveForRepo('provider'))" :key="m">
+                                <option :value="m" x-text="m"></option>
+                              </template>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </div>
+
+          </div>
+          <div class="panel-foot">
+            <span class="foot-hint">Saved to browser storage</span>
+            <button class="btn" @click="modal.open = false">close</button>
+            <button class="btn primary" @click="saveConfig()">save</button>
+          </div>
+        </div>
+      </template>
+
+    </div>
+  </template>
+
+  <!-- Dismiss confirmation -->
+  <template x-if="showDismissConfirm">
+    <div class="modal-confirm" @click.self="showDismissConfirm = false">
+      <div class="modal-confirm-box" @click.stop>
+        <div class="modal-confirm-msg">Discard wizard progress?</div>
+        <div class="modal-confirm-actions">
+          <button class="btn" @click="showDismissConfirm = false">keep editing</button>
+          <button class="btn primary" @click="showDismissConfirm = false; modal.open = false">discard</button>
+        </div>
+      </div>
+    </div>
+  </template>
+</div>
+
+<script>
+// ── Name generator ──
+const ADJECTIVES = ['swift','bold','calm','dark','keen','warm','cool','wild','soft','fast','bright','quiet','sharp','vivid','pale','dry','raw','slim','tall','deep'];
+const COLORS = ['red','blue','jade','gold','teal','plum','sage','rust','mint','rose','amber','coral','slate','ivory','onyx','opal','lime','pine','sand','dusk'];
+const ANIMALS = ['fox','owl','elk','ram','jay','eel','yak','cod','ant','bee','cat','dog','bat','hen','pig','ray','ape','gnu','koi','pug'];
+
+function generateName() {
+  const a = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
+  const c = COLORS[Math.floor(Math.random() * COLORS.length)];
+  const n = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
+  return a + '-' + c + '-' + n;
+}
+
+function glue() {
+  let nextId = 100;
+
+  return {
+    activeId: 'S-01',
+    activeProjectFilter: JSON.parse(localStorage.getItem('glue-project-filter') || 'null') || '~/code/glue',
+    showSidecar: true,
+    showRepoDD: false,
+    showWrapup: null,
+    showArchived: false,
+    showDismissConfirm: false,
+    repoSearch: '',
+    inputText: '',
+    editingBranch: null,
+    branchEditValue: '',
+    copiedField: null,
+    showActiveGroup: true,
+    showProjectOverrides: false,
+    scShowInfo: true,
+    scShowTools: true,
+    scShowFiles: true,
+    outputSticky: true,
+
+    // Slash completion
+    slashCommands: [
+      { name: 'help', description: 'Show available commands and keybindings', aliases: '' },
+      { name: 'clear', description: 'Clear conversation history', aliases: '' },
+      { name: 'exit', description: 'Exit session', aliases: 'quit, q' },
+      { name: 'model', description: 'Show or set the current model', aliases: '' },
+      { name: 'info', description: 'Show session info', aliases: 'status' },
+      { name: 'tools', description: 'List available tools', aliases: '' },
+      { name: 'history', description: 'Show input history', aliases: '' },
+      { name: 'compact', description: 'Compact conversation context', aliases: '' },
+      { name: 'approve', description: 'Approve pending tool calls', aliases: '' },
+    ],
+    slashActive: false,
+    slashMatches: [],
+    slashSelected: 0,
+
+    // Layered config (localStorage-backed)
+    config: JSON.parse(localStorage.getItem('glue-config') || 'null') || {
+      globalDefaults: {
+        provider: 'anthropic',
+        model: 'claude-4-sonnet',
+        wsMode: 'project-root',
+        baseBranch: 'main',
+        branchPrefix: 'glue/',
+        onArchiveWorktree: 'ask',
+        deleteBranchOnMerge: 'yes',
+        gitHost: 'github',
+      },
+    },
+
+    // Settings modal: which repo is selected
+    settingsRepoPath: '~/code/glue',
+
+    // File browser
+    fb: {
+      path: '~/code',
+      currentDir: '~/code',
+      serverCwd: '~/code',
+      serverHome: '/Users/helge',
+      listing: [],
+      suggestions: [],
+      parentPath: null,
+      isGitRepo: false,
+      expandedPath: '/Users/helge/code',
+      cursor: 0,
+    },
+
+    mockFs: {
+      '~': { dirs: ['code', 'Documents', 'Desktop', 'Downloads', '.config', '.glue'], files: ['.zshrc', '.gitconfig'] },
+      '~/code': { dirs: ['glue', 'api-server', 'docs', 'personal', 'experiments', 'oss'], files: [] },
+      '~/code/glue': { dirs: ['.git', 'cli', 'website', 'agents', '.conductor'], files: ['README.md', 'justfile', '.gitignore'] },
+      '~/code/glue/cli': { dirs: ['lib', 'test', 'bin'], files: ['pubspec.yaml', 'analysis_options.yaml'] },
+      '~/code/api-server': { dirs: ['.git', 'src', 'tests', 'node_modules'], files: ['package.json', 'README.md', 'tsconfig.json'] },
+      '~/code/docs': { dirs: ['.git', 'content', 'static', 'layouts'], files: ['hugo.toml', 'README.md'] },
+      '~/code/personal': { dirs: ['notes', 'scripts', 'dotfiles'], files: [] },
+      '~/code/personal/notes': { dirs: ['.git', 'daily', 'archive'], files: ['ideas.md'] },
+      '~/code/personal/dotfiles': { dirs: ['.git', 'nvim', 'zsh', 'tmux'], files: ['install.sh', 'README.md'] },
+      '~/code/experiments': { dirs: ['ml-sandbox', 'rust-playground'], files: [] },
+      '~/code/experiments/ml-sandbox': { dirs: ['.git', 'models', 'data'], files: ['requirements.txt'] },
+      '~/code/oss': { dirs: ['neovim', 'alacritty'], files: [] },
+      '~/code/oss/neovim': { dirs: ['.git', 'src', 'runtime'], files: ['CMakeLists.txt'] },
+    },
+
+    overlay: { open: false, title: '', tag: '', query: '', items: [], selected: 0 },
+
+    modal: {
+      open: false,
+      kind: 'wizard',
+      step: 1,
+      repoMode: false,
+      form: {
+        repoPath: '~/code/glue',
+        wsMode: 'project-root',
+        existingWt: '',
+        generatedName: generateName(),
+        baseBranch: 'main',
+        createBranch: false,
+        branchName: '',
+        provider: 'anthropic',
+        model: 'claude-4-sonnet',
+        prompt: '',
+        showAdvanced: false,
+        addPath: '',
+        addName: '',
+      },
+    },
+
+    repos: [
+      { name: 'glue', path: '~/code/glue', shortPath: '~/code/glue', detected: { defaultBranch: 'main' }, overrides: {} },
+      { name: 'api-server', path: '~/code/api-server', shortPath: '~/code/api-server', detected: { defaultBranch: 'main' }, overrides: { baseBranch: 'develop' } },
+      { name: 'docs-site', path: '~/code/docs', shortPath: '~/code/docs', detected: { defaultBranch: 'master' }, overrides: { baseBranch: 'master', provider: 'ollama', model: 'llama4' } },
+    ],
+
+    providerModels: {
+      anthropic: ['claude-4-sonnet', 'claude-4-opus', 'claude-4-haiku'],
+      openai: ['gpt-5', 'gpt-4.1', 'o3'],
+      google: ['gemini-3-pro', 'gemini-3-flash'],
+      ollama: ['llama4', 'qwen3:32b', 'deepseek-r2:14b'],
+    },
+
+    worktrees: [
+      { repo: '~/code/glue', branch: 'feat/tui-overhaul', path: '.worktrees/feat-tui-overhaul' },
+      { repo: '~/code/glue', branch: 'feat/mcp-support', path: '.worktrees/feat-mcp-support' },
+      { repo: '~/code/api-server', branch: 'feat/auth', path: '.worktrees/feat-auth' },
+    ],
+
+    sessions: [
+      {
+        id: 'S-01', project: '~/code/glue', worktreePath: '~/code/glue/.worktrees/swift-jade-fox',
+        branch: 'glue/swift-jade-fox', tempName: 'swift-jade-fox',
+        title: null, renameProposal: 'feat/screen-buffer-diffing',
+        model: 'claude-4-sonnet', provider: 'anthropic',
+        alive: true, archived: false, time: '2m ago', tokens: 4521,
+        vcs: {
+          git: { hasUncommittedChanges: true, localCommitsAhead: 2, hasUpstream: true, remoteBranchExists: true, isMerged: false },
+          pr: { exists: false, url: null, number: null, status: 'none', checks: { state: 'not_run' } },
+        },
+        blocks: [
+          { type: 'user', text: 'implement the screen buffer with diff-based rendering', ts: '15:12:01' },
+          { type: 'assistant', text: 'I\'ll implement a **virtual screen buffer** that tracks changes between frames for flicker-free rendering.\n\nLet me first look at the current terminal implementation.', streaming: false },
+          { type: 'tool', name: 'read_file', args: 'lib/src/terminal/terminal.dart', status: 'ok' },
+          { type: 'toolResult', text: '1: import \'dart:io\';\n2: import \'dart:async\';\n3:\n4: class Terminal {\n5:   final Stdout _stdout;\n6:   int _width = 80;\n  … (151 more lines)', success: true, name: 'read_file' },
+          { type: 'assistant', text: 'Now I\'ll create the `ScreenBuffer` class with a **Cell-based grid** system.\n\n### Design\n\n- Each cell stores a character and its style\n- We keep two buffers — *current* and *previous*\n- Only write the diff to the real terminal\n\n```dart\nclass Cell {\n  final String char;\n  final AnsiStyle style;\n  Cell(this.char, this.style);\n}\n\nclass ScreenBuffer {\n  late List<List<Cell>> _current;\n  late List<List<Cell>> _previous;\n\n  void flush(Terminal terminal) {\n    for (var y = 0; y < _rows; y++) {\n      for (var x = 0; x < _cols; x++) {\n        if (_current[y][x] != _previous[y][x]) {\n          terminal.moveTo(x, y);\n          terminal.write(_current[y][x]);\n        }\n      }\n    }\n  }\n}\n```', streaming: false },
+          { type: 'tool', name: 'write_file', args: 'lib/src/terminal/screen_buffer.dart', status: 'ok' },
+          { type: 'toolResult', text: 'created (89 lines)', success: true },
+          { type: 'bash', command: 'dart analyze lib/src/terminal/', output: 'Analyzing lib/src/terminal/...\n  No issues found!' },
+          { type: 'assistant', text: 'Created the screen buffer. The key method is `flush()` which compares `_current` against `_previous` and only emits ANSI escape sequences for cells that changed.\n\n> This eliminates flicker during streaming output.\n\nWant me to update the Layout class to use this buffer?', streaming: false },
+        ],
+      },
+      {
+        id: 'S-02', project: '~/code/glue', worktreePath: '~/code/glue/.worktrees/bold-teal-owl',
+        branch: 'glue/bold-teal-owl', tempName: 'bold-teal-owl',
+        title: 'MCP server discovery', renameProposal: null,
+        model: 'claude-4-sonnet', provider: 'anthropic',
+        alive: true, archived: false, time: '1m ago', tokens: 1892,
+        vcs: {
+          git: { hasUncommittedChanges: false, localCommitsAhead: 3, hasUpstream: true, remoteBranchExists: true, isMerged: false },
+          pr: { exists: true, url: 'https://github.com/helgesverre/glue/pull/42', number: 42, status: 'open', checks: { state: 'running' } },
+        },
+        blocks: [
+          { type: 'user', text: 'add MCP server discovery and connection management', ts: '15:14:22' },
+          { type: 'assistant', text: 'I\'ll add MCP server discovery. Let me check the existing configuration...', streaming: true },
+          { type: 'tool', name: 'read_file', args: '.glue/mcp.json', status: 'ok' },
+          { type: 'toolResult', text: '24 lines read', success: true },
+        ],
+      },
+      {
+        id: 'S-03', project: '~/code/glue', worktreePath: null,
+        branch: null, tempName: 'calm-red-elk',
+        title: null, renameProposal: null,
+        model: 'gpt-5', provider: 'openai',
+        alive: true, archived: false, time: '3m ago', tokens: 3107,
+        vcs: null,
+        blocks: [
+          { type: 'user', text: 'fix the UTF-8 multi-byte character parsing bug in terminal input', ts: '15:11:44' },
+          { type: 'assistant', text: 'Found the issue — `_decodeUtf8Char` doesn\'t handle surrogate pairs correctly. Applied the fix.', streaming: false },
+          { type: 'tool', name: 'edit_file', args: 'lib/src/input/line_editor.dart', status: 'ok' },
+          { type: 'toolResult', text: '3 lines changed', success: true },
+          { type: 'tool', name: 'bash', args: 'dart analyze lib/', status: 'needs-approval' },
+          { type: 'system', text: 'Waiting for user approval…' },
+        ],
+      },
+      {
+        id: 'S-04', project: '~/code/api-server', worktreePath: '~/code/api-server/.worktrees/keen-amber-jay',
+        branch: 'glue/keen-amber-jay', tempName: 'keen-amber-jay',
+        title: 'JWT auth middleware', renameProposal: null,
+        model: 'claude-4-sonnet', provider: 'anthropic',
+        alive: true, archived: false, time: '1m ago', tokens: 2890,
+        vcs: {
+          git: { hasUncommittedChanges: false, localCommitsAhead: 0, hasUpstream: true, remoteBranchExists: true, isMerged: false },
+          pr: { exists: true, url: 'https://github.com/helgesverre/api-server/pull/18', number: 18, status: 'open', checks: { state: 'success' } },
+        },
+        blocks: [
+          { type: 'user', text: 'implement JWT authentication middleware with refresh token rotation', ts: '15:13:55' },
+          { type: 'assistant', text: 'This is a multi-part task. I\'ll dispatch **3 subagents** to work in parallel:\n\n1. JWT verification middleware\n2. Refresh token rotation logic\n3. Token storage and cleanup\n\nLet me set those up now.', streaming: false },
+          { type: 'subagent', name: 'agent-1', text: 'Implementing RS256 JWT verification middleware…', status: 'ok' },
+          { type: 'subagent', name: 'agent-2', text: 'Building refresh token rotation with sliding window…', status: 'ok' },
+          { type: 'subagent', name: 'agent-3', text: 'Setting up Redis token store with TTL cleanup…', status: 'pending' },
+          { type: 'tool', name: 'write_file', args: 'src/middleware/jwt.ts', status: 'ok' },
+          { type: 'toolResult', text: 'created (67 lines)', success: true },
+          { type: 'tool', name: 'write_file', args: 'src/auth/refresh.ts', status: 'ok' },
+          { type: 'toolResult', text: 'created (45 lines)', success: true },
+          { type: 'assistant', text: 'Two subagents completed. Agent-3 is still working on the Redis token store. Here\'s what we have so far:\n\n- `jwt.ts` — RS256 verification with `jsonwebtoken`, extracts claims to `req.auth`\n- `refresh.ts` — Sliding window rotation, old tokens invalidated on use', streaming: true },
+        ],
+        subagents: [
+          { id: 'SA-01', name: 'agent-1', task: 'JWT verification middleware (RS256)', status: 'done' },
+          { id: 'SA-02', name: 'agent-2', task: 'Refresh token rotation logic', status: 'done' },
+          { id: 'SA-03', name: 'agent-3', task: 'Redis token store + TTL cleanup', status: 'running' },
+        ],
+      },
+      {
+        id: 'S-05', project: '~/code/glue', worktreePath: null,
+        branch: 'glue/warm-plum-ant', tempName: 'warm-plum-ant',
+        title: 'README update', renameProposal: null,
+        model: 'claude-4-haiku', provider: 'anthropic',
+        alive: false, archived: true, time: '20m ago', tokens: 987,
+        vcs: {
+          git: { hasUncommittedChanges: false, localCommitsAhead: 0, hasUpstream: true, remoteBranchExists: false, isMerged: true },
+          pr: { exists: true, url: 'https://github.com/helgesverre/glue/pull/35', number: 35, status: 'merged', checks: { state: 'success' } },
+        },
+        blocks: [
+          { type: 'user', text: 'update the README with install instructions', ts: '15:02:11' },
+          { type: 'assistant', text: 'Done. Updated README.md with installation via `dart pub global activate`, quick start guide, and architecture overview.', streaming: false },
+        ],
+      },
+    ],
+
+    // ── Project helpers ──
+    currentProject() { return this.repos.find(r => r.path === this.activeProjectFilter) || this.repos[0]; },
+    filteredProjects() {
+      if (!this.repoSearch) return this.repos;
+      const q = this.repoSearch.toLowerCase();
+      return this.repos.filter(r => r.name.toLowerCase().includes(q) || r.path.toLowerCase().includes(q));
+    },
+    switchProject(path) {
+      this.activeProjectFilter = path;
+      localStorage.setItem('glue-project-filter', JSON.stringify(path));
+      this.showRepoDD = false;
+      this.repoSearch = '';
+      const w = this.visibleSessions().find(w => w.alive);
+      if (w) this.activeId = w.id;
+      else this.activeId = null;
+    },
+    sessionsForProject(path) { return this.sessions.filter(w => w.project === path); },
+    visibleSessions() {
+      if (this.activeProjectFilter === '__all__') return this.sessions;
+      return this.sessionsForProject(this.activeProjectFilter);
+    },
+    activeSessions() { return this.visibleSessions().filter(w => !w.archived); },
+    archivedSessions() { return this.visibleSessions().filter(w => w.archived); },
+    worktreesFor(project) { return this.worktrees.filter(w => w.repo === project); },
+    modelsFor(provider) { return this.providerModels[provider] || []; },
+
+    // ── Init ──
+    init() { this.$nextTick(() => this.scrollOutputToEnd()); },
+
+    // ── Session helpers ──
+    activeSession() { return this.sessions.find(w => w.id === this.activeId) || null; },
+
+    toolCalls() { const w = this.activeSession(); return w ? w.blocks.filter(b => b.type === 'tool') : []; },
+    msgCount(w) { return w ? w.blocks.filter(b => b.type === 'user' || b.type === 'assistant').length : 0; },
+
+    scFilesTouched() {
+      const s = this.activeSession();
+      if (!s) return [];
+      const files = new Set();
+      for (const b of s.blocks) {
+        if (b.type === 'tool' && b.args && (b.name === 'read_file' || b.name === 'write_file' || b.name === 'edit_file')) {
+          files.add(b.args.split(',')[0].trim());
+        }
+      }
+      return [...files];
+    },
+
+    // ── Block rendering helpers (mirror CLI BlockRenderer) ──
+    toolPhase(status) {
+      const map = { ok: 'done', pending: 'running', 'needs-approval': 'awaitingApproval', error: 'error' };
+      return map[status] || 'done';
+    },
+    toolPhaseSuffix(status) {
+      const map = { pending: '(running…)', 'needs-approval': '(awaiting approval)', error: '(error)' };
+      return map[status] || '';
+    },
+    truncLines(text, max) {
+      if (!text) return '';
+      const lines = text.split('\n');
+      if (lines.length <= max) return text;
+      return lines.slice(0, max).join('\n') + '\n  … (' + (lines.length - max) + ' more lines)';
+    },
+    renderBashFrame(command, output) {
+      const cols = 72;
+      const cw = cols - 4;
+      const legend = ' ' + this.escHtml(command) + ' ';
+      const topFill = Math.max(0, cols - 2 - legend.length);
+      const top = '<span class="bash-border">┌─</span><span class="bash-legend">' + legend + '</span><span class="bash-border">' + '─'.repeat(topFill) + '┐</span>';
+      const bot = '<span class="bash-border">└' + '─'.repeat(cols - 2) + '┘</span>';
+      const lines = output ? output.split('\n') : [];
+      const maxLines = 50;
+      const truncated = lines.length > maxLines;
+      const visible = truncated ? lines.slice(lines.length - maxLines) : lines;
+      let content = '';
+      if (truncated) {
+        const notice = '… (' + (lines.length - maxLines) + ' lines above)';
+        const pad = Math.max(0, cw - notice.length);
+        content += '<span class="bash-border">│</span> <span class="bash-notice">' + this.escHtml(notice) + '</span>' + ' '.repeat(pad) + ' <span class="bash-border">│</span>\n';
+      }
+      for (const line of visible) {
+        const display = line.length > cw ? line.substring(0, cw - 1) + '…' : line;
+        const pad = Math.max(0, cw - display.length);
+        content += '<span class="bash-border">│</span> <span class="bash-content">' + this.escHtml(display) + '</span>' + ' '.repeat(pad) + ' <span class="bash-border">│</span>\n';
+      }
+      if (!content) {
+        content = '<span class="bash-border">│</span>' + ' '.repeat(cols - 2) + '<span class="bash-border">│</span>\n';
+      }
+      return top + '\n' + content + bot;
+    },
+    escHtml(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    },
+    renderMd(text) {
+      if (!text) return '';
+      const lines = text.split('\n');
+      const out = [];
+      let inCode = false;
+      let codeLang = null;
+      const codeLines = [];
+
+      for (const line of lines) {
+        if (line.trimStart().startsWith('```')) {
+          if (!inCode) {
+            inCode = true;
+            codeLang = line.trimStart().substring(3).trim() || null;
+            continue;
+          } else {
+            out.push(this.renderCodeFrame(codeLines, codeLang));
+            codeLines.length = 0;
+            inCode = false;
+            codeLang = null;
+            continue;
+          }
+        }
+        if (inCode) { codeLines.push(line); continue; }
+
+        // Headings
+        if (line.startsWith('### ')) { out.push('<div class="md__h">' + this.renderInline(line.substring(4)) + '</div>'); continue; }
+        if (line.startsWith('## ')) { out.push('<div class="md__h">' + this.renderInline(line.substring(3)) + '</div>'); continue; }
+        if (line.startsWith('# ')) { out.push('<div class="md__h">' + this.renderInline(line.substring(2)) + '</div>'); continue; }
+        // Blockquote
+        if (line.startsWith('> ')) { out.push('<div class="md__quote"><span class="md__quotebar">│</span> ' + this.renderInline(line.substring(2)) + '</div>'); continue; }
+        // Unordered list
+        const ulm = line.match(/^(\s*)[-*] (.*)/);
+        if (ulm) { out.push('<div class="md__li">' + ulm[1] + '<span class="md__bullet">•</span> ' + this.renderInline(ulm[2]) + '</div>'); continue; }
+        // Ordered list
+        const olm = line.match(/^(\s*)(\d+)\. (.*)/);
+        if (olm) { out.push('<div class="md__li">' + olm[1] + '<span class="md__bullet">' + this.escHtml(olm[2]) + '.</span> ' + this.renderInline(olm[3]) + '</div>'); continue; }
+        // Empty / paragraph
+        if (!line) { out.push(''); continue; }
+        out.push(this.renderInline(line));
+      }
+      if (inCode && codeLines.length) { out.push(this.renderCodeFrame(codeLines, codeLang)); }
+      return out.join('\n');
+    },
+    renderInline(text) {
+      let s = this.escHtml(text);
+      // Inline code (protect from further processing)
+      const segs = [];
+      let rest = s;
+      while (true) {
+        const m = rest.match(/`(.+?)`/);
+        if (!m) break;
+        segs.push(this.renderInlineSegment(rest.substring(0, m.index)));
+        segs.push('<span class="md__code">' + m[1] + '</span>');
+        rest = rest.substring(m.index + m[0].length);
+      }
+      segs.push(this.renderInlineSegment(rest));
+      return segs.join('');
+    },
+    renderInlineSegment(text) {
+      return text
+        .replace(/\*\*(.+?)\*\*/g, '<span class="md__bold">$1</span>')
+        .replace(/(?<!\*)\*([^*]+?)\*(?!\*)/g, '<span class="md__italic">$1</span>')
+        .replace(/\[(.+?)\]\((.+?)\)/g, '$1 <span class="md__link-url">($2)</span>');
+    },
+    renderCodeFrame(lines, lang) {
+      const cols = 68;
+      const cw = cols - 4;
+      const label = lang ? ' ' + this.escHtml(lang) + ' ' : '';
+      const hfill = Math.max(0, cols - 2 - label.length);
+      let html = '<pre class="md__codeframe">';
+      html += '<span class="cf-border">╭─</span>' + (label ? '<span class="cf-lang">' + label + '</span>' : '') + '<span class="cf-border">' + '─'.repeat(hfill) + '╮</span>\n';
+      for (const line of lines) {
+        const display = line.length > cw ? this.escHtml(line.substring(0, cw - 1)) + '…' : this.escHtml(line);
+        const vis = line.length > cw ? cw : line.length;
+        const pad = Math.max(0, cw - vis);
+        html += '<span class="cf-border">│</span> <span class="cf-line">' + display + '</span>' + ' '.repeat(pad) + ' <span class="cf-border">│</span>\n';
+      }
+      html += '<span class="cf-border">╰' + '─'.repeat(cols - 2) + '╯</span>';
+      html += '</pre>';
+      return html;
+    },
+
+    formatTokens(n) {
+      if (n >= 1000000) return (n / 1000000).toFixed(1) + 'm';
+      if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+      return String(n);
+    },
+    copyText(text) { navigator.clipboard?.writeText(text); },
+    copyWithFeedback(text, field) {
+      navigator.clipboard?.writeText(text);
+      this.copiedField = field;
+      setTimeout(() => { if (this.copiedField === field) this.copiedField = null; }, 1500);
+    },
+    switchTo(id) { this.activeId = id; this.outputSticky = true; this.scrollOutputToEnd(); },
+    effectiveBranchPrefix() {
+      const repo = this.repos.find(r => r.path === (this.modal?.form?.repoPath || this.activeProjectFilter));
+      return repo?.overrides?.branchPrefix ?? this.config.globalDefaults.branchPrefix ?? 'glue/';
+    },
+
+    // ── Actions ──
+    // ── Settings resolution ──
+    effectiveSettings(repoPath) {
+      const repo = this.repos.find(r => r.path === repoPath);
+      return { ...this.config.globalDefaults, ...(repo?.overrides ?? {}) };
+    },
+
+    openModal(kind) {
+      this.modal.kind = kind;
+      this.modal.open = true;
+      if (kind === 'wizard') {
+        this.modal.step = 1;
+        this.modal.repoMode = false;
+        this.modal.form.repoPath = this.activeProjectFilter === '__all__' ? this.repos[0]?.path : this.activeProjectFilter;
+        const eff = this.effectiveSettings(this.modal.form.repoPath);
+        this.modal.form.wsMode = eff.wsMode;
+        this.modal.form.existingWt = '';
+        this.modal.form.generatedName = generateName();
+        this.modal.form.baseBranch = eff.baseBranch;
+        this.modal.form.provider = eff.provider;
+        this.modal.form.model = eff.model;
+        if (!this.modelsFor(this.modal.form.provider).includes(this.modal.form.model)) {
+          this.modal.form.model = this.modelsFor(this.modal.form.provider)[0];
+        }
+        this.modal.form.prompt = '';
+        this.modal.form.addName = '';
+        this.modal.form.createBranch = false;
+        this.modal.form.branchName = '';
+      }
+      if (kind === 'settings') {
+        this.settingsRepoPath = this.activeProjectFilter === '__all__' ? this.repos[0]?.path : this.activeProjectFilter;
+      }
+    },
+
+    openWizardAddRepo() {
+      this.openModal('wizard');
+      this.modal.repoMode = true;
+      this.fbInit();
+    },
+
+    createSession() {
+      const f = this.modal.form;
+      let branch = null, tempName = f.generatedName, worktreePath = null;
+      if (f.wsMode === 'new-worktree') {
+        worktreePath = f.repoPath + '/.worktrees/' + f.generatedName;
+        this.worktrees.push({ repo: f.repoPath, branch: f.generatedName, path: '.worktrees/' + f.generatedName });
+      } else if (f.wsMode === 'existing-worktree') {
+        tempName = f.existingWt.split('/').pop();
+      } else {
+        tempName = f.generatedName;
+      }
+      if (f.createBranch) {
+        branch = f.branchName || (this.effectiveBranchPrefix() + f.generatedName);
+      }
+      const id = 'S-' + (nextId++).toString(16).padStart(2, '0');
+      const w = {
+        id, project: f.repoPath, worktreePath, branch, tempName,
+        title: null, renameProposal: null,
+        model: f.model, provider: f.provider,
+        alive: true, archived: false, time: 'now', tokens: 0,
+        vcs: branch ? {
+          git: { hasUncommittedChanges: false, localCommitsAhead: 0, hasUpstream: false, remoteBranchExists: false, isMerged: false },
+          pr: { exists: false, url: null, number: null, status: 'none', checks: { state: 'not_run' } },
+        } : null,
+        blocks: f.prompt
+          ? [{ type: 'user', text: f.prompt }, { type: 'assistant', text: 'Looking at your project...', streaming: true }]
+          : [],
+      };
+      this.sessions.push(w);
+      if (this.activeProjectFilter !== '__all__') this.activeProjectFilter = f.repoPath;
+      this.activeId = w.id;
+      this.modal.open = false;
+      this.$nextTick(() => {
+        const el = this.$refs.mainInput;
+        if (el) { el.focus(); this.autoGrow(el); }
+      });
+    },
+
+    addRepo() {
+      const f = this.modal.form;
+      const name = f.addName || f.addPath.split('/').pop();
+      this.repos.push({ name, path: f.addPath, shortPath: f.addPath, detected: { defaultBranch: 'main' }, overrides: {} });
+      this.activeProjectFilter = f.addPath;
+      this.modal.open = false;
+      this.$nextTick(() => this.openModal('wizard'));
+    },
+
+    addRepoFromBrowser() {
+      const path = this.fb.path;
+      const name = this.modal.form.addName || path.split('/').filter(Boolean).pop();
+      this.repos.push({ name, path, shortPath: path, detected: { defaultBranch: 'main' }, overrides: {} });
+      this.activeProjectFilter = path;
+      this.modal.open = false;
+      this.$nextTick(() => this.openModal('wizard'));
+    },
+
+    acceptRename(s) {
+      s.branch = s.renameProposal;
+      s.title = s.renameProposal.replace(/^(feat|fix|refactor|docs|chore)\//, '').replace(/-/g, ' ');
+      s.renameProposal = null;
+    },
+    dismissRename(s) { s.renameProposal = null; },
+
+    // ── Branch edit (sidecar) ──
+    startBranchEdit(s) {
+      this.editingBranch = s.id;
+      this.branchEditValue = s.branch;
+      this.$nextTick(() => this.$refs.branchInput?.focus());
+    },
+    saveBranchEdit() {
+      const s = this.sessions.find(w => w.id === this.editingBranch);
+      if (!s || !this.branchEditValue.trim()) { this.cancelBranchEdit(); return; }
+      const newName = this.branchEditValue.trim();
+      const oldName = s.branch;
+      if (newName === oldName) { this.cancelBranchEdit(); return; }
+      if (s.vcs?.pr?.exists && s.vcs.pr.status === 'open') {
+        alert('⚠ Branch has an open PR (#' + s.vcs.pr.number + '). In production, Glue will close and recreate the PR with the new branch name via GitHub API.');
+      }
+      if (s.vcs?.git?.remoteBranchExists) {
+        console.log('[mock] git push origin :' + oldName + ' ' + newName);
+        console.log('[mock] git push -u origin ' + newName);
+      }
+      s.branch = newName;
+      if (!s.title) {
+        s.title = newName.replace(/^(feat|fix|refactor|docs|chore|glue)\//, '').replace(/-/g, ' ');
+      }
+      this.editingBranch = null;
+    },
+    cancelBranchEdit() { this.editingBranch = null; },
+
+    // ── Session list helpers ──
+    checksLabel(w) {
+      const c = w.vcs?.pr?.checks;
+      if (!c || c.state === 'not_run') return '';
+      const glyphs = { running: '↻', success: '✓', failure: '✗' };
+      return glyphs[c.state] || '';
+    },
+
+    // ── Lifecycle state machine ──
+    deriveLifecycle(s) {
+      if (!s?.vcs) return { step: 'NONE', primary: '—' };
+      const { git, pr } = s.vcs;
+      if (git.isMerged || pr.status === 'merged') return { step: 'MERGED', primary: 'Archive' };
+      if (pr.exists && pr.status === 'open') {
+        if (pr.checks.state === 'running') return { step: 'PR_CHECKS_RUNNING', primary: 'Checks running…' };
+        if (pr.checks.state === 'failure') return { step: 'PR_CHECKS_FAILED', primary: 'Merge (checks failed)' };
+        if (pr.checks.state === 'success') return { step: 'PR_CHECKS_GREEN', primary: 'Merge' };
+        return { step: 'PR_OPEN', primary: 'Waiting for checks…' };
+      }
+      if (pr.exists && pr.status === 'closed') return { step: 'PR_CLOSED', primary: 'Create PR' };
+      if (git.hasUncommittedChanges) return { step: 'UNCOMMITTED', primary: 'Commit changes' };
+      if (git.localCommitsAhead > 0 || !git.remoteBranchExists) return { step: 'UNPUSHED', primary: 'Push' };
+      return { step: 'PUSHED', primary: 'Create PR' };
+    },
+    lcIsMerged(s) {
+      return s?.vcs?.git?.isMerged || s?.vcs?.pr?.status === 'merged';
+    },
+    lcStepClass(s, step) {
+      const lc = this.deriveLifecycle(s);
+      const order = ['UNCOMMITTED', 'UNPUSHED', 'PUSHED', 'PR_OPEN', 'PR_CHECKS_RUNNING', 'PR_CHECKS_GREEN', 'PR_CHECKS_FAILED', 'MERGED'];
+      const stepMap = {
+        commit: ['UNCOMMITTED'],
+        push: ['UNPUSHED'],
+        pr: ['PUSHED', 'PR_CLOSED'],
+        checks: ['PR_OPEN', 'PR_CHECKS_RUNNING', 'PR_CHECKS_GREEN', 'PR_CHECKS_FAILED'],
+        merge: ['MERGED'],
+      };
+      if (stepMap[step]?.includes(lc.step)) {
+        if (lc.step === 'PR_CHECKS_FAILED') return 'failed';
+        return 'current';
+      }
+      const currentIdx = order.indexOf(lc.step);
+      const stepIndices = (stepMap[step] || []).map(s => order.indexOf(s)).filter(i => i >= 0);
+      if (stepIndices.length > 0 && stepIndices[0] < currentIdx) return 'done';
+      return '';
+    },
+    lcActionClass(s) {
+      const lc = this.deriveLifecycle(s);
+      if (lc.step === 'MERGED') return 'success';
+      if (lc.step === 'PR_CHECKS_FAILED') return 'danger';
+      return '';
+    },
+    lcActionDisabled(s) {
+      const lc = this.deriveLifecycle(s);
+      return lc.step === 'PR_CHECKS_RUNNING' || lc.step === 'PR_OPEN';
+    },
+    lcWarning(s) {
+      if (!s?.vcs) return null;
+      const lc = this.deriveLifecycle(s);
+      if (lc.step === 'PR_CHECKS_FAILED') return 'Some checks failed — merge at your own risk';
+      if (s.vcs.pr.exists && s.vcs.pr.status === 'open' && s.vcs.git.hasUncommittedChanges)
+        return 'Uncommitted changes in worktree';
+      return null;
+    },
+    performLifecycleAction(s) {
+      if (!s?.vcs) return;
+      const lc = this.deriveLifecycle(s);
+      switch (lc.step) {
+        case 'UNCOMMITTED':
+          s.vcs.git.hasUncommittedChanges = false;
+          s.vcs.git.localCommitsAhead++;
+          break;
+        case 'UNPUSHED':
+          s.vcs.git.localCommitsAhead = 0;
+          s.vcs.git.remoteBranchExists = true;
+          s.vcs.git.hasUpstream = true;
+          break;
+        case 'PUSHED':
+        case 'PR_CLOSED':
+          s.vcs.pr = { exists: true, url: 'https://github.com/example/repo/pull/99', number: 99, status: 'open', checks: { state: 'running' } };
+          setTimeout(() => {
+            if (s.vcs.pr.status === 'open') {
+              s.vcs.pr.checks = { state: Math.random() > 0.3 ? 'success' : 'failure', failingCount: 1 };
+            }
+          }, 2000);
+          break;
+        case 'PR_CHECKS_GREEN':
+        case 'PR_CHECKS_FAILED':
+          s.vcs.pr.status = 'merged';
+          s.vcs.git.isMerged = true;
+          if (this.config.globalDefaults.deleteBranchOnMerge === 'yes') {
+            s.vcs.git.remoteBranchExists = false;
+          }
+          break;
+        case 'MERGED':
+          this.archiveSession(s.id);
+          break;
+      }
+    },
+
+    // ── Modal dismiss ──
+    tryDismissModal() {
+      if (this.modal.kind === 'wizard' && (this.modal.step > 1 || this.modal.form.prompt || this.modal.repoMode)) {
+        this.showDismissConfirm = true;
+      } else {
+        this.modal.open = false;
+      }
+    },
+
+    // ── Wizard step navigation ──
+    wizardGoTo(step) {
+      if (step <= this.modal.step) {
+        this.modal.step = step;
+      } else if (step === this.modal.step + 1 && this.wizardCanNext()) {
+        this.wizardNext();
+      }
+    },
+
+    // ── Quick create ──
+    quickCreate() {
+      const repoPath = this.activeProjectFilter === '__all__' ? this.repos[0]?.path : this.activeProjectFilter;
+      const eff = this.effectiveSettings(repoPath);
+      const name = generateName();
+      let branch = null, worktreePath = null;
+      if (eff.wsMode === 'new-worktree') {
+        worktreePath = repoPath + '/.worktrees/' + name;
+        this.worktrees.push({ repo: repoPath, branch: name, path: '.worktrees/' + name });
+        branch = (eff.branchPrefix || 'glue/') + name;
+      }
+      if (!this._quickId) this._quickId = 200;
+      const id = 'S-' + (this._quickId++).toString(16).padStart(2, '0');
+      const s = {
+        id, project: repoPath, worktreePath, branch, tempName: name,
+        title: null, renameProposal: null,
+        model: eff.model, provider: eff.provider,
+        alive: true, archived: false, time: 'now', tokens: 0,
+        vcs: branch ? {
+          git: { hasUncommittedChanges: false, localCommitsAhead: 0, hasUpstream: false, remoteBranchExists: false, isMerged: false },
+          pr: { exists: false, url: null, number: null, status: 'none', checks: { state: 'not_run' } },
+        } : null,
+        blocks: [],
+      };
+      this.sessions.push(s);
+      if (this.activeProjectFilter !== '__all__') this.activeProjectFilter = repoPath;
+      this.activeId = s.id;
+      this.modal.open = false;
+      this.$nextTick(() => this.$refs.mainInput?.focus());
+    },
+
+    archiveSession(id) {
+      const w = this.sessions.find(w => w.id === id);
+      if (w) { w.archived = true; w.alive = false; }
+      this.showWrapup = null;
+      if (this.activeId === id) {
+        const next = this.activeSessions().find(w => w.id !== id);
+        this.activeId = next?.id || null;
+      }
+    },
+    deleteSession(id) {
+      this.sessions = this.sessions.filter(w => w.id !== id);
+      this.showWrapup = null;
+      if (this.activeId === id) this.activeId = this.activeSessions()[0]?.id || null;
+    },
+
+    sendMessage() {
+      if (!this.inputText.trim() || !this.activeSession()) return;
+      const s = this.activeSession();
+      const text = this.inputText.trim();
+
+      // Handle slash commands
+      if (text.startsWith('/')) {
+        const cmdName = text.substring(1).split(/\s+/)[0].toLowerCase();
+        const cmd = this.slashCommands.find(c =>
+          c.name === cmdName || (c.aliases && c.aliases.split(', ').includes(cmdName))
+        );
+        if (cmd) {
+          s.blocks.forEach(b => { if (b.streaming) b.streaming = false; });
+          s.blocks.push({ type: 'user', text });
+          s.blocks.push({ type: 'assistant', text: this.executeSlashCommand(cmd.name, s), streaming: false });
+          this.inputText = '';
+          this.slashActive = false;
+          this.outputSticky = true;
+          this.scrollOutputToEnd();
+          this.$nextTick(() => { const el = this.$refs.mainInput; if (el) this.autoGrow(el); });
+          return;
+        }
+      }
+
+      s.blocks.forEach(b => { if (b.streaming) b.streaming = false; });
+      s.blocks.push({ type: 'user', text });
+      s.blocks.push({ type: 'assistant', text: 'Processing...', streaming: true });
+      s.time = 'now';
+      this.inputText = '';
+      this.outputSticky = true;
+      this.scrollOutputToEnd();
+      this.$nextTick(() => { const el = this.$refs.mainInput; if (el) this.autoGrow(el); });
+      // Simulate auto-rename after 3rd user message
+      const userMsgs = s.blocks.filter(b => b.type === 'user').length;
+      if (userMsgs >= 3 && !s.title && !s.renameProposal && s.branch.startsWith('glue/')) {
+        setTimeout(() => {
+          const words = s.blocks.filter(b => b.type === 'user').map(b => b.text).join(' ');
+          const slug = words.split(/\s+/).slice(0, 3).join('-').toLowerCase().replace(/[^a-z0-9-]/g, '');
+          s.renameProposal = 'feat/' + slug;
+        }, 500);
+      }
+    },
+
+    executeSlashCommand(name, s) {
+      switch (name) {
+        case 'help': return '/help      Show available commands\n/clear     Clear conversation\n/exit      Exit session\n/model     Show/set model\n/info      Session info\n/tools     List tools\n/history   Input history\n/compact   Compact context\n/approve   Approve tool calls';
+        case 'clear': return '✓ Conversation cleared.';
+        case 'info': case 'status': return `Session: ${s.tempName}\nBranch: ${s.branch || '(none)'}\nModel: ${s.provider}/${s.model}\nTokens: ${s.tokens}`;
+        case 'model': return `Current model: ${s.provider}/${s.model}`;
+        case 'tools': return 'Available tools:\n  read_file     Read file contents\n  write_file    Write to file\n  edit_file     Edit file\n  bash          Run shell command\n  glob          Find files\n  grep          Search in files';
+        case 'history': return 'Input history:\n  ' + s.blocks.filter(b => b.type === 'user').map(b => b.text).join('\n  ');
+        case 'compact': return '✓ Context compacted. Removed 12 tool results.';
+        case 'approve': return '✓ All pending tool calls approved.';
+        case 'exit': return '✓ Session ended.';
+        default: return `Unknown command: /${name}`;
+      }
+    },
+
+    // ── Keyboard / palette ──
+    openPalette() {
+      this.overlay.title = 'Command Palette';
+      this.overlay.tag = '/';
+      this.overlay.query = '';
+      this.overlay.selected = 0;
+      this.overlay.items = [
+        { key: 'n', label: 'New session', action: () => this.openModal('wizard') },
+        { key: 'p', label: 'Switch project', action: () => { this.showRepoDD = true; this.$nextTick(() => this.$refs.repoSearchInput?.focus()); } },
+        { key: 't', label: 'Toggle sidecar', action: () => { this.showSidecar = !this.showSidecar; } },
+        { key: 's', label: 'Settings', action: () => this.openModal('settings') },
+        ...this.sessions.filter(w => !w.archived).map(w => ({
+          key: '', label: (w.title || w.tempName) + ' · ' + w.model,
+          action: () => { if (this.activeProjectFilter !== '__all__') this.activeProjectFilter = w.project; this.switchTo(w.id); },
+        })),
+      ];
+      this.overlay.open = true;
+      this.$nextTick(() => this.$refs.overlayInput?.focus());
+    },
+    filteredOverlayItems() {
+      if (!this.overlay.query) return this.overlay.items;
+      const q = this.overlay.query.toLowerCase();
+      return this.overlay.items.filter(i => i.label.toLowerCase().includes(q));
+    },
+    executeOverlay(item) { if (item.action) item.action(); this.overlay.open = false; },
+
+    handleKeys(e) {
+      if (this.showDismissConfirm) { if (e.key === 'Escape') { this.showDismissConfirm = false; this.modal.open = false; e.preventDefault(); } return; }
+      if (this.modal.open) { if (e.key === 'Escape') { this.modal.open = false; e.preventDefault(); } return; }
+      if (this.overlay.open) {
+        if (e.key === 'Escape') { this.overlay.open = false; e.preventDefault(); }
+        else if (e.key === 'ArrowDown') { this.overlay.selected = Math.min(this.overlay.selected + 1, this.filteredOverlayItems().length - 1); e.preventDefault(); }
+        else if (e.key === 'ArrowUp') { this.overlay.selected = Math.max(this.overlay.selected - 1, 0); e.preventDefault(); }
+        else if (e.key === 'Enter') { const items = this.filteredOverlayItems(); if (items[this.overlay.selected]) this.executeOverlay(items[this.overlay.selected]); e.preventDefault(); }
+        return;
+      }
+      if (this.showRepoDD && e.key === 'Escape') { this.showRepoDD = false; e.preventDefault(); return; }
+      const tag = e.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.key === '/') { e.preventDefault(); this.openPalette(); }
+      else if (e.key === 't') this.showSidecar = !this.showSidecar;
+      else if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); this.openModal('wizard'); }
+    },
+
+    closeDropdowns(e) { this.showRepoDD = false; this.showWrapup = null; },
+
+    autoGrow(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 140) + 'px'; },
+    onOutputScroll() {
+      const el = this.$refs.output;
+      if (!el) return;
+      this.outputSticky = el.scrollTop + el.clientHeight >= el.scrollHeight - 24;
+    },
+    scrollOutputToEnd() {
+      this.$nextTick(() => {
+        const el = this.$refs.output;
+        if (el && this.outputSticky) el.scrollTop = el.scrollHeight;
+      });
+    },
+
+    // ── Slash completion ──
+    updateSlash() {
+      const text = this.inputText;
+      if (!text.startsWith('/') || /\s/.test(text.slice(1))) {
+        this.slashActive = false;
+        this.slashMatches = [];
+        this.slashSelected = 0;
+        return;
+      }
+      const prefix = text.substring(1).toLowerCase();
+      const matches = this.slashCommands.filter(cmd =>
+        cmd.name.startsWith(prefix) ||
+        (cmd.aliases && cmd.aliases.split(', ').some(a => a.startsWith(prefix)))
+      );
+      if (matches.length > 0) {
+        this.slashActive = true;
+        this.slashMatches = matches;
+        this.slashSelected = Math.min(this.slashSelected, matches.length - 1);
+      } else {
+        this.slashActive = false;
+        this.slashMatches = [];
+        this.slashSelected = 0;
+      }
+    },
+
+    acceptSlash(cmd) {
+      this.inputText = '/' + cmd.name + ' ';
+      this.slashActive = false;
+      this.slashMatches = [];
+      this.slashSelected = 0;
+      this.$nextTick(() => {
+        const el = this.$refs.mainInput;
+        if (el) { el.focus(); this.autoGrow(el); }
+      });
+    },
+
+    handleInputKeydown(e) {
+      if (this.slashActive && this.slashMatches.length > 0) {
+        switch (e.key) {
+          case 'ArrowUp':
+            e.preventDefault();
+            this.slashSelected = (this.slashSelected - 1 + this.slashMatches.length) % this.slashMatches.length;
+            return;
+          case 'ArrowDown':
+            e.preventDefault();
+            this.slashSelected = (this.slashSelected + 1) % this.slashMatches.length;
+            return;
+          case 'Tab':
+            e.preventDefault();
+            this.acceptSlash(this.slashMatches[this.slashSelected]);
+            return;
+          case 'Enter':
+            if (!e.shiftKey) {
+              e.preventDefault();
+              this.acceptSlash(this.slashMatches[this.slashSelected]);
+              return;
+            }
+            break;
+          case 'Escape':
+            e.preventDefault();
+            this.slashActive = false;
+            return;
+        }
+      }
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        this.sendMessage();
+      }
+    },
+
+    // ── File browser ──
+    fbInit() {
+      this.fb.path = this.fb.serverCwd;
+      this.fb.currentDir = this.fb.serverCwd;
+      this.fb.suggestions = [];
+      this.fb.isGitRepo = false;
+      this.fb.expandedPath = this.fbExpandTilde(this.fb.serverCwd);
+      this.fbNavigateTo(this.fb.serverCwd);
+    },
+
+    fbExpandTilde(path) {
+      if (path.startsWith('~/')) return this.fb.serverHome + path.substring(1);
+      if (path === '~') return this.fb.serverHome;
+      return path;
+    },
+
+    fbNavigateTo(path) {
+      path = path.replace(/\/+$/, '') || '~';
+      this.fb.path = path;
+      this.fb.currentDir = path;
+      this.fb.expandedPath = this.fbExpandTilde(path);
+      this.fb.suggestions = [];
+      this.fb.cursor = 0;
+
+      const parts = path.split('/');
+      this.fb.parentPath = parts.length > 1 ? parts.slice(0, -1).join('/') || '~' : null;
+      if (path === '~') this.fb.parentPath = null;
+
+      const entry = this.mockFs[path];
+      if (entry) {
+        this.fb.listing = [];
+        for (const d of entry.dirs) {
+          if (d === '.git') continue;
+          const childPath = path + '/' + d;
+          const childEntry = this.mockFs[childPath];
+          const hasGit = childEntry ? childEntry.dirs.includes('.git') : false;
+          this.fb.listing.push({ name: d + '/', isDir: true, fullPath: childPath, hasGit });
+        }
+        for (const f of entry.files) {
+          this.fb.listing.push({ name: f, isDir: false, fullPath: path + '/' + f, hasGit: false });
+        }
+        this.fb.isGitRepo = entry.dirs.includes('.git');
+      } else {
+        this.fb.listing = [];
+        this.fb.isGitRepo = false;
+      }
+    },
+
+    fbUpdatePath() {
+      const rawPath = this.fb.path;
+      const path = rawPath.replace(/\/+$/, '') || '~';
+      this.fb.expandedPath = this.fbExpandTilde(path);
+
+      const lastSlash = path.lastIndexOf('/');
+      if (lastSlash >= 0) {
+        const parentDir = path.substring(0, lastSlash) || '~';
+        const partial = path.substring(lastSlash + 1).toLowerCase();
+        const parentEntry = this.mockFs[parentDir];
+        if (parentEntry && partial) {
+          this.fb.suggestions = parentEntry.dirs
+            .filter(d => d !== '.git' && d.toLowerCase().startsWith(partial))
+            .map(d => parentDir + '/' + d);
+        } else {
+          this.fb.suggestions = [];
+        }
+      } else {
+        this.fb.suggestions = [];
+      }
+
+      if (this.mockFs[path]) {
+        this.fbNavigateTo(path);
+        this.fb.path = rawPath;
+      }
+    },
+
+    fbAcceptSuggestion() {
+      if (this.fb.suggestions.length > 0) {
+        this.fbAcceptPath(this.fb.suggestions[0]);
+      }
+    },
+
+    fbAcceptPath(path) {
+      this.fb.path = path;
+      this.fb.suggestions = [];
+      this.fbNavigateTo(path);
+    },
+
+    fbBreadcrumbs() {
+      const path = this.fb.currentDir;
+      if (!path || path === '~') return [{ name: '~', path: '~' }];
+      const parts = path.split('/');
+      const crumbs = [];
+      let accumulated = '';
+      for (let i = 0; i < parts.length; i++) {
+        accumulated = i === 0 ? parts[0] : accumulated + '/' + parts[i];
+        crumbs.push({ name: parts[i], path: accumulated });
+      }
+      return crumbs;
+    },
+
+    fbHandleKeys(e) {
+      const hasParent = this.fb.parentPath !== null;
+      const totalItems = this.fb.listing.length + (hasParent ? 1 : 0);
+      if (totalItems === 0) return;
+
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault();
+          this.fb.cursor = Math.max(0, this.fb.cursor - 1);
+          this.$nextTick(() => {
+            const items = this.$refs.fbListing?.querySelectorAll('.fb-item');
+            items?.[this.fb.cursor]?.scrollIntoView({ block: 'nearest' });
+          });
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          this.fb.cursor = Math.min(totalItems - 1, this.fb.cursor + 1);
+          this.$nextTick(() => {
+            const items = this.$refs.fbListing?.querySelectorAll('.fb-item');
+            items?.[this.fb.cursor]?.scrollIntoView({ block: 'nearest' });
+          });
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (hasParent && this.fb.cursor === 0) {
+            this.fbNavigateTo(this.fb.parentPath);
+          } else {
+            const idx = this.fb.cursor - (hasParent ? 1 : 0);
+            const item = this.fb.listing[idx];
+            if (item?.isDir) this.fbNavigateTo(item.fullPath);
+          }
+          break;
+        case 'ArrowLeft':
+        case 'Backspace':
+          if (this.fb.parentPath) {
+            e.preventDefault();
+            this.fbNavigateTo(this.fb.parentPath);
+          }
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          if (hasParent && this.fb.cursor === 0) break;
+          const ridx = this.fb.cursor - (hasParent ? 1 : 0);
+          const ritem = this.fb.listing[ridx];
+          if (ritem?.isDir) this.fbNavigateTo(ritem.fullPath);
+          break;
+      }
+    },
+
+    // ── Wizard navigation ──
+    wizardNext() {
+      if (!this.wizardCanNext()) return;
+      if (this.modal.step === 1 && this.modal.repoMode) {
+        const path = this.fb.path;
+        const name = this.modal.form.addName || path.split('/').filter(Boolean).pop();
+        if (!this.repos.find(r => r.path === path)) {
+          this.repos.push({ name, path, shortPath: path, detected: { defaultBranch: 'main' }, overrides: {} });
+        }
+        this.modal.form.repoPath = path;
+        this.modal.repoMode = false;
+      }
+      // Re-resolve effective settings when entering step 2
+      if (this.modal.step === 1) {
+        const eff = this.effectiveSettings(this.modal.form.repoPath);
+        this.modal.form.provider = eff.provider;
+        this.modal.form.model = eff.model;
+        this.modal.form.wsMode = eff.wsMode;
+        this.modal.form.baseBranch = eff.baseBranch;
+        if (!this.modelsFor(this.modal.form.provider).includes(this.modal.form.model)) {
+          this.modal.form.model = this.modelsFor(this.modal.form.provider)[0];
+        }
+      }
+      this.modal.step = Math.min(3, this.modal.step + 1);
+    },
+
+    wizardBack() {
+      this.modal.step = Math.max(1, this.modal.step - 1);
+    },
+
+    wizardCanNext() {
+      if (this.modal.step === 1) {
+        if (this.modal.repoMode) return !!this.fb.path && this.fb.path !== '~';
+        return !!this.modal.form.repoPath;
+      }
+      if (this.modal.step === 2) {
+        if (this.modal.form.wsMode === 'existing-worktree') return !!this.modal.form.existingWt;
+        return true;
+      }
+      return true;
+    },
+
+    wizardHint() {
+      if (this.modal.step === 1) {
+        if (this.modal.repoMode) {
+          return this.fb.isGitRepo ? '● project ready' : 'browse to a directory';
+        }
+        return this.modal.form.repoPath.split('/').pop();
+      }
+      if (this.modal.step === 2) {
+        if (this.modal.form.wsMode === 'new-worktree') return '⑂ .worktrees/' + this.modal.form.generatedName;
+        if (this.modal.form.wsMode === 'project-root') return 'project root';
+        return this.modal.form.existingWt || '...';
+      }
+      return 'step 3 of 3';
+    },
+
+    validateWizardModel() {
+      const models = this.modelsFor(this.modal.form.provider);
+      if (!models.includes(this.modal.form.model)) {
+        this.modal.form.model = models[0];
+      }
+    },
+
+    // ── Settings helpers ──
+    settingsRepo() {
+      return this.repos.find(r => r.path === this.settingsRepoPath) || null;
+    },
+
+    hasOverride(key) {
+      const repo = this.settingsRepo();
+      return repo && repo.overrides[key] !== undefined;
+    },
+
+    getOverride(key) {
+      const repo = this.settingsRepo();
+      return repo?.overrides[key] ?? this.config.globalDefaults[key];
+    },
+
+    setOverride(key, value) {
+      const repo = this.settingsRepo();
+      if (repo) repo.overrides[key] = value;
+    },
+
+    clearOverride(key) {
+      const repo = this.settingsRepo();
+      if (repo) delete repo.overrides[key];
+    },
+
+    toggleOverride(key, fallbackValue) {
+      if (this.hasOverride(key)) {
+        this.clearOverride(key);
+      } else {
+        this.setOverride(key, fallbackValue);
+      }
+    },
+
+    effectiveForRepo(key) {
+      const repo = this.settingsRepo();
+      return repo?.overrides[key] ?? this.config.globalDefaults[key];
+    },
+
+    validateGlobalModel() {
+      const models = this.modelsFor(this.config.globalDefaults.provider);
+      if (!models.includes(this.config.globalDefaults.model)) {
+        this.config.globalDefaults.model = models[0];
+      }
+    },
+
+    validateRepoModel() {
+      const repo = this.settingsRepo();
+      if (!repo || !repo.overrides.model) return;
+      const provider = repo.overrides.provider ?? this.config.globalDefaults.provider;
+      const models = this.modelsFor(provider);
+      if (!models.includes(repo.overrides.model)) {
+        repo.overrides.model = models[0];
+      }
+    },
+
+    bulkSetBaseBranch(branch) {
+      for (const r of this.repos) {
+        r.overrides.baseBranch = branch;
+      }
+    },
+
+    bulkClearOverride(key) {
+      for (const r of this.repos) {
+        delete r.overrides[key];
+      }
+    },
+
+    saveConfig() {
+      localStorage.setItem('glue-config', JSON.stringify(this.config));
+      this.modal.open = false;
+    },
+  };
+}
+</script>
+</body>
+</html>

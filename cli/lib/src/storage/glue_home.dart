@@ -11,6 +11,7 @@ class GlueHome {
   String get configPath => p.join(basePath, 'config.json');
   String get sessionsDir => p.join(basePath, 'sessions');
   String get logsDir => p.join(basePath, 'logs');
+  String get skillsDir => p.join(basePath, 'skills');
 
   void ensureDirectories() {
     Directory(sessionsDir).createSync(recursive: true);

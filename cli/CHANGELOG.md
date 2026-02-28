@@ -6,6 +6,78 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Added
 
+- **Multimodal tool results** — tools can now return images (e.g.
+  browser screenshots) as native content blocks instead of base64 text.
+  This reduces token usage from ~738K text tokens to ~1,600 vision
+  tokens per screenshot.
+  - `ContentPart` sealed class hierarchy (`TextPart`, `ImagePart`) for
+    structured content in tool results.
+  - `Tool.execute()` returns `List<ContentPart>` — single dispatch
+    method for all content types (text and images).
+  - `ForwardingTool` base class for decorators (Go embedding pattern) —
+    new `Tool` methods auto-forward to all decorators.
+  - Provider-native image formats: Anthropic inline `image` blocks in
+    `tool_result`, OpenAI/Ollama follow-up user messages with
+    `image_url`/`images` arrays.
+  - `WebBrowserTool` screenshots now return `ImagePart` instead of
+    base64 text strings.
+
+- **Observability & debug system** — pluggable telemetry with zero
+  changes to business logic. Three wrapper layers instrument all
+  activity without polluting core code:
+  - `LoggingHttpClient` — wraps `http.Client`, logs every outbound
+    HTTP request (method, URL, status, duration).
+  - `ObservedLlmClient` — wraps `LlmClient`, tracks provider, model,
+    message count, token usage, tool calls, and latency per generation.
+  - `ObservedTool` — wraps each `Tool`, tracks execution time, args,
+    and output size.
+- **`/debug` slash command** — toggles verbose debug mode at runtime.
+  Also available via `--debug` / `-d` CLI flag or `GLUE_DEBUG=1` env var.
+- **File-based debug logging** — daily-rotating log files at
+  `~/.glue/logs/glue-debug-YYYY-MM-DD.log` with timestamped entries
+  for HTTP calls, LLM generations, tool executions, and span lifecycle.
+- **Generic OpenTelemetry OTLP/HTTP sink** — sends spans as JSON to
+  any OTEL-compatible collector. Works out of the box with LLMFlow,
+  Langfuse (OTEL endpoint), Opik, Helicone, Laminar, Grafana Tempo,
+  Jaeger, and any standard OTLP receiver. Configurable via
+  `telemetry.otel.*` in config.yaml or `OTEL_EXPORTER_OTLP_ENDPOINT`
+  / `OTEL_EXPORTER_OTLP_HEADERS` env vars.
+- **Langfuse native sink** — uses the Langfuse Ingestion REST API for
+  richer LLM observability (generation-level tracking with model,
+  token usage, cost, sessions). Configurable via `telemetry.langfuse.*`
+  in config.yaml or `LANGFUSE_BASE_URL` / `LANGFUSE_PUBLIC_KEY` /
+  `LANGFUSE_SECRET_KEY` env vars.
+- **`Observability` facade** — composite dispatcher that fans out to
+  multiple sinks (file, OTEL, Langfuse). Sinks are independently
+  enabled/disabled. The facade provides `log()`, `startSpan()`,
+  `flush()`, and `close()` methods.
+- **`ObservabilityConfig`** — configuration model for debug and
+  telemetry settings, parsed from config file and env vars following
+  the existing resolution chain.
+
+- **Terminology standardization** — established canonical glossary
+  (`docs/architecture/glossary.md`). Two-level hierarchy: **Project**
+  (registered directory) → **Session** (resumable agent conversation).
+  Sessions are independent and carry their own model, worktree, branch,
+  and conversation history. No intermediate "workspace" layer — matches
+  the data model used by Claude Code, Codex CLI, and Cline.
+- **Enhanced `SessionMeta` (schema v2)** — sessions now store rich
+  metadata: `project_path`, `worktree_path`, `branch`, `base_branch`,
+  `repo_remote`, `head_sha`, `title`, `tags`, `pr_url`, `pr_status`,
+  `token_count`, `cost`, `summary`. All new fields are optional;
+  schema v1 files are read with permissive defaults. Added
+  `SessionMeta.fromJson` factory for consistent deserialization and
+  `SessionStore.updateMeta()` for mid-session metadata writes.
+  Timestamps now consistently use UTC.
+- **Model registry & picker** — curated `ModelRegistry` catalog of 7 models
+  across Anthropic, OpenAI, and Ollama with capability, cost, and speed
+  metadata. `/model` with no args opens a selectable panel picker grouped
+  by provider; `/model <name>` does fuzzy lookup by ID or display name.
+  Only models with configured API keys are shown.
+- **`GlueConfig.copyWith`** — immutable config update for provider/model
+  switching.
+- **`LlmClientFactory.createFromEntry`** — create an LLM client directly
+  from a `ModelEntry`.
 - **Spinner animation** in status bar during LLM streaming — braille dot
   pattern cycles at 80ms instead of static `●` indicator.
 - **Collapsible subagent output** — subagent activity is now grouped by
@@ -20,8 +92,83 @@ All notable changes to Glue CLI will be documented in this file.
 - `KeyEvent` and `CharEvent` carry an `alt` flag for modifier-aware
   input handling.
 
+- **`web_fetch` tool** — fetches a URL and returns clean markdown for the
+  LLM. Three-stage pipeline: (1) try `Accept: text/markdown` header,
+  (2) HTML fetch → Readability-style content extraction → HTML-to-markdown
+  conversion, (3) optional Jina Reader API fallback. Configurable timeout,
+  max bytes, and token budget. Auto-approved (read-only).
+- **`web_search` tool** — searches the web via configurable providers
+  (Brave, Tavily, Firecrawl) with unified result model. Auto-detects
+  provider from available API keys (priority: Brave → Tavily → Firecrawl)
+  with automatic fallback on error. Supports explicit provider selection
+  via parameter. Configured via `web.search.*` in config.yaml or
+  `BRAVE_API_KEY`/`TAVILY_API_KEY`/`FIRECRAWL_API_KEY` env vars.
+- **`WebConfig`** — web tool configuration model with `WebFetchConfig`
+  and `WebSearchConfig`, wired into `GlueConfig` with env var and config
+  file resolution following existing patterns.
+- **Hidden aliases** for slash commands — `SlashCommand` now supports
+  `hiddenAliases` that resolve on execution but are excluded from
+  autocomplete and `/help`. `/q` is now a hidden alias for `/exit`.
+- **Multi-shell support** — unified `CommandExecutor` abstraction with
+  `HostExecutor` that respects the user's shell via `$SHELL`,
+  `GLUE_SHELL`/`GLUE_SHELL_MODE` env vars, or `shell.*` in config.yaml.
+  Supports bash, zsh, fish, pwsh with correct flag mapping for
+  interactive/login/non-interactive modes.
+- **Docker sandbox** — `DockerExecutor` runs agent commands in ephemeral
+  `docker run --rm` containers with bind-mounted directories. Uses
+  cidfile-based container termination with retry for race conditions.
+  `ExecutorFactory` handles Docker availability detection with automatic
+  host fallback. Configurable via `docker.*` in config.yaml or
+  `GLUE_DOCKER_*` env vars.
+- **Session-scoped Docker mounts** — `SessionState` persists directory
+  whitelist additions in `state.json` per session, merged with config
+  mounts at executor creation.
+- **`/models` command** — lists available models from the current
+  provider (Ollama `/api/tags`, OpenAI `/v1/models`, Anthropic
+  `/v1/models`). Shows model name, size (Ollama), and marks current.
+- **E2E integration tests** — headless agent loop tests via
+  `AgentRunner` with real Ollama (`qwen2.5:7b`). Tagged `@e2e`,
+  skipped by default, run with `dart test --run-skipped -t e2e`.
+  Retry wrapper handles small-model non-determinism.
+
+- **Tool call intent indicator** — the UI now shows
+  `▶ Tool: write_file (preparing…)` as soon as the LLM begins generating
+  a tool call, rather than waiting for the full arguments to stream.
+  Tool calls progress through visible phases: preparing → running → done
+  (or denied/error). Eliminates the "hanging spinner" feel during large
+  tool argument generation.
+- **Eager tool call emission** — `AgentToolCall` events are emitted during
+  LLM streaming (not after stream end), so auto-approved tools can start
+  executing while the model may still be finishing the response.
+- **`ToolCallStart` LLM chunk** — Anthropic and OpenAI clients now yield
+  a `ToolCallStart` chunk at `content_block_start` / first tool delta,
+  surfacing the tool name before arguments finish streaming.
+
+- **Dart analyzer hardening** — expanded `analysis_options.yaml` with
+  `always_use_package_imports`, `strict-casts`, `strict-raw-types`,
+  `avoid_dynamic_calls`, `prefer_const_constructors`, `unawaited_futures`,
+  `discarded_futures`, and other safety/style rules on top of
+  `package:lints/recommended.yaml`. Converted all relative imports to
+  `package:glue/` imports across 51 files. Applied `dart fix` auto-fixes
+  for const correctness, unnecessary lambdas, and parentheses.
+
+### Fixed
+
+- **Unused `callId` parameter** in `_ConversationEntry.toolResult` — was
+  accepted but silently discarded; removed the dead parameter.
+- **Cancel no longer corrupts conversation** — cancelling (Escape) while
+  a tool was executing left the conversation with `tool_use` blocks but
+  no matching `tool_result` messages, causing the next API call to fail
+  with a 400 error. `ensureToolResultsComplete()` now injects synthetic
+  `[cancelled by user]` results for any unmatched tool calls.
+- `/model` switch now updates `_config` (provider + model) via `copyWith`,
+  fixing stale config bug where session metadata and subagent spawning
+  read outdated values.
+
 ### Changed
 
+- Default model strings removed from `GlueConfig` — `_defaultModel()` now
+  delegates to `ModelRegistry.defaultModelId()`.
 - Subagent updates use a grouped data model (`_SubagentGroup`) instead
   of individual conversation entries — reduces output noise during
   multi-agent orchestration.

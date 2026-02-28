@@ -15,6 +15,7 @@
 The cursor is invisible because `paintInput()` calls `restoreCursor()` after positioning the cursor, snapping it back to wherever it was saved.
 
 **Files:**
+
 - Modify: `cli/lib/src/terminal/layout.dart:89-99`
 - Modify: `cli/lib/src/app.dart:282-299`
 
@@ -86,6 +87,7 @@ git commit -m "fix: make cursor visible in input area"
 Currently `_blocks` accumulate but are never rendered. The output zone is blank.
 
 **Files:**
+
 - Modify: `cli/lib/src/app.dart`
 - Create: `cli/lib/src/rendering/block_renderer.dart`
 
@@ -270,6 +272,7 @@ git commit -m "feat: render conversation blocks to output zone"
 ## Task 3: Slash Command System
 
 **Files:**
+
 - Create: `cli/lib/src/commands/slash_commands.dart`
 - Modify: `cli/lib/src/app.dart`
 
@@ -460,6 +463,7 @@ case UserSubmit(:final text):
 
 Run: `cd cli && dart run`
 Expected:
+
 - Type `/help` → shows command list and keybindings in gray
 - Type `/clear` → screen clears, shows "Cleared."
 - Type `/tools` → lists the 5 registered tools
@@ -478,6 +482,7 @@ git commit -m "feat: add slash command system with /help, /clear, /exit, /model,
 ## Task 4: Scrollback Support
 
 **Files:**
+
 - Modify: `cli/lib/src/app.dart`
 - Modify: `cli/lib/src/terminal/layout.dart`
 
@@ -605,6 +610,7 @@ The `_renderedBlockCount` tracking from Task 2 is no longer needed. Remove it. T
 
 Run: `cd cli && dart run`
 Expected:
+
 - Send several messages to fill the output area
 - PageUp scrolls up, showing earlier output
 - PageDown scrolls back down
@@ -623,6 +629,7 @@ git commit -m "feat: add scrollback support with PageUp/PageDown"
 ## Task 5: Modal System for Tool Confirmations
 
 **Files:**
+
 - Create: `cli/lib/src/ui/modal.dart`
 - Modify: `cli/lib/src/app.dart`
 - Modify: `cli/lib/src/agent/agent_core.dart` (fix duplicate yield)
@@ -891,6 +898,7 @@ This means `paintInput` needs a `mode` parameter, or `_render()` handles cursor 
 
 Run: `cd cli && dart run`
 Expected:
+
 - Update the stub LLM to emit a tool call for testing
 - A centered modal box appears with "Approve tool: bash"
 - Press Y to approve, N to deny
@@ -909,6 +917,7 @@ git commit -m "feat: add modal system for tool confirmations"
 ## Task 6: Markdown Rendering for Assistant Output
 
 **Files:**
+
 - Create: `cli/lib/src/rendering/markdown_renderer.dart`
 - Modify: `cli/lib/src/rendering/block_renderer.dart`
 
@@ -916,7 +925,7 @@ git commit -m "feat: add modal system for tool confirmations"
 
 Create `cli/lib/src/rendering/markdown_renderer.dart` that handles a pragmatic subset:
 
-```dart
+````dart
 /// Renders a subset of Markdown to ANSI-styled terminal text.
 ///
 /// Supported:
@@ -1063,7 +1072,7 @@ class MarkdownRenderer {
     return output;
   }
 }
-```
+````
 
 **Step 2: Integrate into `BlockRenderer.renderAssistant`**
 
@@ -1086,7 +1095,7 @@ String renderAssistant(String text) {
 
 In `app.dart`'s `_StubLlmClient`:
 
-```dart
+````dart
 class _StubLlmClient extends LlmClient {
   @override
   Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
@@ -1105,10 +1114,10 @@ Here's an example:
 void main() {
   print('Hello, World!');
 }
-```
+````
 
 > LLM integration is not yet implemented.
-> This is a *stub* response.''';
+> This is a _stub_ response.''';
 
     // Stream character by character for realistic feel.
     for (var i = 0; i < response.length; i++) {
@@ -1116,9 +1125,11 @@ void main() {
       // Tiny delay would be here in real impl.
     }
     yield UsageInfo(inputTokens: 42, outputTokens: response.length);
-  }
+
 }
-```
+}
+
+````
 
 **Step 4: Verify manually**
 
@@ -1137,13 +1148,14 @@ Expected:
 ```bash
 git add cli/lib/src/rendering/markdown_renderer.dart cli/lib/src/rendering/block_renderer.dart cli/lib/src/app.dart cli/lib/glue.dart
 git commit -m "feat: add markdown rendering for assistant output"
-```
+````
 
 ---
 
 ## Task 7: Status Bar Polish
 
 **Files:**
+
 - Modify: `cli/lib/src/app.dart`
 
 **Step 1: Add model name and CWD tracking**
@@ -1202,6 +1214,7 @@ git commit -m "feat: polish status bar with model, cwd, and scroll indicator"
 ## Task 8: Startup/Shutdown Polish
 
 **Files:**
+
 - Modify: `cli/lib/src/app.dart`
 - Modify: `cli/bin/glue.dart`
 
@@ -1268,6 +1281,7 @@ await app.run();
 
 Run: `cd cli && dart run`
 Expected:
+
 - Clean startup with welcome message, model, cwd
 - Ctrl+C exits cleanly without terminal corruption
 - `/exit` exits cleanly
@@ -1287,6 +1301,7 @@ git commit -m "feat: polish startup/shutdown with robust terminal cleanup"
 The stub LLM currently emits all text instantly. Make the streaming visible so it's testable.
 
 **Files:**
+
 - Modify: `cli/lib/src/app.dart`
 
 **Step 1: Add artificial delay to stub LLM for testing**
@@ -1329,16 +1344,16 @@ git commit -m "feat: add streaming text display with word-by-word stub"
 
 ## Summary — Execution Order
 
-| Task | What | Key Files |
-|------|------|-----------|
-| 1 | Fix cursor visibility | `layout.dart`, `app.dart` |
-| 2 | Render conversation blocks | `block_renderer.dart` (new), `app.dart` |
-| 3 | Slash commands | `slash_commands.dart` (new), `app.dart`, `line_editor.dart` |
-| 4 | Scrollback | `app.dart`, `layout.dart` |
-| 5 | Modal system | `modal.dart` (new), `app.dart`, `agent_core.dart` |
-| 6 | Markdown rendering | `markdown_renderer.dart` (new), `block_renderer.dart` |
-| 7 | Status bar polish | `app.dart` |
-| 8 | Startup/shutdown polish | `app.dart`, `bin/glue.dart` |
-| 9 | Streaming display | `app.dart` |
+| Task | What                       | Key Files                                                   |
+| ---- | -------------------------- | ----------------------------------------------------------- |
+| 1    | Fix cursor visibility      | `layout.dart`, `app.dart`                                   |
+| 2    | Render conversation blocks | `block_renderer.dart` (new), `app.dart`                     |
+| 3    | Slash commands             | `slash_commands.dart` (new), `app.dart`, `line_editor.dart` |
+| 4    | Scrollback                 | `app.dart`, `layout.dart`                                   |
+| 5    | Modal system               | `modal.dart` (new), `app.dart`, `agent_core.dart`           |
+| 6    | Markdown rendering         | `markdown_renderer.dart` (new), `block_renderer.dart`       |
+| 7    | Status bar polish          | `app.dart`                                                  |
+| 8    | Startup/shutdown polish    | `app.dart`, `bin/glue.dart`                                 |
+| 9    | Streaming display          | `app.dart`                                                  |
 
 Tasks 1→2 are strict dependencies. Tasks 3, 5, 6, 7 can be done in any order after 2. Task 4 should come after 2. Task 8 can be done anytime. Task 9 should be last (validates the full pipeline).

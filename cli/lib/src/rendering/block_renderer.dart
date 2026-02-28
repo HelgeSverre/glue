@@ -2,10 +2,27 @@ import 'ansi_utils.dart';
 import 'markdown_renderer.dart';
 import '../terminal/styled.dart';
 
+/// The lifecycle phase of a tool call, used to drive the status suffix
+/// displayed next to the tool name in the terminal (e.g. "running…", "denied").
+enum ToolCallPhase { preparing, awaitingApproval, running, done, denied, error }
+
+/// Snapshot of a tool call's display state, passed to [BlockRenderer.renderToolCallRef].
+///
+/// Keeps rendering concerns separate from the agent event model — the renderer
+/// never needs to know about [AgentEvent] directly.
+class ToolCallRenderState {
+  final String name;
+  final Map<String, dynamic>? args;
+  final ToolCallPhase phase;
+  ToolCallRenderState({required this.name, this.args, required this.phase});
+}
+
 /// Renders conversation blocks as styled terminal text.
 ///
 /// A 1-character margin is reserved on each side so output never
 /// renders flush against the terminal edges.
+///
+/// {@category Terminal & Rendering}
 class BlockRenderer {
   /// Total terminal width.
   final int width;
@@ -54,6 +71,34 @@ class BlockRenderer {
       return '${e.key}: $display';
     }).join(', ');
     return '$header\n    ${argsStr.styled.gray}';
+  }
+
+  /// Renders a tool call header with a phase-dependent status suffix.
+  ///
+  /// The [ToolCallRenderState.phase] determines what appears after the tool
+  /// name — for example `(preparing…)`, `(running…)`, or nothing at all
+  /// when the phase is [ToolCallPhase.done].
+  ///
+  /// When [state] is null (e.g. the call ID wasn't found), renders a
+  /// placeholder `"Tool: ???"` so the UI never breaks.
+  String renderToolCallRef(ToolCallRenderState? state) {
+    if (state == null) {
+      return ' \x1b[1m\x1b[33m▶ Tool: ???\x1b[0m';
+    }
+    final suffix = switch (state.phase) {
+      ToolCallPhase.preparing => ' \x1b[90m(preparing…)\x1b[0m',
+      ToolCallPhase.awaitingApproval => ' \x1b[33m(awaiting approval)\x1b[0m',
+      ToolCallPhase.running => ' \x1b[36m(running…)\x1b[0m',
+      ToolCallPhase.done => '',
+      ToolCallPhase.denied => ' \x1b[31m(denied)\x1b[0m',
+      ToolCallPhase.error => ' \x1b[31m(error)\x1b[0m',
+    };
+    final header = ' \x1b[1m\x1b[33m▶ Tool: ${state.name}\x1b[0m$suffix';
+    if (state.args == null || state.args!.isEmpty) return header;
+    final argsStr = state.args!.entries
+        .map((e) => '${e.key}: ${ansiTruncate('${e.value}', _inner - 6)}')
+        .join(', ');
+    return '$header\n    \x1b[90m$argsStr\x1b[0m';
   }
 
   /// Render a tool result block.

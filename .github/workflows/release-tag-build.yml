@@ -1,0 +1,76 @@
+name: Release Tag Build
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }} binary
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux
+            output_name: glue-linux
+          - os: macos-latest
+            target: macos
+            output_name: glue-macos
+          - os: windows-latest
+            target: windows
+            output_name: glue-windows.exe
+    defaults:
+      run:
+        working-directory: cli
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: Install dependencies
+        run: dart pub get
+
+      - name: Build executable
+        run: dart compile exe bin/glue.dart -o "${{ matrix.output_name }}"
+
+      - name: Verify local binary output (act)
+        if: ${{ env.ACT }}
+        run: ls -la "${{ matrix.output_name }}"
+
+      - name: Upload build artifact
+        if: ${{ !env.ACT }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: cli/${{ matrix.output_name }}
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub release
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Download all artifacts
+        if: ${{ !env.ACT }}
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Create release with binaries
+        if: ${{ !env.ACT }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*

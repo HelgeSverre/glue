@@ -1,4 +1,4 @@
-import 'terminal.dart';
+import 'package:glue/src/terminal/terminal.dart';
 
 /// A single cell in the virtual terminal grid.
 class Cell {

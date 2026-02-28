@@ -13,6 +13,7 @@
 ## Task 1: `PanelSize` sealed class
 
 **Files:**
+
 - Create: `lib/src/ui/panel_modal.dart`
 - Create: `test/ui/panel_modal_test.dart`
 
@@ -132,6 +133,7 @@ git commit -m "feat: add PanelSize sealed class for panel modal dimensions"
 ## Task 2: Border rendering for all three `PanelStyle` variants
 
 **Files:**
+
 - Modify: `lib/src/ui/panel_modal.dart`
 - Modify: `test/ui/panel_modal_test.dart`
 
@@ -345,6 +347,7 @@ git commit -m "feat: add border rendering for tape/simple/heavy panel styles"
 ## Task 3: Barrier rendering
 
 **Files:**
+
 - Modify: `lib/src/ui/panel_modal.dart`
 - Modify: `test/ui/panel_modal_test.dart`
 
@@ -431,6 +434,7 @@ git commit -m "feat: add barrier rendering (dim/obscure/none) for panel modal"
 ## Task 4: `PanelModal` class — state, scrolling, event handling
 
 **Files:**
+
 - Modify: `lib/src/ui/panel_modal.dart`
 - Modify: `test/ui/panel_modal_test.dart`
 
@@ -728,6 +732,7 @@ git commit -m "feat: add PanelModal class with scrolling, dismiss, and full-scre
 ## Task 5: Wire PanelModal into App and convert `/help`
 
 **Files:**
+
 - Modify: `lib/src/app.dart`
 - Modify: `lib/glue.dart`
 

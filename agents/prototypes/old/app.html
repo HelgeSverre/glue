@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glue — Web UI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --yellow:#FACC15;--gold:#EAB308;--amber:#F59E0B;
+      --bg:#0A0A0B;--surface:#111113;--surface-el:#1a1a1d;
+      --border:#252528;--border-br:#333338;
+      --text:#e8e8ec;--text-sec:#8e8e98;--text-mut:#55555e;
+      --success:#22C55E;--error:#EF4444;--warning:#F59E0B;
+      --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;
+    }
+    html{font-size:13px;-webkit-font-smoothing:antialiased}
+    body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
+    ::-webkit-scrollbar{width:3px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:var(--border-br);border-radius:2px}
+
+    /* ─── Construction Tape ─── */
+    .tape{
+      background:repeating-linear-gradient(-45deg,var(--yellow),var(--yellow) 6px,var(--bg) 6px,var(--bg) 12px);
+      height:4px;width:100%;flex-shrink:0;
+    }
+
+    .app{display:flex;flex-direction:column;height:100vh}
+    .app-body{display:flex;flex:1;overflow:hidden}
+
+    /* ─── Top Bar ─── */
+    .top-bar{
+      background:var(--bg);border-bottom:1px solid var(--border);
+      display:flex;align-items:center;padding:0 16px;height:40px;flex-shrink:0;gap:16px;
+    }
+    .top-logo{font-family:var(--mono);font-weight:800;font-size:15px;color:var(--yellow);letter-spacing:-0.5px}
+    .top-sep{width:1px;height:20px;background:var(--border)}
+    .top-nav{display:flex;gap:4px}
+    .top-nav a{
+      font-size:11px;font-weight:600;color:var(--text-mut);text-decoration:none;
+      padding:4px 10px;border-radius:4px;text-transform:uppercase;letter-spacing:0.03em;
+      transition:all .12s;
+    }
+    .top-nav a:hover{color:var(--text-sec);background:var(--surface)}
+    .top-nav a.active{color:var(--yellow);background:var(--surface-el)}
+    .top-spacer{flex:1}
+    .top-status{font-family:var(--mono);font-size:10px;color:var(--text-mut);display:flex;align-items:center;gap:6px}
+    .top-status .dot{width:5px;height:5px;border-radius:50%;background:var(--success);animation:pulse 2.5s infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+    /* ─── Sidebar ─── */
+    .sidebar{width:260px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+    .sidebar-head{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+    .sidebar-title{font-family:var(--mono);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-mut)}
+    .session-count{margin-left:auto;font-size:10px;color:var(--text-mut);font-family:var(--mono)}
+
+    .new-btn{
+      margin:10px 12px;padding:8px 0;border:2px dashed var(--border-br);
+      background:transparent;color:var(--text-sec);font-size:11px;font-family:var(--mono);
+      cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;
+      text-transform:uppercase;letter-spacing:.04em;font-weight:600;
+    }
+    .new-btn:hover{border-color:var(--yellow);color:var(--yellow);background:rgba(250,204,21,.03)}
+
+    /* Session groups */
+    .group{border-bottom:1px solid var(--border)}
+    .group-head{
+      padding:8px 14px;font-size:10px;font-weight:700;text-transform:uppercase;
+      letter-spacing:.06em;color:var(--text-mut);cursor:pointer;display:flex;
+      align-items:center;gap:5px;user-select:none;transition:color .1s;font-family:var(--mono);
+    }
+    .group-head:hover{color:var(--text-sec)}
+    .group-head .chev{font-size:8px;transition:transform .15s;width:10px;text-align:center}
+    .group-head .chev.open{transform:rotate(90deg)}
+    .group-head .path{font-family:var(--mono);font-size:9px;color:var(--text-mut);opacity:.5;margin-left:auto;font-weight:400;text-transform:none;letter-spacing:0}
+
+    .session-list{overflow-y:auto;flex:1}
+
+    .session{padding:8px 14px;cursor:pointer;border-left:3px solid transparent;transition:all .1s;position:relative}
+    .session:hover{background:var(--surface-el)}
+    .session.active{background:var(--surface-el);border-left-color:var(--yellow)}
+    .session-top{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+    .sdot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+    .sdot.alive{background:var(--success);box-shadow:0 0 5px rgba(34,197,94,.4);animation:pulse 2.5s infinite}
+    .sdot.idle{background:var(--text-mut)}
+    .sdot.stale{background:var(--border-br)}
+    .session-branch{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .session.active .session-branch{color:var(--yellow)}
+    .session-model{font-size:9px;color:var(--text-mut);font-family:var(--mono)}
+    .session-preview{font-family:var(--mono);font-size:10px;color:var(--text-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+    .session-preview .pr{color:var(--yellow)}
+    .session-meta{display:flex;gap:8px;font-size:9px;color:var(--text-mut);font-family:var(--mono);margin-top:2px}
+    .session-close{position:absolute;right:10px;top:8px;width:16px;height:16px;border-radius:3px;border:none;background:transparent;color:var(--text-mut);cursor:pointer;font-size:11px;display:none;align-items:center;justify-content:center}
+    .session:hover .session-close{display:flex}
+    .session-close:hover{background:var(--border);color:var(--text)}
+
+    .sidebar-foot{padding:8px 14px;border-top:1px solid var(--border);font-size:10px;color:var(--text-mut);font-family:var(--mono)}
+
+    /* ─── Main ─── */
+    .main{flex:1;display:flex;flex-direction:column;background:var(--bg)}
+
+    /* Worktree tabs */
+    .tab-bar{
+      height:32px;background:var(--surface);border-bottom:1px solid var(--border);
+      display:flex;align-items:center;padding:0 12px;gap:2px;flex-shrink:0;
+    }
+    .tab{
+      padding:4px 12px;font-size:11px;font-family:var(--mono);color:var(--text-mut);
+      cursor:pointer;border-radius:0;transition:all .1s;display:flex;align-items:center;gap:5px;
+      white-space:nowrap;border-bottom:2px solid transparent;font-weight:500;
+    }
+    .tab:hover{color:var(--text-sec);background:var(--surface-el)}
+    .tab.active{color:var(--yellow);border-bottom-color:var(--yellow)}
+    .tab .td{width:5px;height:5px;border-radius:50%}
+    .tab .td.alive{background:var(--success)}
+    .tab .td.idle{background:var(--text-mut)}
+    .tab-spacer{flex:1}
+    .tab-add{width:24px;height:24px;border:none;background:transparent;color:var(--text-mut);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;font-family:var(--mono)}
+    .tab-add:hover{color:var(--yellow)}
+
+    /* Terminal */
+    .terminal-area{flex:1;overflow-y:auto;padding:16px 20px;font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--text-sec)}
+    .t-block{margin-bottom:16px}
+    .t-user{color:var(--text-mut);margin-bottom:4px}
+    .t-user .pr{color:var(--yellow);font-weight:700}
+    .t-user .msg{color:var(--text)}
+    .t-assistant{color:var(--text-sec);white-space:pre-wrap}
+    .t-tool{margin:8px 0;padding:6px 10px;border-left:3px solid var(--border);font-size:11px}
+    .t-tool .t-name{color:var(--yellow);font-weight:700}
+    .t-tool .t-path{color:var(--text-mut)}
+    .t-tool .t-result{color:var(--success);font-size:10px}
+    .t-tool .t-result.pending{color:var(--warning)}
+    .t-cursor{display:inline-block;width:7px;height:14px;background:var(--yellow);animation:blink 1s step-end infinite;vertical-align:text-bottom}
+    @keyframes blink{50%{opacity:0}}
+
+    /* Input */
+    .input-area{border-top:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:8px;background:var(--surface);flex-shrink:0}
+    .input-prompt{color:var(--yellow);font-family:var(--mono);font-size:14px;font-weight:700}
+    .input-field{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:var(--mono);font-size:12px;caret-color:var(--yellow)}
+    .input-field::placeholder{color:var(--text-mut)}
+    .input-meta{font-size:10px;color:var(--text-mut);font-family:var(--mono);display:flex;gap:8px}
+
+    /* Status bar */
+    .status-bar{
+      height:22px;background:var(--surface);border-top:1px solid var(--border);
+      display:flex;align-items:center;padding:0 14px;font-size:10px;
+      font-family:var(--mono);color:var(--text-mut);gap:12px;flex-shrink:0;
+    }
+    .status-bar .active-ind{color:var(--success);display:flex;align-items:center;gap:4px}
+    .status-bar .active-ind .dot{width:4px;height:4px;border-radius:50%;background:var(--success);animation:pulse 2s infinite}
+
+    /* Empty state */
+    .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;color:var(--text-mut);gap:12px}
+    .empty .big{font-family:var(--mono);font-size:48px;font-weight:900;color:var(--yellow);opacity:.15}
+    .empty .msg{font-size:13px}
+    .empty-btn{
+      padding:8px 20px;border:2px solid var(--yellow);background:transparent;
+      color:var(--yellow);font-size:11px;font-weight:700;cursor:pointer;
+      font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;transition:all .15s;
+    }
+    .empty-btn:hover{background:rgba(250,204,21,.06)}
+
+    /* Modal */
+    .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:100}
+    .modal{background:var(--surface);border:2px solid var(--border);width:480px;max-width:92vw;overflow:hidden}
+    .modal-head{padding:16px 20px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+    .modal-title{font-family:var(--mono);font-weight:800;font-size:14px;color:var(--yellow);text-transform:uppercase;letter-spacing:.03em}
+    .modal-close{margin-left:auto;background:none;border:none;color:var(--text-mut);cursor:pointer;font-size:16px;padding:4px}
+    .modal-close:hover{color:var(--text)}
+    .modal-body{padding:16px 20px 20px}
+    .modal-field{margin-bottom:14px}
+    .modal-label{font-size:10px;font-weight:700;color:var(--text-mut);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;font-family:var(--mono)}
+    .modal-select,.modal-input{
+      width:100%;padding:8px 10px;background:var(--bg);border:2px solid var(--border);
+      color:var(--text);font-family:var(--mono);font-size:12px;outline:none;
+    }
+    .modal-select:focus,.modal-input:focus{border-color:var(--yellow)}
+    .modal-select{cursor:pointer;appearance:none;-webkit-appearance:none;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2355555e'%3E%3Cpath d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+      background-repeat:no-repeat;background-position:right 10px center}
+    .modal-select option{background:var(--surface);color:var(--text)}
+    .modal-input::placeholder{color:var(--text-mut)}
+    .modal-hint{font-size:10px;color:var(--text-mut);margin-top:4px}
+    .modal-divider{border:none;border-top:1px solid var(--border);margin:14px 0}
+    .modal-foot{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+    .mbtn{
+      padding:7px 18px;font-size:12px;font-weight:700;cursor:pointer;
+      border:2px solid var(--border);background:transparent;color:var(--text-sec);
+      font-family:var(--mono);text-transform:uppercase;letter-spacing:.03em;transition:all .12s;
+    }
+    .mbtn:hover{border-color:var(--border-br);color:var(--text)}
+    .mbtn.primary{background:var(--yellow);color:var(--bg);border-color:var(--yellow)}
+    .mbtn.primary:hover{background:var(--gold)}
+
+    @media(max-width:700px){
+      .sidebar{width:60px}
+      .session-preview,.session-meta,.session-model,.session-close,.group-head .path,.session-count,.sidebar-title{display:none}
+      .session-branch{font-size:10px}
+    }
+  </style>
+</head>
+<body>
+<div class="app" x-data="glue()">
+  <div class="tape"></div>
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <span class="top-logo">GLUE</span>
+    <div class="top-sep"></div>
+    <div class="top-nav">
+      <a href="index.html">Home</a>
+      <a href="docs.html">Docs</a>
+      <a href="app.html" class="active">App</a>
+    </div>
+    <div class="top-spacer"></div>
+    <div class="top-status">
+      <span class="dot"></span>
+      <span x-text="sessions.filter(s => s.alive).length + ' active'"></span>
+      <span>·</span>
+      <span>v0.1.0</span>
+    </div>
+  </div>
+
+  <div class="app-body">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <span class="sidebar-title">Sessions</span>
+        <span class="session-count" x-text="sessions.length + ' total'"></span>
+      </div>
+
+      <button class="new-btn" @click="showNewModal = true">
+        + New Session
+      </button>
+
+      <div class="session-list">
+        <template x-for="group in groupedSessions()" :key="group.project">
+          <div class="group">
+            <div class="group-head" @click="group.open = !group.open">
+              <span class="chev" :class="group.open && 'open'">▶</span>
+              <span x-text="group.project"></span>
+              <span class="path" x-text="group.path"></span>
+            </div>
+            <template x-if="group.open">
+              <div>
+                <template x-for="s in group.sessions" :key="s.id">
+                  <div class="session" :class="activeId === s.id && 'active'" @click="switchTo(s.id)">
+                    <div class="session-top">
+                      <span class="sdot" :class="s.alive ? 'alive' : s.recent ? 'idle' : 'stale'"></span>
+                      <span class="session-branch" x-text="s.branch"></span>
+                      <span class="session-model" x-text="s.model"></span>
+                    </div>
+                    <div class="session-preview"><span class="pr">❯ </span><span x-text="s.lastInput"></span></div>
+                    <div class="session-meta">
+                      <span x-text="s.time"></span>
+                      <span x-text="s.tokens + ' tok'"></span>
+                    </div>
+                    <button class="session-close" @click.stop="closeSession(s.id)">×</button>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+
+      <div class="sidebar-foot">glue v0.1.0</div>
+    </aside>
+
+    <!-- Main -->
+    <div class="main">
+      <div class="tab-bar">
+        <template x-for="s in currentProjectSessions()" :key="s.id">
+          <div class="tab" :class="activeId === s.id && 'active'" @click="switchTo(s.id)">
+            <span class="td" :class="s.alive ? 'alive' : 'idle'"></span>
+            <span x-text="s.branch"></span>
+          </div>
+        </template>
+        <span class="tab-spacer"></span>
+        <button class="tab-add" @click="showNewModal = true">+</button>
+      </div>
+
+      <template x-if="activeSession()">
+        <div style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+          <div class="terminal-area">
+            <template x-for="(block, i) in activeSession().blocks" :key="i">
+              <div class="t-block">
+                <template x-if="block.type === 'user'">
+                  <div class="t-user"><span class="pr">❯ </span><span class="msg" x-text="block.text"></span></div>
+                </template>
+                <template x-if="block.type === 'assistant'">
+                  <div class="t-assistant" x-html="block.text + (block.streaming ? '<span class=\'t-cursor\'></span>' : '')"></div>
+                </template>
+                <template x-if="block.type === 'tool'">
+                  <div class="t-tool">
+                    <div><span class="t-name" x-text="'▸ ' + block.name"></span></div>
+                    <div class="t-path" x-text="block.path"></div>
+                    <div class="t-result" :class="block.pending && 'pending'" x-text="block.result"></div>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+
+          <div class="input-area">
+            <span class="input-prompt">❯</span>
+            <input class="input-field" type="text" placeholder="Type a message..." x-model="inputText" @keydown.enter="sendMessage()">
+            <div class="input-meta">
+              <span x-text="activeSession().model"></span>
+              <span x-text="activeSession().tokens + ' tok'"></span>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <template x-if="!activeSession()">
+        <div class="empty">
+          <div class="big">GLUE</div>
+          <div class="msg">No active session</div>
+          <button class="empty-btn" @click="showNewModal = true">+ New Session</button>
+        </div>
+      </template>
+
+      <div class="status-bar">
+        <template x-if="activeSession()">
+          <span class="active-ind" x-show="activeSession()?.alive"><span class="dot"></span> connected</span>
+        </template>
+        <template x-if="activeSession()">
+          <span x-text="activeSession()?.project + ' / ' + activeSession()?.branch"></span>
+        </template>
+        <span style="margin-left:auto" x-text="sessions.filter(s => s.alive).length + ' active · ' + sessions.length + ' total'"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <template x-if="showNewModal">
+    <div class="modal-bg" @click.self="showNewModal = false">
+      <div class="modal" @click.stop>
+        <div class="modal-head">
+          <span class="modal-title">▸ New Session</span>
+          <button class="modal-close" @click="showNewModal = false">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-field">
+            <div class="modal-label">Project</div>
+            <select class="modal-select" x-model="newSession.project">
+              <option value="">Select...</option>
+              <template x-for="p in availableProjects" :key="p.name">
+                <option :value="p.name" x-text="p.name + ' — ' + p.path"></option>
+              </template>
+            </select>
+          </div>
+          <div class="modal-field">
+            <div class="modal-label">Worktree / Branch</div>
+            <select class="modal-select" x-model="newSession.branch">
+              <option value="">Select...</option>
+              <template x-for="wt in worktreesForProject()" :key="wt">
+                <option :value="wt" x-text="wt"></option>
+              </template>
+              <option value="__new__">+ New worktree...</option>
+            </select>
+          </div>
+          <template x-if="newSession.branch === '__new__'">
+            <div class="modal-field">
+              <div class="modal-label">Branch Name</div>
+              <input class="modal-input" type="text" placeholder="feat/my-feature" x-model="newSession.newBranch">
+            </div>
+          </template>
+          <hr class="modal-divider">
+          <div class="modal-field">
+            <div class="modal-label">Model</div>
+            <select class="modal-select" x-model="newSession.model">
+              <option value="claude-4-sonnet">claude-4-sonnet</option>
+              <option value="claude-4-opus">claude-4-opus</option>
+              <option value="gpt-5">gpt-5</option>
+              <option value="gemini-3-pro">gemini-3-pro</option>
+            </select>
+          </div>
+          <div class="modal-field">
+            <div class="modal-label">Initial Prompt</div>
+            <input class="modal-input" type="text" placeholder="e.g. Refactor the auth module..." x-model="newSession.prompt">
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="mbtn" @click="showNewModal = false">Cancel</button>
+          <button class="mbtn primary" @click="createSession()">Create</button>
+        </div>
+      </div>
+    </div>
+  </template>
+</div>
+
+<script>
+function glue() {
+  let nextId = 10;
+  return {
+    activeId: 1,
+    showNewModal: false,
+    inputText: '',
+    newSession: { project: '', branch: '', newBranch: '', model: 'claude-4-sonnet', prompt: '' },
+    availableProjects: [
+      { name: 'glue-cli', path: '~/code/glue/cli' },
+      { name: 'api-server', path: '~/code/api-server' },
+      { name: 'docs-site', path: '~/code/docs' },
+    ],
+    projectWorktrees: {
+      'glue-cli': ['main', 'feat/tui-overhaul', 'feat/mcp-support', 'fix/input-parsing'],
+      'api-server': ['main', 'feat/auth', 'feat/graphql'],
+      'docs-site': ['main'],
+    },
+    sessions: [
+      { id: 1, project: 'glue-cli', path: '~/code/glue/cli', branch: 'feat/tui-overhaul', model: 'claude-4-sonnet', alive: true, recent: true, time: '2m ago', tokens: 4521, lastInput: 'implement the screen buffer', blocks: [
+        { type: 'user', text: 'implement the screen buffer with diff-based rendering' },
+        { type: 'assistant', text: 'I\'ll implement a virtual screen buffer that tracks changes between frames for flicker-free rendering.\n\nLet me first look at the current terminal implementation.', streaming: false },
+        { type: 'tool', name: 'read_file', path: 'lib/src/terminal/terminal.dart', result: '✓ 156 lines', pending: false },
+        { type: 'assistant', text: 'Now I\'ll create the ScreenBuffer class with a Cell-based grid system.\n\nEach cell stores a character and its style. We\'ll keep two buffers — current and previous — and only write the diff to the real terminal.', streaming: false },
+        { type: 'tool', name: 'write_file', path: 'lib/src/terminal/screen_buffer.dart', result: '✓ created (89 lines)', pending: false },
+        { type: 'assistant', text: 'Created the screen buffer. The key method is `flush()` which compares `_current` against `_previous` and only emits ANSI escape sequences for cells that changed.\n\nWant me to update the Layout class to use this buffer?', streaming: false },
+      ]},
+      { id: 2, project: 'glue-cli', path: '~/code/glue/cli', branch: 'feat/mcp-support', model: 'claude-4-sonnet', alive: true, recent: true, time: '1m ago', tokens: 1892, lastInput: 'add MCP server discovery', blocks: [
+        { type: 'user', text: 'add MCP server discovery and connection management' },
+        { type: 'assistant', text: 'I\'ll add MCP server discovery. Let me check for existing configuration...', streaming: true },
+        { type: 'tool', name: 'read_file', path: '.glue/mcp.json', result: '✓ 24 lines', pending: false },
+      ]},
+      { id: 3, project: 'glue-cli', path: '~/code/glue/cli', branch: 'fix/input-parsing', model: 'gpt-5', alive: true, recent: true, time: '3m ago', tokens: 3107, lastInput: 'fix UTF-8 parsing bug', blocks: [
+        { type: 'user', text: 'fix the UTF-8 multi-byte character parsing bug in terminal input' },
+        { type: 'assistant', text: 'Found the issue — `_decodeUtf8Char` doesn\'t handle surrogate pairs correctly. Applied the fix.', streaming: false },
+        { type: 'tool', name: 'bash', path: 'dart analyze lib/', result: '⏳ awaiting approval', pending: true },
+      ]},
+      { id: 4, project: 'api-server', path: '~/code/api-server', branch: 'feat/auth', model: 'claude-4-sonnet', alive: true, recent: true, time: '1m ago', tokens: 2890, lastInput: 'implement JWT auth', blocks: [
+        { type: 'user', text: 'implement JWT authentication middleware with refresh token rotation' },
+        { type: 'assistant', text: 'Creating the middleware with RS256 JWT verification and automatic refresh token rotation...', streaming: true },
+      ]},
+      { id: 5, project: 'api-server', path: '~/code/api-server', branch: 'feat/graphql', model: 'gpt-5', alive: true, recent: true, time: '55s ago', tokens: 1456, lastInput: 'generate GraphQL schema', blocks: [
+        { type: 'user', text: 'generate GraphQL schema from existing REST endpoints' },
+        { type: 'assistant', text: 'Analyzing your REST routes to generate matching GraphQL types...', streaming: true },
+      ]},
+    ],
+    groupedSessions() {
+      const g = {};
+      this.sessions.forEach(s => {
+        if (!g[s.project]) g[s.project] = { project: s.project, path: s.path, open: true, sessions: [] };
+        g[s.project].sessions.push(s);
+      });
+      return Object.values(g);
+    },
+    currentProjectSessions() {
+      const a = this.activeSession();
+      return a ? this.sessions.filter(s => s.project === a.project) : [];
+    },
+    activeSession() { return this.sessions.find(s => s.id === this.activeId) || null; },
+    switchTo(id) { this.activeId = id; },
+    closeSession(id) {
+      this.sessions = this.sessions.filter(s => s.id !== id);
+      if (this.activeId === id) this.activeId = this.sessions[0]?.id || null;
+    },
+    worktreesForProject() { return this.projectWorktrees[this.newSession.project] || []; },
+    createSession() {
+      const branch = this.newSession.branch === '__new__' ? this.newSession.newBranch : this.newSession.branch;
+      const proj = this.availableProjects.find(p => p.name === this.newSession.project);
+      const s = { id: nextId++, project: this.newSession.project, path: proj?.path || '', branch, model: this.newSession.model, alive: true, recent: true, time: 'now', tokens: 0, lastInput: this.newSession.prompt || '(new)',
+        blocks: this.newSession.prompt ? [{ type: 'user', text: this.newSession.prompt }, { type: 'assistant', text: 'Looking at your project...', streaming: true }] : [],
+      };
+      this.sessions.push(s);
+      this.activeId = s.id;
+      this.showNewModal = false;
+      this.newSession = { project: '', branch: '', newBranch: '', model: 'claude-4-sonnet', prompt: '' };
+    },
+    sendMessage() {
+      if (!this.inputText.trim() || !this.activeSession()) return;
+      const s = this.activeSession();
+      s.blocks.forEach(b => { if (b.streaming) b.streaming = false; });
+      s.blocks.push({ type: 'user', text: this.inputText });
+      s.blocks.push({ type: 'assistant', text: 'Processing...', streaming: true });
+      s.lastInput = this.inputText.substring(0, 40);
+      s.time = 'now';
+      this.inputText = '';
+    },
+  };
+}
+</script>
+</body>
+</html>

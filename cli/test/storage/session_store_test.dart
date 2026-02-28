@@ -32,9 +32,11 @@ void main() {
     final metaFile = File(p.join(sessionDir, 'meta.json'));
     expect(metaFile.existsSync(), isTrue);
 
-    final metaJson = jsonDecode(metaFile.readAsStringSync());
-    expect(metaJson['id'], 'session-001');
-    expect(metaJson['model'], 'claude-sonnet-4-6');
+    final savedMeta = SessionMeta.fromJson(
+      jsonDecode(metaFile.readAsStringSync()) as Map<String, dynamic>,
+    );
+    expect(savedMeta.id, 'session-001');
+    expect(savedMeta.model, 'claude-sonnet-4-6');
   });
 
   test('logEvent appends JSONL lines', () async {
@@ -82,9 +84,10 @@ void main() {
     final store = SessionStore(sessionDir: sessionDir, meta: meta);
     await store.close();
 
-    final metaJson = jsonDecode(
-      File(p.join(sessionDir, 'meta.json')).readAsStringSync(),
+    final savedMeta = SessionMeta.fromJson(
+      jsonDecode(File(p.join(sessionDir, 'meta.json')).readAsStringSync())
+          as Map<String, dynamic>,
     );
-    expect(metaJson['end_time'], isNotNull);
+    expect(savedMeta.endTime, isNotNull);
   });
 }

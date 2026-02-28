@@ -13,6 +13,7 @@
 ### Task 1: Add `_TreeEntry` and `_listTree` with cache
 
 **Files:**
+
 - Modify: `lib/src/ui/at_file_hint.dart`
 - Test: `test/ui/at_file_hint_test.dart`
 
@@ -142,6 +143,7 @@ git commit -m "feat(at_file_hint): add _TreeEntry and _listTree with BFS cache"
 ### Task 2: Wire recursive mode into `update()`
 
 **Files:**
+
 - Modify: `lib/src/ui/at_file_hint.dart`
 - Test: `test/ui/at_file_hint_test.dart`
 
@@ -280,6 +282,7 @@ git commit -m "feat(at_file_hint): recursive fuzzy file finding across subdirs"
 ### Task 3: Deduplicate and edge cases
 
 **Files:**
+
 - Modify: `lib/src/ui/at_file_hint.dart`
 - Test: `test/ui/at_file_hint_test.dart`
 
@@ -340,6 +343,7 @@ git commit -m "test(at_file_hint): edge cases for recursive fuzzy search"
 ### Task 4: Update existing tests for new setUp structure
 
 **Files:**
+
 - Test: `test/ui/at_file_hint_test.dart`
 
 **Step 1: Verify existing tests still pass with deeper structure**

@@ -44,7 +44,11 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
       ..addFlag('resume',
           negatable: false, help: 'Start with session picker open.')
       ..addFlag('continue',
-          negatable: false, help: 'Resume most recent session.');
+          negatable: false, help: 'Resume most recent session.')
+      ..addFlag('debug',
+          abbr: 'd',
+          negatable: false,
+          help: 'Enable debug mode (verbose logging).');
     addCommand(CompletionsCommand());
   }
 
@@ -106,11 +110,12 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
     final provider = topLevelResults.option('provider');
     final model = topLevelResults.option('model');
 
-    final app = App.create(
+    final app = await App.create(
       provider: provider,
       model: model,
       startupResume: topLevelResults.flag('resume'),
       startupContinue: topLevelResults.flag('continue'),
+      debug: topLevelResults.flag('debug'),
     );
 
     final sigintSub =

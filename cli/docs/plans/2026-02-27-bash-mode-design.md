@@ -9,6 +9,7 @@ A `!` prefix switches the input prompt to bash mode, allowing direct shell comma
 ### Entering Bash Mode
 
 Typing `!` at cursor position 0 (regardless of existing buffer contents):
+
 - The `!` character is consumed (not inserted into buffer)
 - `App._bashMode` set to `true`
 - Prompt changes from yellow `❯` to red `!`
@@ -18,6 +19,7 @@ This means typing `!git push` from an empty prompt enters bash mode and leaves `
 ### Exiting Bash Mode
 
 Pressing Backspace at cursor position 0 while in bash mode:
+
 - Switches back to normal mode (`_bashMode = false`)
 - Buffer contents preserved
 - Prompt returns to yellow `❯`
@@ -27,6 +29,7 @@ This enables fluid switching: type `!run git commit for me`, realize you want th
 ### Detection Point
 
 In `App._handleTerminalEvent`, intercept before passing to `LineEditor`:
+
 - `CharEvent('!')` when `editor.cursor == 0 && !_bashMode` → consume, set bash mode
 - Backspace `KeyEvent` when `editor.cursor == 0 && _bashMode` → consume, clear bash mode
 
@@ -61,6 +64,7 @@ This applies globally (not just bash mode) — protects against accidental exits
 ### Syntax
 
 Within bash mode, prefixing with `&` runs the command as a managed background job:
+
 - `& npm run dev` → background job
 - `& dart run build_runner watch` → background job
 
@@ -113,6 +117,7 @@ class JobError extends JobEvent { ... }
 ### LineRingBuffer
 
 Bounded circular buffer for output:
+
 - `maxLines`: 2000
 - `maxBytes`: 256 KB
 - Oldest lines evicted when limits exceeded
@@ -163,6 +168,7 @@ Blocking command output truncated to the last `bashMaxLines` lines (default: 50)
 ### Background Job Notifications
 
 Simple system messages (no box):
+
 ```
 ↳ Started job #1: npm run dev
 ↳ Job #1 exited (0): npm run dev
@@ -183,6 +189,7 @@ final prompt = switch ((_mode, _bashMode)) {
 ## Configuration
 
 New field in `GlueConfig`:
+
 - `bashMaxLines` (int, default: 50) — max output lines shown for blocking bash commands
 
 Resolved from config file (`~/.glue/config.yaml`) under `bash.max_lines`, with default fallback.
@@ -190,6 +197,7 @@ Resolved from config file (`~/.glue/config.yaml`) under `bash.max_lines`, with d
 ## `/jobs` Command (Future)
 
 Not in initial implementation scope, but designed for:
+
 - `/jobs` — list all background jobs with status
 - `/jobs <id>` — view buffered output for a job
 - `/jobs kill <id>` — terminate a job
@@ -217,13 +225,14 @@ User types "& npm run dev" + Enter (in bash mode)
   → Later: JobExited event → system block notification
 ```
 
-## _ConversationEntry Changes
+## \_ConversationEntry Changes
 
 ```dart
 enum _EntryKind { user, assistant, toolCall, toolResult, error, system, subagent, bash }
 ```
 
 New factory:
+
 ```dart
 factory _ConversationEntry.bash(String command, String output) =>
     _ConversationEntry._(_EntryKind.bash, output, expandedText: command);
@@ -233,25 +242,25 @@ The `expandedText` field (already exists, currently used for user entries with @
 
 ## File Changes
 
-| File | Change |
-|---|---|
-| `lib/src/app.dart` | `_bashMode` field, mode switching in `_handleTerminalEvent`, bash submit handling in `_handleAppEvent`, `AppMode.bashRunning`, `_bashRunProcess`, double-tap Ctrl+C logic, `_jobManager` field, prompt rendering |
-| `lib/src/rendering/block_renderer.dart` | `renderBash(String command, String output)` method |
-| `lib/src/shell/shell_job_manager.dart` | **New** — `ShellJob`, `ShellJobManager`, `JobStatus`, `JobEvent` sealed class, `LineRingBuffer` |
-| `lib/src/config/glue_config.dart` | `bashMaxLines` field |
-| `lib/glue.dart` | Export new types |
-| `test/rendering/block_renderer_test.dart` | Tests for `renderBash` |
-| `test/shell/shell_job_manager_test.dart` | **New** — ring buffer, job lifecycle, shutdown cleanup |
+| File                                      | Change                                                                                                                                                                                                           |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lib/src/app.dart`                        | `_bashMode` field, mode switching in `_handleTerminalEvent`, bash submit handling in `_handleAppEvent`, `AppMode.bashRunning`, `_bashRunProcess`, double-tap Ctrl+C logic, `_jobManager` field, prompt rendering |
+| `lib/src/rendering/block_renderer.dart`   | `renderBash(String command, String output)` method                                                                                                                                                               |
+| `lib/src/shell/shell_job_manager.dart`    | **New** — `ShellJob`, `ShellJobManager`, `JobStatus`, `JobEvent` sealed class, `LineRingBuffer`                                                                                                                  |
+| `lib/src/config/glue_config.dart`         | `bashMaxLines` field                                                                                                                                                                                             |
+| `lib/glue.dart`                           | Export new types                                                                                                                                                                                                 |
+| `test/rendering/block_renderer_test.dart` | Tests for `renderBash`                                                                                                                                                                                           |
+| `test/shell/shell_job_manager_test.dart`  | **New** — ring buffer, job lifecycle, shutdown cleanup                                                                                                                                                           |
 
 ## Edge Cases
 
-| Situation | Handling |
-|---|---|
-| Empty submit in bash mode | Ignore (no-op), stay in bash mode |
-| `&` with no command after it | Ignore (no-op) |
-| Command produces no output | Show empty box with just the command legend |
-| Command produces massive output | Tail to `bashMaxLines`, show truncation notice |
-| Background job output floods memory | `LineRingBuffer` caps at 2000 lines / 256KB |
-| Glue exits with running jobs | SIGTERM → 800ms → SIGKILL |
-| `!` typed mid-buffer (not at pos 0) | Normal character insertion, no mode switch |
-| Backspace at pos 0 in normal mode | Normal behavior (no-op in LineEditor) |
+| Situation                           | Handling                                       |
+| ----------------------------------- | ---------------------------------------------- |
+| Empty submit in bash mode           | Ignore (no-op), stay in bash mode              |
+| `&` with no command after it        | Ignore (no-op)                                 |
+| Command produces no output          | Show empty box with just the command legend    |
+| Command produces massive output     | Tail to `bashMaxLines`, show truncation notice |
+| Background job output floods memory | `LineRingBuffer` caps at 2000 lines / 256KB    |
+| Glue exits with running jobs        | SIGTERM → 800ms → SIGKILL                      |
+| `!` typed mid-buffer (not at pos 0) | Normal character insertion, no mode switch     |
+| Backspace at pos 0 in normal mode   | Normal behavior (no-op in LineEditor)          |

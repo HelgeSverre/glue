@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:math';
 
 import '../rendering/ansi_utils.dart';
-import '../terminal/terminal.dart';
 import '../terminal/styled.dart';
+import '../terminal/terminal.dart';
 import 'box.dart';
+
+enum PanelStyle { tape, simple, heavy }
 
 enum BarrierStyle { dim, obscure, none }
 
@@ -30,6 +32,98 @@ class PanelFluid extends PanelSize {
       min(max((available * maxPercent).floor(), minSize), available);
 }
 
+List<String> renderBorder(
+  PanelStyle style,
+  int width,
+  int height,
+  String title,
+) {
+  return switch (style) {
+    PanelStyle.simple => _renderSimple(width, height, title),
+    PanelStyle.heavy => _renderHeavy(width, height, title),
+    PanelStyle.tape => _renderTape(width, height, title),
+  };
+}
+
+List<String> _renderSimple(int width, int height, String title) {
+  final lines = <String>[];
+  final innerWidth = width - 2;
+  final titleStr = ' $title ';
+  final fillCount = max(innerWidth - titleStr.length - 1, 0);
+  final top = '\x1b[2m┌─\x1b[0m'
+      '\x1b[33m$titleStr\x1b[0m'
+      '\x1b[2m${'─' * fillCount}┐\x1b[0m';
+  lines.add(top);
+
+  final interior = '\x1b[2m│\x1b[0m'
+      '${' ' * innerWidth}'
+      '\x1b[2m│\x1b[0m';
+  for (var i = 1; i < height - 1; i++) {
+    lines.add(interior);
+  }
+
+  final bottom = '\x1b[2m└${'─' * innerWidth}┘\x1b[0m';
+  lines.add(bottom);
+  return lines;
+}
+
+List<String> _renderHeavy(int width, int height, String title) {
+  final lines = <String>[];
+  final innerWidth = width - 2;
+  final titleStr = ' $title ';
+  final fillCount = max(innerWidth - titleStr.length - 1, 0);
+  final top = '\x1b[33m╔═$titleStr${'═' * fillCount}╗\x1b[0m';
+  lines.add(top);
+
+  final interior = '\x1b[33m║\x1b[0m'
+      '${' ' * innerWidth}'
+      '\x1b[33m║\x1b[0m';
+  for (var i = 1; i < height - 1; i++) {
+    lines.add(interior);
+  }
+
+  final bottom = '\x1b[33m╚${'═' * innerWidth}╝\x1b[0m';
+  lines.add(bottom);
+  return lines;
+}
+
+List<String> _renderTape(int width, int height, String title) {
+  final lines = <String>[];
+  final innerWidth = width - 2;
+
+  final titleStr = ' $title ';
+  const tapePattern = '▚▞';
+  const prefixLen = 2;
+  final suffixLen = max(width - titleStr.length - prefixLen, 0);
+  final prefixTape = _repeatTape(tapePattern, prefixLen);
+  final suffixTape = _repeatTape(tapePattern, suffixLen);
+  final top = '\x1b[33m$prefixTape\x1b[0m'
+      '\x1b[30;43m$titleStr\x1b[0m'
+      '\x1b[33m$suffixTape\x1b[0m';
+  lines.add(top);
+
+  final interior = '\x1b[33m│\x1b[0m'
+      '${' ' * innerWidth}'
+      '\x1b[33m│\x1b[0m';
+  for (var i = 1; i < height - 1; i++) {
+    lines.add(interior);
+  }
+
+  final bottomTape = _repeatTape(tapePattern, width);
+  final bottom = '\x1b[33m$bottomTape\x1b[0m';
+  lines.add(bottom);
+  return lines;
+}
+
+String _repeatTape(String pattern, int length) {
+  final buf = StringBuffer();
+  for (var i = 0; i < length; i++) {
+    buf.write(pattern[i % pattern.length]);
+  }
+  return buf.toString();
+}
+
+
 List<String> applyBarrier(BarrierStyle style, List<String> lines) {
   return switch (style) {
     BarrierStyle.none => lines,
@@ -42,7 +136,15 @@ List<String> applyBarrier(BarrierStyle style, List<String> lines) {
   };
 }
 
-class PanelModal {
+abstract class PanelOverlay {
+  bool get isComplete;
+  bool handleEvent(TerminalEvent event);
+  List<String> render(
+      int termWidth, int termHeight, List<String> backgroundLines);
+  void cancel();
+}
+
+class PanelModal implements PanelOverlay {
   final String title;
   final List<String> lines;
   final Box box;
@@ -79,6 +181,7 @@ class PanelModal {
   }
 
   int get scrollOffset => _scrollOffset;
+  @override
   bool get isComplete => _completer.isCompleted;
   Future<void> get result => _completer.future;
   int get selectedIndex => selectable ? _selectedIndex : -1;
@@ -92,6 +195,10 @@ class PanelModal {
     }
   }
 
+  @override
+  void cancel() => dismiss();
+
+  @override
   bool handleEvent(TerminalEvent event) {
     if (isComplete) return false;
 
@@ -152,6 +259,7 @@ class PanelModal {
     }
   }
 
+  @override
   List<String> render(
       int termWidth, int termHeight, List<String> backgroundLines) {
     final panelW = _width.resolve(termWidth);

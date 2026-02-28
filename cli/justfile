@@ -1,28 +1,68 @@
+set dotenv-load
+
 default:
     @just --list
 
+# Compile AOT native binary
 build:
     dart compile exe bin/glue.dart -o glue
 
+# Compile and symlink to ~/.local/bin
 install: build
     mkdir -p ~/.local/bin
     ln -sf "$(pwd)/glue" ~/.local/bin/glue
 
-test:
-    dart test
+# Build and run interactively
+run *args: build
+    ./glue {{args}}
 
+# Run unit tests (pass args: just test test/llm/)
+test *args:
+    dart test {{args}}
+
+# Run e2e integration tests (requires: ollama + qwen2.5:7b)
+e2e:
+    dart test --run-skipped -t e2e
+
+# Static analysis
 analyze:
     dart analyze --fatal-infos
 
+# Format all Dart files
 format:
     dart format .
 
+# Analyze + test
 check: analyze test
 
+# Get dependencies
+deps:
+    dart pub get
+
+# Generate API docs (→ doc/api)
+docs:
+    dart doc --output doc/api --validate-links
+
+# Generate and serve API docs
+docs-serve: docs
+    npx serve doc/api
+
+# Bump version, build, tag, and print summary
+[confirm: "Release a new version?"]
+release version:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    sed -i '' "s/^version: .*/version: {{version}}/" pubspec.yaml
+    echo "Updated pubspec.yaml to {{version}}"
+    dart compile exe bin/glue.dart -o glue
+    git add pubspec.yaml
+    git commit -m "release: v{{version}}"
+    git tag "v{{version}}"
+    echo ""
+    echo "Released v{{version}}"
+    echo "  Run: git push && git push --tags"
+
+# Remove build artifacts
 clean:
     rm -f glue
-    rm -rf dartdoc
-
-docs:
-    dart doc --output ./dartdoc --validate-links
-    npx serve ./dartdoc/
+    rm -rf doc/api

@@ -3,6 +3,8 @@
 /// Centralizes magic values for timeouts, limits, and defaults to improve
 /// maintainability and enable easy tuning of behavior.
 class AppConstants {
+  static const String version = '0.1.0';
+
   // App behavior
   static const int maxConversationBlocks = 200;
   static const Duration ctrlCDoubleTapWindow = Duration(seconds: 2);
@@ -34,6 +36,23 @@ class AppConstants {
   // Terminal/Layout
   static const int inputAreaDivisor = 3; // Input area = terminal.rows ~/ 3
   static const int maxInputVisibleLines = 10;
+
+  // Web tool configuration
+  static const int webFetchTimeoutSeconds = 30;
+  static const int webFetchMaxBytes = 5 * 1024 * 1024; // 5MB
+  static const int webFetchDefaultMaxTokens = 50000;
+  static const int webSearchTimeoutSeconds = 15;
+  static const int webSearchDefaultMaxResults = 5;
+
+  // PDF extraction configuration
+  static const int pdfMaxBytes = 20 * 1024 * 1024; // 20MB
+  static const int pdfTimeoutSeconds = 60;
+
+  // Browser tool configuration
+  static const int browserNavigationTimeoutSeconds = 30;
+  static const int browserActionTimeoutSeconds = 10;
+  static const int browserDockerPort = 3000;
+  static const String browserDockerImage = 'browserless/chrome:latest';
 
   AppConstants._(); // Prevent instantiation
 }

@@ -6,7 +6,7 @@ import 'package:glue/src/llm/sse.dart';
 void main() {
   group('SseDecoder', () {
     test('parses simple data-only events', () async {
-      final input = 'data: {"text":"hello"}\n\ndata: {"text":"world"}\n\n';
+      const input = 'data: {"text":"hello"}\n\ndata: {"text":"world"}\n\n';
       final stream = Stream.value(utf8.encode(input));
       final events = await decodeSse(stream).toList();
 
@@ -16,7 +16,7 @@ void main() {
     });
 
     test('parses events with event type', () async {
-      final input = 'event: message_start\ndata: {"type":"message_start"}\n\n';
+      const input = 'event: message_start\ndata: {"type":"message_start"}\n\n';
       final stream = Stream.value(utf8.encode(input));
       final events = await decodeSse(stream).toList();
 
@@ -26,7 +26,7 @@ void main() {
     });
 
     test('ignores comment lines', () async {
-      final input = ': ping\ndata: {"ok":true}\n\n';
+      const input = ': ping\ndata: {"ok":true}\n\n';
       final stream = Stream.value(utf8.encode(input));
       final events = await decodeSse(stream).toList();
 
@@ -35,7 +35,7 @@ void main() {
     });
 
     test('handles data: [DONE] sentinel', () async {
-      final input = 'data: {"text":"hi"}\n\ndata: [DONE]\n\n';
+      const input = 'data: {"text":"hi"}\n\ndata: [DONE]\n\n';
       final stream = Stream.value(utf8.encode(input));
       final events = await decodeSse(stream).toList();
 
@@ -44,7 +44,7 @@ void main() {
     });
 
     test('handles multi-line data fields', () async {
-      final input = 'data: line1\ndata: line2\n\n';
+      const input = 'data: line1\ndata: line2\n\n';
       final stream = Stream.value(utf8.encode(input));
       final events = await decodeSse(stream).toList();
 
@@ -53,7 +53,7 @@ void main() {
     });
 
     test('handles chunked byte delivery', () async {
-      final full = 'data: {"x":1}\n\ndata: {"x":2}\n\n';
+      const full = 'data: {"x":1}\n\ndata: {"x":2}\n\n';
       final bytes = utf8.encode(full);
       // Split into small chunks to simulate real network
       final chunks = <List<int>>[];

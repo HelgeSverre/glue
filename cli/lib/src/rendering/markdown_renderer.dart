@@ -5,6 +5,8 @@ import '../terminal/styled.dart';
 
 /// Renders a subset of Markdown to ANSI-styled terminal text.
 ///
+/// {@category Terminal & Rendering}
+///
 /// Supported:
 /// - Headings: #, ##, ###
 /// - Bold: **text**
@@ -14,7 +16,7 @@ import '../terminal/styled.dart';
 /// - Unordered lists: - item, * item
 /// - Ordered lists: 1. item
 /// - Blockquotes: > text
-/// - Links: [text](url)
+/// - Links: `[text](url)`
 /// - Tables: | col | col |
 class MarkdownRenderer {
   final int width;

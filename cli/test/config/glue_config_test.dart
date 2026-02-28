@@ -40,6 +40,44 @@ void main() {
       config.validate(); // Should not throw
     });
 
+    test('resolves mistral provider', () {
+      final config = GlueConfig(
+        provider: LlmProvider.mistral,
+        model: 'mistral-large-latest',
+        mistralApiKey: 'mk-test',
+      );
+      expect(config.provider, LlmProvider.mistral);
+      expect(config.model, 'mistral-large-latest');
+    });
+
+    test('validates mistral API key', () {
+      final config = GlueConfig(
+        provider: LlmProvider.mistral,
+        model: 'mistral-large-latest',
+        mistralApiKey: 'mk-test',
+      );
+      config.validate(); // Should not throw
+    });
+
+    test('validates missing mistral API key', () {
+      expect(
+        () => GlueConfig(
+          provider: LlmProvider.mistral,
+          model: 'mistral-large-latest',
+        ).validate(),
+        throwsA(isA<ConfigError>()),
+      );
+    });
+
+    test('apiKey getter returns mistral key', () {
+      final config = GlueConfig(
+        provider: LlmProvider.mistral,
+        model: 'mistral-large-latest',
+        mistralApiKey: 'mk-test',
+      );
+      expect(config.apiKey, 'mk-test');
+    });
+
     test('validates API key presence', () {
       expect(
         () => GlueConfig(provider: LlmProvider.anthropic).validate(),
@@ -52,11 +90,11 @@ void main() {
         anthropicApiKey: 'sk-ant',
         openaiApiKey: 'sk-oai',
         profiles: {
-          'architect': AgentProfile(
+          'architect': const AgentProfile(
               provider: LlmProvider.anthropic, model: 'claude-opus-4-6'),
-          'editor':
-              AgentProfile(provider: LlmProvider.openai, model: 'gpt-4.1-mini'),
-          'local': AgentProfile(
+          'editor': const AgentProfile(
+              provider: LlmProvider.openai, model: 'gpt-4.1-mini'),
+          'local': const AgentProfile(
               provider: LlmProvider.ollama, model: 'qwen2.5-coder'),
         },
       );
@@ -76,6 +114,27 @@ void main() {
         bashMaxLines: 100,
       );
       expect(config.bashMaxLines, 100);
+    });
+  });
+
+  group('splitPathList', () {
+    test('splits colon-separated paths on Unix', () {
+      final paths = splitPathList('~/a:~/b:/opt/c', isWindows: false);
+      expect(paths, ['~/a', '~/b', '/opt/c']);
+    });
+
+    test('splits semicolon-separated paths on Windows', () {
+      final paths = splitPathList(r'C:\skills;D:\more', isWindows: true);
+      expect(paths, [r'C:\skills', r'D:\more']);
+    });
+
+    test('ignores empty segments', () {
+      final paths = splitPathList('~/a::~/b:', isWindows: false);
+      expect(paths, ['~/a', '~/b']);
+    });
+
+    test('returns empty list for empty string', () {
+      expect(splitPathList('', isWindows: false), isEmpty);
     });
   });
 }

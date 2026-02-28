@@ -21,6 +21,7 @@ PanelModal({
 ### PanelSize
 
 Sealed class:
+
 - `PanelFixed(int size)` — exact column/row count
 - `PanelFluid(double maxPercent, int minSize)` — percentage of terminal with a floor
 
@@ -31,6 +32,7 @@ Defaults: width = 70% / min 40 cols, height = 70% / min 10 rows.
 Three border variants:
 
 **`.tape`** (default) — Construction-branded:
+
 ```
 ▚▞▚▞▚▞ HELP ▚▞▚▞▚▞▚▞▚▞▚▞
 │                          │
@@ -39,9 +41,11 @@ Three border variants:
 │                          │
 ▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞
 ```
+
 Top/bottom: alternating `▚▞` in yellow on black. Title rendered inverse (black on yellow) inline. Sides: `│` in yellow.
 
 **`.simple`** — Clean box-drawing:
+
 ```
 ┌─ HELP ───────────────────┐
 │                          │
@@ -49,9 +53,11 @@ Top/bottom: alternating `▚▞` in yellow on black. Title rendered inverse (bla
 │                          │
 └──────────────────────────┘
 ```
+
 Title in yellow, border in dim gray.
 
 **`.heavy`** — Double-line brutalist:
+
 ```
 ╔═ HELP ═══════════════════╗
 ║                          ║
@@ -59,6 +65,7 @@ Title in yellow, border in dim gray.
 ║                          ║
 ╚══════════════════════════╝
 ```
+
 Title and border in yellow.
 
 ### BarrierStyle
@@ -80,6 +87,7 @@ Title and border in yellow.
 ## Scrolling
 
 Internal `_scrollOffset` tracked by `PanelModal`. Handles:
+
 - Up/Down — single line scroll
 - PageUp/PageDown — viewport-height scroll
 - Clamped to `[0, max(0, contentLines - visibleHeight)]`
@@ -87,6 +95,7 @@ Internal `_scrollOffset` tracked by `PanelModal`. Handles:
 ## Event Handling
 
 `bool handleEvent(TerminalEvent event)`:
+
 - Escape → completes `result` future if `dismissable`, swallowed if not
 - Up/Down/PageUp/PageDown → scroll
 - All other input → swallowed (panel is modal)
@@ -137,9 +146,9 @@ Section headers: `■` prefix in yellow (matching website brand label style). Co
 
 ## File Changes
 
-| File | Change |
-|---|---|
-| `lib/src/ui/panel_modal.dart` | **New** — `PanelStyle`, `BarrierStyle`, `PanelSize`, `PanelModal` |
-| `lib/src/app.dart` | **Modified** — `_activePanel` field, event routing, render integration, `/help` wiring |
-| `lib/glue.dart` | **Modified** — export new types |
-| `test/ui/panel_modal_test.dart` | **New** — border rendering, scroll, dismiss, sizing, barrier, padding |
+| File                            | Change                                                                                 |
+| ------------------------------- | -------------------------------------------------------------------------------------- |
+| `lib/src/ui/panel_modal.dart`   | **New** — `PanelStyle`, `BarrierStyle`, `PanelSize`, `PanelModal`                      |
+| `lib/src/app.dart`              | **Modified** — `_activePanel` field, event routing, render integration, `/help` wiring |
+| `lib/glue.dart`                 | **Modified** — export new types                                                        |
+| `test/ui/panel_modal_test.dart` | **New** — border rendering, scroll, dismiss, sizing, barrier, padding                  |

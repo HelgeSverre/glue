@@ -2,8 +2,8 @@
 
 import 'dart:math';
 import '../terminal/styled.dart';
-import 'mascot_physics.dart';
-import 'mascot_sprite.dart';
+import 'package:glue/src/rendering/mascot_physics.dart';
+import 'package:glue/src/rendering/mascot_sprite.dart';
 
 const mascotRenderWidth = spriteWidth;
 const mascotRenderHeight = spriteHeight;
@@ -242,7 +242,7 @@ class GooExplosion {
         final cx = cell.x;
         final cy = cell.y;
         if (cx >= 0 && cx < viewportWidth && cy >= 0 && cy < viewportHeight) {
-          final gooCharList = GooChar.values;
+          const gooCharList = GooChar.values;
           grid[cy][cx] = [
             d.r,
             d.g,

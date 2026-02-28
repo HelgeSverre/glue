@@ -13,6 +13,7 @@
 ### Task 1: Add selection mode to PanelModal — tests
 
 **Files:**
+
 - Modify: `test/ui/panel_modal_test.dart`
 
 **Step 1: Write failing tests for selectable PanelModal**
@@ -120,6 +121,7 @@ Expected: FAIL — `selectable` parameter doesn't exist, `selectedIndex` and `se
 ### Task 2: Add selection mode to PanelModal — implementation
 
 **Files:**
+
 - Modify: `lib/src/ui/panel_modal.dart`
 
 **Step 1: Add selectable fields to PanelModal**
@@ -295,9 +297,10 @@ git commit -m "feat: add selectable mode to PanelModal"
 ### Task 3: Wire /resume command to open selection panel
 
 **Files:**
+
 - Modify: `lib/src/app.dart`
 
-**Step 1: Add _openResumePanel method to App**
+**Step 1: Add \_openResumePanel method to App**
 
 Add this method after `_openHelpPanel()` (around line 511):
 
@@ -377,6 +380,7 @@ git commit -m "feat: /resume opens selectable session panel"
 ### Task 4: Add --resume and --continue CLI flags
 
 **Files:**
+
 - Modify: `bin/glue.dart`
 - Modify: `lib/src/app.dart`
 
@@ -483,6 +487,7 @@ git commit -m "feat: add --resume and --continue CLI flags"
 ### Task 5: Update barrel export
 
 **Files:**
+
 - Check: `lib/glue.dart`
 
 **Step 1: Verify exports**
