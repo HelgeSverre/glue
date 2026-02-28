@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
+import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/skills/skill_tool.dart';
 import 'package:glue/src/skills/skill_registry.dart';
 
@@ -24,7 +25,7 @@ void main() {
         );
       }
 
-      registry = SkillRegistry.discover(cwd: tempDir.path);
+      registry = SkillRegistry.discover(cwd: tempDir.path, home: tempDir.path);
       tool = SkillTool(registry);
     });
 
@@ -43,34 +44,35 @@ void main() {
     });
 
     test('list skills when no name provided', () async {
-      final result = await tool.execute({});
+      final result = ContentPart.textOnly(await tool.execute({}));
       expect(result, contains('Available skills'));
       expect(result, contains('code-review'));
       expect(result, contains('tdd'));
     });
 
     test('list skills when name is empty', () async {
-      final result = await tool.execute({'name': ''});
+      final result = ContentPart.textOnly(await tool.execute({'name': ''}));
       expect(result, contains('Available skills'));
     });
 
     test('activate skill returns body', () async {
-      final result = await tool.execute({'name': 'code-review'});
+      final result = ContentPart.textOnly(await tool.execute({'name': 'code-review'}));
       expect(result, contains('# Skill: code-review'));
       expect(result, contains('Instructions for code-review'));
     });
 
     test('activate unknown skill returns error', () async {
-      final result = await tool.execute({'name': 'nonexistent'});
+      final result = ContentPart.textOnly(await tool.execute({'name': 'nonexistent'}));
       expect(result, contains('Error'));
       expect(result, contains('not found'));
     });
 
     test('empty registry returns helpful message', () async {
       final emptyDir = Directory.systemTemp.createTempSync('skill_tool_empty_');
-      final emptyRegistry = SkillRegistry.discover(cwd: emptyDir.path);
+      final emptyRegistry =
+          SkillRegistry.discover(cwd: emptyDir.path, home: emptyDir.path);
       final emptyTool = SkillTool(emptyRegistry);
-      final result = await emptyTool.execute({});
+      final result = ContentPart.textOnly(await emptyTool.execute({}));
       expect(result, contains('No skills available'));
       emptyDir.deleteSync(recursive: true);
     });

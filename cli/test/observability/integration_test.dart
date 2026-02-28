@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/observability/debug_controller.dart';
 import 'package:glue/src/observability/observability.dart';
@@ -42,8 +43,8 @@ class _MockTool extends Tool {
       ];
 
   @override
-  Future<String> execute(Map<String, dynamic> args) async {
-    return 'tool result: ${args['input']}';
+  Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
+    return [TextPart('tool result: ${args['input']}')];
   }
 }
 
@@ -124,7 +125,7 @@ void main() {
       expect(chunks, hasLength(3));
 
       final tool = ObservedTool(inner: _MockTool(), obs: obs);
-      final result = await tool.execute({'input': 'hello'});
+      final result = ContentPart.textOnly(await tool.execute({'input': 'hello'}));
       expect(result, 'tool result: hello');
 
       obs.endSpan(rootSpan);

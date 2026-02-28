@@ -1,3 +1,4 @@
+import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/observability/debug_controller.dart';
 import 'package:glue/src/observability/observability.dart';
@@ -42,9 +43,9 @@ class _MockTool extends Tool {
   List<ToolParameter> get parameters => _parameters;
 
   @override
-  Future<String> execute(Map<String, dynamic> args) async {
-    if (handler != null) return handler!(args);
-    return 'mock result';
+  Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
+    if (handler != null) return [TextPart(handler!(args))];
+    return [TextPart('mock result')];
   }
 }
 
@@ -119,7 +120,7 @@ void main() {
     final inner = _MockTool(handler: (_) => 'expected output');
     final observed = ObservedTool(inner: inner, obs: obs);
 
-    final result = await observed.execute({});
+    final result = ContentPart.textOnly(await observed.execute({}));
 
     expect(result, 'expected output');
   });

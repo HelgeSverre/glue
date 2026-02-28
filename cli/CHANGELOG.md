@@ -6,6 +6,22 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Added
 
+- **Multimodal tool results** — tools can now return images (e.g.
+  browser screenshots) as native content blocks instead of base64 text.
+  This reduces token usage from ~738K text tokens to ~1,600 vision
+  tokens per screenshot.
+  - `ContentPart` sealed class hierarchy (`TextPart`, `ImagePart`) for
+    structured content in tool results.
+  - `Tool.execute()` returns `List<ContentPart>` — single dispatch
+    method for all content types (text and images).
+  - `ForwardingTool` base class for decorators (Go embedding pattern) —
+    new `Tool` methods auto-forward to all decorators.
+  - Provider-native image formats: Anthropic inline `image` blocks in
+    `tool_result`, OpenAI/Ollama follow-up user messages with
+    `image_url`/`images` arrays.
+  - `WebBrowserTool` screenshots now return `ImagePart` instead of
+    base64 text strings.
+
 - **Observability & debug system** — pluggable telemetry with zero
   changes to business logic. Three wrapper layers instrument all
   activity without polluting core code:

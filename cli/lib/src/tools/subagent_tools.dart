@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:glue/src/agent/agent_manager.dart';
+import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/config/glue_config.dart';
 
@@ -43,7 +44,7 @@ class SpawnSubagentTool extends Tool {
       ];
 
   @override
-  Future<String> execute(Map<String, dynamic> args) async {
+  Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
     final task = args['task'] as String;
     final providerStr = args['provider'] as String?;
     final model = args['model'] as String?;
@@ -62,11 +63,12 @@ class SpawnSubagentTool extends Tool {
       );
     }
 
-    return _manager.spawnSubagent(
+    final result = await _manager.spawnSubagent(
       task: task,
       profile: profile,
       currentDepth: _depth,
     );
+    return [TextPart(result)];
   }
 }
 
@@ -108,7 +110,7 @@ class SpawnParallelSubagentsTool extends Tool {
       ];
 
   @override
-  Future<String> execute(Map<String, dynamic> args) async {
+  Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
     final tasks = (args['tasks'] as List).cast<String>();
     final providerStr = args['provider'] as String?;
     final model = args['model'] as String?;
@@ -133,11 +135,11 @@ class SpawnParallelSubagentsTool extends Tool {
       currentDepth: _depth,
     );
 
-    return jsonEncode({
+    return [TextPart(jsonEncode({
       'results': [
         for (var i = 0; i < tasks.length; i++)
           {'task': tasks[i], 'output': results[i]},
       ],
-    });
+    }))];
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:test/test.dart';
+import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/tools/subagent_tools.dart';
 import 'package:glue/src/agent/agent_manager.dart';
 import 'package:glue/src/agent/agent_core.dart';
@@ -49,7 +50,7 @@ void main() {
 
     test('executes and returns result', () async {
       final tool = SpawnSubagentTool(manager);
-      final result = await tool.execute({'task': 'Write tests'});
+      final result = ContentPart.textOnly(await tool.execute({'task': 'Write tests'}));
       expect(result, contains('Done: Write tests'));
     });
   });
@@ -63,9 +64,9 @@ void main() {
 
     test('executes parallel tasks', () async {
       final tool = SpawnParallelSubagentsTool(manager);
-      final result = await tool.execute({
+      final result = ContentPart.textOnly(await tool.execute({
         'tasks': ['Task A', 'Task B'],
-      });
+      }));
       final decoded = jsonDecode(result) as Map<String, dynamic>;
       final results = decoded['results'] as List;
       expect(results, hasLength(2));

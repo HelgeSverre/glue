@@ -1,3 +1,4 @@
+import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/skills/skill_registry.dart';
 import 'package:glue/src/skills/skill_parser.dart';
@@ -27,14 +28,14 @@ class SkillTool extends Tool {
       ];
 
   @override
-  Future<String> execute(Map<String, dynamic> args) async {
+  Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
     final skillName = args['name'] as String?;
 
     if (skillName == null || skillName.isEmpty) {
-      return _listSkills();
+      return [TextPart(_listSkills())];
     }
 
-    return _activateSkill(skillName);
+    return [TextPart(_activateSkill(skillName))];
   }
 
   String _listSkills() {

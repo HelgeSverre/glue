@@ -1,36 +1,25 @@
+import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/observability/observability.dart';
 
-class ObservedTool extends Tool {
-  final Tool _inner;
+class ObservedTool extends ForwardingTool {
   final Observability _obs;
 
   ObservedTool({required Tool inner, required Observability obs})
-      : _inner = inner,
-        _obs = obs;
+      : _obs = obs,
+        super(inner);
 
   @override
-  String get name => _inner.name;
-
-  @override
-  String get description => _inner.description;
-
-  @override
-  List<ToolParameter> get parameters => _inner.parameters;
-
-  @override
-  Future<void> dispose() => _inner.dispose();
-
-  @override
-  Future<String> execute(Map<String, dynamic> args) async {
+  Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
     final span = _obs.startSpan(
-      'tool.${_inner.name}',
+      'tool.${inner.name}',
       kind: 'tool',
-      attributes: {'tool.name': _inner.name, 'tool.args': args},
+      attributes: {'tool.name': inner.name, 'tool.args': args},
     );
     try {
-      final result = await _inner.execute(args);
-      _obs.endSpan(span, extra: {'tool.result_length': result.length});
+      final result = await inner.execute(args);
+      final textLength = ContentPart.textOnly(result).length;
+      _obs.endSpan(span, extra: {'tool.result_length': textLength});
       return result;
     } catch (e) {
       _obs.endSpan(span, extra: {'error': e.toString()});

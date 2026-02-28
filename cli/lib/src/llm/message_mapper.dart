@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/content_part.dart';
 
 /// Result of mapping Glue messages to a provider-specific format.
 class MappedMessages {
@@ -62,13 +63,33 @@ class AnthropicMessageMapper extends MessageMapper {
           }
           mapped.add({'role': 'assistant', 'content': content});
         case Role.toolResult:
+          final dynamic toolContent;
+          if (msg.contentParts != null &&
+              ContentPart.hasImages(msg.contentParts!)) {
+            toolContent = [
+              for (final part in msg.contentParts!)
+                if (part is TextPart)
+                  {'type': 'text', 'text': part.text}
+                else if (part is ImagePart)
+                  {
+                    'type': 'image',
+                    'source': {
+                      'type': 'base64',
+                      'media_type': part.mimeType,
+                      'data': part.toBase64(),
+                    }
+                  }
+            ];
+          } else {
+            toolContent = msg.text ?? '';
+          }
           mapped.add({
             'role': 'user',
             'content': [
               {
                 'type': 'tool_result',
                 'tool_use_id': msg.toolCallId,
-                'content': msg.text ?? '',
+                'content': toolContent,
               }
             ],
           });
@@ -123,11 +144,34 @@ class OpenAiMessageMapper extends MessageMapper {
           }
           mapped.add(entry);
         case Role.toolResult:
+          final textContent = (msg.contentParts != null)
+              ? ContentPart.textOnly(msg.contentParts!)
+              : (msg.text ?? '');
           mapped.add({
             'role': 'tool',
             'tool_call_id': msg.toolCallId,
-            'content': msg.text ?? '',
+            'content': textContent.isNotEmpty ? textContent : (msg.text ?? ''),
           });
+          if (msg.contentParts != null &&
+              ContentPart.hasImages(msg.contentParts!)) {
+            final imageParts = msg.contentParts!.whereType<ImagePart>();
+            mapped.add({
+              'role': 'user',
+              'content': [
+                {
+                  'type': 'text',
+                  'text': '[Screenshot from ${msg.toolName ?? "tool"}]',
+                },
+                for (final img in imageParts)
+                  {
+                    'type': 'image_url',
+                    'image_url': {
+                      'url': 'data:${img.mimeType};base64,${img.toBase64()}',
+                    },
+                  },
+              ],
+            });
+          }
       }
     }
 

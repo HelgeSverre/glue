@@ -1,4 +1,5 @@
 import 'package:test/test.dart';
+import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/tools/web_search_tool.dart';
 import 'package:glue/src/web/search/search_router.dart';
 import 'package:glue/src/web/search/models.dart';
@@ -43,12 +44,12 @@ void main() {
     });
 
     test('returns error for missing query', () async {
-      final result = await tool.execute({});
+      final result = ContentPart.textOnly(await tool.execute({}));
       expect(result, contains('Error'));
     });
 
     test('returns formatted results', () async {
-      final result = await tool.execute({'query': 'test search'});
+      final result = ContentPart.textOnly(await tool.execute({'query': 'test search'}));
       expect(result, contains('Mock Result'));
       expect(result, contains('mock.com'));
     });
@@ -56,7 +57,8 @@ void main() {
     test('schema has correct structure', () {
       final schema = tool.toSchema();
       expect(schema['name'], 'web_search');
-      expect(schema['input_schema']['properties'], contains('query'));
+      final inputSchema = schema['input_schema'] as Map<String, dynamic>;
+      expect(inputSchema['properties'], contains('query'));
     });
   });
 }
