@@ -78,7 +78,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
 }
 .repo-dd-add{color:var(--yellow);border-top:1px solid var(--border)}
 
-/* New workspace button */
+/* New session button */
 .new-sess{
   margin:8px 10px;padding:8px 12px;border:1px dashed var(--border-br);
   background:transparent;color:var(--text-mut);font-size:11px;font-family:var(--mono);
@@ -87,7 +87,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
 }
 .new-sess:hover{border-color:var(--yellow);color:var(--yellow);background:rgba(250,204,21,.02)}
 
-/* Workspace list */
+/* Session list */
 .sess-list{overflow-y:auto;flex:1}
 .sess-group-head{
   padding:6px 12px;font-family:var(--mono);font-size:9px;font-weight:700;
@@ -232,7 +232,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
 }
 .sc-header-title{color:var(--text-mut)}
 
-/* Workspace info key-value list */
+/* Session info key-value list */
 .sc-info{padding:4px 0;border-bottom:1px solid var(--border)}
 .sc-info-row{
   padding:2px 10px;font-family:var(--mono);font-size:10px;display:flex;gap:6px;
@@ -468,6 +468,64 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
 .wiz-summary .ws-value{color:var(--text)}
 .wiz-summary .ws-row{margin-bottom:2px}
 
+/* ═══ Lifecycle Widget (sidecar) ═══ */
+.sc-lifecycle{padding:6px 10px;border-bottom:1px solid var(--border)}
+.sc-lc-steps{display:flex;align-items:center;gap:2px;margin-bottom:6px;flex-wrap:wrap}
+.sc-lc-step{font-family:var(--mono);font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;color:var(--text-dim);padding:1px 4px;transition:all .1s}
+.sc-lc-step.done{color:var(--success)}
+.sc-lc-step.current{color:var(--yellow);background:rgba(250,204,21,.08)}
+.sc-lc-step.failed{color:var(--error);background:rgba(239,68,68,.06)}
+.sc-lc-sep{color:var(--border-br);font-size:6px}
+.sc-lc-detail{font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.sc-lc-detail .lc-icon{flex-shrink:0}
+.sc-lc-detail a{color:var(--yellow);text-decoration:none}
+.sc-lc-detail a:hover{text-decoration:underline}
+.sc-action-btn{
+  width:100%;padding:6px 10px;font-family:var(--mono);font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.04em;cursor:pointer;
+  border:1px solid var(--yellow);background:rgba(250,204,21,.06);color:var(--yellow);
+  transition:all .12s;display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.sc-action-btn:hover{background:rgba(250,204,21,.12)}
+.sc-action-btn.success{border-color:var(--success);color:var(--success);background:rgba(34,197,94,.06)}
+.sc-action-btn.success:hover{background:rgba(34,197,94,.12)}
+.sc-action-btn.danger{border-color:var(--error);color:var(--error);background:rgba(239,68,68,.06)}
+.sc-action-btn.danger:hover{background:rgba(239,68,68,.12)}
+.sc-action-btn:disabled{opacity:.35;cursor:not-allowed}
+.sc-lc-warn{font-family:var(--mono);font-size:9px;color:var(--warning);margin-top:4px;display:flex;align-items:center;gap:4px}
+
+/* Branch edit (sidecar) */
+.sc-branch-edit{display:flex;align-items:center;gap:4px}
+.sc-branch-edit input{
+  flex:1;background:var(--bg);border:1px solid var(--yellow);color:var(--yellow);
+  font-family:var(--mono);font-size:10px;padding:1px 4px;outline:none;caret-color:var(--yellow);
+}
+.sc-branch-val{cursor:pointer;transition:color .1s}
+.sc-branch-val:hover{color:var(--yellow)}
+.sc-branch-lock{color:var(--text-dim);font-size:8px;margin-left:2px}
+.sc-pr-link{font-family:var(--mono);font-size:9px;color:var(--yellow);text-decoration:none;display:flex;align-items:center;gap:4px}
+.sc-pr-link:hover{text-decoration:underline}
+.sc-pr-pill{font-size:8px;padding:1px 5px;font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+.sc-pr-pill.open{color:var(--success);background:rgba(34,197,94,.08)}
+.sc-pr-pill.merged{color:#A855F7;background:rgba(168,85,247,.08)}
+.sc-pr-pill.closed{color:var(--error);background:rgba(239,68,68,.06)}
+.sc-checks{font-family:var(--mono);font-size:9px;display:flex;align-items:center;gap:4px}
+.sc-checks.running{color:var(--warning)}
+.sc-checks.success{color:var(--success)}
+.sc-checks.failure{color:var(--error)}
+
+/* Modal confirm overlay */
+.modal-confirm{
+  position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;
+  background:rgba(5,5,6,.8);
+}
+.modal-confirm-box{
+  background:var(--surface);border:1px solid var(--border-br);border-top:2px solid var(--warning);
+  padding:18px;max-width:320px;font-family:var(--mono);
+}
+.modal-confirm-msg{font-size:11px;color:var(--text);margin-bottom:14px;line-height:1.5}
+.modal-confirm-actions{display:flex;gap:6px;justify-content:flex-end}
+
 /* ═══ Settings Modal ═══ */
 .set-section{margin-bottom:16px}
 .set-section:last-child{margin-bottom:0}
@@ -538,12 +596,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
             </div>
             <div class="repo-dd-item" :class="activeProjectFilter === '__all__' && 'active'" @click="switchProject('__all__')">
               <span class="dd-name">All Projects</span>
-              <span class="dd-badge" x-text="workspaces.length"></span>
+              <span class="dd-badge" x-text="sessions.length"></span>
             </div>
             <template x-for="r in filteredProjects()" :key="r.path">
               <div class="repo-dd-item" :class="r.path === activeProjectFilter && 'active'" @click="switchProject(r.path)">
                 <span class="dd-name" x-text="r.name"></span>
-                <span class="dd-badge" x-text="workspacesForProject(r.path).length" x-show="workspacesForProject(r.path).length > 0"></span>
+                <span class="dd-badge" x-text="sessionsForProject(r.path).length" x-show="sessionsForProject(r.path).length > 0"></span>
                 <span class="dd-path" x-text="r.shortPath"></span>
               </div>
             </template>
@@ -554,31 +612,18 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
         </template>
       </div>
 
-      <!-- New workspace -->
-      <button class="new-sess" @click="openModal('wizard')">+ new workspace</button>
+      <!-- New session -->
+      <button class="new-sess" @click="openModal('wizard')">+ new session</button>
 
-      <!-- Rename toast -->
-      <template x-for="w in visibleWorkspaces().filter(w => w.renameProposal)" :key="w.id + '-rename'">
-        <div class="rename-toast">
-          <span class="old" x-text="w.tempName"></span>
-          <span class="arrow">→</span>
-          <span class="new" x-text="w.renameProposal"></span>
-          <div class="actions">
-            <button class="accept" @click="acceptRename(w)">✓</button>
-            <button @click="dismissRename(w)">✗</button>
-          </div>
-        </div>
-      </template>
-
-      <!-- Workspaces -->
+      <!-- Sessions -->
       <div class="sess-list">
-        <template x-if="activeWorkspaces().length > 0">
+        <template x-if="activeSessions().length > 0">
           <div>
             <div class="sess-group-head">
               <span>Active</span>
-              <span class="count" x-text="activeWorkspaces().length"></span>
+              <span class="count" x-text="activeSessions().length"></span>
             </div>
-            <template x-for="w in activeWorkspaces()" :key="w.id">
+            <template x-for="w in activeSessions()" :key="w.id">
               <div class="s-item" :class="activeId === w.id && 'active'" @click="switchTo(w.id)">
                 <div class="s-row">
                   <span class="s-dot" :class="w.alive ? 'alive' : 'idle'"></span>
@@ -594,8 +639,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
                   <div class="wrapup-menu" @click.stop>
                     <div class="wrapup-item" @click="showWrapup = null"><span class="wi-icon">↗</span> Create PR</div>
                     <div class="wrapup-item" @click="showWrapup = null"><span class="wi-icon">↓</span> Merge locally</div>
-                    <div class="wrapup-item" @click="archiveWorkspace(w.id)"><span class="wi-icon">▪</span> Archive</div>
-                    <div class="wrapup-item danger" @click="deleteWorkspace(w.id)"><span class="wi-icon">×</span> Delete workspace</div>
+                    <div class="wrapup-item" @click="archiveSession(w.id)"><span class="wi-icon">▪</span> Archive</div>
+                    <div class="wrapup-item danger" @click="deleteSession(w.id)"><span class="wi-icon">×</span> Delete session</div>
                   </div>
                 </template>
               </div>
@@ -603,15 +648,15 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
           </div>
         </template>
 
-        <template x-if="archivedWorkspaces().length > 0">
+        <template x-if="archivedSessions().length > 0">
           <div>
             <div class="sess-group-head" style="cursor:pointer" @click="showArchived = !showArchived">
               <span>Archived</span>
-              <span class="count" x-text="archivedWorkspaces().length"></span>
+              <span class="count" x-text="archivedSessions().length"></span>
             </div>
             <template x-if="showArchived">
               <div>
-                <template x-for="w in archivedWorkspaces()" :key="w.id">
+                <template x-for="w in archivedSessions()" :key="w.id">
                   <div class="s-item" :class="activeId === w.id && 'active'" @click="switchTo(w.id)">
                     <div class="s-row">
                       <span class="s-dot dead"></span>
@@ -638,11 +683,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
 
     <!-- ═══ Viewport ═══ -->
     <div class="viewport">
-      <template x-if="activeWs()">
+      <template x-if="activeSession()">
         <div style="display:flex;flex-direction:column;flex:1;overflow:hidden">
           <div class="sidecar-wrap">
             <div class="zone-output" x-ref="output">
-              <template x-for="(block, i) in activeWs().blocks" :key="i">
+              <template x-for="(block, i) in activeSession().blocks" :key="i">
                 <div class="blk">
                   <template x-if="block.type === 'user'">
                     <div class="blk-user"><span class="pr">❯ </span><span class="msg" x-text="block.text"></span></div>
@@ -667,43 +712,105 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
               <div class="sidecar">
                 <!-- Header -->
                 <div class="sc-header">
-                  <span class="sc-header-title">Workspace</span>
+                  <span class="sc-header-title">Session</span>
                 </div>
 
-                <!-- Workspace info -->
+                <!-- Session info -->
                 <div class="sc-info">
-                  <div class="sc-info-row copyable" @click="copyText(activeWs().id)" :title="'glue --resume ' + activeWs().id">
-                    <span class="sc-info-key">id</span><span class="sc-info-val accent" x-text="activeWs().id"></span><span class="sc-info-copy">⎘</span>
+                  <div class="sc-info-row copyable" @click="copyText(activeSession().id)" :title="'glue --resume ' + activeSession().id">
+                    <span class="sc-info-key">id</span><span class="sc-info-val accent" x-text="activeSession().id"></span><span class="sc-info-copy">⎘</span>
                   </div>
-                  <div class="sc-info-row copyable" @click="copyText(activeWs().project)" :title="activeWs().project">
-                    <span class="sc-info-key">root</span><span class="sc-info-val" x-text="activeWs().project"></span><span class="sc-info-copy">⎘</span>
+                  <div class="sc-info-row copyable" @click="copyText(activeSession().project)" :title="activeSession().project">
+                    <span class="sc-info-key">root</span><span class="sc-info-val" x-text="activeSession().project"></span><span class="sc-info-copy">⎘</span>
                   </div>
-                  <template x-if="activeWs().worktreePath">
-                    <div class="sc-info-row copyable" @click="copyText(activeWs().worktreePath)" :title="'Worktree directory: ' + activeWs().worktreePath">
-                      <span class="sc-info-key">worktree</span><span class="sc-info-val" x-text="activeWs().worktreePath"></span><span class="sc-info-copy">⎘</span>
+                  <template x-if="activeSession().worktreePath">
+                    <div class="sc-info-row copyable" @click="copyText(activeSession().worktreePath)" :title="'Worktree directory: ' + activeSession().worktreePath">
+                      <span class="sc-info-key">worktree</span><span class="sc-info-val" x-text="activeSession().worktreePath"></span><span class="sc-info-copy">⎘</span>
                     </div>
                   </template>
-                  <template x-if="activeWs().branch">
+                  <template x-if="activeSession().branch">
                     <div class="sc-info-row">
-                      <span class="sc-info-key">branch</span><span class="sc-info-val accent" x-text="activeWs().branch"></span>
+                      <span class="sc-info-key">branch</span>
+                      <template x-if="editingBranch === activeSession().id">
+                        <div class="sc-branch-edit">
+                          <input type="text" x-model="branchEditValue"
+                            @keydown.enter.prevent="saveBranchEdit()"
+                            @keydown.escape.prevent="cancelBranchEdit()"
+                            x-ref="branchInput">
+                        </div>
+                      </template>
+                      <template x-if="editingBranch !== activeSession().id">
+                        <span>
+                          <template x-if="lcIsMerged(activeSession())">
+                            <span class="sc-info-val accent" x-text="activeSession().branch"><span class="sc-branch-lock">🔒</span></span>
+                          </template>
+                          <template x-if="!lcIsMerged(activeSession())">
+                            <span class="sc-info-val accent sc-branch-val" x-text="activeSession().branch"
+                              @click="startBranchEdit(activeSession())" title="Click to rename"></span>
+                          </template>
+                        </span>
+                      </template>
+                    </div>
+                  </template>
+                  <template x-if="activeSession().vcs?.pr?.exists">
+                    <div class="sc-info-row">
+                      <span class="sc-info-key">pr</span>
+                      <a class="sc-pr-link" :href="activeSession().vcs.pr.url || '#'" target="_blank">
+                        <span x-text="'#' + (activeSession().vcs.pr.number || '')"></span>
+                        <span class="sc-pr-pill" :class="activeSession().vcs.pr.status" x-text="activeSession().vcs.pr.status"></span>
+                      </a>
+                    </div>
+                  </template>
+                  <template x-if="activeSession().vcs?.pr?.exists && activeSession().vcs.pr.checks.state !== 'not_run'">
+                    <div class="sc-info-row">
+                      <span class="sc-info-key">checks</span>
+                      <span class="sc-checks" :class="activeSession().vcs.pr.checks.state"
+                        x-text="activeSession().vcs.pr.checks.state === 'running' ? '⏳ running…' : activeSession().vcs.pr.checks.state === 'success' ? '✓ passed' : activeSession().vcs.pr.checks.state === 'failure' ? '✗ ' + (activeSession().vcs.pr.checks.failingCount || '') + ' failed' : ''"></span>
                     </div>
                   </template>
                   <div class="sc-info-row">
-                    <span class="sc-info-key">model</span><span class="sc-info-val" x-text="activeWs().provider + '/' + activeWs().model"></span>
+                    <span class="sc-info-key">model</span><span class="sc-info-val" x-text="activeSession().provider + '/' + activeSession().model"></span>
                   </div>
                   <div class="sc-info-row">
-                    <span class="sc-info-key">status</span><span class="sc-info-val" x-text="activeWs().alive ? '● active' : '○ idle'" :style="activeWs().alive && 'color:var(--success)'"></span>
+                    <span class="sc-info-key">status</span><span class="sc-info-val" x-text="activeSession().alive ? '● active' : '○ idle'" :style="activeSession().alive && 'color:var(--success)'"></span>
                   </div>
                   <div class="sc-info-row">
-                    <span class="sc-info-key">tokens</span><span class="sc-info-val" x-text="formatTokens(activeWs().tokens)"></span>
+                    <span class="sc-info-key">tokens</span><span class="sc-info-val" x-text="formatTokens(activeSession().tokens)"></span>
                   </div>
                   <div class="sc-info-row">
-                    <span class="sc-info-key">messages</span><span class="sc-info-val" x-text="msgCount(activeWs())"></span>
+                    <span class="sc-info-key">messages</span><span class="sc-info-val" x-text="msgCount(activeSession())"></span>
                   </div>
                   <div class="sc-info-row">
-                    <span class="sc-info-key">started</span><span class="sc-info-val" x-text="activeWs().time"></span>
+                    <span class="sc-info-key">started</span><span class="sc-info-val" x-text="activeSession().time"></span>
                   </div>
                 </div>
+
+                <!-- Lifecycle widget -->
+                <template x-if="activeSession().branch && activeSession().vcs">
+                  <div class="sc-lifecycle">
+                    <div class="sc-lc-steps">
+                      <span class="sc-lc-step" :class="lcStepClass(activeSession(), 'commit')">commit</span>
+                      <span class="sc-lc-sep">→</span>
+                      <span class="sc-lc-step" :class="lcStepClass(activeSession(), 'push')">push</span>
+                      <span class="sc-lc-sep">→</span>
+                      <span class="sc-lc-step" :class="lcStepClass(activeSession(), 'pr')">pr</span>
+                      <span class="sc-lc-sep">→</span>
+                      <span class="sc-lc-step" :class="lcStepClass(activeSession(), 'checks')">checks</span>
+                      <span class="sc-lc-sep">→</span>
+                      <span class="sc-lc-step" :class="lcStepClass(activeSession(), 'merge')">merge</span>
+                    </div>
+                    <template x-if="lcWarning(activeSession())">
+                      <div class="sc-lc-warn">
+                        <span>⚠</span>
+                        <span x-text="lcWarning(activeSession())"></span>
+                      </div>
+                    </template>
+                    <button class="sc-action-btn" :class="lcActionClass(activeSession())"
+                      :disabled="lcActionDisabled(activeSession())"
+                      @click="performLifecycleAction(activeSession())"
+                      x-text="deriveLifecycle(activeSession()).primary"></button>
+                  </div>
+                </template>
 
                 <!-- Tool calls (collapsible) -->
                 <div class="sc-section-head" @click="showToolCalls = !showToolCalls">
@@ -746,15 +853,15 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
           </template>
 
           <div class="zone-status">
-            <span x-text="'▸ ' + (activeWs().title || activeWs().tempName)"></span>
+            <span x-text="'▸ ' + (activeSession().title || activeSession().tempName)"></span>
             <span class="sep">│</span>
-            <span x-show="activeWs().branch" x-text="'⑂ ' + (activeWs().branch || '')"></span>
-            <span x-show="activeWs().branch" class="sep">│</span>
-            <span x-text="activeWs().provider + '/' + activeWs().model"></span>
+            <span x-show="activeSession().branch" x-text="'⑂ ' + (activeSession().branch || '')"></span>
+            <span x-show="activeSession().branch" class="sep">│</span>
+            <span x-text="activeSession().provider + '/' + activeSession().model"></span>
             <div class="right">
-              <span class="dim" x-text="formatTokens(activeWs().tokens) + ' tok'"></span>
+              <span class="dim" x-text="formatTokens(activeSession().tokens) + ' tok'"></span>
               <span class="sep">│</span>
-              <span x-text="activeWs().time"></span>
+              <span x-text="activeSession().time"></span>
             </div>
           </div>
 
@@ -780,10 +887,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
         </div>
       </template>
 
-      <template x-if="!activeWs()">
+      <template x-if="!activeSession()">
         <div class="empty">
           <div class="glyph">❯_</div>
-          <div class="msg">no active workspace</div>
+          <div class="msg">no active session</div>
           <div class="hint">press + or Ctrl+N to start</div>
         </div>
       </template>
@@ -792,21 +899,22 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
 
   <!-- ═══ Modals ═══ -->
   <template x-if="modal.open">
-    <div class="modal-bg" @click.self="modal.open = false">
+    <div class="modal-bg" @click.self="tryDismissModal()">
 
-      <!-- Workspace Wizard -->
+      <!-- Session Wizard -->
       <template x-if="modal.kind === 'wizard'">
         <div class="panel" style="width:520px" @click.stop>
           <div class="panel-head">
-            <span class="panel-title">▸ new workspace</span>
-            <div class="wiz-steps">
-              <span class="wiz-step" :class="{'active': modal.step >= 1, 'current': modal.step === 1}">project</span>
-              <span class="wiz-sep">→</span>
-              <span class="wiz-step" :class="{'active': modal.step >= 2, 'current': modal.step === 2}">setup</span>
-              <span class="wiz-sep">→</span>
-              <span class="wiz-step" :class="{'active': modal.step >= 3, 'current': modal.step === 3}">prompt</span>
-            </div>
-            <button class="panel-close" @click="modal.open = false">×</button>
+            <span class="panel-title">▸ new session</span>
+            <button class="panel-close" @click="tryDismissModal()">×</button>
+          </div>
+          <div class="wiz-steps" style="padding:6px 18px;border-bottom:1px solid var(--border);margin:0;display:flex;gap:4px">
+            <span class="wiz-step" :class="{'active': modal.step >= 1, 'current': modal.step === 1}" style="cursor:pointer" @click="wizardGoTo(1)">project</span>
+            <span class="wiz-sep">→</span>
+            <span class="wiz-step" :class="{'active': modal.step >= 2, 'current': modal.step === 2}" style="cursor:pointer" @click="wizardGoTo(2)">setup</span>
+            <span class="wiz-sep">→</span>
+            <span class="wiz-step" :class="{'active': modal.step >= 3, 'current': modal.step === 3}" style="cursor:pointer" @click="wizardGoTo(3)">prompt</span>
+            <button class="btn" style="margin-left:auto;padding:3px 10px;font-size:9px" @click="quickCreate()" title="Create with defaults, skip all steps">⚡ quick</button>
           </div>
           <div class="panel-body">
 
@@ -917,6 +1025,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
                     <div class="wt-preview">
                       <span class="wt-icon">⑂</span>
                       <span class="wt-branch" x-text="'.worktrees/' + modal.form.generatedName"></span>
+                      <span style="flex:1"></span>
                       <button class="wt-refresh" @click="modal.form.generatedName = generateName()" title="Regenerate name">↻</button>
                     </div>
                     <template x-if="modal.form.wsMode === 'new-worktree'">
@@ -960,25 +1069,33 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
                   </template>
                 </div>
                 <hr class="f-divider">
-                <div class="f-row">
-                  <div class="f-group">
-                    <div class="f-label">Provider</div>
-                    <select class="f-select" x-model="modal.form.provider" @change="validateWizardModel()">
-                      <option value="anthropic">anthropic</option>
-                      <option value="openai">openai</option>
-                      <option value="google">google</option>
-                      <option value="ollama">ollama (local)</option>
-                    </select>
-                  </div>
-                  <div class="f-group">
-                    <div class="f-label">Model</div>
-                    <select class="f-select" x-model="modal.form.model">
-                      <template x-for="m in modelsFor(modal.form.provider)" :key="m">
-                        <option :value="m" x-text="m"></option>
-                      </template>
-                    </select>
-                  </div>
+                <div class="f-toggle" @click="modal.form.showAdvanced = !modal.form.showAdvanced">
+                  <span class="arrow" :class="modal.form.showAdvanced && 'open'">▶</span>
+                  <span>Advanced · <span style="color:var(--text-dim)" x-text="modal.form.provider + '/' + modal.form.model"></span></span>
                 </div>
+                <template x-if="modal.form.showAdvanced">
+                  <div style="margin-top:10px">
+                    <div class="f-row">
+                      <div class="f-group">
+                        <div class="f-label">Provider</div>
+                        <select class="f-select" x-model="modal.form.provider" @change="validateWizardModel()">
+                          <option value="anthropic">anthropic</option>
+                          <option value="openai">openai</option>
+                          <option value="google">google</option>
+                          <option value="ollama">ollama (local)</option>
+                        </select>
+                      </div>
+                      <div class="f-group">
+                        <div class="f-label">Model</div>
+                        <select class="f-select" x-model="modal.form.model">
+                          <template x-for="m in modelsFor(modal.form.provider)" :key="m">
+                            <option :value="m" x-text="m"></option>
+                          </template>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </template>
               </div>
             </template>
 
@@ -1002,9 +1119,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
           <div class="panel-foot">
             <span class="foot-hint" x-text="wizardHint()"></span>
             <button class="btn" x-show="modal.step > 1" @click="wizardBack()">back</button>
-            <button class="btn" @click="modal.open = false">cancel</button>
+            <button class="btn" @click="tryDismissModal()">cancel</button>
             <button class="btn primary" x-show="modal.step < 3" @click="wizardNext()" :disabled="!wizardCanNext()">next</button>
-            <button class="btn primary" x-show="modal.step === 3" @click="createWorkspace()">start</button>
+            <button class="btn primary" x-show="modal.step === 3" @click="createSession()">start</button>
           </div>
         </div>
       </template>
@@ -1073,6 +1190,26 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
                     <option value="keep">Always keep</option>
                     <option value="delete">Always delete</option>
                   </select>
+                </div>
+              </div>
+              <div class="f-row">
+                <div class="f-group">
+                  <div class="f-label">Delete Branch on Merge</div>
+                  <select class="f-select" x-model="config.globalDefaults.deleteBranchOnMerge">
+                    <option value="yes">Yes — delete remote branch</option>
+                    <option value="no">No — keep branch</option>
+                    <option value="ask">Ask every time</option>
+                  </select>
+                  <div class="f-hint">Applies after PR merge via GitHub</div>
+                </div>
+                <div class="f-group">
+                  <div class="f-label">Git Host</div>
+                  <select class="f-select" x-model="config.globalDefaults.gitHost">
+                    <option value="github">GitHub</option>
+                    <option value="gitlab" disabled>GitLab (coming soon)</option>
+                    <option value="bitbucket" disabled>Bitbucket (coming soon)</option>
+                  </select>
+                  <div class="f-hint">Auth via SSH keys + gh CLI</div>
                 </div>
               </div>
             </div>
@@ -1187,6 +1324,19 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
 
     </div>
   </template>
+
+  <!-- Dismiss confirmation -->
+  <template x-if="showDismissConfirm">
+    <div class="modal-confirm" @click.self="showDismissConfirm = false">
+      <div class="modal-confirm-box" @click.stop>
+        <div class="modal-confirm-msg">Discard wizard progress?</div>
+        <div class="modal-confirm-actions">
+          <button class="btn" @click="showDismissConfirm = false">keep editing</button>
+          <button class="btn primary" @click="showDismissConfirm = false; modal.open = false">discard</button>
+        </div>
+      </div>
+    </div>
+  </template>
 </div>
 
 <script>
@@ -1206,23 +1356,26 @@ function glue() {
   let nextId = 100;
 
   return {
-    activeId: 'W-01',
+    activeId: 'S-01',
     activeProjectFilter: JSON.parse(localStorage.getItem('glue-project-filter') || 'null') || '~/code/glue',
     showSidecar: true,
     showToolCalls: true,
     showRepoDD: false,
     showWrapup: null,
     showArchived: false,
+    showDismissConfirm: false,
     repoSearch: '',
     inputText: '',
+    editingBranch: null,
+    branchEditValue: '',
 
     // Slash completion
     slashCommands: [
       { name: 'help', description: 'Show available commands and keybindings', aliases: '' },
       { name: 'clear', description: 'Clear conversation history', aliases: '' },
-      { name: 'exit', description: 'Exit workspace', aliases: 'quit, q' },
+      { name: 'exit', description: 'Exit session', aliases: 'quit, q' },
       { name: 'model', description: 'Show or set the current model', aliases: '' },
-      { name: 'info', description: 'Show workspace info', aliases: 'status' },
+      { name: 'info', description: 'Show session info', aliases: 'status' },
       { name: 'tools', description: 'List available tools', aliases: '' },
       { name: 'history', description: 'Show input history', aliases: '' },
       { name: 'compact', description: 'Compact conversation context', aliases: '' },
@@ -1241,6 +1394,8 @@ function glue() {
         baseBranch: 'main',
         branchPrefix: 'glue/',
         onArchiveWorktree: 'ask',
+        deleteBranchOnMerge: 'yes',
+        gitHost: 'github',
       },
     },
 
@@ -1320,13 +1475,17 @@ function glue() {
       { repo: '~/code/api-server', branch: 'feat/auth', path: '.worktrees/feat-auth' },
     ],
 
-    workspaces: [
+    sessions: [
       {
-        id: 'W-01', project: '~/code/glue', worktreePath: '~/code/glue/.worktrees/swift-jade-fox',
+        id: 'S-01', project: '~/code/glue', worktreePath: '~/code/glue/.worktrees/swift-jade-fox',
         branch: 'glue/swift-jade-fox', tempName: 'swift-jade-fox',
         title: null, renameProposal: 'feat/screen-buffer-diffing',
         model: 'claude-4-sonnet', provider: 'anthropic',
         alive: true, archived: false, time: '2m ago', tokens: 4521,
+        vcs: {
+          git: { hasUncommittedChanges: true, localCommitsAhead: 2, hasUpstream: true, remoteBranchExists: true, isMerged: false },
+          pr: { exists: false, url: null, number: null, status: 'none', checks: { state: 'not_run' } },
+        },
         blocks: [
           { type: 'user', text: 'implement the screen buffer with diff-based rendering', ts: '15:12:01' },
           { type: 'assistant', text: 'I\'ll implement a virtual screen buffer that tracks changes between frames for flicker-free rendering.\n\nLet me first look at the current terminal implementation.', streaming: false },
@@ -1337,11 +1496,15 @@ function glue() {
         ],
       },
       {
-        id: 'W-02', project: '~/code/glue', worktreePath: '~/code/glue/.worktrees/bold-teal-owl',
+        id: 'S-02', project: '~/code/glue', worktreePath: '~/code/glue/.worktrees/bold-teal-owl',
         branch: 'glue/bold-teal-owl', tempName: 'bold-teal-owl',
         title: 'MCP server discovery', renameProposal: null,
         model: 'claude-4-sonnet', provider: 'anthropic',
         alive: true, archived: false, time: '1m ago', tokens: 1892,
+        vcs: {
+          git: { hasUncommittedChanges: false, localCommitsAhead: 3, hasUpstream: true, remoteBranchExists: true, isMerged: false },
+          pr: { exists: true, url: 'https://github.com/helgesverre/glue/pull/42', number: 42, status: 'open', checks: { state: 'running' } },
+        },
         blocks: [
           { type: 'user', text: 'add MCP server discovery and connection management', ts: '15:14:22' },
           { type: 'assistant', text: 'I\'ll add MCP server discovery. Let me check the existing configuration...', streaming: true },
@@ -1349,11 +1512,12 @@ function glue() {
         ],
       },
       {
-        id: 'W-03', project: '~/code/glue', worktreePath: null,
+        id: 'S-03', project: '~/code/glue', worktreePath: null,
         branch: null, tempName: 'calm-red-elk',
         title: null, renameProposal: null,
         model: 'gpt-5', provider: 'openai',
         alive: true, archived: false, time: '3m ago', tokens: 3107,
+        vcs: null,
         blocks: [
           { type: 'user', text: 'fix the UTF-8 multi-byte character parsing bug in terminal input', ts: '15:11:44' },
           { type: 'assistant', text: 'Found the issue — `_decodeUtf8Char` doesn\'t handle surrogate pairs correctly. Applied the fix.', streaming: false },
@@ -1362,22 +1526,30 @@ function glue() {
         ],
       },
       {
-        id: 'W-04', project: '~/code/api-server', worktreePath: '~/code/api-server/.worktrees/keen-amber-jay',
+        id: 'S-04', project: '~/code/api-server', worktreePath: '~/code/api-server/.worktrees/keen-amber-jay',
         branch: 'glue/keen-amber-jay', tempName: 'keen-amber-jay',
         title: 'JWT auth middleware', renameProposal: null,
         model: 'claude-4-sonnet', provider: 'anthropic',
         alive: true, archived: false, time: '1m ago', tokens: 2890,
+        vcs: {
+          git: { hasUncommittedChanges: false, localCommitsAhead: 0, hasUpstream: true, remoteBranchExists: true, isMerged: false },
+          pr: { exists: true, url: 'https://github.com/helgesverre/api-server/pull/18', number: 18, status: 'open', checks: { state: 'success' } },
+        },
         blocks: [
           { type: 'user', text: 'implement JWT authentication middleware with refresh token rotation', ts: '15:13:55' },
           { type: 'assistant', text: 'Creating the middleware with RS256 JWT verification and automatic refresh token rotation...', streaming: true },
         ],
       },
       {
-        id: 'W-05', project: '~/code/glue', worktreePath: null,
-        branch: null, tempName: 'warm-plum-ant',
+        id: 'S-05', project: '~/code/glue', worktreePath: null,
+        branch: 'glue/warm-plum-ant', tempName: 'warm-plum-ant',
         title: 'README update', renameProposal: null,
         model: 'claude-4-haiku', provider: 'anthropic',
         alive: false, archived: true, time: '20m ago', tokens: 987,
+        vcs: {
+          git: { hasUncommittedChanges: false, localCommitsAhead: 0, hasUpstream: true, remoteBranchExists: false, isMerged: true },
+          pr: { exists: true, url: 'https://github.com/helgesverre/glue/pull/35', number: 35, status: 'merged', checks: { state: 'success' } },
+        },
         blocks: [
           { type: 'user', text: 'update the README with install instructions', ts: '15:02:11' },
           { type: 'assistant', text: 'Done. Updated README.md with installation via `dart pub global activate`, quick start guide, and architecture overview.', streaming: false },
@@ -1397,24 +1569,24 @@ function glue() {
       localStorage.setItem('glue-project-filter', JSON.stringify(path));
       this.showRepoDD = false;
       this.repoSearch = '';
-      const w = this.visibleWorkspaces().find(w => w.alive);
+      const w = this.visibleSessions().find(w => w.alive);
       if (w) this.activeId = w.id;
       else this.activeId = null;
     },
-    workspacesForProject(path) { return this.workspaces.filter(w => w.project === path); },
-    visibleWorkspaces() {
-      if (this.activeProjectFilter === '__all__') return this.workspaces;
-      return this.workspacesForProject(this.activeProjectFilter);
+    sessionsForProject(path) { return this.sessions.filter(w => w.project === path); },
+    visibleSessions() {
+      if (this.activeProjectFilter === '__all__') return this.sessions;
+      return this.sessionsForProject(this.activeProjectFilter);
     },
-    activeWorkspaces() { return this.visibleWorkspaces().filter(w => !w.archived); },
-    archivedWorkspaces() { return this.visibleWorkspaces().filter(w => w.archived); },
+    activeSessions() { return this.visibleSessions().filter(w => !w.archived); },
+    archivedSessions() { return this.visibleSessions().filter(w => w.archived); },
     worktreesFor(project) { return this.worktrees.filter(w => w.repo === project); },
     modelsFor(provider) { return this.providerModels[provider] || []; },
 
-    // ── Workspace helpers ──
-    activeWs() { return this.workspaces.find(w => w.id === this.activeId) || null; },
-    activeSession() { return this.activeWs(); },
-    toolCalls() { const w = this.activeWs(); return w ? w.blocks.filter(b => b.type === 'tool') : []; },
+    // ── Session helpers ──
+    activeSession() { return this.sessions.find(w => w.id === this.activeId) || null; },
+
+    toolCalls() { const w = this.activeSession(); return w ? w.blocks.filter(b => b.type === 'tool') : []; },
     msgCount(w) { return w ? w.blocks.filter(b => b.type === 'user' || b.type === 'assistant').length : 0; },
     formatTokens(n) {
       if (n >= 1000000) return (n / 1000000).toFixed(1) + 'm';
@@ -1468,7 +1640,7 @@ function glue() {
       this.fbInit();
     },
 
-    createWorkspace() {
+    createSession() {
       const f = this.modal.form;
       let branch = null, tempName = f.generatedName, worktreePath = null;
       if (f.wsMode === 'new-worktree') {
@@ -1482,17 +1654,21 @@ function glue() {
       if (f.createBranch) {
         branch = f.branchName || (this.effectiveBranchPrefix() + f.generatedName);
       }
-      const id = 'W-' + (nextId++).toString(16).padStart(2, '0');
+      const id = 'S-' + (nextId++).toString(16).padStart(2, '0');
       const w = {
         id, project: f.repoPath, worktreePath, branch, tempName,
         title: null, renameProposal: null,
         model: f.model, provider: f.provider,
         alive: true, archived: false, time: 'now', tokens: 0,
+        vcs: branch ? {
+          git: { hasUncommittedChanges: false, localCommitsAhead: 0, hasUpstream: false, remoteBranchExists: false, isMerged: false },
+          pr: { exists: false, url: null, number: null, status: 'none', checks: { state: 'not_run' } },
+        } : null,
         blocks: f.prompt
           ? [{ type: 'user', text: f.prompt }, { type: 'assistant', text: 'Looking at your project...', streaming: true }]
           : [],
       };
-      this.workspaces.push(w);
+      this.sessions.push(w);
       if (this.activeProjectFilter !== '__all__') this.activeProjectFilter = f.repoPath;
       this.activeId = w.id;
       this.modal.open = false;
@@ -1527,24 +1703,192 @@ function glue() {
     },
     dismissRename(s) { s.renameProposal = null; },
 
-    archiveWorkspace(id) {
-      const w = this.workspaces.find(w => w.id === id);
+    // ── Branch edit (sidecar) ──
+    startBranchEdit(s) {
+      this.editingBranch = s.id;
+      this.branchEditValue = s.branch;
+      this.$nextTick(() => this.$refs.branchInput?.focus());
+    },
+    saveBranchEdit() {
+      const s = this.sessions.find(w => w.id === this.editingBranch);
+      if (!s || !this.branchEditValue.trim()) { this.cancelBranchEdit(); return; }
+      const newName = this.branchEditValue.trim();
+      const oldName = s.branch;
+      if (newName === oldName) { this.cancelBranchEdit(); return; }
+      if (s.vcs?.pr?.exists && s.vcs.pr.status === 'open') {
+        alert('⚠ Branch has an open PR (#' + s.vcs.pr.number + '). In production, Glue will close and recreate the PR with the new branch name via GitHub API.');
+      }
+      if (s.vcs?.git?.remoteBranchExists) {
+        console.log('[mock] git push origin :' + oldName + ' ' + newName);
+        console.log('[mock] git push -u origin ' + newName);
+      }
+      s.branch = newName;
+      if (!s.title) {
+        s.title = newName.replace(/^(feat|fix|refactor|docs|chore|glue)\//, '').replace(/-/g, ' ');
+      }
+      this.editingBranch = null;
+    },
+    cancelBranchEdit() { this.editingBranch = null; },
+
+    // ── Lifecycle state machine ──
+    deriveLifecycle(s) {
+      if (!s?.vcs) return { step: 'NONE', primary: '—' };
+      const { git, pr } = s.vcs;
+      if (git.isMerged || pr.status === 'merged') return { step: 'MERGED', primary: 'Archive' };
+      if (pr.exists && pr.status === 'open') {
+        if (pr.checks.state === 'running') return { step: 'PR_CHECKS_RUNNING', primary: 'Checks running…' };
+        if (pr.checks.state === 'failure') return { step: 'PR_CHECKS_FAILED', primary: 'Merge (checks failed)' };
+        if (pr.checks.state === 'success') return { step: 'PR_CHECKS_GREEN', primary: 'Merge' };
+        return { step: 'PR_OPEN', primary: 'Waiting for checks…' };
+      }
+      if (pr.exists && pr.status === 'closed') return { step: 'PR_CLOSED', primary: 'Create PR' };
+      if (git.hasUncommittedChanges) return { step: 'UNCOMMITTED', primary: 'Commit changes' };
+      if (git.localCommitsAhead > 0 || !git.remoteBranchExists) return { step: 'UNPUSHED', primary: 'Push' };
+      return { step: 'PUSHED', primary: 'Create PR' };
+    },
+    lcIsMerged(s) {
+      return s?.vcs?.git?.isMerged || s?.vcs?.pr?.status === 'merged';
+    },
+    lcStepClass(s, step) {
+      const lc = this.deriveLifecycle(s);
+      const order = ['UNCOMMITTED', 'UNPUSHED', 'PUSHED', 'PR_OPEN', 'PR_CHECKS_RUNNING', 'PR_CHECKS_GREEN', 'PR_CHECKS_FAILED', 'MERGED'];
+      const stepMap = {
+        commit: ['UNCOMMITTED'],
+        push: ['UNPUSHED'],
+        pr: ['PUSHED', 'PR_CLOSED'],
+        checks: ['PR_OPEN', 'PR_CHECKS_RUNNING', 'PR_CHECKS_GREEN', 'PR_CHECKS_FAILED'],
+        merge: ['MERGED'],
+      };
+      if (stepMap[step]?.includes(lc.step)) {
+        if (lc.step === 'PR_CHECKS_FAILED') return 'failed';
+        return 'current';
+      }
+      const currentIdx = order.indexOf(lc.step);
+      const stepIndices = (stepMap[step] || []).map(s => order.indexOf(s)).filter(i => i >= 0);
+      if (stepIndices.length > 0 && stepIndices[0] < currentIdx) return 'done';
+      return '';
+    },
+    lcActionClass(s) {
+      const lc = this.deriveLifecycle(s);
+      if (lc.step === 'MERGED') return 'success';
+      if (lc.step === 'PR_CHECKS_FAILED') return 'danger';
+      return '';
+    },
+    lcActionDisabled(s) {
+      const lc = this.deriveLifecycle(s);
+      return lc.step === 'PR_CHECKS_RUNNING' || lc.step === 'PR_OPEN';
+    },
+    lcWarning(s) {
+      if (!s?.vcs) return null;
+      const lc = this.deriveLifecycle(s);
+      if (lc.step === 'PR_CHECKS_FAILED') return 'Some checks failed — merge at your own risk';
+      if (s.vcs.pr.exists && s.vcs.pr.status === 'open' && s.vcs.git.hasUncommittedChanges)
+        return 'Uncommitted changes in worktree';
+      return null;
+    },
+    performLifecycleAction(s) {
+      if (!s?.vcs) return;
+      const lc = this.deriveLifecycle(s);
+      switch (lc.step) {
+        case 'UNCOMMITTED':
+          s.vcs.git.hasUncommittedChanges = false;
+          s.vcs.git.localCommitsAhead++;
+          break;
+        case 'UNPUSHED':
+          s.vcs.git.localCommitsAhead = 0;
+          s.vcs.git.remoteBranchExists = true;
+          s.vcs.git.hasUpstream = true;
+          break;
+        case 'PUSHED':
+        case 'PR_CLOSED':
+          s.vcs.pr = { exists: true, url: 'https://github.com/example/repo/pull/99', number: 99, status: 'open', checks: { state: 'running' } };
+          setTimeout(() => {
+            if (s.vcs.pr.status === 'open') {
+              s.vcs.pr.checks = { state: Math.random() > 0.3 ? 'success' : 'failure', failingCount: 1 };
+            }
+          }, 2000);
+          break;
+        case 'PR_CHECKS_GREEN':
+        case 'PR_CHECKS_FAILED':
+          s.vcs.pr.status = 'merged';
+          s.vcs.git.isMerged = true;
+          if (this.config.globalDefaults.deleteBranchOnMerge === 'yes') {
+            s.vcs.git.remoteBranchExists = false;
+          }
+          break;
+        case 'MERGED':
+          this.archiveSession(s.id);
+          break;
+      }
+    },
+
+    // ── Modal dismiss ──
+    tryDismissModal() {
+      if (this.modal.kind === 'wizard' && (this.modal.step > 1 || this.modal.form.prompt || this.modal.repoMode)) {
+        this.showDismissConfirm = true;
+      } else {
+        this.modal.open = false;
+      }
+    },
+
+    // ── Wizard step navigation ──
+    wizardGoTo(step) {
+      if (step <= this.modal.step) {
+        this.modal.step = step;
+      } else if (step === this.modal.step + 1 && this.wizardCanNext()) {
+        this.wizardNext();
+      }
+    },
+
+    // ── Quick create ──
+    quickCreate() {
+      const repoPath = this.activeProjectFilter === '__all__' ? this.repos[0]?.path : this.activeProjectFilter;
+      const eff = this.effectiveSettings(repoPath);
+      const name = generateName();
+      let branch = null, worktreePath = null;
+      if (eff.wsMode === 'new-worktree') {
+        worktreePath = repoPath + '/.worktrees/' + name;
+        this.worktrees.push({ repo: repoPath, branch: name, path: '.worktrees/' + name });
+        branch = (eff.branchPrefix || 'glue/') + name;
+      }
+      if (!this._quickId) this._quickId = 200;
+      const id = 'S-' + (this._quickId++).toString(16).padStart(2, '0');
+      const s = {
+        id, project: repoPath, worktreePath, branch, tempName: name,
+        title: null, renameProposal: null,
+        model: eff.model, provider: eff.provider,
+        alive: true, archived: false, time: 'now', tokens: 0,
+        vcs: branch ? {
+          git: { hasUncommittedChanges: false, localCommitsAhead: 0, hasUpstream: false, remoteBranchExists: false, isMerged: false },
+          pr: { exists: false, url: null, number: null, status: 'none', checks: { state: 'not_run' } },
+        } : null,
+        blocks: [],
+      };
+      this.sessions.push(s);
+      if (this.activeProjectFilter !== '__all__') this.activeProjectFilter = repoPath;
+      this.activeId = s.id;
+      this.modal.open = false;
+      this.$nextTick(() => this.$refs.mainInput?.focus());
+    },
+
+    archiveSession(id) {
+      const w = this.sessions.find(w => w.id === id);
       if (w) { w.archived = true; w.alive = false; }
       this.showWrapup = null;
       if (this.activeId === id) {
-        const next = this.activeWorkspaces().find(w => w.id !== id);
+        const next = this.activeSessions().find(w => w.id !== id);
         this.activeId = next?.id || null;
       }
     },
-    deleteWorkspace(id) {
-      this.workspaces = this.workspaces.filter(w => w.id !== id);
+    deleteSession(id) {
+      this.sessions = this.sessions.filter(w => w.id !== id);
       this.showWrapup = null;
-      if (this.activeId === id) this.activeId = this.activeWorkspaces()[0]?.id || null;
+      if (this.activeId === id) this.activeId = this.activeSessions()[0]?.id || null;
     },
 
     sendMessage() {
-      if (!this.inputText.trim() || !this.activeWs()) return;
-      const s = this.activeWs();
+      if (!this.inputText.trim() || !this.activeSession()) return;
+      const s = this.activeSession();
       const text = this.inputText.trim();
 
       // Handle slash commands
@@ -1583,15 +1927,15 @@ function glue() {
 
     executeSlashCommand(name, s) {
       switch (name) {
-        case 'help': return '/help      Show available commands\n/clear     Clear conversation\n/exit      Exit workspace\n/model     Show/set model\n/info      Workspace info\n/tools     List tools\n/history   Input history\n/compact   Compact context\n/approve   Approve tool calls';
+        case 'help': return '/help      Show available commands\n/clear     Clear conversation\n/exit      Exit session\n/model     Show/set model\n/info      Session info\n/tools     List tools\n/history   Input history\n/compact   Compact context\n/approve   Approve tool calls';
         case 'clear': return '✓ Conversation cleared.';
-        case 'info': case 'status': return `Workspace: ${s.tempName}\nBranch: ${s.branch || '(none)'}\nModel: ${s.provider}/${s.model}\nTokens: ${s.tokens}`;
+        case 'info': case 'status': return `Session: ${s.tempName}\nBranch: ${s.branch || '(none)'}\nModel: ${s.provider}/${s.model}\nTokens: ${s.tokens}`;
         case 'model': return `Current model: ${s.provider}/${s.model}`;
         case 'tools': return 'Available tools:\n  read_file     Read file contents\n  write_file    Write to file\n  edit_file     Edit file\n  bash          Run shell command\n  glob          Find files\n  grep          Search in files';
         case 'history': return 'Input history:\n  ' + s.blocks.filter(b => b.type === 'user').map(b => b.text).join('\n  ');
         case 'compact': return '✓ Context compacted. Removed 12 tool results.';
         case 'approve': return '✓ All pending tool calls approved.';
-        case 'exit': return '✓ Workspace ended.';
+        case 'exit': return '✓ Session ended.';
         default: return `Unknown command: /${name}`;
       }
     },
@@ -1603,11 +1947,11 @@ function glue() {
       this.overlay.query = '';
       this.overlay.selected = 0;
       this.overlay.items = [
-        { key: 'n', label: 'New workspace', action: () => this.openModal('wizard') },
+        { key: 'n', label: 'New session', action: () => this.openModal('wizard') },
         { key: 'p', label: 'Switch project', action: () => { this.showRepoDD = true; this.$nextTick(() => this.$refs.repoSearchInput?.focus()); } },
         { key: 't', label: 'Toggle sidecar', action: () => { this.showSidecar = !this.showSidecar; } },
         { key: 's', label: 'Settings', action: () => this.openModal('settings') },
-        ...this.workspaces.filter(w => !w.archived).map(w => ({
+        ...this.sessions.filter(w => !w.archived).map(w => ({
           key: '', label: (w.title || w.tempName) + ' · ' + w.model,
           action: () => { if (this.activeProjectFilter !== '__all__') this.activeProjectFilter = w.project; this.switchTo(w.id); },
         })),
@@ -1623,6 +1967,7 @@ function glue() {
     executeOverlay(item) { if (item.action) item.action(); this.overlay.open = false; },
 
     handleKeys(e) {
+      if (this.showDismissConfirm) { if (e.key === 'Escape') { this.showDismissConfirm = false; this.modal.open = false; e.preventDefault(); } return; }
       if (this.modal.open) { if (e.key === 'Escape') { this.modal.open = false; e.preventDefault(); } return; }
       if (this.overlay.open) {
         if (e.key === 'Escape') { this.overlay.open = false; e.preventDefault(); }
