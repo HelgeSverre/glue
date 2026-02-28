@@ -32,7 +32,8 @@ void main() {
       expect(
         () => ExecutorFactory.create(
           shellConfig: const ShellConfig(),
-          dockerConfig: const DockerConfig(enabled: true, fallbackToHost: false),
+          dockerConfig:
+              const DockerConfig(enabled: true, fallbackToHost: false),
           cwd: Directory.current.path,
           dockerAvailable: false,
         ),

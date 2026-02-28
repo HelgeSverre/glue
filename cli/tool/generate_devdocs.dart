@@ -179,8 +179,7 @@ class DartFunction {
   final String signature;
   final String? docComment;
 
-  DartFunction(
-      {required this.name, required this.signature, this.docComment});
+  DartFunction({required this.name, required this.signature, this.docComment});
 }
 
 class DartConstant {
@@ -304,7 +303,8 @@ List<DartMember> _extractMembers(String classBody, String className) {
     if (RegExp(r'\._\s*\(').hasMatch(sig)) continue;
 
     final doc = _extractDocComment(classBody, m.start);
-    members.add(DartMember(kind: 'constructor', signature: sig, docComment: doc));
+    members
+        .add(DartMember(kind: 'constructor', signature: sig, docComment: doc));
   }
 
   // Method patterns.
@@ -474,8 +474,8 @@ DartFile _parseFile(File file, String relativePath, String module) {
     }
     final doc = _extractDocComment(source, m.start);
     final sig = '$returnType $name(${m.group(3)})';
-    topLevelFunctions.add(
-        DartFunction(name: name, signature: sig, docComment: doc));
+    topLevelFunctions
+        .add(DartFunction(name: name, signature: sig, docComment: doc));
   }
 
   // Top-level constants.
@@ -485,7 +485,8 @@ DartFile _parseFile(File file, String relativePath, String module) {
     final name = m.group(2)!;
     if (name.startsWith('_')) continue;
     final doc = _extractDocComment(source, m.start);
-    topLevelConstants.add(DartConstant(name: name, type: type, docComment: doc));
+    topLevelConstants
+        .add(DartConstant(name: name, type: type, docComment: doc));
   }
 
   return DartFile(
@@ -526,8 +527,7 @@ String _generateMarkdown(DartFile df) {
   // Source link.
   final githubPath = df.relativePath;
   final filename = df.relativePath.split('/').last;
-  buf.writeln(
-      '*Source: [$filename]($_githubBase$githubPath)*');
+  buf.writeln('*Source: [$filename]($_githubBase$githubPath)*');
   buf.writeln();
 
   // Library doc.
@@ -605,10 +605,13 @@ String _generateMarkdown(DartFile df) {
         buf.writeln('|----------|------|-------------|');
         for (final p in properties) {
           final parts = p.signature.split(RegExp(r'\s+'));
-          final type = parts.length > 1 ? parts.sublist(0, parts.length - 1).join(' ') : '';
+          final type = parts.length > 1
+              ? parts.sublist(0, parts.length - 1).join(' ')
+              : '';
           final name = parts.last.replaceAll(RegExp(r'^get\s+'), '');
           final desc = p.docComment?.replaceAll('\n', ' ') ?? '';
-          buf.writeln('| `${_escapeAngleBrackets(name)}` | `${_escapeAngleBrackets(type)}` | ${_escapeAngleBrackets(desc)} |');
+          buf.writeln(
+              '| `${_escapeAngleBrackets(name)}` | `${_escapeAngleBrackets(type)}` | ${_escapeAngleBrackets(desc)} |');
         }
         buf.writeln();
       }
@@ -650,7 +653,8 @@ String _generateMarkdown(DartFile df) {
     buf.writeln('|------|------|-------------|');
     for (final c in df.topLevelConstants) {
       final desc = c.docComment?.replaceAll('\n', ' ') ?? '';
-      buf.writeln('| `${c.name}` | `${_escapeAngleBrackets(c.type)}` | ${_escapeAngleBrackets(desc)} |');
+      buf.writeln(
+          '| `${c.name}` | `${_escapeAngleBrackets(c.type)}` | ${_escapeAngleBrackets(desc)} |');
     }
     buf.writeln();
   }
@@ -807,8 +811,7 @@ void main() {
   // Parse all files.
   final parsed = <DartFile>[];
   for (final file in dartFiles) {
-    final relative =
-        file.path.replaceFirst('${srcDir.path}/', '');
+    final relative = file.path.replaceFirst('${srcDir.path}/', '');
     final parts = relative.split('/');
     final module = parts.length > 1 ? parts.first : 'core';
     parsed.add(_parseFile(file, relative, module));

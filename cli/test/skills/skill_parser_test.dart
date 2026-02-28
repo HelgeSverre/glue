@@ -31,9 +31,8 @@ void main() {
     test('parses valid minimal frontmatter', () {
       const content =
           '---\nname: my-skill\ndescription: A test skill.\n---\n\n# Instructions\nDo the thing.';
-      final meta = parseSkillFrontmatter(
-          content, '/path/to/my-skill', '/path/to/my-skill/SKILL.md',
-          SkillSource.global);
+      final meta = parseSkillFrontmatter(content, '/path/to/my-skill',
+          '/path/to/my-skill/SKILL.md', SkillSource.global);
       expect(meta.name, 'my-skill');
       expect(meta.description, 'A test skill.');
       expect(meta.license, isNull);
@@ -43,9 +42,8 @@ void main() {
     test('parses full frontmatter with all fields', () {
       const content =
           '---\nname: pdf-tool\ndescription: Process PDFs.\nlicense: MIT\ncompatibility: Requires poppler\nallowed-tools: Bash Read\nmetadata:\n  author: test-org\n  version: "1.0"\n---\nBody here.';
-      final meta = parseSkillFrontmatter(
-          content, '/skills/pdf-tool', '/skills/pdf-tool/SKILL.md',
-          SkillSource.project);
+      final meta = parseSkillFrontmatter(content, '/skills/pdf-tool',
+          '/skills/pdf-tool/SKILL.md', SkillSource.project);
       expect(meta.name, 'pdf-tool');
       expect(meta.description, 'Process PDFs.');
       expect(meta.license, 'MIT');
@@ -156,9 +154,21 @@ void main() {
     });
 
     test('single char name is valid', () {
-      final meta = parseSkillFrontmatter('---\nname: x\ndescription: foo\n---\n',
-          '/s/x', '/s/x/SKILL.md', SkillSource.global);
+      final meta = parseSkillFrontmatter(
+          '---\nname: x\ndescription: foo\n---\n',
+          '/s/x',
+          '/s/x/SKILL.md',
+          SkillSource.global);
       expect(meta.name, 'x');
+    });
+
+    test('accepts skillDir with trailing slash', () {
+      final meta = parseSkillFrontmatter(
+          '---\nname: my-skill\ndescription: A test skill.\n---\nbody',
+          '/s/my-skill/',
+          '/s/my-skill/SKILL.md',
+          SkillSource.global);
+      expect(meta.name, 'my-skill');
     });
   });
 }

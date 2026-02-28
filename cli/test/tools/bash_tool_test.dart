@@ -13,7 +13,8 @@ void main() {
     });
 
     test('executes command with default timeout', () async {
-      final result = ContentPart.textOnly(await tool.execute({'command': 'echo hello'}));
+      final result =
+          ContentPart.textOnly(await tool.execute({'command': 'echo hello'}));
       expect(result, contains('hello'));
     });
 

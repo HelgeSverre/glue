@@ -184,8 +184,7 @@ void main() {
       expect(textPart['type'], 'text');
       expect(imagePart['type'], 'image_url');
       final imageUrl = imagePart['image_url'] as Map<String, dynamic>;
-      expect(
-          (imageUrl['url'] as String).startsWith('data:image/png;base64,'),
+      expect((imageUrl['url'] as String).startsWith('data:image/png;base64,'),
           isTrue);
     });
 

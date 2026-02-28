@@ -34,7 +34,7 @@ class ExecutorFactory {
     }
 
     final allMounts = [...dockerConfig.mounts, ...sessionMounts];
-    
+
     return DockerExecutor(
       config: dockerConfig,
       cwd: cwd,

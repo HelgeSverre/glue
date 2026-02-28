@@ -3,9 +3,22 @@ import 'package:html/dom.dart';
 
 class HtmlExtractor {
   static const _noiseTagNames = {
-    'script', 'style', 'noscript', 'svg', 'canvas', 'iframe',
-    'nav', 'footer', 'header', 'aside', 'form', 'button', 'input',
-    'select', 'textarea', 'dialog',
+    'script',
+    'style',
+    'noscript',
+    'svg',
+    'canvas',
+    'iframe',
+    'nav',
+    'footer',
+    'header',
+    'aside',
+    'form',
+    'button',
+    'input',
+    'select',
+    'textarea',
+    'dialog',
   };
 
   static String extract(String html) {
@@ -66,8 +79,7 @@ class HtmlExtractor {
     return text + (paragraphs * 50);
   }
 
-  static int _textLength(Element el) =>
-      _collapseWhitespace(el.text).length;
+  static int _textLength(Element el) => _collapseWhitespace(el.text).length;
 
   static String _collapseWhitespace(String s) =>
       s.replaceAll(RegExp(r'\s+'), ' ').trim();

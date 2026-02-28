@@ -68,9 +68,8 @@ class FirecrawlSearchProvider implements WebSearchProvider {
       return WebSearchResult(
         title: item['title'] as String? ?? '',
         url: Uri.parse(item['url'] as String? ?? ''),
-        snippet: item['description'] as String? ??
-            item['markdown'] as String? ??
-            '',
+        snippet:
+            item['description'] as String? ?? item['markdown'] as String? ?? '',
       );
     }).toList();
 

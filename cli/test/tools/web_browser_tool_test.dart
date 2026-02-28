@@ -47,19 +47,22 @@ void main() {
     });
 
     test('returns error for invalid action', () async {
-      final result = ContentPart.textOnly(await tool.execute({'action': 'invalid'}));
+      final result =
+          ContentPart.textOnly(await tool.execute({'action': 'invalid'}));
       expect(result, contains('Error'));
       expect(result, contains('invalid'));
     });
 
     test('navigate requires url', () async {
-      final result = ContentPart.textOnly(await tool.execute({'action': 'navigate'}));
+      final result =
+          ContentPart.textOnly(await tool.execute({'action': 'navigate'}));
       expect(result, contains('Error'));
       expect(result, contains('url'));
     });
 
     test('click requires selector', () async {
-      final result = ContentPart.textOnly(await tool.execute({'action': 'click'}));
+      final result =
+          ContentPart.textOnly(await tool.execute({'action': 'click'}));
       expect(result, contains('Error'));
       expect(result, contains('selector'));
     });

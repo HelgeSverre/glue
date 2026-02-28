@@ -25,7 +25,8 @@ For file paths, use paths relative to the current directory (e.g. "pubspec.yaml"
 
 Future<bool> _ollamaAvailable() async {
   try {
-    final r = await http.get(Uri.parse('$_ollamaUrl/api/tags'))
+    final r = await http
+        .get(Uri.parse('$_ollamaUrl/api/tags'))
         .timeout(const Duration(seconds: 3));
     if (r.statusCode != 200) return false;
     return r.body.contains(_model);
@@ -108,9 +109,8 @@ void main() {
         final result = await runner.runToCompletion(
           'Use the read_file tool to read "pubspec.yaml" and tell me the package name.',
         );
-        final toolResults = agent.conversation
-            .where((m) => m.role == Role.toolResult)
-            .toList();
+        final toolResults =
+            agent.conversation.where((m) => m.role == Role.toolResult).toList();
         expect(toolResults, isNotEmpty, reason: 'read_file should be called');
         expect(result.toLowerCase(), contains('glue'));
       });

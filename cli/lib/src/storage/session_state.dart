@@ -29,9 +29,8 @@ class SessionState {
                 .add(MountEntry.fromJson(m as Map<String, dynamic>));
           }
         }
-        final browserIds =
-            (json['browser'] as Map<String, dynamic>?)?['container_ids']
-                as List?;
+        final browserIds = (json['browser']
+            as Map<String, dynamic>?)?['container_ids'] as List?;
         if (browserIds != null) {
           for (final id in browserIds) {
             state._browserContainerIds.add(id as String);

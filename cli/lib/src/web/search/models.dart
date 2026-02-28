@@ -38,7 +38,9 @@ class WebSearchResponse {
   });
 
   String toText() {
-    if (results.isEmpty) return 'No results found for "$query" (via $provider).';
+    if (results.isEmpty) {
+      return 'No results found for "$query" (via $provider).';
+    }
 
     final buf = StringBuffer();
     buf.writeln('Search results for "$query" (via $provider):');

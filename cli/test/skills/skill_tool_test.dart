@@ -56,13 +56,15 @@ void main() {
     });
 
     test('activate skill returns body', () async {
-      final result = ContentPart.textOnly(await tool.execute({'name': 'code-review'}));
+      final result =
+          ContentPart.textOnly(await tool.execute({'name': 'code-review'}));
       expect(result, contains('# Skill: code-review'));
       expect(result, contains('Instructions for code-review'));
     });
 
     test('activate unknown skill returns error', () async {
-      final result = ContentPart.textOnly(await tool.execute({'name': 'nonexistent'}));
+      final result =
+          ContentPart.textOnly(await tool.execute({'name': 'nonexistent'}));
       expect(result, contains('Error'));
       expect(result, contains('not found'));
     });

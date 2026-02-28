@@ -525,7 +525,8 @@ class App {
       terminal.disableRawMode();
       final sessionId = _sessionStore?.meta.id;
       if (sessionId != null) {
-        stdout.writeln('\n\x1b[33m◆\x1b[0m Holding it together till next time.');
+        stdout
+            .writeln('\n\x1b[33m◆\x1b[0m Holding it together till next time.');
         stdout.writeln('  \x1b[90m\$ glue --resume $sessionId\x1b[0m');
       }
       terminal.dispose();
@@ -624,7 +625,8 @@ class App {
         buf.writeln('  Tokens used:  ${agent.tokenCount}');
         buf.writeln('  Messages:     ${agent.conversation.length}');
         buf.writeln('  Tools:        ${agent.tools.length} registered');
-        buf.writeln('  Permissions:  ${_permissionMode.label} (Shift+Tab to cycle)');
+        buf.writeln(
+            '  Permissions:  ${_permissionMode.label} (Shift+Tab to cycle)');
         buf.writeln('  Auto-approve: ${trustedList.join(", ")}');
         return buf.toString();
       },

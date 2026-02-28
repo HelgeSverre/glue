@@ -21,10 +21,11 @@ void main(List<String> args) async {
     ..addOption('model', abbr: 'm', help: 'LLM model to use.')
     ..addFlag('resume',
         negatable: false, help: 'Start with session picker open.')
-    ..addFlag('continue',
-        negatable: false, help: 'Resume most recent session.')
+    ..addFlag('continue', negatable: false, help: 'Resume most recent session.')
     ..addFlag('debug',
-        abbr: 'd', negatable: false, help: 'Enable debug mode (verbose logging).');
+        abbr: 'd',
+        negatable: false,
+        help: 'Enable debug mode (verbose logging).');
 
   final ArgResults results;
   try {

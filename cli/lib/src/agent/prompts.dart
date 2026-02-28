@@ -2,8 +2,10 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:glue/src/skills/skill_parser.dart';
 
-String _escapeXml(String text) =>
-    text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+String _escapeXml(String text) => text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
 
 class Prompts {
   Prompts._();

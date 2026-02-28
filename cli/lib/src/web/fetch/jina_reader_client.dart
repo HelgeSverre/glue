@@ -12,8 +12,7 @@ class JinaReaderClient {
     this.timeoutSeconds = 30,
   });
 
-  Uri buildReaderUrl(String targetUrl) =>
-      Uri.parse('$baseUrl/$targetUrl');
+  Uri buildReaderUrl(String targetUrl) => Uri.parse('$baseUrl/$targetUrl');
 
   Map<String, String> get headers {
     final h = <String, String>{

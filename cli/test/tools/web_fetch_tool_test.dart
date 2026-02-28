@@ -29,7 +29,8 @@ void main() {
     });
 
     test('returns error for invalid url', () async {
-      final result = ContentPart.textOnly(await tool.execute({'url': 'not-a-url'}));
+      final result =
+          ContentPart.textOnly(await tool.execute({'url': 'not-a-url'}));
       expect(result, contains('Invalid URL'));
     });
 

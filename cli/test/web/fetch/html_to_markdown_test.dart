@@ -18,7 +18,8 @@ void main() {
 
     test('converts bold and italic', () {
       expect(
-        HtmlToMarkdown.convert('<p><strong>bold</strong> and <em>italic</em></p>'),
+        HtmlToMarkdown.convert(
+            '<p><strong>bold</strong> and <em>italic</em></p>'),
         '**bold** and *italic*\n',
       );
     });

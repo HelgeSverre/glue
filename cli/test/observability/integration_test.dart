@@ -125,7 +125,8 @@ void main() {
       expect(chunks, hasLength(3));
 
       final tool = ObservedTool(inner: _MockTool(), obs: obs);
-      final result = ContentPart.textOnly(await tool.execute({'input': 'hello'}));
+      final result =
+          ContentPart.textOnly(await tool.execute({'input': 'hello'}));
       expect(result, 'tool result: hello');
 
       obs.endSpan(rootSpan);

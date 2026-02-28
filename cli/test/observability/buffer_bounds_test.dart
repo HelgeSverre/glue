@@ -239,8 +239,8 @@ void main() {
       expect(spanEvents.length, 1000);
       expect((spanEvents.first['body'] as Map<String, dynamic>)['name'],
           'old-200');
-      expect((spanEvents.last['body'] as Map<String, dynamic>)['name'],
-          'new-399');
+      expect(
+          (spanEvents.last['body'] as Map<String, dynamic>)['name'], 'new-399');
     });
   });
 }

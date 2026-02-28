@@ -49,7 +49,8 @@ void main() {
     });
 
     test('returns formatted results', () async {
-      final result = ContentPart.textOnly(await tool.execute({'query': 'test search'}));
+      final result =
+          ContentPart.textOnly(await tool.execute({'query': 'test search'}));
       expect(result, contains('Mock Result'));
       expect(result, contains('mock.com'));
     });

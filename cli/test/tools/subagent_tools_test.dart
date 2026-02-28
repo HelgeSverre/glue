@@ -50,7 +50,8 @@ void main() {
 
     test('executes and returns result', () async {
       final tool = SpawnSubagentTool(manager);
-      final result = ContentPart.textOnly(await tool.execute({'task': 'Write tests'}));
+      final result =
+          ContentPart.textOnly(await tool.execute({'task': 'Write tests'}));
       expect(result, contains('Done: Write tests'));
     });
   });

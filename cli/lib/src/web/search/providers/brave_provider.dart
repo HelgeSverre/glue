@@ -36,13 +36,11 @@ class BraveSearchProvider implements WebSearchProvider {
       'count': maxResults.toString(),
     });
 
-    final response = await http
-        .get(uri, headers: {
-          'Accept': 'application/json',
-          'Accept-Encoding': 'gzip',
-          'X-Subscription-Token': apiKey!,
-        })
-        .timeout(Duration(seconds: timeoutSeconds));
+    final response = await http.get(uri, headers: {
+      'Accept': 'application/json',
+      'Accept-Encoding': 'gzip',
+      'X-Subscription-Token': apiKey!,
+    }).timeout(Duration(seconds: timeoutSeconds));
 
     if (response.statusCode != 200) {
       throw HttpException(

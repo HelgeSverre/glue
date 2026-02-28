@@ -82,8 +82,7 @@ void main() {
       );
       await runner.runToCompletion('List files');
 
-      final pendingIdx =
-          events.indexWhere((e) => e is AgentToolCallPending);
+      final pendingIdx = events.indexWhere((e) => e is AgentToolCallPending);
       final callIdx = events.indexWhere((e) => e is AgentToolCall);
       expect(pendingIdx, greaterThanOrEqualTo(0));
       expect(callIdx, greaterThan(pendingIdx));

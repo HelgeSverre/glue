@@ -144,7 +144,9 @@ class ReadFileTool extends Tool {
     }
     final stat = await file.stat();
     if (stat.size > 1024 * 1024) {
-      return [TextPart('Error: file too large (${stat.size} bytes, max 1MB): $path')];
+      return [
+        TextPart('Error: file too large (${stat.size} bytes, max 1MB): $path')
+      ];
     }
     return [TextPart(await file.readAsString())];
   }
@@ -237,7 +239,9 @@ class BashTool extends Tool {
     final result = await executor.runCapture(command, timeout: timeout);
 
     if (result.exitCode == -1 && timeout != null) {
-      return [TextPart('Error: command timed out after $timeoutSeconds seconds')];
+      return [
+        TextPart('Error: command timed out after $timeoutSeconds seconds')
+      ];
     }
 
     final buf = StringBuffer();
@@ -296,7 +300,10 @@ class GrepTool extends Tool {
       }
       return [TextPart(result.stdout as String)];
     } on TimeoutException {
-      return [TextPart('Error: grep timed out after ${AppConstants.grepTimeoutSeconds} seconds')];
+      return [
+        TextPart(
+            'Error: grep timed out after ${AppConstants.grepTimeoutSeconds} seconds')
+      ];
     }
   }
 
@@ -371,15 +378,19 @@ class EditFileTool extends Tool {
 
     final firstIndex = content.indexOf(oldString);
     if (firstIndex == -1) {
-      return [TextPart('Error: old_string not found in $path. '
-          'Make sure it matches the file content exactly, '
-          'including whitespace and indentation.')];
+      return [
+        TextPart('Error: old_string not found in $path. '
+            'Make sure it matches the file content exactly, '
+            'including whitespace and indentation.')
+      ];
     }
 
     final lastIndex = content.lastIndexOf(oldString);
     if (firstIndex != lastIndex) {
-      return [TextPart('Error: old_string appears multiple times in $path. '
-          'Include more surrounding context lines to make the match unique.')];
+      return [
+        TextPart('Error: old_string appears multiple times in $path. '
+            'Include more surrounding context lines to make the match unique.')
+      ];
     }
 
     final newContent = content.substring(0, firstIndex) +
@@ -390,7 +401,10 @@ class EditFileTool extends Tool {
 
     final oldLines = oldString.split('\n').length;
     final newLines = newString.split('\n').length;
-    return [TextPart('Applied edit to $path: replaced $oldLines line(s) with $newLines line(s)')];
+    return [
+      TextPart(
+          'Applied edit to $path: replaced $oldLines line(s) with $newLines line(s)')
+    ];
   }
 }
 

@@ -120,7 +120,10 @@ void main() {
         _sseData({
           'type': 'content_block_delta',
           'index': 0,
-          'delta': {'type': 'input_json_delta', 'partial_json': '{"path": "a.txt"}'}
+          'delta': {
+            'type': 'input_json_delta',
+            'partial_json': '{"path": "a.txt"}'
+          }
         }),
         _sseData({'type': 'content_block_stop', 'index': 0}),
         _sseData({

@@ -135,11 +135,13 @@ class SpawnParallelSubagentsTool extends Tool {
       currentDepth: _depth,
     );
 
-    return [TextPart(jsonEncode({
-      'results': [
-        for (var i = 0; i < tasks.length; i++)
-          {'task': tasks[i], 'output': results[i]},
-      ],
-    }))];
+    return [
+      TextPart(jsonEncode({
+        'results': [
+          for (var i = 0; i < tasks.length; i++)
+            {'task': tasks[i], 'output': results[i]},
+        ],
+      }))
+    ];
   }
 }

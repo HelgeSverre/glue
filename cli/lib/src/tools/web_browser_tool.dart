@@ -88,12 +88,16 @@ class WebBrowserTool extends Tool {
   Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
     final action = args['action'];
     if (action is! String || action.isEmpty) {
-      return [TextPart('Error: no action provided. '
-          'Valid actions: ${_validActions.join(", ")}')];
+      return [
+        TextPart('Error: no action provided. '
+            'Valid actions: ${_validActions.join(", ")}')
+      ];
     }
     if (!_validActions.contains(action)) {
-      return [TextPart('Error: invalid action "$action". '
-          'Valid actions: ${_validActions.join(", ")}')];
+      return [
+        TextPart('Error: invalid action "$action". '
+            'Valid actions: ${_validActions.join(", ")}')
+      ];
     }
 
     try {

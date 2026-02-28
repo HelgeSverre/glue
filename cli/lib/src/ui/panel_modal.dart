@@ -136,7 +136,8 @@ List<String> applyBarrier(BarrierStyle style, List<String> lines) {
 abstract class PanelOverlay {
   bool get isComplete;
   bool handleEvent(TerminalEvent event);
-  List<String> render(int termWidth, int termHeight, List<String> backgroundLines);
+  List<String> render(
+      int termWidth, int termHeight, List<String> backgroundLines);
   void cancel();
 }
 
