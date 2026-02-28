@@ -2,11 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-import '../agent/agent_core.dart';
-import '../agent/tools.dart';
-import 'message_mapper.dart';
-import 'sse.dart';
-import 'tool_schema.dart';
+import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/tools.dart';
+import 'package:glue/src/llm/message_mapper.dart';
+import 'package:glue/src/llm/sse.dart';
+import 'package:glue/src/llm/tool_schema.dart';
 
 /// LLM client for OpenAI Chat Completions API with streaming.
 class OpenAiClient implements LlmClient {
@@ -29,7 +29,7 @@ class OpenAiClient implements LlmClient {
 
   @override
   Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
-    final mapper = const OpenAiMessageMapper();
+    const mapper = OpenAiMessageMapper();
     final mapped = mapper.mapMessages(messages, systemPrompt: systemPrompt);
 
     final body = <String, dynamic>{
@@ -115,10 +115,10 @@ class OpenAiClient implements LlmClient {
           final fn = (tcMap['function'] as Map?)?.cast<String, dynamic>();
 
           if (!toolBuilders.containsKey(index)) {
-            toolBuilders[index] = _ToolCallBuilder(
-              id: (tcMap['id'] as String?) ?? 'call_$index',
-              name: fn?['name'] as String? ?? '',
-            );
+            final id = (tcMap['id'] as String?) ?? 'call_$index';
+            final name = fn?['name'] as String? ?? '';
+            toolBuilders[index] = _ToolCallBuilder(id: id, name: name);
+            yield ToolCallStart(id: id, name: name);
           }
 
           final args = fn?['arguments'] as String?;

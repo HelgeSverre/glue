@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'tools.dart';
+import 'package:glue/src/agent/tools.dart';
 
 // ---------------------------------------------------------------------------
 // Message types for the conversation history
@@ -59,7 +59,16 @@ class TextDelta extends LlmChunk {
   TextDelta(this.text);
 }
 
-/// A tool call requested by the model.
+/// Emitted as soon as a tool call begins (name/ID known, arguments still
+/// streaming). Not all providers emit this — Ollama delivers fully formed
+/// tool calls without incremental streaming.
+class ToolCallStart extends LlmChunk {
+  final String id;
+  final String name;
+  ToolCallStart({required this.id, required this.name});
+}
+
+/// A completed tool call requested by the model (arguments fully parsed).
 class ToolCallDelta extends LlmChunk {
   final ToolCall toolCall;
   ToolCallDelta(this.toolCall);
@@ -142,6 +151,12 @@ class AgentTextDelta extends AgentEvent {
   AgentTextDelta(this.delta);
 }
 
+class AgentToolCallPending extends AgentEvent {
+  final String id;
+  final String name;
+  AgentToolCallPending({required this.id, required this.name});
+}
+
 class AgentToolCall extends AgentEvent {
   final ToolCall call;
   AgentToolCall(this.call);
@@ -202,6 +217,7 @@ class AgentCore {
       while (true) {
         final assistantText = StringBuffer();
         final toolCalls = <ToolCall>[];
+        final toolFutures = <Future<ToolResult>>[];
 
         await for (final chunk in llm.stream(
           _conversation,
@@ -211,8 +227,14 @@ class AgentCore {
             case TextDelta(:final text):
               assistantText.write(text);
               yield AgentTextDelta(text);
+            case ToolCallStart(:final id, :final name):
+              yield AgentToolCallPending(id: id, name: name);
             case ToolCallDelta(:final toolCall):
               toolCalls.add(toolCall);
+              final completer = Completer<ToolResult>();
+              _pendingToolResults[toolCall.id] = completer;
+              toolFutures.add(completer.future);
+              yield AgentToolCall(toolCall);
             case UsageInfo(:final totalTokens):
               tokenCount += totalTokens;
           }
@@ -226,21 +248,9 @@ class AgentCore {
         // No tool calls → turn is complete.
         if (toolCalls.isEmpty) break;
 
-        // Create completers and capture futures before yielding
-        final futures = <Future<ToolResult>>[];
-        for (final call in toolCalls) {
-          final completer = Completer<ToolResult>();
-          _pendingToolResults[call.id] = completer;
-          futures.add(completer.future);
-        }
-
-        // Emit all tool calls
-        for (final call in toolCalls) {
-          yield AgentToolCall(call);
-        }
-
-        // Wait for all results
-        final results = await Future.wait(futures);
+        // Wait for all results (some may already be completed if
+        // auto-approved tools started executing during streaming).
+        final results = await Future.wait(toolFutures);
 
         // Add results to conversation and yield events
         for (var i = 0; i < toolCalls.length; i++) {
@@ -278,6 +288,54 @@ class AgentCore {
     final completer = _pendingToolResults.remove(result.callId);
     if (completer == null || completer.isCompleted) return;
     completer.complete(result);
+  }
+
+  /// Ensure the conversation history is structurally valid for the next
+  /// API call.
+  ///
+  /// When the user cancels (Escape) while a tool is executing, the agent's
+  /// stream subscription is cancelled. This kills the generator before it
+  /// reaches the code that adds tool_result messages to the conversation.
+  /// The conversation is left with an assistant message containing tool_use
+  /// blocks but no matching tool_result messages — which the Anthropic and
+  /// OpenAI APIs reject as invalid.
+  ///
+  /// This method scans backwards from the end of the conversation, finds
+  /// any unmatched tool_use blocks, and injects synthetic "[cancelled]"
+  /// tool_result messages so the next API call succeeds.
+  void ensureToolResultsComplete() {
+    // Walk backwards to find the last assistant message with tool calls.
+    // Skip over any tool_result messages that may already be present.
+    for (var i = _conversation.length - 1; i >= 0; i--) {
+      final msg = _conversation[i];
+
+      if (msg.role == Role.toolResult) continue;
+
+      if (msg.role == Role.assistant && msg.toolCalls.isNotEmpty) {
+        final resultIdsAfter = <String>{};
+        for (var j = i + 1; j < _conversation.length; j++) {
+          if (_conversation[j].role == Role.toolResult) {
+            final id = _conversation[j].toolCallId;
+            if (id != null) resultIdsAfter.add(id);
+          }
+        }
+
+        for (final tc in msg.toolCalls) {
+          final alreadyHasResult = resultIdsAfter.contains(tc.id);
+          if (!alreadyHasResult) {
+            _conversation.add(Message.toolResult(
+              callId: tc.id,
+              content: '[cancelled by user]',
+              toolName: tc.name,
+            ));
+          }
+        }
+        break;
+      }
+
+      // Hit a user message or something else — no unmatched tool_use.
+      break;
+    }
   }
 
   /// Execute a [call] directly using the registered tool.

@@ -2,11 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-import '../agent/agent_core.dart';
-import '../agent/tools.dart';
-import 'message_mapper.dart';
-import 'sse.dart';
-import 'tool_schema.dart';
+import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/tools.dart';
+import 'package:glue/src/llm/message_mapper.dart';
+import 'package:glue/src/llm/sse.dart';
+import 'package:glue/src/llm/tool_schema.dart';
 
 /// LLM client for the Anthropic Messages API with streaming.
 class AnthropicClient implements LlmClient {
@@ -30,7 +30,7 @@ class AnthropicClient implements LlmClient {
 
   @override
   Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
-    final mapper = const AnthropicMessageMapper();
+    const mapper = AnthropicMessageMapper();
     final mapped = mapper.mapMessages(messages, systemPrompt: systemPrompt);
 
     final body = <String, dynamic>{
@@ -97,10 +97,10 @@ class AnthropicClient implements LlmClient {
           final index = event['index'] as int;
           final block = event['content_block'] as Map<String, dynamic>;
           if (block['type'] == 'tool_use') {
-            toolBuffers[index] = _ToolUseBuffer(
-              id: block['id'] as String,
-              name: block['name'] as String,
-            );
+            final id = block['id'] as String;
+            final name = block['name'] as String;
+            toolBuffers[index] = _ToolUseBuffer(id: id, name: name);
+            yield ToolCallStart(id: id, name: name);
           }
 
         case 'content_block_delta':

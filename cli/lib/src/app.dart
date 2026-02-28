@@ -1,43 +1,43 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'terminal/terminal.dart';
-import 'terminal/layout.dart';
-import 'input/line_editor.dart';
-import 'agent/agent_core.dart';
-import 'agent/agent_manager.dart';
-import 'agent/prompts.dart';
-import 'agent/tools.dart';
-import 'commands/slash_commands.dart';
-import 'config/constants.dart';
-import 'config/glue_config.dart';
-import 'config/model_registry.dart';
-import 'llm/llm_factory.dart';
-import 'llm/model_lister.dart';
-import 'rendering/block_renderer.dart';
-import 'rendering/ansi_utils.dart';
-import 'rendering/mascot.dart';
-import 'shell/command_executor.dart';
-import 'shell/executor_factory.dart';
-import 'shell/host_executor.dart';
-import 'shell/shell_config.dart';
-import 'shell/shell_job_manager.dart';
-import 'storage/session_state.dart';
-import 'tools/subagent_tools.dart';
-import 'tools/web_fetch_tool.dart';
-import 'tools/web_search_tool.dart';
-import 'web/search/search_router.dart';
-import 'web/search/providers/brave_provider.dart';
-import 'web/search/providers/tavily_provider.dart';
-import 'web/search/providers/firecrawl_provider.dart';
-import 'ui/modal.dart';
-import 'ui/panel_modal.dart';
-import 'input/file_expander.dart';
-import 'ui/at_file_hint.dart';
-import 'ui/slash_autocomplete.dart';
-import 'storage/glue_home.dart';
-import 'storage/session_store.dart';
-import 'storage/config_store.dart';
+import 'package:glue/src/terminal/terminal.dart';
+import 'package:glue/src/terminal/layout.dart';
+import 'package:glue/src/input/line_editor.dart';
+import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/agent_manager.dart';
+import 'package:glue/src/agent/prompts.dart';
+import 'package:glue/src/agent/tools.dart';
+import 'package:glue/src/commands/slash_commands.dart';
+import 'package:glue/src/config/constants.dart';
+import 'package:glue/src/config/glue_config.dart';
+import 'package:glue/src/config/model_registry.dart';
+import 'package:glue/src/llm/llm_factory.dart';
+import 'package:glue/src/llm/model_lister.dart';
+import 'package:glue/src/rendering/block_renderer.dart';
+import 'package:glue/src/rendering/ansi_utils.dart';
+import 'package:glue/src/rendering/mascot.dart';
+import 'package:glue/src/shell/command_executor.dart';
+import 'package:glue/src/shell/executor_factory.dart';
+import 'package:glue/src/shell/host_executor.dart';
+import 'package:glue/src/shell/shell_config.dart';
+import 'package:glue/src/shell/shell_job_manager.dart';
+import 'package:glue/src/storage/session_state.dart';
+import 'package:glue/src/tools/subagent_tools.dart';
+import 'package:glue/src/tools/web_fetch_tool.dart';
+import 'package:glue/src/tools/web_search_tool.dart';
+import 'package:glue/src/web/search/search_router.dart';
+import 'package:glue/src/web/search/providers/brave_provider.dart';
+import 'package:glue/src/web/search/providers/tavily_provider.dart';
+import 'package:glue/src/web/search/providers/firecrawl_provider.dart';
+import 'package:glue/src/ui/modal.dart';
+import 'package:glue/src/ui/panel_modal.dart';
+import 'package:glue/src/input/file_expander.dart';
+import 'package:glue/src/ui/at_file_hint.dart';
+import 'package:glue/src/ui/slash_autocomplete.dart';
+import 'package:glue/src/storage/glue_home.dart';
+import 'package:glue/src/storage/session_store.dart';
+import 'package:glue/src/storage/config_store.dart';
 
 // ---------------------------------------------------------------------------
 // Application state
@@ -151,7 +151,7 @@ class App {
   final ShellJobManager _jobManager;
   late final SlashAutocomplete _autocomplete;
   late final AtFileHint _atHint;
-  SessionStore? _sessionStore;
+  final SessionStore? _sessionStore;
   bool _bashMode = false;
   Process? _bashRunProcess;
   DateTime? _lastCtrlC;
@@ -1101,9 +1101,9 @@ class App {
           title: 'Approve tool: ${call.name}',
           bodyLines: bodyLines,
           choices: [
-            ModalChoice('Yes', 'y'),
-            ModalChoice('No', 'n'),
-            ModalChoice('Always', 'a'),
+            const ModalChoice('Yes', 'y'),
+            const ModalChoice('No', 'n'),
+            const ModalChoice('Always', 'a'),
           ],
         );
         _render();
@@ -1146,7 +1146,7 @@ class App {
       case AgentToolResult(:final result):
         _toolUi[result.callId]?.phase = _ToolPhase.done;
         _blocks.add(
-          _ConversationEntry.toolResult(result.callId, result.content),
+          _ConversationEntry.toolResult(result.content),
         );
         _mode = AppMode.streaming;
         _startSpinner();
@@ -1197,7 +1197,7 @@ class App {
         state.phase = _ToolPhase.error;
       }
     }
-    agent.repairConversation();
+    agent.ensureToolResultsComplete();
     _render();
   }
 
@@ -1655,7 +1655,7 @@ class _ConversationEntry {
   factory _ConversationEntry.toolCallRef(String callId) =>
       _ConversationEntry._(_EntryKind.toolCallRef, callId);
 
-  factory _ConversationEntry.toolResult(String callId, String content) =>
+  factory _ConversationEntry.toolResult(String content) =>
       _ConversationEntry._(_EntryKind.toolResult, content);
 
   factory _ConversationEntry.error(String message) =>

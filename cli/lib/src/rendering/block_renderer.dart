@@ -1,5 +1,14 @@
-import 'ansi_utils.dart';
-import 'markdown_renderer.dart';
+import 'package:glue/src/rendering/ansi_utils.dart';
+import 'package:glue/src/rendering/markdown_renderer.dart';
+
+enum ToolCallPhase { preparing, awaitingApproval, running, done, denied, error }
+
+class ToolCallRenderState {
+  final String name;
+  final Map<String, dynamic>? args;
+  final ToolCallPhase phase;
+  ToolCallRenderState({required this.name, this.args, required this.phase});
+}
 
 /// Renders conversation blocks as styled terminal text.
 ///
@@ -16,7 +25,7 @@ class BlockRenderer {
 
   /// Render a user message block.
   String renderUser(String text) {
-    final header = ' \x1b[1m\x1b[34m❯ You\x1b[0m';
+    const header = ' \x1b[1m\x1b[34m❯ You\x1b[0m';
     final body = ansiWrap(text, _inner - 2);
     final indented = body.split('\n').map((l) => '   $l').join('\n');
     return '$header\n$indented';
@@ -24,7 +33,7 @@ class BlockRenderer {
 
   /// Render an assistant message block.
   String renderAssistant(String text) {
-    final header = ' \x1b[1m\x1b[33m◆ Glue\x1b[0m';
+    const header = ' \x1b[1m\x1b[33m◆ Glue\x1b[0m';
     final md = MarkdownRenderer(_inner - 2);
     final body = md.render(text);
     final indented = body.split('\n').map((l) => '   $l').join('\n');
@@ -36,6 +45,35 @@ class BlockRenderer {
     final header = ' \x1b[1m\x1b[33m▶ Tool: $name\x1b[0m';
     if (args == null || args.isEmpty) return header;
     final argsStr = args.entries
+        .map((e) => '${e.key}: ${ansiTruncate('${e.value}', _inner - 6)}')
+        .join(', ');
+    return '$header\n    \x1b[90m$argsStr\x1b[0m';
+  }
+
+  /// Render a tool call block with phase indicator.
+  ///
+  /// [phase] controls the suffix: preparing, running, done, etc.
+  /// If [state] is null, renders a fallback.
+  String renderToolCallRef(ToolCallRenderState? state) {
+    if (state == null) {
+      return ' \x1b[1m\x1b[33m▶ Tool: ???\x1b[0m';
+    }
+    final suffix = switch (state.phase) {
+      ToolCallPhase.preparing =>
+        ' \x1b[90m(preparing…)\x1b[0m',
+      ToolCallPhase.awaitingApproval =>
+        ' \x1b[33m(awaiting approval)\x1b[0m',
+      ToolCallPhase.running =>
+        ' \x1b[36m(running…)\x1b[0m',
+      ToolCallPhase.done => '',
+      ToolCallPhase.denied =>
+        ' \x1b[31m(denied)\x1b[0m',
+      ToolCallPhase.error =>
+        ' \x1b[31m(error)\x1b[0m',
+    };
+    final header = ' \x1b[1m\x1b[33m▶ Tool: ${state.name}\x1b[0m$suffix';
+    if (state.args == null || state.args!.isEmpty) return header;
+    final argsStr = state.args!.entries
         .map((e) => '${e.key}: ${ansiTruncate('${e.value}', _inner - 6)}')
         .join(', ');
     return '$header\n    \x1b[90m$argsStr\x1b[0m';
@@ -54,7 +92,7 @@ class BlockRenderer {
 
   /// Render an error block.
   String renderError(String message) {
-    final header = ' \x1b[1m\x1b[31m✗ Error\x1b[0m';
+    const header = ' \x1b[1m\x1b[31m✗ Error\x1b[0m';
     final body = ansiWrap(message, _inner - 2);
     final indented =
         body.split('\n').map((l) => '    \x1b[31m$l\x1b[0m').join('\n');

@@ -98,6 +98,53 @@ void main() {
       expect(toolCalls.first.toolCall.name, 'read_file');
       expect(toolCalls.first.toolCall.arguments['path'], 'main.dart');
     });
+
+    test('emits ToolCallStart before ToolCallDelta', () async {
+      final events = [
+        _sseData({
+          'type': 'message_start',
+          'message': {
+            'id': 'm1',
+            'usage': {'input_tokens': 10, 'output_tokens': 0}
+          }
+        }),
+        _sseData({
+          'type': 'content_block_start',
+          'index': 0,
+          'content_block': {
+            'type': 'tool_use',
+            'id': 'tc1',
+            'name': 'write_file'
+          }
+        }),
+        _sseData({
+          'type': 'content_block_delta',
+          'index': 0,
+          'delta': {'type': 'input_json_delta', 'partial_json': '{"path": "a.txt"}'}
+        }),
+        _sseData({'type': 'content_block_stop', 'index': 0}),
+        _sseData({
+          'type': 'message_delta',
+          'delta': {'stop_reason': 'tool_use'},
+          'usage': {'output_tokens': 10}
+        }),
+        _sseData({'type': 'message_stop'}),
+      ];
+
+      final chunks = await AnthropicClient.parseStreamEvents(
+        Stream.fromIterable(events),
+      ).toList();
+
+      final starts = chunks.whereType<ToolCallStart>().toList();
+      expect(starts, hasLength(1));
+      expect(starts.first.id, 'tc1');
+      expect(starts.first.name, 'write_file');
+
+      // ToolCallStart must come before ToolCallDelta
+      final startIdx = chunks.indexWhere((c) => c is ToolCallStart);
+      final deltaIdx = chunks.indexWhere((c) => c is ToolCallDelta);
+      expect(startIdx, lessThan(deltaIdx));
+    });
   });
 }
 

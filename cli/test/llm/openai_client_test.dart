@@ -105,5 +105,62 @@ void main() {
       expect(toolCalls.first.toolCall.name, 'read_file');
       expect(toolCalls.first.toolCall.arguments['path'], 'main.dart');
     });
+
+    test('emits ToolCallStart before ToolCallDelta', () async {
+      final events = [
+        {
+          'choices': [
+            {
+              'index': 0,
+              'delta': {
+                'role': 'assistant',
+                'tool_calls': [
+                  {
+                    'index': 0,
+                    'id': 'tc1',
+                    'type': 'function',
+                    'function': {'name': 'write_file', 'arguments': ''}
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          'choices': [
+            {
+              'index': 0,
+              'delta': {
+                'tool_calls': [
+                  {
+                    'index': 0,
+                    'function': {'arguments': '{"path": "a.txt"}'}
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          'choices': [
+            {'index': 0, 'delta': {}, 'finish_reason': 'tool_calls'}
+          ],
+          'usage': {'prompt_tokens': 10, 'completion_tokens': 10}
+        },
+      ];
+
+      final chunks = await OpenAiClient.parseStreamEvents(
+        Stream.fromIterable(events),
+      ).toList();
+
+      final starts = chunks.whereType<ToolCallStart>().toList();
+      expect(starts, hasLength(1));
+      expect(starts.first.id, 'tc1');
+      expect(starts.first.name, 'write_file');
+
+      final startIdx = chunks.indexWhere((c) => c is ToolCallStart);
+      final deltaIdx = chunks.indexWhere((c) => c is ToolCallDelta);
+      expect(startIdx, lessThan(deltaIdx));
+    });
   });
 }

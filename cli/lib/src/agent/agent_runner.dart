@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'agent_core.dart';
+import 'package:glue/src/agent/agent_core.dart';
 
 /// Policy for automatic tool approval in headless execution.
 enum ToolApprovalPolicy {
@@ -44,6 +44,8 @@ class AgentRunner {
       switch (event) {
         case AgentTextDelta(:final delta):
           buf.write(delta);
+        case AgentToolCallPending():
+          break;
         case AgentToolCall(:final call):
           final result = await _handleToolCall(call);
           core.completeToolCall(result);
