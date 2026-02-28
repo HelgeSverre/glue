@@ -19,8 +19,7 @@ void main() {
       final result = osc8Link('https://example.com', 'click here');
       expect(
         result,
-        equals(
-            '\x1b]8;;https://example.com\x07click here\x1b]8;;\x07'),
+        equals('\x1b]8;;https://example.com\x07click here\x1b]8;;\x07'),
       );
     });
 
