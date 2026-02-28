@@ -42,7 +42,7 @@ export 'src/agent/agent_runner.dart' show AgentRunner, ToolApprovalPolicy;
 export 'src/agent/agent_manager.dart' show AgentManager;
 export 'src/agent/prompts.dart' show Prompts;
 export 'src/rendering/ansi_utils.dart'
-    show stripAnsi, visibleLength, ansiTruncate, ansiWrap;
+    show stripAnsi, visibleLength, ansiTruncate, ansiWrap, wrapIndented;
 export 'src/rendering/block_renderer.dart' show BlockRenderer;
 export 'src/rendering/markdown_renderer.dart' show MarkdownRenderer;
 export 'src/commands/slash_commands.dart'
