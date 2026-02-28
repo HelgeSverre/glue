@@ -448,9 +448,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
 .slash-item{
   padding:5px 12px;display:flex;align-items:center;gap:10px;
   font-family:var(--mono);font-size:10px;cursor:pointer;transition:background .06s;
+  border-left:2px solid transparent;
 }
 .slash-item:hover{background:var(--surface-hi)}
-.slash-item.selected{background:var(--surface-hi);border-left:2px solid var(--yellow)}
+.slash-item.selected{background:var(--surface-hi);border-left-color:var(--yellow)}
 .slash-cmd{color:var(--yellow);font-weight:700;min-width:80px}
 .slash-desc{color:var(--text-sec);flex:1}
 .slash-alias{color:var(--text-dim);font-size:9px;margin-left:auto}
