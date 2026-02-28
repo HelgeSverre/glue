@@ -60,6 +60,7 @@ export 'src/storage/glue_home.dart' show GlueHome;
 export 'src/storage/session_store.dart' show SessionStore, SessionMeta;
 export 'src/storage/debug_logger.dart' show DebugLogger;
 export 'src/storage/config_store.dart' show ConfigStore;
+export 'src/dev/devtools.dart' show GlueDev;
 export 'src/input/file_expander.dart' show expandFileRefs, extractFileRefs;
 export 'src/ui/at_file_hint.dart' show AtFileHint;
 export 'src/shell/line_ring_buffer.dart' show LineRingBuffer;
