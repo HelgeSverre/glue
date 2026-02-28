@@ -65,6 +65,8 @@ import 'package:glue/src/observability/observed_tool.dart';
 // ---------------------------------------------------------------------------
 
 /// Top-level application mode.
+///
+/// {@category Core}
 enum AppMode {
   /// Waiting for user input.
   idle,
@@ -118,6 +120,8 @@ class UserResize extends AppEvent {
 /// event-driven architecture. Two independent streams (terminal input and
 /// agent output) are merged into a single render cycle so the UI is never
 /// blocked.
+///
+/// {@category Core}
 class App {
   final Terminal terminal;
   final Layout layout;
@@ -185,6 +189,7 @@ class App {
   final bool _startupResume;
   final bool _startupContinue;
   final Observability? _obs;
+  ObservabilitySpan? _turnSpan;
   final DebugController? _debugController;
   final SkillRegistry? _skillRegistry;
 
@@ -293,13 +298,24 @@ class App {
       ));
     }
 
+    if (config.observability.flushIntervalSeconds > 0) {
+      obs.startAutoFlush(
+        Duration(seconds: config.observability.flushIntervalSeconds),
+      );
+    }
+
     final httpClient = LoggingHttpClient(
       inner: http.Client(),
       obs: obs,
     );
     final llmFactory = LlmClientFactory(httpClient: httpClient);
     final rawLlm = llmFactory.createFromConfig(config, systemPrompt: systemPrompt);
-    final llm = ObservedLlmClient(inner: rawLlm, obs: obs);
+    final llm = ObservedLlmClient(
+      inner: rawLlm,
+      obs: obs,
+      provider: config.provider.name,
+      model: config.model,
+    );
 
     final configStore = ConfigStore(home.configPath);
 
@@ -439,7 +455,7 @@ class App {
     layout.apply();
 
     _blocks.add(_ConversationEntry.system(
-      'Glue v0.1.0 — $_modelName\n'
+      '\x1b[33m◆\x1b[0m Glue v${AppConstants.version} — $_modelName\n'
       'Working directory: ${_shortenPath(_cwd)}\n'
       'Type /help for commands.',
     ));
@@ -496,6 +512,11 @@ class App {
       terminal.write('\x1b[0m');
       terminal.disableAltScreen();
       terminal.disableRawMode();
+      final sessionId = _sessionStore?.meta.id;
+      if (sessionId != null) {
+        stdout.writeln('\nTo resume this session:');
+        stdout.writeln('  \$ glue --resume $sessionId');
+      }
       terminal.dispose();
     }
   }
@@ -1267,6 +1288,16 @@ class App {
 
   // ── Agent interaction ──────────────────────────────────────────────────
 
+  void _endTurnSpan({Map<String, dynamic>? extra}) {
+    final span = _turnSpan;
+    final obs = _obs;
+    if (span != null && obs != null) {
+      obs.endSpan(span, extra: extra);
+      if (obs.activeSpan == span) obs.activeSpan = null;
+      _turnSpan = null;
+    }
+  }
+
   void _startAgent(String displayMessage, {String? expandedMessage}) {
     _blocks.add(
         _ConversationEntry.user(displayMessage, expandedText: expandedMessage));
@@ -1276,16 +1307,25 @@ class App {
     _subagentGroups.clear();
     _render();
 
+    _turnSpan = _obs?.startSpan(
+      'agent.turn',
+      kind: 'internal',
+      attributes: {'user.message_length': displayMessage.length},
+    );
+    if (_turnSpan != null) _obs!.activeSpan = _turnSpan;
+
     final stream = agent.run(expandedMessage ?? displayMessage);
     _agentSub = stream.listen(
       _handleAgentEvent,
       onError: (Object e) {
+        _endTurnSpan(extra: {'error': e.toString()});
         _blocks.add(_ConversationEntry.error(e.toString()));
         _stopSpinner();
         _mode = AppMode.idle;
         _render();
       },
       onDone: () {
+        _endTurnSpan();
         if (_streamingText.isNotEmpty) {
           _blocks.add(_ConversationEntry.assistant(_streamingText));
           _streamingText = '';
@@ -1443,6 +1483,7 @@ class App {
 
   void _cancelAgent() {
     _agentSub?.cancel();
+    _endTurnSpan(extra: {'cancelled': true});
     _mode = AppMode.idle;
     if (_streamingText.isNotEmpty) {
       _blocks.add(_ConversationEntry.assistant('$_streamingText\n[cancelled]'));

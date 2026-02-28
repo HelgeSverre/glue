@@ -3,8 +3,6 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:glue/glue.dart';
 
-const version = '0.1.0';
-
 const logo = '''
         .__
    ____ |  |  __ __   ____
@@ -42,7 +40,7 @@ void main(List<String> args) async {
     stdout.writeln(logo);
     stdout.writeln();
     stdout.writeln(
-        'glue v$version — the coding agent that holds it all together.');
+        'glue v${AppConstants.version} — the coding agent that holds it all together.');
     stdout.writeln();
     stdout.writeln('Usage: glue [options]');
     stdout.writeln();
@@ -51,7 +49,7 @@ void main(List<String> args) async {
   }
 
   if (results.flag('version')) {
-    stdout.writeln('glue v$version');
+    stdout.writeln('glue v${AppConstants.version}');
     return;
   }
 

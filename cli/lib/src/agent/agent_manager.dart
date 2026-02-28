@@ -10,7 +10,7 @@ import 'package:glue/src/observability/observed_llm_client.dart';
 import 'package:glue/src/observability/observed_tool.dart';
 import 'package:glue/src/tools/subagent_tools.dart';
 
-/// Tools that are safe for subagents to execute without user approval.
+/// The set of tools that are safe for subagents to execute without user approval.
 const safeSubagentTools = {'read_file', 'list_directory', 'grep'};
 
 /// An update from a running subagent, forwarded to the UI.
@@ -36,6 +36,8 @@ class SubagentUpdate {
 }
 
 /// Orchestrates subagent spawning using the manager pattern.
+///
+/// {@category Agent}
 ///
 /// Creates independent [AgentCore] instances with their own conversation
 /// history but shared tool registry. Subagents run headlessly via
@@ -63,7 +65,7 @@ class AgentManager {
     this.obs,
   }) : allowedSubagentTools = allowedSubagentTools ?? safeSubagentTools;
 
-  /// Spawn a single subagent to complete a [task].
+  /// Spawns a single subagent to complete a [task].
   ///
   /// Optionally override [profile] for model/provider selection.
   /// [currentDepth] tracks recursion to prevent infinite nesting.
@@ -92,7 +94,12 @@ class AgentManager {
       systemPrompt: systemPrompt,
     );
     final LlmClient llm = obs != null
-        ? ObservedLlmClient(inner: rawLlm, obs: obs!)
+        ? ObservedLlmClient(
+            inner: rawLlm,
+            obs: obs!,
+            provider: effectiveProfile.provider.name,
+            model: effectiveProfile.model,
+          )
         : rawLlm;
 
     var subagentTools = Map<String, Tool>.from(tools);
@@ -156,7 +163,7 @@ class AgentManager {
     }
   }
 
-  /// Spawn [tasks] in parallel, each as an independent subagent.
+  /// Spawns [tasks] in parallel, each as independent subagents.
   ///
   /// All subagents run concurrently and results are returned in order.
   ///

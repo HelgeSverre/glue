@@ -1,4 +1,25 @@
-/// Glue — the coding agent that holds it all together.
+/// A terminal-native coding agent that streams LLM responses, executes tools,
+/// and renders everything in a responsive TUI.
+///
+/// The main entry point is [App], which wires together terminal I/O, the
+/// agent loop, and rendering. Key concepts:
+///
+/// - **Agent loop**: [AgentCore] runs the LLM ↔ [Tool] ReAct loop, emitting
+///   `AgentEvent`s. [AgentRunner] drives it headlessly; [AgentManager]
+///   orchestrates subagent spawning.
+/// - **LLM providers**: [LlmClient] is implemented by provider-specific
+///   clients for Anthropic, OpenAI, and Ollama. Use [LlmClientFactory] to
+///   create them from [GlueConfig].
+/// - **Terminal**: [Terminal] handles raw I/O and ANSI parsing; [Layout]
+///   divides the screen into scroll regions; [BlockRenderer] and
+///   [MarkdownRenderer] produce styled output.
+/// - **Configuration**: [GlueConfig] resolves settings from CLI args → env
+///   vars → `~/.glue/config.yaml` → defaults. [ModelRegistry] catalogs
+///   supported models.
+/// - **Shell execution**: [CommandExecutor] abstracts host ([HostExecutor])
+///   and Docker ([DockerExecutor]) command execution.
+/// - **Observability**: [Observability] traces spans and routes them to
+///   pluggable [ObservabilitySink]s (OpenTelemetry, Langfuse, file).
 library;
 
 export 'src/app.dart' show App, AppMode;
@@ -25,6 +46,7 @@ export 'src/agent/agent_core.dart'
         ToolCall,
         ToolResult,
         Message;
+export 'src/agent/content_part.dart' show ContentPart, TextPart, ImagePart;
 export 'src/agent/tools.dart'
     show
         Tool,
@@ -35,8 +57,9 @@ export 'src/agent/tools.dart'
         BashTool,
         GrepTool,
         ListDirectoryTool;
+export 'src/config/constants.dart' show AppConstants;
 export 'src/config/glue_config.dart'
-    show GlueConfig, LlmProvider, AgentProfile, ConfigError;
+    show GlueConfig, LlmProvider, AgentProfile, ConfigError, splitPathList;
 export 'src/config/model_registry.dart'
     show ModelRegistry, ModelEntry, ModelCapability, CostTier, SpeedTier;
 export 'src/llm/llm_factory.dart' show LlmClientFactory;

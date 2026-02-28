@@ -8,7 +8,17 @@ import 'package:glue/src/web/web_config.dart';
 import 'package:glue/src/web/browser/browser_config.dart';
 import 'package:glue/src/observability/observability_config.dart';
 
+/// Splits a path-list environment variable using platform-appropriate separators.
+///
+/// Unix uses `:` (like `$PATH`), Windows uses `;`.
+List<String> splitPathList(String value, {bool? isWindows}) {
+  final sep = (isWindows ?? Platform.isWindows) ? ';' : ':';
+  return value.split(sep).where((s) => s.isNotEmpty).toList();
+}
+
 /// Supported LLM providers.
+///
+/// {@category Core}
 enum LlmProvider { anthropic, openai, ollama }
 
 /// An agent profile specifying provider and model for a particular role.
@@ -72,7 +82,7 @@ class GlueConfig {
   static String _defaultModel(LlmProvider provider) =>
       ModelRegistry.defaultModelId(provider);
 
-  /// Create a copy with selected fields replaced.
+  /// Creates a copy with selected fields replaced.
   GlueConfig copyWith({
     LlmProvider? provider,
     String? model,
@@ -94,7 +104,7 @@ class GlueConfig {
     );
   }
 
-  /// Validate that required configuration is present.
+  /// Validates that required configuration is present.
   void validate() {
     // Ollama runs locally — no API key needed.
     if (provider == LlmProvider.ollama) return;
@@ -124,7 +134,7 @@ class GlueConfig {
     };
   }
 
-  /// Load configuration from env vars, optional config file, and CLI overrides.
+  /// Loads configuration from env vars, optional config file, and CLI overrides.
   factory GlueConfig.load({
     String? cliProvider,
     String? cliModel,
@@ -346,6 +356,8 @@ class GlueConfig {
     final telemetrySection = fileConfig?['telemetry'] as Map?;
     final langfuseSection = telemetrySection?['langfuse'] as Map?;
     final otelSection = telemetrySection?['otel'] as Map?;
+    final flushInterval =
+        telemetrySection?['flush_interval_seconds'] as int? ?? 30;
 
     final langfuseConfig = LangfuseConfig(
       enabled: langfuseSection?['enabled'] as bool? ?? false,
@@ -386,6 +398,7 @@ class GlueConfig {
       debug: debug,
       langfuse: langfuseConfig,
       otel: otelConfig,
+      flushIntervalSeconds: flushInterval,
     );
 
     // 3. Parse profiles.
@@ -408,7 +421,7 @@ class GlueConfig {
     final skillPaths = <String>[];
     final envSkillPaths = Platform.environment['GLUE_SKILLS_PATHS'];
     if (envSkillPaths != null && envSkillPaths.isNotEmpty) {
-      skillPaths.addAll(envSkillPaths.split(';').where((s) => s.isNotEmpty));
+      skillPaths.addAll(splitPathList(envSkillPaths));
     }
     final skillsSection = fileConfig?['skills'] as Map?;
     final fileSkillPaths = skillsSection?['paths'] as List?;
