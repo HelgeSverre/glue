@@ -37,6 +37,7 @@ class GlueConfig {
   final Map<String, AgentProfile> profiles;
   final int maxSubagentDepth;
   final int bashMaxLines;
+  final String titleModel;
 
   GlueConfig({
     LlmProvider? provider,
@@ -47,6 +48,7 @@ class GlueConfig {
     this.profiles = const {},
     this.maxSubagentDepth = AppConstants.maxSubagentDepth,
     this.bashMaxLines = AppConstants.bashMaxLinesDefault,
+    this.titleModel = AppConstants.defaultTitleModel,
   })  : provider = provider ?? LlmProvider.anthropic,
         model = model ?? _defaultModel(provider ?? LlmProvider.anthropic);
 
@@ -132,6 +134,9 @@ class GlueConfig {
     final bashMaxLines = (fileConfig?['bash'] as Map?)?['max_lines'] as int? ??
         AppConstants.bashMaxLinesDefault;
 
+    final titleModel =
+        fileConfig?['title_model'] as String? ?? AppConstants.defaultTitleModel;
+
     // 3. Parse profiles.
     final profiles = <String, AgentProfile>{};
     final profilesYaml = fileConfig?['profiles'] as Map?;
@@ -155,6 +160,7 @@ class GlueConfig {
       openaiApiKey: openaiKey,
       profiles: profiles,
       bashMaxLines: bashMaxLines,
+      titleModel: titleModel,
     );
   }
 }

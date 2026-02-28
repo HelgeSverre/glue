@@ -59,6 +59,25 @@ void main() {
     expect(second['text'], 'hi there');
   });
 
+  test('setTitle persists title to meta.json', () {
+    final store = SessionStore(sessionDir: sessionDir, meta: meta);
+    store.setTitle('Fix auth bug');
+
+    final metaJson = jsonDecode(
+      File(p.join(sessionDir, 'meta.json')).readAsStringSync(),
+    );
+    expect(metaJson['title'], 'Fix auth bug');
+  });
+
+  test('title is omitted from meta.json when null', () {
+    SessionStore(sessionDir: sessionDir, meta: meta);
+
+    final metaJson = jsonDecode(
+      File(p.join(sessionDir, 'meta.json')).readAsStringSync(),
+    ) as Map<String, dynamic>;
+    expect(metaJson.containsKey('title'), isFalse);
+  });
+
   test('close writes endTime to meta.json', () async {
     final store = SessionStore(sessionDir: sessionDir, meta: meta);
     await store.close();
