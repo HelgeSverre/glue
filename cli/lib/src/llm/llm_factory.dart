@@ -2,6 +2,7 @@ import 'package:http/http.dart' as http;
 
 import '../agent/agent_core.dart';
 import '../config/glue_config.dart';
+import '../config/model_registry.dart';
 import 'anthropic_client.dart';
 import 'openai_client.dart';
 import 'ollama_client.dart';
@@ -50,6 +51,26 @@ class LlmClientFactory {
       provider: config.provider,
       model: config.model,
       apiKey: config.apiKey,
+      systemPrompt: systemPrompt,
+      ollamaBaseUrl: config.ollamaBaseUrl,
+    );
+  }
+
+  /// Create an [LlmClient] from a [ModelEntry] with keys from config.
+  LlmClient createFromEntry(
+    ModelEntry entry,
+    GlueConfig config, {
+    required String systemPrompt,
+  }) {
+    final apiKey = switch (entry.provider) {
+      LlmProvider.anthropic => config.anthropicApiKey ?? '',
+      LlmProvider.openai => config.openaiApiKey ?? '',
+      LlmProvider.ollama => '',
+    };
+    return create(
+      provider: entry.provider,
+      model: entry.modelId,
+      apiKey: apiKey,
       systemPrompt: systemPrompt,
       ollamaBaseUrl: config.ollamaBaseUrl,
     );

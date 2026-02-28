@@ -37,6 +37,8 @@ export 'src/agent/tools.dart'
         ListDirectoryTool;
 export 'src/config/glue_config.dart'
     show GlueConfig, LlmProvider, AgentProfile, ConfigError;
+export 'src/config/model_registry.dart'
+    show ModelRegistry, ModelEntry, ModelCapability, CostTier, SpeedTier;
 export 'src/llm/llm_factory.dart' show LlmClientFactory;
 export 'src/agent/agent_runner.dart' show AgentRunner, ToolApprovalPolicy;
 export 'src/agent/agent_manager.dart' show AgentManager;

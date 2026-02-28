@@ -420,10 +420,10 @@ class App {
       name: 'models',
       description: 'List available models from the current provider',
       execute: (_) {
-        if (_config == null) return 'No config available.';
         final config = _config;
+        if (config == null) return 'No config available.';
         unawaited(_fetchModels(config));
-        return 'Fetching ${config.provider.name} models…';
+        return 'Fetching ${config.provider.name} models\u2026';
       },
     ));
 
@@ -664,53 +664,20 @@ class App {
       return;
     }
 
-    // Group by provider and build display lines.
-    // Track which display-line index maps to which ModelEntry.
-    final displayLines = <String>[];
-    final selectableEntries = <ModelEntry>[];
-    LlmProvider? lastProvider;
-    int initialSelection = 0;
-
     const dim = '\x1b[90m';
     const yellow = '\x1b[33m';
     const rst = '\x1b[0m';
 
-    for (final entry in entries) {
-      if (entry.provider != lastProvider) {
-        if (lastProvider != null) displayLines.add('');
-        displayLines.add('$yellow${entry.provider.name}$rst');
-        lastProvider = entry.provider;
-      }
-
-      final isCurrent = entry.modelId == _modelName;
-      final marker = isCurrent ? '\u25cf ' : '  ';
-      final name = entry.displayName.padRight(22);
-      final tag = entry.tagline.padRight(20);
-      final cost = entry.costLabel.padRight(5);
-      final speed = entry.speedLabel;
-
-      if (isCurrent) initialSelection = selectableEntries.length;
-      displayLines.add('$marker$name $dim$tag$rst  $cost $speed');
-      selectableEntries.add(entry);
-    }
-
-    // Build a mapping from selectable-line indices to display-line indices.
-    // We need to skip header/blank lines in PanelModal's selection.
-    // PanelModal selects by line index, so we use the flat list approach:
-    // put only selectable lines in, with headers embedded as non-selectable text.
-    // Since PanelModal doesn't support non-selectable lines, we use a flat
-    // selectable list with provider headers as part of the model line.
-    // Rebuild as flat selectable list with provider headers inline.
     final flatLines = <String>[];
     final flatEntries = <ModelEntry>[];
-    lastProvider = null;
+    LlmProvider? lastProvider;
     int flatInitial = 0;
 
     for (final entry in entries) {
       final isCurrent = entry.modelId == _modelName;
       final providerHeader = entry.provider != lastProvider
           ? '$yellow${entry.provider.name}$rst  '
-          : '${' ' * (entry.provider.name.length + 2)}';
+          : ' ' * (entry.provider.name.length + 2);
       lastProvider = entry.provider;
 
       final marker = isCurrent ? '\u25cf ' : '  ';
@@ -753,14 +720,13 @@ class App {
   }
 
   String _switchToModelEntry(ModelEntry entry) {
-    if (_llmFactory != null && _config != null && _systemPrompt != null) {
-      final llm = _llmFactory.createFromEntry(
-        entry,
-        _config,
-        systemPrompt: _systemPrompt,
-      );
+    final factory = _llmFactory;
+    final config = _config;
+    final prompt = _systemPrompt;
+    if (factory != null && config != null && prompt != null) {
+      final llm = factory.createFromEntry(entry, config, systemPrompt: prompt);
       agent.llm = llm;
-      _config = _config.copyWith(
+      _config = config.copyWith(
         provider: entry.provider,
         model: entry.modelId,
       );

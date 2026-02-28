@@ -6,6 +6,15 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Added
 
+- **Model registry & picker** — curated `ModelRegistry` catalog of 7 models
+  across Anthropic, OpenAI, and Ollama with capability, cost, and speed
+  metadata. `/model` with no args opens a selectable panel picker grouped
+  by provider; `/model <name>` does fuzzy lookup by ID or display name.
+  Only models with configured API keys are shown.
+- **`GlueConfig.copyWith`** — immutable config update for provider/model
+  switching.
+- **`LlmClientFactory.createFromEntry`** — create an LLM client directly
+  from a `ModelEntry`.
 - **Spinner animation** in status bar during LLM streaming — braille dot
   pattern cycles at 80ms instead of static `●` indicator.
 - **Collapsible subagent output** — subagent activity is now grouped by
@@ -24,8 +33,16 @@ All notable changes to Glue CLI will be documented in this file.
   `hiddenAliases` that resolve on execution but are excluded from
   autocomplete and `/help`. `/q` is now a hidden alias for `/exit`.
 
+### Fixed
+
+- `/model` switch now updates `_config` (provider + model) via `copyWith`,
+  fixing stale config bug where session metadata and subagent spawning
+  read outdated values.
+
 ### Changed
 
+- Default model strings removed from `GlueConfig` — `_defaultModel()` now
+  delegates to `ModelRegistry.defaultModelId()`.
 - Subagent updates use a grouped data model (`_SubagentGroup`) instead
   of individual conversation entries — reduces output noise during
   multi-agent orchestration.

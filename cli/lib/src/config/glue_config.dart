@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:yaml/yaml.dart';
 import 'constants.dart';
+import 'model_registry.dart';
 import '../shell/docker_config.dart';
 import '../shell/shell_config.dart';
 
@@ -58,11 +59,27 @@ class GlueConfig {
         shellConfig = shellConfig ?? const ShellConfig(),
         dockerConfig = dockerConfig ?? const DockerConfig();
 
-  static String _defaultModel(LlmProvider provider) => switch (provider) {
-        LlmProvider.anthropic => 'claude-sonnet-4-6',
-        LlmProvider.openai => 'gpt-4.1',
-        LlmProvider.ollama => 'llama3.2',
-      };
+  static String _defaultModel(LlmProvider provider) =>
+      ModelRegistry.defaultModelId(provider);
+
+  /// Create a copy with selected fields replaced.
+  GlueConfig copyWith({
+    LlmProvider? provider,
+    String? model,
+  }) {
+    return GlueConfig(
+      provider: provider ?? this.provider,
+      model: model ?? this.model,
+      anthropicApiKey: anthropicApiKey,
+      openaiApiKey: openaiApiKey,
+      ollamaBaseUrl: ollamaBaseUrl,
+      profiles: profiles,
+      maxSubagentDepth: maxSubagentDepth,
+      bashMaxLines: bashMaxLines,
+      shellConfig: shellConfig,
+      dockerConfig: dockerConfig,
+    );
+  }
 
   /// Validate that required configuration is present.
   void validate() {
