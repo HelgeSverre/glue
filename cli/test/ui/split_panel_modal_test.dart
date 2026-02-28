@@ -1,5 +1,6 @@
 import 'package:test/test.dart';
 
+import 'package:glue/src/rendering/ansi_utils.dart';
 import 'package:glue/src/terminal/terminal.dart';
 import 'package:glue/src/ui/split_panel_modal.dart';
 
@@ -76,6 +77,37 @@ void main() {
       final grid = panel.render(80, 24, bg);
       final hasTitle = grid.any((line) => line.contains('TEST'));
       expect(hasTitle, true);
+    });
+
+    test('selection highlight is not broken by ANSI resets in items', () {
+      final ansiPanel = SplitPanelModal(
+        title: 'TEST',
+        leftItems: [
+          'skill-a  \x1b[32mproject\x1b[0m',
+          'skill-b  \x1b[36mglobal\x1b[0m',
+        ],
+        buildRightLines: (idx, width) => ['Detail $idx'],
+      );
+      final bg = List.generate(24, (_) => ' ' * 80);
+      final grid = ansiPanel.render(80, 24, bg);
+
+      // Find the line containing the selected item (index 0).
+      final selectedLine = grid.firstWhere(
+        (line) => stripAnsi(line).contains('skill-a'),
+      );
+
+      // The reverse-video open (\x1b[7m) must appear before the item text
+      // and must NOT be cancelled by an intermediate \x1b[0m before the
+      // closing \x1b[27m.
+      final afterOpen = selectedLine.indexOf('\x1b[7m');
+      final closeTag = selectedLine.indexOf('\x1b[27m');
+      expect(afterOpen, greaterThanOrEqualTo(0), reason: 'missing \\x1b[7m');
+      expect(closeTag, greaterThan(afterOpen), reason: 'missing \\x1b[27m');
+
+      // No bare \x1b[0m should appear between open and close.
+      final between = selectedLine.substring(afterOpen, closeTag);
+      expect(between.contains('\x1b[0m'), isFalse,
+          reason: 'ANSI reset inside selection breaks reverse video');
     });
   });
 }

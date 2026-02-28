@@ -126,8 +126,7 @@ class SplitPanelModal implements PanelOverlay {
     final leftCol = (termWidth - panelW) ~/ 2;
 
     final hasOverflow = leftItems.length > contentH;
-    final totalPages =
-        (leftItems.length + contentH - 1) ~/ max(contentH, 1);
+    final totalPages = (leftItems.length + contentH - 1) ~/ max(contentH, 1);
     final currentPage = (_scrollOffset ~/ max(contentH, 1)) + 1;
 
     final (leftBorder, rightBorder) = switch (style) {
@@ -168,8 +167,12 @@ class SplitPanelModal implements PanelOverlay {
           final truncated = ansiTruncate(leftItems[leftIdx], leftW);
           final padLen = leftW - visibleLength(truncated);
           final padded = '$truncated${' ' * max(0, padLen)}';
-          leftContent =
-              leftIdx == _selectedIndex ? '\x1b[7m$padded\x1b[27m' : padded;
+          if (leftIdx == _selectedIndex) {
+            final plain = stripAnsi(padded);
+            leftContent = '\x1b[7m$plain\x1b[27m';
+          } else {
+            leftContent = padded;
+          }
         } else {
           leftContent = ' ' * leftW;
         }
