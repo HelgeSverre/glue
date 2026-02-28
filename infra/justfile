@@ -1,0 +1,22 @@
+default:
+    @just --list
+
+up:
+    cp -n .dockerconfig.example .dockerconfig || true
+    docker compose --env-file .dockerconfig up -d
+
+up-llm:
+    cp -n .dockerconfig.example .dockerconfig || true
+    docker compose --env-file .dockerconfig --profile llm up -d
+
+down:
+    docker compose --env-file .dockerconfig down
+
+logs *services:
+    docker compose --env-file .dockerconfig logs -f {{services}}
+
+ps:
+    docker compose --env-file .dockerconfig ps
+
+config:
+    docker compose --env-file .dockerconfig config

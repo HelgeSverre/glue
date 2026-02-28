@@ -1,0 +1,22 @@
+# Copy to infra/.dockerconfig before running docker compose.
+
+# Grafana login
+GRAFANA_ADMIN_USER=admin
+GRAFANA_ADMIN_PASSWORD=admin
+
+# OpenObserve admin login
+ZO_ROOT_USER_EMAIL=root@example.com
+ZO_ROOT_USER_PASSWORD=observability123
+
+# Basic auth for OpenObserve OTLP ingestion:
+# "root@example.com:observability123" base64 => cm9vdEBleGFtcGxlLmNvbTpvYnNlcnZhYmlsaXR5MTIz
+OPENOBSERVE_AUTH_HEADER=Basic cm9vdEBleGFtcGxlLmNvbTpvYnNlcnZhYmlsaXR5MTIz
+
+# Collector local file exporter path (inside collector container)
+OTEL_EXPORTER_FILE_PATH=/var/lib/otel/traces.jsonl
+
+# LiteLLM (optional profile "llm")
+LITELLM_MASTER_KEY=sk-local-dev-master-key
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+MISTRAL_API_KEY=

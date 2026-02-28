@@ -1,0 +1,68 @@
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+    spike_limit_mib: 64
+  batch:
+    timeout: 2s
+    send_batch_size: 256
+
+exporters:
+  otlphttp/jaeger:
+    endpoint: http://jaeger:4318
+    tls:
+      insecure: true
+
+  otlphttp/tempo:
+    endpoint: http://tempo:4318
+    tls:
+      insecure: true
+
+  zipkin:
+    endpoint: http://zipkin:9411/api/v2/spans
+
+  otlphttp/openobserve:
+    # otlphttp exporter appends /v1/traces automatically.
+    endpoint: http://openobserve:5080/api/default
+    headers:
+      Authorization: ${env:OPENOBSERVE_AUTH_HEADER}
+    tls:
+      insecure: true
+
+  otlp/aspire:
+    endpoint: aspire-dashboard:18889
+    tls:
+      insecure: true
+
+  file/local:
+    path: ${env:OTEL_EXPORTER_FILE_PATH}
+
+  debug:
+    verbosity: basic
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters:
+        - otlphttp/jaeger
+        - otlphttp/tempo
+        - zipkin
+        - otlphttp/openobserve
+        - otlp/aspire
+        - file/local
+        - debug

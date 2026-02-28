@@ -1,6 +1,7 @@
 mod cli
 mod website
 mod devdocs
+mod infra
 
 default:
     @just --list --list-submodules
