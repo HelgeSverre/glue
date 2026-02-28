@@ -20,6 +20,10 @@ All notable changes to Glue CLI will be documented in this file.
 - `KeyEvent` and `CharEvent` carry an `alt` flag for modifier-aware
   input handling.
 
+- **Hidden aliases** for slash commands — `SlashCommand` now supports
+  `hiddenAliases` that resolve on execution but are excluded from
+  autocomplete and `/help`. `/q` is now a hidden alias for `/exit`.
+
 ### Changed
 
 - Subagent updates use a grouped data model (`_SubagentGroup`) instead

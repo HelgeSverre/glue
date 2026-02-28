@@ -11,6 +11,7 @@ import 'agent/tools.dart';
 import 'commands/slash_commands.dart';
 import 'config/constants.dart';
 import 'config/glue_config.dart';
+import 'config/model_registry.dart';
 import 'llm/llm_factory.dart';
 import 'llm/model_lister.dart';
 import 'rendering/block_renderer.dart';
@@ -99,6 +100,7 @@ class App {
 
   AppMode _mode = AppMode.idle;
   final List<_ConversationEntry> _blocks = [];
+  final Map<String, _ToolCallUiState> _toolUi = {};
   int _scrollOffset = 0;
 
   static const _spinnerFrames = [
@@ -135,7 +137,7 @@ class App {
   };
   final AgentManager? _manager;
   final LlmClientFactory? _llmFactory;
-  final GlueConfig? _config;
+  GlueConfig? _config;
   final String? _systemPrompt;
   final CommandExecutor _executor;
   final ShellJobManager _jobManager;
@@ -386,7 +388,8 @@ class App {
     _commands.register(SlashCommand(
       name: 'exit',
       description: 'Exit Glue',
-      aliases: ['quit', 'q'],
+      aliases: ['quit'],
+      hiddenAliases: ['q'],
       execute: (_) {
         requestExit();
         return '';
@@ -395,22 +398,21 @@ class App {
 
     _commands.register(SlashCommand(
       name: 'model',
-      description: 'Show or set the model name',
+      description: 'Switch model',
       execute: (args) {
-        if (args.isEmpty) return 'Current model: $_modelName';
-        final newModel = args.join(' ');
-        if (_llmFactory != null && _config != null && _systemPrompt != null) {
-          final llm = _llmFactory.create(
-            provider: _config.provider,
-            model: newModel,
-            apiKey: _config.apiKey,
-            systemPrompt: _systemPrompt,
-            ollamaBaseUrl: _config.ollamaBaseUrl,
-          );
-          agent.llm = llm;
+        if (args.isEmpty) {
+          _openModelPanel();
+          return '';
         }
-        _modelName = newModel;
-        return 'Model switched to: $_modelName';
+        final query = args.join(' ');
+        final entry = ModelRegistry.findByName(query);
+        if (entry == null) {
+          final suggestions = ModelRegistry.models
+              .map((m) => m.modelId)
+              .join(', ');
+          return 'Unknown model: $query\nAvailable: $suggestions';
+        }
+        return _switchToModelEntry(entry);
       },
     ));
 
@@ -432,9 +434,13 @@ class App {
       execute: (_) {
         final shortCwd = _shortenPath(_cwd);
         final trustedList = _autoApprovedTools.toList()..sort();
+        final entry = ModelRegistry.findById(_modelName);
+        final displayModel = entry != null
+            ? '${entry.displayName} (${entry.modelId})'
+            : _modelName;
         final buf = StringBuffer();
         buf.writeln('Session Info');
-        buf.writeln('  Model:        $_modelName');
+        buf.writeln('  Model:        $displayModel');
         buf.writeln('  Provider:     ${_config?.provider.name ?? "unknown"}');
         buf.writeln('  Directory:    $shortCwd');
         buf.writeln('  Tokens used:  ${agent.tokenCount}');
@@ -645,6 +651,122 @@ class App {
       }
       _render();
     });
+  }
+
+  void _openModelPanel() {
+    final config = _config;
+    if (config == null) return;
+
+    final entries = ModelRegistry.available(config);
+    if (entries.isEmpty) {
+      _blocks.add(_ConversationEntry.system('No models available (no API keys configured).'));
+      _render();
+      return;
+    }
+
+    // Group by provider and build display lines.
+    // Track which display-line index maps to which ModelEntry.
+    final displayLines = <String>[];
+    final selectableEntries = <ModelEntry>[];
+    LlmProvider? lastProvider;
+    int initialSelection = 0;
+
+    const dim = '\x1b[90m';
+    const yellow = '\x1b[33m';
+    const rst = '\x1b[0m';
+
+    for (final entry in entries) {
+      if (entry.provider != lastProvider) {
+        if (lastProvider != null) displayLines.add('');
+        displayLines.add('$yellow${entry.provider.name}$rst');
+        lastProvider = entry.provider;
+      }
+
+      final isCurrent = entry.modelId == _modelName;
+      final marker = isCurrent ? '\u25cf ' : '  ';
+      final name = entry.displayName.padRight(22);
+      final tag = entry.tagline.padRight(20);
+      final cost = entry.costLabel.padRight(5);
+      final speed = entry.speedLabel;
+
+      if (isCurrent) initialSelection = selectableEntries.length;
+      displayLines.add('$marker$name $dim$tag$rst  $cost $speed');
+      selectableEntries.add(entry);
+    }
+
+    // Build a mapping from selectable-line indices to display-line indices.
+    // We need to skip header/blank lines in PanelModal's selection.
+    // PanelModal selects by line index, so we use the flat list approach:
+    // put only selectable lines in, with headers embedded as non-selectable text.
+    // Since PanelModal doesn't support non-selectable lines, we use a flat
+    // selectable list with provider headers as part of the model line.
+    // Rebuild as flat selectable list with provider headers inline.
+    final flatLines = <String>[];
+    final flatEntries = <ModelEntry>[];
+    lastProvider = null;
+    int flatInitial = 0;
+
+    for (final entry in entries) {
+      final isCurrent = entry.modelId == _modelName;
+      final providerHeader = entry.provider != lastProvider
+          ? '$yellow${entry.provider.name}$rst  '
+          : '${' ' * (entry.provider.name.length + 2)}';
+      lastProvider = entry.provider;
+
+      final marker = isCurrent ? '\u25cf ' : '  ';
+      final name = entry.displayName.padRight(22);
+      final tag = entry.tagline.padRight(18);
+      final cost = entry.costLabel.padRight(5);
+      final speed = entry.speedLabel;
+
+      if (isCurrent) flatInitial = flatEntries.length;
+      flatLines.add('$providerHeader$marker$name $dim$tag$rst $cost $speed');
+      flatEntries.add(entry);
+    }
+
+    final panel = PanelModal(
+      title: 'Switch Model',
+      lines: flatLines,
+      style: PanelStyle.simple,
+      barrier: BarrierStyle.dim,
+      height: PanelFluid(0.5, 8),
+      selectable: true,
+    );
+    // Scroll to initial selection.
+    for (var i = 0; i < flatInitial; i++) {
+      panel.handleEvent(KeyEvent(Key.down));
+    }
+    _activePanel = panel;
+    _render();
+
+    panel.selection.then((idx) {
+      _activePanel = null;
+      if (idx == null) {
+        _render();
+        return;
+      }
+      final entry = flatEntries[idx];
+      final result = _switchToModelEntry(entry);
+      _blocks.add(_ConversationEntry.system(result));
+      _render();
+    });
+  }
+
+  String _switchToModelEntry(ModelEntry entry) {
+    if (_llmFactory != null && _config != null && _systemPrompt != null) {
+      final llm = _llmFactory.createFromEntry(
+        entry,
+        _config,
+        systemPrompt: _systemPrompt,
+      );
+      agent.llm = llm;
+      _config = _config.copyWith(
+        provider: entry.provider,
+        model: entry.modelId,
+      );
+    }
+    _modelName = entry.modelId;
+    return 'Switched to ${entry.displayName}';
   }
 
   // ── Terminal event handling ─────────────────────────────────────────────
@@ -938,14 +1060,35 @@ class App {
         _streamingText += delta;
         _render();
 
-      case AgentToolCall(:final call):
-        // Flush any accumulated assistant text before the tool call so
-        // the ordering in _blocks matches the actual conversation flow.
+      case AgentToolCallPending(:final id, :final name):
+        // Flush any accumulated assistant text so the ordering in _blocks
+        // matches the actual conversation flow.
         if (_streamingText.isNotEmpty) {
           _blocks.add(_ConversationEntry.assistant(_streamingText));
           _streamingText = '';
         }
-        _blocks.add(_ConversationEntry.toolCall(call.name, call.arguments));
+        _toolUi[id] = _ToolCallUiState(id: id, name: name);
+        _blocks.add(_ConversationEntry.toolCallRef(id));
+        _render();
+
+      case AgentToolCall(:final call):
+        final uiState = _toolUi[call.id];
+        if (uiState != null) {
+          uiState.args = call.arguments;
+        } else {
+          // Ollama path — no prior pending event, create the ref now.
+          if (_streamingText.isNotEmpty) {
+            _blocks.add(_ConversationEntry.assistant(_streamingText));
+            _streamingText = '';
+          }
+          _toolUi[call.id] = _ToolCallUiState(
+            id: call.id,
+            name: call.name,
+            phase: _ToolPhase.preparing,
+          )..args = call.arguments;
+          _blocks.add(_ConversationEntry.toolCallRef(call.id));
+        }
+
         _sessionStore?.logEvent('tool_call', {
           'name': call.name,
           'arguments': call.arguments,
@@ -953,6 +1096,7 @@ class App {
 
         // Auto-approve safe tools.
         if (_autoApprovedTools.contains(call.name)) {
+          _toolUi[call.id]?.phase = _ToolPhase.running;
           _stopSpinner();
           _mode = AppMode.toolRunning;
           _render();
@@ -961,6 +1105,7 @@ class App {
         }
 
         // Show confirmation modal.
+        _toolUi[call.id]?.phase = _ToolPhase.awaitingApproval;
         _stopSpinner();
         _mode = AppMode.confirming;
         final bodyLines =
@@ -981,6 +1126,7 @@ class App {
           _activeModal = null;
           switch (choiceIndex) {
             case 0: // Yes
+              _toolUi[call.id]?.phase = _ToolPhase.running;
               _mode = AppMode.toolRunning;
               _render();
               unawaited(_executeAndCompleteTool(call));
@@ -998,10 +1144,12 @@ class App {
                   }
                 });
               } catch (_) {}
+              _toolUi[call.id]?.phase = _ToolPhase.running;
               _mode = AppMode.toolRunning;
               _render();
               unawaited(_executeAndCompleteTool(call));
             default: // No
+              _toolUi[call.id]?.phase = _ToolPhase.denied;
               _mode = AppMode.streaming;
               _startSpinner();
               agent.completeToolCall(ToolResult.denied(call.id));
@@ -1010,6 +1158,7 @@ class App {
         });
 
       case AgentToolResult(:final result):
+        _toolUi[result.callId]?.phase = _ToolPhase.done;
         _blocks.add(
           _ConversationEntry.toolResult(result.callId, result.content),
         );
@@ -1055,6 +1204,12 @@ class App {
     if (_streamingText.isNotEmpty) {
       _blocks.add(_ConversationEntry.assistant('$_streamingText\n[cancelled]'));
       _streamingText = '';
+    }
+    for (final state in _toolUi.values) {
+      if (state.phase == _ToolPhase.preparing ||
+          state.phase == _ToolPhase.running) {
+        state.phase = _ToolPhase.error;
+      }
     }
     _render();
   }
@@ -1186,6 +1341,8 @@ class App {
       case AgentError(:final error):
         group.entries.add('$prefix ✗ Error: $error');
         _render();
+      case AgentToolCallPending():
+        break;
       case AgentTextDelta():
         break;
       case AgentDone():
@@ -1316,6 +1473,8 @@ class App {
         _EntryKind.user => renderer.renderUser(block.text),
         _EntryKind.assistant => renderer.renderAssistant(block.text),
         _EntryKind.toolCall => renderer.renderToolCall(block.text, block.args),
+        _EntryKind.toolCallRef => renderer.renderToolCallRef(
+            _toolUi[block.text]?.toRenderState()),
         _EntryKind.toolResult => renderer.renderToolResult(block.text),
         _EntryKind.error => renderer.renderError(block.text),
         _EntryKind.subagent => renderer.renderSubagent(block.text),
@@ -1475,6 +1634,7 @@ enum _EntryKind {
   user,
   assistant,
   toolCall,
+  toolCallRef,
   toolResult,
   error,
   system,
@@ -1504,6 +1664,9 @@ class _ConversationEntry {
     Map<String, dynamic> args,
   ) =>
       _ConversationEntry._(_EntryKind.toolCall, name, args: args);
+
+  factory _ConversationEntry.toolCallRef(String callId) =>
+      _ConversationEntry._(_EntryKind.toolCallRef, callId);
 
   factory _ConversationEntry.toolResult(String callId, String content) =>
       _ConversationEntry._(_EntryKind.toolResult, content);
@@ -1537,4 +1700,27 @@ class _SubagentGroup {
     final taskPreview = task.length > 50 ? '${task.substring(0, 50)}…' : task;
     return '↳ $prefix $taskPreview ($status)';
   }
+}
+
+enum _ToolPhase { preparing, awaitingApproval, running, done, denied, error }
+
+class _ToolCallUiState {
+  final String id;
+  final String name;
+  Map<String, dynamic>? args;
+  _ToolPhase phase;
+  _ToolCallUiState({required this.id, required this.name, this.phase = _ToolPhase.preparing});
+
+  ToolCallRenderState toRenderState() => ToolCallRenderState(
+    name: name,
+    args: args,
+    phase: switch (phase) {
+      _ToolPhase.preparing => ToolCallPhase.preparing,
+      _ToolPhase.awaitingApproval => ToolCallPhase.awaitingApproval,
+      _ToolPhase.running => ToolCallPhase.running,
+      _ToolPhase.done => ToolCallPhase.done,
+      _ToolPhase.denied => ToolCallPhase.denied,
+      _ToolPhase.error => ToolCallPhase.error,
+    },
+  );
 }
