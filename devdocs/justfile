@@ -1,0 +1,18 @@
+default:
+    @just --list
+
+# Generate API docs from Dart source
+generate:
+    cd ../cli && dart run tool/generate_devdocs.dart
+
+# Serve locally for development
+dev: generate
+    npx vitepress dev
+
+# Build static site
+build: generate
+    npx vitepress build
+
+# Preview production build
+preview: build
+    npx vitepress preview
