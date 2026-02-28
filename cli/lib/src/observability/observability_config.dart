@@ -35,10 +35,12 @@ class ObservabilityConfig {
   final bool debug;
   final LangfuseConfig langfuse;
   final OtelConfig otel;
+  final int flushIntervalSeconds;
 
   const ObservabilityConfig({
     this.debug = false,
     this.langfuse = const LangfuseConfig(),
     this.otel = const OtelConfig(),
+    this.flushIntervalSeconds = 30,
   });
 }

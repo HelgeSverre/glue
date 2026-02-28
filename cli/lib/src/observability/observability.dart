@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:glue/src/observability/debug_controller.dart';
@@ -7,6 +8,9 @@ final _random = Random.secure();
 String _hexId(int bytes) =>
     List.generate(bytes, (_) => _random.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
 
+/// A span representing a unit of work in the observability trace.
+///
+/// {@category Observability}
 class ObservabilitySpan {
   final String name;
   final String kind;
@@ -53,38 +57,53 @@ class ObservabilitySpan {
       };
 }
 
+/// A sink that receives completed spans for export to an observability backend.
 abstract class ObservabilitySink {
+  /// Receives a completed [span] for processing.
   void onSpan(ObservabilitySpan span);
+  /// Flushes any buffered spans to the backend.
   Future<void> flush();
+
+  /// Closes this sink, releasing any held resources.
   Future<void> close();
 }
 
+/// Central coordinator for tracing spans and routing them to registered sinks.
 class Observability {
   final DebugController _debugController;
   final List<ObservabilitySink> _sinks = [];
+  Timer? _flushTimer;
+  bool _isFlushing = false;
+
+  // TODO: use Zone values for concurrent turn support instead of mutable field.
+  ObservabilitySpan? activeSpan;
 
   Observability({required DebugController debugController})
       : _debugController = debugController;
 
   bool get debugEnabled => _debugController.enabled;
 
+  /// Registers a [sink] to receive completed spans.
   void addSink(ObservabilitySink sink) => _sinks.add(sink);
 
+  /// Starts a new span with the given [name].
   ObservabilitySpan startSpan(
     String name, {
     String kind = 'internal',
     Map<String, dynamic>? attributes,
     ObservabilitySpan? parent,
   }) {
+    final effectiveParent = parent ?? activeSpan;
     return ObservabilitySpan(
       name: name,
       kind: kind,
       attributes: attributes,
-      traceId: parent?.traceId,
-      parentSpanId: parent?.spanId,
+      traceId: effectiveParent?.traceId,
+      parentSpanId: effectiveParent?.spanId,
     );
   }
 
+  /// Ends a [span] and forwards it to all registered sinks.
   void endSpan(ObservabilitySpan span, {Map<String, dynamic>? extra}) {
     span.end(extra: extra);
     for (final sink in _sinks) {
@@ -92,11 +111,25 @@ class Observability {
     }
   }
 
+  void startAutoFlush(Duration interval) {
+    _flushTimer?.cancel();
+    _flushTimer = Timer.periodic(interval, (_) {
+      if (!_isFlushing) {
+        _isFlushing = true;
+        flush().whenComplete(() => _isFlushing = false);
+      }
+    });
+  }
+
+  /// Flushes all registered sinks.
   Future<void> flush() async {
     await Future.wait(_sinks.map((s) => s.flush()));
   }
 
+  /// Closes all registered sinks.
   Future<void> close() async {
+    _flushTimer?.cancel();
+    _flushTimer = null;
     await Future.wait(_sinks.map((s) => s.close()));
   }
 }
