@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'terminal/styled.dart';
 import 'terminal/terminal.dart';
 import 'terminal/layout.dart';
 import 'input/line_editor.dart';
@@ -550,24 +551,20 @@ class App {
   }
 
   void _openHelpPanel() {
-    const yellow = '\x1b[33m';
-    const rst = '\x1b[0m';
-    const dim = '\x1b[90m';
-
     final lines = <String>[];
 
-    lines.add('$yellow■ COMMANDS$rst');
+    lines.add('${'■ COMMANDS'.styled.yellow}');
     lines.add('');
     for (final cmd in _commands.commands) {
       final aliases = cmd.aliases.isNotEmpty
-          ? ' $dim(${cmd.aliases.map((a) => '/$a').join(', ')})$rst'
+          ? ' ${'(${cmd.aliases.map((a) => '/$a').join(', ')})'.styled.gray}'
           : '';
       final name = '/${cmd.name}'.padRight(16);
-      lines.add('  $yellow$name$rst${cmd.description}$aliases');
+      lines.add('  ${name.styled.yellow}${cmd.description}$aliases');
     }
 
     lines.add('');
-    lines.add('$yellow■ KEYBINDINGS$rst');
+    lines.add('${'■ KEYBINDINGS'.styled.yellow}');
     lines.add('');
     lines.add('  ${'Ctrl+C'.padRight(16)}Cancel / Exit');
     lines.add('  ${'Escape'.padRight(16)}Cancel generation');
@@ -579,7 +576,7 @@ class App {
     lines.add('  ${'Tab'.padRight(16)}Accept completion');
 
     lines.add('');
-    lines.add('$yellow■ FILE REFERENCES$rst');
+    lines.add('${'■ FILE REFERENCES'.styled.yellow}');
     lines.add('');
     lines.add('  ${'@path/to/file'.padRight(16)}Attach file to message');
     lines.add('  ${'@dir/'.padRight(16)}Browse directory');
@@ -636,7 +633,7 @@ class App {
           ? '${s.model.substring(0, modelW - 1)}…'
           : s.model;
       final forkBadge =
-          s.forkedFrom != null ? '\x1b[38;5;208m[F]\x1b[0m ' : '';
+          s.forkedFrom != null ? '${'[F]'.styled.fg256(208)} ' : '';
 
       displayLines.add(
         '$forkBadge$yellow${displayId.padRight(idW)}$rst$gap'

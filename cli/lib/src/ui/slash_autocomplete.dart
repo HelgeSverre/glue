@@ -1,6 +1,7 @@
 import '../commands/slash_commands.dart';
 import '../config/constants.dart';
 import '../rendering/ansi_utils.dart';
+import '../terminal/styled.dart';
 
 /// A candidate in the autocomplete list.
 class _Candidate {
@@ -117,27 +118,21 @@ class SlashAutocomplete {
         ? _matches.sublist(0, maxVisible)
         : _matches;
 
-    // Dark gray bg: \x1b[48;5;236m
-    // Selected: dark blue bg + bright white: \x1b[48;5;24m\x1b[97m
-    const bgDim = '\x1b[48;5;236m\x1b[37m';
-    const bgSel = '\x1b[48;5;24m\x1b[97m';
-    const rst = '\x1b[0m';
-
     final lines = <String>[];
     for (var i = 0; i < visible.length; i++) {
       final c = visible[i];
-      final bg = i == _selected ? bgSel : bgDim;
       final nameCol = '/${c.name}';
       final descCol = c.description;
-      // Layout: "   /name         description"
       final namePadded = nameCol.padRight(16);
       final content = '   $namePadded $descCol';
       final truncated = visibleLength(content) > width
           ? ansiTruncate(content, width)
           : content;
-      // Pad to full width with background
       final padCount = width - visibleLength(truncated);
-      lines.add('$bg$truncated${' ' * (padCount > 0 ? padCount : 0)}$rst');
+      final padded = '$truncated${' ' * (padCount > 0 ? padCount : 0)}';
+      lines.add(i == _selected
+          ? '${padded.styled.bg256(24).brightWhite}'
+          : '${padded.styled.bg256(236).white}');
     }
 
     return lines;

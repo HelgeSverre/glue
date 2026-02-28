@@ -3,6 +3,7 @@ import 'dart:math';
 
 import '../rendering/ansi_utils.dart';
 import '../terminal/terminal.dart';
+import '../terminal/styled.dart';
 import 'box.dart';
 
 enum BarrierStyle { dim, obscure, none }
@@ -33,10 +34,10 @@ List<String> applyBarrier(BarrierStyle style, List<String> lines) {
   return switch (style) {
     BarrierStyle.none => lines,
     BarrierStyle.dim =>
-      lines.map((line) => '\x1b[2m${stripAnsi(line)}\x1b[0m').toList(),
+      lines.map((line) => '${stripAnsi(line).styled.dim}').toList(),
     BarrierStyle.obscure => lines.map((line) {
         final len = visibleLength(line);
-        return '\x1b[90m${'░' * len}\x1b[0m';
+        return ('░' * len).styled.gray.toString();
       }).toList(),
   };
 }
@@ -211,7 +212,8 @@ class PanelModal {
 
         final isSelected =
             selectable && (contentIdx + _scrollOffset) == _selectedIndex;
-        final styledContent = isSelected ? '\x1b[7m$padded\x1b[27m' : padded;
+        final styledContent =
+            isSelected ? '${padded.styled.inverse}' : padded;
 
         final (leftBorder, rightBorder) = box.styledSides(color: borderColor);
 

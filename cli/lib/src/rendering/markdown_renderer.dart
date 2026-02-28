@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'ansi_utils.dart';
+import '../terminal/styled.dart';
 
 /// Renders a subset of Markdown to ANSI-styled terminal text.
 ///
@@ -70,27 +71,28 @@ class MarkdownRenderer {
       if (line.startsWith('### ')) {
         final wrapped = ansiWrap(line.substring(4), width);
         output.addAll(wrapped.split('\n').map(
-            (l) => '\x1b[1m\x1b[33m$l\x1b[0m'));
+            (l) => l.styled.bold.yellow.toString()));
         continue;
       }
       if (line.startsWith('## ')) {
         final wrapped = ansiWrap(line.substring(3), width);
         output.addAll(wrapped.split('\n').map(
-            (l) => '\x1b[1m\x1b[33m$l\x1b[0m'));
+            (l) => l.styled.bold.yellow.toString()));
         continue;
       }
       if (line.startsWith('# ')) {
         final wrapped = ansiWrap(line.substring(2), width);
         output.addAll(wrapped.split('\n').map(
-            (l) => '\x1b[1m\x1b[33m$l\x1b[0m'));
+            (l) => l.styled.bold.yellow.toString()));
         continue;
       }
 
       // Blockquote
       if (line.startsWith('> ')) {
         final content = _renderInline(line.substring(2));
+        final prefix = '│ '.styled.gray.toString();
         final wrapped = wrapIndented(content, width,
-            firstPrefix: '\x1b[90m│ \x1b[0m', nextPrefix: '\x1b[90m│ \x1b[0m');
+            firstPrefix: prefix, nextPrefix: prefix);
         output.addAll(wrapped.split('\n'));
         continue;
       }
@@ -151,7 +153,7 @@ class MarkdownRenderer {
       final m = codeRe.firstMatch(remaining);
       if (m == null) break;
       segments.add(_renderInlineSegment(remaining.substring(0, m.start)));
-      segments.add('\x1b[33m${m.group(1)}\x1b[39m');
+      segments.add('${m.group(1)!.styled.yellow}');
       remaining = remaining.substring(m.end);
     }
     segments.add(_renderInlineSegment(remaining));
@@ -162,17 +164,17 @@ class MarkdownRenderer {
     // Bold: **text**
     text = text.replaceAllMapped(
       RegExp(r'\*\*(.+?)\*\*'),
-      (m) => '\x1b[1m${m.group(1)}\x1b[22m',
+      (m) => '${m.group(1)!.styled.bold}',
     );
     // Italic: *text* (but not inside **)
     text = text.replaceAllMapped(
       RegExp(r'(?<!\*)\*([^*]+?)\*(?!\*)'),
-      (m) => '\x1b[3m${m.group(1)}\x1b[23m',
+      (m) => '${m.group(1)!.styled.italic}',
     );
     // Links: [text](url)
     text = text.replaceAllMapped(
       RegExp(r'\[(.+?)\]\((.+?)\)'),
-      (m) => '${m.group(1)} \x1b[90m(${m.group(2)})\x1b[0m',
+      (m) => '${m.group(1)} ${'(${m.group(2)})'.styled.gray}',
     );
     return text;
   }
@@ -185,16 +187,16 @@ class MarkdownRenderer {
     final headerRule = headerRuleLen > 0 ? '─' * headerRuleLen : '';
 
     final output = <String>[];
-    output.add('\x1b[90m╭─$label$headerRule╮\x1b[0m');
+    output.add('${'╭─$label$headerRule╮'.styled.gray}');
     for (final line in lines) {
       final truncated = visibleLength(line) > codeWidth - 4
           ? ansiTruncate(line, codeWidth - 4)
           : line;
       final pad = (codeWidth - 4) - visibleLength(truncated);
       final padded = pad > 0 ? '$truncated${' ' * pad}' : truncated;
-      output.add('\x1b[90m│\x1b[0m \x1b[2m$padded\x1b[22m \x1b[90m│\x1b[0m');
+      output.add('${'│'.styled.gray} ${padded.styled.dim} ${'│'.styled.gray}');
     }
-    output.add('\x1b[90m╰${'─' * (codeWidth - 2)}╯\x1b[0m');
+    output.add('${'╰${'─' * (codeWidth - 2)}╯'.styled.gray}');
     return output;
   }
 
@@ -286,11 +288,12 @@ class MarkdownRenderer {
 
   String _tableRule(List<int> widths, String left, String mid, String right) {
     final parts = widths.map((w) => '─' * (w + 2));
-    return '\x1b[90m$left${parts.join(mid)}$right\x1b[0m';
+    return '${'$left${parts.join(mid)}$right'.styled.gray}';
   }
 
   String _tableDataRow(List<String> cells, List<int> widths,
       {bool bold = false}) {
+    final pipe = '${'│'.styled.gray}';
     final parts = <String>[];
     for (var c = 0; c < cells.length; c++) {
       final cell = cells[c];
@@ -299,9 +302,9 @@ class MarkdownRenderer {
       final display = vis > colW ? ansiTruncate(cell, colW) : cell;
       final pad = colW - (vis > colW ? colW : vis);
       final content =
-          bold ? '\x1b[1m$display\x1b[22m${' ' * pad}' : '$display${' ' * pad}';
+          bold ? '${display.styled.bold}${' ' * pad}' : '$display${' ' * pad}';
       parts.add(' $content ');
     }
-    return '\x1b[90m│\x1b[0m${parts.join('\x1b[90m│\x1b[0m')}\x1b[90m│\x1b[0m';
+    return '$pipe${parts.join(pipe)}$pipe';
   }
 }
