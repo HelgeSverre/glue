@@ -20,6 +20,7 @@ class ObservedLlmClient implements LlmClient {
       kind: 'llm',
       attributes: {'message_count': messages.length},
     );
+    bool hadError = false;
     try {
       await for (final chunk in _inner.stream(messages, tools: tools)) {
         if (chunk is UsageInfo) {
@@ -28,10 +29,14 @@ class ObservedLlmClient implements LlmClient {
         }
         yield chunk;
       }
-      _obs.endSpan(span);
     } catch (e) {
+      hadError = true;
       _obs.endSpan(span, extra: {'error': e.toString()});
       rethrow;
+    } finally {
+      if (!hadError) {
+        _obs.endSpan(span);
+      }
     }
   }
 }

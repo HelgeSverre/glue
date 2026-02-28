@@ -5,6 +5,9 @@ import 'package:glue/src/agent/agent_runner.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/llm/llm_factory.dart';
+import 'package:glue/src/observability/observability.dart';
+import 'package:glue/src/observability/observed_llm_client.dart';
+import 'package:glue/src/observability/observed_tool.dart';
 import 'package:glue/src/tools/subagent_tools.dart';
 
 /// Tools that are safe for subagents to execute without user approval.
@@ -44,6 +47,7 @@ class AgentManager {
   final GlueConfig config;
   final String systemPrompt;
   final Set<String> allowedSubagentTools;
+  final Observability? obs;
 
   final _updateController = StreamController<SubagentUpdate>.broadcast();
 
@@ -56,6 +60,7 @@ class AgentManager {
     required this.config,
     required this.systemPrompt,
     Set<String>? allowedSubagentTools,
+    this.obs,
   }) : allowedSubagentTools = allowedSubagentTools ?? safeSubagentTools;
 
   /// Spawn a single subagent to complete a [task].
@@ -80,14 +85,22 @@ class AgentManager {
     final effectiveProfile =
         profile ?? AgentProfile(provider: config.provider, model: config.model);
 
-    final llm = llmFactory.create(
+    final rawLlm = llmFactory.create(
       provider: effectiveProfile.provider,
       model: effectiveProfile.model,
       apiKey: _apiKeyFor(effectiveProfile.provider),
       systemPrompt: systemPrompt,
     );
+    final LlmClient llm = obs != null
+        ? ObservedLlmClient(inner: rawLlm, obs: obs!)
+        : rawLlm;
 
-    final subagentTools = Map<String, Tool>.from(tools);
+    var subagentTools = Map<String, Tool>.from(tools);
+
+    // Wrap subagent tools with observability if available.
+    if (obs != null) {
+      subagentTools = wrapToolsWithObservability(subagentTools, obs!);
+    }
 
     // Give subagents depth-incremented spawning tools if they haven't
     // reached the maximum depth yet.
@@ -108,6 +121,19 @@ class AgentManager {
       modelName: effectiveProfile.model,
     );
 
+    // Create a span for the subagent execution.
+    final span = obs?.startSpan(
+      'subagent',
+      kind: 'subagent',
+      attributes: {
+        'subagent.task': task,
+        'subagent.depth': currentDepth,
+        'subagent.model': effectiveProfile.model,
+        if (index != null) 'subagent.index': index,
+        if (total != null) 'subagent.total': total,
+      },
+    );
+
     final runner = AgentRunner(
       core: core,
       policy: ToolApprovalPolicy.allowlist,
@@ -120,7 +146,14 @@ class AgentManager {
       )),
     );
 
-    return runner.runToCompletion(task);
+    try {
+      final result = await runner.runToCompletion(task);
+      if (span != null) obs!.endSpan(span);
+      return result;
+    } catch (e) {
+      if (span != null) obs!.endSpan(span, extra: {'error': e.toString()});
+      rethrow;
+    }
   }
 
   /// Spawn [tasks] in parallel, each as an independent subagent.

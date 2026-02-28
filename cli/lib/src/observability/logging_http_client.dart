@@ -21,6 +21,9 @@ class LoggingHttpClient extends http.BaseClient {
     );
     try {
       final response = await _inner.send(request);
+      // TODO: This measures TTFB (time to first byte), not full download.
+      // For streaming responses, consider wrapping the response stream to
+      // end the span on completion for accurate total transfer duration.
       _obs.endSpan(span, extra: {'http.status_code': response.statusCode});
       return response;
     } catch (e) {

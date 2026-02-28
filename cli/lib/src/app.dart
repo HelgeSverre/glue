@@ -39,8 +39,12 @@ import 'package:glue/src/web/search/search_router.dart';
 import 'package:glue/src/web/search/providers/brave_provider.dart';
 import 'package:glue/src/web/search/providers/tavily_provider.dart';
 import 'package:glue/src/web/search/providers/firecrawl_provider.dart';
+import 'package:glue/src/skills/skill_parser.dart';
+import 'package:glue/src/skills/skill_registry.dart';
+import 'package:glue/src/skills/skill_tool.dart';
 import 'package:glue/src/ui/modal.dart';
 import 'package:glue/src/ui/panel_modal.dart';
+import 'package:glue/src/ui/split_panel_modal.dart';
 import 'package:glue/src/input/file_expander.dart';
 import 'package:glue/src/ui/at_file_hint.dart';
 import 'package:glue/src/ui/slash_autocomplete.dart';
@@ -149,7 +153,7 @@ class App {
   String _modelName;
   final String _cwd;
   ConfirmModal? _activeModal;
-  PanelModal? _activePanel;
+  PanelOverlay? _activePanel;
   bool _renderedPanelLastFrame = false;
   final Set<String> _autoApprovedTools = {
     'read_file',
@@ -160,6 +164,7 @@ class App {
     'web_fetch',
     'web_search',
     'web_browser',
+    'skill',
   };
   final AgentManager? _manager;
   final LlmClientFactory? _llmFactory;
@@ -181,6 +186,7 @@ class App {
   final bool _startupContinue;
   final Observability? _obs;
   final DebugController? _debugController;
+  final SkillRegistry? _skillRegistry;
 
   App({
     required this.terminal,
@@ -200,6 +206,7 @@ class App {
     bool startupContinue = false,
     Observability? obs,
     DebugController? debugController,
+    SkillRegistry? skillRegistry,
   })  : _modelName = modelName,
         _manager = manager,
         _llmFactory = llmFactory,
@@ -212,6 +219,7 @@ class App {
         _startupContinue = startupContinue,
         _obs = obs,
         _debugController = debugController,
+        _skillRegistry = skillRegistry,
         _cwd = Directory.current.path {
     if (extraTrustedTools != null) {
       _autoApprovedTools.addAll(extraTrustedTools);
@@ -237,7 +245,15 @@ class App {
     final layout = Layout(terminal);
     final editor = LineEditor();
 
-    final systemPrompt = Prompts.build(cwd: Directory.current.path);
+    final skillRegistry = SkillRegistry.discover(
+      cwd: Directory.current.path,
+      extraPaths: config.skillPaths,
+    );
+
+    final systemPrompt = Prompts.build(
+      cwd: Directory.current.path,
+      skills: skillRegistry.list(),
+    );
 
     final debugController = DebugController(
       enabled: debug || config.observability.debug,
@@ -330,6 +346,7 @@ class App {
           pdfConfig: config.webConfig.pdf),
       'web_search': WebSearchTool(searchRouter),
       'web_browser': WebBrowserTool(browserManager),
+      'skill': SkillTool(skillRegistry),
     };
     final tools = wrapToolsWithObservability(rawTools, obs);
 
@@ -341,6 +358,7 @@ class App {
       llmFactory: llmFactory,
       config: config,
       systemPrompt: systemPrompt,
+      obs: obs,
     );
     tools['spawn_subagent'] = SpawnSubagentTool(manager);
     tools['spawn_parallel_subagents'] = SpawnParallelSubagentsTool(manager);
@@ -363,6 +381,7 @@ class App {
       startupContinue: startupContinue,
       obs: obs,
       debugController: debugController,
+      skillRegistry: skillRegistry,
     );
   }
 
@@ -591,6 +610,15 @@ class App {
           return 'Debug mode: ${_debugController.enabled}';
         }
         return 'Debug mode: unavailable';
+      },
+    ));
+
+    _commands.register(SlashCommand(
+      name: 'skills',
+      description: 'Browse available skills',
+      execute: (_) {
+        _openSkillsPanel();
+        return '';
       },
     ));
   }
@@ -823,6 +851,107 @@ class App {
       _blocks.add(_ConversationEntry.system(result));
       _render();
     });
+  }
+
+  void _openSkillsPanel() {
+    final registry = _skillRegistry;
+    if (registry == null || registry.isEmpty) {
+      _blocks.add(_ConversationEntry.system(
+          'No skills found.\n\n'
+          'To add skills, create directories with SKILL.md files in:\n'
+          '  ~/.glue/skills/<skill-name>/SKILL.md (global)\n'
+          '  .glue/skills/<skill-name>/SKILL.md (project-local)'));
+      _render();
+      return;
+    }
+
+    final skills = registry.list();
+
+    const cyan = '\x1b[36m';
+    const green = '\x1b[32m';
+    const rst = '\x1b[0m';
+
+    final leftItems = skills.map((s) {
+      final tag = switch (s.source) {
+        SkillSource.project => '${green}project$rst',
+        SkillSource.global => '${cyan}global$rst',
+        SkillSource.custom => '${cyan}custom$rst',
+      };
+      return '${s.name}  $tag';
+    }).toList();
+
+    List<String> buildDetail(int idx, int width) {
+      if (idx < 0 || idx >= skills.length) return [];
+      final s = skills[idx];
+      final lines = <String>[];
+
+      const bold = '\x1b[1m';
+      const dim = '\x1b[2m';
+      const lbl = '\x1b[32m';
+
+      lines.add('$bold${s.name}$rst');
+      lines.add('');
+
+      final wrapped = _wrapText(s.description, width);
+      lines.addAll(wrapped);
+      lines.add('');
+
+      final shortDir = _shortenPath(s.skillDir);
+      lines.add('${lbl}Source$rst      $dim$shortDir$rst');
+      if (s.license != null) {
+        lines.add('${lbl}License$rst    $dim${s.license}$rst');
+      }
+      if (s.compatibility != null) {
+        lines.add('${lbl}Requires$rst   $dim${s.compatibility}$rst');
+      }
+      for (final entry in s.metadata.entries) {
+        final key = entry.key[0].toUpperCase() + entry.key.substring(1);
+        final pad = ' ' * (11 - key.length);
+        lines.add('$lbl$key$rst$pad$dim${entry.value}$rst');
+      }
+
+      return lines;
+    }
+
+    final panel = SplitPanelModal(
+      title: 'SKILLS',
+      leftItems: leftItems,
+      buildRightLines: buildDetail,
+      style: PanelStyle.simple,
+      barrier: BarrierStyle.dim,
+      height: PanelFluid(0.6, 12),
+    );
+    _activePanel = panel;
+    _render();
+
+    unawaited(panel.selection.then((idx) {
+      _activePanel = null;
+      if (idx == null) {
+        _render();
+        return;
+      }
+      final skill = skills[idx];
+      _blocks.add(_ConversationEntry.system(
+          'Activated skill: ${skill.name}'));
+      _render();
+    }));
+  }
+
+  static List<String> _wrapText(String text, int width) {
+    final lines = <String>[];
+    var line = '';
+    for (final word in text.split(' ')) {
+      if (line.isEmpty) {
+        line = word;
+      } else if (line.length + 1 + word.length <= width) {
+        line = '$line $word';
+      } else {
+        lines.add(line);
+        line = word;
+      }
+    }
+    if (line.isNotEmpty) lines.add(line);
+    return lines;
   }
 
   String _switchToModelEntry(ModelEntry entry) {

@@ -888,7 +888,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
             <span class="wiz-step" :class="{'active': modal.step >= 2, 'current': modal.step === 2}" style="cursor:pointer" @click="wizardGoTo(2)">setup</span>
             <span class="wiz-sep">→</span>
             <span class="wiz-step" :class="{'active': modal.step >= 3, 'current': modal.step === 3}" style="cursor:pointer" @click="wizardGoTo(3)">prompt</span>
-            <button class="btn" style="margin-left:auto;padding:3px 10px;font-size:9px" @click="quickCreate()" title="Create with defaults, skip all steps">⚡ quick</button>
           </div>
           <div class="panel-body">
 
@@ -1091,7 +1090,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh
 
           </div>
           <div class="panel-foot">
-            <span class="foot-hint" x-text="wizardHint()"></span>
+            <button class="btn" @click="quickCreate()" title="Create with defaults, skip all steps" style="margin-right:auto">⚡ quick</button>
             <button class="btn" x-show="modal.step > 1" @click="wizardBack()">back</button>
             <button class="btn" @click="tryDismissModal()">cancel</button>
             <button class="btn primary" x-show="modal.step < 3" @click="wizardNext()" :disabled="!wizardCanNext()">next</button>
