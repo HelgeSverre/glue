@@ -20,8 +20,14 @@ class MarkdownRenderer {
 
   static final _tableRowPattern = RegExp(r'^\s*\|.*\|\s*$');
   static final _tableSepPattern = RegExp(r'^\s*\|[\s:?\-|]+\|\s*$');
+  // ')' is excluded to avoid capturing trailing parens in prose like "(see https://...)".
+  // URLs containing literal parens (e.g. Wikipedia links) will be truncated at the
+  // first ')'. This is the standard trade-off for bare URL heuristics.
+  // The lookbehinds prevent re-matching URLs already inside OSC 8 sequences:
+  //   - (?<!\x1b\]8;;) skips URLs in the href position
+  //   - (?<!\x07) skips URLs in the display text position
   static final _bareUrlPattern = RegExp(
-    r'(?<!\x1b\]8;;)https?://[^\s<>\[\])`\x07\x1b' "'" r'"]+',
+    r'(?<!\x1b\]8;;)(?<!\x07)https?://[^\s<>\[\])`\x07\x1b' "'" r'"]+',
   );
 
   MarkdownRenderer(this.width);
@@ -178,6 +184,9 @@ class MarkdownRenderer {
       (m) => '\x1b[4m${osc8Link(m.group(2)!, m.group(1))}\x1b[24m',
     );
     // Bare URLs: https://... and http://...
+    // Runs after markdown links. The lookbehinds prevent re-matching URLs
+    // already inside OSC 8 sequences (href position after \x1b]8;; and
+    // display text position after \x07).
     text = text.replaceAllMapped(
       _bareUrlPattern,
       (m) {
