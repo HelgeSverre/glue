@@ -42,12 +42,16 @@
         <div class="docs-sidebar-label">Tools</div>
         <a href="#built-in-tools">Built-in Tools</a>
         <a href="#tool-approval">Tool Approval</a>
+        <a href="#web-tools">Web Tools</a>
       </div>
       <div class="docs-sidebar-group">
         <div class="docs-sidebar-label">Advanced</div>
         <a href="#sessions">Sessions</a>
         <a href="#project-context">Project Context</a>
         <a href="#subagents">Subagents</a>
+        <a href="#observability">Observability</a>
+        <a href="#docker-sandbox">Docker Sandbox</a>
+        <a href="#shell-completions">Shell Completions</a>
       </div>
     </aside>
 
@@ -65,8 +69,10 @@
       </ul>
 
       <h3>Install</h3>
-      <div class="code-block"><span class="comment"># Install globally via pub</span>
-<span class="p">❯</span> dart pub global activate glue
+      <div class="code-block"><span class="comment"># Clone and install from source</span>
+<span class="p">❯</span> git clone https://github.com/…/glue.git
+<span class="p">❯</span> cd glue/cli
+<span class="p">❯</span> just install              <span class="comment"># or: dart run bin/glue.dart</span>
 
 <span class="comment"># Navigate to any project</span>
 <span class="p">❯</span> cd my-project
@@ -100,7 +106,7 @@
       <h2 id="configuration">Configuration</h2>
 
       <h3>Config Files</h3>
-      <p>Global settings live in <code>~/.glue/config.yaml</code>. Project-level overrides go in <code>.glue/config.yaml</code>. Project config takes precedence over global.</p>
+      <p>Global settings live in <code>~/.glue/config.yaml</code>. Project-level overrides go in <code>.glue/config.yaml</code>. Settings resolve in precedence order (see below).</p>
 
       <h3>Full Schema</h3>
       <div class="code-block"><span class="comment"># ~/.glue/config.yaml</span>
@@ -175,6 +181,9 @@
           <tr><td><code>/tools</code></td><td></td><td>List all available tools</td></tr>
           <tr><td><code>/history</code></td><td></td><td>Show input history (last 10 by default)</td></tr>
           <tr><td><code>/resume</code></td><td></td><td>Open session picker to restore a conversation</td></tr>
+          <tr><td><code>/models</code></td><td></td><td>List available models from the current provider</td></tr>
+          <tr><td><code>/debug</code></td><td></td><td>Toggle debug mode (verbose logging to <code>~/.glue/logs/</code>)</td></tr>
+          <tr><td><code>/skills</code></td><td></td><td>Browse available skills</td></tr>
         </tbody>
       </table>
 
@@ -191,6 +200,7 @@
           <tr><td><code>Up / Down</code></td><td>Navigate input history</td></tr>
           <tr><td><code>Tab</code></td><td>Accept autocomplete suggestion</td></tr>
           <tr><td><code>PageUp / PageDown</code></td><td>Scroll output</td></tr>
+          <tr><td><code>Shift+Tab</code></td><td>Cycle permission mode (confirm → accept-edits → YOLO → read-only)</td></tr>
           <tr><td><code>Escape</code></td><td>Cancel current generation</td></tr>
           <tr><td><code>Ctrl+C</code></td><td>Cancel generation (double-tap to exit)</td></tr>
         </tbody>
@@ -273,6 +283,10 @@
           <tr><td><code>grep</code></td><td>Regex search across files. Uses ripgrep when available. 15 second timeout.</td><td>Auto</td></tr>
           <tr><td><code>spawn_subagent</code></td><td>Spawn a single focused subagent for an isolated task.</td><td>Auto</td></tr>
           <tr><td><code>spawn_parallel_subagents</code></td><td>Spawn multiple subagents to work concurrently on independent tasks.</td><td>Auto</td></tr>
+          <tr><td><code>web_fetch</code></td><td>Fetch URL content as markdown. Handles PDFs with OCR fallback via Mistral/OpenAI vision.</td><td>Auto</td></tr>
+          <tr><td><code>web_search</code></td><td>Search the web via Brave, Tavily, or Firecrawl. Auto-detects available provider from API keys.</td><td>Auto</td></tr>
+          <tr><td><code>web_browser</code></td><td>Browser automation via Chrome DevTools Protocol. Actions: navigate, screenshot, click, type, extract_text, evaluate.</td><td>Required</td></tr>
+          <tr><td><code>skill</code></td><td>List available skills (no args) or activate a skill by name.</td><td>Auto</td></tr>
         </tbody>
       </table>
 
@@ -293,6 +307,19 @@
         <div class="info-box-label">▲ Note</div>
         <p>You can configure permanent tool trust in <code>~/.glue/config.yaml</code>. Use with caution — the agent can run arbitrary shell commands.</p>
       </div>
+
+      <h3>Permission Modes</h3>
+      <p>Glue has four permission modes that control how tool calls are approved. Cycle through them with <code>Shift+Tab</code> during a session, or set a default via the <code>GLUE_PERMISSION_MODE</code> environment variable.</p>
+
+      <table class="brutal-table">
+        <thead><tr><th>Mode</th><th>Label</th><th>Behavior</th></tr></thead>
+        <tbody>
+          <tr><td><code>confirm</code></td><td>confirm</td><td>Ask for confirmation on untrusted tools (default)</td></tr>
+          <tr><td><code>acceptEdits</code></td><td>accept-edits</td><td>Auto-approve file edits, still ask for shell commands</td></tr>
+          <tr><td><code>ignorePermissions</code></td><td>YOLO</td><td>Auto-approve everything — no confirmations at all</td></tr>
+          <tr><td><code>readOnly</code></td><td>read-only</td><td>Deny all mutating tools — they are not even sent to the LLM</td></tr>
+        </tbody>
+      </table>
 
       <!-- ─── Sessions ─── -->
       <h2 id="sessions">Sessions</h2>
@@ -335,7 +362,7 @@
       <p>Project-level configuration lives in a <code>.glue/</code> directory at your project root:</p>
       <ul>
         <li><code>.glue/config.yaml</code> — project-level config overrides (model, provider, approval rules)</li>
-        <li><code>.glue/mcp.json</code> — MCP server definitions for extending tool capabilities</li>
+        <li><code>.glue/skills/</code> — project-local skill definitions (each skill has its own <code>SKILL.md</code>)</li>
       </ul>
 
       <div class="info-box">
@@ -375,6 +402,134 @@ spawn_parallel_subagents({
         <li><strong>Model override</strong> — use cheaper/faster models for exploration tasks to save costs</li>
         <li><strong>Fresh context</strong> — each subagent starts clean, no conversation history inherited</li>
       </ul>
+
+      <!-- ─── Web Tools ─── -->
+      <h2 id="web-tools">Web Tools</h2>
+
+      <p>Glue includes three web-oriented tools for fetching pages, searching the web, and automating a browser. All are configured under the <code>web:</code> block in your config.</p>
+
+      <h3>web_fetch</h3>
+      <p>Fetches a URL and returns its content as clean markdown. The pipeline works as follows:</p>
+      <ol>
+        <li><strong>HTML pages</strong> — extracts main content, strips boilerplate, converts to markdown</li>
+        <li><strong>PDF documents</strong> — extracts text directly; if the result is empty (scanned PDF), falls back to OCR via Mistral or OpenAI vision</li>
+      </ol>
+      <p>Optional Jina AI fallback for difficult pages when <code>JINA_API_KEY</code> is set.</p>
+
+      <h3>web_search</h3>
+      <p>Searches the web and returns structured results. Three providers are supported:</p>
+      <table class="brutal-table">
+        <thead><tr><th>Provider</th><th>API Key Env Var</th></tr></thead>
+        <tbody>
+          <tr><td>Brave Search</td><td><code>BRAVE_API_KEY</code></td></tr>
+          <tr><td>Tavily</td><td><code>TAVILY_API_KEY</code></td></tr>
+          <tr><td>Firecrawl</td><td><code>FIRECRAWL_API_KEY</code></td></tr>
+        </tbody>
+      </table>
+      <p>If no explicit provider is configured, Glue auto-detects the first available provider by checking which API key is set.</p>
+
+      <h3>web_browser</h3>
+      <p>Automates a browser via Chrome DevTools Protocol. The browser session persists across calls, so the agent can navigate, interact, and extract data across multiple steps.</p>
+      <p>Five backends are supported:</p>
+      <table class="brutal-table">
+        <thead><tr><th>Backend</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>local</code></td><td>Uses a locally installed Chrome or Chromium</td></tr>
+          <tr><td><code>docker</code></td><td>Runs headless Chrome inside a Docker container</td></tr>
+          <tr><td><code>browserbase</code></td><td>Cloud browser via Browserbase API</td></tr>
+          <tr><td><code>browserless</code></td><td>Cloud browser via Browserless API</td></tr>
+          <tr><td><code>steel</code></td><td>Cloud browser via Steel API</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Configuration</h3>
+      <div class="code-block"><span class="comment"># ~/.glue/config.yaml — web tools section</span>
+
+<span class="hl">web</span>:
+  <span class="hl">fetch</span>:
+    <span class="hl">timeout_seconds</span>: <span class="string">30</span>
+    <span class="hl">max_bytes</span>: <span class="string">5242880</span>
+    <span class="hl">allow_jina_fallback</span>: <span class="string">true</span>
+
+  <span class="hl">search</span>:
+    <span class="hl">provider</span>: <span class="string">"brave"</span>           <span class="comment"># brave | tavily | firecrawl</span>
+    <span class="hl">max_results</span>: <span class="string">10</span>
+
+  <span class="hl">pdf</span>:
+    <span class="hl">enable_ocr_fallback</span>: <span class="string">true</span>
+    <span class="hl">ocr_provider</span>: <span class="string">"mistral"</span>     <span class="comment"># mistral | openai</span>
+
+  <span class="hl">browser</span>:
+    <span class="hl">backend</span>: <span class="string">"local"</span>            <span class="comment"># local | docker | browserbase | browserless | steel</span>
+    <span class="hl">headed</span>: <span class="string">false</span></div>
+
+      <!-- ─── Observability ─── -->
+      <h2 id="observability">Observability</h2>
+
+      <p>Glue supports debug logging and distributed tracing to help you monitor agent behavior in development and production.</p>
+
+      <h3>Debug Logging</h3>
+      <p>Toggle verbose logging during a session with <code>/debug</code>. Logs are written to daily files in <code>~/.glue/logs/</code>.</p>
+
+      <h3>OpenTelemetry (OTLP)</h3>
+      <p>Export spans to any OTLP-compatible backend. Compatible with Grafana Tempo, Jaeger, Helicone, Opik, and LLMFlow.</p>
+      <div class="code-block"><span class="hl">telemetry</span>:
+  <span class="hl">otel</span>:
+    <span class="hl">enabled</span>: <span class="string">true</span>
+    <span class="hl">endpoint</span>: <span class="string">"https://otel.example.com/v1/traces"</span>
+    <span class="hl">headers</span>:
+      <span class="hl">Authorization</span>: <span class="string">"Bearer ..."</span></div>
+
+      <h3>Langfuse</h3>
+      <p>Native Langfuse integration for LLM observability. Glue emits generation and span events with token usage, latency, and error tracking.</p>
+      <div class="code-block"><span class="hl">telemetry</span>:
+  <span class="hl">langfuse</span>:
+    <span class="hl">enabled</span>: <span class="string">true</span>
+    <span class="hl">base_url</span>: <span class="string">"https://cloud.langfuse.com"</span>
+    <span class="hl">public_key</span>: <span class="string">"pk-..."</span>
+    <span class="hl">secret_key</span>: <span class="string">"sk-..."</span></div>
+
+      <!-- ─── Docker Sandbox ─── -->
+      <h2 id="docker-sandbox">Docker Sandbox</h2>
+
+      <p>Run shell commands inside a Docker container for isolation. When enabled, the <code>bash</code> tool executes commands inside the container instead of on the host.</p>
+
+      <h3>Enable</h3>
+      <div class="code-block"><span class="comment"># Via config</span>
+<span class="hl">docker</span>:
+  <span class="hl">enabled</span>: <span class="string">true</span>
+  <span class="hl">image</span>: <span class="string">"ubuntu:24.04"</span>          <span class="comment"># default image</span>
+  <span class="hl">shell</span>: <span class="string">"sh"</span>                    <span class="comment"># shell inside the container</span>
+  <span class="hl">fallback_to_host</span>: <span class="string">true</span>        <span class="comment"># fall back to host if Docker unavailable</span>
+  <span class="hl">mounts</span>:
+    - <span class="string">"/home/me/project:/workspace:rw"</span>
+
+<span class="comment"># Or via environment variable</span>
+<span class="p">❯</span> export <span class="hl">GLUE_DOCKER_ENABLED</span>=<span class="string">1</span></div>
+
+      <h3>Mount Syntax</h3>
+      <p>Mounts follow Docker's <code>-v</code> syntax:</p>
+      <table class="brutal-table">
+        <thead><tr><th>Spec</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td><code>/host/path</code></td><td>Read-write, same container path</td></tr>
+          <tr><td><code>/host/path:/container/path</code></td><td>Read-write, explicit container path</td></tr>
+          <tr><td><code>/host/path:ro</code></td><td>Read-only, same container path</td></tr>
+          <tr><td><code>/host/path:/container/path:ro</code></td><td>Read-only, explicit container path</td></tr>
+        </tbody>
+      </table>
+
+      <div class="info-box">
+        <div class="info-box-label">▲ Note</div>
+        <p>If Docker is enabled but unavailable (e.g. daemon not running), Glue falls back to host execution when <code>fallback_to_host</code> is <code>true</code> (the default).</p>
+      </div>
+
+      <!-- ─── Shell Completions ─── -->
+      <h2 id="shell-completions">Shell Completions</h2>
+
+      <p>Glue can install tab-completion scripts for your shell:</p>
+      <div class="code-block"><span class="p">❯</span> glue completions install     <span class="comment"># auto-detects your shell</span></div>
+      <p>Supported shells: <strong>zsh</strong>, <strong>bash</strong>, <strong>fish</strong>, <strong>PowerShell</strong>. Uninstall with <code>glue completions uninstall</code>.</p>
 
     </main>
   </div>
