@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:glue/src/agent/agent_core.dart';
 
 /// Policy for automatic tool approval in headless execution.
+///
+/// {@category Agent}
 enum ToolApprovalPolicy {
   /// Automatically approve and execute all tool calls.
   autoApproveAll,
@@ -33,7 +35,7 @@ class AgentRunner {
     this.onEvent,
   }) : _allowedTools = allowedTools ?? const {};
 
-  /// Run a [userMessage] through the agent loop until completion.
+  /// Runs a [userMessage] through the agent loop until completion.
   ///
   /// Returns the concatenated assistant text output.
   Future<String> runToCompletion(String userMessage) async {

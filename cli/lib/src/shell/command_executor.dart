@@ -1,5 +1,6 @@
 import 'dart:io';
 
+/// The captured output of a completed shell command.
 class CaptureResult {
   final int exitCode;
   final String stdout;
@@ -14,8 +15,10 @@ class CaptureResult {
 
 /// A handle to a running shell process.
 ///
+/// {@category Shell Execution}
+///
 /// Provides direct access to [stdout], [stderr], and [exitCode] without
-/// going through the underlying [Process]. Subclassed by [DockerRunningCommand]
+/// going through the underlying [Process]. Subclassed by `DockerRunningCommand`
 /// to add container cleanup on kill.
 class RunningCommand {
   final Process process;

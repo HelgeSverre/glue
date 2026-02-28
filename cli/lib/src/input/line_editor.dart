@@ -50,7 +50,7 @@ class LineEditor {
   /// The input history (read-only).
   List<String> get history => List.unmodifiable(_history);
 
-  /// Process a [TerminalEvent] and return the resulting action, or `null` if
+  /// Processes a [TerminalEvent] and returns the resulting action, or `null` if
   /// the event was not consumed.
   InputAction? handle(TerminalEvent event) {
     return switch (event) {
@@ -225,13 +225,13 @@ class LineEditor {
     return null;
   }
 
-  /// Clear the buffer and reset cursor position.
+  /// Clears the buffer and resets the cursor position.
   void clear() {
     _buffer = '';
     _cursor = 0;
   }
 
-  /// Programmatically set the buffer text and cursor position.
+  /// Programmatically sets the buffer text and cursor position.
   ///
   /// Used by autocomplete to accept a completion.
   void setText(String text, {int? cursor}) {

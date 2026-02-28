@@ -3,7 +3,9 @@ import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/terminal/terminal.dart';
 
 /// Divides the terminal into vertical zones that cooperate using
-/// ANSI scroll regions:
+/// ANSI scroll regions.
+///
+/// {@category Terminal & Rendering}
 ///
 /// ```
 /// ┌──────────────────────────────┐

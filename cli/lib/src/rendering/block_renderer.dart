@@ -20,6 +20,8 @@ class ToolCallRenderState {
 ///
 /// A 1-character margin is reserved on each side so output never
 /// renders flush against the terminal edges.
+///
+/// {@category Terminal & Rendering}
 class BlockRenderer {
   /// Total terminal width.
   final int width;
@@ -69,17 +71,12 @@ class BlockRenderer {
       return ' \x1b[1m\x1b[33m▶ Tool: ???\x1b[0m';
     }
     final suffix = switch (state.phase) {
-      ToolCallPhase.preparing =>
-        ' \x1b[90m(preparing…)\x1b[0m',
-      ToolCallPhase.awaitingApproval =>
-        ' \x1b[33m(awaiting approval)\x1b[0m',
-      ToolCallPhase.running =>
-        ' \x1b[36m(running…)\x1b[0m',
+      ToolCallPhase.preparing => ' \x1b[90m(preparing…)\x1b[0m',
+      ToolCallPhase.awaitingApproval => ' \x1b[33m(awaiting approval)\x1b[0m',
+      ToolCallPhase.running => ' \x1b[36m(running…)\x1b[0m',
       ToolCallPhase.done => '',
-      ToolCallPhase.denied =>
-        ' \x1b[31m(denied)\x1b[0m',
-      ToolCallPhase.error =>
-        ' \x1b[31m(error)\x1b[0m',
+      ToolCallPhase.denied => ' \x1b[31m(denied)\x1b[0m',
+      ToolCallPhase.error => ' \x1b[31m(error)\x1b[0m',
     };
     final header = ' \x1b[1m\x1b[33m▶ Tool: ${state.name}\x1b[0m$suffix';
     if (state.args == null || state.args!.isEmpty) return header;

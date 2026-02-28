@@ -4,6 +4,8 @@ import 'package:glue/src/rendering/ansi_utils.dart';
 
 /// Renders a subset of Markdown to ANSI-styled terminal text.
 ///
+/// {@category Terminal & Rendering}
+///
 /// Supported:
 /// - Headings: #, ##, ###
 /// - Bold: **text**
@@ -13,7 +15,7 @@ import 'package:glue/src/rendering/ansi_utils.dart';
 /// - Unordered lists: - item, * item
 /// - Ordered lists: 1. item
 /// - Blockquotes: > text
-/// - Links: [text](url)
+/// - Links: `[text](url)`
 /// - Tables: | col | col |
 class MarkdownRenderer {
   final int width;
