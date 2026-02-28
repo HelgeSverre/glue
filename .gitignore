@@ -23,7 +23,7 @@ pubspec.lock
 build/
 dist/
 cli/glue
-cli/dartdoc/
+cli/doc/api/
 
 # Environment
 .env
@@ -31,3 +31,13 @@ cli/dartdoc/
 
 # Worktrees
 .worktrees/
+
+# todo name here
+cli/.local-chrome
+
+# DevDocs (generated)
+devdocs/api/
+devdocs/node_modules/
+devdocs/.vitepress/dist/
+devdocs/.vitepress/cache/
+devdocs/.vitepress/sidebar.json
