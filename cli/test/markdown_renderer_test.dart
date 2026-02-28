@@ -50,10 +50,11 @@ void main() {
       expect(result, contains('\x1b[39m'));
     });
 
-    test('links render text with url in parens', () {
+    test('links render as OSC 8 hyperlinks', () {
       final result = renderer.render('[click](https://example.com)');
+      expect(result, contains('\x1b]8;;https://example.com\x07'));
       expect(result, contains('click'));
-      expect(result, contains('(https://example.com)'));
+      expect(result, contains('\x1b]8;;\x07'));
     });
   });
 
@@ -144,6 +145,57 @@ void main() {
     test('plain text passes through unchanged', () {
       final result = renderer.render('just some text');
       expect(result, 'just some text');
+    });
+  });
+
+  group('bare URLs', () {
+    test('https URLs become OSC 8 links', () {
+      final result = renderer.render('Visit https://example.com for info');
+      expect(result, contains('\x1b]8;;https://example.com\x07'));
+      expect(result, contains('https://example.com'));
+      expect(result, contains('\x1b]8;;\x07'));
+    });
+
+    test('http URLs become OSC 8 links', () {
+      final result = renderer.render('See http://example.com/path');
+      expect(result, contains('\x1b]8;;http://example.com/path\x07'));
+    });
+
+    test('URLs with query strings and fragments', () {
+      final result =
+          renderer.render('Go to https://example.com/page?q=1&b=2#top');
+      expect(result,
+          contains('\x1b]8;;https://example.com/page?q=1&b=2#top\x07'));
+    });
+
+    test('URL followed by period does not include trailing period', () {
+      final result = renderer.render('See https://example.com.');
+      expect(result, contains('\x1b]8;;https://example.com\x07'));
+      final stripped = stripAnsi(result);
+      expect(stripped, endsWith('.'));
+    });
+
+    test('URL followed by comma does not include trailing comma', () {
+      final result = renderer.render('Visit https://example.com, then');
+      expect(result, contains('\x1b]8;;https://example.com\x07'));
+    });
+
+    test('URL in parentheses does not include trailing paren', () {
+      final result = renderer.render('(see https://example.com)');
+      expect(result, contains('\x1b]8;;https://example.com\x07'));
+    });
+
+    test('URLs inside markdown links are NOT double-linked', () {
+      final result = renderer.render('[click](https://example.com)');
+      final opens = RegExp(r'\x1b\]8;;https://example\.com\x07')
+          .allMatches(result)
+          .length;
+      expect(opens, 1);
+    });
+
+    test('bare URL is not linkified inside code span', () {
+      final result = renderer.render('Run `https://example.com` as test');
+      expect(result, isNot(contains('\x1b]8;;')));
     });
   });
 
