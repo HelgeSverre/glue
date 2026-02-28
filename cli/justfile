@@ -16,9 +16,13 @@ install: build
 run *args: build
     ./glue {{args}}
 
-# Run tests (pass args: just test test/llm/)
+# Run unit tests (pass args: just test test/llm/)
 test *args:
     dart test {{args}}
+
+# Run e2e integration tests (requires: ollama + qwen2.5:7b)
+e2e:
+    dart test --run-skipped -t e2e
 
 # Static analysis
 analyze:

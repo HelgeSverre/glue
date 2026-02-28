@@ -2,7 +2,7 @@
 
 User-edited YAML configuration file. Loaded at startup by `GlueConfig.load()` (`lib/src/config/glue_config.dart`).
 
-> **Note:** The `shell` and `docker` sections are planned features — not yet implemented. Existing fields (`provider`, `model`, `anthropic`, `openai`, `bash`) are live today.
+> All sections below are implemented and live.
 
 **Resolution order:** CLI args → environment variables → config.yaml → defaults.
 
@@ -110,6 +110,13 @@ docker:
 | `fallback_to_host` | bool   | `true`         | —                       | `--docker-fallback-to-host`   | Fall back if Docker unavailable |
 | `mounts`           | list   | `[]`           | `GLUE_DOCKER_MOUNTS`    | `--docker-mount` (repeatable) | Persistent directory whitelist  |
 
-**Mount format:** `/absolute/path` (read-write) or `/absolute/path:ro` (read-only). Paths must be absolute and must exist on the host. CWD is always mounted automatically.
+**Mount format:** Supports several forms:
 
-**`GLUE_DOCKER_MOUNTS` format:** Semicolon-separated paths, e.g. `/path/one;/path/two:ro`.
+- `/host/path` — mount read-write at same path inside container
+- `/host/path:ro` — mount read-only at same path
+- `/host/path:/container/path` — mount at a different container path (read-write)
+- `/host/path:/container/path:ro` — mount at a different container path (read-only)
+
+Host paths must be absolute. Container paths must be absolute POSIX paths. CWD is always mounted automatically at `/work`.
+
+**`GLUE_DOCKER_MOUNTS` format:** Semicolon-separated specs, e.g. `/path/one;/path/two:ro;/host:/container:rw`.

@@ -17,6 +17,8 @@ Glue is a terminal-native coding agent CLI built in Dart. It streams LLM respons
 
 - **Multi-provider LLM support** — Anthropic, OpenAI, and Ollama out of the box
 - **Streaming tool use** — read/write/edit files, run shell commands, grep, list directories
+- **Multi-shell support** — respects `$SHELL` with bash/zsh/fish/pwsh flag mapping and interactive/login modes
+- **Docker sandbox** — run agent commands in ephemeral containers with configurable mounts and auto host fallback
 - **Subagents** — spawn child agents (single or parallel) with collapsible grouped output
 - **Session management** — persist and resume conversations (`--resume` / `--continue`)
 - **`@file` references** — inline file contents into prompts with recursive fuzzy autocomplete
@@ -65,7 +67,7 @@ glue --help                             # show all options
 
 Config is resolved in order: **CLI flags → env vars → `~/.glue/config.yaml` → defaults**.
 
-Environment variables: `GLUE_PROVIDER`, `GLUE_MODEL`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`.
+Environment variables: `GLUE_PROVIDER`, `GLUE_MODEL`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GLUE_SHELL`, `GLUE_SHELL_MODE`, `GLUE_DOCKER_ENABLED`, `GLUE_DOCKER_IMAGE`, `GLUE_DOCKER_SHELL`, `GLUE_DOCKER_MOUNTS`.
 
 Default models per provider:
 
@@ -74,6 +76,39 @@ Default models per provider:
 | anthropic | `claude-sonnet-4-6` |
 | openai    | `gpt-4.1`           |
 | ollama    | `llama3.2`          |
+
+### Shell configuration
+
+By default, glue uses `$SHELL` (or `sh` if unset) in non-interactive mode. Override via config or env vars:
+
+```yaml
+# ~/.glue/config.yaml
+shell:
+  executable: zsh            # bash, zsh, fish, pwsh, sh
+  mode: interactive          # non_interactive | interactive | login
+```
+
+Interactive mode loads your rc files (`~/.bashrc`, `~/.zshrc`, etc.), giving access to aliases and shell functions. Login mode loads profile files.
+
+### Docker sandbox
+
+Run all agent shell commands inside ephemeral Docker containers for isolation:
+
+```yaml
+# ~/.glue/config.yaml
+docker:
+  enabled: true
+  image: ubuntu:24.04        # container image
+  shell: sh                  # shell inside container
+  fallback_to_host: true     # fall back if Docker unavailable
+  mounts:                    # always-mounted directories
+    - /path/to/shared/libs
+    - /path/to/data:ro       # read-only mount
+```
+
+Or via environment: `GLUE_DOCKER_ENABLED=1 GLUE_DOCKER_IMAGE=alpine:latest glue`
+
+The current working directory is always mounted at `/work` inside the container. Additional directories can be mounted per-session (persisted in session state).
 
 ## Justfile commands
 
@@ -90,6 +125,22 @@ just docs-serve # generate and serve dartdoc locally
 just release    # bump version, build, tag
 just clean      # remove compiled binary
 ```
+
+## Testing
+
+```bash
+dart test                              # unit tests (452+ tests)
+dart test --run-skipped -t e2e         # e2e integration tests
+```
+
+E2E tests exercise the full agent loop (LLM → tool call → tool execution → LLM response) headlessly via `AgentRunner`, no terminal required. They require Ollama running locally:
+
+```bash
+ollama pull qwen2.5:7b                 # one-time setup
+dart test --run-skipped -t e2e         # run e2e tests
+```
+
+> **Note:** `qwen2.5:7b` is the smallest model that reliably supports Ollama tool calling. `gemma3` variants do not support tools. Small models are non-deterministic — e2e tests use a retry wrapper (3 attempts).
 
 ## Tools
 
@@ -118,6 +169,9 @@ App (event bus, state machine, render loop @ 60fps)
   ├─ AgentCore (LLM streaming, tool loop, parallel tool calls)
   │    ├─ Tools (read_file, write_file, edit_file, bash, grep, list_directory)
   │    └─ AgentManager (subagent lifecycle, depth-limited recursion)
+  ├─ CommandExecutor (shell abstraction)
+  │    ├─ HostExecutor (native shell: bash/zsh/fish/pwsh via ShellConfig)
+  │    └─ DockerExecutor (ephemeral containers, cidfile tracking)
   ├─ Rendering (BlockRenderer, MarkdownRenderer, ANSI utilities)
   ├─ Mascot (liquid simulation, goo explosion particle system)
   ├─ Modals (inline confirm, full-screen panel with scrolling)
