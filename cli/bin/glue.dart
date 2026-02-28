@@ -38,8 +38,8 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
       ..addFlag('version', abbr: 'v', negatable: false, help: 'Print version.')
       ..addOption('provider',
           abbr: 'p',
-          allowed: const ['anthropic', 'openai', 'ollama'],
-          help: 'LLM provider (anthropic, openai, ollama).')
+          allowed: const ['anthropic', 'openai', 'mistral', 'ollama'],
+          help: 'LLM provider (anthropic, openai, mistral, ollama).')
       ..addOption('model', abbr: 'm', help: 'LLM model to use.')
       ..addFlag('resume',
           negatable: false, help: 'Start with session picker open.')

@@ -185,8 +185,9 @@ class WriteFileTool extends Tool {
     if (path is! String || path.isEmpty) {
       return [const TextPart('Error: no path provided')];
     }
-    if (content is! String)
+    if (content is! String) {
       return [const TextPart('Error: no content provided')];
+    }
     final file = File(path);
     await file.parent.create(recursive: true);
     await file.writeAsString(content);

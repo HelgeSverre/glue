@@ -68,7 +68,7 @@ void main() {
     final metaJson = jsonDecode(
       File(p.join(sessionDir, 'meta.json')).readAsStringSync(),
     );
-    expect(metaJson['title'], 'Fix auth bug');
+    expect((metaJson as Map<String, dynamic>)['title'], 'Fix auth bug');
   });
 
   test('title is omitted from meta.json when null', () {
