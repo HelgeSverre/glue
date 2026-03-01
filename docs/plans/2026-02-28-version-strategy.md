@@ -10,9 +10,9 @@ Glue CLI is a terminal-native AI coding agent built in Dart, currently at `versi
 
 Follow **Semantic Versioning 2.0.0** (`MAJOR.MINOR.PATCH`) with the 0.x conventions:
 
-| Range | Meaning |
-|-------|---------|
-| **0.x.y** | Pre-stable. Public API may change between any minor bump. Each 0.MINOR.0 release can include breaking changes without ceremony. |
+| Range     | Meaning                                                                                                                                                            |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **0.x.y** | Pre-stable. Public API may change between any minor bump. Each 0.MINOR.0 release can include breaking changes without ceremony.                                    |
 | **1.0.0** | Stable. Public-facing CLI interface, config format, skill manifest schema, and LLM provider contract are considered stable. Breaking changes require a major bump. |
 
 During the 0.x phase, treat **MINOR** as the significant release unit and **PATCH** for bug fixes and small improvements between feature releases.
@@ -49,6 +49,7 @@ When testing a release candidate before cutting a stable minor/major:
 ```
 
 Rules:
+
 - Pre-release tags (`v0.3.0-beta.1`) will still trigger the release workflow since they match `v*`. The GitHub Release created by `softprops/action-gh-release` will automatically be marked as a pre-release if the tag contains a hyphen, which is the desired behavior.
 - Pre-release versions sort correctly under SemVer: `0.3.0-beta.1 < 0.3.0-beta.2 < 0.3.0-rc.1 < 0.3.0`.
 - Use pre-releases sparingly. For most 0.x releases, go straight to the release version since the 0.x contract already implies instability.
@@ -59,27 +60,27 @@ The `1.0.0` release signals: "the CLI interface, configuration format, and exten
 
 **Gate criteria for 1.0.0:**
 
-| Milestone | Description |
-|-----------|-------------|
-| **Stable CLI contract** | Command-line flags, exit codes, and output format are documented and unlikely to change. |
-| **Config schema frozen** | The `~/.config/glue/` configuration format (model registry, permissions, provider keys) has a versioned schema. |
-| **Skill manifest v1** | The `.glue/skills/` YAML format is documented and stable for third-party skill authors. |
-| **Cross-platform parity** | Linux, macOS, and Windows binaries all pass the CI matrix (`ci-matrix-os.yml`) and e2e suite consistently. |
-| **Pub.dev readiness** | If publishing to pub.dev is planned, package metadata, example code, and API docs meet pub conventions. |
-| **External users** | At least one external user or team is running Glue in a real workflow and has validated the experience. |
+| Milestone                 | Description                                                                                                     |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| **Stable CLI contract**   | Command-line flags, exit codes, and output format are documented and unlikely to change.                        |
+| **Config schema frozen**  | The `~/.config/glue/` configuration format (model registry, permissions, provider keys) has a versioned schema. |
+| **Skill manifest v1**     | The `.glue/skills/` YAML format is documented and stable for third-party skill authors.                         |
+| **Cross-platform parity** | Linux, macOS, and Windows binaries all pass the CI matrix (`ci-matrix-os.yml`) and e2e suite consistently.      |
+| **Pub.dev readiness**     | If publishing to pub.dev is planned, package metadata, example code, and API docs meet pub conventions.         |
+| **External users**        | At least one external user or team is running Glue in a real workflow and has validated the experience.         |
 
 **Estimated timeline:** 1.0.0 is likely 2-4 minor releases away (0.3.0, 0.4.0, ...). Do not rush it.
 
 ### 7. Projected Version Sequence
 
-| Version | Likely Content |
-|---------|---------------|
-| `v0.2.0` | **Now.** Everything on main today. First tagged release. |
-| `v0.2.1` | Bug fixes and polish discovered after first real-user testing. |
-| `v0.3.0` | Next feature wave (e.g., MCP tool server, plugin system, streaming improvements). |
-| `v0.4.0` | Config schema stabilization, skill manifest v1, install scripts. |
-| `v1.0.0-beta.1` | Feature-complete candidate. External user testing period. |
-| `v1.0.0` | Stable release. |
+| Version         | Likely Content                                                                    |
+| --------------- | --------------------------------------------------------------------------------- |
+| `v0.2.0`        | **Now.** Everything on main today. First tagged release.                          |
+| `v0.2.1`        | Bug fixes and polish discovered after first real-user testing.                    |
+| `v0.3.0`        | Next feature wave (e.g., MCP tool server, plugin system, streaming improvements). |
+| `v0.4.0`        | Config schema stabilization, skill manifest v1, install scripts.                  |
+| `v1.0.0-beta.1` | Feature-complete candidate. External user testing period.                         |
+| `v1.0.0`        | Stable release.                                                                   |
 
 ### 8. Integration with Existing Tooling
 
@@ -116,9 +117,9 @@ This workflow requires no changes. It works for stable tags (`v0.2.0`) and pre-r
 
 The version currently lives in two places:
 
-| Location | Current Value | Updated By |
-|----------|---------------|------------|
-| `cli/pubspec.yaml` line 3 | `0.1.0` | `just release` (via sed) |
-| `cli/lib/src/config/constants.dart` line 6 | `'0.1.0'` | **Nothing** (manual) |
+| Location                                   | Current Value | Updated By               |
+| ------------------------------------------ | ------------- | ------------------------ |
+| `cli/pubspec.yaml` line 3                  | `0.1.0`       | `just release` (via sed) |
+| `cli/lib/src/config/constants.dart` line 6 | `'0.1.0'`     | **Nothing** (manual)     |
 
 The `AppConstants.version` is displayed in the UI (`app.dart` line 478: `Glue v${AppConstants.version}`). These two values must stay in sync. The recommended fix is to extend the `just release` recipe to update both files, or to generate `constants.dart` from `pubspec.yaml` at build time. Until then, treat it as a manual checklist item.

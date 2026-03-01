@@ -41,6 +41,7 @@ The visible text is what counts for column width. The escape sequences are zero-
 ## Task 1: OSC 8 Helper and ANSI Utils Foundation
 
 **Files:**
+
 - Modify: `cli/lib/src/rendering/ansi_utils.dart`
 - Test: `cli/test/ansi_utils_test.dart`
 
@@ -107,6 +108,7 @@ git commit -m "feat: add osc8Link helper for terminal hyperlinks"
 ## Task 2: Update `stripAnsi` and `visibleLength` to Handle OSC 8
 
 **Files:**
+
 - Modify: `cli/lib/src/rendering/ansi_utils.dart`
 - Test: `cli/test/ansi_utils_test.dart`
 
@@ -176,6 +178,7 @@ git commit -m "feat: update stripAnsi/visibleLength to handle OSC 8 sequences"
 ## Task 3: Update `ansiTruncate` and `ansiWrap` for OSC 8
 
 **Files:**
+
 - Modify: `cli/lib/src/rendering/ansi_utils.dart`
 - Test: `cli/test/ansi_utils_test.dart`
 
@@ -288,6 +291,7 @@ git commit -m "feat: update ansiTruncate to handle OSC 8 sequences"
 ## Task 4: Linkify Markdown Links and Bare URLs in MarkdownRenderer
 
 **Files:**
+
 - Modify: `cli/lib/src/rendering/markdown_renderer.dart`
 - Test: `cli/test/markdown_renderer_test.dart`
 
@@ -463,6 +467,7 @@ git commit -m "feat: render markdown links and bare URLs as clickable OSC 8 hype
 ## Task 5: Linkify File Paths in Tool Results
 
 **Files:**
+
 - Modify: `cli/lib/src/rendering/block_renderer.dart`
 - Test: `cli/test/block_renderer_test.dart` (create if needed)
 
@@ -599,6 +604,7 @@ git commit -m "feat: linkify file paths in tool calls and grep results via OSC 8
 ## Task 6: Web UI Linkification
 
 **Files:**
+
 - Modify: `website/app.html`
 
 This is a simpler task — the web UI uses `x-html` for assistant text, so we can process markdown links and bare URLs into `<a>` tags.
@@ -625,18 +631,25 @@ linkify(text) {
 In `app.html`, change the assistant template (around line 296) from:
 
 ```html
-<div class="t-assistant" x-html="block.text + (block.streaming ? '<span class=\'t-cursor\'></span>' : '')"></div>
+<div
+  class="t-assistant"
+  x-html="block.text + (block.streaming ? '<span class=\'t-cursor\'></span>' : '')"
+></div>
 ```
 
 To:
 
 ```html
-<div class="t-assistant" x-html="linkify(block.text) + (block.streaming ? '<span class=\'t-cursor\'></span>' : '')"></div>
+<div
+  class="t-assistant"
+  x-html="linkify(block.text) + (block.streaming ? '<span class=\'t-cursor\'></span>' : '')"
+></div>
 ```
 
 ### Step 3: Test manually
 
 Open `website/app.html` in a browser. The mock session data contains assistant text. Verify:
+
 - Any URLs in assistant responses are rendered as yellow underlined clickable links
 - Links open in a new tab
 - No broken HTML rendering
@@ -653,6 +666,7 @@ git commit -m "feat: linkify URLs and markdown links in web UI assistant output"
 ## Task 7: Export `osc8Link` and Final Cleanup
 
 **Files:**
+
 - Modify: `cli/lib/glue.dart`
 
 ### Step 1: Add `osc8Link` to the public export
@@ -660,12 +674,14 @@ git commit -m "feat: linkify URLs and markdown links in web UI assistant output"
 In `cli/lib/glue.dart`, update the `ansi_utils.dart` export line to include `osc8Link`:
 
 Current (or after PR #2):
+
 ```dart
 export 'src/rendering/ansi_utils.dart'
     show stripAnsi, visibleLength, ansiTruncate, ansiWrap;
 ```
 
 Change to:
+
 ```dart
 export 'src/rendering/ansi_utils.dart'
     show stripAnsi, visibleLength, ansiTruncate, ansiWrap, osc8Link;
@@ -694,20 +710,21 @@ git commit -m "feat: export osc8Link from public API"
 
 ## Summary of Changes
 
-| File | Change |
-|------|--------|
-| `cli/lib/src/rendering/ansi_utils.dart` | Add `osc8Link()`, update `stripAnsi()` for OSC, update `ansiTruncate()` for OSC |
-| `cli/lib/src/rendering/markdown_renderer.dart` | Use OSC 8 for `[text](url)`, add bare URL detection |
-| `cli/lib/src/rendering/block_renderer.dart` | Linkify `path` args in tool calls, linkify grep-style file:line patterns |
-| `cli/lib/glue.dart` | Export `osc8Link` |
-| `cli/test/ansi_utils_test.dart` | Tests for `osc8Link`, OSC 8 stripping, truncation |
-| `cli/test/markdown_renderer_test.dart` | Tests for OSC 8 links, bare URL detection |
-| `cli/test/block_renderer_test.dart` | Tests for file path linkification |
-| `website/app.html` | JS `linkify()` function, use in assistant blocks |
+| File                                           | Change                                                                          |
+| ---------------------------------------------- | ------------------------------------------------------------------------------- |
+| `cli/lib/src/rendering/ansi_utils.dart`        | Add `osc8Link()`, update `stripAnsi()` for OSC, update `ansiTruncate()` for OSC |
+| `cli/lib/src/rendering/markdown_renderer.dart` | Use OSC 8 for `[text](url)`, add bare URL detection                             |
+| `cli/lib/src/rendering/block_renderer.dart`    | Linkify `path` args in tool calls, linkify grep-style file:line patterns        |
+| `cli/lib/glue.dart`                            | Export `osc8Link`                                                               |
+| `cli/test/ansi_utils_test.dart`                | Tests for `osc8Link`, OSC 8 stripping, truncation                               |
+| `cli/test/markdown_renderer_test.dart`         | Tests for OSC 8 links, bare URL detection                                       |
+| `cli/test/block_renderer_test.dart`            | Tests for file path linkification                                               |
+| `website/app.html`                             | JS `linkify()` function, use in assistant blocks                                |
 
 ## Rebase Notes
 
 If PR #2 (text wrapping) merges before this work:
+
 - Tasks 1-3 have **no conflicts** (they touch different parts of `ansi_utils.dart`)
 - Task 4 will need a minor rebase since PR #2 changes `_renderInlineSegment` indirectly (the wrapping logic changes). The actual link regex replacement code is the same — just resolve any context conflicts
 - The `glue.dart` export line will need to include both `wrapIndented` and `osc8Link`

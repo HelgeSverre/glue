@@ -71,6 +71,7 @@ devdocs/
 ### Task 1: Scaffold VitePress Project
 
 **Files:**
+
 - Create: `devdocs/package.json`
 - Create: `devdocs/.gitignore`
 - Create: `devdocs/index.md`
@@ -140,6 +141,7 @@ Expected: Dev server starts, landing page visible at http://localhost:5173
 ### Task 2: VitePress Config + Custom Theme
 
 **Files:**
+
 - Create: `devdocs/.vitepress/config.ts`
 - Create: `devdocs/.vitepress/theme/index.ts`
 - Create: `devdocs/.vitepress/theme/custom.css`
@@ -149,48 +151,57 @@ Expected: Dev server starts, landing page visible at http://localhost:5173
 `devdocs/.vitepress/config.ts`:
 
 ```ts
-import { defineConfig } from 'vitepress'
-import { existsSync, readFileSync } from 'fs'
+import { defineConfig } from "vitepress";
+import { existsSync, readFileSync } from "fs";
 
 // Import generated sidebar (falls back to empty if not yet generated)
-const sidebarPath = new URL('./sidebar.json', import.meta.url)
+const sidebarPath = new URL("./sidebar.json", import.meta.url);
 const sidebar = existsSync(sidebarPath)
-  ? JSON.parse(readFileSync(sidebarPath, 'utf-8'))
-  : []
+  ? JSON.parse(readFileSync(sidebarPath, "utf-8"))
+  : [];
 
 export default defineConfig({
-  title: 'Glue',
-  description: 'API Reference for the Glue coding agent',
-  
+  title: "Glue",
+  description: "API Reference for the Glue coding agent",
+
   head: [
-    ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
-    ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
-    ['link', { href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap', rel: 'stylesheet' }],
+    ["link", { rel: "preconnect", href: "https://fonts.googleapis.com" }],
+    [
+      "link",
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossorigin: "" },
+    ],
+    [
+      "link",
+      {
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap",
+        rel: "stylesheet",
+      },
+    ],
   ],
 
   themeConfig: {
     logo: false,
-    siteTitle: 'GLUE',
-    
+    siteTitle: "GLUE",
+
     nav: [
-      { text: 'API Reference', link: '/api/' },
-      { text: 'Website', link: 'https://glue.dev' },
-      { text: 'GitHub', link: 'https://github.com/helgesverre/glue' },
+      { text: "API Reference", link: "/api/" },
+      { text: "Website", link: "https://glue.dev" },
+      { text: "GitHub", link: "https://github.com/helgesverre/glue" },
     ],
 
     sidebar: {
-      '/api/': sidebar,
+      "/api/": sidebar,
     },
 
     search: {
-      provider: 'local',
+      provider: "local",
     },
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/helgesverre/glue' },
+      { icon: "github", link: "https://github.com/helgesverre/glue" },
     ],
   },
-})
+});
 ```
 
 **Step 2: Create custom theme entry**
@@ -198,10 +209,10 @@ export default defineConfig({
 `devdocs/.vitepress/theme/index.ts`:
 
 ```ts
-import DefaultTheme from 'vitepress/theme'
-import './custom.css'
+import DefaultTheme from "vitepress/theme";
+import "./custom.css";
 
-export default DefaultTheme
+export default DefaultTheme;
 ```
 
 **Step 3: Create brutalist CSS overrides**
@@ -213,9 +224,9 @@ export default DefaultTheme
 
 :root {
   /* Brand colors from website/styles.css */
-  --glue-yellow: #FACC15;
-  --glue-gold: #EAB308;
-  --glue-black: #0A0A0B;
+  --glue-yellow: #facc15;
+  --glue-gold: #eab308;
+  --glue-black: #0a0a0b;
   --glue-dark: #1a1a1a;
   --glue-dark2: #2a2a2a;
   --glue-gray: #555;
@@ -228,8 +239,8 @@ export default DefaultTheme
   --vp-c-brand-soft: rgba(250, 204, 21, 0.14);
 
   /* Typography */
-  --vp-font-family-base: 'Inter', sans-serif;
-  --vp-font-family-mono: 'JetBrains Mono', monospace;
+  --vp-font-family-base: "Inter", sans-serif;
+  --vp-font-family-mono: "JetBrains Mono", monospace;
 
   /* Nav */
   --vp-nav-bg-color: var(--glue-black);
@@ -254,7 +265,7 @@ html {
 
 /* Tape-style border under nav */
 .VPNav::after {
-  content: '';
+  content: "";
   display: block;
   height: 4px;
   background: var(--glue-yellow);
@@ -262,7 +273,7 @@ html {
 
 /* Nav site title styling */
 .VPNavBarTitle .title {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   font-weight: 800;
   letter-spacing: -1px;
   text-transform: uppercase;
@@ -271,7 +282,7 @@ html {
 
 /* Sidebar category headers */
 .VPSidebarItem.level-0 > .item > .text {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   font-weight: 700;
   text-transform: uppercase;
   font-size: 12px;
@@ -279,20 +290,20 @@ html {
 }
 
 /* Code blocks — dark background */
-.vp-doc div[class*='language-'] {
+.vp-doc div[class*="language-"] {
   border: 2px solid var(--glue-dark2);
 }
 
 /* Hero overrides for landing page */
 .VPHero .name {
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: "JetBrains Mono", monospace !important;
   font-weight: 900 !important;
   letter-spacing: -0.04em;
   text-transform: uppercase;
 }
 
 .VPHero .text {
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: "JetBrains Mono", monospace !important;
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -302,7 +313,7 @@ html {
   background-color: var(--glue-yellow) !important;
   color: var(--glue-black) !important;
   border-color: var(--glue-yellow) !important;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -324,6 +335,7 @@ Expected: Landing page visible with yellow/black brutalist styling, JetBrains Mo
 ### Task 3: Generate API Markdown with `dart_doc_markdown_generator`
 
 **Files:**
+
 - Generated: `devdocs/api/**/*.md`
 
 **Step 1: Install the generator**
@@ -358,20 +370,20 @@ Expected: Directories like `agent/`, `llm/`, `terminal/`, etc. with `.md` files 
 
 Browse the Glue CLI internals by module:
 
-| Module | Description |
-|--------|-------------|
-| [Agent](./agent/) | Core agent loop, runner, and manager |
-| [LLM](./llm/) | Provider clients (Anthropic, OpenAI, Ollama) |
-| [Terminal](./terminal/) | Raw terminal I/O and layout |
-| [Rendering](./rendering/) | Block renderer, Markdown, ANSI utils |
-| [Shell](./shell/) | Command execution, Docker sandbox |
-| [Config](./config/) | Configuration and model registry |
-| [Observability](./observability/) | Tracing, spans, sinks |
-| [Tools](./tools/) | Subagent tools |
-| [UI](./ui/) | Modals, panels, autocomplete |
-| [Skills](./skills/) | Skill parser and registry |
-| [Storage](./storage/) | Session and config persistence |
-| [Web](./web/) | Web fetch, search, browser |
+| Module                            | Description                                  |
+| --------------------------------- | -------------------------------------------- |
+| [Agent](./agent/)                 | Core agent loop, runner, and manager         |
+| [LLM](./llm/)                     | Provider clients (Anthropic, OpenAI, Ollama) |
+| [Terminal](./terminal/)           | Raw terminal I/O and layout                  |
+| [Rendering](./rendering/)         | Block renderer, Markdown, ANSI utils         |
+| [Shell](./shell/)                 | Command execution, Docker sandbox            |
+| [Config](./config/)               | Configuration and model registry             |
+| [Observability](./observability/) | Tracing, spans, sinks                        |
+| [Tools](./tools/)                 | Subagent tools                               |
+| [UI](./ui/)                       | Modals, panels, autocomplete                 |
+| [Skills](./skills/)               | Skill parser and registry                    |
+| [Storage](./storage/)             | Session and config persistence               |
+| [Web](./web/)                     | Web fetch, search, browser                   |
 ```
 
 **Step 6: Smoke test**
@@ -386,6 +398,7 @@ Expected: API markdown pages render in the site. Content may be rough (depends o
 This is the "approach 3" piece — a Dart script that walks the source tree, reads `{@category}` tags and class/function names, and emits the VitePress sidebar JSON.
 
 **Files:**
+
 - Create: `cli/tool/generate_devdocs_config.dart`
 
 **Step 1: Create the metadata extraction script**
@@ -586,6 +599,7 @@ Expected: JSON array with `{ "text": "Agent", "items": [...] }` structure.
 ### Task 5: Justfile Integration
 
 **Files:**
+
 - Modify: `justfile` (root)
 - Modify: `cli/justfile`
 
@@ -634,6 +648,7 @@ Expected: Generates markdown, builds config, starts VitePress dev server with fu
 ### Task 6: Polish — API Index + Fallback Handling
 
 **Files:**
+
 - Modify: `devdocs/.vitepress/config.ts` (handle missing sidebar gracefully)
 - Create: `devdocs/api/index.md` (API landing page, if not created by generator)
 
@@ -660,6 +675,7 @@ This is a stretch goal — check the generator output first before adding.
 
 Run: `just devdocs-dev`
 Expected:
+
 - Landing page renders with brutalist yellow/black theme
 - Sidebar shows all modules grouped (Agent, Core, LLM Providers, etc.)
 - Clicking sidebar items navigates to API docs
@@ -679,6 +695,7 @@ Expected:
 ## Risk: Generator Output Quality
 
 `dart_doc_markdown_generator` is a small third-party tool. If its output doesn't match VitePress conventions (bad filenames, missing titles, etc.), we have two fallbacks:
+
 - **Quick fix:** Post-process the generated Markdown with a shell script
 - **Long-term:** Replace with a custom Dart script using `package:analyzer` that emits exactly the Markdown we want
 
