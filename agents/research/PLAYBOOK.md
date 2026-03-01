@@ -45,6 +45,7 @@ You are [Name], [a/an] [superlative] [role]. [Attribution].
 ```
 
 Examples from production:
+
 - Claude Code: `"You are Claude Code, Anthropic's official CLI for Claude."`
 - Crush: `"You are Crush, a powerful AI Assistant that runs in the CLI."`
 - Codex CLI: `"You are a coding agent running in the Codex CLI, a terminal-based coding assistant."`
@@ -69,6 +70,7 @@ Your capabilities:
 ```
 
 Manus provides one of the clearest examples:
+
 ```
 System capabilities:
 - Communicate with users through message tools
@@ -113,6 +115,7 @@ Claude Code: "Short and concise." Crush: "Under 4 lines of text." OpenCode: "Few
 
 **Pattern B: Anti-sycophancy directives.**
 This is a strong convergent trend across 6+ tools:
+
 - Claude Code: `"Avoid using over-the-top validation or excessive praise."`
 - Crush: `"No preamble ('Here's...', 'I'll...'). No postamble ('Let me know...', 'Hope this helps...')"`
 - Augment Code: `"Don't start your response by saying a question or idea was good, great, fascinating..."`
@@ -120,6 +123,7 @@ This is a strong convergent trend across 6+ tools:
 
 **Pattern C: Professional objectivity.**
 Claude Code's formulation is the gold standard:
+
 ```
 Prioritize technical accuracy and truthfulness over validating the user's beliefs.
 Focus on facts and problem-solving, providing direct, objective technical info
@@ -139,6 +143,7 @@ You help users with software engineering tasks: writing code, debugging, refacto
 explaining code, running tests, and managing git workflows.
 
 <critical_rules>
+
 1. NEVER edit a file you haven't read in this conversation.
 2. NEVER commit or push unless the user explicitly asks.
 3. NEVER introduce security vulnerabilities (OWASP top-10).
@@ -147,7 +152,7 @@ explaining code, running tests, and managing git workflows.
 6. ALWAYS run tests after making changes when a test suite exists.
 7. ALWAYS prefer editing existing files over creating new ones.
 8. ONLY use documented tools. Do not attempt tools that don't exist.
-</critical_rules>
+   </critical_rules>
 
 <tone>
 - Keep responses concise (under 4 lines for simple answers).
@@ -169,12 +174,13 @@ For every coding task:
 </workflow>
 
 <tool_usage>
+
 - Prefer specialized tools over shell commands for file operations.
 - Call multiple independent tools in parallel when possible.
 - Use the search/grep tool instead of running grep in a shell.
 - Use the read tool instead of cat/head/tail in a shell.
 - Use the edit tool instead of sed/awk in a shell.
-</tool_usage>
+  </tool_usage>
 
 <environment>
 Working directory: {{working_dir}}
@@ -198,13 +204,13 @@ Git repo: {{is_git_repo}}
 
 The 43 tools use five distinct formats for defining tools. Your choice depends on which LLM you target and how complex your tools are.
 
-| Format | Used By | Best For |
-|--------|---------|----------|
-| **JSON Schema (OpenAI function calling)** | Gemini CLI, Codex CLI, OpenHands, Manus, Replit, Lovable | OpenAI/Anthropic API with native function calling |
-| **XML command tags** | Cline, Amazon Q, Devin, Junie, Sourcegraph Cody | Models that parse XML well (Claude, older GPTs) |
-| **Inline text descriptions** | Warp, Aider, gp-nvim | Simple tools, models without function calling |
-| **Hybrid (JSON + inline docs)** | Claude Code, Cursor | When you need schema validation AND detailed guidance |
-| **Python-syntax calls** | Google Jules | Novel approach, only Jules uses it |
+| Format                                    | Used By                                                  | Best For                                              |
+| ----------------------------------------- | -------------------------------------------------------- | ----------------------------------------------------- |
+| **JSON Schema (OpenAI function calling)** | Gemini CLI, Codex CLI, OpenHands, Manus, Replit, Lovable | OpenAI/Anthropic API with native function calling     |
+| **XML command tags**                      | Cline, Amazon Q, Devin, Junie, Sourcegraph Cody          | Models that parse XML well (Claude, older GPTs)       |
+| **Inline text descriptions**              | Warp, Aider, gp-nvim                                     | Simple tools, models without function calling         |
+| **Hybrid (JSON + inline docs)**           | Claude Code, Cursor                                      | When you need schema validation AND detailed guidance |
+| **Python-syntax calls**                   | Google Jules                                             | Novel approach, only Jules uses it                    |
 
 **Recommendation:** Use JSON Schema as your primary format. It is supported natively by OpenAI, Anthropic, Google, and most other providers. Add detailed descriptions and usage notes in the `description` field. If your model does not support native function calling, fall back to ReAct format (as CrewAI does) or XML tags.
 
@@ -276,6 +282,7 @@ The average across all 43 tools is approximately 15. But the range is enormous:
 Six of the most mature tools (Cursor, Claude Code, Gemini CLI, Codex CLI, OpenCode, Lovable) all strongly emphasize parallel tool calls. Cursor has an entire `<maximize_parallel_tool_calls>` section. Lovable calls it a "cardinal rule."
 
 Add this to your system prompt:
+
 ```
 You can call multiple tools in a single response. If you intend to call multiple
 tools and there are no dependencies between them, make all independent tool calls
@@ -293,31 +300,31 @@ This is the hardest unsolved problem in coding agents. After years of iteration 
 
 ### 3.1 The Twelve Formats
 
-| Format | Used By | Mechanism |
-|--------|---------|-----------|
-| **1. SEARCH/REPLACE blocks** | Aider, Warp, Crush, avante-nvim | Find exact text, replace with new text |
-| **2. Unified diff** | Aider, Mentat | Standard `--- a/file` / `+++ b/file` / `@@` format |
-| **3. V4A patch** | Aider | Variant of unified diff optimized for Claude |
-| **4. apply_patch** | Codex CLI, Cursor | Custom diff-like format with hunk headers |
-| **5. str_replace_editor** | OpenHands, Augment, Replit | JSON tool with old/new string params |
-| **6. old_string/new_string** | Claude Code, Amazon Q | Same as #5 but with different parameter names |
-| **7. Whole file rewrite** | Aider, Continue | Output the entire file with changes |
-| **8. ReplacementChunks** | Windsurf | Proprietary chunk-based format |
-| **9. Block parser** | Mentat | `@@start`/`@@code`/`@@end` markers |
-| **10. JSON parser** | Mentat | Structured JSON edit operations |
-| **11. Git merge markers** | Jules | `<<<<<<< SEARCH` / `>>>>>>> REPLACE` |
-| **12. Symbol-level replacement** | Serena | `replace_symbol_body(name_path="MyClass/method")` |
+| Format                           | Used By                         | Mechanism                                          |
+| -------------------------------- | ------------------------------- | -------------------------------------------------- |
+| **1. SEARCH/REPLACE blocks**     | Aider, Warp, Crush, avante-nvim | Find exact text, replace with new text             |
+| **2. Unified diff**              | Aider, Mentat                   | Standard `--- a/file` / `+++ b/file` / `@@` format |
+| **3. V4A patch**                 | Aider                           | Variant of unified diff optimized for Claude       |
+| **4. apply_patch**               | Codex CLI, Cursor               | Custom diff-like format with hunk headers          |
+| **5. str_replace_editor**        | OpenHands, Augment, Replit      | JSON tool with old/new string params               |
+| **6. old_string/new_string**     | Claude Code, Amazon Q           | Same as #5 but with different parameter names      |
+| **7. Whole file rewrite**        | Aider, Continue                 | Output the entire file with changes                |
+| **8. ReplacementChunks**         | Windsurf                        | Proprietary chunk-based format                     |
+| **9. Block parser**              | Mentat                          | `@@start`/`@@code`/`@@end` markers                 |
+| **10. JSON parser**              | Mentat                          | Structured JSON edit operations                    |
+| **11. Git merge markers**        | Jules                           | `<<<<<<< SEARCH` / `>>>>>>> REPLACE`               |
+| **12. Symbol-level replacement** | Serena                          | `replace_symbol_body(name_path="MyClass/method")`  |
 
 ### 3.2 Decision Matrix
 
-| Factor | Best Format(s) | Rationale |
-|--------|---------------|-----------|
-| **Simplest to implement** | old_string/new_string (#6) | One tool, no parser needed, exact match validation |
+| Factor                     | Best Format(s)                                  | Rationale                                                          |
+| -------------------------- | ----------------------------------------------- | ------------------------------------------------------------------ |
+| **Simplest to implement**  | old_string/new_string (#6)                      | One tool, no parser needed, exact match validation                 |
 | **Most reliable for LLMs** | old_string/new_string (#6), SEARCH/REPLACE (#1) | Exact string match is unambiguous; LLMs struggle with line numbers |
-| **Best for large changes** | Whole file rewrite (#7), apply_patch (#4) | Avoids the "unique match" problem for big refactors |
-| **Most token-efficient** | Unified diff (#2), apply_patch (#4) | Only transmits changed lines + context |
-| **Best for refactoring** | Symbol-level (#12) | Understands code structure; no text matching needed |
-| **Best for new files** | Whole file write | No existing content to match against |
+| **Best for large changes** | Whole file rewrite (#7), apply_patch (#4)       | Avoids the "unique match" problem for big refactors                |
+| **Most token-efficient**   | Unified diff (#2), apply_patch (#4)             | Only transmits changed lines + context                             |
+| **Best for refactoring**   | Symbol-level (#12)                              | Understands code structure; no text matching needed                |
+| **Best for new files**     | Whole file write                                | No existing content to match against                               |
 
 ### 3.3 Practical Recommendation
 
@@ -339,6 +346,7 @@ The main failure mode is non-unique matches. When `old_string` appears multiple 
 Every tool that uses exact matching has extensive whitespace guidance. Crush dedicates an entire `<whitespace_and_exact_matching>` section to this. The reason: LLMs frequently get whitespace wrong. Tabs vs. spaces, indentation depth, trailing whitespace, blank lines -- all are failure points.
 
 **Mitigation strategies from production tools:**
+
 1. Return line numbers with file reads (Claude Code uses `cat -n` format), so the model can see exact indentation
 2. Require 3-5 lines of context around the edit target (Crush, Warp)
 3. Fail loudly on non-matches with a clear error message (Claude Code, OpenHands)
@@ -367,11 +375,11 @@ If you are building a serious coding agent, consider Serena's MCP integration --
 
 The 43 tools fall into three distinct safety philosophies:
 
-| Model | Tools | Mechanism |
-|-------|-------|-----------|
-| **Prompt constraints** | Claude Code, Crush, Cursor, Augment, Codex CLI | Rules in the system prompt that the model must follow |
-| **Runtime sandboxing** | SWE-agent, Gemini CLI, Devin, Manus, Jules | Docker containers, VMs, or OS-level sandboxing |
-| **User approval per action** | Cline, Roo Code, Kilo Code, codecompanion-nvim | Every tool call requires user confirmation |
+| Model                        | Tools                                          | Mechanism                                             |
+| ---------------------------- | ---------------------------------------------- | ----------------------------------------------------- |
+| **Prompt constraints**       | Claude Code, Crush, Cursor, Augment, Codex CLI | Rules in the system prompt that the model must follow |
+| **Runtime sandboxing**       | SWE-agent, Gemini CLI, Devin, Manus, Jules     | Docker containers, VMs, or OS-level sandboxing        |
+| **User approval per action** | Cline, Roo Code, Kilo Code, codecompanion-nvim | Every tool call requires user confirmation            |
 
 **In practice, use all three.** Prompt constraints are your first line of defense. Sandboxing catches what prompts miss. User approval provides a final safety net for destructive actions.
 
@@ -427,6 +435,7 @@ Always use --no-pager flags with git commands. Set PAGER=cat if needed.
 ```
 
 **Command classification.** Amazon Q classifies every command as `readOnly`, `mutate`, or `destructive`. This is a good framework:
+
 - `readOnly`: ls, cat, grep, git status, git log -- always safe
 - `mutate`: file edits, git add, npm install -- need the read-before-edit check
 - `destructive`: rm -rf, git push --force, DROP TABLE -- require explicit user approval
@@ -469,16 +478,19 @@ Manus uses **logits masking** to constrain the action space during token decodin
 ### 5.1 When to Use Sub-Agents
 
 Not every coding agent needs multiple agents. Of the 43 tools surveyed:
+
 - 18 are single-agent (Warp, Aider, Windsurf, Lovable, etc.)
 - 25 use some form of multi-agent or multi-mode design
 
 **Use sub-agents when:**
+
 - Tasks can be parallelized (e.g., editing different files simultaneously)
 - Different capabilities require different tool sets (e.g., browser vs. code editor)
 - Context windows are a constraint (sub-agents get fresh context)
 - Different tasks benefit from different models (use a cheap model for search, an expensive model for editing)
 
 **Stay single-agent when:**
+
 - Your tasks are sequential and interdependent
 - You want simplicity and debuggability
 - Your context window is large enough for the typical task
@@ -498,6 +510,7 @@ Main Agent
 ```
 
 Claude Code's implementation:
+
 ```json
 {
   "name": "Task",
@@ -543,6 +556,7 @@ Used by: AutoGen (MagenticOne), Claude Flow.
 A meta-agent maintains a structured ledger tracking facts, progress, and next-speaker selection. This is the most sophisticated pattern but also the most complex to implement.
 
 AutoGen's MagenticOne ledger:
+
 ```json
 {
   "facts": ["The repo uses TypeScript", "Tests are in __tests__/"],
@@ -563,6 +577,7 @@ From analyzing Claude Code, Codex CLI, and Gemini CLI sub-agents:
 2. **Restrict tool access per sub-agent.** The Explore agent gets read-only tools. The Bash agent gets only the shell tool. The Plan agent can search but cannot edit. This prevents sub-agents from exceeding their scope.
 
 3. **Declare read-only constraints explicitly.** Claude Code's sub-agent prompt:
+
 ```
 === CRITICAL: READ-ONLY MODE - NO FILE MODIFICATIONS ===
 This is a READ-ONLY exploration task. You are STRICTLY PROHIBITED from:
@@ -580,6 +595,7 @@ This is a READ-ONLY exploration task. You are STRICTLY PROHIBITED from:
 Two patterns for delegation:
 
 **spawn/close pattern** (Codex CLI):
+
 ```
 spawn_agent(name="auth_agent", prompt="Implement JWT authentication")
 // ... later ...
@@ -587,6 +603,7 @@ close_agent(name="auth_agent")
 ```
 
 **Task tool pattern** (Claude Code, Crush, OpenCode):
+
 ```
 Task(prompt="Search for all files related to authentication", subagent_type="Explore")
 ```
@@ -594,6 +611,7 @@ Task(prompt="Search for all files related to authentication", subagent_type="Exp
 The Task pattern is simpler and works well for fire-and-forget subtasks. The spawn/close pattern gives more control over agent lifecycle and is better for long-running parallel work.
 
 **CrewAI's delegation model** is worth studying if you build multi-agent teams. It provides two delegation tools:
+
 - `delegate_work(task, agent, context)` -- hand off a task to another agent
 - `ask_question(question, agent, context)` -- ask another agent for information
 
@@ -684,6 +702,7 @@ Seven of the 43 tools now have persistent memory. Here is Claude Code's memory g
 ```
 
 **Implementation approaches:**
+
 - **File-based** (Claude Code: MEMORY.md, Gemini CLI: save_memory, Serena: write_memory) -- simple, inspectable, user-editable
 - **Tool-based** (Windsurf: create_memory, Cursor: update_memory) -- integrated into the tool flow
 - **Filesystem-as-memory** (Manus) -- store observations as files, restore via paths
@@ -696,6 +715,7 @@ Seven of the 43 tools now have persistent memory. Here is Claude Code's memory g
 Task tracking tools have independently appeared in 8+ tools within months of each other: Cursor, Claude Code, Gemini CLI, Codex CLI, OpenHands, Augment Code, avante-nvim, Manus.
 
 The pattern: a structured todo list that the agent maintains throughout the conversation. This serves three purposes:
+
 1. **Planning:** Forces the agent to decompose tasks before starting
 2. **Tracking:** Prevents the agent from forgetting steps in long tasks
 3. **Visibility:** Shows the user what the agent is doing and how far along it is
@@ -710,17 +730,17 @@ Manus takes an interesting variant: instead of a tool, it writes `todo.md` files
 
 The ecosystem has fragmented across 20+ different customization file formats. Here are the major ones and who reads them:
 
-| File | Primary Tool | Also Read By |
-|------|-------------|--------------|
-| `CLAUDE.md` | Claude Code | codecompanion-nvim, Claude Flow |
-| `.cursorrules` | Cursor | Cline, OpenHands, codecompanion-nvim |
-| `AGENTS.md` | Codex CLI | Goose, OpenHands, Jules, codecompanion-nvim |
-| `GEMINI.md` | Gemini CLI | -- |
-| `.clinerules` | Cline | codecompanion-nvim |
-| `.windsurfrules` | Windsurf | Cline |
-| `.github/copilot-instructions.md` | GitHub Copilot | -- |
-| `.kiro/steering/*.md` | Kiro | -- |
-| `.junie/guidelines.md` | JetBrains Junie | JetBrains Air |
+| File                              | Primary Tool    | Also Read By                                |
+| --------------------------------- | --------------- | ------------------------------------------- |
+| `CLAUDE.md`                       | Claude Code     | codecompanion-nvim, Claude Flow             |
+| `.cursorrules`                    | Cursor          | Cline, OpenHands, codecompanion-nvim        |
+| `AGENTS.md`                       | Codex CLI       | Goose, OpenHands, Jules, codecompanion-nvim |
+| `GEMINI.md`                       | Gemini CLI      | --                                          |
+| `.clinerules`                     | Cline           | codecompanion-nvim                          |
+| `.windsurfrules`                  | Windsurf        | Cline                                       |
+| `.github/copilot-instructions.md` | GitHub Copilot  | --                                          |
+| `.kiro/steering/*.md`             | Kiro            | --                                          |
+| `.junie/guidelines.md`            | JetBrains Junie | JetBrains Air                               |
 
 **Practical recommendation:** Support at least `CLAUDE.md` and `AGENTS.md` (the two with the strongest organizational backing from Anthropic and OpenAI respectively). Read `.cursorrules` if present (it has the largest installed base). Use a hierarchical model where more specific files override more general ones.
 
@@ -735,12 +755,14 @@ Claude Code, Gemini CLI, and Codex CLI all use hierarchical rules with directory
 ```
 
 **Codex CLI's scoping model (adopted by Jules):**
+
 - AGENTS.md files at any directory level
 - The scope of an AGENTS.md file is the entire directory tree rooted at the folder containing it
 - More deeply nested files take precedence over less deeply nested files
 - Direct user instructions override all AGENTS.md files
 
 **Implementation:**
+
 ```python
 def load_rules(working_dir: str) -> str:
     rules = []
@@ -757,6 +779,7 @@ def load_rules(working_dir: str) -> str:
 ### 7.3 What Users Put in Rules Files
 
 From analyzing real-world CLAUDE.md and .cursorrules files, users typically specify:
+
 - **Code style:** "Use 2-space indentation", "Prefer functional style", "Always use TypeScript strict mode"
 - **Testing commands:** "Run tests with `npm test`", "Use pytest with -v flag"
 - **Architecture notes:** "The API layer is in src/api/, business logic in src/domain/"
@@ -768,6 +791,7 @@ From analyzing real-world CLAUDE.md and .cursorrules files, users typically spec
 A newer pattern from Continue, Gemini CLI, Crush, and Claude Code: user-defined "skills" that can be loaded on demand.
 
 **Continue's model:** Skills are markdown documents stored in `.continue/skills/` that the agent can request when relevant. Skills have four attachment types:
+
 - **Always:** Loaded into every conversation
 - **Auto-Attached:** Loaded when a glob pattern matches (e.g., `*.tsx` triggers the React skill)
 - **Agent Requested:** The agent can ask to load a skill by description
@@ -783,15 +807,16 @@ This is more efficient than putting everything in a rules file, because skills a
 
 Nearly every multi-mode agent converges on the same three modes:
 
-| Mode | Purpose | Tool Access | Used By |
-|------|---------|------------|---------|
-| **Chat/Ask** | Conversational Q&A | No tools or read-only | Cline, Continue, Kiro, Junie, Goose |
-| **Plan** | Design and plan before executing | Read-only tools | Cline, Continue, Gemini CLI, Claude Code, Goose, Devin |
-| **Agent/Code/Do** | Full execution with all tools | All tools | Every tool |
+| Mode              | Purpose                          | Tool Access           | Used By                                                |
+| ----------------- | -------------------------------- | --------------------- | ------------------------------------------------------ |
+| **Chat/Ask**      | Conversational Q&A               | No tools or read-only | Cline, Continue, Kiro, Junie, Goose                    |
+| **Plan**          | Design and plan before executing | Read-only tools       | Cline, Continue, Gemini CLI, Claude Code, Goose, Devin |
+| **Agent/Code/Do** | Full execution with all tools    | All tools             | Every tool                                             |
 
 **Why Plan mode matters:** Plan mode lets the user review the agent's approach before it starts making changes. It is read-only: the agent can search, read files, and explore, but cannot edit or execute. This builds trust and catches misunderstandings early.
 
 Implementation:
+
 ```python
 MODES = {
     "chat": {
@@ -812,6 +837,7 @@ MODES = {
 ### 8.2 Advanced Mode Patterns
 
 **Roo Code's 5-mode system** (the most copied pattern in the ecosystem):
+
 - **Code:** Full access, implements features
 - **Architect:** Read-only, designs architecture
 - **Ask:** No tools, answers questions
@@ -819,9 +845,11 @@ MODES = {
 - **Orchestrator:** Breaks work into subtasks and delegates
 
 **Kiro's intent classifier:** Instead of the user choosing a mode, Kiro runs a classifier prompt that returns confidence scores:
+
 ```json
-{"do": 0.8, "spec": 0.1, "chat": 0.1}
+{ "do": 0.8, "spec": 0.1, "chat": 0.1 }
 ```
+
 The highest-confidence mode is selected automatically. This removes the cognitive burden from the user.
 
 **Gemini CLI's Directive vs. Inquiry distinction:** The only tool that explicitly differentiates "do this" from "tell me about this" at the prompt level. Directives trigger the Research -> Strategy -> Execution lifecycle. Inquiries get a direct answer.
@@ -851,6 +879,7 @@ The single most impactful rule across all tools. Without it, agents will halluci
 ### 9.2 Allowing Unbounded Shell Execution
 
 Without timeouts and banned command lists, agents will:
+
 - Start interactive programs that hang forever (vi, python REPL)
 - Run commands that produce infinite output
 - Execute `sudo` commands that escalate privileges
@@ -867,6 +896,7 @@ Multiple tools (Claude Code, Crush) explicitly ban URL guessing. Without this ru
 ### 9.4 Over-Engineering and Scope Creep
 
 Claude Code addresses this explicitly:
+
 ```
 Avoid over-engineering. Only make changes that are directly requested or clearly necessary.
 Don't add features, refactor code, or make "improvements" beyond what was asked.
@@ -908,6 +938,7 @@ A common failure: the agent introduces a completely different coding style, nami
 SWE-agent achieves competitive benchmark scores with a one-sentence system prompt. Goose manages with ~80 lines. LangGraph provides zero default prompts. Meanwhile, some tools have bloated prompts full of redundant instructions.
 
 The lesson: prompt length does not correlate with capability. What matters is:
+
 1. Clear constraints (10 good rules beat 50 vague ones)
 2. Good tool definitions (most intelligence can live in tool descriptions)
 3. Runtime context (environment info, user rules, memory)
@@ -934,14 +965,14 @@ This is Claude Code's unique insight, and it is worth repeating because it is so
 
 If you want to build a working coding agent with the minimum viable feature set, here is what you need:
 
-| Component | Recommendation |
-|-----------|---------------|
-| **System prompt** | ~100 lines covering identity, constraints, workflow, tool usage |
-| **Tools** | 6 core: read_file, edit_file, write_file, search, glob, run_shell |
-| **Edit format** | old_string/new_string exact replacement |
-| **Safety** | Read-before-edit, shell timeout, banned commands, git commit only on request |
-| **Context** | Environment block (OS, cwd, date, git status), user rules file support |
-| **Modes** | Plan mode (read-only tools) + Agent mode (all tools) |
+| Component         | Recommendation                                                               |
+| ----------------- | ---------------------------------------------------------------------------- |
+| **System prompt** | ~100 lines covering identity, constraints, workflow, tool usage              |
+| **Tools**         | 6 core: read_file, edit_file, write_file, search, glob, run_shell            |
+| **Edit format**   | old_string/new_string exact replacement                                      |
+| **Safety**        | Read-before-edit, shell timeout, banned commands, git commit only on request |
+| **Context**       | Environment block (OS, cwd, date, git status), user rules file support       |
+| **Modes**         | Plan mode (read-only tools) + Agent mode (all tools)                         |
 
 This gets you 80% of the way to a production agent. The remaining 20% -- sub-agents, persistent memory, skills, symbol-level editing, KV-cache optimization -- can be added incrementally as you encounter real-world limitations.
 
