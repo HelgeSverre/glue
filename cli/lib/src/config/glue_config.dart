@@ -105,10 +105,13 @@ class GlueConfig {
       profiles: profiles,
       maxSubagentDepth: maxSubagentDepth,
       bashMaxLines: bashMaxLines,
+      titleModel: titleModel,
       shellConfig: shellConfig,
       dockerConfig: dockerConfig,
       webConfig: webConfig,
       observability: observability ?? this.observability,
+      skillPaths: skillPaths,
+      permissionMode: permissionMode,
     );
   }
 
