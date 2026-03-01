@@ -55,8 +55,11 @@ Guidelines:
       buf.write('\n\n## Skills\n\n');
       buf.write(
           'The following skills provide specialized instructions for specific tasks.\n');
-      buf.write(
-          'Use the skill tool to load a skill when the task matches its description.\n\n');
+      buf.write('Skill trigger rules:\n'
+          '- If the user explicitly names a skill, call the skill tool for that skill.\n'
+          '- If the task clearly matches a skill description, call the skill tool before doing substantive work.\n'
+          '- If a named skill is unavailable, say so and continue with the best fallback approach.\n'
+          '- After loading a skill, follow its SKILL.md instructions and only load referenced files as needed.\n\n');
       buf.write('<available_skills>\n');
       for (final s in skills) {
         buf.write('  <skill>\n');
