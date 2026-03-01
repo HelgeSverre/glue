@@ -2367,6 +2367,8 @@ class _ConversationEntry {
   _ConversationEntry._(this.kind, this.text,
       {this.args, this.expandedText, this.group});
 
+
+  // todo: this is old dart style, use modern syntax or codegen this type of boilerplate
   factory _ConversationEntry.user(String text, {String? expandedText}) =>
       _ConversationEntry._(_EntryKind.user, text, expandedText: expandedText);
 
