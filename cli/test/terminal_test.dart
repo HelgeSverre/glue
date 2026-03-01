@@ -38,9 +38,9 @@ void main() {
           title: 'Apply changes?',
           bodyLines: ['File: foo.dart', 'Size: 42 bytes'],
           choices: [
-            ModalChoice('Yes', 'y'),
-            ModalChoice('No', 'n'),
-            ModalChoice('Always', 'a'),
+            const ModalChoice('Yes', 'y'),
+            const ModalChoice('No', 'n'),
+            const ModalChoice('Always', 'a'),
           ],
         );
 

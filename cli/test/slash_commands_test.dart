@@ -54,6 +54,18 @@ void main() {
       expect(registry.execute('/exit'), 'bye');
     });
 
+    test('hidden aliases respond to aliased names', () {
+      registry.register(SlashCommand(
+        name: 'exit',
+        description: 'Exit',
+        hiddenAliases: ['q'],
+        execute: (_) => 'bye',
+      ));
+
+      expect(registry.execute('/q'), 'bye');
+      expect(registry.execute('/exit'), 'bye');
+    });
+
     test('unknown command returns error message', () {
       final result = registry.execute('/unknown');
 

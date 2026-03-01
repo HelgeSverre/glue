@@ -12,6 +12,7 @@ enum Key {
   enter,
   backspace,
   tab,
+  shiftTab,
   up,
   down,
   left,
@@ -40,12 +41,14 @@ class KeyEvent extends TerminalEvent {
   final Key key;
   final bool ctrl;
   final bool alt;
+  final bool shift;
   final int? charCode;
-  KeyEvent(this.key, {this.ctrl = false, this.alt = false, this.charCode});
+  KeyEvent(this.key,
+      {this.ctrl = false, this.alt = false, this.shift = false, this.charCode});
 
   @override
   String toString() =>
-      'KeyEvent($key${ctrl ? ', ctrl' : ''}${alt ? ', alt' : ''})';
+      'KeyEvent($key${ctrl ? ', ctrl' : ''}${alt ? ', alt' : ''}${shift ? ', shift' : ''})';
 }
 
 /// A printable character (may be multi-byte UTF-8).
@@ -79,11 +82,20 @@ class MouseEvent extends TerminalEvent {
   /// Whether this is a scroll-wheel event (up or down).
   bool get isScroll => (button & 64) != 0;
 
-  /// Scroll direction: true = up, false = down. Only meaningful when [isScroll].
+  /// Whether the scroll direction is upward. Only meaningful when [isScroll] is true.
   bool get isScrollUp => isScroll && (button & 1) == 0;
 
   @override
   String toString() => 'MouseEvent($x, $y, button=$button, isDown=$isDown)';
+}
+
+/// Bracketed paste content from the terminal.
+class PasteEvent extends TerminalEvent {
+  final String content;
+  PasteEvent(this.content);
+
+  @override
+  String toString() => 'PasteEvent(${content.length} chars)';
 }
 
 // ---------------------------------------------------------------------------
@@ -126,6 +138,8 @@ class Terminal {
   bool _isRaw = false;
   List<int> _pending = [];
   Timer? _escTimer;
+  bool _inPaste = false;
+  List<int> _pasteBytes = [];
 
   /// Stream of parsed terminal input events.
   Stream<TerminalEvent> get events => _inputController.stream;
@@ -146,12 +160,15 @@ class Terminal {
 
   // ── Raw mode ────────────────────────────────────────────────────────────
 
-  /// Enter raw mode — we now own every byte from stdin.
+  /// Enters raw mode — the terminal now owns every byte from stdin.
   void enableRawMode() {
     if (_isRaw) return;
     stdin.echoMode = false;
     stdin.lineMode = false;
     _isRaw = true;
+
+    // Enable bracketed paste mode so we can distinguish pasted text.
+    stdout.write('\x1b[?2004h');
 
     _stdinSub = stdin.listen(_parseInput);
 
@@ -160,17 +177,21 @@ class Terminal {
     });
   }
 
-  /// Restore normal terminal mode.
+  /// Restores normal terminal mode.
   void disableRawMode() {
     if (!_isRaw) return;
+    // Disable bracketed paste mode before restoring terminal.
+    stdout.write('\x1b[?2004l');
     stdin.echoMode = true;
     stdin.lineMode = true;
     _isRaw = false;
+    _inPaste = false;
+    _pasteBytes = [];
     _stdinSub?.cancel();
     _sigwinchSub?.cancel();
   }
 
-  /// Release all resources.
+  /// Releases all resources.
   void dispose() {
     _escTimer?.cancel();
     disableRawMode();
@@ -185,6 +206,18 @@ class Terminal {
     final data = [..._pending, ...bytes];
     _pending = [];
     var i = 0;
+
+    // If we're inside a bracketed paste, accumulate bytes until the
+    // closing marker ESC[201~ arrives.
+    if (_inPaste) {
+      i = _accumulatePaste(data, 0);
+      if (_inPaste) {
+        // Still pasting — entire chunk consumed; wait for more.
+        return;
+      }
+      // Paste ended; fall through to parse any remaining bytes.
+    }
+
     while (i < data.length) {
       if (data[i] == 0x1b) {
         // If ESC is last byte, it might be start of a sequence — buffer
@@ -207,8 +240,26 @@ class Terminal {
             _pending = data.sublist(i);
             return;
           }
+          if (event == null) {
+            // Bracketed paste start — switch to paste accumulation mode.
+            i = _accumulatePaste(data, next);
+            if (_inPaste) return; // still pasting
+            continue;
+          }
           _emit(event);
           i = next;
+          continue;
+        }
+        // ESC + CR (0x0d) = Shift+Enter (iTerm2 encoding)
+        if (data[i + 1] == 0x0d) {
+          _emit(KeyEvent(Key.enter, shift: true));
+          i += 2;
+          continue;
+        }
+        // ESC + LF (0x0a) = Shift+Enter (alternate iTerm2 encoding)
+        if (data[i + 1] == 0x0a) {
+          _emit(KeyEvent(Key.enter, shift: true));
+          i += 2;
           continue;
         }
         // ESC + 0x7f = Alt+Backspace
@@ -240,6 +291,44 @@ class Terminal {
     }
   }
 
+  /// Accumulate paste bytes starting at [start] in [data].
+  /// Scans for the closing marker ESC[201~ and emits a PasteEvent when found.
+  /// Returns the index after the consumed bytes.
+  int _accumulatePaste(List<int> data, int start) {
+    // Closing marker: ESC [ 2 0 1 ~ = [0x1b, 0x5b, 0x32, 0x30, 0x31, 0x7e]
+    const marker = [0x1b, 0x5b, 0x32, 0x30, 0x31, 0x7e];
+    for (var i = start; i < data.length; i++) {
+      if (data[i] == 0x1b && i + marker.length <= data.length) {
+        var found = true;
+        for (var j = 0; j < marker.length; j++) {
+          if (data[i + j] != marker[j]) {
+            found = false;
+            break;
+          }
+        }
+        if (found) {
+          // End of paste — emit everything accumulated so far.
+          _pasteBytes.addAll(data.sublist(start, i));
+          final content = utf8.decode(_pasteBytes, allowMalformed: true);
+          _inPaste = false;
+          _pasteBytes = [];
+          _emit(PasteEvent(content));
+          return i + marker.length;
+        }
+      }
+      // If we might be at the start of an incomplete marker at the end
+      // of data, buffer remaining bytes.
+      if (data[i] == 0x1b && i + marker.length > data.length) {
+        _pasteBytes.addAll(data.sublist(start, i));
+        _pending = data.sublist(i);
+        return data.length;
+      }
+    }
+    // No marker found — accumulate everything.
+    _pasteBytes.addAll(data.sublist(start));
+    return data.length;
+  }
+
   KeyEvent _controlChar(int byte) => switch (byte) {
         0x01 => KeyEvent(Key.ctrlA),
         0x03 => KeyEvent(Key.ctrlC, ctrl: true),
@@ -260,7 +349,9 @@ class Terminal {
   /// Parse a CSI sequence starting after `ESC [`.
   /// Returns (event, nextIndex, complete). If [complete] is false, the
   /// sequence is incomplete and should be buffered for the next chunk.
-  (TerminalEvent, int, bool) _parseCsiSafe(List<int> bytes, int start) {
+  /// Returns null event to signal bracketed paste start (caller switches
+  /// to paste accumulation mode).
+  (TerminalEvent?, int, bool) _parseCsiSafe(List<int> bytes, int start) {
     var i = start;
     final params = StringBuffer();
 
@@ -293,21 +384,45 @@ class Terminal {
     // (2=Shift, 3=Alt, 4=Shift+Alt, 5=Ctrl, etc).
     final parts = paramStr.split(';');
     final modifier = parts.length >= 2 ? (int.tryParse(parts.last) ?? 1) : 1;
+    final isShift = (modifier - 1) & 0x01 != 0;
     final isAlt = (modifier - 1) & 0x02 != 0;
     final isCtrl = (modifier - 1) & 0x04 != 0;
 
-    final event = switch (finalByte) {
-      0x41 => KeyEvent(Key.up, alt: isAlt, ctrl: isCtrl),
-      0x42 => KeyEvent(Key.down, alt: isAlt, ctrl: isCtrl),
-      0x43 => KeyEvent(Key.right, alt: isAlt, ctrl: isCtrl),
-      0x44 => KeyEvent(Key.left, alt: isAlt, ctrl: isCtrl),
-      0x48 => KeyEvent(Key.home, alt: isAlt, ctrl: isCtrl),
-      0x46 => KeyEvent(Key.end, alt: isAlt, ctrl: isCtrl),
+    final TerminalEvent? event = switch (finalByte) {
+      0x41 => KeyEvent(Key.up, alt: isAlt, ctrl: isCtrl, shift: isShift),
+      0x42 => KeyEvent(Key.down, alt: isAlt, ctrl: isCtrl, shift: isShift),
+      0x43 => KeyEvent(Key.right, alt: isAlt, ctrl: isCtrl, shift: isShift),
+      0x44 => KeyEvent(Key.left, alt: isAlt, ctrl: isCtrl, shift: isShift),
+      0x48 => KeyEvent(Key.home, alt: isAlt, ctrl: isCtrl, shift: isShift),
+      0x46 => KeyEvent(Key.end, alt: isAlt, ctrl: isCtrl, shift: isShift),
+      0x5a => KeyEvent(Key.shiftTab), // CSI Z = Shift+Tab
+      // CSI u: keycode;modifiers u (Kitty keyboard protocol)
+      0x75 => _parseCsiU(paramStr),
       0x7e => _parseTilde(paramStr),
       _ => KeyEvent(Key.unknown, charCode: finalByte),
     };
 
     return (event, i, true);
+  }
+
+  /// Parse CSI u (Kitty keyboard protocol): ESC [ keycode;modifiers u
+  TerminalEvent _parseCsiU(String paramStr) {
+    final parts = paramStr.split(';');
+    final keycode = int.tryParse(parts.first) ?? 0;
+    final modifier = parts.length >= 2 ? (int.tryParse(parts[1]) ?? 1) : 1;
+    final isShift = (modifier - 1) & 0x01 != 0;
+    final isAlt = (modifier - 1) & 0x02 != 0;
+    final isCtrl = (modifier - 1) & 0x04 != 0;
+
+    return switch (keycode) {
+      13 => KeyEvent(Key.enter, shift: isShift, alt: isAlt, ctrl: isCtrl),
+      9 => KeyEvent(Key.tab, shift: isShift, alt: isAlt, ctrl: isCtrl),
+      27 => KeyEvent(Key.escape, shift: isShift, alt: isAlt, ctrl: isCtrl),
+      127 => KeyEvent(Key.backspace, shift: isShift, alt: isAlt, ctrl: isCtrl),
+      _ => keycode >= 32 && keycode < 127
+          ? CharEvent(String.fromCharCode(keycode), alt: isAlt)
+          : KeyEvent(Key.unknown, charCode: keycode),
+    };
   }
 
   /// Parse SGR mouse: params = "button;x;y", isPress distinguishes M vs m.
@@ -320,12 +435,49 @@ class Terminal {
     return MouseEvent(x, y, button, isDown: isPress);
   }
 
-  TerminalEvent _parseTilde(String params) => switch (params) {
-        '3' => KeyEvent(Key.delete),
-        '5' => KeyEvent(Key.pageUp),
-        '6' => KeyEvent(Key.pageDown),
-        _ => KeyEvent(Key.unknown),
+  /// Parse tilde-terminated CSI sequences.
+  ///
+  /// Handles standard keys (Delete, Page Up/Down) and the xterm
+  /// modifyOtherKeys format: ESC[27;modifier;keycode~
+  /// Also detects bracketed paste start (ESC[200~) — returns null to
+  /// signal paste mode.
+  TerminalEvent? _parseTilde(String params) {
+    final parts = params.split(';');
+
+    // Bracketed paste start: ESC[200~
+    if (parts.first == '200') {
+      _inPaste = true;
+      _pasteBytes = [];
+      return null; // signal paste mode to caller
+    }
+
+    // xterm modifyOtherKeys: ESC[27;modifier;keycode~
+    if (parts.length == 3 && parts[0] == '27') {
+      final modifier = int.tryParse(parts[1]) ?? 1;
+      final keycode = int.tryParse(parts[2]) ?? 0;
+      final isShift = (modifier - 1) & 0x01 != 0;
+      final isAlt = (modifier - 1) & 0x02 != 0;
+      final isCtrl = (modifier - 1) & 0x04 != 0;
+
+      return switch (keycode) {
+        13 => KeyEvent(Key.enter, shift: isShift, alt: isAlt, ctrl: isCtrl),
+        9 => KeyEvent(Key.tab, shift: isShift, alt: isAlt, ctrl: isCtrl),
+        27 => KeyEvent(Key.escape, shift: isShift, alt: isAlt, ctrl: isCtrl),
+        127 =>
+          KeyEvent(Key.backspace, shift: isShift, alt: isAlt, ctrl: isCtrl),
+        _ => keycode >= 32 && keycode < 127
+            ? CharEvent(String.fromCharCode(keycode), alt: isAlt)
+            : KeyEvent(Key.unknown, charCode: keycode),
       };
+    }
+
+    return switch (parts.first) {
+      '3' => KeyEvent(Key.delete),
+      '5' => KeyEvent(Key.pageUp),
+      '6' => KeyEvent(Key.pageDown),
+      _ => KeyEvent(Key.unknown),
+    };
+  }
 
   /// Decode a single UTF-8 character starting at [offset].
   /// Returns (character, bytesConsumed, complete). If [complete] is false,
@@ -354,49 +506,49 @@ class Terminal {
 
   // ── ANSI output helpers ─────────────────────────────────────────────────
 
-  /// Write raw text to stdout.
+  /// Writes raw text to stdout.
   void write(String s) => stdout.write(s);
 
-  /// Move cursor to (1-indexed) [row], [col].
+  /// Moves the cursor to (1-indexed) [row], [col].
   void moveTo(int row, int col) => write('\x1b[$row;${col}H');
 
-  /// Clear the entire screen.
+  /// Clears the entire screen.
   void clearScreen() => write('\x1b[2J');
 
-  /// Clear the current line.
+  /// Clears the current line.
   void clearLine() => write('\x1b[2K');
 
-  /// Hide the cursor.
+  /// Hides the cursor.
   void hideCursor() => write('\x1b[?25l');
 
-  /// Show the cursor.
+  /// Shows the cursor.
   void showCursor() => write('\x1b[?25h');
 
-  /// Save cursor position (DEC private).
+  /// Saves the cursor position (DEC private).
   void saveCursor() => write('\x1b7');
 
-  /// Restore cursor position (DEC private).
+  /// Restores the cursor position (DEC private).
   void restoreCursor() => write('\x1b8');
 
-  /// Enter alternate screen buffer.
+  /// Enters the alternate screen buffer.
   void enableAltScreen() => write('\x1b[?1049h');
 
-  /// Leave alternate screen buffer.
+  /// Leaves the alternate screen buffer.
   void disableAltScreen() => write('\x1b[?1049l');
 
-  /// Enable mouse reporting (X10 + SGR extended).
+  /// Enables mouse reporting (X10 + SGR extended).
   void enableMouse() => write('\x1b[?1000h\x1b[?1006h');
 
-  /// Disable mouse reporting.
+  /// Disables mouse reporting.
   void disableMouse() => write('\x1b[?1000l\x1b[?1006l');
 
-  /// Set the hardware scroll region to rows [top] through [bottom] (1-indexed).
+  /// Sets the hardware scroll region to rows [top] through [bottom] (1-indexed).
   void setScrollRegion(int top, int bottom) => write('\x1b[$top;${bottom}r');
 
-  /// Reset scroll region to the full terminal height.
+  /// Resets the scroll region to the full terminal height.
   void resetScrollRegion() => write('\x1b[r');
 
-  /// Write [text] wrapped in the given ANSI [style].
+  /// Writes [text] wrapped in the given ANSI [style].
   void writeStyled(String text, {AnsiStyle? style}) {
     if (style != null) {
       write('${style.open}$text${style.close}');

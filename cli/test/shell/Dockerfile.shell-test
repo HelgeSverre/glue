@@ -1,0 +1,17 @@
+FROM dart:stable
+
+# Install all shells for testing
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      bash \
+      zsh \
+      fish \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY pubspec.yaml pubspec.lock ./
+RUN dart pub get
+COPY . .
+
+# Run the test script
+CMD ["dart", "run", "test/shell/docker_shell_test.dart"]

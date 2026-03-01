@@ -6,183 +6,564 @@
   <title>Glue — Documentation</title>
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="docs-page">
 
-  <div class="tape"></div>
-  <nav class="nav">
+  <nav class="nav docs-nav">
     <a href="index.html" class="nav-logo">GLUE</a>
     <ul class="nav-links">
       <li><a href="index.html">Home</a></li>
       <li><a href="docs.html" class="active">Docs</a></li>
-      <li><a href="models.html">Models</a></li>
+      <li><a href="agents.html">Agents</a></li>
       <li><a href="worktrees.html">Worktrees</a></li>
       <li><a href="app.html">Web UI</a></li>
       <li><a href="brand.html">Brand</a></li>
     </ul>
   </nav>
+
+  <button class="docs-menu-toggle" onclick="document.querySelector('.docs-sidebar').classList.toggle('open')">
+    ▸ Documentation Menu
+  </button>
+
+  <div class="docs-layout">
+    <!-- ─── Sidebar ─── -->
+    <aside class="docs-sidebar">
+      <div class="docs-sidebar-group">
+        <div class="docs-sidebar-label">Start</div>
+        <a href="#getting-started">Getting Started</a>
+        <a href="#configuration">Configuration</a>
+      </div>
+      <div class="docs-sidebar-group">
+        <div class="docs-sidebar-label">Usage</div>
+        <a href="#interactive-mode">Interactive Mode</a>
+        <a href="#file-references">@file References</a>
+        <a href="#bash-mode">Bash Mode</a>
+      </div>
+      <div class="docs-sidebar-group">
+        <div class="docs-sidebar-label">Tools</div>
+        <a href="#built-in-tools">Built-in Tools</a>
+        <a href="#tool-approval">Tool Approval</a>
+        <a href="#web-tools">Web Tools</a>
+      </div>
+      <div class="docs-sidebar-group">
+        <div class="docs-sidebar-label">Advanced</div>
+        <a href="#sessions">Sessions</a>
+        <a href="#project-context">Project Context</a>
+        <a href="#subagents">Subagents</a>
+        <a href="#observability">Observability</a>
+        <a href="#docker-sandbox">Docker Sandbox</a>
+        <a href="#shell-completions">Shell Completions</a>
+      </div>
+    </aside>
+
+    <!-- ─── Content ─── -->
+    <main class="docs-content">
+
+      <!-- ─── Getting Started ─── -->
+      <h2 id="getting-started">Getting Started</h2>
+
+      <h3>Prerequisites</h3>
+      <ul>
+        <li><strong>Dart SDK 3.0+</strong> — <a href="https://dart.dev/get-dart">dart.dev/get-dart</a></li>
+        <li><strong>Git</strong> — required for worktree support</li>
+        <li><strong>API key</strong> for at least one LLM provider</li>
+      </ul>
+
+      <h3>Install</h3>
+      <div class="code-block"><span class="comment"># Clone and install from source</span>
+<span class="p">❯</span> git clone https://github.com/…/glue.git
+<span class="p">❯</span> cd glue/cli
+<span class="p">❯</span> just install              <span class="comment"># or: dart run bin/glue.dart</span>
+
+<span class="comment"># Navigate to any project</span>
+<span class="p">❯</span> cd my-project
+
+<span class="comment"># Launch</span>
+<span class="p">❯</span> glue</div>
+
+      <h3>Set Your API Key</h3>
+      <p>Glue reads provider keys from environment variables. Set the one for your preferred provider:</p>
+      <div class="code-block"><span class="comment"># Anthropic (default provider)</span>
+<span class="p">❯</span> export <span class="hl">ANTHROPIC_API_KEY</span>=<span class="string">sk-ant-...</span>
+
+<span class="comment"># OpenAI</span>
+<span class="p">❯</span> export <span class="hl">OPENAI_API_KEY</span>=<span class="string">sk-...</span>
+
+<span class="comment"># Mistral</span>
+<span class="p">❯</span> export <span class="hl">MISTRAL_API_KEY</span>=<span class="string">...</span></div>
+
+      <h3>CLI Flags</h3>
+      <table class="brutal-table">
+        <thead><tr><th>Flag</th><th>Description</th><th>Example</th></tr></thead>
+        <tbody>
+          <tr><td><code>glue "prompt"</code></td><td>Start with an initial prompt</td><td><code>glue "add auth endpoint"</code></td></tr>
+          <tr><td><code>--model, -m</code></td><td>Select model</td><td><code>glue -m gpt-5</code></td></tr>
+          <tr><td><code>--resume</code></td><td>Open session picker</td><td><code>glue --resume</code></td></tr>
+          <tr><td><code>--continue</code></td><td>Resume most recent session</td><td><code>glue --continue</code></td></tr>
+        </tbody>
+      </table>
+
+      <!-- ─── Configuration ─── -->
+      <h2 id="configuration">Configuration</h2>
+
+      <h3>Config Files</h3>
+      <p>Global settings live in <code>~/.glue/config.yaml</code>. Project-level overrides go in <code>.glue/config.yaml</code>. Settings resolve in precedence order (see below).</p>
+
+      <h3>Full Schema</h3>
+      <div class="code-block"><span class="comment"># ~/.glue/config.yaml</span>
+
+<span class="hl">provider</span>: <span class="string">"anthropic"</span>          <span class="comment"># anthropic | openai | mistral | ollama</span>
+<span class="hl">model</span>: <span class="string">"claude-sonnet-4-6"</span>     <span class="comment"># model name</span>
+
+<span class="hl">anthropic</span>:
+  <span class="hl">api_key</span>: <span class="string">"sk-ant-..."</span>       <span class="comment"># or use env var</span>
+
+<span class="hl">openai</span>:
+  <span class="hl">api_key</span>: <span class="string">"sk-..."</span>
+
+<span class="hl">bash</span>:
+  <span class="hl">max_lines</span>: <span class="string">50</span>               <span class="comment"># max output lines shown</span>
+
+<span class="hl">profiles</span>:                       <span class="comment"># named profiles for subagents</span>
+  <span class="hl">fast</span>:
+    <span class="hl">provider</span>: <span class="string">"openai"</span>
+    <span class="hl">model</span>: <span class="string">"gpt-4.1-nano"</span>
+  <span class="hl">deep</span>:
+    <span class="hl">provider</span>: <span class="string">"anthropic"</span>
+    <span class="hl">model</span>: <span class="string">"claude-opus-4-6"</span></div>
+
+      <h3>Environment Variables</h3>
+      <table class="brutal-table">
+        <thead><tr><th>Variable</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>ANTHROPIC_API_KEY</code></td><td>Anthropic API key</td></tr>
+          <tr><td><code>OPENAI_API_KEY</code></td><td>OpenAI API key</td></tr>
+          <tr><td><code>MISTRAL_API_KEY</code></td><td>Mistral API key</td></tr>
+          <tr><td><code>GLUE_PROVIDER</code></td><td>Override default provider</td></tr>
+          <tr><td><code>GLUE_MODEL</code></td><td>Override default model</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Precedence</h3>
+      <p>Settings resolve in this order (first match wins):</p>
+      <ol>
+        <li>CLI flags (<code>--model</code>, <code>--provider</code>)</li>
+        <li>Environment variables (<code>GLUE_MODEL</code>, etc.)</li>
+        <li>Project config (<code>.glue/config.yaml</code>)</li>
+        <li>Global config (<code>~/.glue/config.yaml</code>)</li>
+        <li>Built-in defaults</li>
+      </ol>
+
+      <h3>Default Models</h3>
+      <table class="brutal-table">
+        <thead><tr><th>Provider</th><th>Default Model</th></tr></thead>
+        <tbody>
+          <tr><td>Anthropic</td><td><code>claude-sonnet-4-6</code></td></tr>
+          <tr><td>OpenAI</td><td><code>gpt-4.1</code></td></tr>
+          <tr><td>Mistral</td><td><code>mistral-large-latest</code></td></tr>
+          <tr><td>Ollama</td><td><code>llama3.2</code> (localhost:11434)</td></tr>
+        </tbody>
+      </table>
+
+      <!-- ─── Interactive Mode ─── -->
+      <h2 id="interactive-mode">Interactive Mode</h2>
+
+      <p>Glue runs as an interactive REPL. Type messages, use slash commands, or enter bash mode. The agent streams responses in real-time and can call tools in parallel.</p>
+
+      <h3>Slash Commands</h3>
+      <table class="brutal-table">
+        <thead><tr><th>Command</th><th>Aliases</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>/help</code></td><td></td><td>Show all commands and keybindings</td></tr>
+          <tr><td><code>/clear</code></td><td></td><td>Clear conversation history</td></tr>
+          <tr><td><code>/exit</code></td><td><code>/quit</code>, <code>/q</code></td><td>Exit the application</td></tr>
+          <tr><td><code>/model</code></td><td></td><td>Show or switch the current model</td></tr>
+          <tr><td><code>/info</code></td><td><code>/status</code></td><td>Show session metadata (model, tokens, cwd)</td></tr>
+          <tr><td><code>/tools</code></td><td></td><td>List all available tools</td></tr>
+          <tr><td><code>/history</code></td><td></td><td>Show input history (last 10 by default)</td></tr>
+          <tr><td><code>/resume</code></td><td></td><td>Open session picker to restore a conversation</td></tr>
+          <tr><td><code>/models</code></td><td></td><td>List available models from the current provider</td></tr>
+          <tr><td><code>/debug</code></td><td></td><td>Toggle debug mode (verbose logging to <code>~/.glue/logs/</code>)</td></tr>
+          <tr><td><code>/skills</code></td><td></td><td>Browse available skills</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Keybindings</h3>
+      <table class="brutal-table">
+        <thead><tr><th>Key</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr><td><code>Ctrl+A</code></td><td>Move to start of line</td></tr>
+          <tr><td><code>Ctrl+E</code></td><td>Move to end of line</td></tr>
+          <tr><td><code>Ctrl+U</code></td><td>Clear entire line</td></tr>
+          <tr><td><code>Ctrl+W</code></td><td>Delete previous word</td></tr>
+          <tr><td><code>Alt+Left</code></td><td>Move cursor one word left</td></tr>
+          <tr><td><code>Alt+Right</code></td><td>Move cursor one word right</td></tr>
+          <tr><td><code>Up / Down</code></td><td>Navigate input history</td></tr>
+          <tr><td><code>Tab</code></td><td>Accept autocomplete suggestion</td></tr>
+          <tr><td><code>PageUp / PageDown</code></td><td>Scroll output</td></tr>
+          <tr><td><code>Shift+Tab</code></td><td>Cycle permission mode (confirm → accept-edits → YOLO → read-only)</td></tr>
+          <tr><td><code>Escape</code></td><td>Cancel current generation</td></tr>
+          <tr><td><code>Ctrl+C</code></td><td>Cancel generation (double-tap to exit)</td></tr>
+        </tbody>
+      </table>
+
+      <!-- ─── @file References ─── -->
+      <h2 id="file-references">@file References</h2>
+
+      <p>Type <code>@</code> in your message to open a fuzzy file picker. Selected files are expanded inline into your prompt, wrapped in fenced code blocks with syntax highlighting.</p>
+
+      <h3>Usage</h3>
+      <div class="code-block"><span class="comment"># Fuzzy search across the project</span>
+<span class="p">❯</span> Refactor <span class="hl">@</span>auth_middleware     <span class="comment"># opens autocomplete</span>
+
+<span class="comment"># Browse a specific directory</span>
+<span class="p">❯</span> Review <span class="hl">@</span>lib/src/routes/       <span class="comment"># lists files in that dir</span>
+
+<span class="comment"># Paths with spaces</span>
+<span class="p">❯</span> Check <span class="hl">@</span><span class="string">"my project/config.yaml"</span></div>
+
+      <h3>How It Works</h3>
+      <ul>
+        <li><strong>Fuzzy matching</strong> — exact matches rank first, then prefix matches, then substrings</li>
+        <li><strong>Directory browsing</strong> — type <code>@dir/</code> to list contents of a directory</li>
+        <li><strong>Language detection</strong> — files get syntax tags based on extension (.dart, .ts, .py, .rs, etc.)</li>
+        <li><strong>Smart expansion</strong> — content is wrapped in fenced code blocks, backtick-aware</li>
+      </ul>
+
+      <h3>Limits</h3>
+      <table class="brutal-table">
+        <thead><tr><th>Limit</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Max file size for expansion</td><td>100 KB</td></tr>
+          <tr><td>Max tree entries in autocomplete</td><td>2,000</td></tr>
+          <tr><td>Max directory depth scanned</td><td>3 levels</td></tr>
+          <tr><td>Autocomplete cache TTL</td><td>2 seconds</td></tr>
+        </tbody>
+      </table>
+
+      <!-- ─── Bash Mode ─── -->
+      <h2 id="bash-mode">Bash Mode</h2>
+
+      <p>Prefix your input with <code>!</code> to run shell commands directly, bypassing the LLM. The prompt changes to <code>! </code> to indicate bash mode. Press Backspace on an empty line to exit back to normal mode.</p>
+
+      <h3>Synchronous Commands</h3>
+      <div class="code-block"><span class="comment"># Run a command and see output immediately</span>
+<span class="p">!</span> git status
+<span class="p">!</span> dart test
+<span class="p">!</span> ls -la src/</div>
+
+      <h3>Background Jobs</h3>
+      <p>Prefix with <code>&amp; </code> (ampersand + space) to run commands in the background. The shell returns immediately and you can keep chatting.</p>
+      <div class="code-block"><span class="comment"># Run a long build in the background</span>
+<span class="p">!</span> <span class="hl">&amp; </span>dart compile exe bin/main.dart
+
+<span class="comment"># Job lifecycle events are printed as they happen:</span>
+<span class="d">[job 1] started: dart compile exe bin/main.dart</span>
+<span class="d">[job 1] exited (0)</span></div>
+
+      <h3>Limits</h3>
+      <ul>
+        <li><strong>Timeout</strong> — synchronous commands time out after 30 seconds (configurable)</li>
+        <li><strong>Output</strong> — limited to 50 lines by default (set <code>bash.max_lines</code> in config)</li>
+        <li><strong>Background jobs</strong> — no timeout, run until completion or manual kill</li>
+      </ul>
+
+      <!-- ─── Built-in Tools ─── -->
+      <h2 id="built-in-tools">Built-in Tools</h2>
+
+      <p>The agent has access to these tools for interacting with your codebase. Tools run in parallel when independent.</p>
+
+      <table class="brutal-table">
+        <thead><tr><th>Tool</th><th>Description</th><th>Approval</th></tr></thead>
+        <tbody>
+          <tr><td><code>read_file</code></td><td>Read file contents with optional line range. Handles binary detection and large files (max 1 MB).</td><td>Auto</td></tr>
+          <tr><td><code>write_file</code></td><td>Create or overwrite a file. Shows diff preview before writing.</td><td>Required</td></tr>
+          <tr><td><code>edit_file</code></td><td>Search-and-replace within a file. Minimal diffs, preserves formatting.</td><td>Required</td></tr>
+          <tr><td><code>bash</code></td><td>Run shell commands. Streams output in real-time. 30 second timeout.</td><td>Required</td></tr>
+          <tr><td><code>list_directory</code></td><td>List directory contents with metadata. Respects .gitignore. Max 1,000 entries.</td><td>Auto</td></tr>
+          <tr><td><code>grep</code></td><td>Regex search across files. Uses ripgrep when available. 15 second timeout.</td><td>Auto</td></tr>
+          <tr><td><code>spawn_subagent</code></td><td>Spawn a single focused subagent for an isolated task.</td><td>Auto</td></tr>
+          <tr><td><code>spawn_parallel_subagents</code></td><td>Spawn multiple subagents to work concurrently on independent tasks.</td><td>Auto</td></tr>
+          <tr><td><code>web_fetch</code></td><td>Fetch URL content as markdown. Handles PDFs with OCR fallback via Mistral/OpenAI vision.</td><td>Auto</td></tr>
+          <tr><td><code>web_search</code></td><td>Search the web via Brave, Tavily, or Firecrawl. Auto-detects available provider from API keys.</td><td>Auto</td></tr>
+          <tr><td><code>web_browser</code></td><td>Browser automation via Chrome DevTools Protocol. Actions: navigate, screenshot, click, type, extract_text, evaluate.</td><td>Required</td></tr>
+          <tr><td><code>skill</code></td><td>List available skills (no args) or activate a skill by name.</td><td>Auto</td></tr>
+        </tbody>
+      </table>
+
+      <!-- ─── Tool Approval ─── -->
+      <h2 id="tool-approval">Tool Approval</h2>
+
+      <p>Tools that modify your codebase (<code>write_file</code>, <code>edit_file</code>, <code>bash</code>) require explicit approval. Read-only tools are auto-approved.</p>
+
+      <h3>Approval Modal</h3>
+      <p>When a destructive tool is called, Glue shows a confirmation modal with three options:</p>
+      <ul>
+        <li><strong>Yes</strong> — approve this specific call</li>
+        <li><strong>No</strong> — deny this call, the agent gets an error and can try something else</li>
+        <li><strong>Always</strong> — permanently trust this tool (saved to <code>~/.glue/config.yaml</code>)</li>
+      </ul>
+
+      <div class="info-box">
+        <div class="info-box-label">▲ Note</div>
+        <p>You can configure permanent tool trust in <code>~/.glue/config.yaml</code>. Use with caution — the agent can run arbitrary shell commands.</p>
+      </div>
+
+      <h3>Permission Modes</h3>
+      <p>Glue has four permission modes that control how tool calls are approved. Cycle through them with <code>Shift+Tab</code> during a session, or set a default via the <code>GLUE_PERMISSION_MODE</code> environment variable.</p>
+
+      <table class="brutal-table">
+        <thead><tr><th>Mode</th><th>Label</th><th>Behavior</th></tr></thead>
+        <tbody>
+          <tr><td><code>confirm</code></td><td>confirm</td><td>Ask for confirmation on untrusted tools (default)</td></tr>
+          <tr><td><code>acceptEdits</code></td><td>accept-edits</td><td>Auto-approve file edits, still ask for shell commands</td></tr>
+          <tr><td><code>ignorePermissions</code></td><td>YOLO</td><td>Auto-approve everything — no confirmations at all</td></tr>
+          <tr><td><code>readOnly</code></td><td>read-only</td><td>Deny all mutating tools — they are not even sent to the LLM</td></tr>
+        </tbody>
+      </table>
+
+      <!-- ─── Sessions ─── -->
+      <h2 id="sessions">Sessions</h2>
+
+      <p>Every conversation is automatically saved. You can resume any past session without losing context.</p>
+
+      <h3>Storage</h3>
+      <p>Sessions are stored in <code>~/.glue/sessions/{timestamp}-{id}/</code> with two files:</p>
+      <ul>
+        <li><code>meta.json</code> — session ID, working directory, model, provider, start/end times</li>
+        <li><code>conversation.jsonl</code> — line-delimited event log (messages, tool calls, results)</li>
+      </ul>
+
+      <h3>Resuming</h3>
+      <table class="brutal-table">
+        <thead><tr><th>Method</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>glue --resume</code></td><td>Open interactive session picker</td></tr>
+          <tr><td><code>glue --continue</code></td><td>Auto-resume the most recent session</td></tr>
+          <tr><td><code>/resume</code></td><td>Open session picker during a session</td></tr>
+        </tbody>
+      </table>
+
+      <!-- ─── Project Context ─── -->
+      <h2 id="project-context">Project Context</h2>
+
+      <p>Glue automatically loads project-specific context files into the agent's system prompt, so it understands your codebase conventions without being told.</p>
+
+      <h3>Auto-Loaded Files</h3>
+      <table class="brutal-table">
+        <thead><tr><th>File</th><th>Purpose</th><th>Max Size</th></tr></thead>
+        <tbody>
+          <tr><td><code>AGENTS.md</code></td><td>Agent behavior guidelines — code style, conventions, what to avoid</td><td>50 KB</td></tr>
+          <tr><td><code>CLAUDE.md</code></td><td>Custom project context — architecture notes, important patterns</td><td>50 KB</td></tr>
+        </tbody>
+      </table>
+      <p>Both files are looked up in the current working directory. If found, their contents are appended to the system prompt. Files larger than 50 KB are truncated with a note.</p>
+
+      <h3>.glue/ Directory</h3>
+      <p>Project-level configuration lives in a <code>.glue/</code> directory at your project root:</p>
+      <ul>
+        <li><code>.glue/config.yaml</code> — project-level config overrides (model, provider, approval rules)</li>
+        <li><code>.glue/skills/</code> — project-local skill definitions (each skill has its own <code>SKILL.md</code>)</li>
+      </ul>
+
+      <div class="info-box">
+        <div class="info-box-label">▲ Tip</div>
+        <p>Add <code>AGENTS.md</code> to your repo with code style guidelines. The agent will follow them automatically — no need to repeat instructions each session.</p>
+      </div>
+
+      <!-- ─── Subagents ─── -->
+      <h2 id="subagents">Subagents</h2>
+
+      <p>The main agent can spawn independent subagents for focused tasks. Each subagent gets its own conversation context and tool access, preventing context bloat in the main session.</p>
+
+      <h3>Single Subagent</h3>
+      <p>The <code>spawn_subagent</code> tool creates one focused worker:</p>
+      <div class="code-block"><span class="comment">// The agent decides to spawn a subagent</span>
+spawn_subagent({
+  <span class="hl">"task"</span>: <span class="string">"Read all files in lib/src/auth/ and summarize the authentication flow"</span>,
+  <span class="hl">"model"</span>: <span class="string">"claude-haiku-4-5"</span>    <span class="comment">// optional: use a fast model</span>
+})</div>
+
+      <h3>Parallel Subagents</h3>
+      <p>The <code>spawn_parallel_subagents</code> tool runs multiple tasks concurrently:</p>
+      <div class="code-block"><span class="comment">// Explore three modules simultaneously</span>
+spawn_parallel_subagents({
+  <span class="hl">"tasks"</span>: [
+    <span class="string">"Analyze the auth module structure"</span>,
+    <span class="string">"Analyze the payments module structure"</span>,
+    <span class="string">"Analyze the notifications module structure"</span>
+  ],
+  <span class="hl">"model"</span>: <span class="string">"claude-haiku-4-5"</span>
+})</div>
+
+      <h3>Safety</h3>
+      <ul>
+        <li><strong>Read-only by default</strong> — subagents can only use <code>read_file</code>, <code>list_directory</code>, and <code>grep</code></li>
+        <li><strong>Depth limited</strong> — subagents can spawn sub-subagents, but only up to 2 levels deep</li>
+        <li><strong>Model override</strong> — use cheaper/faster models for exploration tasks to save costs</li>
+        <li><strong>Fresh context</strong> — each subagent starts clean, no conversation history inherited</li>
+      </ul>
+
+      <!-- ─── Web Tools ─── -->
+      <h2 id="web-tools">Web Tools</h2>
+
+      <p>Glue includes three web-oriented tools for fetching pages, searching the web, and automating a browser. All are configured under the <code>web:</code> block in your config.</p>
+
+      <h3>web_fetch</h3>
+      <p>Fetches a URL and returns its content as clean markdown. The pipeline works as follows:</p>
+      <ol>
+        <li><strong>HTML pages</strong> — extracts main content, strips boilerplate, converts to markdown</li>
+        <li><strong>PDF documents</strong> — extracts text directly; if the result is empty (scanned PDF), falls back to OCR via Mistral or OpenAI vision</li>
+      </ol>
+      <p>Optional Jina AI fallback for difficult pages when <code>JINA_API_KEY</code> is set.</p>
+
+      <h3>web_search</h3>
+      <p>Searches the web and returns structured results. Three providers are supported:</p>
+      <table class="brutal-table">
+        <thead><tr><th>Provider</th><th>API Key Env Var</th></tr></thead>
+        <tbody>
+          <tr><td>Brave Search</td><td><code>BRAVE_API_KEY</code></td></tr>
+          <tr><td>Tavily</td><td><code>TAVILY_API_KEY</code></td></tr>
+          <tr><td>Firecrawl</td><td><code>FIRECRAWL_API_KEY</code></td></tr>
+        </tbody>
+      </table>
+      <p>If no explicit provider is configured, Glue auto-detects the first available provider by checking which API key is set.</p>
+
+      <h3>web_browser</h3>
+      <p>Automates a browser via Chrome DevTools Protocol. The browser session persists across calls, so the agent can navigate, interact, and extract data across multiple steps.</p>
+      <p>Five backends are supported:</p>
+      <table class="brutal-table">
+        <thead><tr><th>Backend</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>local</code></td><td>Uses a locally installed Chrome or Chromium</td></tr>
+          <tr><td><code>docker</code></td><td>Runs headless Chrome inside a Docker container</td></tr>
+          <tr><td><code>browserbase</code></td><td>Cloud browser via Browserbase API</td></tr>
+          <tr><td><code>browserless</code></td><td>Cloud browser via Browserless API</td></tr>
+          <tr><td><code>steel</code></td><td>Cloud browser via Steel API</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Configuration</h3>
+      <div class="code-block"><span class="comment"># ~/.glue/config.yaml — web tools section</span>
+
+<span class="hl">web</span>:
+  <span class="hl">fetch</span>:
+    <span class="hl">timeout_seconds</span>: <span class="string">30</span>
+    <span class="hl">max_bytes</span>: <span class="string">5242880</span>
+    <span class="hl">allow_jina_fallback</span>: <span class="string">true</span>
+
+  <span class="hl">search</span>:
+    <span class="hl">provider</span>: <span class="string">"brave"</span>           <span class="comment"># brave | tavily | firecrawl</span>
+    <span class="hl">max_results</span>: <span class="string">10</span>
+
+  <span class="hl">pdf</span>:
+    <span class="hl">enable_ocr_fallback</span>: <span class="string">true</span>
+    <span class="hl">ocr_provider</span>: <span class="string">"mistral"</span>     <span class="comment"># mistral | openai</span>
+
+  <span class="hl">browser</span>:
+    <span class="hl">backend</span>: <span class="string">"local"</span>            <span class="comment"># local | docker | browserbase | browserless | steel</span>
+    <span class="hl">headed</span>: <span class="string">false</span></div>
+
+      <!-- ─── Observability ─── -->
+      <h2 id="observability">Observability</h2>
+
+      <p>Glue supports debug logging and distributed tracing to help you monitor agent behavior in development and production.</p>
+
+      <h3>Debug Logging</h3>
+      <p>Toggle verbose logging during a session with <code>/debug</code>. Logs are written to daily files in <code>~/.glue/logs/</code>.</p>
+
+      <h3>OpenTelemetry (OTLP)</h3>
+      <p>Export spans to any OTLP-compatible backend. Compatible with Grafana Tempo, Jaeger, Helicone, Opik, and LLMFlow.</p>
+      <div class="code-block"><span class="hl">telemetry</span>:
+  <span class="hl">otel</span>:
+    <span class="hl">enabled</span>: <span class="string">true</span>
+    <span class="hl">endpoint</span>: <span class="string">"https://otel.example.com/v1/traces"</span>
+    <span class="hl">headers</span>:
+      <span class="hl">Authorization</span>: <span class="string">"Bearer ..."</span></div>
+
+      <h3>Langfuse</h3>
+      <p>Native Langfuse integration for LLM observability. Glue emits generation and span events with token usage, latency, and error tracking.</p>
+      <div class="code-block"><span class="hl">telemetry</span>:
+  <span class="hl">langfuse</span>:
+    <span class="hl">enabled</span>: <span class="string">true</span>
+    <span class="hl">base_url</span>: <span class="string">"https://cloud.langfuse.com"</span>
+    <span class="hl">public_key</span>: <span class="string">"pk-..."</span>
+    <span class="hl">secret_key</span>: <span class="string">"sk-..."</span></div>
+
+      <!-- ─── Docker Sandbox ─── -->
+      <h2 id="docker-sandbox">Docker Sandbox</h2>
+
+      <p>Run shell commands inside a Docker container for isolation. When enabled, the <code>bash</code> tool executes commands inside the container instead of on the host.</p>
+
+      <h3>Enable</h3>
+      <div class="code-block"><span class="comment"># Via config</span>
+<span class="hl">docker</span>:
+  <span class="hl">enabled</span>: <span class="string">true</span>
+  <span class="hl">image</span>: <span class="string">"ubuntu:24.04"</span>          <span class="comment"># default image</span>
+  <span class="hl">shell</span>: <span class="string">"sh"</span>                    <span class="comment"># shell inside the container</span>
+  <span class="hl">fallback_to_host</span>: <span class="string">true</span>        <span class="comment"># fall back to host if Docker unavailable</span>
+  <span class="hl">mounts</span>:
+    - <span class="string">"/home/me/project:/workspace:rw"</span>
+
+<span class="comment"># Or via environment variable</span>
+<span class="p">❯</span> export <span class="hl">GLUE_DOCKER_ENABLED</span>=<span class="string">1</span></div>
+
+      <h3>Mount Syntax</h3>
+      <p>Mounts follow Docker's <code>-v</code> syntax:</p>
+      <table class="brutal-table">
+        <thead><tr><th>Spec</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td><code>/host/path</code></td><td>Read-write, same container path</td></tr>
+          <tr><td><code>/host/path:/container/path</code></td><td>Read-write, explicit container path</td></tr>
+          <tr><td><code>/host/path:ro</code></td><td>Read-only, same container path</td></tr>
+          <tr><td><code>/host/path:/container/path:ro</code></td><td>Read-only, explicit container path</td></tr>
+        </tbody>
+      </table>
+
+      <div class="info-box">
+        <div class="info-box-label">▲ Note</div>
+        <p>If Docker is enabled but unavailable (e.g. daemon not running), Glue falls back to host execution when <code>fallback_to_host</code> is <code>true</code> (the default).</p>
+      </div>
+
+      <!-- ─── Shell Completions ─── -->
+      <h2 id="shell-completions">Shell Completions</h2>
+
+      <p>Glue can install tab-completion scripts for your shell:</p>
+      <div class="code-block"><span class="p">❯</span> glue completions install     <span class="comment"># auto-detects your shell</span></div>
+      <p>Supported shells: <strong>zsh</strong>, <strong>bash</strong>, <strong>fish</strong>, <strong>PowerShell</strong>. Uninstall with <code>glue completions uninstall</code>.</p>
+
+    </main>
+  </div>
+
   <div class="tape"></div>
-
-  <!-- ─── Hero ─── -->
-  <section class="block">
-    <div class="block-inner">
-      <div class="reveal">
-        <div class="block-label">■ Documentation</div>
-        <h2 class="block-heading">Get Started<br>with Glue</h2>
-        <p class="block-sub">Everything you need to install, configure, and start using Glue in your projects.</p>
-      </div>
-    </div>
-  </section>
-
-  <div class="tape"></div>
-
-  <!-- ─── Quick Start ─── -->
-  <section class="block block-dark">
-    <div class="block-inner">
-      <div class="reveal">
-        <div class="block-label">01 · Quick Start</div>
-        <h2 class="block-heading">Install & Run</h2>
-      </div>
-      <div class="two-col">
-        <div class="prose reveal rd1" style="color: #ccc;">
-          <h3 style="color: var(--yellow);">Prerequisites</h3>
-          <ul>
-            <li>Dart SDK 3.0 or later</li>
-            <li>Git (for worktree support)</li>
-            <li>An API key for at least one LLM provider</li>
-          </ul>
-          <h3 style="color: var(--yellow);">Set Your API Key</h3>
-          <p>Glue reads your provider keys from environment variables. Set the one for your preferred provider:</p>
-        </div>
-        <div class="reveal rd2">
-          <div class="terminal" style="margin-bottom: 24px;">
-            <div class="terminal-bar">▸ Installation</div>
-            <div class="terminal-body">
-              <span class="line"><span class="d"># Install globally</span></span>
-              <span class="line"><span class="p">❯</span> <span class="c">dart pub global activate glue</span></span>
-              <span class="blank"></span>
-              <span class="line"><span class="d"># Navigate to your project</span></span>
-              <span class="line"><span class="p">❯</span> <span class="c">cd my-project</span></span>
-              <span class="blank"></span>
-              <span class="line"><span class="d"># Launch</span></span>
-              <span class="line"><span class="p">❯</span> <span class="c">glue</span></span>
-            </div>
-          </div>
-          <div class="terminal">
-            <div class="terminal-bar">▸ Environment</div>
-            <div class="terminal-body">
-              <span class="line"><span class="d"># Anthropic (default)</span></span>
-              <span class="line"><span class="p">❯</span> <span class="c">export ANTHROPIC_API_KEY=sk-...</span></span>
-              <span class="blank"></span>
-              <span class="line"><span class="d"># OpenAI</span></span>
-              <span class="line"><span class="p">❯</span> <span class="c">export OPENAI_API_KEY=sk-...</span></span>
-              <span class="blank"></span>
-              <span class="line"><span class="d"># Google</span></span>
-              <span class="line"><span class="p">❯</span> <span class="c">export GOOGLE_API_KEY=...</span></span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <div class="tape"></div>
-
-  <!-- ─── CLI Reference ─── -->
-  <section class="block">
-    <div class="block-inner">
-      <div class="reveal">
-        <div class="block-label">02 · CLI Reference</div>
-        <h2 class="block-heading">Commands & Flags</h2>
-      </div>
-      <div class="reveal rd1">
-        <table class="brutal-table">
-          <thead>
-            <tr><th>Command / Flag</th><th>Description</th><th>Example</th></tr>
-          </thead>
-          <tbody>
-            <tr><td><code>glue</code></td><td>Start an interactive session in the current directory</td><td><code>glue</code></td></tr>
-            <tr><td><code>glue "prompt"</code></td><td>Start with an initial prompt</td><td><code>glue "add auth endpoint"</code></td></tr>
-            <tr><td><code>--model, -m</code></td><td>Select LLM provider and model</td><td><code>glue -m gpt-5</code></td></tr>
-            <tr><td><code>--worktree, -w</code></td><td>Run in a specific git worktree</td><td><code>glue -w feat/auth</code></td></tr>
-            <tr><td><code>--new-worktree</code></td><td>Create a new worktree and start a session</td><td><code>glue --new-worktree feat/api</code></td></tr>
-            <tr><td><code>--approve-all</code></td><td>Auto-approve all tool calls (use with caution)</td><td><code>glue --approve-all</code></td></tr>
-            <tr><td><code>--resume, -r</code></td><td>Resume the last session in this directory</td><td><code>glue -r</code></td></tr>
-            <tr><td><code>--list</code></td><td>List all active sessions</td><td><code>glue --list</code></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
-  <div class="tape"></div>
-
-  <!-- ─── Configuration ─── -->
-  <section class="block block-dark">
-    <div class="block-inner">
-      <div class="reveal">
-        <div class="block-label">03 · Configuration</div>
-        <h2 class="block-heading">Configure Glue</h2>
-        <p class="block-sub">Glue works out of the box, but you can customize behavior with a <code>.glue/</code> directory in your project root.</p>
-      </div>
-      <div class="two-col">
-        <div class="reveal rd1">
-          <div class="code-block"><span class="comment">// .glue/config.json</span>
-{
-  <span class="hl">"model"</span>: <span class="string">"claude-4-sonnet"</span>,
-  <span class="hl">"approval"</span>: {
-    <span class="hl">"auto_approve"</span>: [<span class="string">"read_file"</span>, <span class="string">"list_dir"</span>],
-    <span class="hl">"always_ask"</span>: [<span class="string">"bash"</span>, <span class="string">"write_file"</span>]
-  },
-  <span class="hl">"context"</span>: {
-    <span class="hl">"include"</span>: [<span class="string">"README.md"</span>, <span class="string">"AGENTS.md"</span>],
-    <span class="hl">"ignore"</span>: [<span class="string">"node_modules"</span>, <span class="string">".git"</span>]
-  }
-}</div>
-        </div>
-        <div class="prose reveal rd2" style="color: #ccc;">
-          <h3 style="color: var(--yellow);">Config Files</h3>
-          <ul>
-            <li><code>.glue/config.json</code> — Main configuration</li>
-            <li><code>.glue/mcp.json</code> — MCP server definitions</li>
-            <li><code>.glue/rules.md</code> — Custom instructions for the agent</li>
-          </ul>
-          <h3 style="color: var(--yellow);">Scoping</h3>
-          <p>Config is hierarchical. Global settings live in <code>~/.glue/</code>, project-level in <code>.glue/</code>. Project config overrides global.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <div class="tape"></div>
-
-  <!-- ─── Tools ─── -->
-  <section class="block">
-    <div class="block-inner">
-      <div class="reveal">
-        <div class="block-label">04 · Built-in Tools</div>
-        <h2 class="block-heading">What Glue Can Do</h2>
-      </div>
-      <div class="grid grid-3">
-        <div class="cell reveal"><div class="cell-title">read_file</div><div class="cell-text">Read file contents with optional line ranges. Supports binary detection and large file handling.</div></div>
-        <div class="cell reveal rd1"><div class="cell-title">write_file</div><div class="cell-text">Create or overwrite files. Always requires approval. Shows diff preview before writing.</div></div>
-        <div class="cell reveal rd2"><div class="cell-title">edit_file</div><div class="cell-text">Surgical edits with search-and-replace. Minimal diffs, preserves formatting.</div></div>
-        <div class="cell reveal rd3"><div class="cell-title">bash</div><div class="cell-text">Run shell commands. Streams output in real-time. Timeout and approval configurable.</div></div>
-        <div class="cell reveal rd4"><div class="cell-title">list_dir</div><div class="cell-text">List directory contents with metadata. Respects .gitignore patterns.</div></div>
-        <div class="cell reveal rd5"><div class="cell-title">search</div><div class="cell-text">Fast regex search across files. Powered by ripgrep when available.</div></div>
-      </div>
-    </div>
-  </section>
-
-  <div class="tape"></div>
-  <footer class="footer">GLUE · Apache-2.0 · <a href="#">GitHub</a> <a href="#">Docs</a> <a href="#">Discord</a></footer>
+  <footer class="footer">GLUE · MIT · <a href="#">GitHub</a> <a href="#">Docs</a> <a href="#">Discord</a></footer>
   <div class="tape"></div>
 
   <script>
-    const reveals = document.querySelectorAll('.reveal');
+    // Highlight active sidebar link based on scroll position
+    const sections = document.querySelectorAll('.docs-content h2[id]');
+    const sidebarLinks = document.querySelectorAll('.docs-sidebar a');
+
     const observer = new IntersectionObserver(entries => {
-      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
-    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
-    reveals.forEach(el => observer.observe(el));
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          sidebarLinks.forEach(a => a.classList.remove('active'));
+          const active = document.querySelector(`.docs-sidebar a[href="#${entry.target.id}"]`);
+          if (active) active.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-20% 0px -70% 0px' });
+
+    sections.forEach(s => observer.observe(s));
+
+    // Set first link active on load
+    if (sidebarLinks.length) sidebarLinks[0].classList.add('active');
+
+    // Close mobile menu on link click
+    sidebarLinks.forEach(a => {
+      a.addEventListener('click', () => {
+        document.querySelector('.docs-sidebar').classList.remove('open');
+      });
+    });
   </script>
 </body>
 </html>

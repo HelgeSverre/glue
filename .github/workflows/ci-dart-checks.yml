@@ -1,0 +1,40 @@
+name: CI Dart Checks
+
+on:
+  pull_request:
+    paths:
+      - "cli/**"
+      - ".github/workflows/ci-dart-checks.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "cli/**"
+      - ".github/workflows/ci-dart-checks.yml"
+
+jobs:
+  dart-checks:
+    name: Format, Analyze, Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cli
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: Install dependencies
+        run: dart pub get
+
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Static analysis
+        run: dart analyze
+
+      - name: Unit tests
+        run: dart test

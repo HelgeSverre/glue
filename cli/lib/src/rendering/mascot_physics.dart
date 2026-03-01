@@ -2,7 +2,7 @@
 ///
 /// Centralizes tunable parameters for liquid simulation, particle effects,
 /// and drip behavior to make tweaking the animation easier.
-library mascot_physics;
+library;
 
 /// Physics parameters for liquid simulation wave equation.
 class LiquidSimPhysics {

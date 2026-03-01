@@ -1,0 +1,5 @@
+# e2e tests require Ollama running locally with a model pulled.
+# Skipped by default. Run with: dart test --run-skipped -t e2e
+tags:
+  e2e:
+    skip: "Requires Ollama running locally"

@@ -1,5 +1,11 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
+import 'package:glue/src/skills/skill_parser.dart';
+
+String _escapeXml(String text) => text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
 
 class Prompts {
   Prompts._();
@@ -24,7 +30,11 @@ Guidelines:
 
   static const _guidanceFiles = ['AGENTS.md', 'CLAUDE.md'];
 
-  static String build({String? cwd, String? projectContext}) {
+  static String build({
+    String? cwd,
+    String? projectContext,
+    List<SkillMeta> skills = const [],
+  }) {
     final buf = StringBuffer(system);
 
     if (cwd != null) {
@@ -39,6 +49,24 @@ Guidelines:
           buf.write('\n\n## Project Instructions ($filename)\n\n$content');
         }
       }
+    }
+
+    if (skills.isNotEmpty) {
+      buf.write('\n\n## Skills\n\n');
+      buf.write(
+          'The following skills provide specialized instructions for specific tasks.\n');
+      buf.write(
+          'Use the skill tool to load a skill when the task matches its description.\n\n');
+      buf.write('<available_skills>\n');
+      for (final s in skills) {
+        buf.write('  <skill>\n');
+        buf.write('    <name>${_escapeXml(s.name)}</name>\n');
+        buf.write(
+            '    <description>${_escapeXml(s.description)}</description>\n');
+        buf.write('    <location>${_escapeXml(s.skillMdPath)}</location>\n');
+        buf.write('  </skill>\n');
+      }
+      buf.write('</available_skills>');
     }
 
     if (projectContext != null && projectContext.isNotEmpty) {

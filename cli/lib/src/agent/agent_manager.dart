@@ -1,14 +1,17 @@
 import 'dart:async';
 
-import '../dev/devtools.dart';
-import 'agent_core.dart';
-import 'agent_runner.dart';
-import 'tools.dart';
-import '../config/glue_config.dart';
-import '../llm/llm_factory.dart';
-import '../tools/subagent_tools.dart';
+import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/agent_runner.dart';
+import 'package:glue/src/agent/tools.dart';
+import 'package:glue/src/config/glue_config.dart';
+import 'package:glue/src/dev/devtools.dart';
+import 'package:glue/src/llm/llm_factory.dart';
+import 'package:glue/src/observability/observability.dart';
+import 'package:glue/src/observability/observed_llm_client.dart';
+import 'package:glue/src/observability/observed_tool.dart';
+import 'package:glue/src/tools/subagent_tools.dart';
 
-/// Tools that are safe for subagents to execute without user approval.
+/// The set of tools that are safe for subagents to execute without user approval.
 const safeSubagentTools = {'read_file', 'list_directory', 'grep'};
 
 /// An update from a running subagent, forwarded to the UI.
@@ -35,6 +38,8 @@ class SubagentUpdate {
 
 /// Orchestrates subagent spawning using the manager pattern.
 ///
+/// {@category Agent}
+///
 /// Creates independent [AgentCore] instances with their own conversation
 /// history but shared tool registry. Subagents run headlessly via
 /// [AgentRunner] with an allowlist-based approval policy (read-only
@@ -45,6 +50,7 @@ class AgentManager {
   final GlueConfig config;
   final String systemPrompt;
   final Set<String> allowedSubagentTools;
+  final Observability? obs;
 
   final _updateController = StreamController<SubagentUpdate>.broadcast();
 
@@ -57,9 +63,10 @@ class AgentManager {
     required this.config,
     required this.systemPrompt,
     Set<String>? allowedSubagentTools,
+    this.obs,
   }) : allowedSubagentTools = allowedSubagentTools ?? safeSubagentTools;
 
-  /// Spawn a single subagent to complete a [task].
+  /// Spawns a single subagent to complete a [task].
   ///
   /// Optionally override [profile] for model/provider selection.
   /// [currentDepth] tracks recursion to prevent infinite nesting.
@@ -84,14 +91,27 @@ class AgentManager {
     final effectiveProfile =
         profile ?? AgentProfile(provider: config.provider, model: config.model);
 
-    final llm = llmFactory.create(
+    final rawLlm = llmFactory.create(
       provider: effectiveProfile.provider,
       model: effectiveProfile.model,
       apiKey: _apiKeyFor(effectiveProfile.provider),
       systemPrompt: systemPrompt,
     );
+    final LlmClient llm = obs != null
+        ? ObservedLlmClient(
+            inner: rawLlm,
+            obs: obs!,
+            provider: effectiveProfile.provider.name,
+            model: effectiveProfile.model,
+          )
+        : rawLlm;
 
-    final subagentTools = Map<String, Tool>.from(tools);
+    var subagentTools = Map<String, Tool>.from(tools);
+
+    // Wrap subagent tools with observability if available.
+    if (obs != null) {
+      subagentTools = wrapToolsWithObservability(subagentTools, obs!);
+    }
 
     // Give subagents depth-incremented spawning tools if they haven't
     // reached the maximum depth yet.
@@ -112,6 +132,19 @@ class AgentManager {
       modelName: effectiveProfile.model,
     );
 
+    // Create a span for the subagent execution.
+    final span = obs?.startSpan(
+      'subagent',
+      kind: 'subagent',
+      attributes: {
+        'subagent.task': task,
+        'subagent.depth': currentDepth,
+        'subagent.model': effectiveProfile.model,
+        if (index != null) 'subagent.index': index,
+        if (total != null) 'subagent.total': total,
+      },
+    );
+
     final runner = AgentRunner(
       core: core,
       policy: ToolApprovalPolicy.allowlist,
@@ -124,12 +157,18 @@ class AgentManager {
       )),
     );
 
-    final result = await runner.runToCompletion(task);
-    GlueDev.log('agent.subagent', 'completed in ${sw.elapsedMilliseconds}ms: $task');
-    return result;
+    try {
+      final result = await runner.runToCompletion(task);
+      GlueDev.log('agent.subagent', 'completed in ${sw.elapsedMilliseconds}ms: $task');
+      if (span != null) obs!.endSpan(span);
+      return result;
+    } catch (e) {
+      if (span != null) obs!.endSpan(span, extra: {'error': e.toString()});
+      rethrow;
+    }
   }
 
-  /// Spawn [tasks] in parallel, each as an independent subagent.
+  /// Spawns [tasks] in parallel, each as independent subagents.
   ///
   /// All subagents run concurrently and results are returned in order.
   ///
@@ -156,6 +195,7 @@ class AgentManager {
   String _apiKeyFor(LlmProvider provider) => switch (provider) {
         LlmProvider.anthropic => config.anthropicApiKey ?? '',
         LlmProvider.openai => config.openaiApiKey ?? '',
+        LlmProvider.mistral => config.mistralApiKey ?? '',
         LlmProvider.ollama => '',
       };
 }

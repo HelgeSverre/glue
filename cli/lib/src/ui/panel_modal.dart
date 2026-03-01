@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:math';
 
-import '../rendering/ansi_utils.dart';
-import '../terminal/terminal.dart';
+import 'package:glue/src/rendering/ansi_utils.dart';
+import 'package:glue/src/terminal/styled.dart';
+import 'package:glue/src/terminal/terminal.dart';
+import 'package:glue/src/ui/box.dart';
 
 enum PanelStyle { tape, simple, heavy }
 
@@ -90,8 +92,8 @@ List<String> _renderTape(int width, int height, String title) {
   final innerWidth = width - 2;
 
   final titleStr = ' $title ';
-  final tapePattern = '▚▞';
-  final prefixLen = 2;
+  const tapePattern = '▚▞';
+  const prefixLen = 2;
   final suffixLen = max(width - titleStr.length - prefixLen, 0);
   final prefixTape = _repeatTape(tapePattern, prefixLen);
   final suffixTape = _repeatTape(tapePattern, suffixLen);
@@ -125,18 +127,27 @@ List<String> applyBarrier(BarrierStyle style, List<String> lines) {
   return switch (style) {
     BarrierStyle.none => lines,
     BarrierStyle.dim =>
-      lines.map((line) => '\x1b[2m${stripAnsi(line)}\x1b[0m').toList(),
+      lines.map((line) => '${stripAnsi(line).styled.dim}').toList(),
     BarrierStyle.obscure => lines.map((line) {
         final len = visibleLength(line);
-        return '\x1b[90m${'░' * len}\x1b[0m';
+        return ('░' * len).styled.gray.toString();
       }).toList(),
   };
 }
 
-class PanelModal {
+abstract class PanelOverlay {
+  bool get isComplete;
+  bool handleEvent(TerminalEvent event);
+  List<String> render(
+      int termWidth, int termHeight, List<String> backgroundLines);
+  void cancel();
+}
+
+class PanelModal implements PanelOverlay {
   final String title;
   final List<String> lines;
-  final PanelStyle style;
+  final Box box;
+  final String borderColor;
   final BarrierStyle barrier;
   final PanelSize _width;
   final PanelSize _height;
@@ -144,7 +155,7 @@ class PanelModal {
   final bool selectable;
 
   int _scrollOffset = 0;
-  int _selectedIndex = 0;
+  int _selectedIndex;
   final Completer<void> _completer = Completer<void>();
   final Completer<int?> _selectionCompleter = Completer<int?>();
   int _lastVisibleHeight = 0;
@@ -152,20 +163,24 @@ class PanelModal {
   PanelModal({
     required this.title,
     required this.lines,
-    this.style = PanelStyle.simple,
+    this.box = Box.light,
+    this.borderColor = '\x1b[2m',
     this.barrier = BarrierStyle.dim,
     PanelSize? width,
     PanelSize? height,
     this.dismissable = true,
     this.selectable = false,
+    int initialIndex = 0,
   })  : _width = width ?? PanelFluid(0.7, 40),
-        _height = height ?? PanelFluid(0.7, 10) {
+        _height = height ?? PanelFluid(0.7, 10),
+        _selectedIndex = initialIndex {
     if (_height case PanelFixed(:final size)) {
       _lastVisibleHeight = size - 2;
     }
   }
 
   int get scrollOffset => _scrollOffset;
+  @override
   bool get isComplete => _completer.isCompleted;
   Future<void> get result => _completer.future;
   int get selectedIndex => selectable ? _selectedIndex : -1;
@@ -179,6 +194,10 @@ class PanelModal {
     }
   }
 
+  @override
+  void cancel() => dismiss();
+
+  @override
   bool handleEvent(TerminalEvent event) {
     if (isComplete) return false;
 
@@ -239,6 +258,7 @@ class PanelModal {
     }
   }
 
+  @override
   List<String> render(
       int termWidth, int termHeight, List<String> backgroundLines) {
     final panelW = _width.resolve(termWidth);
@@ -253,7 +273,7 @@ class PanelModal {
     final grid = List<String>.generate(
         termHeight, (i) => i < dimmed.length ? dimmed[i] : '');
 
-    final border = renderBorder(style, panelW, panelH, title);
+    final border = box.renderFrame(panelW, panelH, title, color: borderColor);
 
     final topRow = (termHeight - panelH) ~/ 2;
     final leftCol = (termWidth - panelW) ~/ 2;
@@ -299,13 +319,9 @@ class PanelModal {
 
         final isSelected =
             selectable && (contentIdx + _scrollOffset) == _selectedIndex;
-        final styledContent = isSelected ? '\x1b[7m$padded\x1b[27m' : padded;
+        final styledContent = isSelected ? '${padded.styled.inverse}' : padded;
 
-        final (leftBorder, rightBorder) = switch (style) {
-          PanelStyle.simple => ('\x1b[2m│\x1b[0m', '\x1b[2m│\x1b[0m'),
-          PanelStyle.heavy => ('\x1b[33m║\x1b[0m', '\x1b[33m║\x1b[0m'),
-          PanelStyle.tape => ('\x1b[33m│\x1b[0m', '\x1b[33m│\x1b[0m'),
-        };
+        final (leftBorder, rightBorder) = box.styledSides(color: borderColor);
 
         panelLines.add('$leftBorder $styledContent $rightBorder');
       }

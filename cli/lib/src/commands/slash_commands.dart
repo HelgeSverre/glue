@@ -3,12 +3,14 @@ class SlashCommand {
   final String name;
   final String description;
   final List<String> aliases;
+  final List<String> hiddenAliases;
   final String Function(List<String> args) execute;
 
   const SlashCommand({
     required this.name,
     required this.description,
     this.aliases = const [],
+    this.hiddenAliases = const [],
     required this.execute,
   });
 }
@@ -30,7 +32,9 @@ class SlashCommandRegistry {
 
     SlashCommand? command;
     for (final c in _commands) {
-      if (c.name == cmdName || c.aliases.contains(cmdName)) {
+      if (c.name == cmdName ||
+          c.aliases.contains(cmdName) ||
+          c.hiddenAliases.contains(cmdName)) {
         command = c;
         break;
       }

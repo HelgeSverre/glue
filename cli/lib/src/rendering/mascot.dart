@@ -1,8 +1,9 @@
 // Liquid simulation + ASCII renderer for the Glue mascot splash screen.
 
 import 'dart:math';
-import 'mascot_physics.dart';
-import 'mascot_sprite.dart';
+import 'package:glue/src/terminal/styled.dart';
+import 'package:glue/src/rendering/mascot_physics.dart';
+import 'package:glue/src/rendering/mascot_sprite.dart';
 
 const mascotRenderWidth = spriteWidth;
 const mascotRenderHeight = spriteHeight;
@@ -98,7 +99,7 @@ List<String> renderMascot(LiquidSim sim) {
         final g = pixel[1];
         final b = pixel[2];
         final ch = String.fromCharCode(pixel[3]);
-        buf.write('\x1b[38;2;$r;$g;${b}m$ch\x1b[0m');
+        buf.write(ch.styled.rgb(r, g, b));
       }
     }
     lines.add(buf.toString());
@@ -241,7 +242,7 @@ class GooExplosion {
         final cx = cell.x;
         final cy = cell.y;
         if (cx >= 0 && cx < viewportWidth && cy >= 0 && cy < viewportHeight) {
-          final gooCharList = GooChar.values;
+          const gooCharList = GooChar.values;
           grid[cy][cx] = [
             d.r,
             d.g,

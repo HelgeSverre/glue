@@ -1,0 +1,57 @@
+name: Docs Build Validate
+
+on:
+  pull_request:
+    paths:
+      - "cli/**"
+      - ".github/workflows/docs-build-validate.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "cli/**"
+      - ".github/workflows/docs-build-validate.yml"
+  workflow_dispatch:
+
+jobs:
+  docs:
+    name: Build Dev Docs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Just
+        uses: taiki-e/install-action@just
+
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: devdocs/package-lock.json
+
+      - name: Install CLI dependencies
+        run: just cli::deps
+
+      - name: Install Dev Docs dependencies
+        run: npm ci --prefix devdocs
+
+      - name: Build Dev Docs
+        run: just devdocs::build
+
+      - name: Verify local docs output (act)
+        if: ${{ env.ACT }}
+        run: ls -la devdocs/.vitepress/dist
+
+      - name: Upload docs artifact
+        if: ${{ !env.ACT }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: devdocs-site
+          path: devdocs/.vitepress/dist
+          if-no-files-found: error

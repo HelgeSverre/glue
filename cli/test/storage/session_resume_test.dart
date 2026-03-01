@@ -33,6 +33,25 @@ void main() {
       expect(sessions[2].id, 'sess-1');
     });
 
+    test('loads session title from meta.json', () {
+      final dir =
+          _createSession(tmpDir.path, 'sess-t', DateTime.now(), 'model');
+      final metaFile = File(p.join(dir, 'meta.json'));
+      final meta =
+          jsonDecode(metaFile.readAsStringSync()) as Map<String, dynamic>;
+      meta['title'] = 'Fix auth bug';
+      metaFile.writeAsStringSync(jsonEncode(meta));
+
+      final sessions = SessionStore.listSessions(tmpDir.path);
+      expect(sessions.first.title, 'Fix auth bug');
+    });
+
+    test('sessions without title have null title', () {
+      _createSession(tmpDir.path, 'sess-no-title', DateTime.now(), 'model');
+      final sessions = SessionStore.listSessions(tmpDir.path);
+      expect(sessions.first.title, isNull);
+    });
+
     test('skips directories without meta.json', () {
       Directory(p.join(tmpDir.path, 'broken-session')).createSync();
       final sessions = SessionStore.listSessions(tmpDir.path);

@@ -13,6 +13,7 @@
 ## Task 1: Branch name sanitization and repo root discovery
 
 **Files:**
+
 - Create: `lib/src/commands/worktree.dart`
 - Create: `test/commands/worktree_test.dart`
 
@@ -149,6 +150,7 @@ git commit -m "feat: add branch name sanitization and repo root discovery for wo
 ## Task 2: `.gitignore` management
 
 **Files:**
+
 - Modify: `lib/src/commands/worktree.dart`
 - Modify: `test/commands/worktree_test.dart`
 
@@ -258,6 +260,7 @@ git commit -m "feat: add .gitignore management for .worktrees/"
 ## Task 3: Worktree list parsing
 
 **Files:**
+
 - Modify: `lib/src/commands/worktree.dart`
 - Modify: `test/commands/worktree_test.dart`
 
@@ -395,6 +398,7 @@ git commit -m "feat: add git worktree list porcelain parser"
 ## Task 4: `WorktreeService` — create, list, remove operations
 
 **Files:**
+
 - Modify: `lib/src/commands/worktree.dart`
 
 **Step 1: Implement `WorktreeService`**
@@ -535,6 +539,7 @@ git commit -m "feat: add WorktreeService with create/list/remove/isDirty operati
 ## Task 5: `AgentCore.reset()` method
 
 **Files:**
+
 - Modify: `lib/src/agent/agent_core.dart`
 - Modify: `test/agent_core_test.dart`
 
@@ -605,6 +610,7 @@ git commit -m "feat: add AgentCore.reset() for worktree context switching"
 ## Task 6: Wire `/worktree` commands into App
 
 **Files:**
+
 - Modify: `lib/src/app.dart`
 - Modify: `lib/glue.dart`
 
@@ -620,6 +626,7 @@ In `lib/src/app.dart`, change:
 ```
 
 In the constructor, keep:
+
 ```dart
   _cwd = Directory.current.path;
 ```
@@ -840,17 +847,21 @@ git commit -m "feat: wire /worktree, /worktree:list, /worktree:remove commands"
 ## Execution Order
 
 **Group A (independent):**
+
 - Task 1: Sanitization + repo root discovery
 - Task 5: AgentCore.reset()
 
 **Group B (depends on Task 1):**
+
 - Task 2: .gitignore management
 - Task 3: Worktree list parsing
 
 **Group C (depends on B):**
+
 - Task 4: WorktreeService
 
 **Group D (depends on C + Task 5):**
+
 - Task 6: App wiring
 
 ---

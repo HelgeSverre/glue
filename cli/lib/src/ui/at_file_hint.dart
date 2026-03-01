@@ -2,8 +2,9 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-import '../config/constants.dart';
-import '../rendering/ansi_utils.dart';
+import 'package:glue/src/config/constants.dart';
+import 'package:glue/src/rendering/ansi_utils.dart';
+import 'package:glue/src/terminal/styled.dart';
 
 class _Candidate {
   final String displayName;
@@ -269,21 +270,19 @@ class AtFileHint {
         ? _matches.sublist(0, maxVisible)
         : _matches;
 
-    const bgDim = '\x1b[48;5;236m\x1b[37m';
-    const bgSel = '\x1b[48;5;24m\x1b[97m';
-    const rst = '\x1b[0m';
-
     final lines = <String>[];
     for (var i = 0; i < visible.length; i++) {
       final c = visible[i];
-      final bg = i == _selected ? bgSel : bgDim;
       final icon = c.isDirectory ? '  📁 ' : '     ';
       final content = '$icon${c.displayName}';
       final truncated = visibleLength(content) > width
           ? ansiTruncate(content, width)
           : content;
       final padCount = width - visibleLength(truncated);
-      lines.add('$bg$truncated${' ' * (padCount > 0 ? padCount : 0)}$rst');
+      final padded = '$truncated${' ' * (padCount > 0 ? padCount : 0)}';
+      lines.add(i == _selected
+          ? '${padded.styled.bg256(24).brightWhite}'
+          : '${padded.styled.bg256(236).white}');
     }
 
     return lines;

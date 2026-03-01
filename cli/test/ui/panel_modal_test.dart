@@ -2,6 +2,7 @@ import 'package:test/test.dart';
 
 import 'package:glue/src/rendering/ansi_utils.dart';
 import 'package:glue/src/terminal/terminal.dart';
+import 'package:glue/src/ui/box.dart';
 import 'package:glue/src/ui/panel_modal.dart';
 
 void main() {
@@ -43,16 +44,20 @@ void main() {
     });
   });
 
-  group('renderBorder', () {
-    for (final style in PanelStyle.values) {
-      group(style.name, () {
+  group('Box.renderFrame', () {
+    for (final entry in {
+      'light': Box.light,
+      'heavy': Box.heavy,
+      'rounded': Box.rounded,
+    }.entries) {
+      group(entry.key, () {
         test('produces correct number of lines', () {
-          final lines = renderBorder(style, 30, 10, 'Test');
+          final lines = entry.value.renderFrame(30, 10, 'Test');
           expect(lines.length, 10);
         });
 
         test('each line has correct visible width', () {
-          final lines = renderBorder(style, 30, 10, 'Test');
+          final lines = entry.value.renderFrame(30, 10, 'Test');
           for (var i = 0; i < lines.length; i++) {
             expect(visibleLength(lines[i]), 30,
                 reason: 'line $i has wrong width');
@@ -60,15 +65,15 @@ void main() {
         });
 
         test('title appears in top border', () {
-          final lines = renderBorder(style, 40, 5, 'MyTitle');
+          final lines = entry.value.renderFrame(40, 5, 'MyTitle');
           expect(stripAnsi(lines.first), contains('MyTitle'));
         });
       });
     }
 
-    group('simple', () {
+    group('light', () {
       test('has correct corner characters', () {
-        final lines = renderBorder(PanelStyle.simple, 20, 5, 'X');
+        final lines = Box.light.renderFrame(20, 5, 'X');
         final top = stripAnsi(lines.first);
         final bottom = stripAnsi(lines.last);
         expect(top[0], '┌');
@@ -78,7 +83,7 @@ void main() {
       });
 
       test('interior has border and padding', () {
-        final lines = renderBorder(PanelStyle.simple, 20, 5, 'X');
+        final lines = Box.light.renderFrame(20, 5, 'X');
         final interior = stripAnsi(lines[2]);
         expect(interior[0], '│');
         expect(interior[interior.length - 1], '│');
@@ -89,7 +94,7 @@ void main() {
 
     group('heavy', () {
       test('has correct corner characters', () {
-        final lines = renderBorder(PanelStyle.heavy, 20, 5, 'X');
+        final lines = Box.heavy.renderFrame(20, 5, 'X', color: '\x1b[33m');
         final top = stripAnsi(lines.first);
         final bottom = stripAnsi(lines.last);
         expect(top[0], '╔');
@@ -99,34 +104,11 @@ void main() {
       });
 
       test('interior has border and padding', () {
-        final lines = renderBorder(PanelStyle.heavy, 20, 5, 'X');
+        final lines = Box.heavy.renderFrame(20, 5, 'X', color: '\x1b[33m');
         final interior = stripAnsi(lines[2]);
         expect(interior[0], '║');
         expect(interior[interior.length - 1], '║');
         expect(interior[1], ' ');
-      });
-    });
-
-    group('tape', () {
-      test('top line contains tape pattern', () {
-        final lines = renderBorder(PanelStyle.tape, 30, 5, 'X');
-        final top = stripAnsi(lines.first);
-        expect(top, contains('▚'));
-      });
-
-      test('interior has border and padding', () {
-        final lines = renderBorder(PanelStyle.tape, 20, 5, 'X');
-        final interior = stripAnsi(lines[2]);
-        expect(interior[0], '│');
-        expect(interior[interior.length - 1], '│');
-        expect(interior[1], ' ');
-      });
-
-      test('bottom line is tape pattern', () {
-        final lines = renderBorder(PanelStyle.tape, 30, 5, 'X');
-        final bottom = stripAnsi(lines.last);
-        expect(bottom, contains('▚'));
-        expect(bottom, contains('▞'));
       });
     });
   });
@@ -148,7 +130,7 @@ void main() {
       expect(result.length, testLines.length);
       for (final line in result) {
         expect(line, startsWith('\x1b[2m'));
-        expect(line, endsWith('\x1b[0m'));
+        expect(line, endsWith('\x1b[22m'));
       }
     });
 
@@ -191,7 +173,6 @@ void main() {
       panel = PanelModal(
         title: 'TEST',
         lines: List.generate(30, (i) => 'Line $i'),
-        style: PanelStyle.simple,
         barrier: BarrierStyle.dim,
         width: PanelFixed(40),
         height: PanelFixed(10),
@@ -236,7 +217,6 @@ void main() {
       final locked = PanelModal(
         title: 'LOCKED',
         lines: ['content'],
-        style: PanelStyle.simple,
         barrier: BarrierStyle.dim,
         dismissable: false,
       );
@@ -287,7 +267,6 @@ void main() {
       panel = PanelModal(
         title: 'SELECT',
         lines: List.generate(20, (i) => 'Item $i'),
-        style: PanelStyle.simple,
         barrier: BarrierStyle.dim,
         width: PanelFixed(40),
         height: PanelFixed(10),
@@ -351,7 +330,6 @@ void main() {
       final plain = PanelModal(
         title: 'PLAIN',
         lines: ['a', 'b'],
-        style: PanelStyle.simple,
         barrier: BarrierStyle.dim,
       );
       expect(await plain.selection, null);
@@ -361,7 +339,6 @@ void main() {
       final plain = PanelModal(
         title: 'PLAIN',
         lines: ['a', 'b'],
-        style: PanelStyle.simple,
         barrier: BarrierStyle.dim,
       );
       expect(plain.selectedIndex, -1);

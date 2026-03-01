@@ -1,11 +1,15 @@
 default:
     @just --list
 
+# Serve locally for development
 serve:
     npx serve .
 
+# Deploy to Vercel (production)
+[confirm: "Deploy to production?"]
 deploy:
     vercel --prod
 
+# Deploy a Vercel preview
 preview:
     vercel

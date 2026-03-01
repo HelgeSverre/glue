@@ -13,6 +13,7 @@
 ### Task 1: LineRingBuffer
 
 **Files:**
+
 - Create: `lib/src/shell/line_ring_buffer.dart`
 - Test: `test/shell/line_ring_buffer_test.dart`
 
@@ -157,6 +158,7 @@ git commit -m "feat: add LineRingBuffer for bounded output capture"
 ### Task 2: ShellJobManager
 
 **Files:**
+
 - Create: `lib/src/shell/shell_job_manager.dart`
 - Test: `test/shell/shell_job_manager_test.dart`
 
@@ -429,6 +431,7 @@ git commit -m "feat: add ShellJobManager for background job lifecycle"
 ### Task 3: BlockRenderer.renderBash — fieldset/legend box
 
 **Files:**
+
 - Modify: `lib/src/rendering/block_renderer.dart`
 - Modify: `test/block_renderer_test.dart`
 
@@ -595,6 +598,7 @@ git commit -m "feat: add renderBash fieldset/legend box renderer"
 ### Task 4: GlueConfig — bashMaxLines setting
 
 **Files:**
+
 - Modify: `lib/src/config/glue_config.dart`
 - Modify: `test/config/glue_config_test.dart`
 
@@ -657,9 +661,10 @@ git commit -m "feat: add bashMaxLines config setting"
 
 ---
 
-### Task 5: _ConversationEntry.bash + AppMode.bashRunning
+### Task 5: \_ConversationEntry.bash + AppMode.bashRunning
 
 **Files:**
+
 - Modify: `lib/src/app.dart`
 
 **Step 1: Add AppMode.bashRunning variant**
@@ -671,7 +676,7 @@ In the `AppMode` enum in `lib/src/app.dart`, add:
 bashRunning,
 ```
 
-**Step 2: Add _EntryKind.bash and factory**
+**Step 2: Add \_EntryKind.bash and factory**
 
 In `_EntryKind` enum, add `bash`.
 
@@ -682,7 +687,7 @@ factory _ConversationEntry.bash(String command, String output) =>
     _ConversationEntry._(_EntryKind.bash, output, expandedText: command);
 ```
 
-**Step 3: Wire bash entry into _doRender block switch**
+**Step 3: Wire bash entry into \_doRender block switch**
 
 In the `switch (block.kind)` inside `_doRender`, add:
 
@@ -719,9 +724,10 @@ git commit -m "feat: add bash entry kind and bashRunning app mode"
 ### Task 6: Bash mode switching in App
 
 **Files:**
+
 - Modify: `lib/src/app.dart`
 
-**Step 1: Add _bashMode state field**
+**Step 1: Add \_bashMode state field**
 
 Add to the App class fields (near `_activeModal`):
 
@@ -736,7 +742,7 @@ DateTime? _lastCtrlC;
 static const _ctrlCWindow = Duration(seconds: 2);
 ```
 
-**Step 3: Intercept `!` and backspace in _handleTerminalEvent**
+**Step 3: Intercept `!` and backspace in \_handleTerminalEvent**
 
 In `_handleTerminalEvent`, after the modal handling block and scroll handling block, but before the `_mode == AppMode.streaming || _mode == AppMode.toolRunning` check, add bash mode switching logic:
 
@@ -756,7 +762,7 @@ if (_mode == AppMode.idle) {
 }
 ```
 
-**Step 4: Update prompt rendering in _doRender**
+**Step 4: Update prompt rendering in \_doRender**
 
 Replace the existing prompt switch:
 
@@ -829,12 +835,14 @@ case InputAction.interrupt:
 Wait — looking at the current code more carefully, the `InputAction.interrupt` handler is inside the idle-mode section (after autocomplete/atHint handling). But for non-idle modes (streaming, toolRunning), Ctrl+C is handled earlier as `KeyEvent(key: Key.ctrlC)` which calls `_cancelAgent()`. We need to also handle it for `bashRunning` (Task 7). The double-tap logic applies only to idle mode.
 
 Current code at line 452-453:
+
 ```dart
 case InputAction.interrupt:
   requestExit();
 ```
 
 Replace with:
+
 ```dart
 case InputAction.interrupt:
   final now = DateTime.now();
@@ -865,9 +873,10 @@ git commit -m "feat: bash mode switching, prompt styling, double-tap Ctrl+C"
 ### Task 7: Blocking bash execution
 
 **Files:**
+
 - Modify: `lib/src/app.dart`
 
-**Step 1: Add _bashRunProcess field**
+**Step 1: Add \_bashRunProcess field**
 
 Add to App class fields:
 
@@ -875,7 +884,7 @@ Add to App class fields:
 Process? _bashRunProcess;
 ```
 
-**Step 2: Add bash submit handling in _handleAppEvent**
+**Step 2: Add bash submit handling in \_handleAppEvent**
 
 In `_handleAppEvent`, the `UserSubmit` case currently checks `text.startsWith('/')`. Add bash mode check before the slash command check:
 
@@ -890,7 +899,7 @@ case UserSubmit(:final text):
   }
 ```
 
-**Step 3: Implement _handleBashSubmit**
+**Step 3: Implement \_handleBashSubmit**
 
 ```dart
 void _handleBashSubmit(String text) {
@@ -911,7 +920,7 @@ void _handleBashSubmit(String text) {
 }
 ```
 
-**Step 4: Implement _runBlockingBash**
+**Step 4: Implement \_runBlockingBash**
 
 ```dart
 Future<void> _runBlockingBash(String command) async {
@@ -968,7 +977,7 @@ if (_mode == AppMode.streaming || _mode == AppMode.toolRunning || _mode == AppMo
 }
 ```
 
-**Step 6: Implement _cancelBash**
+**Step 6: Implement \_cancelBash**
 
 ```dart
 void _cancelBash() {
@@ -997,21 +1006,25 @@ git commit -m "feat: blocking bash command execution with cancellation"
 ### Task 8: Background job integration in App
 
 **Files:**
+
 - Modify: `lib/src/app.dart`
 
 **Step 1: Add ShellJobManager to App**
 
 Add import:
+
 ```dart
 import 'shell/shell_job_manager.dart';
 ```
 
 Add field:
+
 ```dart
 final ShellJobManager _jobManager;
 ```
 
 Update constructor to accept and store it:
+
 ```dart
 App({
   // ... existing params
@@ -1039,7 +1052,7 @@ await jobSub.cancel();
 await _jobManager.shutdown();
 ```
 
-**Step 3: Implement _handleJobEvent**
+**Step 3: Implement \_handleJobEvent**
 
 ```dart
 void _handleJobEvent(JobEvent event) {
@@ -1060,7 +1073,7 @@ void _handleJobEvent(JobEvent event) {
 }
 ```
 
-**Step 4: Implement _startBackgroundJob**
+**Step 4: Implement \_startBackgroundJob**
 
 ```dart
 void _startBackgroundJob(String command) {
@@ -1092,6 +1105,7 @@ git commit -m "feat: wire ShellJobManager into App for background jobs"
 ### Task 9: Barrel exports
 
 **Files:**
+
 - Modify: `lib/glue.dart`
 
 **Step 1: Add exports**
@@ -1120,6 +1134,7 @@ git commit -m "feat: export shell module types"
 ### Task 10: Full integration test
 
 **Files:**
+
 - Run all tests, verify analyzer clean
 
 **Step 1: Run all tests**
@@ -1135,6 +1150,7 @@ Expected: No issues
 **Step 3: Manual smoke test (optional)**
 
 Run: `dart run bin/glue.dart`
+
 - Type `!ls` → should show directory listing in fieldset box
 - Type `!` then `echo hello` then Enter → same result
 - In bash mode, press Home then Backspace → should return to normal mode

@@ -1,9 +1,11 @@
-import '../rendering/ansi_utils.dart';
-import '../config/constants.dart';
-import 'terminal.dart';
+import 'package:glue/src/rendering/ansi_utils.dart';
+import 'package:glue/src/config/constants.dart';
+import 'package:glue/src/terminal/terminal.dart';
 
 /// Divides the terminal into vertical zones that cooperate using
-/// ANSI scroll regions:
+/// ANSI scroll regions.
+///
+/// {@category Terminal & Rendering}
 ///
 /// ```
 /// ┌──────────────────────────────┐
@@ -133,30 +135,177 @@ class Layout {
     );
   }
 
-  /// Paint the input area showing [prompt] followed by [text] with the
-  /// cursor positioned at [cursorPos] within the text.
+  /// Paint the multiline input area.
+  ///
+  /// [prompt] is shown on the first line (e.g. '❯ '), continuation lines
+  /// are indented with a dimmed '· ' indicator to the same width.
+  /// [lines] are the logical lines of text, [cursorRow] and [cursorCol]
+  /// are the cursor position within the logical lines.
+  ///
+  /// Handles visual line wrapping and scrolls the viewport when content
+  /// exceeds [AppConstants.maxInputVisibleLines].
   void paintInput(
     String prompt,
-    String text,
-    int cursorPos, {
+    List<String> lines,
+    int cursorRow,
+    int cursorCol, {
     bool showCursor = true,
     AnsiStyle promptStyle = AnsiStyle.yellow,
   }) {
-    terminal.moveTo(inputTop, 1);
-    terminal.clearLine();
-    terminal.writeStyled(prompt, style: promptStyle);
-    terminal.write(text);
+    final cols = terminal.columns;
+    final promptWidth = visibleLength(prompt);
 
-    // Fill rest of line with spaces to clear stale characters.
-    final usedCols = prompt.length + text.length;
-    if (usedCols < terminal.columns) {
-      terminal.write(' ' * (terminal.columns - usedCols));
+    // Build visual lines: each logical line may wrap into multiple
+    // visual rows. Track which visual row the cursor lands on.
+    final visualLines = <_VisualLine>[];
+    var cursorVisualRow = 0;
+    var cursorScreenCol = 1;
+
+    for (var logRow = 0; logRow < lines.length; logRow++) {
+      final line = lines[logRow];
+      final prefixWidth = promptWidth; // indent continuation to same width
+      final availWidth = (cols - prefixWidth).clamp(1, cols);
+
+      // Compute visual width of each character for wrapping.
+      final charWidths = <int>[];
+      for (final cp in line.runes) {
+        charWidths.add(charWidth(cp));
+      }
+
+      // Split into visual chunks based on available width.
+      final runes = line.runes.toList();
+      var charIdx = 0;
+      var isFirstChunk = true;
+
+      if (runes.isEmpty) {
+        // Empty line — still gets one visual row.
+        visualLines.add(_VisualLine(
+          text: '',
+          logicalRow: logRow,
+          isFirstOfLogical: isFirstChunk,
+        ));
+        if (logRow == cursorRow && cursorCol == 0) {
+          cursorVisualRow = visualLines.length - 1;
+          cursorScreenCol = prefixWidth + 1;
+        }
+        isFirstChunk = false;
+      } else {
+        while (charIdx < runes.length) {
+          final chunk = StringBuffer();
+          var usedWidth = 0;
+          final chunkStartIdx = charIdx;
+
+          while (charIdx < runes.length) {
+            final w = charWidths[charIdx];
+            if (usedWidth + w > availWidth) break;
+            chunk.writeCharCode(runes[charIdx]);
+            usedWidth += w;
+            charIdx++;
+          }
+
+          // If no progress (character wider than available), force one char.
+          if (chunk.isEmpty && charIdx < runes.length) {
+            chunk.writeCharCode(runes[charIdx]);
+            charIdx++;
+          }
+
+          visualLines.add(_VisualLine(
+            text: chunk.toString(),
+            logicalRow: logRow,
+            isFirstOfLogical: isFirstChunk,
+          ));
+
+          // Track cursor position: cursor is in this chunk when its
+          // column falls within [chunkStartIdx, charIdx) — or at charIdx
+          // if this is the last chunk of the line.
+          if (logRow == cursorRow &&
+              cursorCol >= chunkStartIdx &&
+              (cursorCol < charIdx || charIdx == runes.length)) {
+            var colWidth = 0;
+            for (var c = chunkStartIdx; c < cursorCol; c++) {
+              colWidth += charWidths[c];
+            }
+            cursorVisualRow = visualLines.length - 1;
+            cursorScreenCol = prefixWidth + colWidth + 1;
+          }
+
+          isFirstChunk = false;
+        }
+      }
     }
 
-    // Position the visible cursor where the user is typing.
-    final cursorCol =
-        (prompt.length + cursorPos + 1).clamp(1, terminal.columns);
-    terminal.moveTo(inputTop, cursorCol);
-    if (showCursor) terminal.showCursor();
+    // Scrolling: keep cursor visible within the viewport.
+    const maxVisible = AppConstants.maxInputVisibleLines;
+    final totalVisual = visualLines.length;
+    var scrollOffset = _inputScrollOffset;
+
+    if (totalVisual <= maxVisible) {
+      scrollOffset = 0;
+    } else {
+      // Ensure cursor row is visible.
+      if (cursorVisualRow < scrollOffset) {
+        scrollOffset = cursorVisualRow;
+      } else if (cursorVisualRow >= scrollOffset + maxVisible) {
+        scrollOffset = cursorVisualRow - maxVisible + 1;
+      }
+    }
+    _inputScrollOffset = scrollOffset;
+
+    final visibleCount = totalVisual <= maxVisible ? totalVisual : maxVisible;
+
+    // Update the input height in the layout.
+    setInputHeight(visibleCount);
+
+    // Paint each visible visual line.
+    for (var vi = 0; vi < visibleCount; vi++) {
+      final vLine = visualLines[scrollOffset + vi];
+      final screenRow = inputTop + vi;
+      terminal.moveTo(screenRow, 1);
+      terminal.clearLine();
+
+      if (vLine.isFirstOfLogical && vLine.logicalRow == 0) {
+        // First line gets the prompt.
+        terminal.writeStyled(prompt, style: promptStyle);
+      } else if (vLine.isFirstOfLogical) {
+        // Continuation logical lines get a dimmed indicator.
+        final indicator = '· '.padLeft(promptWidth);
+        terminal.writeStyled(indicator, style: AnsiStyle.dim);
+      } else {
+        // Wrapped visual lines get blank indent.
+        terminal.write(' ' * promptWidth);
+      }
+
+      terminal.write(vLine.text);
+
+      // Clear rest of line.
+      final usedCols = promptWidth + visibleLength(vLine.text);
+      if (usedCols < cols) {
+        terminal.write(' ' * (cols - usedCols));
+      }
+    }
+
+    // Position cursor.
+    if (showCursor &&
+        cursorVisualRow >= scrollOffset &&
+        cursorVisualRow < scrollOffset + visibleCount) {
+      final screenRow = inputTop + (cursorVisualRow - scrollOffset);
+      terminal.moveTo(screenRow, cursorScreenCol.clamp(1, cols));
+      terminal.showCursor();
+    }
   }
+
+  int _inputScrollOffset = 0;
+}
+
+/// A single visual (screen) row of the input area.
+class _VisualLine {
+  final String text;
+  final int logicalRow;
+  final bool isFirstOfLogical;
+
+  _VisualLine({
+    required this.text,
+    required this.logicalRow,
+    required this.isFirstOfLogical,
+  });
 }

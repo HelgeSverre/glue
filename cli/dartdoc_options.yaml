@@ -1,0 +1,52 @@
+dartdoc:
+  # Exclude test files from generated docs
+  exclude:
+    - test
+
+  # Show categories even without dedicated markdown pages
+  showUndocumentedCategories: true
+
+  # Organize the API surface into logical categories.
+  # Assign classes/libraries with {@category Name} doc comments.
+  categories:
+    "Core":
+      displayOrder: 1
+    "Agent":
+      displayOrder: 2
+    "LLM Providers":
+      displayOrder: 3
+    "Tools":
+      displayOrder: 4
+    "Terminal & Rendering":
+      displayOrder: 5
+    "Shell Execution":
+      displayOrder: 6
+    "Storage":
+      displayOrder: 7
+    "Observability":
+      displayOrder: 8
+    "UI":
+      displayOrder: 9
+    "Web":
+      displayOrder: 10
+    "Skills":
+      displayOrder: 11
+
+  # Order categories in sidebar and package page
+  categoryOrder:
+    - Core
+    - Agent
+    - LLM Providers
+    - Tools
+    - Terminal & Rendering
+    - Shell Execution
+    - Storage
+    - Observability
+    - UI
+    - Web
+    - Skills
+
+  # Link to source on GitHub
+  linkToSource:
+    root: '.'
+    uriTemplate: 'https://github.com/helgesverre/glue/blob/main/cli/%f%#L%l%'

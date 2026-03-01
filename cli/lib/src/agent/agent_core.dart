@@ -1,14 +1,17 @@
 import 'dart:async';
 import 'dart:developer' show Flow, Timeline;
 
-import '../dev/devtools.dart';
-import 'tools.dart';
+import 'package:glue/src/agent/content_part.dart';
+import 'package:glue/src/agent/tools.dart';
+import 'package:glue/src/dev/devtools.dart';
 
 // ---------------------------------------------------------------------------
 // Message types for the conversation history
 // ---------------------------------------------------------------------------
 
 /// Role of a message in the conversation.
+///
+/// {@category Agent}
 enum Role { user, assistant, toolResult }
 
 /// A single message in the conversation history.
@@ -18,6 +21,7 @@ class Message {
   final List<ToolCall> toolCalls;
   final String? toolCallId;
   final String? toolName;
+  final List<ContentPart>? contentParts;
 
   const Message._({
     required this.role,
@@ -25,6 +29,7 @@ class Message {
     this.toolCalls = const [],
     this.toolCallId,
     this.toolName,
+    this.contentParts,
   });
 
   factory Message.user(String text) => Message._(role: Role.user, text: text);
@@ -40,12 +45,14 @@ class Message {
     required String callId,
     required String content,
     String? toolName,
+    List<ContentPart>? contentParts,
   }) =>
       Message._(
           role: Role.toolResult,
           text: content,
           toolCallId: callId,
-          toolName: toolName);
+          toolName: toolName,
+          contentParts: contentParts);
 }
 
 // ---------------------------------------------------------------------------
@@ -61,13 +68,30 @@ class TextDelta extends LlmChunk {
   TextDelta(this.text);
 }
 
-/// A tool call requested by the model.
+/// The model has started a tool call, but the arguments are still streaming in.
+///
+/// Use this to show early UI feedback (e.g. "preparing read_file…") before the
+/// full [ToolCallDelta] arrives with parsed arguments.
+///
+/// Not every provider emits this — Ollama delivers tool calls fully formed, so
+/// you may only receive [ToolCallDelta]. Always treat this event as optional.
+class ToolCallStart extends LlmChunk {
+  final String id;
+  final String name;
+  ToolCallStart({required this.id, required this.name});
+}
+
+/// A fully-formed tool call with parsed arguments, ready to execute.
+///
+// TODO(rename): Consider renaming to `ToolCallComplete` — the "Delta" name
+// suggests an incremental update, but this is actually the final event.
+// Deferred because it touches 50+ references across source, tests, and docs.
 class ToolCallDelta extends LlmChunk {
   final ToolCall toolCall;
   ToolCallDelta(this.toolCall);
 }
 
-/// Token usage information.
+/// Token usage reported by the LLM after a response.
 class UsageInfo extends LlmChunk {
   final int inputTokens;
   final int outputTokens;
@@ -99,11 +123,13 @@ class ToolCall {
 class ToolResult {
   final String callId;
   final String content;
+  final List<ContentPart>? contentParts;
   final bool success;
 
   ToolResult({
     required this.callId,
     required this.content,
+    this.contentParts,
     this.success = true,
   });
 
@@ -123,7 +149,7 @@ class ToolResult {
 /// Implementations stream [LlmChunk]s for a given conversation and optional
 /// tool definitions.
 abstract class LlmClient {
-  /// Stream a response for the given [messages].
+  /// Streams a response for the given [messages].
   ///
   /// If [tools] are provided the model may emit [ToolCallDelta] chunks.
   Stream<LlmChunk> stream(
@@ -139,23 +165,35 @@ abstract class LlmClient {
 /// Events emitted by the agent that the UI subscribes to.
 sealed class AgentEvent {}
 
+/// A delta of generated text forwarded to the UI.
 class AgentTextDelta extends AgentEvent {
   final String delta;
   AgentTextDelta(this.delta);
 }
 
+/// Notification that a tool call is being prepared.
+class AgentToolCallPending extends AgentEvent {
+  final String id;
+  final String name;
+  AgentToolCallPending({required this.id, required this.name});
+}
+
+/// A fully-formed tool call ready for execution.
 class AgentToolCall extends AgentEvent {
   final ToolCall call;
   AgentToolCall(this.call);
 }
 
+/// The result of an executed tool call.
 class AgentToolResult extends AgentEvent {
   final ToolResult result;
   AgentToolResult(this.result);
 }
 
+/// Signals that the agent has finished its response.
 class AgentDone extends AgentEvent {}
 
+/// An error encountered during the agent loop.
 class AgentError extends AgentEvent {
   final Object error;
   AgentError(this.error);
@@ -182,6 +220,15 @@ class AgentCore {
   final List<Message> _conversation = [];
   int tokenCount = 0;
 
+  /// Optional predicate to exclude tools before sending to the LLM.
+  bool Function(Tool)? toolFilter;
+
+  /// Tools to send to the LLM, filtered by [toolFilter] when set.
+  List<Tool> get allowedTools {
+    if (toolFilter == null) return tools.values.toList();
+    return tools.values.where(toolFilter!).toList();
+  }
+
   /// Completers keyed by tool call ID for parallel tool execution.
   final Map<String, Completer<ToolResult>> _pendingToolResults = {};
 
@@ -191,10 +238,13 @@ class AgentCore {
   /// The full conversation history.
   List<Message> get conversation => List.unmodifiable(_conversation);
 
-  /// Add a message directly to the conversation history (for session resume).
+  /// Adds a message directly to the conversation history.
   void addMessage(Message message) => _conversation.add(message);
 
-  /// Run a [userMessage] through the agent loop.
+  /// Clear all conversation history (for session fork).
+  void clearConversation() => _conversation.clear();
+
+  /// Runs a [userMessage] through the agent loop.
   ///
   /// Returns a stream of [AgentEvent]s that the UI subscribes to.
   Stream<AgentEvent> run(String userMessage) async* {
@@ -210,6 +260,7 @@ class AgentCore {
 
         final assistantText = StringBuffer();
         final toolCalls = <ToolCall>[];
+        final toolFutures = <Future<ToolResult>>[];
 
         final flow = Flow.begin();
         Timeline.startSync('LlmStream', flow: flow);
@@ -217,14 +268,20 @@ class AgentCore {
 
         await for (final chunk in llm.stream(
           _conversation,
-          tools: tools.values.toList(),
+          tools: allowedTools,
         )) {
           switch (chunk) {
             case TextDelta(:final text):
               assistantText.write(text);
               yield AgentTextDelta(text);
+            case ToolCallStart(:final id, :final name):
+              yield AgentToolCallPending(id: id, name: name);
             case ToolCallDelta(:final toolCall):
               toolCalls.add(toolCall);
+              final completer = Completer<ToolResult>();
+              _pendingToolResults[toolCall.id] = completer;
+              toolFutures.add(completer.future);
+              yield AgentToolCall(toolCall);
             case UsageInfo(:final totalTokens):
               tokenCount += totalTokens;
           }
@@ -246,22 +303,11 @@ class AgentCore {
         // No tool calls → turn is complete.
         if (toolCalls.isEmpty) break;
 
-        // Create completers and capture futures before yielding
+        // Tools may have started executing as soon as they were yielded
+        // above, so some futures could already be resolved by the time we
+        // get here.
         Timeline.startSync('ToolExecution', flow: Flow.end(flow.id));
-        final futures = <Future<ToolResult>>[];
-        for (final call in toolCalls) {
-          final completer = Completer<ToolResult>();
-          _pendingToolResults[call.id] = completer;
-          futures.add(completer.future);
-        }
-
-        // Emit all tool calls
-        for (final call in toolCalls) {
-          yield AgentToolCall(call);
-        }
-
-        // Wait for all results
-        final results = await Future.wait(futures);
+        final results = await Future.wait(toolFutures);
         Timeline.finishSync();
 
         // Add results to conversation and yield events
@@ -270,6 +316,7 @@ class AgentCore {
             callId: toolCalls[i].id,
             content: results[i].content,
             toolName: toolCalls[i].name,
+            contentParts: results[i].contentParts,
           ));
           yield AgentToolResult(results[i]);
         }
@@ -297,7 +344,7 @@ class AgentCore {
     }
   }
 
-  /// Provide a [result] for a pending tool call.
+  /// Provides a [result] for a pending tool call.
   ///
   /// Called by the application after the user approves (or denies) a tool
   /// invocation.
@@ -307,7 +354,55 @@ class AgentCore {
     completer.complete(result);
   }
 
-  /// Execute a [call] directly using the registered tool.
+  /// Ensures the conversation history is structurally valid for the next
+  /// API call.
+  ///
+  /// When the user cancels (Escape) while a tool is executing, the agent's
+  /// stream subscription is cancelled. This kills the generator before it
+  /// reaches the code that adds tool_result messages to the conversation.
+  /// The conversation is left with an assistant message containing tool_use
+  /// blocks but no matching tool_result messages — which the Anthropic and
+  /// OpenAI APIs reject as invalid.
+  ///
+  /// This method scans backwards from the end of the conversation, finds
+  /// any unmatched tool_use blocks, and injects synthetic `[cancelled]`
+  /// tool_result messages so the next API call succeeds.
+  void ensureToolResultsComplete() {
+    // Walk backwards to find the last assistant message with tool calls.
+    // Skip over any tool_result messages that may already be present.
+    for (var i = _conversation.length - 1; i >= 0; i--) {
+      final msg = _conversation[i];
+
+      if (msg.role == Role.toolResult) continue;
+
+      if (msg.role == Role.assistant && msg.toolCalls.isNotEmpty) {
+        final resultIdsAfter = <String>{};
+        for (var j = i + 1; j < _conversation.length; j++) {
+          if (_conversation[j].role == Role.toolResult) {
+            final id = _conversation[j].toolCallId;
+            if (id != null) resultIdsAfter.add(id);
+          }
+        }
+
+        for (final tc in msg.toolCalls) {
+          final alreadyHasResult = resultIdsAfter.contains(tc.id);
+          if (!alreadyHasResult) {
+            _conversation.add(Message.toolResult(
+              callId: tc.id,
+              content: '[cancelled by user]',
+              toolName: tc.name,
+            ));
+          }
+        }
+        break;
+      }
+
+      // Hit a user message or something else — no unmatched tool_use.
+      break;
+    }
+  }
+
+  /// Executes a [call] directly using the registered tool.
   Future<ToolResult> executeTool(ToolCall call) async {
     final tool = tools[call.name];
     if (tool == null) {
@@ -318,8 +413,13 @@ class AgentCore {
       );
     }
     try {
-      final output = await tool.execute(call.arguments);
-      return ToolResult(callId: call.id, content: output);
+      final parts = await tool.execute(call.arguments);
+      final textContent = ContentPart.textOnly(parts);
+      return ToolResult(
+        callId: call.id,
+        content: textContent,
+        contentParts: ContentPart.hasImages(parts) ? parts : null,
+      );
     } catch (e) {
       return ToolResult(
         callId: call.id,

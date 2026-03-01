@@ -1,0 +1,90 @@
+/* ─── Glue Brutalist Theme ─── */
+
+:root {
+  --glue-yellow: #FACC15;
+  --glue-gold: #EAB308;
+  --glue-black: #0A0A0B;
+  --glue-dark: #1a1a1a;
+  --glue-dark2: #2a2a2a;
+  --glue-white: #fafafa;
+
+  --vp-c-brand-1: var(--glue-yellow);
+  --vp-c-brand-2: var(--glue-gold);
+  --vp-c-brand-3: var(--glue-yellow);
+  --vp-c-brand-soft: rgba(250, 204, 21, 0.14);
+
+  --vp-font-family-base: 'Inter', sans-serif;
+  --vp-font-family-mono: 'JetBrains Mono', monospace;
+}
+
+.dark {
+  --vp-c-bg: var(--glue-black);
+  --vp-c-bg-alt: var(--glue-dark);
+  --vp-c-bg-soft: var(--glue-dark2);
+  --vp-c-text-1: var(--glue-white);
+  --vp-c-text-2: #ccc;
+  --vp-c-text-3: #888;
+  --vp-sidebar-bg-color: var(--glue-dark);
+  --vp-c-divider: var(--glue-dark2);
+}
+
+/* Tape-style border under nav */
+.VPNav::after {
+  content: '';
+  display: block;
+  height: 4px;
+  background: var(--glue-yellow);
+}
+
+/* Nav site title */
+.VPNavBarTitle .title {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 800;
+  letter-spacing: -1px;
+  text-transform: uppercase;
+  color: var(--glue-yellow) !important;
+}
+
+/* Sidebar category headers */
+.VPSidebarItem.level-0 > .item > .text {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+
+/* Code blocks */
+.vp-doc div[class*='language-'] {
+  border: 2px solid var(--glue-dark2);
+}
+
+/* Hero */
+.VPHero .name {
+  font-family: 'JetBrains Mono', monospace !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+.VPHero .text {
+  font-family: 'JetBrains Mono', monospace !important;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+/* Brand button */
+.VPButton.brand {
+  background-color: var(--glue-yellow) !important;
+  color: var(--glue-black) !important;
+  border-color: var(--glue-yellow) !important;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.VPButton.brand:hover {
+  background-color: var(--glue-black) !important;
+  color: var(--glue-yellow) !important;
+}

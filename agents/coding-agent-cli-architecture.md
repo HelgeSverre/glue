@@ -990,7 +990,7 @@ class ToolResult {
 
 The output zone needs to render markdown-like content as it streams in. This is where it gets tricky — you're parsing incomplete markdown.
 
-```dart
+````dart
 /// Incremental markdown renderer for terminal output.
 /// Handles the "text is still streaming in" case gracefully.
 class StreamingMarkdownRenderer {
@@ -1066,7 +1066,7 @@ class StreamingMarkdownRenderer {
     return text;
   }
 }
-```
+````
 
 ---
 
@@ -1270,16 +1270,16 @@ Future<void> main(List<String> args) async {
 
 ## Architecture Summary
 
-| Layer | Responsibility | Async Pattern |
-|-------|---------------|---------------|
-| **Terminal** | Raw I/O, escape sequences, cursor control | `Stream<TerminalEvent>` |
-| **Layout** | Screen zones, scroll regions | Stateless (recomputed on resize) |
-| **ScreenBuffer** | Virtual cells, diff-based flush | Double buffer, sync render |
-| **LineEditor** | Input editing, history | Synchronous state machine |
-| **ModalStack** | Layered UI for confirmations | `Future<T>` per modal result |
-| **App** | Event routing, state machine, render loop | `StreamController` event bus |
-| **AgentCore** | LLM streaming, tool loop | `Stream<AppEvent>` (async generator) |
-| **Renderer** | Markdown → ANSI, diffs, tool cards | Stateful incremental parser |
+| Layer            | Responsibility                            | Async Pattern                        |
+| ---------------- | ----------------------------------------- | ------------------------------------ |
+| **Terminal**     | Raw I/O, escape sequences, cursor control | `Stream<TerminalEvent>`              |
+| **Layout**       | Screen zones, scroll regions              | Stateless (recomputed on resize)     |
+| **ScreenBuffer** | Virtual cells, diff-based flush           | Double buffer, sync render           |
+| **LineEditor**   | Input editing, history                    | Synchronous state machine            |
+| **ModalStack**   | Layered UI for confirmations              | `Future<T>` per modal result         |
+| **App**          | Event routing, state machine, render loop | `StreamController` event bus         |
+| **AgentCore**    | LLM streaming, tool loop                  | `Stream<AppEvent>` (async generator) |
+| **Renderer**     | Markdown → ANSI, diffs, tool cards        | Stateful incremental parser          |
 
 **The single most important principle**: the UI event loop and the agent loop are **decoupled streams** that merge into a single render cycle. Input is never blocked. The agent emits events. The app processes events and re-renders. That's the entire architecture.
 
@@ -1292,13 +1292,13 @@ Future<void> main(List<String> args) async {
 
 ### What Real Tools Use (for reference)
 
-| Tool | Language | TUI Framework |
-|------|----------|---------------|
-| Claude Code | TypeScript | Ink (React for terminals) |
-| OpenCode | Go | Bubble Tea (Elm architecture) |
-| Codex CLI | TypeScript | Ink |
-| Gemini CLI | TypeScript | Ink |
-| Aider | Python | prompt_toolkit |
-| Roo Code | TypeScript | VS Code extension API |
+| Tool        | Language   | TUI Framework                 |
+| ----------- | ---------- | ----------------------------- |
+| Claude Code | TypeScript | Ink (React for terminals)     |
+| OpenCode    | Go         | Bubble Tea (Elm architecture) |
+| Codex CLI   | TypeScript | Ink                           |
+| Gemini CLI  | TypeScript | Ink                           |
+| Aider       | Python     | prompt_toolkit                |
+| Roo Code    | TypeScript | VS Code extension API         |
 
 The Dart equivalent ecosystem is thinner — you'd build most of this from scratch (or port concepts from Bubble Tea, which is the cleanest architecture match since it's Elm-inspired and your Token editor already uses Elm Architecture).

@@ -1,0 +1,28 @@
+"cli":
+  - changed-files:
+      - any-glob-to-any-file: "cli/**"
+
+"website":
+  - changed-files:
+      - any-glob-to-any-file: "website/**"
+
+"agents":
+  - changed-files:
+      - any-glob-to-any-file: "agents/**"
+
+"docs":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+          - "cli/docs/**"
+          - "README.md"
+
+"ci":
+  - changed-files:
+      - any-glob-to-any-file: ".github/**"
+
+"tests":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "cli/test/**"
+          - "**/*_test.dart"

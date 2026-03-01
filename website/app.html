@@ -214,7 +214,10 @@
     <div class="top-nav">
       <a href="index.html">Home</a>
       <a href="docs.html">Docs</a>
-      <a href="app.html" class="active">App</a>
+      <a href="agents.html">Agents</a>
+      <a href="worktrees.html">Worktrees</a>
+      <a href="app.html" class="active">Web UI</a>
+      <a href="brand.html">Brand</a>
     </div>
     <div class="top-spacer"></div>
     <div class="top-status">
@@ -293,7 +296,7 @@
                   <div class="t-user"><span class="pr">❯ </span><span class="msg" x-text="block.text"></span></div>
                 </template>
                 <template x-if="block.type === 'assistant'">
-                  <div class="t-assistant" x-html="block.text + (block.streaming ? '<span class=\'t-cursor\'></span>' : '')"></div>
+                  <div class="t-assistant" x-html="linkify(block.text) + (block.streaming ? '<span class=\'t-cursor\'></span>' : '')"></div>
                 </template>
                 <template x-if="block.type === 'tool'">
                   <div class="t-tool">
@@ -378,7 +381,7 @@
               <option value="claude-4-sonnet">claude-4-sonnet</option>
               <option value="claude-4-opus">claude-4-opus</option>
               <option value="gpt-5">gpt-5</option>
-              <option value="gemini-3-pro">gemini-3-pro</option>
+              <option value="mistral-large-latest">mistral-large-latest</option>
             </select>
           </div>
           <div class="modal-field">
@@ -470,6 +473,16 @@ function glue() {
       this.activeId = s.id;
       this.showNewModal = false;
       this.newSession = { project: '', branch: '', newBranch: '', model: 'claude-4-sonnet', prompt: '' };
+    },
+    linkify(text) {
+      if (!text) return text;
+      // Markdown links: [text](url) → <a>
+      text = text.replace(/\[(.+?)\]\((.+?)\)/g,
+        '<a href="$2" target="_blank" rel="noopener" style="color:var(--yellow);text-decoration:underline;text-underline-offset:2px">$1</a>');
+      // Bare URLs (not already inside href="...")
+      text = text.replace(/(^|[^"=])(https?:\/\/[^\s<>\[\])`'"]+?)([.,;:!?)]*(?=\s|$|<))/g,
+        '$1<a href="$2" target="_blank" rel="noopener" style="color:var(--yellow);text-decoration:underline;text-underline-offset:2px">$2</a>$3');
+      return text;
     },
     sendMessage() {
       if (!this.inputText.trim() || !this.activeSession()) return;

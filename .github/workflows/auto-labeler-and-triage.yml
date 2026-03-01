@@ -1,0 +1,49 @@
+name: Auto Labeler and Triage
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  schedule:
+    - cron: "30 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  labeler:
+    name: PR Labeler
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label PR by paths
+        uses: actions/labeler@v6
+        with:
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          configuration-path: ".github/labeler.yml"
+          sync-labels: true
+
+  stale:
+    name: Stale issue and PR triage
+    if: github.event_name != 'pull_request_target'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mark and close stale items
+        uses: actions/stale@v10
+        with:
+          stale-issue-message: "This issue has been inactive for 30 days and is marked stale. Comment to keep it open."
+          stale-pr-message: "This PR has been inactive for 21 days and is marked stale. Comment or push commits to keep it open."
+          close-issue-message: "Closing this issue due to prolonged inactivity."
+          close-pr-message: "Closing this PR due to prolonged inactivity."
+          days-before-issue-stale: 30
+          days-before-pr-stale: 21
+          days-before-issue-close: 7
+          days-before-pr-close: 7
+          exempt-issue-labels: "pinned,security,help-wanted"
+          exempt-pr-labels: "pinned,security,do-not-close"

@@ -13,6 +13,7 @@
 ## Task 1: Fix fire-and-forget .then() chains in tool approval
 
 **Files:**
+
 - Modify: `lib/src/app.dart` (lines 490-538)
 
 **Step 1: Create `_executeAndCompleteTool` helper**
@@ -37,6 +38,7 @@ Future<void> _executeAndCompleteTool(ToolCall call) async {
 **Step 2: Replace all three `.then()` sites**
 
 In `_handleAgentEvent`, replace:
+
 ```dart
 agent.executeTool(call).then((result) {
   agent.completeToolCall(result);
@@ -44,6 +46,7 @@ agent.executeTool(call).then((result) {
 ```
 
 With:
+
 ```dart
 unawaited(_executeAndCompleteTool(call));
 ```
@@ -67,6 +70,7 @@ git commit -m "fix: replace fire-and-forget .then() with proper async error hand
 ## Task 2: Parallel tool execution in AgentCore
 
 **Files:**
+
 - Modify: `lib/src/agent/agent_core.dart` (lines 170-258)
 - Modify: `test/agent_core_test.dart`
 
@@ -130,6 +134,7 @@ final Map<String, Completer<ToolResult>> _pendingToolResults = {};
 ```
 
 In `run()`, change the tool call loop:
+
 ```dart
 // Emit all tool calls, create completers for each
 for (final call in toolCalls) {
@@ -153,6 +158,7 @@ for (var i = 0; i < toolCalls.length; i++) {
 ```
 
 Update `completeToolCall`:
+
 ```dart
 void completeToolCall(ToolResult result) {
   final completer = _pendingToolResults.remove(result.callId);
@@ -180,6 +186,7 @@ git commit -m "feat: support parallel tool execution in AgentCore"
 ## Task 3: Fix OpenAI arguments serialization bug
 
 **Files:**
+
 - Modify: `lib/src/llm/message_mapper.dart` (line 117)
 - Modify: `test/llm/message_mapper_test.dart`
 
@@ -214,6 +221,7 @@ Expected: FAIL — produces `{path: /foo.txt}` instead of `{"path":"/foo.txt"}`
 **Step 3: Fix the serialization**
 
 In `lib/src/llm/message_mapper.dart`, add `import 'dart:convert';` and change line 117:
+
 ```dart
 // Before:
 'arguments': tc.arguments.toString(),
@@ -238,11 +246,13 @@ git commit -m "fix: serialize OpenAI tool call arguments as JSON instead of Dart
 ## Task 4: Fix /model command to actually switch the LLM
 
 **Files:**
+
 - Modify: `lib/src/app.dart` (lines 273-281, and App fields/constructor)
 
 **Step 1: Store references needed for model switching**
 
 Add fields to `App`:
+
 ```dart
 final LlmClientFactory _llmFactory;
 final GlueConfig _config;
@@ -294,6 +304,7 @@ git commit -m "fix: /model command now actually switches the LLM client"
 ## Task 5: BashTool configurable timeout
 
 **Files:**
+
 - Modify: `lib/src/agent/tools.dart` (BashTool class, lines 134-172)
 - Modify: `test/agent_core_test.dart` or create `test/tools/bash_tool_test.dart`
 
@@ -384,6 +395,7 @@ git commit -m "feat: add configurable timeout_seconds parameter to BashTool"
 ## Task 6: Investigate and fix Ollama tool_name field
 
 **Files:**
+
 - Modify: `lib/src/llm/ollama_client.dart` (line 60-64)
 - Modify: `lib/src/agent/agent_core.dart` (Message class)
 - Modify: `lib/src/llm/message_mapper.dart` (AnthropicMessageMapper — no change needed, uses tool_use_id)
@@ -425,6 +437,7 @@ class Message {
 **Step 2: Pass tool name when creating tool result messages in AgentCore**
 
 In `agent_core.dart`, `run()` method, where tool results are added to conversation:
+
 ```dart
 _conversation.add(Message.toolResult(
   callId: toolCalls[i].id,
@@ -462,11 +475,13 @@ git commit -m "fix: Ollama tool results now correctly use tool name instead of c
 ## Task 7: Fix status bar padding to use visibleLength
 
 **Files:**
+
 - Modify: `lib/src/terminal/layout.dart` (line 123-125)
 
 **Step 1: Import ansi_utils**
 
 Add to top of `layout.dart`:
+
 ```dart
 import '../rendering/ansi_utils.dart';
 ```
@@ -504,6 +519,7 @@ git commit -m "fix: status bar padding now accounts for ANSI escape sequence len
 ## Task 8: Refactor event routing + resize reflow
 
 **Files:**
+
 - Modify: `lib/src/app.dart`
 
 **Step 1: Remove dead event classes or wire them up**
@@ -517,6 +533,7 @@ Remove `UserCancel` and `UserScroll` if truly unused, or wire them:
 **Step 2: Fix resize to clear and redraw**
 
 In `_handleAppEvent` for `UserResize`:
+
 ```dart
 case UserResize(:final cols, :final rows):
   layout.apply();
@@ -525,9 +542,10 @@ case UserResize(:final cols, :final rows):
   _render();
 ```
 
-**Step 3: Emit events from _handleTerminalEvent**
+**Step 3: Emit events from \_handleTerminalEvent**
 
 Replace inline scroll/resize handling:
+
 ```dart
 case KeyEvent(key: Key.pageUp):
   final viewportHeight = layout.outputBottom - layout.outputTop + 1;
@@ -548,6 +566,7 @@ case MouseEvent(:final isScroll, :final isScrollUp):
 ```
 
 In `_handleAppEvent`:
+
 ```dart
 case UserScroll(:final delta):
   _scrollOffset = (_scrollOffset + delta).clamp(0, 999999);
@@ -577,6 +596,7 @@ git commit -m "refactor: route scroll/resize through event bus, fix resize reflo
 This is the largest task. It adds the persistent storage layer.
 
 **Files:**
+
 - Create: `lib/src/storage/glue_home.dart` — manages ~/.glue/ directory structure
 - Create: `lib/src/storage/session_store.dart` — conversation session persistence
 - Create: `lib/src/storage/debug_logger.dart` — debug log file writer
@@ -586,6 +606,7 @@ This is the largest task. It adds the persistent storage layer.
 - Create: `test/storage/` — tests for each component
 
 ### Directory structure:
+
 ```
 ~/.glue/
   config.json              # user preferences, trusted tools, default model/provider
@@ -659,6 +680,7 @@ class ConfigStore {
 ```
 
 Config.json shape:
+
 ```json
 {
   "default_provider": "anthropic",
@@ -797,6 +819,7 @@ class DebugLogger {
 ### Sub-step 9g: Export new types from barrel file
 
 Add to `lib/glue.dart`:
+
 ```dart
 export 'src/storage/glue_home.dart' show GlueHome;
 export 'src/storage/session_store.dart' show SessionStore, SessionMeta;
@@ -805,6 +828,7 @@ export 'src/storage/config_store.dart' show ConfigStore;
 ```
 
 ### Tests:
+
 - `test/storage/config_store_test.dart` — load/save round-trip, missing file returns defaults
 - `test/storage/session_store_test.dart` — logEvent appends JSONL, meta.json written on close
 - `test/storage/debug_logger_test.dart` — writes to file when enabled, no-ops when disabled
@@ -822,6 +846,7 @@ git commit -m "feat: add ~/.glue/ infrastructure for config, sessions, and debug
 ## Task 10: Integrate ScreenBuffer for flicker-free rendering (LAST)
 
 **Files:**
+
 - Modify: `lib/src/terminal/screen_buffer.dart`
 - Modify: `lib/src/terminal/layout.dart`
 - Modify: `lib/src/app.dart`
@@ -863,6 +888,7 @@ void _doRender() {
 **Step 3: Integrate ScreenBuffer into Layout (if flicker persists)**
 
 Update `Layout` to accept a `ScreenBuffer` and write through it:
+
 - `paintOutputViewport` → `buffer.writeAt()` per line
 - `paintStatus` → `buffer.fillRow()`
 - Call `buffer.flush()` at the end of `_render()`
@@ -891,23 +917,28 @@ git commit -m "perf: add render throttling and ScreenBuffer integration for flic
 Tasks can be parallelized in groups:
 
 **Group A (independent, no shared files):**
+
 - Task 3: OpenAI arguments fix (message_mapper.dart)
 - Task 5: BashTool timeout (tools.dart)
 - Task 6: Ollama tool_name fix (ollama_client.dart + agent_core.dart Message)
 - Task 7: Status bar padding fix (layout.dart)
 
 **Group B (depends on Group A for agent_core.dart):**
+
 - Task 2: Parallel tool execution (agent_core.dart)
 - Task 1: Fire-and-forget fix (app.dart)
 
 **Group C (depends on B for app.dart):**
+
 - Task 4: /model command fix (app.dart + agent_core.dart)
 - Task 8: Event routing refactor (app.dart)
 
 **Group D (can run parallel to B/C):**
+
 - Task 9: ~/.glue/ infrastructure (new files, minimal app.dart touch)
 
 **Group E (last, after all others):**
+
 - Task 10: ScreenBuffer integration (app.dart + layout.dart)
 
 ---

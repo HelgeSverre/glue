@@ -32,9 +32,11 @@ void main() {
     final metaFile = File(p.join(sessionDir, 'meta.json'));
     expect(metaFile.existsSync(), isTrue);
 
-    final metaJson = jsonDecode(metaFile.readAsStringSync());
-    expect(metaJson['id'], 'session-001');
-    expect(metaJson['model'], 'claude-sonnet-4-6');
+    final savedMeta = SessionMeta.fromJson(
+      jsonDecode(metaFile.readAsStringSync()) as Map<String, dynamic>,
+    );
+    expect(savedMeta.id, 'session-001');
+    expect(savedMeta.model, 'claude-sonnet-4-6');
   });
 
   test('logEvent appends JSONL lines', () async {
@@ -59,13 +61,33 @@ void main() {
     expect(second['text'], 'hi there');
   });
 
-  test('close writes endTime to meta.json', () async {
+  test('setTitle persists title to meta.json', () {
     final store = SessionStore(sessionDir: sessionDir, meta: meta);
-    await store.close();
+    store.setTitle('Fix auth bug');
 
     final metaJson = jsonDecode(
       File(p.join(sessionDir, 'meta.json')).readAsStringSync(),
     );
-    expect(metaJson['end_time'], isNotNull);
+    expect((metaJson as Map<String, dynamic>)['title'], 'Fix auth bug');
+  });
+
+  test('title is omitted from meta.json when null', () {
+    SessionStore(sessionDir: sessionDir, meta: meta);
+
+    final metaJson = jsonDecode(
+      File(p.join(sessionDir, 'meta.json')).readAsStringSync(),
+    ) as Map<String, dynamic>;
+    expect(metaJson.containsKey('title'), isFalse);
+  });
+
+  test('close writes endTime to meta.json', () async {
+    final store = SessionStore(sessionDir: sessionDir, meta: meta);
+    await store.close();
+
+    final savedMeta = SessionMeta.fromJson(
+      jsonDecode(File(p.join(sessionDir, 'meta.json')).readAsStringSync())
+          as Map<String, dynamic>,
+    );
+    expect(savedMeta.endTime, isNotNull);
   });
 }
