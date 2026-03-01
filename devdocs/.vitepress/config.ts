@@ -80,6 +80,8 @@ export default defineConfig({
       '/api/': sidebar,
     },
 
+    outline: [2, 3],
+
     search: {
       provider: 'local',
     },
