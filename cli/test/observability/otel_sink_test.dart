@@ -402,6 +402,59 @@ void main() {
     expect(mockHttp.requests, hasLength(2));
   });
 
+  test('calls onError callback on HTTP failure', () async {
+    mockHttp.statusCode = 500;
+    final errors = <String>[];
+    final sink = OtelSink(
+      config: _configured(),
+      httpClient: mockHttp,
+      onError: errors.add,
+    );
+    final span = ObservabilitySpan(name: 'test', kind: 'internal');
+    span.end();
+    sink.onSpan(span);
+
+    await sink.flush();
+
+    expect(errors, hasLength(1));
+    expect(errors.first, contains('otel export failed'));
+    expect(errors.first, contains('500'));
+  });
+
+  test('calls onError callback on network exception', () async {
+    mockHttp.shouldThrow = true;
+    final errors = <String>[];
+    final sink = OtelSink(
+      config: _configured(),
+      httpClient: mockHttp,
+      onError: errors.add,
+    );
+    final span = ObservabilitySpan(name: 'test', kind: 'internal');
+    span.end();
+    sink.onSpan(span);
+
+    await sink.flush();
+
+    expect(errors, hasLength(1));
+    expect(errors.first, contains('otel export error'));
+  });
+
+  test('does not write to stderr when onError is null', () async {
+    mockHttp.shouldThrow = true;
+    final sink = OtelSink(config: _configured(), httpClient: mockHttp);
+    final span = ObservabilitySpan(name: 'test', kind: 'internal');
+    span.end();
+    sink.onSpan(span);
+
+    // Should not throw or write to stderr.
+    await sink.flush();
+
+    // Span was re-enqueued for retry.
+    mockHttp.shouldThrow = false;
+    await sink.flush();
+    expect(mockHttp.requests, hasLength(2));
+  });
+
   test('close calls flush', () async {
     final sink = OtelSink(config: _configured(), httpClient: mockHttp);
     final span = ObservabilitySpan(name: 'test', kind: 'internal');

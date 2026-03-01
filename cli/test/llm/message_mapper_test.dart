@@ -36,11 +36,15 @@ void main() {
     test('tool_result without contentParts uses text string', () {
       const mapper = AnthropicMessageMapper();
       final msgs = [
+        Message.assistant(toolCalls: [
+          ToolCall(id: 'tc1', name: 'bash', arguments: {}),
+        ]),
         Message.toolResult(
             callId: 'tc1', content: 'result text', toolName: 'bash'),
       ];
       final result = mapper.mapMessages(msgs, systemPrompt: '');
-      final content = result.messages[0]['content'] as List;
+      // assistant + tool_result = 2
+      final content = result.messages[1]['content'] as List;
       final toolResultBlock = content[0] as Map<String, dynamic>;
       expect(toolResultBlock['content'], 'result text');
       expect(toolResultBlock['content'], isA<String>());
@@ -50,6 +54,9 @@ void main() {
         () {
       const mapper = AnthropicMessageMapper();
       final msgs = [
+        Message.assistant(toolCalls: [
+          ToolCall(id: 'tc1', name: 'web_browser', arguments: {}),
+        ]),
         Message.toolResult(
           callId: 'tc1',
           content: 'Screenshot captured.',
@@ -61,7 +68,8 @@ void main() {
         ),
       ];
       final result = mapper.mapMessages(msgs, systemPrompt: '');
-      final outerContent = result.messages[0]['content'] as List;
+      // assistant + tool_result = 2
+      final outerContent = result.messages[1]['content'] as List;
       final toolResultBlock = outerContent[0] as Map<String, dynamic>;
       final content = toolResultBlock['content'] as List;
       expect(content.length, 2);
@@ -79,6 +87,9 @@ void main() {
     test('tool_result with contentParts but no images uses text string', () {
       const mapper = AnthropicMessageMapper();
       final msgs = [
+        Message.assistant(toolCalls: [
+          ToolCall(id: 'tc1', name: 'bash', arguments: {}),
+        ]),
         Message.toolResult(
           callId: 'tc1',
           content: 'just text',
@@ -87,9 +98,100 @@ void main() {
         ),
       ];
       final result = mapper.mapMessages(msgs, systemPrompt: '');
-      final content = result.messages[0]['content'] as List;
+      // assistant + tool_result = 2
+      final content = result.messages[1]['content'] as List;
       final toolResultBlock = content[0] as Map<String, dynamic>;
       expect(toolResultBlock['content'], 'just text');
+    });
+
+    test('drops orphaned tool_result with no matching tool_use', () {
+      const mapper = AnthropicMessageMapper();
+      final msgs = [
+        Message.user('hello'),
+        Message.assistant(
+          text: 'I will read',
+          toolCalls: [
+            ToolCall(
+                id: 'tc1', name: 'read_file', arguments: {'path': 'a.txt'}),
+          ],
+        ),
+        Message.toolResult(callId: 'tc1', content: 'file contents'),
+        // Orphaned: tc_stale references a tool_use not in the preceding assistant message.
+        Message.toolResult(callId: 'tc_stale', content: 'stale result'),
+        Message.assistant(text: 'Here is the summary'),
+      ];
+      final result = mapper.mapMessages(msgs, systemPrompt: '');
+      // user + assistant(tool_use) + tool_result(tc1) + assistant(text) = 4
+      // The orphaned tool_result(tc_stale) should be dropped.
+      expect(result.messages, hasLength(4));
+      // Verify the kept tool_result is tc1.
+      final toolResultMsg = result.messages[2];
+      final block = (toolResultMsg['content'] as List).first as Map;
+      expect(block['tool_use_id'], 'tc1');
+    });
+
+    test('drops tool_result after assistant message with no tool_calls', () {
+      const mapper = AnthropicMessageMapper();
+      final msgs = [
+        Message.user('hello'),
+        // Assistant message without tool_calls (e.g. after session resume).
+        Message.assistant(text: 'I read the file for you'),
+        // This tool_result is orphaned because the preceding assistant has no tool_uses.
+        Message.toolResult(callId: 'tc1', content: 'file contents'),
+        Message.user('thanks'),
+      ];
+      final result = mapper.mapMessages(msgs, systemPrompt: '');
+      // user + assistant + user = 3 (tool_result dropped).
+      expect(result.messages, hasLength(3));
+      expect(result.messages[0]['role'], 'user');
+      expect(result.messages[1]['role'], 'assistant');
+      expect(result.messages[2]['role'], 'user');
+    });
+
+    test('keeps all tool_results when they match tool_uses', () {
+      const mapper = AnthropicMessageMapper();
+      final msgs = [
+        Message.user('do two things'),
+        Message.assistant(
+          text: '',
+          toolCalls: [
+            ToolCall(id: 'tc1', name: 'read_file', arguments: {}),
+            ToolCall(id: 'tc2', name: 'write_file', arguments: {}),
+          ],
+        ),
+        Message.toolResult(callId: 'tc1', content: 'result 1'),
+        Message.toolResult(callId: 'tc2', content: 'result 2'),
+      ];
+      final result = mapper.mapMessages(msgs, systemPrompt: '');
+      // user + assistant + tool_result(tc1) + tool_result(tc2) = 4.
+      expect(result.messages, hasLength(4));
+    });
+
+    test('drops only the orphaned result in a mixed batch', () {
+      const mapper = AnthropicMessageMapper();
+      final msgs = [
+        Message.user('hello'),
+        Message.assistant(
+          text: '',
+          toolCalls: [
+            ToolCall(id: 'tc1', name: 'read_file', arguments: {}),
+            ToolCall(id: 'tc2', name: 'write_file', arguments: {}),
+          ],
+        ),
+        Message.toolResult(callId: 'tc1', content: 'ok'),
+        Message.toolResult(callId: 'tc_orphan', content: 'orphan'),
+        Message.toolResult(callId: 'tc2', content: 'ok'),
+      ];
+      final result = mapper.mapMessages(msgs, systemPrompt: '');
+      // user + assistant + tc1 + tc2 = 4 (tc_orphan dropped).
+      expect(result.messages, hasLength(4));
+      final ids = result.messages
+          .where((m) => m['role'] == 'user')
+          .expand((m) => (m['content'] as List))
+          .where((c) => c is Map<String, dynamic> && c['type'] == 'tool_result')
+          .map((c) => (c as Map<String, dynamic>)['tool_use_id'])
+          .toList();
+      expect(ids, ['tc1', 'tc2']);
     });
   });
 

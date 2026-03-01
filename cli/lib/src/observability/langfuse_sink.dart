@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
 
 import 'package:http/http.dart' as http;
@@ -23,6 +22,7 @@ class LangfuseSink extends ObservabilitySink {
   final http.Client _httpClient;
   final int maxBufferSize;
   final Map<String, String> resourceAttributes;
+  final void Function(String message)? onError;
   final List<ObservabilitySpan> _buffer = [];
   final Set<String> _emittedTraces = {};
 
@@ -31,6 +31,7 @@ class LangfuseSink extends ObservabilitySink {
     http.Client? httpClient,
     this.maxBufferSize = 1000,
     this.resourceAttributes = const {},
+    this.onError,
   })  : _config = config,
         _httpClient = httpClient ?? http.Client();
 
@@ -70,7 +71,7 @@ class LangfuseSink extends ObservabilitySink {
         if (_buffer.length > maxBufferSize) {
           _buffer.removeRange(0, _buffer.length - maxBufferSize);
         }
-        stderr.writeln(
+        onError?.call(
           'glue: langfuse export failed (${response.statusCode})',
         );
       }
@@ -79,7 +80,7 @@ class LangfuseSink extends ObservabilitySink {
       if (_buffer.length > maxBufferSize) {
         _buffer.removeRange(0, _buffer.length - maxBufferSize);
       }
-      stderr.writeln('glue: langfuse export error: $e');
+      onError?.call('glue: langfuse export error: $e');
     }
   }
 

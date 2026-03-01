@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:glue/src/observability/observability.dart';
@@ -10,6 +9,7 @@ class OtelSink extends ObservabilitySink {
   final http.Client _httpClient;
   final int maxBufferSize;
   final Map<String, String> resourceAttributes;
+  final void Function(String message)? onError;
   final List<ObservabilitySpan> _buffer = [];
 
   OtelSink({
@@ -17,6 +17,7 @@ class OtelSink extends ObservabilitySink {
     http.Client? httpClient,
     this.maxBufferSize = 1000,
     this.resourceAttributes = const {},
+    this.onError,
   })  : _config = config,
         _httpClient = httpClient ?? http.Client();
 
@@ -48,7 +49,7 @@ class OtelSink extends ObservabilitySink {
         if (_buffer.length > maxBufferSize) {
           _buffer.removeRange(0, _buffer.length - maxBufferSize);
         }
-        stderr.writeln(
+        onError?.call(
           'glue: otel export failed (${response.statusCode})',
         );
       }
@@ -58,7 +59,7 @@ class OtelSink extends ObservabilitySink {
       if (_buffer.length > maxBufferSize) {
         _buffer.removeRange(0, _buffer.length - maxBufferSize);
       }
-      stderr.writeln('glue: otel export error: $e');
+      onError?.call('glue: otel export error: $e');
     }
   }
 
