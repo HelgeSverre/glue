@@ -2389,7 +2389,10 @@ class App {
     };
     final shortCwd = _shortenPath(_cwd);
     final permLabel = '[${_permissionMode.label}]';
-    final statusLeft = ' $modeIndicator  $_modelName  $permLabel  $shortCwd';
+    const bold = '\x1b[1m';
+    const boldOff = '\x1b[22m';
+    const black = '\x1b[30m';
+    final statusLeft = ' $_modelName  $permLabel  $shortCwd  $bold$black$modeIndicator$boldOff\x1b[39m';
 
     final scrollIndicator = _scrollOffset > 0 ? '↑$_scrollOffset  ' : '';
     final statusRight = '${scrollIndicator}tok ${agent.tokenCount} ';
