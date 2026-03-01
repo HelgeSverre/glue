@@ -476,6 +476,23 @@ class App {
         return '';
       },
     ));
+
+    _commands.register(SlashCommand(
+      name: 'devtools',
+      description: 'Open Dart DevTools in browser',
+      execute: (_) {
+        unawaited(GlueDev.getDevToolsUrl().then((url) {
+          if (url == null) {
+            _blocks.add(_ConversationEntry.system(
+                'DevTools not available. Run with: just dev'));
+            _render();
+            return;
+          }
+          Process.run('open', [url.toString()]);
+        }));
+        return 'Opening DevTools...';
+      },
+    ));
   }
 
   String _resumeSession(SessionMeta session) {

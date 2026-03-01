@@ -132,6 +132,16 @@ class GlueDev {
     });
   }
 
+  // -- DevTools URL --
+
+  /// Returns the DevTools URL if the VM service is running, null otherwise.
+  static Future<Uri?> getDevToolsUrl() async {
+    final info = await developer.Service.getInfo();
+    final uri = info.serverUri;
+    if (uri == null) return null;
+    return uri.resolve('devtools/?uri=ws://${uri.host}:${uri.port}${uri.path}ws');
+  }
+
   // -- Service extensions --
 
   /// Register all Glue service extensions. Call once at startup.
