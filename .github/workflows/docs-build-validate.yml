@@ -50,7 +50,7 @@ jobs:
 
       - name: Upload docs artifact
         if: ${{ !env.ACT }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: devdocs-site
           path: devdocs/.vitepress/dist

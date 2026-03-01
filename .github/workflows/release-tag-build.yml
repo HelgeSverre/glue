@@ -50,7 +50,7 @@ jobs:
 
       - name: Upload build artifact
         if: ${{ !env.ACT }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.target }}
           path: cli/${{ matrix.output_name }}
