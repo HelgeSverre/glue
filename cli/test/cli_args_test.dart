@@ -1,4 +1,5 @@
 import 'package:args/args.dart';
+import 'package:glue/glue.dart';
 import 'package:test/test.dart';
 
 // We test against the same arg parser configuration used in GlueCommandRunner.
@@ -124,6 +125,39 @@ void main() {
       expect(result.flag('json'), isTrue);
       // Note: --json implying --print is handled in _runApp, not the parser
       expect(result.flag('print'), isFalse);
+    });
+  });
+
+  group('App.buildPrintPrompt (stdin + prompt)', () {
+    test('prompt only', () {
+      final result = App.buildPrintPrompt(prompt: 'explain this');
+      expect(result, 'explain this');
+    });
+
+    test('stdin only', () {
+      final result = App.buildPrintPrompt(stdinContent: 'file contents here');
+      expect(result, '<stdin>\nfile contents here</stdin>');
+    });
+
+    test('stdin + prompt combines with tags', () {
+      final result = App.buildPrintPrompt(
+        prompt: 'summarize this file',
+        stdinContent: 'line 1\nline 2',
+      );
+      expect(result, '<stdin>\nline 1\nline 2</stdin>\n\nsummarize this file');
+    });
+
+    test('empty prompt with stdin uses stdin only', () {
+      final result = App.buildPrintPrompt(
+        prompt: '',
+        stdinContent: 'data',
+      );
+      expect(result, '<stdin>\ndata</stdin>');
+    });
+
+    test('both null returns empty string', () {
+      final result = App.buildPrintPrompt();
+      expect(result, isEmpty);
     });
   });
 }

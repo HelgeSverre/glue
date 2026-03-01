@@ -461,6 +461,15 @@ class App {
     );
   }
 
+  /// Builds the prompt for print mode by combining stdin content and the
+  /// user-supplied prompt string. Exposed as a static method for testing.
+  static String buildPrintPrompt({String? prompt, String? stdinContent}) {
+    return [
+      if (stdinContent != null) '<stdin>\n$stdinContent</stdin>',
+      if (prompt != null && prompt.isNotEmpty) prompt,
+    ].join('\n\n');
+  }
+
   static String _hostArch() {
     // Dart doesn't expose arch directly; infer from OS version string.
     final ver = Platform.operatingSystemVersion.toLowerCase();
@@ -636,13 +645,31 @@ class App {
       }
     }
 
+    // Read piped stdin if available (e.g. `cat file | glue -p "summarize"`).
+    String? stdinContent;
+    if (!stdin.hasTerminal) {
+      try {
+        final buf = StringBuffer();
+        String? line;
+        while ((line = stdin.readLineSync()) != null) {
+          buf.writeln(line);
+        }
+        final content = buf.toString().trimRight();
+        if (content.isNotEmpty) stdinContent = content;
+      } catch (_) {
+        // Ignore stdin read errors.
+      }
+    }
+
     final prompt = _startupPrompt;
-    if (prompt == null || prompt.isEmpty) {
+    if ((prompt == null || prompt.isEmpty) && stdinContent == null) {
       stderr.writeln('Error: --print requires a prompt.');
       return;
     }
 
-    final expanded = expandFileRefs(prompt);
+    final fullPrompt = buildPrintPrompt(prompt: prompt, stdinContent: stdinContent);
+
+    final expanded = expandFileRefs(fullPrompt);
     _sessionStore?.logEvent('user_message', {'text': expanded});
 
     final assistantText = StringBuffer();
