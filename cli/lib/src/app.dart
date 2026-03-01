@@ -20,7 +20,6 @@ import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/config/model_registry.dart';
 import 'package:glue/src/config/permission_mode.dart';
 import 'package:glue/src/llm/llm_factory.dart';
-import 'package:glue/src/llm/model_lister.dart';
 import 'package:glue/src/llm/title_generator.dart';
 import 'package:glue/src/rendering/block_renderer.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
@@ -606,12 +605,10 @@ class App {
 
     _commands.register(SlashCommand(
       name: 'models',
-      description: 'List available models from the current provider',
+      description: 'Browse and switch models across all providers',
       execute: (_) {
-        final config = _config;
-        if (config == null) return 'No config available.';
-        unawaited(_fetchModels(config));
-        return 'Fetching ${config.provider.name} models\u2026';
+        _openModelPanel();
+        return '';
       },
     ));
 
@@ -691,32 +688,6 @@ class App {
         return '';
       },
     ));
-  }
-
-  Future<void> _fetchModels(GlueConfig config) async {
-    try {
-      final lister = ModelLister();
-      final models = await lister.list(
-        provider: config.provider,
-        apiKey: config.provider == LlmProvider.ollama ? null : config.apiKey,
-        ollamaBaseUrl: config.ollamaBaseUrl,
-      );
-      if (models.isEmpty) {
-        _blocks.add(_ConversationEntry.system('No models found.'));
-      } else {
-        final buf = StringBuffer('${config.provider.name} models '
-            '(${models.length}):\n');
-        for (final m in models) {
-          final current = m.id == _modelName ? ' ← current' : '';
-          final size = m.size != null ? ' (${m.size})' : '';
-          buf.writeln('  ${m.id}$size$current');
-        }
-        _blocks.add(_ConversationEntry.system(buf.toString()));
-      }
-    } catch (e) {
-      _blocks.add(_ConversationEntry.system('Error fetching models: $e'));
-    }
-    _render();
   }
 
   String _resumeSession(SessionMeta session) {
