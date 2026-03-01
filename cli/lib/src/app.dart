@@ -66,6 +66,7 @@ import 'package:glue/src/observability/langfuse_sink.dart';
 import 'package:glue/src/observability/otel_sink.dart';
 import 'package:glue/src/observability/logging_http_client.dart';
 import 'package:glue/src/observability/observed_llm_client.dart';
+import 'package:glue/src/observability/devtools_sink.dart';
 import 'package:glue/src/observability/observed_tool.dart';
 
 // ---------------------------------------------------------------------------
@@ -303,6 +304,7 @@ class App {
       'deployment.environment.name': Platform.environment['GLUE_ENV'] ?? 'dev',
     };
 
+    obs.addSink(DevToolsSink());
     obs.addSink(FileSink(logsDir: home.logsDir));
     if (config.observability.langfuse.isConfigured) {
       obs.addSink(LangfuseSink(
@@ -1808,19 +1810,10 @@ class App {
   }
 
   Future<void> _executeAndCompleteTool(ToolCall call) async {
-    final sw = Stopwatch()..start();
     try {
       final result = await agent.executeTool(call);
-      final ms = sw.elapsedMilliseconds;
-      GlueDev.log('tool.exec', '${call.name} completed in ${ms}ms');
-      GlueDev.postToolExec(
-        tool: call.name,
-        durationMs: ms,
-        resultSizeBytes: result.content.length,
-      );
       agent.completeToolCall(result);
     } catch (e) {
-      GlueDev.log('tool.exec', '${call.name} failed: $e', level: 1000);
       agent.completeToolCall(ToolResult(
         callId: call.id,
         content: 'Tool error: $e',
@@ -2212,7 +2205,6 @@ class App {
 
   void _doRender() {
     _lastRender = DateTime.now();
-    final renderSw = Stopwatch()..start();
 
     final panelActive = _panelStack.isNotEmpty;
     if (_renderedPanelLastFrame && !panelActive) {
@@ -2390,11 +2382,6 @@ class App {
     final showCursor = !(_mode == AppMode.confirming && _activeModal != null);
     layout.paintInput(prompt, editor.lines, editor.cursorRow, editor.cursorCol,
         showCursor: showCursor, promptStyle: promptStyle);
-
-    final frameMs = renderSw.elapsedMicroseconds / 1000.0;
-    if (frameMs > 16.0) {
-      GlueDev.log('render.slow', 'Frame took ${frameMs.toStringAsFixed(1)}ms (${_blocks.length} blocks)', level: 900);
-    }
   }
 }
 

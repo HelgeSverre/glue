@@ -3,7 +3,6 @@ import 'dart:developer' show Flow, Timeline;
 
 import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
-import 'package:glue/src/dev/devtools.dart';
 
 // ---------------------------------------------------------------------------
 // Message types for the conversation history
@@ -250,21 +249,14 @@ class AgentCore {
   Stream<AgentEvent> run(String userMessage) async* {
     _conversation.add(Message.user(userMessage));
 
-    final reactTask = GlueDev.startAsync('ReActLoop');
-    int iteration = 0;
-
     try {
-
       while (true) {
-        iteration++;
-
         final assistantText = StringBuffer();
         final toolCalls = <ToolCall>[];
         final toolFutures = <Future<ToolResult>>[];
 
         final flow = Flow.begin();
         Timeline.startSync('LlmStream', flow: flow);
-        final tokensBefore = tokenCount;
 
         await for (final chunk in llm.stream(
           _conversation,
@@ -294,12 +286,6 @@ class AgentCore {
           toolCalls: toolCalls,
         ));
 
-        GlueDev.postAgentStep(
-          iteration: iteration,
-          toolsChosen: toolCalls.map((c) => c.name).toList(),
-          tokenDelta: tokenCount - tokensBefore,
-        );
-
         // No tool calls → turn is complete.
         if (toolCalls.isEmpty) break;
 
@@ -324,13 +310,8 @@ class AgentCore {
         // Loop: send tool results back to the LLM.
       }
 
-      reactTask.finish(arguments: {'iterations': iteration});
-      GlueDev.log('agent.loop',
-          'ReAct completed: $iteration iterations, $tokenCount tokens');
-
       yield AgentDone();
     } on Object catch (e) {
-      reactTask.finish(arguments: {'error': e.toString()});
       yield AgentError(e);
     } finally {
       for (final completer in _pendingToolResults.values) {

@@ -4,7 +4,6 @@ import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/agent_runner.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/config/glue_config.dart';
-import 'package:glue/src/dev/devtools.dart';
 import 'package:glue/src/llm/llm_factory.dart';
 import 'package:glue/src/observability/observability.dart';
 import 'package:glue/src/observability/observed_llm_client.dart';
@@ -85,9 +84,6 @@ class AgentManager {
       );
     }
 
-    GlueDev.log('agent.subagent', 'spawning at depth=$currentDepth: $task');
-    final sw = Stopwatch()..start();
-
     final effectiveProfile =
         profile ?? AgentProfile(provider: config.provider, model: config.model);
 
@@ -159,7 +155,6 @@ class AgentManager {
 
     try {
       final result = await runner.runToCompletion(task);
-      GlueDev.log('agent.subagent', 'completed in ${sw.elapsedMilliseconds}ms: $task');
       if (span != null) obs!.endSpan(span);
       return result;
     } catch (e) {

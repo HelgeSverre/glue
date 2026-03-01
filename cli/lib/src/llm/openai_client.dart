@@ -4,7 +4,6 @@ import 'package:http/http.dart' as http;
 
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/tools.dart';
-import 'package:glue/src/dev/devtools.dart';
 import 'package:glue/src/llm/message_mapper.dart';
 import 'package:glue/src/llm/sse.dart';
 import 'package:glue/src/llm/tool_schema.dart';
@@ -60,54 +59,19 @@ class OpenAiClient implements LlmClient {
       });
       request.body = jsonEncode(body);
 
-      final task = GlueDev.startAsync('LLM OpenAI', args: {'model': model});
-      final stopwatch = Stopwatch()..start();
-      GlueDev.log('llm.request', 'OpenAI $model stream start');
-
       final response = await requestClient.send(request);
 
       if (response.statusCode != 200) {
         final errorBody = await response.stream.bytesToString();
-        task.finish(arguments: {'error': response.statusCode.toString()});
         throw Exception(
           'OpenAI API error ${response.statusCode}: $errorBody',
         );
       }
 
-      int? ttfbMs;
-      int inputTokens = 0;
-      int outputTokens = 0;
-
-      await for (final chunk in parseStreamEvents(
+      yield* parseStreamEvents(
         decodeSse(response.stream).map(
           (e) => jsonDecode(e.data) as Map<String, dynamic>,
         ),
-      )) {
-        if (ttfbMs == null && chunk is TextDelta) {
-          ttfbMs = stopwatch.elapsedMilliseconds;
-        }
-        if (chunk is UsageInfo) {
-          inputTokens = chunk.inputTokens;
-          outputTokens = chunk.outputTokens;
-        }
-        yield chunk;
-      }
-
-      final totalMs = stopwatch.elapsedMilliseconds;
-      stopwatch.stop();
-      task.finish(arguments: {
-        'ttfbMs': ttfbMs ?? totalMs,
-        'totalMs': totalMs,
-        'inputTokens': inputTokens,
-        'outputTokens': outputTokens,
-      });
-      GlueDev.postLlmRequest(
-        provider: 'openai',
-        model: model,
-        ttfbMs: ttfbMs ?? totalMs,
-        streamDurationMs: totalMs,
-        inputTokens: inputTokens,
-        outputTokens: outputTokens,
       );
     } finally {
       requestClient.close();
