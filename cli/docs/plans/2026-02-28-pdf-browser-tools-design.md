@@ -17,6 +17,7 @@
 ### Task 1: PDF config model + constants
 
 **Files:**
+
 - Modify: `cli/lib/src/config/constants.dart`
 - Modify: `cli/lib/src/web/web_config.dart`
 - Test: `cli/test/web/web_config_test.dart` (extend existing)
@@ -145,6 +146,7 @@ git commit -m "feat(pdf): add PdfConfig model with OCR provider settings"
 ### Task 2: Wire PDF config into `GlueConfig`
 
 **Files:**
+
 - Modify: `cli/lib/src/config/glue_config.dart`
 
 **Step 1: Add PDF config resolution to `GlueConfig.load()`**
@@ -213,6 +215,7 @@ git commit -m "feat(pdf): wire PdfConfig into GlueConfig.load()"
 ### Task 3: `PdfTextExtractor` (pdftotext wrapper)
 
 **Files:**
+
 - Create: `cli/lib/src/web/fetch/pdf_text_extractor.dart`
 - Test: `cli/test/web/fetch/pdf_text_extractor_test.dart`
 
@@ -396,6 +399,7 @@ git commit -m "feat(pdf): add PdfTextExtractor using pdftotext CLI"
 ### Task 4: OCR fallback client
 
 **Files:**
+
 - Create: `cli/lib/src/web/fetch/ocr_client.dart`
 - Test: `cli/test/web/fetch/ocr_client_test.dart`
 
@@ -617,6 +621,7 @@ git commit -m "feat(pdf): add OcrClient for Mistral/OpenAI scanned PDF fallback"
 ### Task 5: Integrate PDF extraction into `WebFetchClient`
 
 **Files:**
+
 - Modify: `cli/lib/src/web/fetch/web_fetch_client.dart`
 - Test: `cli/test/web/fetch/web_fetch_client_test.dart` (extend existing)
 
@@ -807,6 +812,7 @@ git commit -m "feat(pdf): integrate PDF extraction into WebFetchClient pipeline"
 ### Task 6: Update `WebFetchTool` and `App` wiring
 
 **Files:**
+
 - Modify: `cli/lib/src/tools/web_fetch_tool.dart`
 - Modify: `cli/lib/src/app.dart`
 
@@ -869,6 +875,7 @@ git commit -m "feat(pdf): wire PdfConfig into WebFetchTool and App"
 ### Task 7: Add `package:puppeteer` dependency
 
 **Files:**
+
 - Modify: `cli/pubspec.yaml`
 
 **Step 1: Add the dependency**
@@ -908,6 +915,7 @@ git commit -m "deps: add package:puppeteer for web_browser CDP communication"
 ### Task 8: Browser config model + constants
 
 **Files:**
+
 - Modify: `cli/lib/src/config/constants.dart`
 - Create: `cli/lib/src/web/browser/browser_config.dart`
 - Test: `cli/test/web/browser/browser_config_test.dart`
@@ -1078,6 +1086,7 @@ git commit -m "feat(browser): add BrowserConfig model with backend validation"
 ### Task 9: Wire `BrowserConfig` into `WebConfig` and `GlueConfig`
 
 **Files:**
+
 - Modify: `cli/lib/src/web/web_config.dart`
 - Modify: `cli/lib/src/config/glue_config.dart`
 
@@ -1184,6 +1193,7 @@ git commit -m "feat(browser): wire BrowserConfig into WebConfig and GlueConfig"
 ### Task 10: `BrowserEndpoint` + `BrowserEndpointProvider` interface
 
 **Files:**
+
 - Create: `cli/lib/src/web/browser/browser_endpoint.dart`
 - Test: `cli/test/web/browser/browser_endpoint_test.dart`
 
@@ -1310,6 +1320,7 @@ git commit -m "feat(browser): add BrowserEndpoint and BrowserEndpointProvider in
 ### Task 11: `LocalProvider` implementation
 
 **Files:**
+
 - Create: `cli/lib/src/web/browser/providers/local_provider.dart`
 - Test: `cli/test/web/browser/providers/local_provider_test.dart`
 
@@ -1411,6 +1422,7 @@ git commit -m "feat(browser): add LocalProvider for local Chrome via puppeteer"
 ### Task 12: Cloud provider implementations
 
 **Files:**
+
 - Create: `cli/lib/src/web/browser/providers/steel_provider.dart`
 - Create: `cli/lib/src/web/browser/providers/browserbase_provider.dart`
 - Create: `cli/lib/src/web/browser/providers/browserless_provider.dart`
@@ -1719,6 +1731,7 @@ git commit -m "feat(browser): add Steel, Browserbase, and Browserless providers"
 ### Task 13: `DockerBrowserProvider` decorator
 
 **Files:**
+
 - Create: `cli/lib/src/web/browser/providers/docker_browser_provider.dart`
 - Test: `cli/test/web/browser/providers/docker_browser_provider_test.dart`
 
@@ -1938,6 +1951,7 @@ git commit -m "feat(browser): add DockerBrowserProvider with session labeling an
 ### Task 14: `BrowserManager` (session-scoped lifecycle)
 
 **Files:**
+
 - Create: `cli/lib/src/web/browser/browser_manager.dart`
 - Test: `cli/test/web/browser/browser_manager_test.dart`
 
@@ -2084,6 +2098,7 @@ git commit -m "feat(browser): add BrowserManager for session-scoped lifecycle"
 ### Task 15: `BrowserTool` (Tool wrapper)
 
 **Files:**
+
 - Create: `cli/lib/src/tools/web_browser_tool.dart`
 - Test: `cli/test/tools/web_browser_tool_test.dart`
 
@@ -2391,6 +2406,7 @@ git commit -m "feat(browser): add WebBrowserTool with navigate/screenshot/click/
 ### Task 16: Wire `BrowserTool` into `App`
 
 **Files:**
+
 - Modify: `cli/lib/src/app.dart`
 
 **Step 1: Add imports**
@@ -2483,6 +2499,7 @@ git commit -m "feat(browser): wire WebBrowserTool into App with provider factory
 ### Task 17: Docker cleanup + `SessionState` integration
 
 **Files:**
+
 - Modify: `cli/lib/src/storage/session_state.dart`
 - Modify: `cli/lib/src/app.dart` (startup cleanup)
 
@@ -2582,6 +2599,7 @@ git commit -m "feat(browser): add browser container tracking and crash recovery 
 ### Task 18: E2E test for PDF extraction
 
 **Files:**
+
 - Create: `cli/test/web/fetch/pdf_integration_test.dart`
 
 **Step 1: Write integration test**
@@ -2621,6 +2639,7 @@ git commit -m "test(pdf): add integration test scaffold for PDF extraction"
 ### Task 19: E2E test for browser tool
 
 **Files:**
+
 - Create: `cli/test/web/browser/browser_integration_test.dart`
 
 **Step 1: Write integration test**
@@ -2770,12 +2789,12 @@ web:
     max_bytes: 20971520
     timeout_seconds: 60
     enable_ocr_fallback: true
-    ocr_provider: mistral  # mistral | openai
+    ocr_provider: mistral # mistral | openai
     mistral_api_key: "..."
     openai_api_key: "..."
 
   browser:
-    backend: local  # local | docker | steel | browserbase | browserless
+    backend: local # local | docker | steel | browserbase | browserless
     headed: false
     docker:
       image: browserless/chrome:latest

@@ -11,6 +11,7 @@
 **Key insight:** Mistral's `/v1/chat/completions` uses the exact same request/response format as OpenAI — messages, tools, tool_choice, streaming SSE with `delta.tool_calls[*].index/function.arguments`, and `finish_reason`. The `/v1/models` endpoint also returns the same `{data: [{id, ...}]}` format. This means zero new protocol code.
 
 **Files touched across all tasks:**
+
 - `cli/lib/src/config/glue_config.dart` (add `mistralApiKey` field, update enum, switches)
 - `cli/lib/src/config/model_registry.dart` (add Mistral models, update availability)
 - `cli/lib/src/llm/llm_factory.dart` (add mistral case)
@@ -24,6 +25,7 @@
 ## Task 1: Add `LlmProvider.mistral` enum value
 
 **Files:**
+
 - Modify: `cli/lib/src/config/glue_config.dart`
 
 **Step 1: Add `mistral` to the `LlmProvider` enum**
@@ -57,6 +59,7 @@ git commit -m "feat(mistral): add LlmProvider.mistral enum value"
 ## Task 2: Add `mistralApiKey` to `GlueConfig` + fix exhaustive switches
 
 **Files:**
+
 - Modify: `cli/lib/src/config/glue_config.dart`
 
 **Step 1: Add `mistralApiKey` field to `GlueConfig`**
@@ -158,6 +161,7 @@ git commit -m "feat(mistral): add mistralApiKey to GlueConfig with env/yaml reso
 ## Task 3: Add Mistral to `LlmClientFactory`
 
 **Files:**
+
 - Modify: `cli/lib/src/llm/llm_factory.dart`
 
 **Step 1: Add `mistral` case to `create()` method**
@@ -201,6 +205,7 @@ git commit -m "feat(mistral): wire Mistral into LlmClientFactory via OpenAiClien
 ## Task 4: Add Mistral to `ModelLister`
 
 **Files:**
+
 - Modify: `cli/lib/src/llm/model_lister.dart`
 - Test: `cli/test/llm/model_lister_test.dart` (if exists, extend)
 
@@ -252,6 +257,7 @@ git commit -m "feat(mistral): add Mistral model lister using /v1/models"
 ## Task 5: Add Mistral to `ModelRegistry`
 
 **Files:**
+
 - Modify: `cli/lib/src/config/model_registry.dart`
 - Test: `cli/test/config/model_registry_test.dart` (extend)
 
@@ -343,6 +349,7 @@ git commit -m "feat(mistral): add curated Mistral models to registry"
 ## Task 6: Fix remaining exhaustive switches
 
 **Files:**
+
 - Modify: `cli/lib/src/agent/agent_manager.dart`
 
 **Step 1: Add `mistral` case to `AgentManager` apiKey switch**
@@ -370,6 +377,7 @@ git commit -m "feat(mistral): fix remaining exhaustive switches for LlmProvider.
 ## Task 7: Write integration tests
 
 **Files:**
+
 - Create: `cli/test/llm/mistral_client_test.dart`
 
 **Step 1: Write tests for Mistral factory wiring**

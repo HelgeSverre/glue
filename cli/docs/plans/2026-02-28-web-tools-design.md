@@ -15,6 +15,7 @@
 ### Task 1: Add `package:html` dependency
 
 **Files:**
+
 - Modify: `cli/pubspec.yaml`
 
 **Step 1: Add the dependency**
@@ -53,6 +54,7 @@ git commit -m "deps: add package:html for web_fetch HTML parsing"
 ### Task 2: Web config model + constants
 
 **Files:**
+
 - Modify: `cli/lib/src/config/constants.dart`
 - Create: `cli/lib/src/web/web_config.dart`
 - Test: `cli/test/web/web_config_test.dart`
@@ -224,26 +226,32 @@ git commit -m "feat(web): add WebConfig model with provider auto-detection"
 ### Task 3: Wire `WebConfig` into `GlueConfig`
 
 **Files:**
+
 - Modify: `cli/lib/src/config/glue_config.dart`
 - Modify: `cli/test/config/glue_config_test.dart` (if exists, otherwise create)
 
 **Step 1: Add `WebConfig` field to `GlueConfig`**
 
 Add import at top of `glue_config.dart`:
+
 ```dart
 import '../web/web_config.dart';
 ```
 
 Add field to `GlueConfig` class:
+
 ```dart
 final WebConfig webConfig;
 ```
 
 Add to constructor with default:
+
 ```dart
 WebConfig? webConfig,
 ```
+
 And in the initializer list:
+
 ```dart
 webConfig = webConfig ?? const WebConfig(),
 ```
@@ -327,6 +335,7 @@ git commit -m "feat(config): wire WebConfig into GlueConfig with env/file resolu
 ### Task 4: HTML content extractor (Readability-style)
 
 **Files:**
+
 - Create: `cli/lib/src/web/fetch/html_extractor.dart`
 - Test: `cli/test/web/fetch/html_extractor_test.dart`
 
@@ -523,6 +532,7 @@ git commit -m "feat(web): add HtmlExtractor for Readability-style content extrac
 ### Task 5: HTML-to-Markdown converter
 
 **Files:**
+
 - Create: `cli/lib/src/web/fetch/html_to_markdown.dart`
 - Test: `cli/test/web/fetch/html_to_markdown_test.dart`
 
@@ -530,7 +540,7 @@ git commit -m "feat(web): add HtmlExtractor for Readability-style content extrac
 
 Create `cli/test/web/fetch/html_to_markdown_test.dart`:
 
-```dart
+````dart
 import 'package:test/test.dart';
 import 'package:glue/src/web/fetch/html_to_markdown.dart';
 
@@ -634,7 +644,7 @@ void main() {
     });
   });
 }
-```
+````
 
 **Step 2: Run test to verify it fails**
 
@@ -645,7 +655,7 @@ Expected: FAIL
 
 Create `cli/lib/src/web/fetch/html_to_markdown.dart`:
 
-```dart
+````dart
 import 'package:html/parser.dart' as html_parser;
 import 'package:html/dom.dart';
 
@@ -808,7 +818,7 @@ class HtmlToMarkdown {
       s.replaceAll(RegExp(r'\n{3,}'), '\n\n').trim() +
       (s.trim().isNotEmpty ? '\n' : '');
 }
-```
+````
 
 **Step 4: Run tests**
 
@@ -832,6 +842,7 @@ git commit -m "feat(web): add HtmlToMarkdown converter with DOM-walk approach"
 ### Task 6: Token truncation utility
 
 **Files:**
+
 - Create: `cli/lib/src/web/fetch/truncation.dart`
 - Test: `cli/test/web/fetch/truncation_test.dart`
 
@@ -930,6 +941,7 @@ git commit -m "feat(web): add TokenTruncation utility for web_fetch"
 ### Task 7: Jina Reader client (optional fallback)
 
 **Files:**
+
 - Create: `cli/lib/src/web/fetch/jina_reader_client.dart`
 - Test: `cli/test/web/fetch/jina_reader_client_test.dart`
 
@@ -1040,6 +1052,7 @@ git commit -m "feat(web): add JinaReaderClient for optional fetch fallback"
 ### Task 8: `WebFetchClient` (pipeline orchestrator)
 
 **Files:**
+
 - Create: `cli/lib/src/web/fetch/web_fetch_client.dart`
 - Test: `cli/test/web/fetch/web_fetch_client_test.dart`
 
@@ -1301,6 +1314,7 @@ git commit -m "feat(web): add WebFetchClient pipeline orchestrator"
 ### Task 9: `WebFetchTool` (Tool wrapper)
 
 **Files:**
+
 - Create: `cli/lib/src/tools/web_fetch_tool.dart`
 - Test: `cli/test/tools/web_fetch_tool_test.dart`
 
@@ -1437,6 +1451,7 @@ git commit -m "feat(tools): add web_fetch tool"
 ### Task 10: Unified search models + provider interface
 
 **Files:**
+
 - Create: `cli/lib/src/web/search/models.dart`
 - Create: `cli/lib/src/web/search/provider.dart`
 - Test: `cli/test/web/search/models_test.dart`
@@ -1617,6 +1632,7 @@ git commit -m "feat(web): add unified WebSearchResult/Response models and provid
 ### Task 11: Brave Search provider
 
 **Files:**
+
 - Create: `cli/lib/src/web/search/providers/brave_provider.dart`
 - Test: `cli/test/web/search/providers/brave_provider_test.dart`
 
@@ -1800,6 +1816,7 @@ git commit -m "feat(web): add Brave Search provider"
 ### Task 12: Tavily Search provider
 
 **Files:**
+
 - Create: `cli/lib/src/web/search/providers/tavily_provider.dart`
 - Test: `cli/test/web/search/providers/tavily_provider_test.dart`
 
@@ -1965,6 +1982,7 @@ git commit -m "feat(web): add Tavily Search provider"
 ### Task 13: Firecrawl Search provider
 
 **Files:**
+
 - Create: `cli/lib/src/web/search/providers/firecrawl_provider.dart`
 - Test: `cli/test/web/search/providers/firecrawl_provider_test.dart`
 
@@ -2133,6 +2151,7 @@ git commit -m "feat(web): add Firecrawl Search provider"
 ### Task 14: Search router (auto-detect + fallback)
 
 **Files:**
+
 - Create: `cli/lib/src/web/search/search_router.dart`
 - Test: `cli/test/web/search/search_router_test.dart`
 
@@ -2335,6 +2354,7 @@ git commit -m "feat(web): add SearchRouter with auto-detect and fallback"
 ### Task 15: `WebSearchTool` (Tool wrapper)
 
 **Files:**
+
 - Create: `cli/lib/src/tools/web_search_tool.dart`
 - Test: `cli/test/tools/web_search_tool_test.dart`
 
@@ -2497,6 +2517,7 @@ git commit -m "feat(tools): add web_search tool"
 ### Task 16: Register web tools in tool registry
 
 **Files:**
+
 - Modify: wherever tools are registered (likely `cli/lib/src/app.dart` or `cli/lib/src/agent/tools.dart`)
 
 **Step 1: Find where tools are registered**
@@ -2554,6 +2575,7 @@ Run: `cd cli && dart analyze && dart test`
 Expected: zero warnings, all 452+ existing tests pass, plus ~50 new web tests pass.
 
 Verify tool schemas look correct:
+
 ```bash
 cd cli && dart run bin/glue.dart --help
 ```
@@ -2635,13 +2657,13 @@ model: claude-sonnet-4-6
 web:
   fetch:
     timeout_seconds: 30
-    max_bytes: 5242880          # 5MB
+    max_bytes: 5242880 # 5MB
     max_tokens: 50000
     allow_jina_fallback: true
-    jina_api_key: "jina_..."   # optional
+    jina_api_key: "jina_..." # optional
 
   search:
-    provider: brave             # brave | tavily | firecrawl | auto
+    provider: brave # brave | tavily | firecrawl | auto
     max_results: 5
     timeout_seconds: 15
     brave_api_key: "BSA..."
@@ -2650,6 +2672,7 @@ web:
 ```
 
 Environment variables (override config file):
+
 - `BRAVE_API_KEY` / `TAVILY_API_KEY` / `FIRECRAWL_API_KEY`
 - `JINA_API_KEY`
 - `GLUE_SEARCH_PROVIDER` (override auto-detection)

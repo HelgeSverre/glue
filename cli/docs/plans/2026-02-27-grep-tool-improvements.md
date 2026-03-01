@@ -432,25 +432,25 @@ git commit -m "feat(grep): add files_with_matches and fixed_string parameters"
 
 ## File Changelist
 
-| File | Change |
-|------|--------|
-| `lib/src/agent/tools.dart` | **Modified** — new parameters, updated `execute`, stderr handling, output truncation |
-| `lib/src/config/constants.dart` | **Modified** — add `grepMaxOutputLines = 200` |
-| `test/tools/grep_tool_test.dart` | **New** — full test suite for all grep behaviours |
+| File                             | Change                                                                               |
+| -------------------------------- | ------------------------------------------------------------------------------------ |
+| `lib/src/agent/tools.dart`       | **Modified** — new parameters, updated `execute`, stderr handling, output truncation |
+| `lib/src/config/constants.dart`  | **Modified** — add `grepMaxOutputLines = 200`                                        |
+| `test/tools/grep_tool_test.dart` | **New** — full test suite for all grep behaviours                                    |
 
 ---
 
 ## Parameter Summary
 
-| Parameter | Type | Default | rg flag | grep flag |
-|-----------|------|---------|---------|-----------|
-| `pattern` | string | — (required) | positional | positional |
-| `path` | string | `.` | positional | positional |
-| `glob` | string | — | `--glob` | unsupported |
-| `case_sensitive` | boolean | `true` | `--ignore-case` | `-i` |
-| `context` | integer | `0` | `--context N` | `-C N` |
-| `files_with_matches` | boolean | `false` | `--files-with-matches` | `-l` |
-| `fixed_string` | boolean | `false` | `--fixed-strings` | `-F` |
+| Parameter            | Type    | Default      | rg flag                | grep flag   |
+| -------------------- | ------- | ------------ | ---------------------- | ----------- |
+| `pattern`            | string  | — (required) | positional             | positional  |
+| `path`               | string  | `.`          | positional             | positional  |
+| `glob`               | string  | —            | `--glob`               | unsupported |
+| `case_sensitive`     | boolean | `true`       | `--ignore-case`        | `-i`        |
+| `context`            | integer | `0`          | `--context N`          | `-C N`      |
+| `files_with_matches` | boolean | `false`      | `--files-with-matches` | `-l`        |
+| `fixed_string`       | boolean | `false`      | `--fixed-strings`      | `-F`        |
 
 Output is capped at `grepMaxOutputLines` (200) lines with a truncation notice appended.
 

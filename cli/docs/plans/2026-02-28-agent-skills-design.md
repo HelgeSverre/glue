@@ -27,14 +27,14 @@ Invalid/unparseable skills are skipped with a warning logged.
 
 Split on `---` delimiters. Parse YAML frontmatter for:
 
-| Field | Required | Validation |
-|---|---|---|
-| `name` | Yes | 1–64 chars, lowercase alphanum + hyphens, no `--`, must match dir name |
-| `description` | Yes | 1–1024 chars |
-| `license` | No | Free-form string |
-| `compatibility` | No | 1–500 chars |
-| `allowed-tools` | No | Space-delimited tool patterns (stored but not enforced in v1) |
-| `metadata` | No | Arbitrary `Map<String, String>` |
+| Field           | Required | Validation                                                             |
+| --------------- | -------- | ---------------------------------------------------------------------- |
+| `name`          | Yes      | 1–64 chars, lowercase alphanum + hyphens, no `--`, must match dir name |
+| `description`   | Yes      | 1–1024 chars                                                           |
+| `license`       | No       | Free-form string                                                       |
+| `compatibility` | No       | 1–500 chars                                                            |
+| `allowed-tools` | No       | Space-delimited tool patterns (stored but not enforced in v1)          |
+| `metadata`      | No       | Arbitrary `Map<String, String>`                                        |
 
 ## System Prompt Injection
 
@@ -107,6 +107,7 @@ New `SplitPanelModal` class (`lib/src/ui/split_panel_modal.dart`) — does NOT e
 `ansiTruncate`, `visibleLength`).
 
 Key differences from `PanelModal`:
+
 - Two independent content regions within the border
 - Left pane has its own scroll state; right pane is top-anchored
 - Selection highlight only on left pane
@@ -154,26 +155,26 @@ class SkillRegistry {
 
 ## New Files
 
-| File | Purpose |
-|---|---|
-| `lib/src/skills/skill_parser.dart` | `SkillMeta`, frontmatter parsing + validation |
-| `lib/src/skills/skill_registry.dart` | Discovery from configured dirs, lookup, body loading |
-| `lib/src/skills/skill_tool.dart` | `SkillTool extends Tool` |
-| `lib/src/ui/split_panel_modal.dart` | Two-pane panel modal for `/skills` browser |
-| `test/skills/skill_parser_test.dart` | Parsing + validation tests |
-| `test/skills/skill_registry_test.dart` | Discovery + lookup tests |
-| `test/skills/skill_tool_test.dart` | Tool behavior tests |
-| `test/ui/split_panel_modal_test.dart` | Panel rendering + navigation tests |
+| File                                   | Purpose                                              |
+| -------------------------------------- | ---------------------------------------------------- |
+| `lib/src/skills/skill_parser.dart`     | `SkillMeta`, frontmatter parsing + validation        |
+| `lib/src/skills/skill_registry.dart`   | Discovery from configured dirs, lookup, body loading |
+| `lib/src/skills/skill_tool.dart`       | `SkillTool extends Tool`                             |
+| `lib/src/ui/split_panel_modal.dart`    | Two-pane panel modal for `/skills` browser           |
+| `test/skills/skill_parser_test.dart`   | Parsing + validation tests                           |
+| `test/skills/skill_registry_test.dart` | Discovery + lookup tests                             |
+| `test/skills/skill_tool_test.dart`     | Tool behavior tests                                  |
+| `test/ui/split_panel_modal_test.dart`  | Panel rendering + navigation tests                   |
 
 ## Modified Files
 
-| File | Change |
-|---|---|
-| `lib/src/config/glue_config.dart` | Add `List<String> skillPaths` field |
-| `lib/src/agent/prompts.dart` | Accept skills list, append `<available_skills>` XML |
-| `lib/src/app.dart` | Instantiate registry, register tool, add `/skills` command |
-| `lib/src/storage/glue_home.dart` | Add `skillsDir` getter |
-| `lib/glue.dart` | Export new public types |
+| File                              | Change                                                     |
+| --------------------------------- | ---------------------------------------------------------- |
+| `lib/src/config/glue_config.dart` | Add `List<String> skillPaths` field                        |
+| `lib/src/agent/prompts.dart`      | Accept skills list, append `<available_skills>` XML        |
+| `lib/src/app.dart`                | Instantiate registry, register tool, add `/skills` command |
+| `lib/src/storage/glue_home.dart`  | Add `skillsDir` getter                                     |
+| `lib/glue.dart`                   | Export new public types                                    |
 
 ## Config
 
@@ -188,6 +189,7 @@ skills:
 Or via env: `GLUE_SKILLS_PATHS=~/shared-skills;/opt/team-skills`
 
 Default scan paths (always active, no config needed):
+
 - `.glue/skills/` (project-local, relative to cwd)
 - `~/.glue/skills/` (global)
 

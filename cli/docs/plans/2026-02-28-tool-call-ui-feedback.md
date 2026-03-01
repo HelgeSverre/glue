@@ -4,7 +4,7 @@
 
 **Goal:** Show tool call intent in the UI as soon as the LLM begins generating a tool call, rather than waiting for the full arguments to stream and the entire response to finish.
 
-**Problem:** When the LLM decides to call a tool (e.g. `write_file`), the user sees only a spinner with "⠦ Generating" for the entire duration of argument streaming (potentially 10+ seconds for large file writes). Nothing indicates *what* is happening until the tool call is fully formed, rendered, and executed.
+**Problem:** When the LLM decides to call a tool (e.g. `write_file`), the user sees only a spinner with "⠦ Generating" for the entire duration of argument streaming (potentially 10+ seconds for large file writes). Nothing indicates _what_ is happening until the tool call is fully formed, rendered, and executed.
 
 **Tech Stack:** Dart 3.4+, `package:test`
 
@@ -29,6 +29,7 @@ Similarly for `OpenAiClient`, the first `tool_calls` delta chunk contains the to
 ### Delay 2: Agent core waits for stream end
 
 In `AgentCore.run()`, tool calls are collected into a list during streaming:
+
 ```dart
 case ToolCallDelta(:final toolCall):
   toolCalls.add(toolCall);  // just stores it
@@ -70,6 +71,7 @@ class ToolCallStart extends LlmChunk {
 ### Layer 2: Emit from each provider
 
 **Anthropic** — yield at `content_block_start`:
+
 ```dart
 case 'content_block_start':
   final block = event['content_block'] as Map<String, dynamic>;
@@ -82,6 +84,7 @@ case 'content_block_start':
 ```
 
 **OpenAI** — yield when a new tool builder is first created:
+
 ```dart
 if (!toolBuilders.containsKey(index)) {
   final id = (tcMap['id'] as String?) ?? 'call_$index';
@@ -127,7 +130,7 @@ await for (final chunk in llm.stream(...)) {
 
 ### Layer 4: Emit `AgentToolCall` eagerly (remove delay 2)
 
-Move tool call emission *inside* the streaming loop so the UI can start approval/execution before the full response ends:
+Move tool call emission _inside_ the streaming loop so the UI can start approval/execution before the full response ends:
 
 ```dart
 final toolFutures = <Future<ToolResult>>[];
@@ -174,6 +177,7 @@ class ToolCallUiState {
 ```
 
 In `App`:
+
 ```dart
 final Map<String, ToolCallUiState> _toolUi = {};
 ```
@@ -184,11 +188,11 @@ Add `_EntryKind.toolCallRef` — stores only a `callId`, renders by looking up `
 
 In `_handleAgentEvent`:
 
-| Event | Action |
-|-------|--------|
-| `AgentToolCallPending(id, name)` | Flush streaming text. Create `_toolUi[id]`. Append `toolCallRef(id)` to `_blocks`. Render. |
-| `AgentToolCall(call)` | Update `_toolUi[call.id].args = call.arguments`. Set phase to `awaitingApproval` (or `running` if auto-approved). Show confirm modal or execute. |
-| `AgentToolResult(result)` | Set `_toolUi[result.callId].phase = done`. Append tool result block. |
+| Event                            | Action                                                                                                                                           |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `AgentToolCallPending(id, name)` | Flush streaming text. Create `_toolUi[id]`. Append `toolCallRef(id)` to `_blocks`. Render.                                                       |
+| `AgentToolCall(call)`            | Update `_toolUi[call.id].args = call.arguments`. Set phase to `awaitingApproval` (or `running` if auto-approved). Show confirm modal or execute. |
+| `AgentToolResult(result)`        | Set `_toolUi[result.callId].phase = done`. Append tool result block.                                                                             |
 
 ### Layer 7: Rendering
 
@@ -243,13 +247,13 @@ User sends message
 
 ## Files to modify
 
-| File | Change |
-|------|--------|
-| `lib/src/agent/agent_core.dart` | Add `ToolCallStart`, `AgentToolCallPending`. Emit eagerly. |
-| `lib/src/llm/anthropic_client.dart` | Yield `ToolCallStart` at `content_block_start`. |
-| `lib/src/llm/openai_client.dart` | Yield `ToolCallStart` when builder first created. |
-| `lib/src/app.dart` | Add `_toolUi` map, `ToolCallUiState`, `toolCallRef` entry kind. Wire new events. |
-| `lib/src/rendering/block_renderer.dart` | Add `renderToolCallRef(ToolCallUiState)`. |
-| `test/agent/agent_core_test.dart` | Test that `AgentToolCallPending` is emitted before `AgentToolCall`. |
+| File                                    | Change                                                                           |
+| --------------------------------------- | -------------------------------------------------------------------------------- |
+| `lib/src/agent/agent_core.dart`         | Add `ToolCallStart`, `AgentToolCallPending`. Emit eagerly.                       |
+| `lib/src/llm/anthropic_client.dart`     | Yield `ToolCallStart` at `content_block_start`.                                  |
+| `lib/src/llm/openai_client.dart`        | Yield `ToolCallStart` when builder first created.                                |
+| `lib/src/app.dart`                      | Add `_toolUi` map, `ToolCallUiState`, `toolCallRef` entry kind. Wire new events. |
+| `lib/src/rendering/block_renderer.dart` | Add `renderToolCallRef(ToolCallUiState)`.                                        |
+| `test/agent/agent_core_test.dart`       | Test that `AgentToolCallPending` is emitted before `AgentToolCall`.              |
 
 **Effort estimate:** M (2-4 hours)
