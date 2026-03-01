@@ -18,7 +18,7 @@ import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/config/model_registry.dart';
-import 'package:glue/src/llm/model_lister.dart';
+import 'package:glue/src/llm/model_discovery.dart';
 import 'package:glue/src/ui/model_panel_formatter.dart';
 import 'package:glue/src/config/permission_mode.dart';
 import 'package:glue/src/llm/llm_factory.dart';
@@ -1123,34 +1123,8 @@ class App {
   }
 
   Future<void> _openModelPanelAsync(GlueConfig config) async {
-    var entries = ModelRegistry.available(config);
-
-    // Discover local Ollama models and merge them in.
-    try {
-      final lister = ModelLister();
-      final ollamaModels = await lister.list(
-        provider: LlmProvider.ollama,
-        ollamaBaseUrl: config.ollamaBaseUrl,
-      );
-      final knownIds = entries.map((e) => e.modelId).toSet();
-      final discovered = ollamaModels
-          .where((m) => !knownIds.contains(m.id))
-          .map((m) => ModelEntry(
-                displayName: m.id,
-                modelId: m.id,
-                provider: LlmProvider.ollama,
-                capabilities: const {ModelCapability.coding},
-                cost: CostTier.free,
-                speed: SpeedTier.fast,
-                tagline: m.size ?? 'Local model',
-              ))
-          .toList();
-      if (discovered.isNotEmpty) {
-        entries = [...entries, ...discovered];
-      }
-    } catch (_) {
-      // Ollama not running or unreachable — show static entries only.
-    }
+    final discovery = ModelDiscovery(cacheDir: GlueHome().cacheDir);
+    final entries = await discovery.discoverAll(config);
 
     if (entries.isEmpty) {
       _blocks.add(_ConversationEntry.system(
