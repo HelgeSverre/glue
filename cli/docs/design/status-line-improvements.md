@@ -11,6 +11,7 @@ layout.paintStatus(statusLeft, statusRight);
 ```
 
 **Problems:**
+
 - `statusLeft` is a single flat string — when `modeIndicator` changes width
   (`"Ready"` → `"⚙ Tool"` → `"? Approve"`), everything to its right shifts.
 - No visual separation between semantic groups — model, cwd, and mode bleed together.
@@ -20,7 +21,7 @@ layout.paintStatus(statusLeft, statusRight);
 Current layout (approximate):
 
 ```
- Ready  claude-3-5-sonnet-20241022  ~/code/glue/cli        ↑12  tok 4231 
+ Ready  claude-3-5-sonnet-20241022  ~/code/glue/cli        ↑12  tok 4231
 ```
 
 ---
@@ -32,7 +33,7 @@ Right-align everything else (model, cwd, scroll position, token count),
 separated by `│` so each group is visually distinct and independently readable.
 
 ```
- ❯ Ready          │ claude-sonnet-3-5 │ ~/code/glue/cli │ ↑3 │ tok 4.2k 
+ ❯ Ready          │ claude-sonnet-3-5 │ ~/code/glue/cli │ ↑3 │ tok 4.2k
 ```
 
 - Mode is **bold** — highest contrast against yellow, immediately scannable.
@@ -53,10 +54,12 @@ separated by `│` so each group is visually distinct and independently readable
 ```
 
 **Left section** (left-aligned, fixed to mode only):
-- ` ❯ Ready ` — bold black on yellow (`\x1b[1;30m`)
+
+- `❯ Ready` — bold black on yellow (`\x1b[1;30m`)
 - Mode labels: `❯ Ready` / `⠋ Generating` / `⚙ Tool` / `? Approve` / `! Running`
 
-**Right section** (right-aligned, joined by ` │ `):
+**Right section** (right-aligned, joined by `│`):
+
 - Model name (short form preferred, e.g. `sonnet-3-5` not full ID)
 - CWD (shortened, truncated with `…` if tight)
 - Scroll offset `↑3` (omitted when at bottom)
@@ -68,14 +71,14 @@ separated by `│` so each group is visually distinct and independently readable
 
 The status bar base style is `\x1b[30;43m` (black fg, yellow bg).
 
-| Element         | Style                          | ANSI               |
-|-----------------|--------------------------------|--------------------|
-| Mode label      | **Bold black** on yellow       | `\x1b[1;30m`       |
-| Separator `│`   | Regular black (slightly dimmer)| `\x1b[30m` (base)  |
-| Model name      | Regular black                  | `\x1b[30m` (base)  |
-| CWD             | Regular black                  | `\x1b[30m` (base)  |
-| Scroll `↑N`     | Regular black                  | `\x1b[30m` (base)  |
-| Token count     | Regular black                  | `\x1b[30m` (base)  |
+| Element       | Style                           | ANSI              |
+| ------------- | ------------------------------- | ----------------- |
+| Mode label    | **Bold black** on yellow        | `\x1b[1;30m`      |
+| Separator `│` | Regular black (slightly dimmer) | `\x1b[30m` (base) |
+| Model name    | Regular black                   | `\x1b[30m` (base) |
+| CWD           | Regular black                   | `\x1b[30m` (base) |
+| Scroll `↑N`   | Regular black                   | `\x1b[30m` (base) |
+| Token count   | Regular black                   | `\x1b[30m` (base) |
 
 Inline style resets back to base (`\x1b[30;43m`) after each bold segment so
 the yellow background is never broken.
@@ -139,6 +142,7 @@ layout.paintStatus('$leftContent$base', leftVisible, rightVisible);
 ```
 
 Token formatter:
+
 ```dart
 String _formatTokens(int n) =>
     n >= 1000 ? '${(n / 1000).toStringAsFixed(1)}k' : '$n';
@@ -152,21 +156,25 @@ Short model name: strip provider prefix and date suffix, e.g.
 ## Visual Examples
 
 **Idle, no scroll, narrow terminal (80 cols):**
+
 ```
- ❯ Ready           │ sonnet-3-5 │ ~/code/glue/cli │ tok 1.2k 
+ ❯ Ready           │ sonnet-3-5 │ ~/code/glue/cli │ tok 1.2k
 ```
 
 **Streaming, scrolled, wide terminal (160 cols):**
+
 ```
- ⠋ Generating      │ gpt-4o │ ~/code/my-very-long-project-name/src │ ↑24 │ tok 8.7k 
+ ⠋ Generating      │ gpt-4o │ ~/code/my-very-long-project-name/src │ ↑24 │ tok 8.7k
 ```
 
 **Confirming tool approval:**
+
 ```
- ? Approve         │ sonnet-3-5 │ ~/code/glue/cli │ tok 3.4k 
+ ? Approve         │ sonnet-3-5 │ ~/code/glue/cli │ tok 3.4k
 ```
 
 **Bash mode running:**
+
 ```
- ! Running         │ sonnet-3-5 │ ~/code/glue/cli │ tok 5.1k 
+ ! Running         │ sonnet-3-5 │ ~/code/glue/cli │ tok 5.1k
 ```

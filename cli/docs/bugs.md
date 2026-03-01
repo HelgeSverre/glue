@@ -34,11 +34,11 @@ This is noticeable for anyone used to shell autocomplete (i.e. everyone).
 
 **Context — how shells expose completions:**
 
-| Shell | Mechanism | Difficulty |
-|-------|-----------|------------|
-| **bash** | `compgen` builtin: `compgen -c "git"` (commands), `compgen -f "lib/"` (files), `compgen -d` (dirs). For command-specific completions, need to source `bash-completion` lib, set `COMP_WORDS`/`COMP_CWORD`/`COMP_LINE`/`COMP_POINT` env vars, invoke the registered completion function, read `COMPREPLY` array. | Medium — works but command-specific completions (e.g. `git checkout <branch>`) require loading the full bash-completion framework. |
-| **zsh** | No simple one-shot API. Completions are deeply tied to the ZLE (Zsh Line Editor) widget system. Programmatic access requires `zpty` (pseudo-terminal module): spawn a `zsh -f -i`, send the partial line + `\t`, capture output. This is how `fzf-tab` and similar tools work. Complex, brittle, and zsh-version-sensitive. | Hard — the zpty approach works but is fragile. |
-| **fish** | `complete -C "git sta"` — purpose-built API, returns completions with descriptions. By far the cleanest interface. | Easy — one command, clean output. |
+| Shell    | Mechanism                                                                                                                                                                                                                                                                                                                   | Difficulty                                                                                                                         |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **bash** | `compgen` builtin: `compgen -c "git"` (commands), `compgen -f "lib/"` (files), `compgen -d` (dirs). For command-specific completions, need to source `bash-completion` lib, set `COMP_WORDS`/`COMP_CWORD`/`COMP_LINE`/`COMP_POINT` env vars, invoke the registered completion function, read `COMPREPLY` array.             | Medium — works but command-specific completions (e.g. `git checkout <branch>`) require loading the full bash-completion framework. |
+| **zsh**  | No simple one-shot API. Completions are deeply tied to the ZLE (Zsh Line Editor) widget system. Programmatic access requires `zpty` (pseudo-terminal module): spawn a `zsh -f -i`, send the partial line + `\t`, capture output. This is how `fzf-tab` and similar tools work. Complex, brittle, and zsh-version-sensitive. | Hard — the zpty approach works but is fragile.                                                                                     |
+| **fish** | `complete -C "git sta"` — purpose-built API, returns completions with descriptions. By far the cleanest interface.                                                                                                                                                                                                          | Easy — one command, clean output.                                                                                                  |
 
 **Current architecture relevant to a fix:**
 
@@ -57,10 +57,12 @@ This is noticeable for anyone used to shell autocomplete (i.e. everyone).
 **Recommended:** Start with approach 2 — a `ShellCompleter` that uses `fish complete -C` for fish users and `bash -c 'compgen ...'` for everyone else. Wire it into the existing overlay system. Accept that zsh-specific completions (custom `_git` etc.) won't work initially.
 
 **Relevant files for implementation:**
+
 - `lib/src/shell/shell_config.dart` — already has shell detection
 - `lib/src/input/line_editor.dart` — emits Tab as `requestCompletion`
 - `lib/src/app.dart` lines ~648–660 — bash mode input handling
 - `lib/src/ui/slash_autocomplete.dart` — pattern to follow for the overlay
+
 # Bug Tracker
 
 ## BUG-001: Tool confirmation happens after LLM generates full content (wasteful tokens)
@@ -210,12 +212,12 @@ All three major open-source coding agents have the **same architecture** — per
 
 #### Summary
 
-| Agent | Permission timing | Early cancel? | Stream handling |
-|-------|------------------|---------------|-----------------|
-| **OpenCode** | After args complete | No | Ignores `tool-input-delta` |
-| **Claude Code** | After args complete | No | Full block before hooks/rules |
-| **Ampcode** | After args complete | No | Full response before execution |
-| **Glue (ours)** | After args complete | No | Silent buffer in `_ToolUseBuffer` |
+| Agent           | Permission timing   | Early cancel? | Stream handling                   |
+| --------------- | ------------------- | ------------- | --------------------------------- |
+| **OpenCode**    | After args complete | No            | Ignores `tool-input-delta`        |
+| **Claude Code** | After args complete | No            | Full block before hooks/rules     |
+| **Ampcode**     | After args complete | No            | Full response before execution    |
+| **Glue (ours)** | After args complete | No            | Silent buffer in `_ToolUseBuffer` |
 
 All four tools waste output tokens when the user declines a tool call. The `ToolCallStart` / `content_block_start` event — which provides the tool name before arguments stream — is an unexploited intervention point across the entire ecosystem.
 
@@ -223,11 +225,12 @@ All four tools waste output tokens when the user declines a tool call. The `Tool
 
 The earliest intervention point is `AgentToolCallPending` / `ToolCallStart`, which fires **before** arguments stream. A fix could:
 
-1. When `AgentToolCallPending` arrives for a tool not in `_autoApprovedTools`, show a lightweight pre-confirmation: *"The model wants to use write_file. Allow?"*
+1. When `AgentToolCallPending` arrives for a tool not in `_autoApprovedTools`, show a lightweight pre-confirmation: _"The model wants to use write_file. Allow?"_
 2. If user declines: cancel the LLM stream (abort the HTTP connection), send `ToolResult.denied`, and avoid generating argument tokens entirely.
 3. If user approves: let streaming continue and auto-approve the subsequent `AgentToolCall` when it arrives (since the user already consented).
 
 This requires:
+
 - A way for the app to signal `AgentCore` to cancel the current LLM stream mid-flight (e.g., cancel the `StreamSubscription` on the HTTP response).
 - Tracking which tool calls have been "pre-approved" so the full `AgentToolCall` event can skip the modal.
 - Handling edge cases: multiple tool calls in one response, text interleaved with tool calls, etc.
