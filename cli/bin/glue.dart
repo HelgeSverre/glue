@@ -37,13 +37,16 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
   GlueCommandRunner() : super('glue', 'glue v$version — $appDescription') {
     argParser
       ..addFlag('version', abbr: 'v', negatable: false, help: 'Print version.')
-      ..addOption('provider',
+      ..addFlag('print',
           abbr: 'p',
-          allowed: const ['anthropic', 'openai', 'mistral', 'ollama'],
-          help: 'LLM provider (anthropic, openai, mistral, ollama).')
+          negatable: false,
+          help: 'Print response to stdout without interactive mode.')
+      ..addFlag('json',
+          negatable: false,
+          help: 'Output session conversation as JSON (implies --print).')
       ..addOption('model', abbr: 'm', help: 'LLM model to use.')
-      ..addFlag('resume',
-          negatable: false, help: 'Start with session picker open.')
+      ..addOption('resume',
+          abbr: 'r', help: 'Resume a session by ID.')
       ..addFlag('continue',
           negatable: false, help: 'Resume most recent session.')
       ..addFlag('debug',
@@ -54,7 +57,7 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
   }
 
   @override
-  String get invocation => '$executableName [options] [command]';
+  String get invocation => '$executableName [options] [prompt]';
 
   @override
   bool get enableAutoInstall => false;
@@ -84,14 +87,14 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
 
   @override
   Future<int?> runCommand(ArgResults topLevelResults) async {
-    if (topLevelResults.command == null && topLevelResults.rest.isEmpty) {
+    if (topLevelResults.flag('version')) {
+      stdout.writeln('glue v$version');
+      return 0;
+    }
+
+    if (topLevelResults.command == null) {
       if (topLevelResults.flag('help')) {
         printUsage();
-        return 0;
-      }
-
-      if (topLevelResults.flag('version')) {
-        stdout.writeln('glue v$version');
         return 0;
       }
 
@@ -99,22 +102,26 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
       return 0;
     }
 
-    if (topLevelResults.flag('version')) {
-      stdout.writeln('glue v$version');
-      return 0;
-    }
-
     return super.runCommand(topLevelResults);
   }
 
   Future<void> _runApp(ArgResults topLevelResults) async {
-    final provider = topLevelResults.option('provider');
     final model = topLevelResults.option('model');
+    final jsonMode = topLevelResults.flag('json');
+    final printMode = topLevelResults.flag('print') || jsonMode;
+    final resumeSessionId = topLevelResults.option('resume');
+
+    // Positional args form the prompt.
+    final prompt = topLevelResults.rest.isNotEmpty
+        ? topLevelResults.rest.join(' ')
+        : null;
 
     final app = await App.create(
-      provider: provider,
       model: model,
-      startupResume: topLevelResults.flag('resume'),
+      prompt: prompt,
+      printMode: printMode,
+      jsonMode: jsonMode,
+      resumeSessionId: resumeSessionId,
       startupContinue: topLevelResults.flag('continue'),
       debug: topLevelResults.flag('debug'),
     );
