@@ -38,14 +38,11 @@ ModelPanelLines formatModelPanelLines(
   const rst = '\x1b[0m';
 
   // Compute dynamic column widths from the data.
-  final maxProvider = entries.fold<int>(
-      0, (m, e) => max(m, e.provider.name.length));
-  final maxName = entries.fold<int>(
-      0, (m, e) => max(m, e.displayName.length));
-  final maxTag = entries.fold<int>(
-      0, (m, e) => max(m, e.tagline.length));
-  final maxCost = entries.fold<int>(
-      0, (m, e) => max(m, e.costLabel.length));
+  final maxProvider =
+      entries.fold<int>(0, (m, e) => max(m, e.provider.name.length));
+  final maxName = entries.fold<int>(0, (m, e) => max(m, e.displayName.length));
+  final maxTag = entries.fold<int>(0, (m, e) => max(m, e.tagline.length));
+  final maxCost = entries.fold<int>(0, (m, e) => max(m, e.costLabel.length));
 
   final flatLines = <String>[];
   final flatEntries = <ModelEntry>[];

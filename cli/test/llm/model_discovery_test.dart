@@ -70,23 +70,19 @@ void main() {
     return http_testing.MockClient((req) async {
       if (req.url.host == 'localhost' && req.url.path == '/api/tags') {
         if (ollamaFails) return http.Response('error', 500);
-        return http.Response(
-            jsonEncode({'models': ollamaModels}), 200);
+        return http.Response(jsonEncode({'models': ollamaModels}), 200);
       }
       if (req.url.host == 'api.openai.com') {
         if (openaiFails) return http.Response('error', 500);
-        return http.Response(
-            jsonEncode({'data': openaiModels}), 200);
+        return http.Response(jsonEncode({'data': openaiModels}), 200);
       }
       if (req.url.host == 'api.anthropic.com') {
         if (anthropicFails) return http.Response('error', 500);
-        return http.Response(
-            jsonEncode({'data': anthropicModels}), 200);
+        return http.Response(jsonEncode({'data': anthropicModels}), 200);
       }
       if (req.url.host == 'api.mistral.ai') {
         if (mistralFails) return http.Response('error', 500);
-        return http.Response(
-            jsonEncode({'data': mistralModels}), 200);
+        return http.Response(jsonEncode({'data': mistralModels}), 200);
       }
       return http.Response('not found', 404);
     });
@@ -124,9 +120,12 @@ void main() {
     test('stale cache — API called, cache updated', () async {
       final staleTime =
           DateTime.now().toUtc().subtract(const Duration(hours: 7));
-      writeCache(LlmProvider.ollama, [
-        {'id': 'old-model:latest', 'size': '1.0 GB'},
-      ], fetchedAt: staleTime);
+      writeCache(
+          LlmProvider.ollama,
+          [
+            {'id': 'old-model:latest', 'size': '1.0 GB'},
+          ],
+          fetchedAt: staleTime);
 
       final client = mockClient(ollamaModels: [
         {'name': 'new-model:latest', 'size': 2147483648},
@@ -141,8 +140,10 @@ void main() {
       // Should have the new model, not the old one.
       final ollamaDiscovered = entries
           .where((e) => e.provider == LlmProvider.ollama)
-          .where((e) => !ModelRegistry.models.any((r) => r.modelId == e.modelId));
-      expect(ollamaDiscovered.map((e) => e.modelId), contains('new-model:latest'));
+          .where(
+              (e) => !ModelRegistry.models.any((r) => r.modelId == e.modelId));
+      expect(
+          ollamaDiscovered.map((e) => e.modelId), contains('new-model:latest'));
       expect(
         ollamaDiscovered.map((e) => e.modelId),
         isNot(contains('old-model:latest')),
@@ -194,20 +195,25 @@ void main() {
       await discovery.discoverAll(allKeysConfig());
 
       // All four providers should have been fetched.
-      expect(requestedHosts, containsAll([
-        'localhost',
-        'api.openai.com',
-        'api.anthropic.com',
-        'api.mistral.ai',
-      ]));
+      expect(
+          requestedHosts,
+          containsAll([
+            'localhost',
+            'api.openai.com',
+            'api.anthropic.com',
+            'api.mistral.ai',
+          ]));
     });
 
     test('API failure — falls back to stale cache', () async {
       final staleTime =
           DateTime.now().toUtc().subtract(const Duration(hours: 7));
-      writeCache(LlmProvider.ollama, [
-        {'id': 'cached-model:latest', 'size': '2.0 GB'},
-      ], fetchedAt: staleTime);
+      writeCache(
+          LlmProvider.ollama,
+          [
+            {'id': 'cached-model:latest', 'size': '2.0 GB'},
+          ],
+          fetchedAt: staleTime);
 
       final client = mockClient(ollamaFails: true);
 

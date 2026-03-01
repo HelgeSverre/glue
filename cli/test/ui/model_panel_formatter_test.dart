@@ -111,8 +111,7 @@ void main() {
             tagline: 'Fast',
           ),
         ];
-        final result =
-            formatModelPanelLines(entries, currentModelId: 'none');
+        final result = formatModelPanelLines(entries, currentModelId: 'none');
         expectEqualVisibleWidth(result.lines);
       });
 
@@ -125,8 +124,7 @@ void main() {
                 'any reasonable column width',
           ),
         ];
-        final result =
-            formatModelPanelLines(entries, currentModelId: 'none');
+        final result = formatModelPanelLines(entries, currentModelId: 'none');
         expectEqualVisibleWidth(result.lines);
       });
 
@@ -159,8 +157,7 @@ void main() {
             cost: CostTier.free,
           ),
         ];
-        final result =
-            formatModelPanelLines(entries, currentModelId: 'none');
+        final result = formatModelPanelLines(entries, currentModelId: 'none');
         expectEqualVisibleWidth(result.lines);
 
         // Verify the marker column is at the expected position for all lines.
@@ -191,13 +188,11 @@ void main() {
             tagline: 'Tag B',
           ),
         ];
-        final result =
-            formatModelPanelLines(entries, currentModelId: 'none');
+        final result = formatModelPanelLines(entries, currentModelId: 'none');
         expectEqualVisibleWidth(result.lines);
 
         // Provider header row and continuation row should have equal length.
-        expect(visibleLength(result.lines[0]),
-            visibleLength(result.lines[1]));
+        expect(visibleLength(result.lines[0]), visibleLength(result.lines[1]));
       });
 
       test('all cost tiers produce equal-width lines', () {
@@ -208,8 +203,7 @@ void main() {
             tagline: 'Same tagline',
           );
         }).toList();
-        final result =
-            formatModelPanelLines(entries, currentModelId: 'none');
+        final result = formatModelPanelLines(entries, currentModelId: 'none');
         expectEqualVisibleWidth(result.lines);
       });
     });
@@ -247,8 +241,7 @@ void main() {
           _entry(displayName: 'X', tagline: 'Y', modelId: 'x'),
           _entry(displayName: 'AB', tagline: 'CD', modelId: 'ab'),
         ];
-        final result =
-            formatModelPanelLines(entries, currentModelId: 'none');
+        final result = formatModelPanelLines(entries, currentModelId: 'none');
         final widths = result.lines.map(visibleLength).toSet();
         expect(widths, hasLength(1));
       });
@@ -259,8 +252,7 @@ void main() {
           _entry(displayName: longName, modelId: 'long'),
           _entry(displayName: 'Short', modelId: 'short'),
         ];
-        final result =
-            formatModelPanelLines(entries, currentModelId: 'none');
+        final result = formatModelPanelLines(entries, currentModelId: 'none');
         expect(result.lines, hasLength(2));
         final widths = result.lines.map(visibleLength).toSet();
         expect(widths, hasLength(1));
@@ -271,11 +263,9 @@ void main() {
       test('empty tagline still aligns', () {
         final entries = [
           _entry(displayName: 'Alpha', tagline: '', modelId: 'a'),
-          _entry(
-              displayName: 'Beta', tagline: 'Has a tagline', modelId: 'b'),
+          _entry(displayName: 'Beta', tagline: 'Has a tagline', modelId: 'b'),
         ];
-        final result =
-            formatModelPanelLines(entries, currentModelId: 'none');
+        final result = formatModelPanelLines(entries, currentModelId: 'none');
         final widths = result.lines.map(visibleLength).toSet();
         expect(widths, hasLength(1));
       });
@@ -287,8 +277,7 @@ void main() {
           _entry(provider: LlmProvider.anthropic, modelId: 'a'),
           _entry(provider: LlmProvider.openai, modelId: 'b'),
         ];
-        final result =
-            formatModelPanelLines(entries, currentModelId: 'none');
+        final result = formatModelPanelLines(entries, currentModelId: 'none');
         expect(stripAnsi(result.lines[0]), startsWith('anthropic'));
         expect(stripAnsi(result.lines[1]), startsWith('openai'));
       });
@@ -304,8 +293,7 @@ void main() {
               modelId: 'b',
               displayName: 'Second'),
         ];
-        final result =
-            formatModelPanelLines(entries, currentModelId: 'none');
+        final result = formatModelPanelLines(entries, currentModelId: 'none');
         final plain0 = stripAnsi(result.lines[0]);
         final plain1 = stripAnsi(result.lines[1]);
         // First line shows provider.
@@ -313,8 +301,7 @@ void main() {
         // Second line starts with spaces of equal width.
         expect(plain1, startsWith(' ' * ('anthropic'.length)));
         // But both have same total width.
-        expect(visibleLength(result.lines[0]),
-            visibleLength(result.lines[1]));
+        expect(visibleLength(result.lines[0]), visibleLength(result.lines[1]));
       });
 
       test('provider name is padded to widest provider', () {
@@ -323,11 +310,9 @@ void main() {
           _entry(provider: LlmProvider.anthropic, modelId: 'a'),
           _entry(provider: LlmProvider.ollama, modelId: 'b'),
         ];
-        final result =
-            formatModelPanelLines(entries, currentModelId: 'none');
+        final result = formatModelPanelLines(entries, currentModelId: 'none');
         // Both lines should have equal visible width.
-        expect(visibleLength(result.lines[0]),
-            visibleLength(result.lines[1]));
+        expect(visibleLength(result.lines[0]), visibleLength(result.lines[1]));
         // The ollama line should have the provider name padded to 9 chars
         // (matching anthropic).
         final plain1 = stripAnsi(result.lines[1]);
@@ -340,8 +325,7 @@ void main() {
       test('entries list matches input order', () {
         final e1 = _entry(modelId: 'first');
         final e2 = _entry(modelId: 'second');
-        final result =
-            formatModelPanelLines([e1, e2], currentModelId: 'none');
+        final result = formatModelPanelLines([e1, e2], currentModelId: 'none');
         expect(result.entries[0].modelId, 'first');
         expect(result.entries[1].modelId, 'second');
       });
