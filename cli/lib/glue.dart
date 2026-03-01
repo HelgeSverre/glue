@@ -99,6 +99,7 @@ export 'src/ui/split_panel_modal.dart' show SplitPanelModal;
 export 'src/skills/skill_parser.dart'
     show SkillMeta, SkillSource, SkillParseError;
 export 'src/skills/skill_registry.dart' show SkillRegistry;
+export 'src/skills/skill_runtime.dart' show SkillRuntime, SkillPathsProvider;
 export 'src/skills/skill_tool.dart' show SkillTool;
 export 'src/storage/glue_home.dart' show GlueHome;
 export 'src/storage/session_id.dart' show generateSessionId;

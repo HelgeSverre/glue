@@ -1,12 +1,13 @@
 import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
+import 'package:glue/src/skills/skill_runtime.dart';
 import 'package:glue/src/skills/skill_registry.dart';
 import 'package:glue/src/skills/skill_parser.dart';
 
 class SkillTool extends Tool {
-  final SkillRegistry _registry;
+  final SkillRuntime _runtime;
 
-  SkillTool(this._registry);
+  SkillTool(this._runtime);
 
   @override
   String get name => 'skill';
@@ -29,17 +30,18 @@ class SkillTool extends Tool {
 
   @override
   Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
+    final registry = _runtime.refresh();
     final skillName = args['name'] as String?;
 
     if (skillName == null || skillName.isEmpty) {
-      return [TextPart(_listSkills())];
+      return [TextPart(_listSkills(registry))];
     }
 
-    return [TextPart(_activateSkill(skillName))];
+    return [TextPart(_activateSkill(registry, skillName))];
   }
 
-  String _listSkills() {
-    final skills = _registry.list();
+  String _listSkills(SkillRegistry registry) {
+    final skills = registry.list();
     if (skills.isEmpty) {
       return 'No skills available.\n\n'
           'To add skills, create directories with SKILL.md files in:\n'
@@ -62,16 +64,16 @@ class SkillTool extends Tool {
     return buf.toString();
   }
 
-  String _activateSkill(String skillName) {
-    final meta = _registry.findByName(skillName);
+  String _activateSkill(SkillRegistry registry, String skillName) {
+    final meta = registry.findByName(skillName);
     if (meta == null) {
-      final available = _registry.list().map((s) => s.name).join(', ');
+      final available = registry.list().map((s) => s.name).join(', ');
       return 'Error: skill "$skillName" not found.\n'
           'Available skills: ${available.isEmpty ? "(none)" : available}';
     }
 
     try {
-      final body = _registry.loadBody(skillName);
+      final body = registry.loadBody(skillName);
       final buf = StringBuffer();
       buf.writeln('# Skill: ${meta.name}');
       if (meta.license != null) buf.writeln('License: ${meta.license}');
