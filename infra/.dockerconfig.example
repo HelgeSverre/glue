@@ -15,6 +15,9 @@ OPENOBSERVE_AUTH_HEADER=Basic aGVsZ2Uuc3ZlcnJlQGdtYWlsLmNvbToxMjM0NTY=
 # Collector local file exporter path (inside collector container)
 OTEL_EXPORTER_FILE_PATH=/var/lib/otel/traces.jsonl
 
+# Docker socket path (Dozzle). OrbStack default shown:
+DOCKER_SOCKET_PATH=/Users/helge/.orbstack/run/docker.sock
+
 # LiteLLM (optional profile "llm")
 LITELLM_MASTER_KEY=sk-local-dev-master-key
 OPENAI_API_KEY=

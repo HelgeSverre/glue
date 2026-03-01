@@ -164,6 +164,10 @@ services:
     image: ghcr.io/openlit/openlit:latest
     restart: unless-stopped
     profiles: ["extras", "tool-openlit"]
+    environment:
+      SQLITE_DATABASE_URL: file:/app/client/data/openlit.db
+    volumes:
+      - ./data/openlit:/app/client/data
     ports:
       - "3011:3000"
 
@@ -205,8 +209,21 @@ services:
       nofile:
         soft: 262144
         hard: 262144
+    depends_on:
+      - opik-zookeeper
     volumes:
       - ./data/opik/clickhouse:/var/lib/clickhouse
+      - ./opik/clickhouse/additional_config.xml:/etc/clickhouse-server/config.d/additional_config.xml:ro
+
+  opik-zookeeper:
+    image: zookeeper:3.9.4
+    restart: unless-stopped
+    profiles: ["extras", "tool-opik"]
+    environment:
+      JVMFLAGS: "-Xmx512m"
+      ZOO_4LW_COMMANDS_WHITELIST: "srvr,ruok"
+    volumes:
+      - ./data/opik/zookeeper:/data
 
   opik-minio:
     image: minio/minio:RELEASE.2025-03-12T18-04-18Z
@@ -319,7 +336,7 @@ services:
     ports:
       - "8088:8080"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${DOCKER_SOCKET_PATH:-/var/run/docker.sock}:/var/run/docker.sock:ro
 
   netdata:
     image: netdata/netdata:stable
@@ -346,6 +363,7 @@ services:
     profiles: ["extras", "tool-seq"]
     environment:
       ACCEPT_EULA: "Y"
+      SEQ_FIRSTRUN_NOAUTHENTICATION: "true"
     ports:
       - "8082:80"
       - "5341:5341"
