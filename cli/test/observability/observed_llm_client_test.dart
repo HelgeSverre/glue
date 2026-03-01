@@ -188,8 +188,7 @@ void main() {
 
     await client.stream([Message.user('hi')]).toList();
 
-    expect(
-        sink.spans.first.attributes.containsKey('llm.ttfb_ms'), isFalse);
+    expect(sink.spans.first.attributes.containsKey('llm.ttfb_ms'), isFalse);
   });
 
   test('omits gen_ai attributes when provider and model are empty', () async {

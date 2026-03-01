@@ -50,7 +50,8 @@ class GlueDev {
     final info = await developer.Service.getInfo();
     final uri = info.serverUri;
     if (uri == null) return null;
-    return uri.resolve('devtools/?uri=ws://${uri.host}:${uri.port}${uri.path}ws');
+    return uri
+        .resolve('devtools/?uri=ws://${uri.host}:${uri.port}${uri.path}ws');
   }
 
   // -- Service extensions --
@@ -69,8 +70,7 @@ class GlueDev {
       'getToolHistory',
     ]) {
       try {
-        developer.registerExtension('ext.glue.$name',
-            (method, params) async {
+        developer.registerExtension('ext.glue.$name', (method, params) async {
           try {
             final data = stateProvider(name);
             return developer.ServiceExtensionResponse.result(jsonEncode(data));

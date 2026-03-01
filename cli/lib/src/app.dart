@@ -467,28 +467,28 @@ class App {
 
   /// Returns a JSON-serializable snapshot of internal state for DevTools.
   Map<String, dynamic> devtoolsState(String name) => switch (name) {
-    'getAgentState' => {
-      'mode': _mode.name,
-      'tokenCount': agent.tokenCount,
-      'model': _modelName,
-      'conversationLength': agent.conversation.length,
-      'pendingTools': _mode == AppMode.toolRunning ? 'active' : 'none',
-    },
-    'getConfig' => {
-      'provider': _config?.provider.name ?? 'unknown',
-      'model': _config?.model ?? 'unknown',
-      'maxSubagentDepth': _config?.maxSubagentDepth ?? 0,
-      'bashMaxLines': _config?.bashMaxLines ?? 0,
-    },
-    'getSessionInfo' => {
-      'blockCount': _blocks.length,
-      'scrollOffset': _scrollOffset,
-    },
-    'getToolHistory' => {
-      'note': 'Tool history tracking not yet implemented',
-    },
-    _ => {'error': 'Unknown extension: $name'},
-  };
+        'getAgentState' => {
+            'mode': _mode.name,
+            'tokenCount': agent.tokenCount,
+            'model': _modelName,
+            'conversationLength': agent.conversation.length,
+            'pendingTools': _mode == AppMode.toolRunning ? 'active' : 'none',
+          },
+        'getConfig' => {
+            'provider': _config?.provider.name ?? 'unknown',
+            'model': _config?.model ?? 'unknown',
+            'maxSubagentDepth': _config?.maxSubagentDepth ?? 0,
+            'bashMaxLines': _config?.bashMaxLines ?? 0,
+          },
+        'getSessionInfo' => {
+            'blockCount': _blocks.length,
+            'scrollOffset': _scrollOffset,
+          },
+        'getToolHistory' => {
+            'note': 'Tool history tracking not yet implemented',
+          },
+        _ => {'error': 'Unknown extension: $name'},
+      };
 
   /// Run the application event loop.
   ///
