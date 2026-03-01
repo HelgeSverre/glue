@@ -18,6 +18,7 @@ import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/config/model_registry.dart';
+import 'package:glue/src/llm/model_lister.dart';
 import 'package:glue/src/config/permission_mode.dart';
 import 'package:glue/src/llm/llm_factory.dart';
 import 'package:glue/src/llm/title_generator.dart';
@@ -594,12 +595,20 @@ class App {
         }
         final query = args.join(' ');
         final entry = ModelRegistry.findByName(query);
-        if (entry == null) {
-          final suggestions =
-              ModelRegistry.models.map((m) => m.modelId).join(', ');
-          return 'Unknown model: $query\nAvailable: $suggestions';
+        if (entry != null) {
+          return _switchToModelEntry(entry);
         }
-        return _switchToModelEntry(entry);
+        // If not in the registry, treat it as an Ollama model name.
+        final ollamaEntry = ModelEntry(
+          displayName: query,
+          modelId: query,
+          provider: LlmProvider.ollama,
+          capabilities: {ModelCapability.coding, ModelCapability.fast},
+          cost: CostTier.free,
+          speed: SpeedTier.fast,
+          tagline: 'Local and free',
+        );
+        return _switchToModelEntry(ollamaEntry);
       },
     ));
 
@@ -1084,6 +1093,48 @@ class App {
       return;
     }
 
+    // Fetch Ollama models dynamically and rebuild the panel.
+    _fetchOllamaModels(config).then((ollamaEntries) {
+      // Replace hardcoded Ollama entries with dynamically fetched ones.
+      final merged = <ModelEntry>[
+        ...entries.where((e) => e.provider != LlmProvider.ollama),
+        ...ollamaEntries,
+      ];
+      _showModelPanel(merged);
+    });
+  }
+
+  Future<List<ModelEntry>> _fetchOllamaModels(GlueConfig config) async {
+    try {
+      final lister = ModelLister();
+      final models = await lister.list(
+        provider: LlmProvider.ollama,
+        ollamaBaseUrl: config.ollamaBaseUrl,
+      );
+      if (models.isEmpty) return [];
+      return models.map((m) {
+        // Strip ":latest" suffix for cleaner display names.
+        final displayName =
+            m.id.endsWith(':latest') ? m.id.substring(0, m.id.length - 7) : m.id;
+        final tagline = m.size != null ? 'Local · ${m.size}' : 'Local and free';
+        return ModelEntry(
+          displayName: displayName,
+          modelId: m.id,
+          provider: LlmProvider.ollama,
+          capabilities: {ModelCapability.coding, ModelCapability.fast},
+          cost: CostTier.free,
+          speed: SpeedTier.fast,
+          tagline: tagline,
+          isDefault: models.first == m,
+        );
+      }).toList();
+    } catch (_) {
+      // Ollama not running or unreachable — fall back to hardcoded entries.
+      return ModelRegistry.forProvider(LlmProvider.ollama);
+    }
+  }
+
+  void _showModelPanel(List<ModelEntry> entries) {
     const dim = '\x1b[90m';
     const yellow = '\x1b[33m';
     const rst = '\x1b[0m';
