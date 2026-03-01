@@ -144,9 +144,12 @@ class OllamaClient implements LlmClient {
           for (final tc in toolCalls) {
             final fn = (tc as Map).cast<String, dynamic>()['function'] as Map;
             toolCallCounter++;
+            final id = 'ollama_tc_$toolCallCounter';
+            final name = fn['name'] as String;
+            yield ToolCallStart(id: id, name: name);
             yield ToolCallDelta(ToolCall(
-              id: 'ollama_tc_$toolCallCounter',
-              name: fn['name'] as String,
+              id: id,
+              name: name,
               // Ollama returns arguments as a parsed Map, not a JSON string.
               arguments: Map<String, dynamic>.from(fn['arguments'] as Map),
             ));

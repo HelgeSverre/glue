@@ -70,10 +70,18 @@ void main() {
         Stream.fromIterable(events),
       ).toList();
 
+      final starts = chunks.whereType<ToolCallStart>().toList();
+      expect(starts, hasLength(1));
+      expect(starts.first.name, 'read_file');
+
       final toolCalls = chunks.whereType<ToolCallDelta>().toList();
       expect(toolCalls, hasLength(1));
       expect(toolCalls.first.toolCall.name, 'read_file');
       expect(toolCalls.first.toolCall.arguments['path'], 'main.dart');
+
+      final startIdx = chunks.indexWhere((c) => c is ToolCallStart);
+      final deltaIdx = chunks.indexWhere((c) => c is ToolCallDelta);
+      expect(startIdx, lessThan(deltaIdx));
     });
   });
 
