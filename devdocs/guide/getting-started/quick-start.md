@@ -46,12 +46,12 @@ Glue will analyze your project, propose changes, and ask for confirmation before
 
 Common flags to customize your session:
 
-| Flag | Description | Example |
-|------|-------------|---------|
-| `glue "prompt"` | Start with an initial prompt | `glue "add auth endpoint"` |
-| `--model`, `-m` | Select a specific model | `glue -m gpt-5` |
-| `--resume` | Open the session picker to resume a previous session | `glue --resume` |
-| `--continue` | Resume the most recent session | `glue --continue` |
+| Flag            | Description                                          | Example                    |
+| --------------- | ---------------------------------------------------- | -------------------------- |
+| `glue "prompt"` | Start with an initial prompt                         | `glue "add auth endpoint"` |
+| `--model`, `-m` | Select a specific model                              | `glue -m gpt-5`            |
+| `--resume`      | Open the session picker to resume a previous session | `glue --resume`            |
+| `--continue`    | Resume the most recent session                       | `glue --continue`          |
 
 ### Examples
 

@@ -24,12 +24,12 @@ Type `@` in your message to open a fuzzy file picker. Selected files are expande
 
 ## Limits
 
-| Limit | Value |
-|---|---|
-| Max file size for expansion | 100 KB |
-| Max tree entries in autocomplete | 2,000 |
-| Max directory depth scanned | 3 levels |
-| Autocomplete cache TTL | 2 seconds |
+| Limit                            | Value     |
+| -------------------------------- | --------- |
+| Max file size for expansion      | 100 KB    |
+| Max tree entries in autocomplete | 2,000     |
+| Max directory depth scanned      | 3 levels  |
+| Autocomplete cache TTL           | 2 seconds |
 
 ::: warning
 Files larger than 100 KB are skipped during expansion. Split large files or reference specific sections instead.

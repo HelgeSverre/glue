@@ -3,8 +3,11 @@ name: glue-observability
 services:
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.119.0
+    container_name: otel-collector
     command: ["--config=/etc/otelcol-contrib/config.yaml"]
     restart: unless-stopped
+    labels:
+      dev.dozzle.group: telemetry
     environment:
       OPENOBSERVE_AUTH_HEADER: ${OPENOBSERVE_AUTH_HEADER}
       OTEL_EXPORTER_FILE_PATH: ${OTEL_EXPORTER_FILE_PATH:-/var/lib/otel/traces.jsonl}
@@ -24,7 +27,10 @@ services:
 
   jaeger:
     image: jaegertracing/all-in-one:1.58
+    container_name: jaeger
     restart: unless-stopped
+    labels:
+      dev.dozzle.group: tracing
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
     ports:
@@ -32,14 +38,20 @@ services:
 
   zipkin:
     image: openzipkin/zipkin:3
+    container_name: zipkin
     restart: unless-stopped
+    labels:
+      dev.dozzle.group: tracing
     ports:
       - "9411:9411"
 
   tempo:
     image: grafana/tempo:2.6.1
+    container_name: tempo
     command: ["-config.file=/etc/tempo/tempo.yaml"]
     restart: unless-stopped
+    labels:
+      dev.dozzle.group: tracing
     volumes:
       - ./tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
       - ./data/tempo:/var/tempo
@@ -48,7 +60,10 @@ services:
 
   grafana:
     image: grafana/grafana-oss:11.5.1
+    container_name: grafana
     restart: unless-stopped
+    labels:
+      dev.dozzle.group: dashboards
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
@@ -64,7 +79,10 @@ services:
 
   openobserve:
     image: public.ecr.aws/zinclabs/openobserve:latest
+    container_name: openobserve
     restart: unless-stopped
+    labels:
+      dev.dozzle.group: dashboards
     environment:
       ZO_ROOT_USER_EMAIL: ${ZO_ROOT_USER_EMAIL:-helge.sverre@gmail.com}
       ZO_ROOT_USER_PASSWORD: ${ZO_ROOT_USER_PASSWORD:-123456}
@@ -75,7 +93,11 @@ services:
 
   aspire-dashboard:
     image: mcr.microsoft.com/dotnet/aspire-dashboard:9.2
+    container_name: aspire-dashboard
     restart: unless-stopped
+    labels:
+      dev.dozzle.group: dashboards
+      dev.dozzle.name: Aspire Dashboard
     environment:
       DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
     ports:
@@ -84,8 +106,12 @@ services:
 
   litellm:
     image: ghcr.io/berriai/litellm:main-stable
+    container_name: litellm
     restart: unless-stopped
     profiles: ["llm"]
+    labels:
+      dev.dozzle.group: llm
+      dev.dozzle.name: LiteLLM Proxy
     command:
       - "--config"
       - "/app/config.yaml"
@@ -100,8 +126,12 @@ services:
 
   llmflow:
     image: helgesverre/llmflow:latest
+    container_name: llmflow
     restart: unless-stopped
     profiles: ["extras", "tool-llmflow"]
+    labels:
+      dev.dozzle.group: llm-observability
+      dev.dozzle.name: LLMFlow
     volumes:
       - ./data/llmflow:/app/data
     ports:
@@ -109,16 +139,24 @@ services:
 
   helicone:
     image: helicone/helicone-all-in-one:latest
+    container_name: helicone
     restart: unless-stopped
     profiles: ["extras", "tool-helicone"]
+    labels:
+      dev.dozzle.group: llm-observability
+      dev.dozzle.name: Helicone
     ports:
       - "8585:8585"
       - "8989:3000"
 
   langfuse-db:
     image: postgres:16-alpine
+    container_name: langfuse-db
     restart: unless-stopped
     profiles: ["extras", "tool-langfuse"]
+    labels:
+      dev.dozzle.group: langfuse
+      dev.dozzle.name: Langfuse Postgres
     environment:
       POSTGRES_USER: langfuse
       POSTGRES_PASSWORD: langfuse
@@ -128,8 +166,12 @@ services:
 
   langfuse:
     image: langfuse/langfuse:2
+    container_name: langfuse
     restart: unless-stopped
     profiles: ["extras", "tool-langfuse"]
+    labels:
+      dev.dozzle.group: langfuse
+      dev.dozzle.name: Langfuse
     depends_on:
       - langfuse-db
     environment:
@@ -151,8 +193,12 @@ services:
 
   phoenix:
     image: arizephoenix/phoenix:latest
+    container_name: phoenix
     restart: unless-stopped
     profiles: ["extras", "tool-phoenix"]
+    labels:
+      dev.dozzle.group: llm-observability
+      dev.dozzle.name: Arize Phoenix
     environment:
       PHOENIX_ENABLE_AUTH: "false"
     volumes:
@@ -162,8 +208,12 @@ services:
 
   openlit:
     image: ghcr.io/openlit/openlit:latest
+    container_name: openlit
     restart: unless-stopped
     profiles: ["extras", "tool-openlit"]
+    labels:
+      dev.dozzle.group: llm-observability
+      dev.dozzle.name: OpenLIT
     environment:
       SQLITE_DATABASE_URL: file:/app/client/data/openlit.db
     volumes:
@@ -173,8 +223,12 @@ services:
 
   opik-mysql:
     image: mysql:8.4.2
+    container_name: opik-mysql
     restart: unless-stopped
     profiles: ["extras", "tool-opik"]
+    labels:
+      dev.dozzle.group: opik
+      dev.dozzle.name: Opik MySQL
     environment:
       MYSQL_ROOT_PASSWORD: opik
       MYSQL_DATABASE: opik
@@ -190,16 +244,24 @@ services:
 
   opik-redis:
     image: redis:7.2.4-alpine3.19
+    container_name: opik-redis
     restart: unless-stopped
     profiles: ["extras", "tool-opik"]
+    labels:
+      dev.dozzle.group: opik
+      dev.dozzle.name: Opik Redis
     command: redis-server --requirepass opik
     volumes:
       - ./data/opik/redis:/data
 
   opik-clickhouse:
     image: clickhouse/clickhouse-server:25.3.6.56-alpine
+    container_name: opik-clickhouse
     restart: unless-stopped
     profiles: ["extras", "tool-opik"]
+    labels:
+      dev.dozzle.group: opik
+      dev.dozzle.name: Opik ClickHouse
     environment:
       CLICKHOUSE_DB: opik
       CLICKHOUSE_USER: opik
@@ -217,8 +279,12 @@ services:
 
   opik-zookeeper:
     image: zookeeper:3.9.4
+    container_name: opik-zookeeper
     restart: unless-stopped
     profiles: ["extras", "tool-opik"]
+    labels:
+      dev.dozzle.group: opik
+      dev.dozzle.name: Opik ZooKeeper
     environment:
       JVMFLAGS: "-Xmx512m"
       ZOO_4LW_COMMANDS_WHITELIST: "srvr,ruok"
@@ -227,8 +293,12 @@ services:
 
   opik-minio:
     image: minio/minio:RELEASE.2025-03-12T18-04-18Z
+    container_name: opik-minio
     restart: unless-stopped
     profiles: ["extras", "tool-opik"]
+    labels:
+      dev.dozzle.group: opik
+      dev.dozzle.name: Opik MinIO
     environment:
       MINIO_ROOT_USER: ${OPIK_MINIO_ROOT_USER:-THAAIOSFODNN7EXAMPLE}
       MINIO_ROOT_PASSWORD: ${OPIK_MINIO_ROOT_PASSWORD:-LESlrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY}
@@ -241,8 +311,12 @@ services:
 
   opik-mc:
     image: minio/mc:RELEASE.2025-03-12T17-29-24Z
+    container_name: opik-mc
     restart: "no"
     profiles: ["extras", "tool-opik"]
+    labels:
+      dev.dozzle.group: opik
+      dev.dozzle.name: Opik MinIO Init
     depends_on:
       - opik-minio
     entrypoint: >
@@ -255,8 +329,12 @@ services:
 
   opik-backend:
     image: ghcr.io/comet-ml/opik/opik-backend:latest
+    container_name: opik-backend
     restart: unless-stopped
     profiles: ["extras", "tool-opik"]
+    labels:
+      dev.dozzle.group: opik
+      dev.dozzle.name: Opik Backend
     command: ["bash", "-c", "./run_db_migrations.sh && ./entrypoint.sh"]
     depends_on:
       - opik-mysql
@@ -296,8 +374,12 @@ services:
 
   opik-python-backend:
     image: ghcr.io/comet-ml/opik/opik-python-backend:latest
+    container_name: opik-python-backend
     restart: unless-stopped
     profiles: ["extras", "tool-opik"]
+    labels:
+      dev.dozzle.group: opik
+      dev.dozzle.name: Opik Python Backend
     depends_on:
       - opik-redis
       - opik-backend
@@ -315,8 +397,12 @@ services:
 
   opik-frontend:
     image: ghcr.io/comet-ml/opik/opik-frontend:latest
+    container_name: opik-frontend
     restart: unless-stopped
     profiles: ["extras", "tool-opik"]
+    labels:
+      dev.dozzle.group: opik
+      dev.dozzle.name: Opik Frontend
     depends_on:
       - opik-backend
     environment:
@@ -329,10 +415,28 @@ services:
     ports:
       - "5179:5173"
 
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    container_name: mlflow
+    restart: unless-stopped
+    profiles: ["extras", "tool-mlflow"]
+    labels:
+      dev.dozzle.group: llm-observability
+      dev.dozzle.name: MLflow
+    command: ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000"]
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data/mlflow:/mlflow
+
   dozzle:
     image: amir20/dozzle:latest
+    container_name: dozzle
     restart: unless-stopped
     profiles: ["extras", "tool-dozzle"]
+    labels:
+      dev.dozzle.group: infra
+      dev.dozzle.name: Dozzle
     ports:
       - "8088:8080"
     volumes:
@@ -340,8 +444,12 @@ services:
 
   netdata:
     image: netdata/netdata:stable
+    container_name: netdata
     restart: unless-stopped
     profiles: ["extras", "tool-netdata"]
+    labels:
+      dev.dozzle.group: infra
+      dev.dozzle.name: Netdata
     ports:
       - "19999:19999"
     volumes:
@@ -349,8 +457,12 @@ services:
 
   pyroscope:
     image: grafana/pyroscope:latest
+    container_name: pyroscope
     restart: unless-stopped
     profiles: ["extras", "tool-pyroscope"]
+    labels:
+      dev.dozzle.group: telemetry
+      dev.dozzle.name: Pyroscope
     command: ["server"]
     ports:
       - "4040:4040"
@@ -359,8 +471,12 @@ services:
 
   seq:
     image: datalust/seq:latest
+    container_name: seq
     restart: unless-stopped
     profiles: ["extras", "tool-seq"]
+    labels:
+      dev.dozzle.group: telemetry
+      dev.dozzle.name: Seq
     environment:
       ACCEPT_EULA: "Y"
       SEQ_FIRSTRUN_NOAUTHENTICATION: "true"

@@ -22,12 +22,12 @@ Local inference, no API key needed. Default model: `llama3.2`. Runs on `localhos
 
 ## Default Models
 
-| Provider | Default Model |
-|---|---|
-| Anthropic | `claude-sonnet-4-6` |
-| OpenAI | `gpt-4.1` |
-| Mistral | `mistral-large-latest` |
-| Ollama | `llama3.2` (localhost:11434) |
+| Provider  | Default Model                |
+| --------- | ---------------------------- |
+| Anthropic | `claude-sonnet-4-6`          |
+| OpenAI    | `gpt-4.1`                    |
+| Mistral   | `mistral-large-latest`       |
+| Ollama    | `llama3.2` (localhost:11434) |
 
 ## Switching Models at Runtime
 

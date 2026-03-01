@@ -55,15 +55,15 @@ glue --help                             # show all options
 
 ### CLI flags
 
-| Flag         | Short | Description                                    |
-| ------------ | ----- | ---------------------------------------------- |
-| `--help`     | `-h`  | Show usage information                         |
-| `--version`  | `-v`  | Print version                                  |
+| Flag         | Short | Description                                               |
+| ------------ | ----- | --------------------------------------------------------- |
+| `--help`     | `-h`  | Show usage information                                    |
+| `--version`  | `-v`  | Print version                                             |
 | `--provider` | `-p`  | LLM provider (`anthropic`, `openai`, `mistral`, `ollama`) |
-| `--model`    | `-m`  | LLM model to use                               |
-| `--debug`    | `-d`  | Enable debug mode (verbose logging)            |
-| `--resume`   |       | Start with session picker open                 |
-| `--continue` |       | Resume most recent session                     |
+| `--model`    | `-m`  | LLM model to use                                          |
+| `--debug`    | `-d`  | Enable debug mode (verbose logging)                       |
+| `--resume`   |       | Start with session picker open                            |
+| `--continue` |       | Resume most recent session                                |
 
 ### Shell completions
 
@@ -109,8 +109,8 @@ By default, glue uses `$SHELL` (or `sh` if unset) in non-interactive mode. Overr
 ```yaml
 # ~/.glue/config.yaml
 shell:
-  executable: zsh            # bash, zsh, fish, pwsh, sh
-  mode: interactive          # non_interactive | interactive | login
+  executable: zsh # bash, zsh, fish, pwsh, sh
+  mode: interactive # non_interactive | interactive | login
 ```
 
 Interactive mode loads your rc files (`~/.bashrc`, `~/.zshrc`, etc.), giving access to aliases and shell functions. Login mode loads profile files.
@@ -123,12 +123,12 @@ Run all agent shell commands inside ephemeral Docker containers for isolation:
 # ~/.glue/config.yaml
 docker:
   enabled: true
-  image: ubuntu:24.04        # container image
-  shell: sh                  # shell inside container
-  fallback_to_host: true     # fall back if Docker unavailable
-  mounts:                    # always-mounted directories
+  image: ubuntu:24.04 # container image
+  shell: sh # shell inside container
+  fallback_to_host: true # fall back if Docker unavailable
+  mounts: # always-mounted directories
     - /path/to/shared/libs
-    - /path/to/data:ro       # read-only mount
+    - /path/to/data:ro # read-only mount
 ```
 
 Or via environment: `GLUE_DOCKER_ENABLED=1 GLUE_DOCKER_IMAGE=alpine:latest glue`
@@ -213,20 +213,20 @@ dart test --run-skipped -t e2e         # run e2e tests
 
 The agent has access to these tools:
 
-| Tool                       | Description                                                       |
-| -------------------------- | ----------------------------------------------------------------- |
-| `read_file`                | Read file contents                                                |
-| `write_file`               | Create or overwrite a file                                        |
-| `edit_file`                | Apply targeted find-and-replace edits                             |
-| `bash`                     | Run shell commands (configurable timeout)                         |
-| `grep`                     | Search file contents with regex                                   |
-| `list_directory`           | List directory entries                                            |
-| `spawn_subagent`           | Spawn a child agent for a subtask                                 |
-| `spawn_parallel_subagents` | Run multiple subagents concurrently                               |
-| `web_fetch`                | Fetch URL content as markdown, handles PDFs with OCR fallback     |
-| `web_search`               | Search the web via Brave, Tavily, or Firecrawl backends           |
+| Tool                       | Description                                                                            |
+| -------------------------- | -------------------------------------------------------------------------------------- |
+| `read_file`                | Read file contents                                                                     |
+| `write_file`               | Create or overwrite a file                                                             |
+| `edit_file`                | Apply targeted find-and-replace edits                                                  |
+| `bash`                     | Run shell commands (configurable timeout)                                              |
+| `grep`                     | Search file contents with regex                                                        |
+| `list_directory`           | List directory entries                                                                 |
+| `spawn_subagent`           | Spawn a child agent for a subtask                                                      |
+| `spawn_parallel_subagents` | Run multiple subagents concurrently                                                    |
+| `web_fetch`                | Fetch URL content as markdown, handles PDFs with OCR fallback                          |
+| `web_search`               | Search the web via Brave, Tavily, or Firecrawl backends                                |
 | `web_browser`              | Browser automation via Chrome DevTools Protocol (screenshots, navigation, interaction) |
-| `skill`                    | List or activate Agent Skills from agentskills.io-compatible definitions |
+| `skill`                    | List or activate Agent Skills from agentskills.io-compatible definitions               |
 
 ## Architecture
 

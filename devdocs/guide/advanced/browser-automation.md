@@ -10,13 +10,13 @@ The browser tool supports the following actions: `navigate`, `screenshot`, `clic
 
 Glue supports five browser backends:
 
-| Backend | Description |
-|---|---|
-| `local` | Uses a locally installed Chrome or Chromium |
-| `docker` | Runs headless Chrome inside a Docker container |
-| `browserbase` | Cloud browser via Browserbase API |
-| `browserless` | Cloud browser via Browserless API |
-| `steel` | Cloud browser via Steel API |
+| Backend       | Description                                    |
+| ------------- | ---------------------------------------------- |
+| `local`       | Uses a locally installed Chrome or Chromium    |
+| `docker`      | Runs headless Chrome inside a Docker container |
+| `browserbase` | Cloud browser via Browserbase API              |
+| `browserless` | Cloud browser via Browserless API              |
+| `steel`       | Cloud browser via Steel API                    |
 
 ## Configuration
 
@@ -25,7 +25,7 @@ Configure the browser backend and behavior in your `glue.yaml`:
 ```yaml
 web:
   browser:
-    backend: "local"            # local | docker | browserbase | browserless | steel
+    backend: "local" # local | docker | browserbase | browserless | steel
     headed: false
 ```
 

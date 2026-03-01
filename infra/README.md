@@ -2,7 +2,7 @@
 
 This stack runs entirely with Docker Compose from `infra/` and gives you:
 
-- **One OTLP endpoint** for Glue (`otel-collector:4318`)  
+- **One OTLP endpoint** for Glue (`otel-collector:4318`)
 - **Fan-out to 5 trace destinations** at once:
   1. Jaeger
   2. Grafana Tempo
