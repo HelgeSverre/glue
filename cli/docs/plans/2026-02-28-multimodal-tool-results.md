@@ -17,25 +17,32 @@ The `web_browser` screenshot action returns a ~638KB base64 string as plain text
 ## Provider Image Formats
 
 ### Anthropic (tool_result supports inline images)
+
 ```json
 {
   "role": "user",
-  "content": [{
-    "type": "tool_result",
-    "tool_use_id": "call-id",
-    "content": [
-      {"type": "text", "text": "Screenshot captured (12345 bytes)."},
-      {"type": "image", "source": {
-        "type": "base64",
-        "media_type": "image/png",
-        "data": "<RAW_BASE64>"
-      }}
-    ]
-  }]
+  "content": [
+    {
+      "type": "tool_result",
+      "tool_use_id": "call-id",
+      "content": [
+        { "type": "text", "text": "Screenshot captured (12345 bytes)." },
+        {
+          "type": "image",
+          "source": {
+            "type": "base64",
+            "media_type": "image/png",
+            "data": "<RAW_BASE64>"
+          }
+        }
+      ]
+    }
+  ]
 }
 ```
 
 ### OpenAI (tool results are text-only; images go in follow-up user message)
+
 ```json
 // 1. Required tool result (text only)
 {"role": "tool", "tool_call_id": "call-id", "content": "Screenshot captured (12345 bytes). See attached image."}
@@ -47,6 +54,7 @@ The `web_browser` screenshot action returns a ~638KB base64 string as plain text
 ```
 
 ### Ollama (images are a separate `images` array on messages)
+
 ```json
 // 1. Required tool result (text only)
 {"role": "tool", "content": "Screenshot captured (12345 bytes). See attached image.", "tool_name": "web_browser"}
@@ -59,6 +67,7 @@ The `web_browser` screenshot action returns a ~638KB base64 string as plain text
 ### Task 1: Add `ContentPart` sealed class
 
 **Files:**
+
 - Create: `lib/src/agent/content_part.dart`
 - Modify: `lib/glue.dart` (add export)
 - Test: `test/content_part_test.dart`
@@ -164,6 +173,7 @@ git commit -m "feat: add ContentPart sealed class for multimodal content"
 ### Task 2: Update `ToolResult` and `Message` to support content parts
 
 **Files:**
+
 - Modify: `lib/src/agent/agent_core.dart`
 - Test: `test/agent_core_test.dart` (extend existing tests)
 
@@ -300,6 +310,7 @@ git commit -m "feat: add contentParts to ToolResult and Message"
 ### Task 3: Update `AnthropicMessageMapper` for image support
 
 **Files:**
+
 - Modify: `lib/src/llm/message_mapper.dart`
 - Test: `test/message_mapper_test.dart`
 
@@ -394,6 +405,7 @@ git commit -m "feat: Anthropic mapper emits native image blocks in tool_result"
 ### Task 4: Update `OpenAiMessageMapper` for image support
 
 **Files:**
+
 - Modify: `lib/src/llm/message_mapper.dart`
 - Test: `test/message_mapper_test.dart`
 
@@ -490,6 +502,7 @@ git commit -m "feat: OpenAI mapper emits follow-up user message for tool images"
 ### Task 5: Update `OllamaClient` message mapping for image support
 
 **Files:**
+
 - Modify: `lib/src/llm/ollama_client.dart`
 - Test: `test/ollama_client_test.dart`
 
@@ -546,6 +559,7 @@ git commit -m "feat: Ollama mapping emits follow-up user message with images arr
 ### Task 6: Update `web_browser` screenshot to return `ContentPart`s
 
 **Files:**
+
 - Modify: `lib/src/tools/web_browser_tool.dart`
 - Modify: `lib/src/agent/tools.dart` (or wherever tool execution is wired)
 - Test: `test/web_browser_tool_test.dart`
@@ -638,6 +652,7 @@ git commit -m "feat: web_browser screenshot returns native ImagePart content"
 ### Task 7: Wire `executeWithParts` in `AgentRunner` (headless mode)
 
 **Files:**
+
 - Modify: `lib/src/agent/agent_runner.dart`
 - Test: `test/agent_runner_test.dart`
 
@@ -672,6 +687,7 @@ git commit -m "feat: AgentRunner uses executeWithParts for multimodal tool resul
 ### Task 8: Wire in `App` (TUI mode tool execution)
 
 **Files:**
+
 - Modify: `lib/src/app.dart` (or wherever the TUI calls tool.execute)
 
 **Step 1: Find where `App` executes tools**
@@ -713,16 +729,16 @@ git commit -m "feat: TUI app uses executeWithParts for multimodal tool results"
 
 ## Summary of Changes
 
-| File | Change |
-|------|--------|
-| `lib/src/agent/content_part.dart` | **New** — `ContentPart`, `TextPart`, `ImagePart` sealed classes |
-| `lib/src/agent/agent_core.dart` | Add `contentParts` to `ToolResult` and `Message`, pass through in agent loop |
-| `lib/src/agent/tools.dart` | Add `executeWithParts()` default method to `Tool` base class |
-| `lib/src/llm/message_mapper.dart` | Anthropic: inline image blocks in `tool_result.content`. OpenAI: text-only tool result + follow-up user image message |
-| `lib/src/llm/ollama_client.dart` | Text-only tool result + follow-up user message with `images` array |
-| `lib/src/tools/web_browser_tool.dart` | Override `executeWithParts` for screenshot action, return `ImagePart` |
-| `lib/src/agent/agent_runner.dart` | Use `executeWithParts` instead of `execute` |
-| `lib/src/app.dart` | Use `executeWithParts` instead of `execute` |
+| File                                  | Change                                                                                                                |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `lib/src/agent/content_part.dart`     | **New** — `ContentPart`, `TextPart`, `ImagePart` sealed classes                                                       |
+| `lib/src/agent/agent_core.dart`       | Add `contentParts` to `ToolResult` and `Message`, pass through in agent loop                                          |
+| `lib/src/agent/tools.dart`            | Add `executeWithParts()` default method to `Tool` base class                                                          |
+| `lib/src/llm/message_mapper.dart`     | Anthropic: inline image blocks in `tool_result.content`. OpenAI: text-only tool result + follow-up user image message |
+| `lib/src/llm/ollama_client.dart`      | Text-only tool result + follow-up user message with `images` array                                                    |
+| `lib/src/tools/web_browser_tool.dart` | Override `executeWithParts` for screenshot action, return `ImagePart`                                                 |
+| `lib/src/agent/agent_runner.dart`     | Use `executeWithParts` instead of `execute`                                                                           |
+| `lib/src/app.dart`                    | Use `executeWithParts` instead of `execute`                                                                           |
 
 ## Key Design Decisions
 

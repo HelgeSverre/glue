@@ -4,10 +4,10 @@ Glue automatically loads project-specific context files into the agent's system 
 
 ## Auto-Loaded Files
 
-| File | Purpose | Max Size |
-|---|---|---|
-| `AGENTS.md` | Agent behavior guidelines — code style, conventions, what to avoid | 50 KB |
-| `CLAUDE.md` | Custom project context — architecture notes, important patterns | 50 KB |
+| File        | Purpose                                                            | Max Size |
+| ----------- | ------------------------------------------------------------------ | -------- |
+| `AGENTS.md` | Agent behavior guidelines — code style, conventions, what to avoid | 50 KB    |
+| `CLAUDE.md` | Custom project context — architecture notes, important patterns    | 50 KB    |
 
 Both files are looked up in the current working directory. If found, their contents are appended to the system prompt. Files larger than 50 KB are truncated with a note.
 

@@ -9,6 +9,7 @@
 **Approach:** Add `mistral` to the `LlmProvider` enum, add cases to all 8 existing switch statements, add curated models, add `mistralApiKey` to `GlueConfig`, add model listing, update tests.
 
 **Files touched:**
+
 - Modify: `cli/lib/src/config/glue_config.dart` (enum + config + validation + load)
 - Modify: `cli/lib/src/llm/llm_factory.dart` (3 switch cases)
 - Modify: `cli/lib/src/llm/model_lister.dart` (1 switch case + shared helper)
@@ -24,16 +25,20 @@
 ### Task 1: Add `LlmProvider.mistral` enum + `GlueConfig` support
 
 **Files:**
+
 - Modify: `cli/lib/src/config/glue_config.dart`
 - Modify: `cli/test/config/glue_config_test.dart`
 
 **Step 1: Add `mistral` to the enum**
 
 In `cli/lib/src/config/glue_config.dart`, change:
+
 ```dart
 enum LlmProvider { anthropic, openai, ollama }
 ```
+
 to:
+
 ```dart
 enum LlmProvider { anthropic, openai, mistral, ollama }
 ```
@@ -41,11 +46,13 @@ enum LlmProvider { anthropic, openai, mistral, ollama }
 **Step 2: Add `mistralApiKey` field to `GlueConfig`**
 
 Add field:
+
 ```dart
 final String? mistralApiKey;
 ```
 
 Add to constructor parameter list (after `openaiApiKey`):
+
 ```dart
 this.mistralApiKey,
 ```
@@ -53,6 +60,7 @@ this.mistralApiKey,
 **Step 3: Update `validate()`**
 
 Replace the key switch and error message with:
+
 ```dart
 final key = switch (provider) {
   LlmProvider.anthropic => anthropicApiKey,
@@ -92,6 +100,7 @@ Add `mistralApiKey: mistralApiKey,` to the `GlueConfig(...)` constructor call.
 **Step 6: Add Mistral key resolution to `GlueConfig.load()`**
 
 After the `openaiKey` resolution block (around line 181), add:
+
 ```dart
 final mistralKey = Platform.environment['MISTRAL_API_KEY'] ??
     Platform.environment['GLUE_MISTRAL_API_KEY'] ??
@@ -105,6 +114,7 @@ Pass `mistralApiKey: mistralKey,` in the return `GlueConfig(...)` call.
 **Step 7: Add tests**
 
 Add to `cli/test/config/glue_config_test.dart`:
+
 ```dart
 test('resolves mistral provider', () {
   final config = GlueConfig(
@@ -159,6 +169,7 @@ git commit -m "feat: add LlmProvider.mistral enum and GlueConfig support"
 ### Task 2: Add Mistral to `LlmClientFactory` and `AgentManager`
 
 **Files:**
+
 - Modify: `cli/lib/src/llm/llm_factory.dart`
 - Modify: `cli/lib/src/agent/agent_manager.dart`
 - Modify: `cli/test/llm/llm_factory_test.dart`
@@ -166,6 +177,7 @@ git commit -m "feat: add LlmProvider.mistral enum and GlueConfig support"
 **Step 1: Add Mistral case to `create()`**
 
 In `llm_factory.dart`, add to the switch in `create()` (before `LlmProvider.ollama`):
+
 ```dart
 LlmProvider.mistral => OpenAiClient(
     httpClient: _httpClient,
@@ -191,6 +203,7 @@ LlmProvider.mistral => config.mistralApiKey ?? '',
 **Step 4: Add Mistral case to `AgentManager._apiKeyFor()`**
 
 In `agent_manager.dart`:
+
 ```dart
 String _apiKeyFor(LlmProvider provider) => switch (provider) {
       LlmProvider.anthropic => config.anthropicApiKey ?? '',
@@ -203,6 +216,7 @@ String _apiKeyFor(LlmProvider provider) => switch (provider) {
 **Step 5: Add test**
 
 Add to `cli/test/llm/llm_factory_test.dart`:
+
 ```dart
 test('creates OpenAiClient for mistral provider', () {
   final factory = LlmClientFactory();
@@ -217,6 +231,7 @@ test('creates OpenAiClient for mistral provider', () {
 ```
 
 Add import if not present:
+
 ```dart
 import 'package:glue/src/llm/openai_client.dart';
 ```
@@ -240,6 +255,7 @@ git commit -m "feat: add Mistral cases to LlmClientFactory and AgentManager"
 ### Task 3: Add Mistral model listing
 
 **Files:**
+
 - Modify: `cli/lib/src/llm/model_lister.dart`
 - Modify: `cli/test/llm/model_lister_test.dart`
 
@@ -248,6 +264,7 @@ git commit -m "feat: add Mistral cases to LlmClientFactory and AgentManager"
 The existing `_listOpenAi` method hardcodes the OpenAI URL. Refactor it into `_listOpenAiCompat(apiKey, baseUrl)` so both OpenAI and Mistral can use it:
 
 Replace `_listOpenAi` with:
+
 ```dart
 Future<List<ModelInfo>> _listOpenAiCompat(String apiKey, String baseUrl) async {
   final uri = Uri.parse(baseUrl).resolve('/v1/models');
@@ -271,6 +288,7 @@ Future<List<ModelInfo>> _listOpenAiCompat(String apiKey, String baseUrl) async {
 **Step 2: Update the switch in `list()`**
 
 Add `mistralBaseUrl` parameter and update switch:
+
 ```dart
 Future<List<ModelInfo>> list({
   required LlmProvider provider,
@@ -289,6 +307,7 @@ Future<List<ModelInfo>> list({
 **Step 3: Add test**
 
 Add to `cli/test/llm/model_lister_test.dart`:
+
 ```dart
 group('Mistral', () {
   test('parses /v1/models response with Bearer auth', () async {
@@ -337,6 +356,7 @@ git commit -m "feat: add Mistral model listing with shared OpenAI-compat helper"
 ### Task 4: Add Mistral curated models to `ModelRegistry`
 
 **Files:**
+
 - Modify: `cli/lib/src/config/model_registry.dart`
 - Modify: `cli/test/config/model_registry_test.dart`
 
@@ -350,6 +370,7 @@ LlmProvider.mistral =>
 **Step 2: Add Mistral model entries**
 
 After the Ollama section in the `models` list, add:
+
 ```dart
 // ── Mistral ─────────────────────────────────────────────
 ModelEntry(
@@ -385,6 +406,7 @@ ModelEntry(
 **Step 3: Add tests**
 
 Add to `cli/test/config/model_registry_test.dart`:
+
 ```dart
 test('contains Mistral models', () {
   final mistral = ModelRegistry.forProvider(LlmProvider.mistral);
@@ -412,6 +434,7 @@ test('available excludes Mistral when key missing', () {
 ```
 
 The existing test `'available includes all providers when both keys set'` uses `containsAll(LlmProvider.values)` — update it to include `mistralApiKey`:
+
 ```dart
 test('available includes all providers when all keys set', () {
   final configAll = GlueConfig(
@@ -466,6 +489,7 @@ Run: `cd cli && dart format .`
 ### Current State (After Phase A)
 
 After Phase A, the codebase has:
+
 - `LlmProvider` enum with 4 values: `anthropic`, `openai`, `mistral`, `ollama`
 - 8 switch statements across 5 files that must be updated for each new provider
 - 4 per-provider API key/URL fields on `GlueConfig`: `anthropicApiKey`, `openaiApiKey`, `mistralApiKey`, `ollamaBaseUrl`
@@ -496,6 +520,7 @@ After Phase A, the codebase has:
 ```
 
 Each provider class implements:
+
 - `LlmProviderDefinition` — identity (`id`, `displayName`), config spec, curated models
 - `ChatCapability` — `createChatClient()`
 - `ModelListingCapability` — `listModels()`
@@ -505,6 +530,7 @@ Each provider class implements:
 #### B1: Create foundation types
 
 Create `cli/lib/src/llm/config_spec.dart`:
+
 - `ConfigKeySpec` — declares a config key a provider needs (key name, label, type, env vars, yaml path, default)
 - `ConfigValueType` enum — `string`, `secret`, `url`, `bool`, etc.
 - `ResolvedProviderConfig` — bag of resolved key-value pairs with `getString()` / `requireString()`
@@ -515,6 +541,7 @@ This is pure new code, no existing files change.
 #### B2: Create provider interfaces
 
 Create `cli/lib/src/llm/provider_definition.dart`:
+
 - `LlmProviderDefinition` interface — `id`, `displayName`, `configSpec`, `curatedModels`, `defaultModelId`
 - `ChatCapability` interface — `createChatClient({httpClient, config, model, systemPrompt})`
 - `ModelListingCapability` interface — `listModels({httpClient, config})`
@@ -524,6 +551,7 @@ No existing files change.
 #### B3: Create shared OpenAI-compatible helper
 
 Create `cli/lib/src/llm/providers/openai_compat.dart`:
+
 - `listOpenAiCompatModels()` — shared model listing for OpenAI-compatible APIs
 - `createOpenAiCompatClient()` — shared client factory wrapping `OpenAiClient`
 
@@ -532,12 +560,14 @@ Used by OpenAI, Mistral, and future OpenAI-compatible providers. No existing fil
 #### B4: Create provider implementations
 
 Create one file per provider in `cli/lib/src/llm/providers/`:
+
 - `anthropic_provider.dart` — `AnthropicProvider implements LlmProviderDefinition, ChatCapability, ModelListingCapability`
 - `openai_provider.dart` — `OpenAiProvider` (delegates to openai_compat)
 - `ollama_provider.dart` — `OllamaProvider`
 - `mistral_provider.dart` — `MistralProvider` (delegates to openai_compat)
 
 Each provider class:
+
 1. Declares `configSpec` with env vars and yaml paths matching current resolution logic
 2. Declares `curatedModels` matching current `ModelRegistry.models` entries for that provider
 3. Implements `createChatClient()` matching current `LlmClientFactory.create()` logic
@@ -548,6 +578,7 @@ No existing files change yet — these are additive.
 #### B5: Create `ProviderRegistry`
 
 Create `cli/lib/src/llm/provider_registry.dart`:
+
 - `ProviderRegistry` class — `register()`, `get()`, `has()`, `all`, `ids`, `requireCapability<T>()`, `allModels`, `configured(resolver)`
 - `defaultProviderRegistry()` top-level function — creates registry with all 4 built-in providers
 
@@ -621,6 +652,7 @@ Modify `cli/lib/src/agent/agent_manager.dart`:
 #### B11: Update barrel exports
 
 Add new exports to `cli/lib/glue.dart`:
+
 ```dart
 export 'src/llm/config_spec.dart' show ConfigKeySpec, ConfigValueType, ResolvedProviderConfig, ConfigResolver;
 export 'src/llm/provider_definition.dart' show LlmProviderDefinition, ChatCapability, ModelListingCapability;
@@ -633,13 +665,13 @@ export 'src/llm/providers/mistral_provider.dart' show MistralProvider;
 
 ### What Phase B achieves
 
-| Before (Phase A) | After (Phase B) |
-|---|---|
-| 8 switch statements across 5 files | 0 switch statements on provider |
-| 4 per-provider fields on GlueConfig | Registry + resolver, no per-provider fields |
-| Adding provider = touch 6 files, 8 switches | Adding provider = 1 class + 1 registration line |
-| Model listing logic in ModelLister | Model listing logic in each provider |
-| Client creation logic in LlmClientFactory | Client creation logic in each provider |
+| Before (Phase A)                                 | After (Phase B)                                 |
+| ------------------------------------------------ | ----------------------------------------------- |
+| 8 switch statements across 5 files               | 0 switch statements on provider                 |
+| 4 per-provider fields on GlueConfig              | Registry + resolver, no per-provider fields     |
+| Adding provider = touch 6 files, 8 switches      | Adding provider = 1 class + 1 registration line |
+| Model listing logic in ModelLister               | Model listing logic in each provider            |
+| Client creation logic in LlmClientFactory        | Client creation logic in each provider          |
 | Config resolution scattered in GlueConfig.load() | Config resolution via declarative ConfigKeySpec |
 
 ### When Phase B becomes worth it

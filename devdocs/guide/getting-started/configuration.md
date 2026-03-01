@@ -6,10 +6,10 @@ Glue is configured through YAML config files, environment variables, and CLI fla
 
 Glue loads configuration from two locations:
 
-| Scope | Path | Purpose |
-|-------|------|---------|
-| **Global** | `~/.glue/config.yaml` | User-wide defaults shared across all projects |
-| **Project** | `.glue/config.yaml` | Project-specific overrides checked into version control |
+| Scope       | Path                  | Purpose                                                 |
+| ----------- | --------------------- | ------------------------------------------------------- |
+| **Global**  | `~/.glue/config.yaml` | User-wide defaults shared across all projects           |
+| **Project** | `.glue/config.yaml`   | Project-specific overrides checked into version control |
 
 Project-level values override global values for any keys that are set in both files.
 
@@ -18,7 +18,7 @@ Project-level values override global values for any keys that are set in both fi
 Below is the complete YAML configuration schema with all supported keys:
 
 ```yaml
-provider: "anthropic"          # anthropic | openai | mistral | ollama
+provider: "anthropic" # anthropic | openai | mistral | ollama
 model: "claude-sonnet-4-6"
 
 anthropic:
@@ -56,13 +56,13 @@ glue --profile deep "architect a new module"
 
 Glue reads the following environment variables:
 
-| Variable | Description |
-|----------|-------------|
-| `ANTHROPIC_API_KEY` | Anthropic API key |
-| `OPENAI_API_KEY` | OpenAI API key |
-| `MISTRAL_API_KEY` | Mistral API key |
-| `GLUE_PROVIDER` | Override the default provider |
-| `GLUE_MODEL` | Override the default model |
+| Variable            | Description                   |
+| ------------------- | ----------------------------- |
+| `ANTHROPIC_API_KEY` | Anthropic API key             |
+| `OPENAI_API_KEY`    | OpenAI API key                |
+| `MISTRAL_API_KEY`   | Mistral API key               |
+| `GLUE_PROVIDER`     | Override the default provider |
+| `GLUE_MODEL`        | Override the default model    |
 
 ```bash
 # Example: override the provider and model for a single shell session
@@ -88,12 +88,12 @@ Use CLI flags for one-off overrides, environment variables for machine-level set
 
 When no model is explicitly configured, Glue uses the following defaults per provider:
 
-| Provider | Default Model | Notes |
-|----------|---------------|-------|
-| Anthropic | `claude-sonnet-4-6` | |
-| OpenAI | `gpt-4.1` | |
-| Mistral | `mistral-large-latest` | |
-| Ollama | `llama3.2` | Connects to `localhost:11434` |
+| Provider  | Default Model          | Notes                         |
+| --------- | ---------------------- | ----------------------------- |
+| Anthropic | `claude-sonnet-4-6`    |                               |
+| OpenAI    | `gpt-4.1`              |                               |
+| Mistral   | `mistral-large-latest` |                               |
+| Ollama    | `llama3.2`             | Connects to `localhost:11434` |
 
 ## See also
 

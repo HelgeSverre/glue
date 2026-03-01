@@ -19,6 +19,8 @@ import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/config/model_registry.dart';
+import 'package:glue/src/llm/model_discovery.dart';
+import 'package:glue/src/ui/model_panel_formatter.dart';
 import 'package:glue/src/config/permission_mode.dart';
 import 'package:glue/src/dev/devtools.dart';
 import 'package:glue/src/llm/llm_factory.dart';
@@ -53,6 +55,8 @@ import 'package:glue/src/web/search/providers/tavily_provider.dart';
 import 'package:glue/src/web/search/providers/firecrawl_provider.dart';
 import 'package:glue/src/skills/skill_parser.dart';
 import 'package:glue/src/skills/skill_registry.dart';
+import 'package:glue/src/skills/skill_activation.dart';
+import 'package:glue/src/skills/skill_runtime.dart';
 import 'package:glue/src/skills/skill_tool.dart';
 import 'package:glue/src/ui/modal.dart';
 import 'package:glue/src/ui/panel_modal.dart';
@@ -206,7 +210,7 @@ class App {
   final Observability? _obs;
   ObservabilitySpan? _turnSpan;
   final DebugController? _debugController;
-  final SkillRegistry? _skillRegistry;
+  late final SkillRuntime _skillRuntime;
   PermissionMode _permissionMode;
   final Set<String> _earlyApprovedIds = {};
 
@@ -228,7 +232,7 @@ class App {
     bool startupContinue = false,
     Observability? obs,
     DebugController? debugController,
-    SkillRegistry? skillRegistry,
+    SkillRuntime? skillRuntime,
   })  : _modelName = modelName,
         _manager = manager,
         _llmFactory = llmFactory,
@@ -242,9 +246,13 @@ class App {
         _startupContinue = startupContinue,
         _obs = obs,
         _debugController = debugController,
-        _skillRegistry = skillRegistry,
         _permissionMode = config?.permissionMode ?? PermissionMode.confirm,
         _cwd = Directory.current.path {
+    _skillRuntime = skillRuntime ??
+        SkillRuntime(
+          cwd: _cwd,
+          extraPathsProvider: () => _config?.skillPaths ?? const [],
+        );
     if (extraTrustedTools != null) {
       _autoApprovedTools.addAll(extraTrustedTools);
     }
@@ -271,14 +279,14 @@ class App {
     final layout = Layout(terminal);
     final editor = TextAreaEditor();
 
-    final skillRegistry = SkillRegistry.discover(
+    final skillRuntime = SkillRuntime(
       cwd: Directory.current.path,
-      extraPaths: config.skillPaths,
+      extraPathsProvider: () => config.skillPaths,
     );
 
     final systemPrompt = Prompts.build(
       cwd: Directory.current.path,
-      skills: skillRegistry.list(),
+      skills: skillRuntime.list(),
     );
 
     final debugController = DebugController(
@@ -349,17 +357,6 @@ class App {
     final configStore = ConfigStore(home.configPath);
 
     final sessionDir = home.sessionDir(sessionId);
-    final sessionStore = SessionStore(
-      sessionDir: sessionDir,
-      meta: SessionMeta(
-        id: sessionId,
-        cwd: Directory.current.path,
-        model: config.model,
-        provider: config.provider.name,
-        startTime: DateTime.now(),
-      ),
-    );
-
     final sessionState = SessionState.load(sessionDir);
     final executor = await ExecutorFactory.create(
       shellConfig: config.shellConfig,
@@ -411,7 +408,7 @@ class App {
           WebFetchTool(config.webConfig.fetch, pdfConfig: config.webConfig.pdf),
       'web_search': WebSearchTool(searchRouter),
       'web_browser': WebBrowserTool(browserManager),
-      'skill': SkillTool(skillRegistry),
+      'skill': SkillTool(skillRuntime),
     };
     final tools = wrapToolsWithObservability(rawTools, obs);
 
@@ -439,14 +436,14 @@ class App {
       config: config,
       systemPrompt: systemPrompt,
       extraTrustedTools: configStore.trustedTools.toSet(),
-      sessionStore: sessionStore,
+      sessionStore: null,
       executor: executor,
       jobManager: ShellJobManager(executor),
       startupResume: startupResume,
       startupContinue: startupContinue,
       obs: obs,
       debugController: debugController,
-      skillRegistry: skillRegistry,
+      skillRuntime: skillRuntime,
     );
   }
 
@@ -745,14 +742,23 @@ class App {
   String _resumeSession(SessionMeta session) {
     final home = GlueHome();
     final events = SessionStore.loadConversation(home.sessionDir(session.id));
-    if (events.isEmpty) {
-      return 'Session ${session.id} has no conversation data.';
-    }
+    _switchToSessionStore(session);
+    _blocks.clear();
+    _toolUi.clear();
+    _streamingText = '';
+    _subagentGroups.clear();
+    _outputLineGroups.clear();
+    agent.clearConversation();
+    _titleGenerated = session.title != null;
 
     _blocks.add(_ConversationEntry.system(
       'Resuming session ${session.id} '
       '(${session.model}, ${_timeAgo(session.startTime)})',
     ));
+
+    if (events.isEmpty) {
+      return 'Session ${session.id} has no conversation data.';
+    }
 
     var userCount = 0;
     var assistantCount = 0;
@@ -820,17 +826,13 @@ class App {
     flushPending();
 
     // Backfill title for resumed sessions that lack one.
-    if (!_titleGenerated) {
-      if (session.title != null) {
-        _titleGenerated = true;
-      } else if (userCount > 0) {
-        for (final e in events) {
-          if (e['type'] == 'user_message' &&
-              ((e['text'] as String?) ?? '').isNotEmpty) {
-            _titleGenerated = true;
-            _generateTitle(e['text'] as String);
-            break;
-          }
+    if (!_titleGenerated && userCount > 0) {
+      for (final e in events) {
+        if (e['type'] == 'user_message' &&
+            ((e['text'] as String?) ?? '').isNotEmpty) {
+          _titleGenerated = true;
+          _generateTitle(e['text'] as String);
+          break;
         }
       }
     }
@@ -874,6 +876,46 @@ class App {
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     if (diff.inDays < 7) return '${diff.inDays}d ago';
     return time.toIso8601String().substring(0, 10);
+  }
+
+  String _newSessionId() {
+    return '${DateTime.now().millisecondsSinceEpoch}-'
+        '${DateTime.now().microsecond.toRadixString(36)}';
+  }
+
+  SessionStore _createNewSessionStore() {
+    final id = _newSessionId();
+    final config = _config;
+    return SessionStore(
+      sessionDir: GlueHome().sessionDir(id),
+      meta: SessionMeta(
+        id: id,
+        cwd: Directory.current.path,
+        model: config?.model ?? _modelName,
+        provider: config?.provider.name ?? 'unknown',
+        startTime: DateTime.now(),
+      ),
+    );
+  }
+
+  void _ensureSessionStore() {
+    _sessionStore ??= _createNewSessionStore();
+  }
+
+  void _switchToSessionStore(SessionMeta meta) {
+    final oldStore = _sessionStore;
+    if (oldStore?.meta.id == meta.id) return;
+    if (oldStore != null) {
+      unawaited(oldStore.close());
+    }
+    _sessionStore = SessionStore(
+      sessionDir: GlueHome().sessionDir(meta.id),
+      meta: meta,
+    );
+  }
+
+  SkillRegistry _discoverSkills() {
+    return _skillRuntime.refresh();
   }
 
   void _openHelpPanel() {
@@ -1201,7 +1243,14 @@ class App {
     final config = _config;
     if (config == null) return;
 
-    final entries = ModelRegistry.available(config);
+    // Fetch locally-installed Ollama models, then show the panel.
+    unawaited(_openModelPanelAsync(config));
+  }
+
+  Future<void> _openModelPanelAsync(GlueConfig config) async {
+    final discovery = ModelDiscovery(cacheDir: GlueHome().cacheDir);
+    final entries = await discovery.discoverAll(config);
+
     if (entries.isEmpty) {
       _blocks.add(_ConversationEntry.system(
           'No models available (no API keys configured).'));
@@ -1209,63 +1258,41 @@ class App {
       return;
     }
 
-    const dim = '\x1b[90m';
-    const yellow = '\x1b[33m';
-    const rst = '\x1b[0m';
-
-    final flatLines = <String>[];
-    final flatEntries = <ModelEntry>[];
-    LlmProvider? lastProvider;
-    int flatInitial = 0;
-
-    for (final entry in entries) {
-      final isCurrent = entry.modelId == _modelName;
-      final providerHeader = entry.provider != lastProvider
-          ? '$yellow${entry.provider.name}$rst  '
-          : ' ' * (entry.provider.name.length + 2);
-      lastProvider = entry.provider;
-
-      final marker = isCurrent ? '\u25cf ' : '  ';
-      final name = entry.displayName.padRight(22);
-      final tag = entry.tagline.padRight(18);
-      final cost = entry.costLabel.padRight(5);
-      final speed = entry.speedLabel;
-
-      if (isCurrent) flatInitial = flatEntries.length;
-      flatLines.add('$providerHeader$marker$name $dim$tag$rst $cost $speed');
-      flatEntries.add(entry);
-    }
+    final formatted = formatModelPanelLines(
+      entries,
+      currentModelId: _modelName,
+    );
 
     final panel = PanelModal(
       title: 'Switch Model',
-      lines: flatLines,
+      lines: formatted.lines,
       barrier: BarrierStyle.dim,
       height: PanelFluid(0.5, 8),
       selectable: true,
     );
     // Scroll to initial selection.
-    for (var i = 0; i < flatInitial; i++) {
+    for (var i = 0; i < formatted.initialIndex; i++) {
       panel.handleEvent(KeyEvent(Key.down));
     }
     _panelStack.add(panel);
     _render();
 
-    panel.selection.then((idx) {
+    unawaited(panel.selection.then((idx) {
       _panelStack.remove(panel);
       if (idx == null) {
         _render();
         return;
       }
-      final entry = flatEntries[idx];
+      final entry = formatted.entries[idx];
       final result = _switchToModelEntry(entry);
       _blocks.add(_ConversationEntry.system(result));
       _render();
-    });
+    }));
   }
 
   void _openSkillsPanel() {
-    final registry = _skillRegistry;
-    if (registry == null || registry.isEmpty) {
+    final registry = _discoverSkills();
+    if (registry.isEmpty) {
       _blocks.add(_ConversationEntry.system('No skills found.\n\n'
           'To add skills, create directories with SKILL.md files in:\n'
           '  ~/.glue/skills/<skill-name>/SKILL.md (global)\n'
@@ -1334,23 +1361,39 @@ class App {
     _panelStack.add(panel);
     _render();
 
-    unawaited(panel.selection.then((idx) {
+    unawaited(panel.selection.then((idx) async {
       _panelStack.remove(panel);
       if (idx == null) {
         _render();
         return;
       }
       final skill = skills[idx];
-      try {
-        final body = registry.loadBody(skill.name);
-        _blocks
-            .add(_ConversationEntry.system('# Skill: ${skill.name}\n\n$body'));
-      } on SkillParseError catch (e) {
-        _blocks.add(_ConversationEntry.system(
-            'Error loading skill "${skill.name}": $e'));
-      }
+      await _activateSkillFromUi(skill.name);
       _render();
     }));
+  }
+
+  Future<void> _activateSkillFromUi(String skillName) async {
+    try {
+      final activation = await activateSkillIntoConversation(
+        agent: agent,
+        skillName: skillName,
+      );
+
+      _ensureSessionStore();
+      _sessionStore?.logEvent('tool_call', {
+        'name': 'skill',
+        'arguments': {'name': skillName},
+      });
+
+      _blocks.add(_ConversationEntry.toolCall('skill', {'name': skillName}));
+      _blocks.add(_ConversationEntry.toolResult(activation.content));
+    } on SkillActivationError catch (e) {
+      _blocks.add(_ConversationEntry.system(e.message));
+    } catch (e) {
+      _blocks.add(
+          _ConversationEntry.system('Error activating skill "$skillName": $e'));
+    }
   }
 
   static List<String> _wrapText(String text, int width) {
@@ -1685,6 +1728,7 @@ class App {
           _render();
         } else {
           final expanded = expandFileRefs(text);
+          _ensureSessionStore();
           _sessionStore?.logEvent('user_message', {'text': expanded});
           if (!_titleGenerated) {
             _titleGenerated = true;
@@ -1838,6 +1882,7 @@ class App {
           _blocks.add(_ConversationEntry.toolCallRef(call.id));
         }
 
+        _ensureSessionStore();
         _sessionStore?.logEvent('tool_call', {
           'id': call.id,
           'name': call.name,
@@ -1879,6 +1924,7 @@ class App {
 
       case AgentDone():
         if (_streamingText.isNotEmpty) {
+          _ensureSessionStore();
           _sessionStore
               ?.logEvent('assistant_message', {'text': _streamingText});
           _blocks.add(_ConversationEntry.assistant(_streamingText));
@@ -2455,7 +2501,10 @@ class App {
     };
     final shortCwd = _shortenPath(_cwd);
     final permLabel = '[${_permissionMode.label}]';
-    final statusLeft = ' $modeIndicator  $_modelName  $permLabel  $shortCwd';
+    const bold = '\x1b[1m';
+    const boldOff = '\x1b[22m';
+    const black = '\x1b[30m';
+    final statusLeft = ' $_modelName  $permLabel  $shortCwd  $bold$black$modeIndicator$boldOff\x1b[39m';
 
     final scrollIndicator = _scrollOffset > 0 ? '↑$_scrollOffset  ' : '';
     final statusRight = '${scrollIndicator}tok ${agent.tokenCount} ';
@@ -2505,6 +2554,7 @@ class _ConversationEntry {
   _ConversationEntry._(this.kind, this.text,
       {this.args, this.expandedText, this.group});
 
+  // todo: this is old dart style, use modern syntax or codegen this type of boilerplate
   factory _ConversationEntry.user(String text, {String? expandedText}) =>
       _ConversationEntry._(_EntryKind.user, text, expandedText: expandedText);
 

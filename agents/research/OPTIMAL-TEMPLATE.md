@@ -4,6 +4,7 @@
 > Analysis date: 2026-02-13
 >
 > **How to use this template:**
+>
 > 1. Replace all `{{VARIABLE}}` placeholders with your values.
 > 2. Read every `<!-- ANNOTATION: ... -->` comment to understand design decisions.
 > 3. Remove or customize conditional sections marked with `{{#if ...}}` / `{{/if}}`.
@@ -42,11 +43,13 @@ You are {{AGENT_NAME}}, {{AGENT_ATTRIBUTION}}.
 -->
 
 **Variant for SDK/embedded context:**
+
 ```
 You are a {{AGENT_NAME}} agent, built on {{PLATFORM_NAME}}, running within {{HOST_CONTEXT}}.
 ```
 
 **Variant for non-interactive/autonomous context:**
+
 ```
 You are {{AGENT_NAME}}, an autonomous agent specializing in software engineering tasks. Your primary goal is to help users safely and effectively.
 ```
@@ -839,56 +842,56 @@ You do not need to manage context yourself. Continue working normally.
 
 ## Appendix A: Variable Reference
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `{{AGENT_NAME}}` | The agent's display name | `Acme Code` |
-| `{{AGENT_ATTRIBUTION}}` | Organization and role description | `an AI coding assistant built by Acme Inc.` |
-| `{{PLATFORM_NAME}}` | Underlying platform/SDK | `Anthropic's Claude Agent SDK` |
-| `{{HOST_CONTEXT}}` | Where the agent is embedded | `VS Code extension`, `CLI terminal` |
-| `{{OUTPUT_ENVIRONMENT}}` | Where output is displayed | `command line interface`, `IDE chat panel` |
-| `{{MARKDOWN_FLAVOR}}` | Markdown specification to follow | `GitHub-flavored Markdown` |
-| `{{FONT_TYPE}}` | Font rendering context | `monospace font using CommonMark` |
-| `{{PROJECT_RULES_FILE}}` | Name of the project instruction file | `CLAUDE.md`, `AGENTS.md`, `.cursorrules` |
-| `{{PROJECT_RULES_CONTENT}}` | Contents of the project rules file | (file contents) |
-| `{{AGENT_CONFIG_DIR}}` | Agent config directory name | `.claude`, `.codex` |
-| `{{WORKING_DIR}}` | Current working directory path | `/home/user/project` |
-| `{{IS_GIT_REPO}}` | Whether CWD is a git repository | `Yes` / `No` |
-| `{{PLATFORM}}` | Operating system platform | `darwin`, `linux`, `win32` |
-| `{{SHELL_TYPE}}` | User's shell | `bash`, `zsh`, `powershell` |
-| `{{CURRENT_DATE}}` | Today's date | `2026-02-13` |
-| `{{MODEL_DISPLAY_NAME}}` | Human-readable model name | `Claude Opus 4.6` |
-| `{{MODEL_ID}}` | Exact model identifier | `claude-opus-4-6` |
-| `{{KNOWLEDGE_CUTOFF}}` | Model's training data cutoff | `May 2025` |
-| `{{MEMORY_ENABLED}}` | Whether persistent memory is on | `true` / `false` |
-| `{{MEMORY_DIR}}` | Path to memory directory | `~/.agent/memory/` |
-| `{{MEMORY_FILE}}` | Main memory file name | `MEMORY.md` |
-| `{{MEMORY_LINE_LIMIT}}` | Max lines in main memory file | `200` |
-| `{{MEMORY_CONTENT}}` | Current memory file contents | (file contents) |
-| `{{TODO_TOOL}}` | Name of the task tracking tool | `TodoWrite`, `update_plan`, `write_todos` |
-| `{{READ_TOOL}}` | Name of the file read tool | `Read`, `read_file`, `view` |
-| `{{EDIT_TOOL}}` | Name of the file edit tool | `Edit`, `edit`, `apply_patch` |
-| `{{WRITE_TOOL}}` | Name of the file write tool | `Write`, `write_file`, `write` |
-| `{{EXPLORE_AGENT}}` | Name of exploration sub-agent | `Explore`, `codebase_investigator` |
-| `{{PLANS_DIR}}` | Directory for plan documents | `.plans/` |
-| `{{STALENESS_WINDOW}}` | Messages before re-read required | `5` |
-| `{{TOOL_CONSTRAINTS}}` | Tool-specific negative examples | (tool constraint text) |
-| `{{CLI_MODE}}` | Whether running in CLI context | `true` / `false` |
-| `{{NO_EMOJIS}}` | Whether to suppress emojis | `true` / `false` |
-| `{{ANTI_EXTRACTION}}` | Whether to resist prompt extraction | `true` / `false` |
-| `{{MCP_ENABLED}}` | Whether MCP tools are available | `true` / `false` |
-| `{{MCP_SERVERS}}` | List of MCP servers with instructions | (array of server objects) |
-| `{{SUB_AGENTS}}` | List of sub-agents with descriptions | (array of agent objects) |
-| `{{HOOKS_ENABLED}}` | Whether hooks are configured | `true` / `false` |
-| `{{COMPRESSION_ENABLED}}` | Whether history compression is on | `true` / `false` |
-| `{{WEB_ACCESS}}` | Whether web fetching is available | `true` / `false` |
-| `{{LANGUAGE_PREFERENCE}}` | Preferred response language | `English`, `Japanese` |
-| `{{MODE_PLAN}}` | Plan mode active | `true` / `false` |
-| `{{MODE_AGENT}}` | Agent mode active | `true` / `false` |
-| `{{MODE_CHAT}}` | Chat mode active | `true` / `false` |
-| `{{MODE_AUTONOMOUS}}` | Autonomous/YOLO mode active | `true` / `false` |
-| `{{PLAN_MODE_TOOLS}}` | Tools available in plan mode | (tool list) |
-| `{{AGENT_MODE_TOOLS}}` | Tools available in agent mode | (tool list) |
-| `{{CHAT_MODE_TOOLS}}` | Tools available in chat mode | (tool list) |
+| Variable                    | Description                           | Example                                     |
+| --------------------------- | ------------------------------------- | ------------------------------------------- |
+| `{{AGENT_NAME}}`            | The agent's display name              | `Acme Code`                                 |
+| `{{AGENT_ATTRIBUTION}}`     | Organization and role description     | `an AI coding assistant built by Acme Inc.` |
+| `{{PLATFORM_NAME}}`         | Underlying platform/SDK               | `Anthropic's Claude Agent SDK`              |
+| `{{HOST_CONTEXT}}`          | Where the agent is embedded           | `VS Code extension`, `CLI terminal`         |
+| `{{OUTPUT_ENVIRONMENT}}`    | Where output is displayed             | `command line interface`, `IDE chat panel`  |
+| `{{MARKDOWN_FLAVOR}}`       | Markdown specification to follow      | `GitHub-flavored Markdown`                  |
+| `{{FONT_TYPE}}`             | Font rendering context                | `monospace font using CommonMark`           |
+| `{{PROJECT_RULES_FILE}}`    | Name of the project instruction file  | `CLAUDE.md`, `AGENTS.md`, `.cursorrules`    |
+| `{{PROJECT_RULES_CONTENT}}` | Contents of the project rules file    | (file contents)                             |
+| `{{AGENT_CONFIG_DIR}}`      | Agent config directory name           | `.claude`, `.codex`                         |
+| `{{WORKING_DIR}}`           | Current working directory path        | `/home/user/project`                        |
+| `{{IS_GIT_REPO}}`           | Whether CWD is a git repository       | `Yes` / `No`                                |
+| `{{PLATFORM}}`              | Operating system platform             | `darwin`, `linux`, `win32`                  |
+| `{{SHELL_TYPE}}`            | User's shell                          | `bash`, `zsh`, `powershell`                 |
+| `{{CURRENT_DATE}}`          | Today's date                          | `2026-02-13`                                |
+| `{{MODEL_DISPLAY_NAME}}`    | Human-readable model name             | `Claude Opus 4.6`                           |
+| `{{MODEL_ID}}`              | Exact model identifier                | `claude-opus-4-6`                           |
+| `{{KNOWLEDGE_CUTOFF}}`      | Model's training data cutoff          | `May 2025`                                  |
+| `{{MEMORY_ENABLED}}`        | Whether persistent memory is on       | `true` / `false`                            |
+| `{{MEMORY_DIR}}`            | Path to memory directory              | `~/.agent/memory/`                          |
+| `{{MEMORY_FILE}}`           | Main memory file name                 | `MEMORY.md`                                 |
+| `{{MEMORY_LINE_LIMIT}}`     | Max lines in main memory file         | `200`                                       |
+| `{{MEMORY_CONTENT}}`        | Current memory file contents          | (file contents)                             |
+| `{{TODO_TOOL}}`             | Name of the task tracking tool        | `TodoWrite`, `update_plan`, `write_todos`   |
+| `{{READ_TOOL}}`             | Name of the file read tool            | `Read`, `read_file`, `view`                 |
+| `{{EDIT_TOOL}}`             | Name of the file edit tool            | `Edit`, `edit`, `apply_patch`               |
+| `{{WRITE_TOOL}}`            | Name of the file write tool           | `Write`, `write_file`, `write`              |
+| `{{EXPLORE_AGENT}}`         | Name of exploration sub-agent         | `Explore`, `codebase_investigator`          |
+| `{{PLANS_DIR}}`             | Directory for plan documents          | `.plans/`                                   |
+| `{{STALENESS_WINDOW}}`      | Messages before re-read required      | `5`                                         |
+| `{{TOOL_CONSTRAINTS}}`      | Tool-specific negative examples       | (tool constraint text)                      |
+| `{{CLI_MODE}}`              | Whether running in CLI context        | `true` / `false`                            |
+| `{{NO_EMOJIS}}`             | Whether to suppress emojis            | `true` / `false`                            |
+| `{{ANTI_EXTRACTION}}`       | Whether to resist prompt extraction   | `true` / `false`                            |
+| `{{MCP_ENABLED}}`           | Whether MCP tools are available       | `true` / `false`                            |
+| `{{MCP_SERVERS}}`           | List of MCP servers with instructions | (array of server objects)                   |
+| `{{SUB_AGENTS}}`            | List of sub-agents with descriptions  | (array of agent objects)                    |
+| `{{HOOKS_ENABLED}}`         | Whether hooks are configured          | `true` / `false`                            |
+| `{{COMPRESSION_ENABLED}}`   | Whether history compression is on     | `true` / `false`                            |
+| `{{WEB_ACCESS}}`            | Whether web fetching is available     | `true` / `false`                            |
+| `{{LANGUAGE_PREFERENCE}}`   | Preferred response language           | `English`, `Japanese`                       |
+| `{{MODE_PLAN}}`             | Plan mode active                      | `true` / `false`                            |
+| `{{MODE_AGENT}}`            | Agent mode active                     | `true` / `false`                            |
+| `{{MODE_CHAT}}`             | Chat mode active                      | `true` / `false`                            |
+| `{{MODE_AUTONOMOUS}}`       | Autonomous/YOLO mode active           | `true` / `false`                            |
+| `{{PLAN_MODE_TOOLS}}`       | Tools available in plan mode          | (tool list)                                 |
+| `{{AGENT_MODE_TOOLS}}`      | Tools available in agent mode         | (tool list)                                 |
+| `{{CHAT_MODE_TOOLS}}`       | Tools available in chat mode          | (tool list)                                 |
 
 ---
 

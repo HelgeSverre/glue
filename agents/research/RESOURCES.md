@@ -8,8 +8,8 @@ A comprehensive, organized collection of all URLs and sources consulted during r
 
 Product pages, official docs, getting started guides, blog posts, and configuration references organized by tool name.
 
-
 **AIde**
+
 - [aiagentindex.mit.edu/aide](https://aiagentindex.mit.edu/aide)
 - [aiagentslist.com/agent/aide-by-codestory](https://aiagentslist.com/agent/aide-by-codestory)
 - [directory.composio.dev/listings/aide-by-codestory](https://directory.composio.dev/listings/aide-by-codestory)
@@ -19,6 +19,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [www.ycombinator.com/launches/MBt-aide-the-open-source-ide-to-solve-hard-problems](https://www.ycombinator.com/launches/MBt-aide-the-open-source-ide-to-solve-hard-problems)
 
 **AIder**
+
 - [Aider homepage](https://aider.chat)
 - [Building a better repository map with tree-sitter](https://aider.chat/2023/10/22/repomap.html)
 - [Separating code reasoning and editing (architect mode)](https://aider.chat/2024/09/26/architect.html)
@@ -44,6 +45,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [How much I'm paying for AI productivity software (Jacques Thibodeau)](https://jacquesthibodeau.com/how-much-im-paying-for-ai-productivity-software)
 
 **Amazon Q Developer**
+
 - [Amazon Q Developer in GitHub (Preview)](https://aws.amazon.com/blogs/aws/amazon-q-developer-in-github-now-in-preview-with-code-generation-review-and-legacy-transformation-capabilities)
 - [GitLab Duo with Amazon Q](https://aws.amazon.com/blogs/aws/introducing-gitlab-duo-with-amazon-q)
 - [New Amazon Q Developer Agent Capabilities](https://aws.amazon.com/blogs/aws/new-amazon-q-developer-agent-capabilities-include-generating-documentation-code-reviews-and-unit-tests)
@@ -63,6 +65,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Workspace Context](https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/workspace-context.html)
 
 **Amp**
+
 - [ampcode.com](https://ampcode.com)
 - [ampcode.com/manual](https://ampcode.com/manual)
 - [ampcode.com/news/amp-free](https://ampcode.com/news/amp-free)
@@ -71,6 +74,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [www.amplifilabs.com/post/sourcegraph-amp-agent-accelerating-code-intelligence...](https://www.amplifilabs.com/post/sourcegraph-amp-agent-accelerating-code-intelligence-for-ai-driven-development)
 
 **Augment Code**
+
 - [How Augment Code Solved the Large Codebase Problem (Codacy)](https://blog.codacy.com/ai-giants-how-augment-code-solved-the-large-codebase-problem)
 - [Augment Code official website](https://www.augmentcode.com)
 - [Context Engine MCP announcement](https://www.augmentcode.com/blog/context-engine-mcp-now-live)
@@ -79,22 +83,27 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Auggie CLI product page](https://www.augmentcode.com/product/CLI)
 
 **Autocoderover**
+
 - [AutoCodeRover: Autonomous Program Improvement (Clio AI)](https://www.clioapp.ai/research/autocoderover)
 - [AutoCodeRover: Automated AI Approach for Solving Github Issues (MarkTechPost)](https://www.marktechpost.com/2024/04/16/autocoderover-an-automated-artificial-intelligence-ai-approach-for-solving-github-issues-to-autonomously-achieve-program-improvement)
 
 **Autodev**
+
 - [Official Documentation](https://ide.unitmesh.cc/en)
 
 **Avante Nvim**
+
 - [deepwiki.com/yetone/avante.nvim](https://deepwiki.com/yetone/avante.nvim)
 - [deepwiki.com/yetone/avante.nvim/4.2-provider-configuration](https://deepwiki.com/yetone/avante.nvim/4.2-provider-configuration)
 - [deepwiki.com/yetone/avante.nvim/4.3-tool-execution-and-agent-loop](https://deepwiki.com/yetone/avante.nvim/4.3-tool-execution-and-agent-loop)
 - [nithinbekal.com/posts/avante-nvim](https://nithinbekal.com/posts/avante-nvim)
 
 **Babyagi**
+
 - [babyagi.org](https://babyagi.org)
 
 **Baidu Comate**
+
 - [comate.baidu.com/en](https://comate.baidu.com/en)
 - [news.aibase.com/news/9892](https://news.aibase.com/news/9892)
 - [www.bestaiagents.today/2025/06/baidu-unveils-comate-ai-ide-ushering-in.html](https://www.bestaiagents.today/2025/06/baidu-unveils-comate-ai-ide-ushering-in.html)
@@ -103,18 +112,21 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [www.therift.ai/news-feed/baidu-unveils-comate-ai-ide-with-multimodal-input-an...](https://www.therift.ai/news-feed/baidu-unveils-comate-ai-ide-with-multimodal-input-and-multi-agent-coding-collaboration)
 
 **Bito**
+
 - [bito.ai](https://bito.ai)
 - [bito.ai/blog/bito-2025-lookback](https://bito.ai/blog/bito-2025-lookback)
 - [bito.ai/product/ai-code-review-agent](https://bito.ai/product/ai-code-review-agent)
 - [docs.bito.ai/ai-code-reviews-in-git/overview](https://docs.bito.ai/ai-code-reviews-in-git/overview)
 
 **Blackbox AI**
+
 - [Blackbox AI Model List](https://agent.blackbox.ai/model-list)
 - [Blackbox AI Official Website](https://blackbox.ai)
 - [Blackbox AI Documentation - Chat Models](https://docs.blackbox.ai/api-reference/models/chat-models)
 - [Blackbox AI Documentation - Key Features](https://docs.blackbox.ai/features/vscode-agent/key-features)
 
 **Bolt Diy**
+
 - [Deploy bolt.diy to Cloudflare Pages (AI Sharing Circle)](https://aisharenet.com/en/jiang-boltnew-kaiyuanai)
 - [Bolt 100K Open Source Fund](https://blog.stackblitz.com/posts/bolt-100k-oss-fund)
 - [Bolt.new](https://bolt.new)
@@ -125,6 +137,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Bolt.new, Flow Engineering for Code Agents (Latent Space)](https://www.latent.space/p/bolt)
 
 **Bolt New**
+
 - [AI Tools Insights -- Under the Hood: The StackBlitz Technology Powering Bolt.new](https://aitoolsinsights.com/articles/stackblitz-bolt-new-infrastructure-explained)
 - [Bolt blog -- Inside Bolt V2](https://bolt.new/blog/inside-bolt-v2-hidden-power-features)
 - [Bolt blog -- Claude Sonnet 4 partnership](https://bolt.new/blog/we-ve-partnered-with-anthropic-to-bring-claude-sonnet-4-to-all-bolt-users)
@@ -145,17 +158,21 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Today in AI -- StackBlitz: 0 to $20M ARR in 2 months](https://www.todayin-ai.com/p/stackblitz)
 
 **Butterfish**
+
 - [butterfi.sh](https://butterfi.sh)
 
 **Chatdev**
+
 - [ChatDev 2.0 Open-Source No-Code Multi-Agent Tool (ALTools)](https://altools.ai/14122.html)
 - [What is ChatDev? (IBM)](https://www.ibm.com/think/topics/chatdev)
 
 **Claude Agent SDK**
+
 - [platform.claude.com/docs/en/agent-sdk/overview](https://platform.claude.com/docs/en/agent-sdk/overview)
 - [platform.claude.com/docs/en/agent-sdk/quickstart](https://platform.claude.com/docs/en/agent-sdk/quickstart)
 
 **Claude Code**
+
 - [Understanding Claude Code's Full Stack (alexop.dev)](https://alexop.dev/posts/understanding-claude-code-full-stack)
 - [Building Agents with Claude Code's SDK (PromptLayer)](https://blog.promptlayer.com/building-agents-with-claude-codes-sdk)
 - [Introducing Cowork](https://claude.com/blog/cowork-research-preview)
@@ -178,11 +195,13 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Claude Code Hits Inflection Point (The Meridiem)](https://www.themeridiem.com/ai-machine-learning/2026/1/22/claude-code-hits-inflection-point-as-anthropic-shifts-to-product-led-revenue)
 
 **Claude Squad**
+
 - [deepwiki.com/smtg-ai/claude-squad](https://deepwiki.com/smtg-ai/claude-squad)
 - [deepwiki.com/smtg-ai/claude-squad/4.1-git-worktree-management](https://deepwiki.com/smtg-ai/claude-squad/4.1-git-worktree-management)
 - [smtg-ai.github.io/claude-squad](https://smtg-ai.github.io/claude-squad)
 
 **CLIne**
+
 - [Cline Official Website](https://cline.bot)
 - [Cline Blog: 5M Installs and $1M Open Source Grant](https://cline.bot/blog/5m-installs-1m-open-source-grant-program)
 - [Cline Blog: Announcing CLI 2.0](https://cline.bot/blog/announcing-cline-cli-2-0)
@@ -206,6 +225,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Latent Space Podcast: Cline with Saoud Rizwan and Nik Pash](https://www.latent.space/p/cline)
 
 **Codebuff**
+
 - [Developers Love Codebuff (ossels.ai)](https://ossels.ai/codebuff-ai-coding-agent-open-source)
 - [Codebuff AI Coding Agent (ToolQuestor)](https://toolquestor.com/tool/codebuff)
 - [Codebuff official website](https://www.codebuff.com)
@@ -213,15 +233,18 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Codebuff on Y Combinator](https://www.ycombinator.com/companies/codebuff)
 
 **Codecompanion Nvim**
+
 - [blog.ffff.lt/posts/cursor-vs-codecompanion](https://blog.ffff.lt/posts/cursor-vs-codecompanion)
 - [codecompanion.olimorris.dev](https://codecompanion.olimorris.dev)
 - [codecompanion.olimorris.dev/getting-started](https://codecompanion.olimorris.dev/getting-started)
 - [ravitemer.github.io/mcphub.nvim/extensions/codecompanion.html](https://ravitemer.github.io/mcphub.nvim/extensions/codecompanion.html)
 
 **Codegeex**
+
 - [Website](https://codegeex.cn)
 
 **Coderabbit**
+
 - [deepwiki.com/coderabbitai/coderabbit-docs/3.2-platform-specific-integration](https://deepwiki.com/coderabbitai/coderabbit-docs/3.2-platform-specific-integration)
 - [docs.coderabbit.ai/platforms/gitlab-com](https://docs.coderabbit.ai/platforms/gitlab-com)
 - [mstone.ai/tools-wizard/coderabbit](https://mstone.ai/tools-wizard/coderabbit)
@@ -230,6 +253,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [www.coderabbit.ai/ide](https://www.coderabbit.ai/ide)
 
 **Continue**
+
 - [Building Cloud Agents with Continue CLI](https://blog.continue.dev/building-async-agents-with-continue-cli)
 - [Model Context Protocol x Continue](https://blog.continue.dev/model-context-protocol)
 - [Continue Overview](https://docs.continue.dev)
@@ -250,12 +274,15 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Agents](https://www.continue.dev/agents)
 
 **Copilot Workspace**
+
 - [GitHub Next - Copilot Workspace](https://githubnext.com/projects/copilot-workspace)
 
 **Copilotchat Nvim**
+
 - [Official Documentation](https://copilotc-nvim.github.io/CopilotChat.nvim)
 
 **Cosine Genie**
+
 - [Analytics India Magazine - Cosine Unveils Genie](https://analyticsindiamag.com/ai-news-updates/cosine-unveils-genie-the-ai-software-engineer-that-beats-cognitions-devin)
 - [Cosine Official Website](https://cosine.sh)
 - [Genie 2.0 Blog Post](https://cosine.sh/blog/genie-autonomous-software-engineer)
@@ -266,13 +293,16 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Cosine on Y Combinator](https://www.ycombinator.com/companies/cosine)
 
 **Cowork**
+
 - [Claude Help Center: Getting Started](https://support.claude.com/en/articles/13345190-getting-started-with-cowork)
 
 **Create Xyz**
+
 - [navtools.ai/tool/create](https://navtools.ai/tool/create)
 - [www.create.xyz](https://www.create.xyz)
 
 **Crush**
+
 - [Crush Tool Architecture (DeepWiki)](https://deepwiki.com/charmbracelet/crush/6.1-tool-architecture-and-registration)
 - [Crush LSP Integration (DeepWiki)](https://deepwiki.com/charmbracelet/crush/6.4-mcp-tool-integration)
 - [Crush: The Glamorous AI Coding Agent (BrightCoding)](https://www.blog.brightcoding.dev/2025/08/06/crush-the-glamorous-ai-coding-agent-that-lives-in-your-terminal)
@@ -280,6 +310,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Crush CLI: AI coding agent for your terminal (OneClickIT)](https://www.oneclickitsolution.com/centerofexcellence/aiml/crush-cli-your-new-coding-bestie)
 
 **Cursor**
+
 - [Cursor changelog](https://cursor.com/changelog)
 - [Cursor documentation](https://cursor.com/docs)
 - [Cursor Directory -- Rules & MCP Servers](https://cursor.directory)
@@ -291,11 +322,13 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Cursor homepage](https://www.cursor.com)
 
 **Devika**
+
 - [Devika AI (devikaai.co)](https://devikaai.co)
 - [Devika AI (devikaai.org)](https://devikaai.org)
 - [Devika on Toolify](https://www.toolify.ai/tool/devika-ai)
 
 **Devin**
+
 - [Cognition -- DeepWiki: AI docs for any repo](https://cognition.ai/blog/deepwiki)
 - [Cognition -- Devin 101: Automatic PR Reviews with the Devin API](https://cognition.ai/blog/devin-101-automatic-pr-reviews-with-the-devin-api)
 - [Cognition -- Devin 2.0](https://cognition.ai/blog/devin-2)
@@ -323,16 +356,19 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Swyx -- Cognition: The Devin is in the Details](https://www.swyx.io/cognition)
 
 **Dyad**
+
 - [blog.openreplay.com/practical-intro-dyad-local-ai-app-builder](https://blog.openreplay.com/practical-intro-dyad-local-ai-app-builder)
 - [www.dyad.sh](https://www.dyad.sh)
 - [www.dyad.sh/download](https://www.dyad.sh/download)
 
 **Ellipsis**
+
 - [aichief.com/ai-code-assistant/ellipsis](https://aichief.com/ai-code-assistant/ellipsis)
 - [www.ellipsis.dev](https://www.ellipsis.dev)
 - [www.ycombinator.com/companies/ellipsis](https://www.ycombinator.com/companies/ellipsis)
 
 **Emdash**
+
 - [aitoolsdir.com/emdash](https://aitoolsdir.com/emdash)
 - [docs.emdash.sh](https://docs.emdash.sh)
 - [docs.emdash.sh/get-started](https://docs.emdash.sh/get-started)
@@ -341,6 +377,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [www.ycombinator.com/companies/emdash](https://www.ycombinator.com/companies/emdash)
 
 **Emergent**
+
 - [Emergent Official Website](https://emergent.sh)
 - [Emergent Enterprise](https://emergent.sh/enterprise)
 - [Emergent Claude Sonnet Integration](https://emergent.sh/integrations/claude-sonnet)
@@ -348,12 +385,14 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Sacra - Emergent Revenue and Funding](https://sacra.com/c/emergent)
 
 **Factory Droid**
+
 - [Factory CLI quickstart (docs)](https://docs.factory.ai/cli/getting-started/quickstart)
 - [Factory official website](https://factory.ai)
 - [Factory is GA announcement](https://factory.ai/news/factory-is-ga)
 - [Factory.ai: The A-SWE Droid Army (Latent.Space)](https://www.latent.space/p/factory)
 
 **Gemini CLI**
+
 - [Google Blog: Gemini CLI Extensions](https://blog.google/innovation-and-ai/technology/developers-tools/gemini-cli-extensions)
 - [Google Blog: Gemini CLI GitHub Actions](https://blog.google/innovation-and-ai/technology/developers-tools/introducing-gemini-cli-github-actions)
 - [Google Blog: Introducing Gemini CLI](https://blog.google/innovation-and-ai/technology/developers-tools/introducing-gemini-cli-open-source-ai-agent)
@@ -373,6 +412,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Snyk: 5 Tips for Agentic Coding with Gemini CLI](https://snyk.io/articles/5-tips-for-agentic-coding-with-gemini-cli)
 
 **Github Copilot**
+
 - [GitHub Copilot Expands GPT-5.2-Codex -- Blockchain News](https://blockchain.news/news/github-copilot-gpt-52-codex-visual-studio-jetbrains-xcode-eclipse)
 - [Next Edit Suggestions Preview](https://code.visualstudio.com/blogs/2025/02/12/next-edit-suggestions)
 - [Introducing Copilot Agent Mode (Preview)](https://code.visualstudio.com/blogs/2025/02/24/introducing-copilot-agent-mode)
@@ -394,6 +434,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [GitHub Copilot Statistics & Adoption -- Second Talent](https://www.secondtalent.com/resources/github-copilot-statistics)
 
 **Google Antigravity**
+
 - [Antigravity: Google's next step in agentic development (AI Native Dev)](https://ainativedev.io/news/gemini-3-meets-antigravity-googles-next-step-in-agentic-development)
 - [Complete Guide to Google Antigravity (Antigravity Codes)](https://antigravity.codes/tutorial)
 - [Google Antigravity (Homepage)](https://antigravity.google)
@@ -406,6 +447,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Google Antigravity: AI-First Development with This New IDE (KDnuggets)](https://www.kdnuggets.com/google-antigravity-ai-first-development-with-this-new-ide)
 
 **Google Jules**
+
 - [Jules: Google's autonomous AI coding agent (Google Blog)](https://blog.google/technology/google-labs/jules)
 - [Jules, Google's asynchronous AI coding agent, is out of public beta (Google Blog)](https://blog.google/technology/google-labs/jules-now-available)
 - [New ways to build with Jules, our AI coding agent (Google Blog)](https://blog.google/technology/google-labs/jules-tools-jules-api)
@@ -423,6 +465,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Google Launches AI Coding Agent Jules (The AI Insider)](https://theaiinsider.tech/2025/08/08/google-launches-ai-coding-agent-jules-out-of-beta-with-github-integration-and-structured-pricing)
 
 **Goose**
+
 - [Meet Goose: The Open Source AI Agent Built for Developers (All Things Open)](https://allthingsopen.org/articles/meet-goose-open-source-ai-agent)
 - [Goose Documentation](https://block.github.io/goose)
 - [Community-Inspired Benchmarking: The Goose Vibe Check](https://block.github.io/goose/blog/2025/03/31/goose-benchmark)
@@ -445,9 +488,11 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Linux Foundation Announces Agentic AI Foundation](https://www.linuxfoundation.org/press/linux-foundation-announces-the-formation-of-the-agentic-ai-foundation)
 
 **Gp Nvim**
+
 - [Neovimcraft listing](https://neovimcraft.com/plugin/Robitx/gp.nvim/index.html)
 
 **GPT Engineer**
+
 - [10web.io/ai-tools/gpt-engineer](https://10web.io/ai-tools/gpt-engineer)
 - [agenthunt.dev/agents/gpt-engineer](https://agenthunt.dev/agents/gpt-engineer)
 - [altern.ai/tool/github-com-antonosika-gpt-engineer](https://altern.ai/tool/github-com-antonosika-gpt-engineer)
@@ -456,12 +501,14 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [www.futurepedia.io/tool/gpt-engineer](https://www.futurepedia.io/tool/gpt-engineer)
 
 **GPT Pilot**
+
 - [MIT AI Agent Index - Pythagora-v1](https://aiagentindex.mit.edu/pythagora-v1-gpt-pilot)
 - [GPT Pilot Blog](https://blog.pythagora.ai/430)
 - [Pythagora Official Website](https://www.pythagora.ai)
 - [Pythagora on Y Combinator](https://www.ycombinator.com/companies/pythagora-gpt-pilot)
 
 **GPTme**
+
 - [gptme -- AI Agent Index (MIT)](https://aiagentindex.mit.edu/gptme)
 - [gptme.org](https://gptme.org)
 - [gptme Alternatives (gptme.org)](https://gptme.org/docs/alternatives.html)
@@ -470,22 +517,27 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [gptme Tools Reference](https://gptme.org/docs/tools.html)
 
 **Gru AI**
+
 - [gru.ai](https://gru.ai)
 - [gru.ai/blog/Gru-Rank-First](https://gru.ai/blog/Gru-Rank-First)
 - [gru.ai/blog/Gru-Weekly-0828-weekly](https://gru.ai/blog/Gru-Weekly-0828-weekly)
 - [www.aitoolnet.com/gruai](https://www.aitoolnet.com/gruai)
 
 **Haystack Editor**
+
 - [Official Website](https://haystackeditor.com)
 - [YC Company Page](https://www.ycombinator.com/companies/haystack-software)
 
 **Helge Claude Plan Viewer**
+
 - [claudeplans.dev](https://claudeplans.dev)
 
 **Helge Viberank**
+
 - [viberank.app](https://viberank.app)
 
 **IBM Bob**
+
 - [Introducing Project Bob (Niklas Heidloff)](https://heidloff.net/article/project-bob)
 - [IBM TechXchange 2025 announcements (IBM Newsroom)](https://newsroom.ibm.com/2025-10-07-ibm-unveils-new-software-product-and-intelligent-infrastructure-capabilities-to-help-enterprises-operationalize-ai)
 - [Testing IBM Bob AI with COBOL, PL/I, Assembler (Planet Mainframe, Feb 2026)](https://planetmainframe.com/2026/02/beyond-the-demo-testing-ibm-bob-ai)
@@ -495,9 +547,11 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [A First Look at Bob (IT Jungle)](https://www.itjungle.com/2025/12/08/guru-a-first-look-at-bob-the-ibm-i-assistant-thats-closer-than-you-think)
 
 **Jan**
+
 - [Official Website](https://www.jan.ai)
 
 **Jetbrains Junie**
+
 - [blog.jetbrains.com/ai/2025/08/a-simpler-more-transparent-model-for-ai-quotas](https://blog.jetbrains.com/ai/2025/08/a-simpler-more-transparent-model-for-ai-quotas)
 - [blog.jetbrains.com/phpstorm/2025/09/connect-mcp-servers-to-junie-in-phpstorm](https://blog.jetbrains.com/phpstorm/2025/09/connect-mcp-servers-to-junie-in-phpstorm)
 - [lp.jetbrains.com/ai-ides-faq](https://lp.jetbrains.com/ai-ides-faq)
@@ -508,6 +562,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [www.jetbrains.com/junie](https://www.jetbrains.com/junie)
 
 **Kilo Code**
+
 - [blog.kilo.ai](https://blog.kilo.ai)
 - [hackernoon.com/gitlab-cofounder-backed-kilo-code-raises-$8m-to-build-an-open-...](https://hackernoon.com/gitlab-cofounder-backed-kilo-code-raises-$8m-to-build-an-open-source-model-agnostic-copilot-rival)
 - [kilo.ai](https://kilo.ai)
@@ -520,6 +575,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [techstartups.com/2025/12/10/kilo-code-raises-8m-in-seed-funding-as-its-open-s...](https://techstartups.com/2025/12/10/kilo-code-raises-8m-in-seed-funding-as-its-open-source-ai-coding-agent-hits-1-on-openrouter)
 
 **Kiro**
+
 - [Kiro Homepage](https://kiro.dev)
 - [Kiro Autonomous Agent](https://kiro.dev/autonomous-agent)
 - [Kiro 0.9: Custom Subagents, Skills, and Enterprise Controls](https://kiro.dev/blog/custom-subagents-skills-and-enterprise-controls)
@@ -540,41 +596,49 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [GitLens + Kiro Integration (GitKraken)](https://www.gitkraken.com/gitlens/kiro)
 
 **Langchain**
+
 - [python.langchain.com/docs](https://python.langchain.com/docs)
 - [www.langchain.com](https://www.langchain.com)
 
 **Lovable**
+
 - [Lovable 2.0 Smart Chat Agent and Multiplayer (Analytics India Mag)](https://analyticsindiamag.com/ai-news-updates/lovable-launches-version-2-0-with-smarter-chat-agent-multiplayer-features-and-security-scan)
 - [Lovable hits $6.6B valuation (Yahoo Finance)](https://finance.yahoo.com/news/lovable-hits-6-6-billion-202933572.html)
 - [Lovable Business Breakdown (Contrary Research)](https://research.contrary.com/company/lovable)
 - [Lovable raises $7.5M for GPT Engineer (Tech.eu)](https://tech.eu/2024/10/07/lovable-raises-7-5m-for-gpt-engineer)
 
 **Manus**
+
 - [Manus Official Website](https://manus.im)
 - [Manus Blog - Context Engineering for AI Agents](https://manus.im/blog/Context-Engineering-for-AI-Agents-Lessons-from-Building-Manus)
 - [Manus Blog - Joins Meta](https://manus.im/blog/manus-joins-meta-for-next-era-of-innovation)
 - [Manus Documentation - GitHub Integration](https://manus.im/docs/website-builder/github-integration)
 
 **MCP**
+
 - [modelcontextprotocol.io/specification/2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25)
 - [www.anthropic.com/news/donating-the-model-context-protocol-and-establishing-o...](https://www.anthropic.com/news/donating-the-model-context-protocol-and-establishing-of-the-agentic-ai-foundation)
 - [www.anthropic.com/news/model-context-protocol](https://www.anthropic.com/news/model-context-protocol)
 
 **Melty**
+
 - [YC Launch Page](https://www.ycombinator.com/launches/Llk-melty-open-source-ai-code-editor-for-10x-engineers)
 
 **Memex**
+
 - [Official Website](https://memex.tech)
 - [Download Page](https://memex.tech/download)
 - [Solutions Page](https://memex.tech/solutions)
 
 **Mentat**
+
 - [Mentat.ai](https://mentat.ai)
 - [MentatBot: New SOTA Coding Agent, Available Now](https://mentat.ai/blog/mentatbot-sota-coding-agent)
 - [AbanteAI on WhatAi.best](https://whatai.best/ai/abanteai)
 - [MentatBot AI Coding Assistant (CognitiveCreators)](https://www.cognitivecreators.ai/blog-posts/mentatbot-ai-coding-assistant-raising-the-bar-of-coding-assistants)
 
 **Metagpt**
+
 - [MetaGPT Documentation](https://docs.deepwisdom.ai/main/en/guide/get_started/introduction.html)
 - [Foundation Agents](https://foundationagents.org/projects/metagpt)
 - [MGX (MetaGPT X) Product](https://mgx.dev)
@@ -582,14 +646,17 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [What is MetaGPT? (IBM)](https://www.ibm.com/think/topics/metagpt)
 
 **Mistral Vibe**
+
 - [Mistral Vibe CLI documentation](https://docs.mistral.ai/mistral-vibe/introduction)
 - [Mistral Vibe configuration docs](https://docs.mistral.ai/mistral-vibe/introduction/configuration)
 - [Introducing Devstral 2 and Mistral Vibe CLI (Mistral AI)](https://mistral.ai/news/devstral-2-vibe-cli)
 
 **Nanocoder**
+
 - [www.linuxlinks.com/nanocoder-local-first-cli-coding-agent](https://www.linuxlinks.com/nanocoder-local-first-cli-coding-agent)
 
 **Open Interpreter**
+
 - [avkalan.ai/the-rise-of-openinterpreter-in-ai-driven-task-execution](https://avkalan.ai/the-rise-of-openinterpreter-in-ai-driven-task-execution)
 - [docs.openinterpreter.com](https://docs.openinterpreter.com)
 - [docs.openinterpreter.com/guides/os-mode](https://docs.openinterpreter.com/guides/os-mode)
@@ -603,16 +670,19 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [www.openinterpreter.com](https://www.openinterpreter.com)
 
 **Open Swe**
+
 - [blog.langchain.com/introducing-open-swe-an-open-source-asynchronous-coding-agent](https://blog.langchain.com/introducing-open-swe-an-open-source-asynchronous-coding-agent)
 - [www.daytona.io/dotfiles/langchain-s-open-swe-runs-on-daytona-here-s-why](https://www.daytona.io/dotfiles/langchain-s-open-swe-runs-on-daytona-here-s-why)
 
 **Openai Agents SDK**
+
 - [developers.openai.com/resources/agents](https://developers.openai.com/resources/agents)
 - [openai.com/index/introducing-agentkit](https://openai.com/index/introducing-agentkit)
 - [openai.com/index/new-tools-for-building-agents](https://openai.com/index/new-tools-for-building-agents)
 - [openai.github.io/openai-agents-python](https://openai.github.io/openai-agents-python)
 
 **Openai Codex**
+
 - [Building Consistent Workflows with Codex CLI & Agents SDK](https://cookbook.openai.com/examples/codex/codex_mcp_agents_sdk/building_consistent_workflows_codex_cli_agents_sdk)
 - [OpenAI for Developers in 2025](https://developers.openai.com/blog/openai-for-developers-2025)
 - [Codex Desktop App documentation](https://developers.openai.com/codex/app)
@@ -647,6 +717,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [GPT-5.2-Codex model page](https://platform.openai.com/docs/models/gpt-5.2-codex)
 
 **Opencode**
+
 - [Anomaly Innovations](https://anoma.ly)
 - [Cef Boud -- "How Coding Agents Actually Work: Inside OpenCode"](https://cefboud.com/posts/coding-agents-internals-opencode-deepdive)
 - [DeepWiki -- Context Management and Compaction](https://deepwiki.com/anomalyco/opencode/3.8-context-management-and-compaction)
@@ -671,6 +742,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Zed -- OpenCode ACP Agent](https://zed.dev/acp/agent/opencode)
 
 **Openhands**
+
 - [OpenHands official website](https://openhands.dev)
 - [All New OpenHands Cloud (Nov 2025)](https://openhands.dev/blog/all-new-openhands-cloud-more-model-choice-lower-prices-slicker-design)
 - [OpenHands Cloud Self-hosted announcement](https://openhands.dev/blog/openhands-cloud-self-hosted-secure-convenient-deployment-of-ai-software-development-agents)
@@ -678,9 +750,11 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [OpenHands + AMD local deployment](https://www.amd.com/en/developer/resources/technical-articles/2025/OpenHands.html)
 
 **Pearai**
+
 - [PearAI official website](https://trypear.ai)
 
 **Pieces**
+
 - [PiecesOS Documentation](https://docs.pieces.app/products/core-dependencies/pieces-os)
 - [Pieces Desktop App Documentation](https://docs.pieces.app/products/desktop)
 - [Pieces MCP Documentation](https://docs.pieces.app/products/mcp/get-started)
@@ -694,10 +768,12 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Pieces MCP Integration](https://pieces.app/features/mcp)
 
 **Pixeebot**
+
 - [www.decibel.vc/articles/meet-pixee-ai-powered-appsec-for-the-era-of-codegen](https://www.decibel.vc/articles/meet-pixee-ai-powered-appsec-for-the-era-of-codegen)
 - [www.pixee.ai](https://www.pixee.ai)
 
 **Plandex**
+
 - [aifordevelopers.org/tool/github-com-plandex-ai-plandex](https://aifordevelopers.org/tool/github-com-plandex-ai-plandex)
 - [docs.plandex.ai](https://docs.plandex.ai)
 - [docs.plandex.ai/cli-reference](https://docs.plandex.ai/cli-reference)
@@ -715,21 +791,25 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [www.marktechpost.com/2024/04/04/meet-plandex-an-open-source-terminal-based-ai...](https://www.marktechpost.com/2024/04/04/meet-plandex-an-open-source-terminal-based-ai-coding-engine-for-complex-tasks)
 
 **Potpie**
+
 - [docs.potpie.ai/introduction](https://docs.potpie.ai/introduction)
 - [potpie.ai](https://potpie.ai)
 - [potpie.ai/blog/knowledge-graphs-for-agentic-code-generation](https://potpie.ai/blog/knowledge-graphs-for-agentic-code-generation)
 - [potpie.ai/blog/open-source-custom-ai-agents](https://potpie.ai/blog/open-source-custom-ai-agents)
 
 **Pr Agent**
+
 - [www.qodo.ai/products/qodo-merge](https://www.qodo.ai/products/qodo-merge)
 
 **Pydantic AI**
+
 - [ai.pydantic.dev](https://ai.pydantic.dev)
 - [lilys.ai/en/notes/ai-agents-20260114/pydanticai-ai-agent-framework-winner](https://lilys.ai/en/notes/ai-agents-20260114/pydanticai-ai-agent-framework-winner)
 - [pydantic.dev/articles/pydantic-ai-v1](https://pydantic.dev/articles/pydantic-ai-v1)
 - [pydantic.dev/pydantic-ai](https://pydantic.dev/pydantic-ai)
 
 **Qodo**
+
 - [aiforcode.io/tools/claude-code-vs-qodo-formerly-codium](https://aiforcode.io/tools/claude-code-vs-qodo-formerly-codium)
 - [codeparrot.ai/blogs/qodoai-code-with-an-agentic-ai](https://codeparrot.ai/blogs/qodoai-code-with-an-agentic-ai)
 - [docs.qodo.ai/qodo-documentation/subscription-plans](https://docs.qodo.ai/qodo-documentation/subscription-plans)
@@ -740,15 +820,18 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [www.qodo.ai/formerly-qodo-merge](https://www.qodo.ai/formerly-qodo-merge)
 
 **Qwen Code**
+
 - [qwen3coder.org](https://qwen3coder.org)
 - [qwenlm.github.io/blog/qwen3-coder](https://qwenlm.github.io/blog/qwen3-coder)
 - [qwenlm.github.io/qwen-code-docs/en/users/features/mcp](https://qwenlm.github.io/qwen-code-docs/en/users/features/mcp)
 - [rits.shanghai.nyu.edu/ai/introducing-qwen-code-alibabas-open%E2%80%91source-c...](https://rits.shanghai.nyu.edu/ai/introducing-qwen-code-alibabas-open%E2%80%91source-cli-for-agentic-coding-with-qwen3%E2%80%91coder)
 
 **Ra AId**
+
 - [langchain.com](https://langchain.com)
 
 **Refact AI**
+
 - [Refact.ai Documentation - Self-Hosted](https://docs.refact.ai/guides/version-specific/self-hosted)
 - [Refact.ai Documentation - Supported Models](https://docs.refact.ai/supported-models)
 - [Refact.ai Official Website](https://refact.ai)
@@ -756,11 +839,13 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Refact.ai Enterprise](https://refact.ai/enterprise)
 
 **Reflection AI**
+
 - [reflection.ai](https://reflection.ai)
 - [www.pymnts.com/news/investment-tracker/2025/reflection-ai-raises-130-million-...](https://www.pymnts.com/news/investment-tracker/2025/reflection-ai-raises-130-million-to-build-autonomous-coding-systems)
 - [www.webpronews.com/reflection-ai-targets-1b-valuation-after-130m-raise-for-ai...](https://www.webpronews.com/reflection-ai-targets-1b-valuation-after-130m-raise-for-ai-coding-agents)
 
 **Replit Agent**
+
 - [Replit 2025 Year in Review](https://blog.replit.com/2025-replit-in-review)
 - [Replit self-testing at scale blog post](https://blog.replit.com/automated-self-testing)
 - [Replit Agent 3 announcement blog post](https://blog.replit.com/introducing-agent-3-our-most-autonomous-agent-yet)
@@ -772,6 +857,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Replit Integrations page](https://replit.com/products/integrations)
 
 **Roo Code**
+
 - [docs.roocode.com](https://docs.roocode.com)
 - [docs.roocode.com/features/auto-approving-actions](https://docs.roocode.com/features/auto-approving-actions)
 - [docs.roocode.com/features/boomerang-tasks](https://docs.roocode.com/features/boomerang-tasks)
@@ -783,6 +869,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [spin.atomicobject.com/roo-code-ai-assisted-development](https://spin.atomicobject.com/roo-code-ai-assisted-development)
 
 **Rovo Dev**
+
 - [Diginomica - Atlassian Rovo Dev CLI](https://diginomica.com/terminal-strikes-back-atlassians-rovo-dev-cli-brings-agentic-ai-command-line)
 - [Atlassian Support - Connect MCP Server in Rovo Dev CLI](https://support.atlassian.com/rovo/docs/connect-to-an-mcp-server-in-rovo-dev-cli)
 - [Atlassian Support - Install Rovo Dev CLI](https://support.atlassian.com/rovo/docs/install-and-run-rovo-dev-cli-on-your-device)
@@ -795,12 +882,15 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Atlassian Rovo Dev](https://www.atlassian.com/software/rovo-dev)
 
 **Shell GPT**
+
 - [deepwiki.com/TheR1D/shell_gpt](https://deepwiki.com/TheR1D/shell_gpt)
 
 **Smol Developer**
+
 - [smol.ai](https://smol.ai)
 
 **Sourcegraph Cody**
+
 - [aifordevelopers.org/tool/cody](https://aifordevelopers.org/tool/cody)
 - [realpython.com/ref/ai-coding-tools/sourcegraph-cody](https://realpython.com/ref/ai-coding-tools/sourcegraph-cody)
 - [sourcegraph.com/blog/changes-to-cody-free-pro-and-enterprise-starter-plans](https://sourcegraph.com/blog/changes-to-cody-free-pro-and-enterprise-starter-plans)
@@ -811,28 +901,33 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [www.software.com/ai-index/tools/cody](https://www.software.com/ai-index/tools/cody)
 
 **Supermaven**
+
 - [Supermaven Official Website](https://supermaven.com)
 - [Bessemer Venture Partners - Introducing Supermaven](https://www.bvp.com/news/introducing-supermaven-the-fastest-coding-copilot)
 - [Tomasz Mikus - Fix Supermaven in JetBrains 2025+](https://www.tomaszmik.us/2025/07/29/fix-for-supermaven-on-intellij)
 - [WebProNews - Supermaven's Sudden Sunset](https://www.webpronews.com/supermavens-sudden-sunset-ai-coding-star-fades-into-cursors-orbit)
 
 **Swe Agent**
+
 - [SWE-agent documentation](https://swe-agent.com/latest)
 - [SWE-agent models documentation](https://swe-agent.com/latest/config/models)
 - [SWE-agent installation guide](https://swe-agent.com/latest/installation)
 - [SWE-agent CLI tutorial](https://swe-agent.com/latest/usage/cl_tutorial)
 
 **Sweep**
+
 - [aifordevelopers.org/tool/sweep](https://aifordevelopers.org/tool/sweep)
 - [creati.ai/ai-tools/sweep-ai](https://creati.ai/ai-tools/sweep-ai)
 - [docs.sweep.dev](https://docs.sweep.dev)
 - [sweep.dev](https://sweep.dev)
 
 **Tabby**
+
 - [Documentation](https://tabby.tabbyml.com/docs/welcome)
 - [Official Website](https://www.tabbyml.com)
 
 **Tabnine**
+
 - [docs.tabnine.com/main/administering-tabnine/release-notes](https://docs.tabnine.com/main/administering-tabnine/release-notes)
 - [docs.tabnine.com/main/welcome/readme/ai-models](https://docs.tabnine.com/main/welcome/readme/ai-models)
 - [finance.yahoo.com/news/tabnine-launches-enterprise-fit-agentic-140000131.html](https://finance.yahoo.com/news/tabnine-launches-enterprise-fit-agentic-140000131.html)
@@ -844,6 +939,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [www.tabnine.com/blog/tabnine-adds-support-for-anthropics-claude-3-5-sonnet](https://www.tabnine.com/blog/tabnine-adds-support-for-anthropics-claude-3-5-sonnet)
 
 **Theia Ide**
+
 - [blogs.eclipse.org/post/thomas-froment/ai-powered-theia-ide-open-source-develo...](https://blogs.eclipse.org/post/thomas-froment/ai-powered-theia-ide-open-source-developer-tools-ai-era)
 - [eclipsesource.com/blogs/2024/12/19/theia-ide-and-theia-ai-support-mcp](https://eclipsesource.com/blogs/2024/12/19/theia-ide-and-theia-ai-support-mcp)
 - [eclipsesource.com/blogs/2025/03/13/introducing-the-ai-powered-theia-ide](https://eclipsesource.com/blogs/2025/03/13/introducing-the-ai-powered-theia-ide)
@@ -859,6 +955,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [theia-ide.org/theia-ai](https://theia-ide.org/theia-ai)
 
 **Tongyi Lingma**
+
 - [bccmedianews.com/?p=3288](https://bccmedianews.com/?p=3288)
 - [en.tmtpost.com/news/7582463](https://en.tmtpost.com/news/7582463)
 - [lingma.aliyun.com](https://lingma.aliyun.com)
@@ -871,6 +968,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [www2.yicaiglobal.com/news/alibaba-cloud-unveils-enhanced-ai-coding-assistant-...](https://www2.yicaiglobal.com/news/alibaba-cloud-unveils-enhanced-ai-coding-assistant-tongyi-lingma)
 
 **Trae**
+
 - [Unveiling Trae: ByteDance's AI IDE and Its Extensive Data Collection System — Unit 221B](https://blog.unit221b.com/dont-read-this-blog/unveiling-trae-bytedances-ai-ide-and-its-extensive-data-collection-system)
 - [Vibe coders' data harvested: ByteDance's AI coding tool Trae IDE caught in action — CyberNews](https://cybernews.com/security/bytedance-ai-coding-tool-trae-data-collection)
 - [Trae documentation](https://docs.trae.ai)
@@ -884,6 +982,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [ByteDance AI tool Trae caught collecting user data — TechRadar](https://www.techradar.com/pro/security/bytedance-ai-tool-caught-spying-on-users)
 
 **V0**
+
 - [Vercel's v0 AI Agent Grows Beyond Coding (The Letter Two)](https://thelettertwo.com/2025/08/11/vercel-v0-update-expands-ai-agent-beyond-developers)
 - [v0 website](https://v0.app)
 - [v0 FAQs](https://v0.app/docs/faqs)
@@ -897,12 +996,14 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Inside Vercel's Rebuilt v0: From Prototypes to Production Apps (TechBuddies)](https://www.techbuddies.io/2026/02/05/inside-vercels-rebuilt-v0-from-vibe-coded-prototypes-to-governed-production-apps)
 
 **Vercel AI SDK**
+
 - [ai-sdk.dev/docs/introduction](https://ai-sdk.dev/docs/introduction)
 - [vercel.com/blog/ai-sdk-5](https://vercel.com/blog/ai-sdk-5)
 - [vercel.com/blog/ai-sdk-6](https://vercel.com/blog/ai-sdk-6)
 - [vercel.com/docs/ai-sdk](https://vercel.com/docs/ai-sdk)
 
 **Void Editor**
+
 - [aiagentslist.com/agents/void](https://aiagentslist.com/agents/void)
 - [createaiagent.net/tools/void](https://createaiagent.net/tools/void)
 - [deepwiki.com/voideditor/void](https://deepwiki.com/voideditor/void)
@@ -912,6 +1013,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [voideditor.com/changelog](https://voideditor.com/changelog)
 
 **Warp**
+
 - [Warp official website](https://www.warp.dev)
 - [Warp Agents page](https://www.warp.dev/agents)
 - [Warp 2025 in Review](https://www.warp.dev/blog/2025-in-review)
@@ -920,6 +1022,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Warp AI features](https://www.warp.dev/warp-ai)
 
 **Windsurf**
+
 - [AWS Marketplace -- Windsurf Enterprise FedRAMP](https://aws.amazon.com/marketplace/pp/prodview-x4iqsqorbfaj4)
 - [Windsurf Documentation -- Context Awareness](https://docs.windsurf.com/context-awareness/overview)
 - [Windsurf Documentation -- Plugins](https://docs.windsurf.com/plugins/getting-started)
@@ -940,6 +1043,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Computerworld -- Google snatches Windsurf execs $2.4B deal](https://www.computerworld.com/article/4021763/google-snatches-windsurf-execs-in-a-2-4b-deal-derailing-openais-biggest-acquisition-yet.html)
 
 **Zed**
+
 - [Zed debuts Agent Client Protocol -- AINativeDev](https://ainativedev.io/news/zed-debuts-agent-client-protocol-to-connect-ai-coding-agents-to-any-editor)
 - [JetBrains x Zed: Open Interoperability for AI Coding Agents -- JetBrains Blog](https://blog.jetbrains.com/ai/2025/10/jetbrains-zed-open-interoperability-for-ai-coding-agents-in-your-ide)
 - [Ten Days in the Zed Editor -- AFAIK](https://www.roosephu.net/2025/05/18/Ten-Days-in-Zed-Editor)
@@ -958,6 +1062,7 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 - [Zed native Git support](https://zed.dev/git)
 
 **Zencoder**
+
 - [cerebralvalley.beehiiv.com/p/zencoder-s-repo-grokking-your-ai-coding-unlock](https://cerebralvalley.beehiiv.com/p/zencoder-s-repo-grokking-your-ai-coding-unlock)
 - [docs.zencoder.ai](https://docs.zencoder.ai)
 - [docs.zencoder.ai/faq/plans](https://docs.zencoder.ai/faq/plans)
@@ -977,22 +1082,26 @@ Product pages, official docs, getting started guides, blog posts, and configurat
 
 Source code repositories, READMEs, wikis, releases, and GitHub-hosted documentation.
 
-
 **99 Primeagen**
+
 - [GitHub Repository](https://github.com/ThePrimeagen/99)
 - [AGENTS.md](https://github.com/ThePrimeagen/99/blob/master/AGENTS.md)
 - [README.md](https://github.com/ThePrimeagen/99/blob/master/README.md)
 
 **Agent Deck**
+
 - [github.com/asheshgoplani/agent-deck](https://github.com/asheshgoplani/agent-deck)
 
 **Agentgpt**
+
 - [github.com/reworkd/AgentGPT](https://github.com/reworkd/AgentGPT)
 
 **Agentless**
+
 - [github.com/OpenAutoCoder/Agentless](https://github.com/OpenAutoCoder/Agentless)
 
 **AIchat**
+
 - [github.com/sigoden/aichat](https://github.com/sigoden/aichat)
 - [github.com/sigoden/aichat/blob/main/README.md](https://github.com/sigoden/aichat/blob/main/README.md)
 - [github.com/sigoden/aichat/releases](https://github.com/sigoden/aichat/releases)
@@ -1002,81 +1111,103 @@ Source code repositories, READMEs, wikis, releases, and GitHub-hosted documentat
 - [github.com/sigoden/aichat/wiki/RAG-Guide](https://github.com/sigoden/aichat/wiki/RAG-Guide)
 
 **AIde**
+
 - [github.com/codestoryai](https://github.com/codestoryai)
 - [github.com/codestoryai/aide](https://github.com/codestoryai/aide)
 
 **AIder**
+
 - [Aider-AI/aider repository](https://github.com/Aider-AI/aider)
 
 **Anterion**
+
 - [github.com/MiscellaneousStuff/anterion](https://github.com/MiscellaneousStuff/anterion)
 
 **Architect**
+
 - [github.com/forketyfork/architect](https://github.com/forketyfork/architect)
 
 **Autocoderover**
+
 - [AutoCodeRover GitHub Repository](https://github.com/AutoCodeRoverSG/auto-code-rover)
 
 **Autodev**
+
 - [GitHub Repository](https://github.com/unit-mesh/auto-dev)
 
 **Avante Nvim**
+
 - [github.com/yetone/avante.nvim](https://github.com/yetone/avante.nvim)
 - [github.com/yetone/avante.nvim/blob/main/README.md](https://github.com/yetone/avante.nvim/blob/main/README.md)
 - [github.com/yetone/avante.nvim/wiki/Custom-providers](https://github.com/yetone/avante.nvim/wiki/Custom-providers)
 
 **Babyagi**
+
 - [github.com/yoheinakajima/babyagi](https://github.com/yoheinakajima/babyagi)
 
 **Bolt Diy**
+
 - [bolt.diy GitHub Repository](https://github.com/stackblitz-labs/bolt.diy)
 - [Bolt.new GitHub Repository](https://github.com/stackblitz/bolt.new)
 
 **Bolt New**
+
 - [bolt.diy releases](https://github.com/stackblitz-labs/bolt.diy/releases)
 
 **Butterfish**
+
 - [github.com/bakks/butterfish](https://github.com/bakks/butterfish)
 - [github.com/bakks/butterfish.nvim](https://github.com/bakks/butterfish.nvim)
 
 **Ccswarm**
+
 - [github.com/nwiizo/ccswarm](https://github.com/nwiizo/ccswarm)
 
 **Chatdev**
+
 - [ChatDev GitHub Repository](https://github.com/OpenBMB/ChatDev)
 - [ChatDev README](https://github.com/OpenBMB/ChatDev/blob/main/README.md)
 - [ChatDev MacNet Branch](https://github.com/OpenBMB/ChatDev/tree/macnet)
 
 **Claude Agent SDK**
+
 - [github.com/anthropics/claude-agent-sdk-demos](https://github.com/anthropics/claude-agent-sdk-demos)
 - [github.com/anthropics/claude-agent-sdk-python](https://github.com/anthropics/claude-agent-sdk-python)
 - [github.com/anthropics/claude-agent-sdk-typescript](https://github.com/anthropics/claude-agent-sdk-typescript)
 
 **Claude Code**
+
 - [anthropics/claude-code](https://github.com/anthropics/claude-code)
 - [anthropics/claude-code-action](https://github.com/anthropics/claude-code-action)
 - [claude-code LICENSE.md](https://github.com/anthropics/claude-code/blob/main/LICENSE.md)
 
 **Claude Engineer**
+
 - [github.com/Doriandarko/claude-engineer](https://github.com/Doriandarko/claude-engineer)
 
 **Claude Flow**
+
 - [github.com/ruvnet/claude-flow](https://github.com/ruvnet/claude-flow)
 
 **Claude Squad**
+
 - [github.com/smtg-ai/claude-squad](https://github.com/smtg-ai/claude-squad)
 
 **CLIne**
+
 - [Cline GitHub Repository](https://github.com/cline/cline)
 - [GitHub Cline Wiki](https://github.com/cline/cline/wiki)
 
 **Codai**
+
 - [github.com/meysamhadeli/codai](https://github.com/meysamhadeli/codai)
 
 **Codebuff**
+
 - [Codebuff GitHub repository](https://github.com/CodebuffAI/codebuff)
 
 **Codecompanion Nvim**
+
 - [github.com/olimorris/codecompanion.nvim](https://github.com/olimorris/codecompanion.nvim)
 - [github.com/olimorris/codecompanion.nvim/blob/main/lua/codecompanion/config.lua](https://github.com/olimorris/codecompanion.nvim/blob/main/lua/codecompanion/config.lua)
 - [github.com/olimorris/codecompanion.nvim/discussions/1058](https://github.com/olimorris/codecompanion.nvim/discussions/1058)
@@ -1084,19 +1215,24 @@ Source code repositories, READMEs, wikis, releases, and GitHub-hosted documentat
 - [github.com/olimorris/codecompanion.nvim/releases](https://github.com/olimorris/codecompanion.nvim/releases)
 
 **Codegeex**
+
 - [GitHub - CodeGeeX v1](https://github.com/zai-org/CodeGeeX)
 - [GitHub - CodeGeeX4](https://github.com/zai-org/CodeGeeX4)
 
 **Codel**
+
 - [github.com/semanser/codel](https://github.com/semanser/codel)
 
 **Coderabbit**
+
 - [github.com/coderabbitai/ai-pr-reviewer](https://github.com/coderabbitai/ai-pr-reviewer)
 
 **Continue**
+
 - [continuedev/continue](https://github.com/continuedev/continue)
 
 **Copilot Workspace**
+
 - [GitHub Docs - Reviewing a PR Created by Copilot](https://docs.github.com/copilot/how-tos/agents/copilot-coding-agent/reviewing-a-pull-request-created-by-copilot)
 - [GitHub Docs - Asking Copilot to Create a PR](https://docs.github.com/copilot/using-github-copilot/coding-agent/asking-copilot-to-create-a-pull-request)
 - [GitHub Docs - About Copilot Coding Agent](https://docs.github.com/en/copilot/concepts/agents/coding-agent/about-coding-agent)
@@ -1108,16 +1244,20 @@ Source code repositories, READMEs, wikis, releases, and GitHub-hosted documentat
 - [GitHub Newsroom - Coding Agent for Copilot](https://github.com/newsroom/press-releases/coding-agent-for-github-copilot)
 
 **Copilotchat Nvim**
+
 - [GitHub Repository](https://github.com/CopilotC-Nvim/CopilotChat.nvim)
 
 **Crush**
+
 - [Crush GitHub repository](https://github.com/charmbracelet/crush)
 - [Crush releases](https://github.com/charmbracelet/crush/releases)
 
 **Crystal**
+
 - [github.com/stravu/crystal](https://github.com/stravu/crystal)
 
 **Devika**
+
 - [Devika GitHub Repository](https://github.com/stitionai/devika)
 - [Devika Architecture Documentation](https://github.com/stitionai/devika/blob/main/ARCHITECTURE.md)
 - [Devika README](https://github.com/stitionai/devika/blob/main/README.md)
@@ -1127,28 +1267,36 @@ Source code repositories, READMEs, wikis, releases, and GitHub-hosted documentat
 - [Devika Architecture Diagrams](https://github.com/stitionai/devika/tree/main/docs/architecture)
 
 **Devon**
+
 - [github.com/entropy-research/Devon](https://github.com/entropy-research/Devon)
 
 **Devopsgpt**
+
 - [github.com/kuafuai/DevOpsGPT](https://github.com/kuafuai/DevOpsGPT)
 
 **Dyad**
+
 - [github.com/dyad-sh/dyad](https://github.com/dyad-sh/dyad)
 
 **Emdash**
+
 - [github.com/generalaction/emdash](https://github.com/generalaction/emdash)
 
 **Factory Droid**
+
 - [Factory GitHub repository](https://github.com/Factory-AI/factory)
 
 **Fauxpilot**
+
 - [github.com/fauxpilot/fauxpilot](https://github.com/fauxpilot/fauxpilot)
 
 **Gemini CLI**
+
 - [GitHub Repository: google-gemini/gemini-cli](https://github.com/google-gemini/gemini-cli)
 - [GitHub Action: run-gemini-cli](https://github.com/google-github-actions/run-gemini-cli)
 
 **Github Copilot**
+
 - [Indexing Repositories for Copilot Chat](https://docs.github.com/copilot/concepts/indexing-repositories-for-copilot-chat)
 - [Adding Custom Instructions](https://docs.github.com/copilot/customizing-copilot/adding-custom-instructions-for-github-copilot)
 - [Firewall Configuration for Coding Agent](https://docs.github.com/copilot/customizing-copilot/customizing-or-disabling-the-firewall-for-copilot-coding-agent)
@@ -1179,9 +1327,11 @@ Source code repositories, READMEs, wikis, releases, and GitHub-hosted documentat
 - [GitHub Copilot Plugins Repository](https://github.com/github/copilot-plugins)
 
 **Google Jules**
+
 - [google-labs-code/jules-action (GitHub)](https://github.com/google-labs-code/jules-action)
 
 **Goose**
+
 - [block/goose](https://github.com/block/goose)
 - [AGENTS.md](https://github.com/block/goose/blob/main/AGENTS.md)
 - [BUILDING_DOCKER.md](https://github.com/block/goose/blob/main/BUILDING_DOCKER.md)
@@ -1191,26 +1341,31 @@ Source code repositories, READMEs, wikis, releases, and GitHub-hosted documentat
 - [Releases](https://github.com/block/goose/releases)
 
 **Gp Nvim**
+
 - [GitHub Repository](https://github.com/Robitx/gp.nvim)
 - [README.md](https://github.com/Robitx/gp.nvim/blob/main/README.md)
 
 **GPT Engineer**
+
 - [github.com/AntonOsika/gpt-engineer](https://github.com/AntonOsika/gpt-engineer)
 - [github.com/AntonOsika/gpt-engineer/blob/main/docs/open_models.md](https://github.com/AntonOsika/gpt-engineer/blob/main/docs/open_models.md)
 - [github.com/AntonOsika/gpt-engineer/blob/main/README.md](https://github.com/AntonOsika/gpt-engineer/blob/main/README.md)
 - [github.com/AntonOsika/gpt-engineer/releases](https://github.com/AntonOsika/gpt-engineer/releases)
 
 **GPT Migrate**
+
 - [github.com/0xpayne/gpt-migrate](https://github.com/0xpayne/gpt-migrate)
 - [github.com/0xpayne/gpt-migrate/blob/main/README.md](https://github.com/0xpayne/gpt-migrate/blob/main/README.md)
 
 **GPT Pilot**
+
 - [GPT Pilot GitHub Repository](https://github.com/Pythagora-io/gpt-pilot)
 - [GPT Pilot Wiki - FAQ](https://github.com/Pythagora-io/gpt-pilot/wiki/Frequently-Asked-Questions)
 - [GPT Pilot Wiki - Using with Local LLMs](https://github.com/Pythagora-io/gpt-pilot/wiki/Using-GPT%E2%80%90Pilot-with-Local-LLMs)
 - [GPT Pilot Wiki - VS Code Extension](https://github.com/Pythagora-io/gpt-pilot/wiki/VSCode-Extension-help)
 
 **GPTme**
+
 - [GitHub: gptme-agent-template](https://github.com/ErikBjare/gptme-agent-template)
 - [GitHub: gptme-contrib](https://github.com/gptme)
 - [GitHub: gptme/gptme](https://github.com/gptme/gptme)
@@ -1218,73 +1373,95 @@ Source code repositories, READMEs, wikis, releases, and GitHub-hosted documentat
 - [gptme Releases](https://github.com/gptme/gptme/releases)
 
 **Groq Code CLI**
+
 - [github.com/build-with-groq/groq-code-cli](https://github.com/build-with-groq/groq-code-cli)
 
 **Haystack Editor**
+
 - [GitHub Repository](https://github.com/haystackeditor/haystack-editor)
 
 **Helge Claude Plan Viewer**
+
 - [github.com/HelgeSverre/claude-plan-viewer](https://github.com/HelgeSverre/claude-plan-viewer)
 
 **Helge Glados**
+
 - [github.com/HelgeSverre/glados](https://github.com/HelgeSverre/glados)
 - [github.com/R2D2FISH/glados-tts](https://github.com/R2D2FISH/glados-tts)
 
 **Helge Mindwave**
+
 - [github.com/HelgeSverre/mindwave](https://github.com/HelgeSverre/mindwave)
 
 **Helge Ollama Scraper**
+
 - [github.com/HelgeSverre/ollama-library-scraper](https://github.com/HelgeSverre/ollama-library-scraper)
 
 **Helge Pagent**
+
 - [github.com/HelgeSverre/pagent](https://github.com/HelgeSverre/pagent)
 
 **Helge Sales**
+
 - [github.com/HelgeSverre/sales](https://github.com/HelgeSverre/sales)
 
 **Helge Sema**
+
 - [github.com/HelgeSverre/sema](https://github.com/HelgeSverre/sema)
 
 **Helge Swarm**
+
 - [github.com/HelgeSverre/swarm](https://github.com/HelgeSverre/swarm)
 
 **Helge Synapse**
+
 - [github.com/HelgeSverre/synapse](https://github.com/HelgeSverre/synapse)
 
 **Helge Viberank**
+
 - [github.com/HelgeSverre/viberank](https://github.com/HelgeSverre/viberank)
 
 **Incognito Pilot**
+
 - [github.com/silvanmelchior/IncognitoPilot](https://github.com/silvanmelchior/IncognitoPilot)
 
 **Jan**
+
 - [GitHub Repository](https://github.com/janhq/jan)
 
 **Jetbrains Junie**
+
 - [github.com/JetBrains/junie-github-action](https://github.com/JetBrains/junie-github-action)
 - [github.com/JetBrains/mcp-jetbrains](https://github.com/JetBrains/mcp-jetbrains)
 
 **Kilo Code**
+
 - [github.com/Kilo-Org/kilocode](https://github.com/Kilo-Org/kilocode)
 
 **Kiro**
+
 - [Kiro GitHub Repository](https://github.com/kirodotdev/Kiro)
 
 **Langchain**
+
 - [github.com/langchain-ai/deepagents](https://github.com/langchain-ai/deepagents)
 - [github.com/langchain-ai/langchain](https://github.com/langchain-ai/langchain)
 - [github.com/langchain-ai/open-agent-platform](https://github.com/langchain-ai/open-agent-platform)
 
 **Manus**
+
 - [GitHub Gist - Manus Architecture Investigation](https://gist.github.com/renschni/4fbc70b31bad8dd57f3370239dccd58f)
 
 **MCP**
+
 - [github.com/modelcontextprotocol](https://github.com/modelcontextprotocol)
 
 **Melty**
+
 - [GitHub Repository](https://github.com/meltylabs/melty)
 
 **Mentat**
+
 - [GitHub: AbanteAI/archive-old-cli-mentat](https://github.com/AbanteAI/archive-old-cli-mentat)
 - [Option to use local llama model -- Issue #1](https://github.com/AbanteAI/archive-old-cli-mentat/issues/1)
 - [GitHub: AbanteAI/mentat](https://github.com/AbanteAI/mentat)
@@ -1293,131 +1470,168 @@ Source code repositories, READMEs, wikis, releases, and GitHub-hosted documentat
 - [Mentat-bot discussion on OpenHands](https://github.com/OpenHands/OpenHands/issues/2821)
 
 **Metagpt**
+
 - [MetaGPT GitHub Repository](https://github.com/FoundationAgents/MetaGPT)
 
 **Micro Agent**
+
 - [github.com/BuilderIO/micro-agent](https://github.com/BuilderIO/micro-agent)
 
 **Mistral Vibe**
+
 - [Mistral Vibe GitHub repository](https://github.com/mistralai/mistral-vibe)
 
 **Nanocoder**
+
 - [github.com/Nano-Collective/nanocoder](https://github.com/Nano-Collective/nanocoder)
 
 **Octogen**
+
 - [github.com/dbpunk-labs/octogen](https://github.com/dbpunk-labs/octogen)
 
 **Open Interpreter**
+
 - [github.com/openinterpreter/open-interpreter](https://github.com/openinterpreter/open-interpreter)
 
 **Open Swe**
+
 - [github.com/langchain-ai/open-swe](https://github.com/langchain-ai/open-swe)
 
 **Openai Agents SDK**
+
 - [github.com/openai/openai-agents-python](https://github.com/openai/openai-agents-python)
 
 **Openai Codex**
+
 - [openai/codex repository](https://github.com/openai/codex)
 - [openai/codex-action](https://github.com/openai/codex-action)
 - [Releases](https://github.com/openai/codex/releases)
 - [openai/skills](https://github.com/openai/skills)
 
 **Opencode**
+
 - [models.dev](https://github.com/anomalyco/models.dev)
 - [anomalyco/opencode on GitHub](https://github.com/anomalyco/opencode)
 - [opencode-ai/opencode on GitHub](https://github.com/opencode-ai/opencode)
 - [sst/opencode on GitHub](https://github.com/sst/opencode)
 
 **Openhands**
+
 - [OpenHands GitHub repository](https://github.com/OpenHands/OpenHands)
 
 **Pearai**
+
 - [PearAI GitHub repository](https://github.com/trypear/pearai-app)
 
 **Pixeebot**
+
 - [github.com/apps/pixeebot](https://github.com/apps/pixeebot)
 
 **Plandex**
+
 - [github.com/plandex-ai/plandex](https://github.com/plandex-ai/plandex)
 - [github.com/plandex-ai/plandex/releases](https://github.com/plandex-ai/plandex/releases)
 
 **Potpie**
+
 - [github.com/potpie-ai/potpie](https://github.com/potpie-ai/potpie)
 
 **Pr Agent**
+
 - [github.com/qodo-ai/pr-agent](https://github.com/qodo-ai/pr-agent)
 
 **Pydantic AI**
+
 - [github.com/pydantic/pydantic-ai](https://github.com/pydantic/pydantic-ai)
 
 **Qwen Code**
+
 - [github.com/QwenLM/qwen-code](https://github.com/QwenLM/qwen-code)
 
 **Ra AId**
+
 - [github.com/ai-christianson/RA.Aid](https://github.com/ai-christianson/RA.Aid)
 
 **Rawdog**
+
 - [github.com/AbanteAI/rawdog](https://github.com/AbanteAI/rawdog)
 - [github.com/AbanteAI/rawdog/blob/main/README.md](https://github.com/AbanteAI/rawdog/blob/main/README.md)
 
 **Refact AI**
+
 - [Refact.ai GitHub Repository](https://github.com/smallcloudai/refact)
 
 **Roo Code**
+
 - [github.com/RooCodeInc/Roo-Code](https://github.com/RooCodeInc/Roo-Code)
 
 **Shai**
+
 - [github.com/ovh/shai](https://github.com/ovh/shai)
 
 **Shell GPT**
+
 - [github.com/TheR1D/shell_gpt](https://github.com/TheR1D/shell_gpt)
 - [github.com/TheR1D/shell_gpt/blob/main/README.md](https://github.com/TheR1D/shell_gpt/blob/main/README.md)
 - [github.com/TheR1D/shell_gpt/releases](https://github.com/TheR1D/shell_gpt/releases)
 - [github.com/TheR1D/shell_gpt/wiki/Ollama](https://github.com/TheR1D/shell_gpt/wiki/Ollama)
 
 **Smol Developer**
+
 - [github.com/smol-ai/developer](https://github.com/smol-ai/developer)
 - [github.com/smol-ai/developer/commits/main](https://github.com/smol-ai/developer/commits/main)
 
 **Sourcegraph Cody**
+
 - [github.com/sourcegraph/cody](https://github.com/sourcegraph/cody)
 - [github.com/sourcegraph/cody-vs](https://github.com/sourcegraph/cody-vs)
 
 **Superset Agents**
+
 - [github.com/superset-sh/superset](https://github.com/superset-sh/superset)
 
 **Swe Agent**
+
 - [Mini-SWE-agent GitHub repository](https://github.com/SWE-agent/mini-swe-agent)
 - [SWE-agent GitHub repository](https://github.com/SWE-agent/SWE-agent)
 
 **Sweep**
+
 - [github.com/sweepai/sweep](https://github.com/sweepai/sweep)
 
 **Tabby**
+
 - [GitHub Repository](https://github.com/TabbyML/tabby)
 
 **V0**
+
 - [v0 MCP server for Claude Code (GitHub)](https://github.com/hellolucky/v0-mcp)
 - [Vercel mcp-handler (GitHub)](https://github.com/vercel/mcp-handler)
 
 **Vercel AI SDK**
+
 - [github.com/vercel/ai](https://github.com/vercel/ai)
 
 **Vibe Compiler**
+
 - [github.com/Strawberry-Computer/vibe-compiler](https://github.com/Strawberry-Computer/vibe-compiler)
 
 **Void Editor**
+
 - [github.com/voideditor/void](https://github.com/voideditor/void)
 - [github.com/voideditor/void/issues/926](https://github.com/voideditor/void/issues/926)
 - [github.com/voideditor/void/releases](https://github.com/voideditor/void/releases)
 
 **Vtcode**
+
 - [github.com/vinhnx/VTCode](https://github.com/vinhnx/VTCode)
 
 **Wcgw**
+
 - [github.com/rusiaaman/wcgw](https://github.com/rusiaaman/wcgw)
 
 **Zed**
+
 - [GitHub: Agent Client Protocol](https://github.com/zed-industries/agent-client-protocol)
 - [GitHub: zed-industries/extensions](https://github.com/zed-industries/extensions)
 - [GitHub: zed-industries/zed](https://github.com/zed-industries/zed)
@@ -2068,149 +2282,191 @@ Direct links to pricing pages for each tool.
 
 Package registries, plugin marketplaces, API references, SDK docs, and developer resources.
 
-
 **AIchat**
+
 - [crates.io/crates/aichat](https://crates.io/crates/aichat)
 - [lib.rs/crates/aichat](https://lib.rs/crates/aichat)
 
 **AIder**
+
 - [aider-chat on PyPI](https://pypi.org/project/aider-chat)
 
 **Autocoderover**
+
 - [AutoCodeRover GitHub Action](https://github.com/marketplace/actions/autocoderover-action)
 
 **Autodev**
+
 - [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Phodal.autodev)
 - [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/21520-autodev)
 
 **Blackbox AI**
+
 - [Blackbox AI VS Code Marketplace](https://marketplace.microsoft.com/en-us/product/saas/blackboxai.b9513add-f420-4ea7-b7c4-9532c306726a)
 
 **Bolt Diy**
+
 - [Open Source Version Documentation (Bolters)](https://bolters.io/docs/versioning-open-source.html)
 
 **Claude Agent SDK**
+
 - [www.npmjs.com/package/@anthropic-ai/claude-agent-sdk](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk)
 - [www.promptfoo.dev/docs/providers/claude-agent-sdk](https://www.promptfoo.dev/docs/providers/claude-agent-sdk)
 
 **CLIne**
+
 - [Cline VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=saoudrizwan.claude-dev)
 
 **Codebuff**
+
 - [Codebuff on npm](https://www.npmjs.com/package/codebuff)
 
 **Codegeex**
+
 - [HuggingFace Model](https://huggingface.co/zai-org/codegeex4-all-9b)
 - [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/20587-codegeex-ai-coding-assistant)
 
 **Continue**
+
 - [Continue VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Continue.continue)
 - [Continue JetBrains Plugin](https://plugins.jetbrains.com/plugin/22707-continue)
 
 **Copilot Workspace**
+
 - [VS Code Docs - Copilot Coding Agent](https://code.visualstudio.com/docs/copilot/copilot-coding-agent)
 
 **Gemini CLI**
+
 - [npm Package: @google/gemini-cli](https://www.npmjs.com/package/@google/gemini-cli)
 
 **GPT Engineer**
+
 - [docs.kanaries.net/topics/ChatGPT/gpt-engineer](https://docs.kanaries.net/topics/ChatGPT/gpt-engineer)
 - [gpt-engineer.readthedocs.io/en/latest](https://gpt-engineer.readthedocs.io/en/latest)
 - [pypi.org/project/gpt-engineer](https://pypi.org/project/gpt-engineer)
 
 **Helge Claude Plan Viewer**
+
 - [www.npmjs.com/package/claude-plan-viewer](https://www.npmjs.com/package/claude-plan-viewer)
 
 **Helge Mindwave**
+
 - [packagist.org/packages/mindwave/mindwave](https://packagist.org/packages/mindwave/mindwave)
 
 **Helge Ollama Scraper**
+
 - [www.npmjs.com/package/ollama-library-scraper](https://www.npmjs.com/package/ollama-library-scraper)
 
 **Helge Pagent**
+
 - [packagist.org/packages/helgesverre/pagent](https://packagist.org/packages/helgesverre/pagent)
 
 **Helge Synapse**
+
 - [packagist.org/packages/helgesverre/synapse](https://packagist.org/packages/helgesverre/synapse)
 
 **Jan**
+
 - [Microsoft Store](https://apps.microsoft.com/detail/xpdcnfn5cpzlqb)
 
 **Jetbrains Junie**
+
 - [plugins.jetbrains.com/plugin/26104-junie-the-ai-coding-agent-by-jetbrains](https://plugins.jetbrains.com/plugin/26104-junie-the-ai-coding-agent-by-jetbrains)
 
 **Kilo Code**
+
 - [marketplace.visualstudio.com/items?itemName=kilocode.Kilo-Code](https://marketplace.visualstudio.com/items?itemName=kilocode.Kilo-Code)
 - [plugins.jetbrains.com/plugin/28350-kilo-code](https://plugins.jetbrains.com/plugin/28350-kilo-code)
 
 **Mentat**
+
 - [Mentat VS Code Extension](https://marketplace.visualstudio.com/items?itemName=AbanteAI.mentat)
 - [Mentat on npm](https://www.npmjs.com/package/@abanteai/mentat)
 
 **Metagpt**
+
 - [MetaGPT on PyPI](https://pypi.org/project/metagpt)
 
 **Micro Agent**
+
 - [www.npmjs.com/package/@builder.io/micro-agent](https://www.npmjs.com/package/@builder.io/micro-agent)
 
 **Mistral Vibe**
+
 - [Devstral 2 on Hugging Face](https://huggingface.co/mistralai/Devstral-2-123B-Instruct-2512)
 - [Devstral Small 2 on Hugging Face](https://huggingface.co/mistralai/Devstral-Small-2-24B-Instruct-2512)
 
 **Nanocoder**
+
 - [www.npmjs.com/package/@nanocollective/nanocoder](https://www.npmjs.com/package/@nanocollective/nanocoder)
 
 **Openai Agents SDK**
+
 - [pypi.org/project/openai-agents](https://pypi.org/project/openai-agents)
 
 **Pearai**
+
 - [PearAI models and usage docs](https://trypear.ai/docs/models-and-usage)
 
 **Pr Agent**
+
 - [qodo-merge-docs.qodo.ai](https://qodo-merge-docs.qodo.ai)
 - [qodo-merge-docs.qodo.ai/installation/github](https://qodo-merge-docs.qodo.ai/installation/github)
 
 **Pydantic AI**
+
 - [pypi.org/project/pydantic-ai](https://pypi.org/project/pydantic-ai)
 
 **Qodo**
+
 - [marketplace.visualstudio.com/items?itemName=Codium.codium](https://marketplace.visualstudio.com/items?itemName=Codium.codium)
 
 **Qwen Code**
+
 - [huggingface.co/Qwen/Qwen3-Coder-480B-A35B-Instruct](https://huggingface.co/Qwen/Qwen3-Coder-480B-A35B-Instruct)
 - [ollama.com/library/qwen3-coder](https://ollama.com/library/qwen3-coder)
 - [openrouter.ai/qwen/qwen3-coder:free](https://openrouter.ai/qwen/qwen3-coder:free)
 
 **Ra AId**
+
 - [docs.ra-aid.ai](https://docs.ra-aid.ai)
 
 **Rawdog**
+
 - [pypi.org/project/rawdog-ai](https://pypi.org/project/rawdog-ai)
 
 **Refact AI**
+
 - [Refact VS Code Extension](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify)
 - [Refact JetBrains Plugin](https://plugins.jetbrains.com/plugin/20647-refact--open-source-ai-agent-code-generator--chat)
 
 **Roo Code**
+
 - [marketplace.visualstudio.com/items?itemName=RooVeterinaryInc.roo-cline](https://marketplace.visualstudio.com/items?itemName=RooVeterinaryInc.roo-cline)
 
 **Shell GPT**
+
 - [pypi.org/project/shell-gpt](https://pypi.org/project/shell-gpt)
 
 **Sourcegraph Cody**
+
 - [marketplace.visualstudio.com/items?itemName=sourcegraph.cody-ai](https://marketplace.visualstudio.com/items?itemName=sourcegraph.cody-ai)
 
 **Tabby**
+
 - [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=TabbyML.vscode-tabby)
 
 **Tongyi Lingma**
+
 - [marketplace.visualstudio.com/items?itemName=Alibaba-Cloud.tongyi-lingma](https://marketplace.visualstudio.com/items?itemName=Alibaba-Cloud.tongyi-lingma)
 - [plugins.jetbrains.com/plugin/17809-tongyi-lingma--your-ai-coding-assistant-ty...](https://plugins.jetbrains.com/plugin/17809-tongyi-lingma--your-ai-coding-assistant-type-less-code-more-)
 
 **V0**
+
 - [Vercel MCP adapter npm package](https://www.npmjs.com/package/@vercel/mcp-adapter)
 
 **Zencoder**
+
 - [marketplace.visualstudio.com/items?itemName=ZencoderAI.zencoder](https://marketplace.visualstudio.com/items?itemName=ZencoderAI.zencoder)
 - [plugins.jetbrains.com/plugin/24782-zencoder-your-mindful-ai-coding-agent](https://plugins.jetbrains.com/plugin/24782-zencoder-your-mindful-ai-coding-agent)
 

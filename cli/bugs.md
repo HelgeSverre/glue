@@ -3,6 +3,7 @@
 **Description**: The `/models` command only collects and displays models from the currently selected provider. It should collect models across all available providers.
 
 **Additional Improvements**:
+
 - Use the `DialogPanel` instead of outputting the list to the output area.
 - Allow swapping between models with a selection interface in the dialog.
 

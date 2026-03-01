@@ -24,11 +24,11 @@ Prefix with `& ` (ampersand + space) to run commands in the background. The shel
 
 ## Limits
 
-| Limit | Default |
-|---|---|
-| Synchronous command timeout | 30 seconds (configurable) |
-| Output line cap | 50 lines (`bash.max_lines` in config) |
-| Background job timeout | None -- runs until completion or manual kill |
+| Limit                       | Default                                      |
+| --------------------------- | -------------------------------------------- |
+| Synchronous command timeout | 30 seconds (configurable)                    |
+| Output line cap             | 50 lines (`bash.max_lines` in config)        |
+| Background job timeout      | None -- runs until completion or manual kill |
 
 ::: tip
 Use background jobs for long-running tasks like compilation or test suites so you can continue chatting while they run.

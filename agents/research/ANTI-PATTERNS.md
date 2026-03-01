@@ -162,6 +162,7 @@ The fact that this directive appeared independently across tools from Anthropic,
 - **v0**: Defines a complete MDX component vocabulary (`<CodeProject>`, `<QuickEdit>`, `<DeleteFile>`, `<MoveFile>`) with explicit rules about when to use each one.
 
 **Counter-evidence (tools that under-constrain):**
+
 - **GitHub Copilot** (May 2023 version): Had minimal format guidance: `"Output the code in a single code block"`, `"Minimize any other prose"`. This version was replaced with more structured versions by 2025.
 - **Open Interpreter** (early versions): Allowed free-form code output that needed to be parsed heuristically.
 
@@ -180,6 +181,7 @@ The fact that this directive appeared independently across tools from Anthropic,
 **Evidence:**
 
 - **PR-Agent** is the most explicit about this pattern. Its `/improve` prompt contains a detailed blacklist:
+
   ```
   DO NOT suggest the following:
   - change packages version
@@ -188,6 +190,7 @@ The fact that this directive appeared independently across tools from Anthropic,
   - use more specific exception types
   - repeat changes already done in the PR code
   ```
+
   Its self-reflection scoring prompt goes further, assigning a score of 0 to suggestions about: "Adding docstring, type hints, or comments", "Remove unused imports or variables", "Add missing import statements", "Using more specific exception types."
 
 - **Claude Code**: `"Don't add features, refactor code, or make 'improvements' beyond what was asked. A bug fix doesn't need surrounding code cleaned up. A simple feature doesn't need extra configurability. Don't add docstrings, comments, or type annotations to code you didn't change."`
@@ -221,7 +224,7 @@ The fact that this directive appeared independently across tools from Anthropic,
   - Stage specific files, not `git add .`
   - Never use destructive commands (reset --hard, checkout ., restore ., clean -f, branch -D) unless explicitly requested
 
-  The "never amend after hook failure" rule is uniquely insightful: when a pre-commit hook fails, the commit did not happen, so `--amend` would modify the *previous* commit, potentially destroying unrelated work. No other tool addresses this specific footgun.
+  The "never amend after hook failure" rule is uniquely insightful: when a pre-commit hook fails, the commit did not happen, so `--amend` would modify the _previous_ commit, potentially destroying unrelated work. No other tool addresses this specific footgun.
 
 - **Devin**: `"Never force push, instead ask the user for help if your push fails"` and `"Never use 'git add .'"`
 - Most other tools have partial coverage at best. Many tools with shell access have no git-specific safety rules at all.
@@ -497,6 +500,7 @@ The amount of prompt real estate dedicated to this instruction across tools sugg
 - **GitHub Copilot** (Agent Mode): `"a highly sophisticated automated coding agent with expert-level knowledge"`
 
 **Contrast with tools that don't bother:**
+
 - **SWE-agent**: `"You are a helpful assistant"` -- one of the most benchmark-competitive tools.
 - **Aider**: `"Act as an expert software developer"` -- modest and effective.
 - **Claude Code**: `"You are Claude Code, Anthropic's official CLI for Claude"` -- factual identity only, no superlatives.
@@ -624,18 +628,18 @@ The convergence on "3 attempts then escalate" across Cursor, Replit, and Devin i
 
 When multiple tools independently discover and address the same anti-pattern, that is strong evidence the anti-pattern is real and significant. The most convergent anti-patterns (ranked by number of tools that independently address them):
 
-| Anti-Pattern | Tools Addressing It | Confidence |
-|---|---|---|
-| Placeholder/TODO code | 7+ (Plandex, Open Interpreter, Crush, Roo Code, Claude Code, Cursor, gptme) | Very High |
-| Sycophantic openers | 6+ (Augment, Roo/Kilo, Claude Code, Crush, Copilot, OpenCode) | Very High |
-| Shell-for-file-operations | 6+ (Claude Code, Warp, Devin, Amazon Q, Crush, SWE-agent) | Very High |
-| Permission-seeking loops | 5+ (Cursor, Claude Code, Codex, Windsurf, Devin) | Very High |
-| Plan-instead-of-execute | 5+ (Crush, Copilot, Cursor, Windsurf, Claude Code) | Very High |
-| Sequential tool calling | 5+ (Cursor, Claude Code, Codex, Gemini, Lovable, Devin) | Very High |
-| Infinite retry loops | 4 (Cursor, Augment, Replit, Devin) | Very High |
-| Phantom tool hallucination | 3 (Cursor, Crush, Windsurf) | High |
-| Whole-file rewrite | 3+ (Aider, Windsurf, Cursor) evolution evidence | High |
-| Time estimates | 2 (Claude Code, Devin) | High |
+| Anti-Pattern               | Tools Addressing It                                                         | Confidence |
+| -------------------------- | --------------------------------------------------------------------------- | ---------- |
+| Placeholder/TODO code      | 7+ (Plandex, Open Interpreter, Crush, Roo Code, Claude Code, Cursor, gptme) | Very High  |
+| Sycophantic openers        | 6+ (Augment, Roo/Kilo, Claude Code, Crush, Copilot, OpenCode)               | Very High  |
+| Shell-for-file-operations  | 6+ (Claude Code, Warp, Devin, Amazon Q, Crush, SWE-agent)                   | Very High  |
+| Permission-seeking loops   | 5+ (Cursor, Claude Code, Codex, Windsurf, Devin)                            | Very High  |
+| Plan-instead-of-execute    | 5+ (Crush, Copilot, Cursor, Windsurf, Claude Code)                          | Very High  |
+| Sequential tool calling    | 5+ (Cursor, Claude Code, Codex, Gemini, Lovable, Devin)                     | Very High  |
+| Infinite retry loops       | 4 (Cursor, Augment, Replit, Devin)                                          | Very High  |
+| Phantom tool hallucination | 3 (Cursor, Crush, Windsurf)                                                 | High       |
+| Whole-file rewrite         | 3+ (Aider, Windsurf, Cursor) evolution evidence                             | High       |
+| Time estimates             | 2 (Claude Code, Devin)                                                      | High       |
 
 ### The Evolution Signal
 

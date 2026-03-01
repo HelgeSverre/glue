@@ -236,16 +236,16 @@ Roo Code and Kilo Code are both Apache 2.0 forks of Cline that have diverged sig
 
 ### Best for Specific Languages
 
-| Language | Best Tool | Why |
-|----------|----------|-----|
-| **Python** | Claude Code or Aider | Claude excels at Python; Aider's Git-native workflow suits Python projects |
-| **TypeScript/JavaScript** | Cursor or v0 | Cursor's indexing handles TS well; v0 is unmatched for React/Next.js |
-| **Go** | Claude Code or OpenCode | Claude models handle Go well; OpenCode has Go LSP built in |
-| **Rust** | Claude Code or OpenCode | Both handle Rust; OpenCode's Rust LSP gives semantic understanding |
-| **Java** | JetBrains + Junie or Amazon Q | JetBrains' deep Java intelligence; Amazon Q's /transform for modernization |
-| **C/C++** | Claude Code or OpenCode | OpenCode's clangd LSP integration gives C/C++ semantic awareness |
-| **Ruby/Rails** | Cursor or Aider | Good framework understanding across the stack |
-| **Swift/iOS** | Copilot for Xcode or Cursor | Copilot is the only major tool with Xcode integration |
+| Language                  | Best Tool                     | Why                                                                        |
+| ------------------------- | ----------------------------- | -------------------------------------------------------------------------- |
+| **Python**                | Claude Code or Aider          | Claude excels at Python; Aider's Git-native workflow suits Python projects |
+| **TypeScript/JavaScript** | Cursor or v0                  | Cursor's indexing handles TS well; v0 is unmatched for React/Next.js       |
+| **Go**                    | Claude Code or OpenCode       | Claude models handle Go well; OpenCode has Go LSP built in                 |
+| **Rust**                  | Claude Code or OpenCode       | Both handle Rust; OpenCode's Rust LSP gives semantic understanding         |
+| **Java**                  | JetBrains + Junie or Amazon Q | JetBrains' deep Java intelligence; Amazon Q's /transform for modernization |
+| **C/C++**                 | Claude Code or OpenCode       | OpenCode's clangd LSP integration gives C/C++ semantic awareness           |
+| **Ruby/Rails**            | Cursor or Aider               | Good framework understanding across the stack                              |
+| **Swift/iOS**             | Copilot for Xcode or Cursor   | Copilot is the only major tool with Xcode integration                      |
 
 ---
 
@@ -483,51 +483,51 @@ For a developer who wants the optimal setup in 2026:
 
 The AI-native IDE that does not require you to leave your editor. Import your VS Code setup on day one. Use Agent mode for multi-file tasks, Tab for inline completions, @codebase for whole-repo questions. Background agents for async work. Multi-model support means you can switch between Claude, GPT, and Gemini based on the task. Graphite integration for stacked PRs and merge queues.
 
-*Alternative if you are terminal-first*: Skip the IDE agent entirely and use Claude Code as your primary.
+_Alternative if you are terminal-first_: Skip the IDE agent entirely and use Claude Code as your primary.
 
 ### CLI Agent for Terminal Work: Claude Code ($20/month Pro or API)
 
 When you need to work in the terminal -- git operations, system-level tasks, CI/CD integration, or just prefer the command line. Claude Opus 4.6 is the strongest coding model available. CLAUDE.md provides project-level context. Headless mode for automation. The GitHub Action for @claude in PRs bridges the terminal-to-GitHub workflow.
 
-*Budget alternative*: OpenCode (free, use with existing subscriptions) or Gemini CLI (free, 1,000 requests/day) or Aider + DeepSeek V3 ($1-5/month).
+_Budget alternative_: OpenCode (free, use with existing subscriptions) or Gemini CLI (free, 1,000 requests/day) or Aider + DeepSeek V3 ($1-5/month).
 
 ### Cloud Agent for Async Tasks: Google Jules ($0-20/month)
 
 The most mature async coding agent. Assign tasks via web UI, CLI, API, or GitHub issue labels. Jules works in a cloud VM, runs tests, and delivers results as pull requests. Critic agent self-reviews before presenting. Suggested Tasks proactively scans repos. 15 free tasks/day on the free tier covers most individual needs.
 
-*Alternative*: GitHub Copilot Coding Agent (included in $10/month Pro) for simpler issue-to-PR workflows.
+_Alternative_: GitHub Copilot Coding Agent (included in $10/month Pro) for simpler issue-to-PR workflows.
 
 ### Framework for Custom Agents: Claude Agent SDK (Python/TypeScript)
 
 When you need to build custom agent workflows -- CI/CD automation, custom code review pipelines, batch processing, internal tools. The same engine as Claude Code, available programmatically. Supports hooks, subagents, MCP, permissions, and session management.
 
-*Alternative*: OpenAI Agents SDK + Codex as MCP server for GPT-model-based workflows. Or the Vercel AI SDK for web-based agent applications.
+_Alternative_: OpenAI Agents SDK + Codex as MCP server for GPT-model-based workflows. Or the Vercel AI SDK for web-based agent applications.
 
 ### Supporting Tools
 
-| Role | Tool | Cost |
-|------|------|------|
-| **Code review** | CodeRabbit (free for open source, $24/seat/month Pro) | Automated PR reviews with 40+ linters |
-| **Stacked PRs / merge queue** | Graphite (now part of Cursor) | $40/user/month Teams, or free basic stacking |
-| **MCP servers** | Playwright MCP (browser testing), GitHub MCP (repo operations), Serena (LSP-based code intelligence), database MCPs | Free (open source) |
-| **Codebase intelligence** | Augment Code Context Engine (MCP server) | Enhances any MCP-compatible agent's codebase understanding |
-| **Spec-driven context** | Tessl (10K+ library tiles for correct API usage) | Enhances agent reliability via MCP |
-| **Design-to-code** | v0 ($20/month) for React/Next.js UI generation | Best-in-class error-free rate |
-| **Self-hosted completions** | Tabby (free, Apache 2.0) | For air-gapped or privacy-sensitive environments |
-| **Sandboxed execution** | E2B (standard) or Daytona (fastest startup) | For custom agent workflows needing isolated code execution |
-| **Multi-agent orchestration** | Claude Squad (free, AGPL-3.0) | Manage parallel agents with tmux + git worktrees |
-| **Terminal with AI** | Warp ($0-20/month) | AI-native terminal with agent mode and MCP gallery |
-| **Infrastructure** | Pulumi Neo (free preview) | Natural language infrastructure management |
-| **Project instructions** | CLAUDE.md + AGENTS.md + .cursorrules | Free -- version control these with your repo |
+| Role                          | Tool                                                                                                                | Cost                                                       |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| **Code review**               | CodeRabbit (free for open source, $24/seat/month Pro)                                                               | Automated PR reviews with 40+ linters                      |
+| **Stacked PRs / merge queue** | Graphite (now part of Cursor)                                                                                       | $40/user/month Teams, or free basic stacking               |
+| **MCP servers**               | Playwright MCP (browser testing), GitHub MCP (repo operations), Serena (LSP-based code intelligence), database MCPs | Free (open source)                                         |
+| **Codebase intelligence**     | Augment Code Context Engine (MCP server)                                                                            | Enhances any MCP-compatible agent's codebase understanding |
+| **Spec-driven context**       | Tessl (10K+ library tiles for correct API usage)                                                                    | Enhances agent reliability via MCP                         |
+| **Design-to-code**            | v0 ($20/month) for React/Next.js UI generation                                                                      | Best-in-class error-free rate                              |
+| **Self-hosted completions**   | Tabby (free, Apache 2.0)                                                                                            | For air-gapped or privacy-sensitive environments           |
+| **Sandboxed execution**       | E2B (standard) or Daytona (fastest startup)                                                                         | For custom agent workflows needing isolated code execution |
+| **Multi-agent orchestration** | Claude Squad (free, AGPL-3.0)                                                                                       | Manage parallel agents with tmux + git worktrees           |
+| **Terminal with AI**          | Warp ($0-20/month)                                                                                                  | AI-native terminal with agent mode and MCP gallery         |
+| **Infrastructure**            | Pulumi Neo (free preview)                                                                                           | Natural language infrastructure management                 |
+| **Project instructions**      | CLAUDE.md + AGENTS.md + .cursorrules                                                                                | Free -- version control these with your repo               |
 
 ### Total Monthly Cost
 
-| Configuration | Monthly Cost |
-|---------------|-------------|
-| **Budget** (OpenCode + existing sub + Gemini CLI + Jules Free) | $0-5 |
-| **Solo developer** (Cursor Pro + Claude Code Pro + Jules Free) | $40 |
-| **Power user** (Cursor Pro + Claude Code Max 5x + Jules Pro + CodeRabbit) | $174 |
-| **Team of 5** (Cursor Teams + Copilot Business + CodeRabbit Pro + Graphite Teams) | ~$835/month |
+| Configuration                                                                     | Monthly Cost |
+| --------------------------------------------------------------------------------- | ------------ |
+| **Budget** (OpenCode + existing sub + Gemini CLI + Jules Free)                    | $0-5         |
+| **Solo developer** (Cursor Pro + Claude Code Pro + Jules Free)                    | $40          |
+| **Power user** (Cursor Pro + Claude Code Max 5x + Jules Pro + CodeRabbit)         | $174         |
+| **Team of 5** (Cursor Teams + Copilot Business + CodeRabbit Pro + Graphite Teams) | ~$835/month  |
 
 ---
 
@@ -544,6 +544,7 @@ Consolidation is accelerating. Cursor acquired Supermaven and Graphite. Google a
 ## Methodology
 
 These recommendations are based on analysis of 289 tool reports covering:
+
 - Official documentation, pricing pages, and changelogs
 - GitHub repositories (stars, contributors, release cadence)
 - Independent benchmarks (SWE-bench Verified, Aider Polyglot Leaderboard, Terminal-Bench)
@@ -557,4 +558,4 @@ Every tool was evaluated on: agentic capabilities, model support, extensibility 
 
 ---
 
-*Last updated: February 12, 2026*
+_Last updated: February 12, 2026_

@@ -18,12 +18,12 @@ You can configure permanent tool trust in `~/.glue/config.yaml`. Use with cautio
 
 Glue has four permission modes that control how tool calls are approved. Cycle through them with `Shift+Tab` during a session, or set a default via the `GLUE_PERMISSION_MODE` environment variable.
 
-| Mode | Label | Behavior |
-|---|---|---|
-| `confirm` | confirm | Ask for confirmation on untrusted tools (default) |
-| `acceptEdits` | accept-edits | Auto-approve file edits, still ask for shell commands |
-| `ignorePermissions` | YOLO | Auto-approve everything — no confirmations at all |
-| `readOnly` | read-only | Deny all mutating tools — they are not even sent to the LLM |
+| Mode                | Label        | Behavior                                                    |
+| ------------------- | ------------ | ----------------------------------------------------------- |
+| `confirm`           | confirm      | Ask for confirmation on untrusted tools (default)           |
+| `acceptEdits`       | accept-edits | Auto-approve file edits, still ask for shell commands       |
+| `ignorePermissions` | YOLO         | Auto-approve everything — no confirmations at all           |
+| `readOnly`          | read-only    | Deny all mutating tools — they are not even sent to the LLM |
 
 ::: warning
 The `ignorePermissions` mode disables all safety checks. The agent can run arbitrary shell commands, overwrite files, and make network requests without any confirmation. Only use this mode in disposable environments or when you fully trust the task.

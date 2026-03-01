@@ -10,30 +10,30 @@
 
 Every known customization file format, organized by tool.
 
-| Tool | File(s) | Syntax | Location(s) | Backing Org |
-|------|---------|--------|-------------|-------------|
-| **Claude Code** | `CLAUDE.md` | Markdown (free-form) | `./CLAUDE.md`, `./.claude/CLAUDE.md`, `~/.claude/CLAUDE.md` | Anthropic |
-| **Codex CLI** | `AGENTS.md` | Markdown (free-form) | Any directory (hierarchical: root to leaf) | OpenAI |
-| **Gemini CLI** | `GEMINI.md` | Markdown (free-form) | `~/.gemini/GEMINI.md`, extensions, project root, subdirectories | Google |
-| **Cursor** | `.cursorrules` | Markdown (free-form) | Project root | Cursor/Anysphere |
-| **Windsurf** | `.windsurfrules` | Markdown (free-form) | Project root | Codeium/OpenAI |
-| **Cline** | `.clinerules` | Markdown (free-form) | Project root | Cline (open source) |
-| **Roo Code** | `.roomodes`, `.roo/rules*` | JSON (modes), Markdown (rules) | Project root (`.roomodes`), `.roo/` directory | Roo Code (open source) |
-| **Kilo Code** | `.kilocodemodes`, `.kilocode/system-prompt-{mode}` | JSON (modes), Markdown (prompts) | Project root, `.kilocode/` directory | Kilo Code (open source) |
-| **GitHub Copilot** | `.github/copilot-instructions.md`, `.github/agents/*.md`, `.github/prompts/*.prompt.md` | Markdown + YAML frontmatter | `.github/` directory | GitHub/Microsoft |
-| **Amazon Q** | `.amazonq/rules/*.md`, `~/.aws/amazonq/prompts/` | Markdown (free-form) | Project `.amazonq/`, user `~/.aws/` | AWS |
-| **Kiro** | `.kiro/steering/*.md` | Markdown + YAML frontmatter | `.kiro/steering/` directory | AWS |
-| **Continue** | `.continue/rules/*.md` | Markdown + metadata (globs, attachment type) | `.continue/rules/` directory | Continue (open source) |
-| **Goose** | `.goosehints`, `AGENTS.md` | Markdown (free-form) | Project root | Block |
-| **Warp** | `WARP.md` | Markdown (free-form) | Project root | Warp |
-| **OpenCode** | `OpenCode.md` | Markdown (free-form) | Project root | OpenCode (open source) |
-| **JetBrains Junie** | `.junie/guidelines.md` | Markdown (free-form) | `.junie/` directory | JetBrains |
-| **avante-nvim** | `.avanterules` | Jinja2 templates | Project root | avante-nvim (open source) |
-| **gptme** | `gptme.toml` | TOML | Project root, `~/.config/gptme/` | gptme (open source) |
-| **Serena** | `serena.yml`, per-project config | YAML | Project root | Serena (open source) |
-| **codecompanion-nvim** | (reads others) `.cursorrules`, `.clinerules`, `CLAUDE.md`, `AGENTS.md` | Markdown (free-form) | Project root | codecompanion-nvim (open source) |
-| **OpenHands** | `.openhands/microagents/`, `.cursorrules`, `AGENTS.md` | Markdown, TOML | Project root | OpenHands (open source) |
-| **Augment Code** | User rules (settings-based) | Free-form text | IDE settings | Augment |
+| Tool                   | File(s)                                                                                 | Syntax                                       | Location(s)                                                     | Backing Org                      |
+| ---------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------- | --------------------------------------------------------------- | -------------------------------- |
+| **Claude Code**        | `CLAUDE.md`                                                                             | Markdown (free-form)                         | `./CLAUDE.md`, `./.claude/CLAUDE.md`, `~/.claude/CLAUDE.md`     | Anthropic                        |
+| **Codex CLI**          | `AGENTS.md`                                                                             | Markdown (free-form)                         | Any directory (hierarchical: root to leaf)                      | OpenAI                           |
+| **Gemini CLI**         | `GEMINI.md`                                                                             | Markdown (free-form)                         | `~/.gemini/GEMINI.md`, extensions, project root, subdirectories | Google                           |
+| **Cursor**             | `.cursorrules`                                                                          | Markdown (free-form)                         | Project root                                                    | Cursor/Anysphere                 |
+| **Windsurf**           | `.windsurfrules`                                                                        | Markdown (free-form)                         | Project root                                                    | Codeium/OpenAI                   |
+| **Cline**              | `.clinerules`                                                                           | Markdown (free-form)                         | Project root                                                    | Cline (open source)              |
+| **Roo Code**           | `.roomodes`, `.roo/rules*`                                                              | JSON (modes), Markdown (rules)               | Project root (`.roomodes`), `.roo/` directory                   | Roo Code (open source)           |
+| **Kilo Code**          | `.kilocodemodes`, `.kilocode/system-prompt-{mode}`                                      | JSON (modes), Markdown (prompts)             | Project root, `.kilocode/` directory                            | Kilo Code (open source)          |
+| **GitHub Copilot**     | `.github/copilot-instructions.md`, `.github/agents/*.md`, `.github/prompts/*.prompt.md` | Markdown + YAML frontmatter                  | `.github/` directory                                            | GitHub/Microsoft                 |
+| **Amazon Q**           | `.amazonq/rules/*.md`, `~/.aws/amazonq/prompts/`                                        | Markdown (free-form)                         | Project `.amazonq/`, user `~/.aws/`                             | AWS                              |
+| **Kiro**               | `.kiro/steering/*.md`                                                                   | Markdown + YAML frontmatter                  | `.kiro/steering/` directory                                     | AWS                              |
+| **Continue**           | `.continue/rules/*.md`                                                                  | Markdown + metadata (globs, attachment type) | `.continue/rules/` directory                                    | Continue (open source)           |
+| **Goose**              | `.goosehints`, `AGENTS.md`                                                              | Markdown (free-form)                         | Project root                                                    | Block                            |
+| **Warp**               | `WARP.md`                                                                               | Markdown (free-form)                         | Project root                                                    | Warp                             |
+| **OpenCode**           | `OpenCode.md`                                                                           | Markdown (free-form)                         | Project root                                                    | OpenCode (open source)           |
+| **JetBrains Junie**    | `.junie/guidelines.md`                                                                  | Markdown (free-form)                         | `.junie/` directory                                             | JetBrains                        |
+| **avante-nvim**        | `.avanterules`                                                                          | Jinja2 templates                             | Project root                                                    | avante-nvim (open source)        |
+| **gptme**              | `gptme.toml`                                                                            | TOML                                         | Project root, `~/.config/gptme/`                                | gptme (open source)              |
+| **Serena**             | `serena.yml`, per-project config                                                        | YAML                                         | Project root                                                    | Serena (open source)             |
+| **codecompanion-nvim** | (reads others) `.cursorrules`, `.clinerules`, `CLAUDE.md`, `AGENTS.md`                  | Markdown (free-form)                         | Project root                                                    | codecompanion-nvim (open source) |
+| **OpenHands**          | `.openhands/microagents/`, `.cursorrules`, `AGENTS.md`                                  | Markdown, TOML                               | Project root                                                    | OpenHands (open source)          |
+| **Augment Code**       | User rules (settings-based)                                                             | Free-form text                               | IDE settings                                                    | Augment                          |
 
 ### Naming Convention Taxonomy
 
@@ -49,19 +49,19 @@ Three naming schools have emerged:
 
 ## 2. Feature Matrix
 
-| Feature | CLAUDE.md | AGENTS.md | GEMINI.md | .cursorrules | .windsurfrules | .github/copilot-* | .amazonq/rules/ | .kiro/steering/ | .continue/rules | .roo/ + .roomodes | .kilocode/ | .avanterules |
-|---------|-----------|-----------|-----------|-------------|---------------|-------------------|----------------|----------------|----------------|-------------------|-----------|-------------|
-| **Hierarchy support** | 3-tier (user, project, .claude/) | Unlimited (any dir depth) | 4-tier (global, extension, root, subdirs) | Single file | Single file | 3-tier (instructions, agents, prompts) | 2-tier (global, project) | Multi-file additive | Multi-file with types | Per-mode | Per-mode + global | Template inheritance |
-| **Mode-specific rules** | No | No | No | No | No | Yes (agents) | No | No (cross-mode) | Yes (attachment types) | Yes (per-mode custom instructions) | Yes (system-prompt-{mode}) | Yes ({% block %}) |
-| **Glob/path scoping** | No | Yes (directory tree) | Yes (subdirectory scope) | No | No | No | No | Yes (fileMatch patterns) | Yes (globs per rule) | Yes (fileRegex per tool group) | Yes (fileRegex) | No |
-| **Agent-specific rules** | No | No | No | No | No | Yes (.github/agents/*.md) | No | No | Yes (Agent Requested type) | No | No | No |
-| **Prompt templates** | No | No | No | No | No | Yes ({{variable}} in .prompt.md) | No | Yes (#[[file:path]]) | No | No | Yes (variable interpolation) | Yes (Jinja2 full) |
-| **Conditional logic** | No | No | No | No | No | No | No | Yes (frontmatter: inclusion, fileMatch) | Yes (4 attachment types) | No | No | Yes ({% if %}, {% extends %}) |
-| **Inheritance** | Project overrides global | Deeper overrides shallower | More specific overrides general | N/A | N/A | Agents layer on top of instructions | Implicit + explicit merge | Additive (all loaded) | By attachment type | Mode inherits global | File can replace or extend | Template {% extends %} |
-| **Multi-file support** | No (single per tier) | Yes (one per directory) | Yes (one per scope) | No | No | Yes (multiple agents, prompts) | Yes (multiple .md files) | Yes (any number of .md) | Yes (any number) | Yes (.roo/rules*) | Yes (per-mode files) | No |
-| **Structured format** | Free-form Markdown | Free-form Markdown | Free-form Markdown | Free-form Markdown | Free-form Markdown | Markdown + YAML frontmatter | Free-form Markdown | Markdown + YAML frontmatter | Markdown + metadata | JSON (modes) + Markdown (rules) | Markdown (prompts) | Jinja2 templates |
-| **Tool access control** | No | No | No | No | No | Yes (tools list in agent frontmatter) | No | No | No | Yes (tool groups per mode) | Yes (tool groups per mode) | No |
-| **File reference includes** | No | No | No | No | No | No | No | Yes (#[[file:path]]) | No | No | No | Yes ({% include %}) |
+| Feature                     | CLAUDE.md                        | AGENTS.md                  | GEMINI.md                                 | .cursorrules       | .windsurfrules     | .github/copilot-\*                     | .amazonq/rules/           | .kiro/steering/                         | .continue/rules            | .roo/ + .roomodes                  | .kilocode/                   | .avanterules                  |
+| --------------------------- | -------------------------------- | -------------------------- | ----------------------------------------- | ------------------ | ------------------ | -------------------------------------- | ------------------------- | --------------------------------------- | -------------------------- | ---------------------------------- | ---------------------------- | ----------------------------- |
+| **Hierarchy support**       | 3-tier (user, project, .claude/) | Unlimited (any dir depth)  | 4-tier (global, extension, root, subdirs) | Single file        | Single file        | 3-tier (instructions, agents, prompts) | 2-tier (global, project)  | Multi-file additive                     | Multi-file with types      | Per-mode                           | Per-mode + global            | Template inheritance          |
+| **Mode-specific rules**     | No                               | No                         | No                                        | No                 | No                 | Yes (agents)                           | No                        | No (cross-mode)                         | Yes (attachment types)     | Yes (per-mode custom instructions) | Yes (system-prompt-{mode})   | Yes ({% block %})             |
+| **Glob/path scoping**       | No                               | Yes (directory tree)       | Yes (subdirectory scope)                  | No                 | No                 | No                                     | No                        | Yes (fileMatch patterns)                | Yes (globs per rule)       | Yes (fileRegex per tool group)     | Yes (fileRegex)              | No                            |
+| **Agent-specific rules**    | No                               | No                         | No                                        | No                 | No                 | Yes (.github/agents/\*.md)             | No                        | No                                      | Yes (Agent Requested type) | No                                 | No                           | No                            |
+| **Prompt templates**        | No                               | No                         | No                                        | No                 | No                 | Yes ({{variable}} in .prompt.md)       | No                        | Yes (#[[file:path]])                    | No                         | No                                 | Yes (variable interpolation) | Yes (Jinja2 full)             |
+| **Conditional logic**       | No                               | No                         | No                                        | No                 | No                 | No                                     | No                        | Yes (frontmatter: inclusion, fileMatch) | Yes (4 attachment types)   | No                                 | No                           | Yes ({% if %}, {% extends %}) |
+| **Inheritance**             | Project overrides global         | Deeper overrides shallower | More specific overrides general           | N/A                | N/A                | Agents layer on top of instructions    | Implicit + explicit merge | Additive (all loaded)                   | By attachment type         | Mode inherits global               | File can replace or extend   | Template {% extends %}        |
+| **Multi-file support**      | No (single per tier)             | Yes (one per directory)    | Yes (one per scope)                       | No                 | No                 | Yes (multiple agents, prompts)         | Yes (multiple .md files)  | Yes (any number of .md)                 | Yes (any number)           | Yes (.roo/rules\*)                 | Yes (per-mode files)         | No                            |
+| **Structured format**       | Free-form Markdown               | Free-form Markdown         | Free-form Markdown                        | Free-form Markdown | Free-form Markdown | Markdown + YAML frontmatter            | Free-form Markdown        | Markdown + YAML frontmatter             | Markdown + metadata        | JSON (modes) + Markdown (rules)    | Markdown (prompts)           | Jinja2 templates              |
+| **Tool access control**     | No                               | No                         | No                                        | No                 | No                 | Yes (tools list in agent frontmatter)  | No                        | No                                      | No                         | Yes (tool groups per mode)         | Yes (tool groups per mode)   | No                            |
+| **File reference includes** | No                               | No                         | No                                        | No                 | No                 | No                                     | No                        | Yes (#[[file:path]])                    | No                         | No                                 | No                           | Yes ({% include %})           |
 
 ---
 
@@ -71,20 +71,20 @@ How each format gets incorporated into the LLM's context.
 
 ### 3.1 Injection Position and Method
 
-| Tool | Injection Position | Verbatim or Processed | Wrapping |
-|------|-------------------|----------------------|----------|
-| **Claude Code** | End of system prompt (Section 17 of ~19) | Verbatim | `## CLAUDE.md\n{contents}` header |
-| **Codex CLI** | System-level context, after base prompt | Verbatim | Detailed preamble explaining scope rules: "Each AGENTS.md governs the entire directory that contains it and every child directory beneath that point" |
-| **Gemini CLI** | System prompt, after operational guidelines | Verbatim | `<loaded_context>{content}</loaded_context>` XML tags with explicit precedence documentation |
-| **Cursor** | Within system prompt body | Verbatim | `<custom_instructions>{content}</custom_instructions>` XML tags |
-| **Windsurf** | System prompt (exact position unclear) | Verbatim (presumed) | Likely within `<user_information>` tags |
-| **Cline** | Appended to environment details in first user message | Verbatim | Included alongside `.cursorrules` and `.windsurfrules` content |
-| **Roo Code** | "USER'S CUSTOM INSTRUCTIONS" section at prompt end | Verbatim | Labeled section after system prompt body |
-| **GitHub Copilot** | After base system prompt; agents layer on top | Verbatim | Instructions appended to system prompt; agents as additional system context |
-| **Amazon Q** | System prompt context | Verbatim | `<implicitInstruction>` XML tags for org rules; project rules added to context |
-| **Kiro** | System prompt, after base prompt | Verbatim with conditional loading | Front-matter controls when each file is included |
-| **Continue** | System prompt composition | Verbatim | Rules injected based on attachment type (Always, Auto-Attached, Agent Requested, Manual) |
-| **avante-nvim** | Replaces system prompt template | Rendered (Jinja2) | Template output becomes the system prompt |
+| Tool               | Injection Position                                    | Verbatim or Processed             | Wrapping                                                                                                                                              |
+| ------------------ | ----------------------------------------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Claude Code**    | End of system prompt (Section 17 of ~19)              | Verbatim                          | `## CLAUDE.md\n{contents}` header                                                                                                                     |
+| **Codex CLI**      | System-level context, after base prompt               | Verbatim                          | Detailed preamble explaining scope rules: "Each AGENTS.md governs the entire directory that contains it and every child directory beneath that point" |
+| **Gemini CLI**     | System prompt, after operational guidelines           | Verbatim                          | `<loaded_context>{content}</loaded_context>` XML tags with explicit precedence documentation                                                          |
+| **Cursor**         | Within system prompt body                             | Verbatim                          | `<custom_instructions>{content}</custom_instructions>` XML tags                                                                                       |
+| **Windsurf**       | System prompt (exact position unclear)                | Verbatim (presumed)               | Likely within `<user_information>` tags                                                                                                               |
+| **Cline**          | Appended to environment details in first user message | Verbatim                          | Included alongside `.cursorrules` and `.windsurfrules` content                                                                                        |
+| **Roo Code**       | "USER'S CUSTOM INSTRUCTIONS" section at prompt end    | Verbatim                          | Labeled section after system prompt body                                                                                                              |
+| **GitHub Copilot** | After base system prompt; agents layer on top         | Verbatim                          | Instructions appended to system prompt; agents as additional system context                                                                           |
+| **Amazon Q**       | System prompt context                                 | Verbatim                          | `<implicitInstruction>` XML tags for org rules; project rules added to context                                                                        |
+| **Kiro**           | System prompt, after base prompt                      | Verbatim with conditional loading | Front-matter controls when each file is included                                                                                                      |
+| **Continue**       | System prompt composition                             | Verbatim                          | Rules injected based on attachment type (Always, Auto-Attached, Agent Requested, Manual)                                                              |
+| **avante-nvim**    | Replaces system prompt template                       | Rendered (Jinja2)                 | Template output becomes the system prompt                                                                                                             |
 
 ### 3.2 Precedence Rules
 
@@ -99,6 +99,7 @@ The tools that support hierarchy all implement some form of "more specific wins"
 **Kiro**: Additive model -- all matching steering files are loaded. No explicit override semantics. Conditional inclusion via `fileMatch` patterns means different files activate in different contexts.
 
 **Continue**: Four attachment types determine when rules are loaded:
+
 1. **Always** -- injected into every conversation
 2. **Auto-Attached** -- injected when files matching a glob pattern are in context
 3. **Agent Requested** -- the agent can request loading them via `RequestRule` tool
@@ -145,23 +146,27 @@ This is the closest thing the ecosystem has to a universal reader. It demonstrat
 The ecosystem is bifurcating into two camps with organizational backing:
 
 **Camp Anthropic: `CLAUDE.md`**
+
 - Native: Claude Code
 - Also reads: Claude Flow, codecompanion-nvim
 - Strengths: Hierarchical (3-tier), auto-memory companion (MEMORY.md), large installed base
 - Organizational backing: Anthropic
 
 **Camp OpenAI: `AGENTS.md`**
+
 - Native: Codex CLI
 - Also reads: Goose (Block), Jules (Google), OpenHands, codecompanion-nvim
 - Strengths: Directory-scoped (unlimited nesting), multi-tool adoption, cross-company support
 - Organizational backing: OpenAI, Google, Block
 
 **Camp Google: `GEMINI.md`**
+
 - Native: Gemini CLI
 - Strengths: Most sophisticated hierarchy (4-tier), explicit precedence documentation
 - Weakness: No cross-tool adoption yet
 
 **Camp GitHub: `.github/copilot-instructions.md`**
+
 - Native: GitHub Copilot
 - Strengths: Most structured format (agents + prompts + instructions), YAML frontmatter, tool access control
 - Weakness: Locked to `.github/` namespace, limited cross-tool adoption
@@ -181,6 +186,7 @@ Every effective rules file starts with what the project IS -- its tech stack, di
 
 ```markdown
 # Project Overview
+
 - TypeScript monorepo using pnpm workspaces
 - packages/core/ contains the business logic
 - packages/api/ is the Express REST API
@@ -193,6 +199,7 @@ Agents cannot guess project-specific commands. The single most impactful customi
 
 ```markdown
 # Commands
+
 - Build: `pnpm build`
 - Test: `pnpm test` (uses Vitest)
 - Lint: `pnpm lint` (ESLint + Prettier)
@@ -204,6 +211,7 @@ The most effective rules use direct imperative language, not suggestions.
 
 ```markdown
 # Rules
+
 - Always use named exports, never default exports
 - Never use `any` type; use `unknown` for truly unknown types
 - Write tests for every new function in the adjacent .test.ts file
@@ -215,6 +223,7 @@ Tools respond well to explicit "do NOT" instructions.
 
 ```markdown
 # Anti-patterns
+
 - Do NOT add console.log for debugging; use the project's logger
 - Do NOT create new utility files; add to existing utils/
 - Do NOT use relative imports crossing package boundaries; use workspace aliases
@@ -250,6 +259,7 @@ Claude Code explicitly truncates MEMORY.md at 200 lines. Other tools do not docu
 **Hierarchy depth.** Ranges from zero (Cursor, Windsurf: single file) through three tiers (Claude Code) to unlimited depth (Codex CLI's per-directory AGENTS.md). No consensus.
 
 **Conditional inclusion.** Three incompatible approaches exist:
+
 - Kiro's YAML frontmatter (`inclusion: fileMatch`, `fileMatchPattern: README*`)
 - Continue's attachment types (Always, Auto-Attached, Agent Requested, Manual)
 - Codex CLI's implicit directory-tree scoping
@@ -266,31 +276,35 @@ Based on the strongest features from each tool, a hypothetical universal format 
 ---
 # YAML frontmatter (from Copilot + Kiro)
 name: "TypeScript Standards"
-scope: "always"                    # always | file-match | agent-requested | manual
-fileMatch: "**/*.ts"               # from Kiro's fileMatchPattern
-tools: ["read_file", "edit_file"]  # from Copilot agents
-mode: "code"                       # from Roo Code/Kilo Code per-mode rules
+scope: "always" # always | file-match | agent-requested | manual
+fileMatch: "**/*.ts" # from Kiro's fileMatchPattern
+tools: ["read_file", "edit_file"] # from Copilot agents
+mode: "code" # from Roo Code/Kilo Code per-mode rules
 includes:
-  - "./api-spec.yaml"              # from Kiro's #[[file:path]]
+  - "./api-spec.yaml" # from Kiro's #[[file:path]]
 ---
 
-# TypeScript Standards              (from AGENTS.md / CLAUDE.md free-form body)
+# TypeScript Standards (from AGENTS.md / CLAUDE.md free-form body)
 
 ## Project Context
+
 - Monorepo using pnpm workspaces
 - Strict TypeScript with no `any`
 
 ## Rules
+
 - Use named exports exclusively
 - Validate all external inputs with zod
 - Tests go in adjacent .test.ts files
 
 ## Anti-patterns
+
 - No default exports
 - No console.log (use project logger)
 ```
 
 Key design decisions for such a format:
+
 1. **Markdown body with optional YAML frontmatter** -- backwards-compatible with every existing format
 2. **`scope` field** -- unifies Continue's attachment types, Kiro's inclusion modes, and AGENTS.md's directory scoping
 3. **`fileMatch` field** -- glob-based conditional activation (from Kiro and Continue)
@@ -316,6 +330,7 @@ The most likely outcome is a two-format equilibrium: `CLAUDE.md` (Anthropic ecos
 ### 7.1 CLAUDE.md (Claude Code)
 
 **Hierarchy:**
+
 ```
 ~/.claude/CLAUDE.md          # User-level defaults (all projects)
 ./CLAUDE.md                  # Project-level rules
@@ -334,6 +349,7 @@ The most likely outcome is a two-format equilibrium: `CLAUDE.md` (Anthropic ecos
 ### 7.2 AGENTS.md (Codex CLI)
 
 **Hierarchy:**
+
 ```
 /AGENTS.md                   # Root-level (broadest scope)
 ~/AGENTS.md                  # Home directory
@@ -354,6 +370,7 @@ The most likely outcome is a two-format equilibrium: `CLAUDE.md` (Anthropic ecos
 ### 7.3 GEMINI.md (Gemini CLI)
 
 **Hierarchy:**
+
 ```
 ~/.gemini/GEMINI.md          # Global user preferences
 [extensions]/GEMINI.md       # Extension-provided knowledge
@@ -382,16 +399,20 @@ The most likely outcome is a two-format equilibrium: `CLAUDE.md` (Anthropic ecos
 **Hierarchy:** Multiple .md files in `.kiro/steering/`, loaded additively.
 
 **Conditional inclusion via YAML frontmatter:**
+
 ```markdown
 ---
 inclusion: fileMatch
 fileMatchPattern: "*.test.ts"
 ---
+
 # Testing Standards
+
 When writing tests, always...
 ```
 
 Three inclusion modes:
+
 - **Default (always):** No frontmatter needed; included in every interaction
 - **fileMatch:** Included when a file matching `fileMatchPattern` is in context
 - **manual:** Included when the user explicitly references it via `#` context key
@@ -429,6 +450,7 @@ tools:
 ### 7.7 .continue/rules (Continue)
 
 **Four attachment types:**
+
 - **Always:** Injected into every conversation
 - **Auto-Attached:** Injected when files matching a glob pattern are in context
 - **Agent Requested:** The agent can request loading via `RequestRule` tool
@@ -442,6 +464,7 @@ tools:
 ### 7.8 .roomodes + .roo/rules (Roo Code)
 
 **Custom modes via `.roomodes`:**
+
 ```json
 {
   "slug": "api-reviewer",
@@ -462,6 +485,7 @@ tools:
 ### 7.9 .avanterules (avante-nvim)
 
 **Jinja2 template system with inheritance:**
+
 ```jinja2
 {% extends "base" %}
 

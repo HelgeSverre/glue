@@ -1,5 +1,6 @@
 import 'package:test/test.dart';
 import 'package:glue/src/config/glue_config.dart';
+import 'package:glue/src/config/permission_mode.dart';
 
 void main() {
   group('GlueConfig', () {
@@ -114,6 +115,22 @@ void main() {
         bashMaxLines: 100,
       );
       expect(config.bashMaxLines, 100);
+    });
+
+    test('copyWith preserves titleModel, skillPaths, and permissionMode', () {
+      final config = GlueConfig(
+        provider: LlmProvider.anthropic,
+        model: 'claude-sonnet-4-6',
+        anthropicApiKey: 'sk-ant-test',
+        titleModel: 'claude-haiku-4',
+        skillPaths: const ['/opt/skills', '~/skills'],
+        permissionMode: PermissionMode.acceptEdits,
+      );
+
+      final copied = config.copyWith(model: 'claude-opus-4-6');
+      expect(copied.titleModel, 'claude-haiku-4');
+      expect(copied.skillPaths, ['/opt/skills', '~/skills']);
+      expect(copied.permissionMode, PermissionMode.acceptEdits);
     });
   });
 

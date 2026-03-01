@@ -4,12 +4,12 @@ import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/skills/skill_tool.dart';
-import 'package:glue/src/skills/skill_registry.dart';
+import 'package:glue/src/skills/skill_runtime.dart';
 
 void main() {
   group('SkillTool', () {
     late Directory tempDir;
-    late SkillRegistry registry;
+    late SkillRuntime runtime;
     late SkillTool tool;
 
     setUp(() {
@@ -25,8 +25,12 @@ void main() {
         );
       }
 
-      registry = SkillRegistry.discover(cwd: tempDir.path, home: tempDir.path);
-      tool = SkillTool(registry);
+      runtime = SkillRuntime(
+        cwd: tempDir.path,
+        home: tempDir.path,
+        extraPathsProvider: () => const [],
+      );
+      tool = SkillTool(runtime);
     });
 
     tearDown(() {
@@ -71,12 +75,30 @@ void main() {
 
     test('empty registry returns helpful message', () async {
       final emptyDir = Directory.systemTemp.createTempSync('skill_tool_empty_');
-      final emptyRegistry =
-          SkillRegistry.discover(cwd: emptyDir.path, home: emptyDir.path);
-      final emptyTool = SkillTool(emptyRegistry);
+      final emptyRuntime = SkillRuntime(
+        cwd: emptyDir.path,
+        home: emptyDir.path,
+        extraPathsProvider: () => const [],
+      );
+      final emptyTool = SkillTool(emptyRuntime);
       final result = ContentPart.textOnly(await emptyTool.execute({}));
       expect(result, contains('No skills available'));
       emptyDir.deleteSync(recursive: true);
+    });
+
+    test('list reflects skills added after startup', () async {
+      final result1 = ContentPart.textOnly(await tool.execute({}));
+      expect(result1, isNot(contains('new-skill')));
+
+      final skillsDir = p.join(tempDir.path, '.glue', 'skills');
+      final newDir = Directory(p.join(skillsDir, 'new-skill'));
+      newDir.createSync(recursive: true);
+      File(p.join(newDir.path, 'SKILL.md')).writeAsStringSync(
+        '---\nname: new-skill\ndescription: A new one.\n---\nBody.\n',
+      );
+
+      final result2 = ContentPart.textOnly(await tool.execute({}));
+      expect(result2, contains('new-skill'));
     });
   });
 }
