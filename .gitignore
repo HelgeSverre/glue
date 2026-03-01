@@ -32,8 +32,10 @@ cli/doc/api/
 # Worktrees
 .worktrees/
 
-# todo name here
+# Temporary directories in cli/
 cli/.local-chrome
+cli/.worktrees
+cli/.junie
 
 # DevDocs (generated)
 devdocs/api/
@@ -41,3 +43,4 @@ devdocs/node_modules/
 devdocs/.vitepress/dist/
 devdocs/.vitepress/cache/
 devdocs/.vitepress/sidebar.json
+
