@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Mark and close stale items
-        uses: actions/stale@v9
+        uses: actions/stale@v10
         with:
           stale-issue-message: "This issue has been inactive for 30 days and is marked stale. Comment to keep it open."
           stale-pr-message: "This PR has been inactive for 21 days and is marked stale. Comment or push commits to keep it open."
