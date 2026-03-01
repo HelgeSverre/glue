@@ -2,6 +2,9 @@ import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/observability/observability.dart';
 
+String _truncate(String s, int maxLen) =>
+    s.length <= maxLen ? s : s.substring(0, maxLen);
+
 class ObservedTool extends ForwardingTool {
   final Observability _obs;
 
@@ -18,11 +21,20 @@ class ObservedTool extends ForwardingTool {
     );
     try {
       final result = await inner.execute(args);
-      final textLength = ContentPart.textOnly(result).length;
-      _obs.endSpan(span, extra: {'tool.result_length': textLength});
+      final text = ContentPart.textOnly(result);
+      _obs.endSpan(span, extra: {
+        'tool.result_length': text.length,
+        'tool.result_preview': _truncate(text, 500),
+        'tool.success': true,
+      });
       return result;
     } catch (e) {
-      _obs.endSpan(span, extra: {'error': e.toString()});
+      _obs.endSpan(span, extra: {
+        'error': true,
+        'exception.type': e.runtimeType.toString(),
+        'exception.message': e.toString(),
+        'tool.success': false,
+      });
       rethrow;
     }
   }

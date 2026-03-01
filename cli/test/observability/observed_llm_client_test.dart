@@ -201,4 +201,73 @@ void main() {
     expect(sink.spans.first.attributes.containsKey('gen_ai.request.model'),
         isFalse);
   });
+
+  test('records llm.tool_calls list when LLM requests tools', () async {
+    mockLlm.responses.add([
+      ToolCallDelta(ToolCall(
+          id: 'id1', name: 'bash', arguments: {'command': 'ls'})),
+      ToolCallDelta(ToolCall(
+          id: 'id2', name: 'read_file', arguments: {'path': 'x.dart'})),
+    ]);
+
+    await client.stream([Message.user('hi')]).toList();
+
+    final toolCalls =
+        sink.spans.first.attributes['llm.tool_calls'] as List<String>;
+    expect(toolCalls, containsAll(['bash', 'read_file']));
+  });
+
+  test('records llm.stop_reason=tool_use when tool calls present', () async {
+    mockLlm.responses.add([
+      ToolCallDelta(
+          ToolCall(id: 'id1', name: 'bash', arguments: {'command': 'pwd'})),
+    ]);
+
+    await client.stream([Message.user('hi')]).toList();
+
+    expect(sink.spans.first.attributes['llm.stop_reason'], 'tool_use');
+  });
+
+  test('records llm.stop_reason=end_turn when no tool calls', () async {
+    mockLlm.responses.add([TextDelta('done')]);
+
+    await client.stream([Message.user('hi')]).toList();
+
+    expect(sink.spans.first.attributes['llm.stop_reason'], 'end_turn');
+  });
+
+  test('records llm.response_preview truncated to 500 chars', () async {
+    mockLlm.responses.add([TextDelta('y' * 1000)]);
+
+    await client.stream([Message.user('hi')]).toList();
+
+    final preview =
+        sink.spans.first.attributes['llm.response_preview'] as String;
+    expect(preview.length, 500);
+  });
+
+  test('records full response_preview when short', () async {
+    mockLlm.responses.add([TextDelta('hello there')]);
+
+    await client.stream([Message.user('hi')]).toList();
+
+    expect(
+      sink.spans.first.attributes['llm.response_preview'],
+      'hello there',
+    );
+  });
+
+  test('records exception.type and exception.message on error', () async {
+    mockLlm.throwOnStream = true;
+    mockLlm.errorMessage = 'API rate limit exceeded';
+
+    try {
+      await client.stream([Message.user('hi')]).toList();
+    } catch (_) {}
+
+    final attrs = sink.spans.first.attributes;
+    expect(attrs['exception.type'], 'Exception');
+    expect(attrs['exception.message'], contains('API rate limit exceeded'));
+    expect(attrs['error'], isTrue);
+  });
 }

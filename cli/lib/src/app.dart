@@ -2672,14 +2672,18 @@ class App {
     };
     final shortCwd = _shortenPath(_cwd);
     final permLabel = '[${_permissionMode.label}]';
-    const bold = '\x1b[1m';
-    const boldOff = '\x1b[22m';
-    const black = '\x1b[30m';
-    final statusLeft =
-        ' $_modelName  $permLabel  $shortCwd  $bold$black$modeIndicator$boldOff\x1b[39m';
+    final statusLeft = ' \x1b[1m$modeIndicator\x1b[22m ';
 
-    final scrollIndicator = _scrollOffset > 0 ? '↑$_scrollOffset  ' : '';
-    final statusRight = '${scrollIndicator}tok ${agent.tokenCount} ';
+    const sep = ' │ ';
+    final scrollSeg = _scrollOffset > 0 ? '↑$_scrollOffset' : null;
+    final rightSegs = [
+      _modelName,
+      permLabel,
+      shortCwd,
+      if (scrollSeg != null) scrollSeg,
+      'tok ${agent.tokenCount}',
+    ];
+    final statusRight = ' ${rightSegs.join(sep)} ';
     layout.paintStatus(statusLeft, statusRight);
 
     // 6. Input area — MUST be last so cursor lands here.
