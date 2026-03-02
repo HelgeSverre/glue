@@ -33,8 +33,14 @@ class ObservedLlmClient implements LlmClient {
       },
     );
     bool hadError = false;
+    final stopwatch = Stopwatch()..start();
+    int? ttfbMs;
     try {
       await for (final chunk in _inner.stream(messages, tools: tools)) {
+        if (ttfbMs == null && chunk is TextDelta) {
+          ttfbMs = stopwatch.elapsedMilliseconds;
+          span.attributes['llm.ttfb_ms'] = ttfbMs;
+        }
         if (chunk is UsageInfo) {
           span.attributes['gen_ai.usage.input_tokens'] = chunk.inputTokens;
           span.attributes['gen_ai.usage.output_tokens'] = chunk.outputTokens;

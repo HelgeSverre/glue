@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
@@ -21,6 +22,7 @@ import 'package:glue/src/config/model_registry.dart';
 import 'package:glue/src/llm/model_discovery.dart';
 import 'package:glue/src/ui/model_panel_formatter.dart';
 import 'package:glue/src/config/permission_mode.dart';
+import 'package:glue/src/dev/devtools.dart';
 import 'package:glue/src/llm/llm_factory.dart';
 import 'package:glue/src/llm/title_generator.dart';
 import 'package:glue/src/rendering/block_renderer.dart';
@@ -69,6 +71,7 @@ import 'package:glue/src/observability/langfuse_sink.dart';
 import 'package:glue/src/observability/otel_sink.dart';
 import 'package:glue/src/observability/logging_http_client.dart';
 import 'package:glue/src/observability/observed_llm_client.dart';
+import 'package:glue/src/observability/devtools_sink.dart';
 import 'package:glue/src/observability/observed_tool.dart';
 
 // ---------------------------------------------------------------------------
@@ -310,17 +313,24 @@ class App {
       'deployment.environment.name': Platform.environment['GLUE_ENV'] ?? 'dev',
     };
 
+    obs.addSink(DevToolsSink());
     obs.addSink(FileSink(logsDir: home.logsDir));
+    void sinkError(String msg) {
+      if (debugController.enabled) stderr.writeln(msg);
+    }
+
     if (config.observability.langfuse.isConfigured) {
       obs.addSink(LangfuseSink(
         config: config.observability.langfuse,
         resourceAttributes: resourceAttrs,
+        onError: sinkError,
       ));
     }
     if (config.observability.otel.isConfigured) {
       obs.addSink(OtelSink(
         config: config.observability.otel,
         resourceAttributes: resourceAttrs,
+        onError: sinkError,
       ));
     }
 
@@ -458,6 +468,31 @@ class App {
     _activeModal?.cancel();
     if (!_exitCompleter.isCompleted) _exitCompleter.complete();
   }
+
+  /// Returns a JSON-serializable snapshot of internal state for DevTools.
+  Map<String, dynamic> devtoolsState(String name) => switch (name) {
+        'getAgentState' => {
+            'mode': _mode.name,
+            'tokenCount': agent.tokenCount,
+            'model': _modelName,
+            'conversationLength': agent.conversation.length,
+            'pendingTools': _mode == AppMode.toolRunning ? 'active' : 'none',
+          },
+        'getConfig' => {
+            'provider': _config?.provider.name ?? 'unknown',
+            'model': _config?.model ?? 'unknown',
+            'maxSubagentDepth': _config?.maxSubagentDepth ?? 0,
+            'bashMaxLines': _config?.bashMaxLines ?? 0,
+          },
+        'getSessionInfo' => {
+            'blockCount': _blocks.length,
+            'scrollOffset': _scrollOffset,
+          },
+        'getToolHistory' => {
+            'note': 'Tool history tracking not yet implemented',
+          },
+        _ => {'error': 'Unknown extension: $name'},
+      };
 
   /// Run the application event loop.
   ///
@@ -666,6 +701,23 @@ class App {
     ));
 
     _commands.register(SlashCommand(
+      name: 'devtools',
+      description: 'Open Dart DevTools in browser',
+      execute: (_) {
+        unawaited(GlueDev.getDevToolsUrl().then((url) {
+          if (url == null) {
+            _blocks.add(_ConversationEntry.system(
+                'DevTools not available. Run with: just dev'));
+            _render();
+            return;
+          }
+          Process.run('open', [url.toString()]);
+        }));
+        return 'Opening DevTools...';
+      },
+    ));
+
+    _commands.register(SlashCommand(
       name: 'debug',
       description: 'Toggle debug mode (verbose logging)',
       execute: (args) {
@@ -710,30 +762,68 @@ class App {
 
     var userCount = 0;
     var assistantCount = 0;
+
+    // Replay events into both the agent conversation and the UI blocks.
+    // Tool_call events immediately follow the assistant_message they belong to,
+    // so we accumulate them and flush as a single Message.assistant(toolCalls:).
+    String? pendingAssistantText;
+    var pendingToolCalls = <ToolCall>[];
+    var pendingToolResults = <Message>[];
+
+    void flushPending() {
+      if (pendingAssistantText != null) {
+        agent.addMessage(Message.assistant(
+          text: pendingAssistantText,
+          toolCalls: pendingToolCalls,
+        ));
+        _blocks.add(_ConversationEntry.assistant(pendingAssistantText!));
+        assistantCount++;
+        for (final tr in pendingToolResults) {
+          agent.addMessage(tr);
+        }
+      }
+      pendingAssistantText = null;
+      pendingToolCalls = [];
+      pendingToolResults = [];
+    }
+
     for (final event in events) {
       final type = event['type'] as String?;
       final text = event['text'] as String? ?? '';
       switch (type) {
         case 'user_message':
+          flushPending();
           if (text.isEmpty) continue;
           agent.addMessage(Message.user(text));
           _blocks.add(_ConversationEntry.user(text));
           userCount++;
         case 'assistant_message':
+          flushPending();
           if (text.isEmpty) continue;
-          agent.addMessage(Message.assistant(text: text));
-          _blocks.add(_ConversationEntry.assistant(text));
-          assistantCount++;
+          pendingAssistantText = text;
         case 'tool_call':
           final name = event['name'] as String? ?? '';
+          final id =
+              event['id'] as String? ?? 'replay_${pendingToolCalls.length}';
           final args = event['arguments'] as Map<String, dynamic>? ?? {};
           if (name.isNotEmpty) {
+            pendingToolCalls.add(ToolCall(id: id, name: name, arguments: args));
             _blocks.add(_ConversationEntry.toolCall(name, args));
+          }
+        case 'tool_result':
+          final callId = event['call_id'] as String?;
+          final content = event['content'] as String? ?? '';
+          if (callId != null) {
+            pendingToolResults.add(
+              Message.toolResult(callId: callId, content: content),
+            );
+            _blocks.add(_ConversationEntry.toolResult(content));
           }
         default:
           break;
       }
     }
+    flushPending();
 
     // Backfill title for resumed sessions that lack one.
     if (!_titleGenerated && userCount > 0) {
@@ -1085,28 +1175,63 @@ class App {
       'Forked from session $shortId…',
     ));
 
+    // Same replay logic as _resumeSession: group assistant + tool events.
+    String? pendingAssistantText;
+    var pendingToolCalls = <ToolCall>[];
+    var pendingToolResults = <Message>[];
+
+    void flushPending() {
+      if (pendingAssistantText != null) {
+        agent.addMessage(Message.assistant(
+          text: pendingAssistantText,
+          toolCalls: pendingToolCalls,
+        ));
+        _blocks.add(_ConversationEntry.assistant(pendingAssistantText!));
+        for (final tr in pendingToolResults) {
+          agent.addMessage(tr);
+        }
+      }
+      pendingAssistantText = null;
+      pendingToolCalls = [];
+      pendingToolResults = [];
+    }
+
     for (final event in truncatedEvents) {
       final type = event['type'] as String?;
       final text = event['text'] as String? ?? '';
       switch (type) {
         case 'user_message':
+          flushPending();
           if (text.isEmpty) continue;
           agent.addMessage(Message.user(text));
           _blocks.add(_ConversationEntry.user(text));
         case 'assistant_message':
+          flushPending();
           if (text.isEmpty) continue;
-          agent.addMessage(Message.assistant(text: text));
-          _blocks.add(_ConversationEntry.assistant(text));
+          pendingAssistantText = text;
         case 'tool_call':
           final name = event['name'] as String? ?? '';
+          final id =
+              event['id'] as String? ?? 'replay_${pendingToolCalls.length}';
           final args = event['arguments'] as Map<String, dynamic>? ?? {};
           if (name.isNotEmpty) {
+            pendingToolCalls.add(ToolCall(id: id, name: name, arguments: args));
             _blocks.add(_ConversationEntry.toolCall(name, args));
+          }
+        case 'tool_result':
+          final callId = event['call_id'] as String?;
+          final content = event['content'] as String? ?? '';
+          if (callId != null) {
+            pendingToolResults.add(
+              Message.toolResult(callId: callId, content: content),
+            );
+            _blocks.add(_ConversationEntry.toolResult(content));
           }
         default:
           break;
       }
     }
+    flushPending();
 
     // Swap session store and set editor buffer.
     _sessionStore = newStore;
@@ -1689,6 +1814,8 @@ class App {
         // Flush any accumulated assistant text so the ordering in _blocks
         // matches the actual conversation flow.
         if (_streamingText.isNotEmpty) {
+          _sessionStore
+              ?.logEvent('assistant_message', {'text': _streamingText});
           _blocks.add(_ConversationEntry.assistant(_streamingText));
           _streamingText = '';
         }
@@ -1757,6 +1884,7 @@ class App {
 
         _ensureSessionStore();
         _sessionStore?.logEvent('tool_call', {
+          'id': call.id,
           'name': call.name,
           'arguments': call.arguments,
         });
@@ -1783,6 +1911,10 @@ class App {
 
       case AgentToolResult(:final result):
         _toolUi[result.callId]?.phase = _ToolPhase.done;
+        _sessionStore?.logEvent('tool_result', {
+          'call_id': result.callId,
+          'content': result.content,
+        });
         _blocks.add(
           _ConversationEntry.toolResult(result.content),
         );
@@ -2082,20 +2214,25 @@ class App {
 
     switch (update.event) {
       case AgentToolCall(:final call):
+        group._currentTool = call.name;
         final argsPreview = call.arguments.entries
             .take(2)
             .map((e) => '${e.key}: ${e.value}')
             .join(', ');
-        group.entries.add('$prefix ▶ ${call.name}  $argsPreview');
+        group.entries
+            .add(_SubagentEntry('$prefix ▶ ${call.name}  $argsPreview'));
         _render();
       case AgentToolResult(:final result):
         final preview = result.content.length > 80
             ? '${result.content.substring(0, 80)}…'
             : result.content;
-        group.entries.add('$prefix ✓ ${preview.replaceAll('\n', ' ')}');
+        group.entries.add(_SubagentEntry(
+          '$prefix ✓ ${preview.replaceAll('\n', ' ')}',
+          rawContent: result.content.length > 80 ? result.content : null,
+        ));
         _render();
       case AgentError(:final error):
-        group.entries.add('$prefix ✗ Error: $error');
+        group.entries.add(_SubagentEntry('$prefix ✗ Error: $error'));
         _render();
       case AgentToolCallPending():
         break;
@@ -2103,6 +2240,7 @@ class App {
         break;
       case AgentDone():
         group.done = true;
+        group._currentTool = null;
         _render();
     }
   }
@@ -2234,10 +2372,10 @@ class App {
         _EntryKind.toolResult => renderer.renderToolResult(block.text),
         _EntryKind.error => renderer.renderError(block.text),
         _EntryKind.subagent => renderer.renderSubagent(block.text),
-        _EntryKind.subagentGroup => renderer.renderSubagent(
-            block.group!.expanded
-                ? '${block.group!.summary}\n${block.group!.entries.join('\n')}'
-                : block.group!.summary),
+        _EntryKind.subagentGroup => renderer.renderSubagent(block
+                .group!.expanded
+            ? '${block.group!.summary}\n${block.group!.entries.map((e) => e.render(expanded: true)).join('\n')}'
+            : block.group!.summary),
         _EntryKind.system => renderer.renderSystem(block.text),
         _EntryKind.bash => renderer.renderBash(
             block.expandedText ?? 'shell',
@@ -2366,7 +2504,8 @@ class App {
     const bold = '\x1b[1m';
     const boldOff = '\x1b[22m';
     const black = '\x1b[30m';
-    final statusLeft = ' $_modelName  $permLabel  $shortCwd  $bold$black$modeIndicator$boldOff\x1b[39m';
+    final statusLeft =
+        ' $_modelName  $permLabel  $shortCwd  $bold$black$modeIndicator$boldOff\x1b[39m';
 
     final scrollIndicator = _scrollOffset > 0 ? '↑$_scrollOffset  ' : '';
     final statusRight = '${scrollIndicator}tok ${agent.tokenCount} ';
@@ -2448,21 +2587,53 @@ class _ConversationEntry {
       _ConversationEntry._(_EntryKind.bash, output, expandedText: command);
 }
 
+class _SubagentEntry {
+  final String display;
+  final String? rawContent;
+
+  _SubagentEntry(this.display, {this.rawContent});
+
+  String render({required bool expanded}) {
+    if (!expanded || rawContent == null) return display;
+    final pretty = _tryPrettyJson(rawContent!);
+    if (pretty == null) return display;
+    final indented = pretty.split('\n').map((l) => '          $l').join('\n');
+    return '$display\n$indented';
+  }
+
+  static String? _tryPrettyJson(String text) {
+    try {
+      final parsed = jsonDecode(text);
+      if (parsed is Map || parsed is List) {
+        return const JsonEncoder.withIndent('  ').convert(parsed);
+      }
+    } on FormatException {
+      // Not JSON.
+    }
+    return null;
+  }
+}
+
 class _SubagentGroup {
   final String task;
   final int? index;
   final int? total;
-  final List<String> entries = [];
+  final List<_SubagentEntry> entries = [];
   bool expanded = false;
   bool done = false;
+  String? _currentTool;
 
   _SubagentGroup({required this.task, this.index, this.total});
 
   String get summary {
     final prefix = index != null ? '[${index! + 1}/$total]' : '';
-    final status = done ? '✓' : '${entries.length} steps…';
-    final taskPreview = task.length > 50 ? '${task.substring(0, 50)}…' : task;
-    return '↳ $prefix $taskPreview ($status)';
+    final taskPreview = task.length > 80 ? '${task.substring(0, 80)}…' : task;
+    if (done) {
+      return '↳ $prefix $taskPreview (${entries.length} steps, done ✓)';
+    }
+    final activity =
+        _currentTool != null ? '${entries.length} steps, $_currentTool…' : '';
+    return '↳ $prefix $taskPreview ($activity)';
   }
 }
 

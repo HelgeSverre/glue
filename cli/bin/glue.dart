@@ -6,6 +6,7 @@ import 'package:cli_completion/cli_completion.dart';
 import 'package:cli_completion/installer.dart';
 import 'package:cli_completion/parser.dart';
 import 'package:glue/glue.dart';
+import 'package:glue/src/dev/devtools.dart';
 import 'package:path/path.dart' as p;
 
 const version = '0.1.0';
@@ -117,6 +118,8 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
       startupContinue: topLevelResults.flag('continue'),
       debug: topLevelResults.flag('debug'),
     );
+
+    GlueDev.registerExtensions(app.devtoolsState);
 
     final sigintSub =
         ProcessSignal.sigint.watch().listen((_) => app.requestExit());

@@ -117,6 +117,7 @@ export 'src/observability/observed_tool.dart'
 export 'src/observability/observability_config.dart'
     show ObservabilityConfig, LangfuseConfig, TelemetryProvider;
 export 'src/storage/config_store.dart' show ConfigStore;
+export 'src/dev/devtools.dart' show GlueDev;
 export 'src/input/file_expander.dart' show expandFileRefs, extractFileRefs;
 export 'src/ui/at_file_hint.dart' show AtFileHint;
 export 'src/shell/command_executor.dart'

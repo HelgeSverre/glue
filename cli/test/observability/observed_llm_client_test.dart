@@ -168,6 +168,29 @@ void main() {
     expect(sink.spans.first.attributes['gen_ai.usage.total_tokens'], 150);
   });
 
+  test('records llm.ttfb_ms on first TextDelta', () async {
+    mockLlm.responses.add([
+      TextDelta('hello'),
+      TextDelta(' world'),
+      UsageInfo(inputTokens: 100, outputTokens: 50),
+    ]);
+
+    await client.stream([Message.user('hi')]).toList();
+
+    expect(sink.spans.first.attributes['llm.ttfb_ms'], isA<int>());
+    expect(sink.spans.first.attributes['llm.ttfb_ms'], greaterThanOrEqualTo(0));
+  });
+
+  test('does not set llm.ttfb_ms when no TextDelta is emitted', () async {
+    mockLlm.responses.add([
+      UsageInfo(inputTokens: 100, outputTokens: 50),
+    ]);
+
+    await client.stream([Message.user('hi')]).toList();
+
+    expect(sink.spans.first.attributes.containsKey('llm.ttfb_ms'), isFalse);
+  });
+
   test('omits gen_ai attributes when provider and model are empty', () async {
     final plainClient = ObservedLlmClient(inner: mockLlm, obs: obs);
     mockLlm.responses.add([TextDelta('ok')]);

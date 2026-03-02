@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' show Flow, Timeline;
 
 import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
@@ -254,6 +255,9 @@ class AgentCore {
         final toolCalls = <ToolCall>[];
         final toolFutures = <Future<ToolResult>>[];
 
+        final flow = Flow.begin();
+        Timeline.startSync('LlmStream', flow: flow);
+
         await for (final chunk in llm.stream(
           _conversation,
           tools: allowedTools,
@@ -275,6 +279,8 @@ class AgentCore {
           }
         }
 
+        Timeline.finishSync();
+
         _conversation.add(Message.assistant(
           text: assistantText.toString(),
           toolCalls: toolCalls,
@@ -286,7 +292,9 @@ class AgentCore {
         // Tools may have started executing as soon as they were yielded
         // above, so some futures could already be resolved by the time we
         // get here.
+        Timeline.startSync('ToolExecution', flow: Flow.end(flow.id));
         final results = await Future.wait(toolFutures);
+        Timeline.finishSync();
 
         // Add results to conversation and yield events
         for (var i = 0; i < toolCalls.length; i++) {
