@@ -6,6 +6,54 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Added
 
+- **CLI prompt arguments and print mode** — pass prompts directly from
+  the command line for non-interactive use:
+  - `glue "review my code"` — positional prompt argument
+  - `glue -p "query"` — print mode, streams response to stdout without TUI
+  - `glue -p --json "query"` — JSON output for scripting
+  - `glue -r <session-id>` — resume a specific session by ID
+  - Model aliases: `glue -m opus` resolves to `claude-opus-4-6`
+  - Removed `--provider` flag (provider inferred from model name, frees
+    `-p` for print mode)
+
+- **DevTools instrumentation** — consolidated observability with
+  `dart:developer` integration:
+  - `DevToolsSink` bridges observability spans to `developer.log()` and
+    `developer.postEvent()` for Dart DevTools visibility
+  - `GlueDev` utility: CPU profiler tags (`tagRender`, `tagLlmStream`,
+    `tagToolExec`, `tagAgentLoop`), Timeline helpers, DevTools URL helper
+  - TTFB (time to first byte) tracking in `ObservedLlmClient`
+  - Tool call name and response preview tracking in observability spans
+
+- **Session replay improvements** — proper tool_call/tool_result
+  grouping during session resume and fork:
+  - Assistant messages now include their associated tool calls
+  - Tool results are properly paired with their tool_use IDs
+  - Orphaned `tool_result` messages are filtered from conversation
+    history, preventing Anthropic API 400 errors
+
+- **Subagent output improvements** — richer grouped output display:
+  - `_SubagentEntry` class with optional JSON pretty-printing for
+    expandable tool result content
+  - `_SubagentGroup` shows current tool name during execution
+  - Expanded view renders indented JSON for structured results
+
+### Changed
+
+- Observability sink error handling uses `onError` callbacks instead
+  of writing directly to stderr (Langfuse and OTel sinks)
+- Status bar reformatted: bold mode indicator on left, model/permissions/
+  cwd as right-aligned segments with `│` separators
+- `GlueConfig.load()` no longer accepts `cliProvider` parameter
+  (provider inferred from model)
+
+### Fixed
+
+- Sema scripting skill documentation examples corrected (8 runtime
+  errors fixed in documented code)
+
+---
+
 - **Multimodal tool results** — tools can now return images (e.g.
   browser screenshots) as native content blocks instead of base64 text.
   This reduces token usage from ~738K text tokens to ~1,600 vision
