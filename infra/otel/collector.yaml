@@ -49,6 +49,11 @@ exporters:
   file/local:
     path: ${env:OTEL_EXPORTER_FILE_PATH}
 
+  otlphttp/llmflow:
+    endpoint: http://llmflow:3000
+    tls:
+      insecure: true
+
   debug:
     verbosity: basic
 
@@ -65,4 +70,5 @@ service:
         - otlphttp/openobserve
         - otlp/aspire
         - file/local
+        - otlphttp/llmflow
         - debug

@@ -133,7 +133,7 @@ services:
       dev.dozzle.group: llm-observability
       dev.dozzle.name: LLMFlow
     volumes:
-      - ./data/llmflow:/app/data
+      - ./data/llmflow:/root/.llmflow
     ports:
       - "8899:3000"
 
