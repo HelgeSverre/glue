@@ -137,7 +137,7 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(sink.spans, hasLength(1));
-    expect(sink.spans.first.attributes['error'], contains('tool broke'));
+    expect(sink.spans.first.attributes['error'], isTrue);
     expect(sink.spans.first.endTime, isNotNull);
   });
 
@@ -149,6 +149,55 @@ void main() {
       () => observed.execute({}),
       throwsA(isA<StateError>()),
     );
+  });
+
+  test('records tool.success=true on success', () async {
+    final inner = _MockTool(handler: (_) => 'ok');
+    final observed = ObservedTool(inner: inner, obs: obs);
+
+    await observed.execute({});
+
+    expect(sink.spans.first.attributes['tool.success'], isTrue);
+  });
+
+  test('records tool.result_preview truncated to 500 chars on success',
+      () async {
+    final longOutput = 'x' * 1000;
+    final inner = _MockTool(handler: (_) => longOutput);
+    final observed = ObservedTool(inner: inner, obs: obs);
+
+    await observed.execute({});
+
+    final preview = sink.spans.first.attributes['tool.result_preview'] as String;
+    expect(preview.length, 500);
+  });
+
+  test('records full result_preview when output is short', () async {
+    final inner = _MockTool(handler: (_) => 'short output');
+    final observed = ObservedTool(inner: inner, obs: obs);
+
+    await observed.execute({});
+
+    expect(
+      sink.spans.first.attributes['tool.result_preview'],
+      'short output',
+    );
+  });
+
+  test('records exception.type and exception.message on error', () async {
+    final inner =
+        _MockTool(handler: (_) => throw StateError('something went wrong'));
+    final observed = ObservedTool(inner: inner, obs: obs);
+
+    try {
+      await observed.execute({});
+    } catch (_) {}
+
+    final attrs = sink.spans.first.attributes;
+    expect(attrs['exception.type'], 'StateError');
+    expect(attrs['exception.message'], contains('something went wrong'));
+    expect(attrs['tool.success'], isFalse);
+    expect(attrs['error'], isTrue);
   });
 
   group('wrapToolsWithObservability', () {

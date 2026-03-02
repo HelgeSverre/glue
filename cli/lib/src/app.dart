@@ -205,8 +205,11 @@ class App {
   final Map<String, _SubagentGroup> _subagentGroups = {};
   final List<_SubagentGroup?> _outputLineGroups = [];
 
-  final bool _startupResume;
   final bool _startupContinue;
+  final String? _startupPrompt;
+  final bool _printMode;
+  final bool _jsonMode;
+  final String? _resumeSessionId;
   final Observability? _obs;
   ObservabilitySpan? _turnSpan;
   final DebugController? _debugController;
@@ -228,8 +231,11 @@ class App {
     SessionStore? sessionStore,
     CommandExecutor? executor,
     ShellJobManager? jobManager,
-    bool startupResume = false,
     bool startupContinue = false,
+    String? startupPrompt,
+    bool printMode = false,
+    bool jsonMode = false,
+    String? resumeSessionId,
     Observability? obs,
     DebugController? debugController,
     SkillRuntime? skillRuntime,
@@ -242,8 +248,11 @@ class App {
         _executor = executor ?? HostExecutor(const ShellConfig()),
         _jobManager = jobManager ??
             ShellJobManager(executor ?? HostExecutor(const ShellConfig())),
-        _startupResume = startupResume,
         _startupContinue = startupContinue,
+        _startupPrompt = startupPrompt,
+        _printMode = printMode,
+        _jsonMode = jsonMode,
+        _resumeSessionId = resumeSessionId,
         _obs = obs,
         _debugController = debugController,
         _permissionMode = config?.permissionMode ?? PermissionMode.confirm,
@@ -266,13 +275,15 @@ class App {
   /// Convenience factory that creates a fully wired [App] with real
   /// LLM provider and subagent system.
   static Future<App> create({
-    String? provider,
     String? model,
-    bool startupResume = false,
+    String? prompt,
+    bool printMode = false,
+    bool jsonMode = false,
+    String? resumeSessionId,
     bool startupContinue = false,
     bool debug = false,
   }) async {
-    final config = GlueConfig.load(cliProvider: provider, cliModel: model);
+    final config = GlueConfig.load(cliModel: model);
     config.validate();
 
     final terminal = Terminal();
@@ -439,12 +450,24 @@ class App {
       sessionStore: null,
       executor: executor,
       jobManager: ShellJobManager(executor),
-      startupResume: startupResume,
       startupContinue: startupContinue,
+      startupPrompt: prompt,
+      printMode: printMode,
+      jsonMode: jsonMode,
+      resumeSessionId: resumeSessionId,
       obs: obs,
       debugController: debugController,
       skillRuntime: skillRuntime,
     );
+  }
+
+  /// Builds the prompt for print mode by combining stdin content and the
+  /// user-supplied prompt string. Exposed as a static method for testing.
+  static String buildPrintPrompt({String? prompt, String? stdinContent}) {
+    return [
+      if (stdinContent != null) '<stdin>\n$stdinContent</stdin>',
+      if (prompt != null && prompt.isNotEmpty) prompt,
+    ].join('\n\n');
   }
 
   static String _hostArch() {
@@ -499,6 +522,12 @@ class App {
   /// Enters raw / alt-screen mode and processes events until the user
   /// requests an exit.
   Future<void> run() async {
+    // Non-interactive print mode: stream response to stdout and exit.
+    if (_printMode) {
+      await _runPrintMode();
+      return;
+    }
+
     terminal.enableRawMode();
     terminal.enableAltScreen();
     terminal.enableMouse();
@@ -518,8 +547,22 @@ class App {
 
     _render();
 
-    if (_startupResume) {
-      _openResumePanel();
+    if (_resumeSessionId != null) {
+      final home = GlueHome();
+      final sessions = SessionStore.listSessions(home.sessionsDir);
+      final match = sessions.where((s) => s.id == _resumeSessionId).toList();
+      if (match.isNotEmpty) {
+        final result = _resumeSession(match.first);
+        if (result.isNotEmpty) {
+          _blocks.add(_ConversationEntry.system(result));
+        }
+        _render();
+      } else {
+        _blocks.add(_ConversationEntry.system(
+          'Session $_resumeSessionId not found.',
+        ));
+        _render();
+      }
     } else if (_startupContinue) {
       final home = GlueHome();
       final sessions = SessionStore.listSessions(home.sessionsDir);
@@ -533,6 +576,8 @@ class App {
         _blocks.add(_ConversationEntry.system('No sessions to continue.'));
         _render();
       }
+    } else if (_startupPrompt case final prompt? when prompt.isNotEmpty) {
+      _events.add(UserSubmit(prompt));
     }
 
     try {
@@ -570,6 +615,132 @@ class App {
         stdout.writeln('  \x1b[90m\$ glue --resume $sessionId\x1b[0m');
       }
       terminal.dispose();
+    }
+  }
+
+  /// Non-interactive print mode: send prompt, stream response to stdout, exit.
+  Future<void> _runPrintMode() async {
+    // Optionally resume a previous session into the agent conversation.
+    if (_resumeSessionId != null) {
+      final home = GlueHome();
+      final sessions = SessionStore.listSessions(home.sessionsDir);
+      final match = sessions.where((s) => s.id == _resumeSessionId).toList();
+      if (match.isEmpty) {
+        stderr.writeln('Session $_resumeSessionId not found.');
+        return;
+      }
+      final events =
+          SessionStore.loadConversation(home.sessionDir(match.first.id));
+      for (final event in events) {
+        final type = event['type'] as String?;
+        final text = event['text'] as String? ?? '';
+        switch (type) {
+          case 'user_message':
+            if (text.isNotEmpty) agent.addMessage(Message.user(text));
+          case 'assistant_message':
+            if (text.isNotEmpty) agent.addMessage(Message.assistant(text: text));
+          default:
+            break;
+        }
+      }
+    }
+
+    // Read piped stdin if available (e.g. `cat file | glue -p "summarize"`).
+    String? stdinContent;
+    if (!stdin.hasTerminal) {
+      try {
+        final buf = StringBuffer();
+        String? line;
+        while ((line = stdin.readLineSync()) != null) {
+          buf.writeln(line);
+        }
+        final content = buf.toString().trimRight();
+        if (content.isNotEmpty) stdinContent = content;
+      } catch (_) {
+        // Ignore stdin read errors.
+      }
+    }
+
+    final prompt = _startupPrompt;
+    if ((prompt == null || prompt.isEmpty) && stdinContent == null) {
+      stderr.writeln('Error: --print requires a prompt.');
+      return;
+    }
+
+    final fullPrompt = buildPrintPrompt(prompt: prompt, stdinContent: stdinContent);
+
+    final expanded = expandFileRefs(fullPrompt);
+    _sessionStore?.logEvent('user_message', {'text': expanded});
+
+    final assistantText = StringBuffer();
+    final conversationLog = <Map<String, dynamic>>[];
+
+    try {
+      final stream = agent.run(expanded);
+      await for (final event in stream) {
+        switch (event) {
+          case AgentTextDelta(:final delta):
+            assistantText.write(delta);
+            if (!_jsonMode) stdout.write(delta);
+
+          case AgentToolCall(:final call):
+            conversationLog.add({
+              'type': 'tool_call',
+              'name': call.name,
+              'arguments': call.arguments,
+            });
+            try {
+              final result = await agent.executeTool(call);
+              agent.completeToolCall(result);
+            } catch (e) {
+              agent.completeToolCall(ToolResult(
+                callId: call.id,
+                content: 'Tool error: $e',
+                success: false,
+              ));
+            }
+
+          case AgentDone():
+            break;
+
+          case AgentError(:final error):
+            stderr.writeln(error);
+            return;
+
+          default:
+            break;
+        }
+      }
+    } catch (e) {
+      stderr.writeln('Error: $e');
+      return;
+    } finally {
+      for (final tool in agent.tools.values) {
+        try {
+          await tool.dispose();
+        } catch (_) {}
+      }
+      await _obs?.flush();
+      await _obs?.close();
+      await _sessionStore?.close();
+    }
+
+    final text = assistantText.toString();
+    if (!_jsonMode && !text.endsWith('\n')) stdout.writeln();
+
+    _sessionStore?.logEvent('assistant_message', {'text': text});
+
+    if (_jsonMode) {
+      final sessionId = _sessionStore?.meta.id;
+      conversationLog.insert(0, {'type': 'user_message', 'text': expanded});
+      conversationLog.add({'type': 'assistant_message', 'text': text});
+
+      final output = {
+        'session_id': sessionId,
+        'model': _modelName,
+        'conversation': conversationLog,
+      };
+      stdout.writeln(const JsonEncoder.withIndent('  ').convert(output));
     }
   }
 
@@ -2501,14 +2672,18 @@ class App {
     };
     final shortCwd = _shortenPath(_cwd);
     final permLabel = '[${_permissionMode.label}]';
-    const bold = '\x1b[1m';
-    const boldOff = '\x1b[22m';
-    const black = '\x1b[30m';
-    final statusLeft =
-        ' $_modelName  $permLabel  $shortCwd  $bold$black$modeIndicator$boldOff\x1b[39m';
+    final statusLeft = ' \x1b[1m$modeIndicator\x1b[22m ';
 
-    final scrollIndicator = _scrollOffset > 0 ? '↑$_scrollOffset  ' : '';
-    final statusRight = '${scrollIndicator}tok ${agent.tokenCount} ';
+    const sep = ' │ ';
+    final scrollSeg = _scrollOffset > 0 ? '↑$_scrollOffset' : null;
+    final rightSegs = [
+      _modelName,
+      permLabel,
+      shortCwd,
+      if (scrollSeg != null) scrollSeg,
+      'tok ${agent.tokenCount}',
+    ];
+    final statusRight = ' ${rightSegs.join(sep)} ';
     layout.paintStatus(statusLeft, statusRight);
 
     // 6. Input area — MUST be last so cursor lands here.

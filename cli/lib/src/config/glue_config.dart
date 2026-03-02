@@ -154,7 +154,6 @@ class GlueConfig {
 
   /// Loads configuration from env vars, optional config file, and CLI overrides.
   factory GlueConfig.load({
-    String? cliProvider,
     String? cliModel,
   }) {
     // 1. Load from config file.
@@ -170,21 +169,30 @@ class GlueConfig {
       }
     }
 
-    // 2. Resolve values: CLI → env → file → defaults.
-    final providerStr = cliProvider ??
-        Platform.environment['GLUE_PROVIDER'] ??
+    // 2. Resolve model: CLI → env → file → default.
+    //    Resolve aliases (e.g. "opus" → "claude-opus-4-6") via registry.
+    final rawModel = cliModel ??
+        Platform.environment['GLUE_MODEL'] ??
+        fileConfig?['model'] as String?;
+
+    final resolvedEntry = rawModel != null
+        ? ModelRegistry.findByName(rawModel)
+        : null;
+
+    // 3. Resolve provider: infer from model → env → file → default.
+    final providerStr = Platform.environment['GLUE_PROVIDER'] ??
         fileConfig?['provider'] as String?;
 
-    final provider = providerStr != null
-        ? LlmProvider.values.firstWhere(
-            (p) => p.name == providerStr,
-            orElse: () => LlmProvider.anthropic,
-          )
-        : LlmProvider.anthropic;
+    final provider = resolvedEntry?.provider ??
+        (providerStr != null
+            ? LlmProvider.values.firstWhere(
+                (p) => p.name == providerStr,
+                orElse: () => LlmProvider.anthropic,
+              )
+            : LlmProvider.anthropic);
 
-    final model = cliModel ??
-        Platform.environment['GLUE_MODEL'] ??
-        fileConfig?['model'] as String? ??
+    final model = resolvedEntry?.modelId ??
+        rawModel ??
         _defaultModel(provider);
 
     final anthropicKey = Platform.environment['ANTHROPIC_API_KEY'] ??
