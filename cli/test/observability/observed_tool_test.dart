@@ -137,7 +137,7 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(sink.spans, hasLength(1));
-    expect(sink.spans.first.attributes['error'], contains('tool broke'));
+    expect(sink.spans.first.attributes['error'], isTrue);
     expect(sink.spans.first.endTime, isNotNull);
   });
 

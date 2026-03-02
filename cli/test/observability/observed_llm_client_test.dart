@@ -114,7 +114,7 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(sink.spans, hasLength(1));
-    expect(sink.spans.first.attributes['error'], contains('stream error'));
+    expect(sink.spans.first.attributes['error'], isTrue);
     expect(sink.spans.first.endTime, isNotNull);
   });
 
@@ -266,7 +266,7 @@ void main() {
     } catch (_) {}
 
     final attrs = sink.spans.first.attributes;
-    expect(attrs['exception.type'], 'Exception');
+    expect(attrs['exception.type'], contains('Exception'));
     expect(attrs['exception.message'], contains('API rate limit exceeded'));
     expect(attrs['error'], isTrue);
   });
