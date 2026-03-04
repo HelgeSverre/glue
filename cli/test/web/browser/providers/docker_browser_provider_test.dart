@@ -12,13 +12,13 @@ void main() {
       expect(provider.name, 'docker');
     });
 
-    test('is always available', () {
+    test('is always configured', () {
       final provider = DockerBrowserProvider(
         image: 'browserless/chrome:latest',
         port: 3000,
         sessionId: 'test-session',
       );
-      expect(provider.isAvailable, isTrue);
+      expect(provider.isConfigured, isTrue);
     });
 
     test('builds docker run args correctly', () {

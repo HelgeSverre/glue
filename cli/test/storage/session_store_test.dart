@@ -90,4 +90,17 @@ void main() {
     );
     expect(savedMeta.endTime, isNotNull);
   });
+
+  test('atomic writes do not leave temporary files behind', () async {
+    final store = SessionStore(sessionDir: sessionDir, meta: meta);
+    store.logEvent('user_message', {'text': 'hello'});
+    store.setTitle('Atomic title');
+    await store.close();
+
+    expect(File(p.join(sessionDir, 'meta.json.tmp')).existsSync(), isFalse);
+    expect(
+      File(p.join(sessionDir, 'conversation.jsonl.tmp')).existsSync(),
+      isFalse,
+    );
+  });
 }

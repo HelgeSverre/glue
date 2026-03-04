@@ -8,7 +8,11 @@ class _MockProvider implements BrowserEndpointProvider {
   @override
   String get name => 'mock';
   @override
-  bool get isAvailable => true;
+  bool get isConfigured => true;
+
+  @override
+  @Deprecated('Use isConfigured instead.')
+  bool get isAvailable => isConfigured;
 
   @override
   Future<BrowserEndpoint> provision() async => BrowserEndpoint(

@@ -19,7 +19,7 @@ class _MockLlm implements LlmClient {
 
     if (_calls == 1 && text.contains('read')) {
       yield TextDelta('I\'ll read that file. ');
-      yield ToolCallDelta(ToolCall(
+      yield ToolCallComplete(ToolCall(
         id: 'tc_$_calls',
         name: 'read_file',
         arguments: {'path': 'pubspec.yaml'},
@@ -50,7 +50,7 @@ void main() {
       final core = AgentCore(
         llm: _MockLlm(),
         tools: {'read_file': ReadFileTool()},
-        modelName: 'test-model',
+        modelId: 'test-model',
       );
       final runner = AgentRunner(
         core: core,

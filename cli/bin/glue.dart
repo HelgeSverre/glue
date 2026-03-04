@@ -6,10 +6,8 @@ import 'package:cli_completion/cli_completion.dart';
 import 'package:cli_completion/installer.dart';
 import 'package:cli_completion/parser.dart';
 import 'package:glue/glue.dart';
-import 'package:glue/src/dev/devtools.dart';
 import 'package:path/path.dart' as p;
 
-const version = '0.1.0';
 const appDescription = 'The coding agent that holds it all together.';
 
 const logo = '''
@@ -34,7 +32,11 @@ void main(List<String> args) async {
 }
 
 class GlueCommandRunner extends CompletionCommandRunner<int> {
-  GlueCommandRunner() : super('glue', 'glue v$version — $appDescription') {
+  GlueCommandRunner()
+      : super(
+          'glue',
+          'glue v${AppConstants.version} — $appDescription',
+        ) {
     argParser
       ..addFlag('version', abbr: 'v', negatable: false, help: 'Print version.')
       ..addFlag('print',
@@ -45,8 +47,7 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
           negatable: false,
           help: 'Output session conversation as JSON (implies --print).')
       ..addOption('model', abbr: 'm', help: 'LLM model to use.')
-      ..addOption('resume',
-          abbr: 'r', help: 'Resume a session by ID.')
+      ..addOption('resume', abbr: 'r', help: 'Resume a session by ID.')
       ..addFlag('continue',
           negatable: false, help: 'Resume most recent session.')
       ..addFlag('debug',
@@ -88,7 +89,7 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
   @override
   Future<int?> runCommand(ArgResults topLevelResults) async {
     if (topLevelResults.flag('version')) {
-      stdout.writeln('glue v$version');
+      stdout.writeln('glue v${AppConstants.version}');
       return 0;
     }
 
@@ -112,9 +113,8 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
     final resumeSessionId = topLevelResults.option('resume');
 
     // Positional args form the prompt.
-    final prompt = topLevelResults.rest.isNotEmpty
-        ? topLevelResults.rest.join(' ')
-        : null;
+    final prompt =
+        topLevelResults.rest.isNotEmpty ? topLevelResults.rest.join(' ') : null;
 
     final app = await App.create(
       model: model,

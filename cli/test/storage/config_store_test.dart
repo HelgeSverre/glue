@@ -39,29 +39,20 @@ void main() {
     expect(loaded['debug'], isTrue);
   });
 
-  test('convenience getters work', () {
+  test('trusted tools getter works', () {
     final store = ConfigStore(configPath);
     store.save({
-      'default_provider': 'openai',
-      'default_model': 'gpt-4.1',
       'trusted_tools': ['bash'],
-      'debug': false,
     });
 
-    expect(store.defaultProvider, 'openai');
-    expect(store.defaultModel, 'gpt-4.1');
     expect(store.trustedTools, ['bash']);
-    expect(store.debug, isFalse);
   });
 
-  test('convenience getters return defaults for missing keys', () {
+  test('trusted tools getter returns empty list for missing key', () {
     final store = ConfigStore(configPath);
     store.save({});
 
-    expect(store.defaultProvider, isNull);
-    expect(store.defaultModel, isNull);
     expect(store.trustedTools, isEmpty);
-    expect(store.debug, isTrue);
   });
 
   test('save creates parent directories', () {
@@ -77,17 +68,21 @@ void main() {
 
   test('detects external file changes', () async {
     final store = ConfigStore(configPath);
-    store.save({'default_model': 'gpt-4'});
-    expect(store.defaultModel, 'gpt-4');
+    store.save({
+      'trusted_tools': ['gpt-4']
+    });
+    expect(store.trustedTools, ['gpt-4']);
 
     // Simulate external edit — wait a moment for mtime to differ
     await Future.delayed(const Duration(milliseconds: 50));
     const encoder = JsonEncoder.withIndent('  ');
     File(configPath).writeAsStringSync(
-      encoder.convert({'default_model': 'claude-sonnet'}),
+      encoder.convert({
+        'trusted_tools': ['claude-sonnet']
+      }),
     );
 
-    expect(store.defaultModel, 'claude-sonnet');
+    expect(store.trustedTools, ['claude-sonnet']);
   });
 
   test('update() applies mutation and saves', () {
@@ -110,13 +105,37 @@ void main() {
 
   test('handles corrupt JSON gracefully', () {
     final store = ConfigStore(configPath);
-    store.save({'debug': false});
-    expect(store.debug, isFalse);
+    store.save({
+      'trusted_tools': ['read_file']
+    });
+    expect(store.trustedTools, ['read_file']);
 
     // Corrupt the file
     File(configPath).writeAsStringSync('not valid json{{{');
 
     // Should keep last-known-good cache
-    expect(store.debug, isFalse);
+    expect(store.trustedTools, ['read_file']);
+  });
+
+  test('falls back to legacy path when new path is missing', () {
+    final preferencesPath = p.join(tempDir.path, 'preferences.json');
+    final legacyPath = p.join(tempDir.path, 'config.json');
+    File(legacyPath).writeAsStringSync(
+      jsonEncode({
+        'trusted_tools': ['bash']
+      }),
+    );
+
+    final store = ConfigStore(preferencesPath, legacyPath: legacyPath);
+    expect(store.trustedTools, ['bash']);
+
+    store.update((c) {
+      c['trusted_tools'] = ['bash', 'read_file'];
+    });
+
+    expect(File(preferencesPath).existsSync(), isTrue);
+    final newOnDisk = jsonDecode(File(preferencesPath).readAsStringSync())
+        as Map<String, dynamic>;
+    expect(newOnDisk['trusted_tools'], ['bash', 'read_file']);
   });
 }

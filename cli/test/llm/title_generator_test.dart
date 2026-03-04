@@ -1,69 +1,62 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 import 'package:test/test.dart';
+import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/llm/title_generator.dart';
 
-/// Helper to build a mock Anthropic Messages API response body.
-String _apiResponse(String text) => jsonEncode({
-      'content': [
-        {'type': 'text', 'text': text}
-      ],
-    });
+class _FakeLlmClient implements LlmClient {
+  final List<LlmChunk> chunks;
+  final Object? error;
+  List<Message>? lastMessages;
+
+  _FakeLlmClient({
+    this.chunks = const [],
+    this.error,
+  });
+
+  @override
+  Stream<LlmChunk> stream(
+    List<Message> messages, {
+    List<Tool>? tools,
+  }) async* {
+    lastMessages = messages;
+    if (error != null) {
+      throw error!;
+    }
+    for (final chunk in chunks) {
+      yield chunk;
+    }
+  }
+}
 
 void main() {
   group('TitleGenerator.generate', () {
-    test('returns title from successful API response', () async {
-      final client = MockClient((request) async {
-        expect(request.url.path, '/v1/messages');
-        expect(request.headers['x-api-key'], 'test-key');
-        return http.Response(_apiResponse('Fix auth bug'), 200);
-      });
-
-      final generator = TitleGenerator(
-        httpClient: client,
-        apiKey: 'test-key',
-        model: 'claude-haiku-4-5-20251001',
-      );
+    test('returns title from streamed text chunks', () async {
+      final llm = _FakeLlmClient(chunks: [
+        TextDelta('Fix'),
+        TextDelta(' auth'),
+        TextDelta(' bug'),
+      ]);
+      final generator = TitleGenerator(llmClient: llm);
 
       final title = await generator.generate('The login is broken');
+
       expect(title, 'Fix auth bug');
+      expect(llm.lastMessages, isNotNull);
+      expect(llm.lastMessages!.length, 1);
+      expect(llm.lastMessages!.single.role, Role.user);
+      expect(llm.lastMessages!.single.text, contains('<message>'));
     });
 
-    test('returns null on API error', () async {
-      final client = MockClient((_) async => http.Response('error', 500));
-
-      final generator = TitleGenerator(
-        httpClient: client,
-        apiKey: 'test-key',
-        model: 'claude-haiku-4-5-20251001',
-      );
+    test('returns null on stream exception', () async {
+      final llm = _FakeLlmClient(error: Exception('network error'));
+      final generator = TitleGenerator(llmClient: llm);
 
       expect(await generator.generate('test'), isNull);
     });
 
-    test('returns null on network exception', () async {
-      final client = MockClient((_) async => throw Exception('network error'));
-
-      final generator = TitleGenerator(
-        httpClient: client,
-        apiKey: 'test-key',
-        model: 'claude-haiku-4-5-20251001',
-      );
-
-      expect(await generator.generate('test'), isNull);
-    });
-
-    test('returns null on empty content array', () async {
-      final client = MockClient((_) async {
-        return http.Response(jsonEncode({'content': []}), 200);
-      });
-
-      final generator = TitleGenerator(
-        httpClient: client,
-        apiKey: 'test-key',
-        model: 'claude-haiku-4-5-20251001',
-      );
+    test('returns null when stream emits no text', () async {
+      final llm = _FakeLlmClient(chunks: const []);
+      final generator = TitleGenerator(llmClient: llm);
 
       expect(await generator.generate('test'), isNull);
     });
@@ -79,7 +72,6 @@ void main() {
     });
 
     test('strips zalgo combining marks', () {
-      // "Fix" with combining marks
       expect(
         TitleGenerator.sanitize('F\u0300\u0301ix auth'),
         'Fix auth',

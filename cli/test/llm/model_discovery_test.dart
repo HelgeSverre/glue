@@ -151,7 +151,7 @@ void main() {
 
       // Cache file should be updated.
       final cache = readCache(LlmProvider.ollama)!;
-      final models = cache['models'] as List;
+      final models = (cache['models'] as List).cast<Map<String, dynamic>>();
       expect(models.first['id'], 'new-model:latest');
     });
 
@@ -169,7 +169,8 @@ void main() {
       // Cache should now exist.
       final cache = readCache(LlmProvider.ollama);
       expect(cache, isNotNull);
-      expect((cache!['models'] as List).first['id'], 'gemma3:latest');
+      final models = (cache!['models'] as List).cast<Map<String, dynamic>>();
+      expect(models.first['id'], 'gemma3:latest');
     });
 
     test('multiple stale providers — parallel fetch', () async {

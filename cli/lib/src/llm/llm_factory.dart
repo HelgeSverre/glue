@@ -69,12 +69,7 @@ class LlmClientFactory {
     GlueConfig config, {
     required String systemPrompt,
   }) {
-    final apiKey = switch (entry.provider) {
-      LlmProvider.anthropic => config.anthropicApiKey ?? '',
-      LlmProvider.openai => config.openaiApiKey ?? '',
-      LlmProvider.mistral => config.mistralApiKey ?? '',
-      LlmProvider.ollama => '',
-    };
+    final apiKey = config.apiKeyFor(entry.provider) ?? '';
     return create(
       provider: entry.provider,
       model: entry.modelId,
@@ -90,12 +85,7 @@ class LlmClientFactory {
     GlueConfig config, {
     required String systemPrompt,
   }) {
-    final apiKey = switch (profile.provider) {
-      LlmProvider.anthropic => config.anthropicApiKey ?? '',
-      LlmProvider.openai => config.openaiApiKey ?? '',
-      LlmProvider.mistral => config.mistralApiKey ?? '',
-      LlmProvider.ollama => '',
-    };
+    final apiKey = config.apiKeyFor(profile.provider) ?? '';
     return create(
       provider: profile.provider,
       model: profile.model,

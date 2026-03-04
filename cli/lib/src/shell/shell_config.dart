@@ -11,13 +11,25 @@ enum ShellMode {
   /// login-time variables are needed.
   login;
 
-  /// Parses a mode string from config. Returns [nonInteractive] for any
-  /// unrecognized value, so typos fail safe rather than loud.
-  static ShellMode fromString(String s) => switch (s) {
-        'interactive' => ShellMode.interactive,
-        'login' => ShellMode.login,
-        _ => ShellMode.nonInteractive,
-      };
+  /// Parses a mode string from config.
+  ///
+  /// Returns [nonInteractive] for unrecognized values and optionally reports
+  /// the invalid input through [onInvalid].
+  static ShellMode fromString(
+    String s, {
+    void Function(String invalidValue)? onInvalid,
+  }) {
+    final value = s.trim().toLowerCase();
+    return switch (value) {
+      'non_interactive' => ShellMode.nonInteractive,
+      'interactive' => ShellMode.interactive,
+      'login' => ShellMode.login,
+      _ => () {
+          onInvalid?.call(s);
+          return ShellMode.nonInteractive;
+        }(),
+    };
+  }
 }
 
 /// Configuration for the shell used to execute commands.

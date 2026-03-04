@@ -29,8 +29,14 @@ class BrowserEndpoint {
 }
 
 /// Interface for provisioning browser endpoints.
+///
+/// "Provider" here is the concrete provisioning implementation for the chosen
+/// browser backend (local/docker/cloud).
 abstract class BrowserEndpointProvider {
   String get name;
-  bool get isAvailable;
+  bool get isConfigured;
+
+  @Deprecated('Use isConfigured instead.')
+  bool get isAvailable => isConfigured;
   Future<BrowserEndpoint> provision();
 }

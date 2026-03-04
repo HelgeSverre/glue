@@ -10,8 +10,8 @@ class SessionMeta {
   final String id;
   final String cwd;
   final String? projectPath;
-  final String model;
-  final String provider;
+  String model;
+  String provider;
   final DateTime startTime;
   DateTime? endTime;
   final String? forkedFrom;
@@ -130,8 +130,8 @@ class SessionStore {
 
   void _writeMeta() {
     const encoder = JsonEncoder.withIndent('  ');
-    File(p.join(sessionDir, 'meta.json'))
-        .writeAsStringSync(encoder.convert(meta.toJson()));
+    final file = File(p.join(sessionDir, 'meta.json'));
+    _atomicWrite(file, encoder.convert(meta.toJson()));
   }
 
   void setTitle(String title) {
@@ -149,16 +149,26 @@ class SessionStore {
       'type': type,
       ...data,
     };
-    _conversationFile.writeAsStringSync(
-      '${jsonEncode(record)}\n',
-      mode: FileMode.append,
-    );
+    final previous = _conversationFile.existsSync()
+        ? _conversationFile.readAsStringSync()
+        : '';
+    _atomicWrite(_conversationFile, '$previous${jsonEncode(record)}\n');
   }
 
   /// Closes this session, recording the end time.
   Future<void> close() async {
     meta.endTime = DateTime.now().toUtc();
     _writeMeta();
+  }
+
+  static void _atomicWrite(File file, String content) {
+    file.parent.createSync(recursive: true);
+    final tmp = File('${file.path}.tmp');
+    tmp.writeAsStringSync(content);
+    if (Platform.isWindows && file.existsSync()) {
+      file.deleteSync();
+    }
+    tmp.renameSync(file.path);
   }
 
   /// Lists all saved sessions in [sessionsDir], sorted newest first.

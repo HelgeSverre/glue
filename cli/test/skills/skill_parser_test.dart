@@ -9,7 +9,6 @@ void main() {
         description: 'A test skill.',
         license: 'MIT',
         compatibility: 'any',
-        allowedTools: 'Bash',
         metadata: {'author': 'me'},
         skillDir: '/s/test',
         skillMdPath: '/s/test/SKILL.md',
@@ -19,7 +18,6 @@ void main() {
       expect(meta.description, 'A test skill.');
       expect(meta.license, 'MIT');
       expect(meta.compatibility, 'any');
-      expect(meta.allowedTools, 'Bash');
       expect(meta.metadata, {'author': 'me'});
       expect(meta.skillDir, '/s/test');
       expect(meta.skillMdPath, '/s/test/SKILL.md');
@@ -48,7 +46,6 @@ void main() {
       expect(meta.description, 'Process PDFs.');
       expect(meta.license, 'MIT');
       expect(meta.compatibility, 'Requires poppler');
-      expect(meta.allowedTools, 'Bash Read');
       expect(meta.metadata, {'author': 'test-org', 'version': '1.0'});
       expect(meta.source, SkillSource.project);
     });

@@ -211,7 +211,7 @@ void main() {
     group('stress: many entries', () {
       test('50 models across all providers maintain alignment', () {
         final entries = <ModelEntry>[];
-        final providers = LlmProvider.values;
+        const providers = LlmProvider.values;
         for (var i = 0; i < 50; i++) {
           final p = providers[i % providers.length];
           entries.add(_entry(
@@ -317,7 +317,7 @@ void main() {
         // (matching anthropic).
         final plain1 = stripAnsi(result.lines[1]);
         // "ollama" (6) + 3 pad + 2 gap = 11 leading chars before marker.
-        expect(plain1.substring(0, 9 + 2), 'ollama' + ' ' * 5);
+        expect(plain1.substring(0, 9 + 2), 'ollama${' ' * 5}');
       });
     });
 

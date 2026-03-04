@@ -43,6 +43,7 @@ export 'src/agent/agent_core.dart'
         LlmClient,
         LlmChunk,
         TextDelta,
+        ToolCallComplete,
         ToolCallDelta,
         UsageInfo,
         ToolCall,
@@ -84,6 +85,7 @@ export 'src/rendering/block_renderer.dart' show BlockRenderer;
 export 'src/rendering/markdown_renderer.dart' show MarkdownRenderer;
 export 'src/commands/slash_commands.dart'
     show SlashCommand, SlashCommandRegistry;
+export 'src/commands/builtin_commands.dart' show BuiltinCommands;
 export 'src/ui/modal.dart' show ConfirmModal, ModalChoice;
 export 'src/ui/box.dart' show Box;
 export 'src/ui/panel_modal.dart'
@@ -95,14 +97,25 @@ export 'src/ui/panel_modal.dart'
         PanelSize,
         PanelFixed,
         PanelFluid;
+export 'src/ui/panel_controller.dart' show PanelController, HistoryPanelEntry;
 export 'src/ui/split_panel_modal.dart' show SplitPanelModal;
 export 'src/skills/skill_parser.dart'
     show SkillMeta, SkillSource, SkillParseError;
 export 'src/skills/skill_registry.dart' show SkillRegistry;
 export 'src/skills/skill_runtime.dart' show SkillRuntime, SkillPathsProvider;
 export 'src/skills/skill_tool.dart' show SkillTool;
-export 'src/storage/glue_home.dart' show GlueHome;
-export 'src/storage/session_id.dart' show generateSessionId;
+export 'src/core/environment.dart' show Environment;
+export 'src/core/service_locator.dart' show ServiceLocator, AppServices;
+export 'src/orchestrator/permission_gate.dart'
+    show PermissionGate, PermissionDecision;
+export 'src/session/session_manager.dart'
+    show
+        SessionManager,
+        SessionReplay,
+        SessionReplayEntry,
+        SessionReplayKind,
+        SessionResumeResult,
+        SessionForkResult;
 export 'src/storage/session_store.dart' show SessionStore, SessionMeta;
 export 'src/observability/observability.dart'
     show Observability, ObservabilitySink, ObservabilitySpan;

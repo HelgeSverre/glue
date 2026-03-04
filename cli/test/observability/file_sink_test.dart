@@ -34,8 +34,8 @@ void main() {
 
     final decoded = jsonDecode(lines.first) as Map<String, dynamic>;
     expect(decoded['name'], 'test-span');
-    expect(decoded['traceId'], span.traceId);
-    expect(decoded['spanId'], span.spanId);
+    expect(decoded['trace_id'], span.traceId);
+    expect(decoded['span_id'], span.spanId);
 
     await sink.close();
   });

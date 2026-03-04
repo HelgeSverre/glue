@@ -19,6 +19,10 @@ class WebFetchConfig {
   });
 }
 
+/// Provider selector enum for search routing.
+///
+/// Uses `Type` suffix to avoid colliding with the runtime
+/// `WebSearchProvider` interface.
 enum WebSearchProviderType { brave, tavily, firecrawl }
 
 class WebSearchConfig {

@@ -46,13 +46,13 @@ class ObservabilitySpan {
   }
 
   Map<String, dynamic> toMap() => {
-        'traceId': traceId,
-        'spanId': spanId,
-        if (parentSpanId != null) 'parentSpanId': parentSpanId,
+        'trace_id': traceId,
+        'span_id': spanId,
+        if (parentSpanId != null) 'parent_span_id': parentSpanId,
         'name': name,
         'kind': kind,
-        'start': _start.toIso8601String(),
-        'endTime': _end?.toIso8601String(),
+        'start_time': _start.toIso8601String(),
+        'end_time': _end?.toIso8601String(),
         'duration_ms': duration.inMilliseconds,
         'attributes': attributes,
       };

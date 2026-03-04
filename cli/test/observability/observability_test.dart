@@ -98,12 +98,12 @@ void main() {
       );
       span.end();
       final map = span.toMap();
-      expect(map['traceId'], span.traceId);
-      expect(map['spanId'], span.spanId);
+      expect(map['trace_id'], span.traceId);
+      expect(map['span_id'], span.spanId);
       expect(map['name'], 'test-span');
       expect(map['kind'], 'http');
-      expect(map['start'], isA<String>());
-      expect(map['endTime'], isA<String>());
+      expect(map['start_time'], isA<String>());
+      expect(map['end_time'], isA<String>());
       expect(map['duration_ms'], isA<int>());
       expect(map['attributes'], isA<Map<String, dynamic>>());
     });
@@ -114,13 +114,13 @@ void main() {
         kind: 'internal',
         parentSpanId: 'abc123',
       );
-      expect(span.toMap().containsKey('parentSpanId'), isTrue);
-      expect(span.toMap()['parentSpanId'], 'abc123');
+      expect(span.toMap().containsKey('parent_span_id'), isTrue);
+      expect(span.toMap()['parent_span_id'], 'abc123');
     });
 
     test('toMap() omits parentSpanId when null', () {
       final span = ObservabilitySpan(name: 'root', kind: 'internal');
-      expect(span.toMap().containsKey('parentSpanId'), isFalse);
+      expect(span.toMap().containsKey('parent_span_id'), isFalse);
     });
 
     test('duration is zero or positive before end', () {

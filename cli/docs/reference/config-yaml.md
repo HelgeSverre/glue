@@ -1,122 +1,119 @@
-# `~/.glue/config.yaml` — User Configuration Schema
+# `~/.glue/config.yaml` — User Configuration
 
-User-edited YAML configuration file. Loaded at startup by `GlueConfig.load()` (`lib/src/config/glue_config.dart`).
+Primary user-edited configuration file loaded by `GlueConfig.load()`.
 
-> All sections below are implemented and live.
+Resolution order:
 
-**Resolution order:** CLI args → environment variables → config.yaml → defaults.
+1. CLI overrides (currently `--model`)
+2. Environment variables
+3. `config.yaml`
+4. Defaults
 
-## Full Schema
+## Example
 
 ```yaml
-# LLM Provider: anthropic | openai | ollama
 provider: anthropic
-
-# Model name (provider-specific)
 model: claude-sonnet-4-6
 
-# Provider credentials
 anthropic:
   api_key: sk-ant-...
 
 openai:
   api_key: sk-...
 
-# Ollama configuration (local, no API key needed)
-ollama:
-  base_url: http://localhost:11434 # default
+mistral:
+  api_key: mk-...
 
-# Agent profiles — named provider+model pairs for subagents
+ollama:
+  base_url: http://localhost:11434
+
+title_model: claude-haiku-4-5-20251001
+
 profiles:
   fast:
     provider: anthropic
-    model: claude-haiku-4
-  local:
-    provider: ollama
-    model: llama3.2
+    model: claude-haiku-3-5
 
-# Bash/shell tool configuration
 bash:
-  max_lines: 50 # max output lines shown for blocking bash commands
+  max_lines: 50
 
-# Shell execution configuration
 shell:
-  executable: zsh # shell binary: bash, zsh, fish, pwsh, sh (default: $SHELL or sh)
+  executable: zsh
   mode: non_interactive # non_interactive | interactive | login
 
-# Docker sandbox configuration
 docker:
-  enabled: false # enable Docker-sandboxed command execution
-  image: ubuntu:24.04 # base image for containers
-  shell: sh # shell inside the container (independent of host shell)
-  fallback_to_host: true # fall back to host execution if Docker unavailable
-  mounts: # persistent directory whitelist (always mounted)
-    - /path/to/shared/libs
-    - /path/to/data:ro # append :ro for read-only
+  enabled: false
+  image: ubuntu:24.04
+  shell: sh
+  fallback_to_host: true
+  mounts:
+    - /abs/path
+    - /abs/path:ro
+
+web:
+  fetch:
+    jina_api_key: your-key
+  search:
+    provider: brave      # brave | tavily | firecrawl
+    brave_api_key: your-key
+    tavily_api_key: your-key
+    firecrawl_api_key: your-key
+    firecrawl_base_url: https://api.firecrawl.dev
+  pdf:
+    enabled: true
+    ocr_provider: mistral # mistral | openai
+    mistral_api_key: your-key
+    openai_api_key: your-key
+  browser:
+    backend: local       # execution backend: local | docker | steel | browserbase | browserless
+    docker_image: browserless/chrome:latest
+    docker_port: 3000
+    steel_api_key: your-key
+    browserbase_api_key: your-key
+    browserbase_project_id: your-project
+    browserless_api_key: your-key
+    browserless_base_url: https://chrome.browserless.io
+
+telemetry:
+  debug: false
+  flush_interval_seconds: 0
+  langfuse:
+    enabled: false
+    public_key: pk-...
+    secret_key: sk-...
+    base_url: https://cloud.langfuse.com
+  otel:
+    enabled: false
+    endpoint: http://localhost:4318/v1/traces
+    service_name: glue-cli
+
+permission_mode: confirm # read-only | confirm | accept-edits
+
+skills:
+  paths:
+    - /opt/glue-skills
 ```
 
-## Field Reference
+## Top-Level Fields
 
-### Top-Level
+| Field | Type | Description |
+| --- | --- | --- |
+| `provider` | string | Active provider (`anthropic`, `openai`, `mistral`, `ollama`) |
+| `model` | string | Active model ID |
+| `title_model` | string | Model used for background session title generation |
+| `profiles` | map | Named provider/model pairs for subagents |
+| `permission_mode` | string | Tool approval policy |
+| `skills.paths` | list | Extra skill search paths |
 
-| Field      | Type   | Default      | Env Override    | CLI Override | Description  |
-| ---------- | ------ | ------------ | --------------- | ------------ | ------------ |
-| `provider` | string | `anthropic`  | `GLUE_PROVIDER` | `--provider` | LLM provider |
-| `model`    | string | per-provider | `GLUE_MODEL`    | `--model`    | Model name   |
+## Environment Overrides (selected)
 
-### `anthropic` / `openai`
+- Provider/model: `GLUE_PROVIDER`, `GLUE_MODEL`
+- API keys: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `MISTRAL_API_KEY`, `GLUE_*`
+- Ollama URL: `GLUE_OLLAMA_BASE_URL`, `OLLAMA_BASE_URL`
+- Shell: `GLUE_SHELL`, `GLUE_SHELL_MODE`
+- Docker: `GLUE_DOCKER_ENABLED`, `GLUE_DOCKER_IMAGE`, `GLUE_DOCKER_SHELL`, `GLUE_DOCKER_MOUNTS`
+- Search provider: `GLUE_SEARCH_PROVIDER`
+- Skills paths: `GLUE_SKILLS_PATHS`
+- Permission mode: `GLUE_PERMISSION_MODE`
 
-| Field     | Type   | Default | Env Override                                   | Description |
-| --------- | ------ | ------- | ---------------------------------------------- | ----------- |
-| `api_key` | string | —       | `ANTHROPIC_API_KEY` / `GLUE_ANTHROPIC_API_KEY` | API key     |
-|           |        |         | `OPENAI_API_KEY` / `GLUE_OPENAI_API_KEY`       |             |
-
-### `bash`
-
-| Field       | Type | Default | Env Override | Description                                 |
-| ----------- | ---- | ------- | ------------ | ------------------------------------------- |
-| `max_lines` | int  | `50`    | —            | Max output lines for blocking bash commands |
-
-### `shell`
-
-| Field        | Type   | Default           | Env Override      | CLI Override   | Description               |
-| ------------ | ------ | ----------------- | ----------------- | -------------- | ------------------------- |
-| `executable` | string | `$SHELL` or `sh`  | `GLUE_SHELL`      | `--shell`      | Shell binary name or path |
-| `mode`       | string | `non_interactive` | `GLUE_SHELL_MODE` | `--shell-mode` | Execution mode            |
-
-**Mode values:**
-
-- `non_interactive` — `['-c', command]`. No rc files loaded. Safest default.
-- `interactive` — `['-i', '-c', command]`. Loads `~/.bashrc`/`~/.zshrc`/`config.fish`. Enables aliases and shell functions.
-- `login` — `['-l', '-c', command]`. Loads login profile files.
-
-**Shell-specific argument mapping:**
-
-| Shell | non_interactive                | interactive         | login                 |
-| ----- | ------------------------------ | ------------------- | --------------------- |
-| sh    | `sh -c CMD`                    | `sh -c CMD`         | `sh -c CMD`           |
-| bash  | `bash -c CMD`                  | `bash -i -c CMD`    | `bash -l -c CMD`      |
-| zsh   | `zsh -c CMD`                   | `zsh -i -c CMD`     | `zsh -l -c CMD`       |
-| fish  | `fish -c CMD`                  | `fish -i -c CMD`    | `fish --login -c CMD` |
-| pwsh  | `pwsh -NoProfile -Command CMD` | `pwsh -Command CMD` | `pwsh -Command CMD`   |
-
-### `docker`
-
-| Field              | Type   | Default        | Env Override            | CLI Override                  | Description                     |
-| ------------------ | ------ | -------------- | ----------------------- | ----------------------------- | ------------------------------- |
-| `enabled`          | bool   | `false`        | `GLUE_DOCKER_ENABLED=1` | `--docker` / `--no-docker`    | Enable Docker sandbox           |
-| `image`            | string | `ubuntu:24.04` | `GLUE_DOCKER_IMAGE`     | `--docker-image`              | Container base image            |
-| `shell`            | string | `sh`           | `GLUE_DOCKER_SHELL`     | `--docker-shell`              | Shell inside container          |
-| `fallback_to_host` | bool   | `true`         | —                       | `--docker-fallback-to-host`   | Fall back if Docker unavailable |
-| `mounts`           | list   | `[]`           | `GLUE_DOCKER_MOUNTS`    | `--docker-mount` (repeatable) | Persistent directory whitelist  |
-
-**Mount format:** Supports several forms:
-
-- `/host/path` — mount read-write at same path inside container
-- `/host/path:ro` — mount read-only at same path
-- `/host/path:/container/path` — mount at a different container path (read-write)
-- `/host/path:/container/path:ro` — mount at a different container path (read-only)
-
-Host paths must be absolute. Container paths must be absolute POSIX paths. CWD is always mounted automatically at `/work`.
-
-**`GLUE_DOCKER_MOUNTS` format:** Semicolon-separated specs, e.g. `/path/one;/path/two:ro;/host:/container:rw`.
+For exact parsing logic, see `lib/src/config/glue_config.dart`.

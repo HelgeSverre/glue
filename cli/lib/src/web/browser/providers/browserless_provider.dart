@@ -13,7 +13,11 @@ class BrowserlessProvider implements BrowserEndpointProvider {
   String get name => 'browserless';
 
   @override
-  bool get isAvailable => apiKey != null && apiKey!.isNotEmpty;
+  bool get isConfigured => apiKey != null && apiKey!.isNotEmpty;
+
+  @override
+  @Deprecated('Use isConfigured instead.')
+  bool get isAvailable => isConfigured;
 
   /// Build the WebSocket URL for CDP connection.
   String buildWsUrl() {
@@ -28,7 +32,7 @@ class BrowserlessProvider implements BrowserEndpointProvider {
 
   @override
   Future<BrowserEndpoint> provision() async {
-    if (!isAvailable) {
+    if (!isConfigured) {
       throw StateError('Browserless API key not configured');
     }
 

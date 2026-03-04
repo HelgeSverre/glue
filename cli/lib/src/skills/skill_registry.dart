@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/skills/skill_parser.dart';
 
 class SkillRegistry {
@@ -15,7 +16,14 @@ class SkillRegistry {
     required String cwd,
     List<String> extraPaths = const [],
     String? home,
+    Environment? environment,
   }) {
+    final env = environment ??
+        (home != null
+            ? Environment.test(home: home, cwd: cwd)
+            : Environment.detect(cwd: cwd));
+    final resolvedHome = home ?? env.home;
+
     final skills = <SkillMeta>[];
     final seen = <String>{};
 
@@ -58,14 +66,14 @@ class SkillRegistry {
 
     scanDir(p.join(cwd, '.glue', 'skills'), SkillSource.project);
 
-    home ??= Platform.environment['HOME'] ?? '';
-    if (home.isNotEmpty) {
-      scanDir(p.join(home, '.glue', 'skills'), SkillSource.global);
+    if (resolvedHome.isNotEmpty) {
+      scanDir(p.join(resolvedHome, '.glue', 'skills'), SkillSource.global);
     }
 
     for (final extra in extraPaths) {
-      final resolved =
-          extra.startsWith('~') ? p.join(home, extra.substring(1)) : extra;
+      final resolved = extra.startsWith('~')
+          ? p.join(resolvedHome, extra.substring(1))
+          : extra;
       scanDir(resolved, SkillSource.custom);
     }
 

@@ -204,9 +204,9 @@ void main() {
 
   test('records llm.tool_calls list when LLM requests tools', () async {
     mockLlm.responses.add([
-      ToolCallDelta(ToolCall(
-          id: 'id1', name: 'bash', arguments: {'command': 'ls'})),
-      ToolCallDelta(ToolCall(
+      ToolCallComplete(
+          ToolCall(id: 'id1', name: 'bash', arguments: {'command': 'ls'})),
+      ToolCallComplete(ToolCall(
           id: 'id2', name: 'read_file', arguments: {'path': 'x.dart'})),
     ]);
 
@@ -219,7 +219,7 @@ void main() {
 
   test('records llm.stop_reason=tool_use when tool calls present', () async {
     mockLlm.responses.add([
-      ToolCallDelta(
+      ToolCallComplete(
           ToolCall(id: 'id1', name: 'bash', arguments: {'command': 'pwd'})),
     ]);
 

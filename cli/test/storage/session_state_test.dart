@@ -58,5 +58,28 @@ void main() {
       expect(state.dockerMounts, hasLength(1));
       expect(state.dockerMounts.first.mode, MountMode.rw);
     });
+
+    test('atomic persist does not leave temporary files behind', () {
+      final state = SessionState.load(tmpDir.path);
+      state.addMount(MountEntry(hostPath: '/persist'));
+
+      expect(File(p.join(tmpDir.path, 'state.json')).existsSync(), isTrue);
+      expect(File(p.join(tmpDir.path, 'state.json.tmp')).existsSync(), isFalse);
+    });
+
+    test('load ignores unknown future schema versions', () {
+      final file = File(p.join(tmpDir.path, 'state.json'));
+      file.writeAsStringSync(jsonEncode({
+        'version': 99,
+        'docker': {
+          'mounts': [
+            {'host_path': '/future', 'mode': 'rw'}
+          ],
+        },
+      }));
+
+      final state = SessionState.load(tmpDir.path);
+      expect(state.dockerMounts, isEmpty);
+    });
   });
 }

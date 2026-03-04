@@ -8,10 +8,11 @@ import 'package:glue/src/llm/llm_factory.dart';
 import 'package:glue/src/observability/observability.dart';
 import 'package:glue/src/observability/observed_llm_client.dart';
 import 'package:glue/src/observability/observed_tool.dart';
+import 'package:glue/src/orchestrator/tool_permissions.dart';
 import 'package:glue/src/tools/subagent_tools.dart';
 
-/// The set of tools that are safe for subagents to execute without user approval.
-const safeSubagentTools = {'read_file', 'list_directory', 'grep'};
+/// Backward-compat alias for subagent-safe tools.
+const safeSubagentTools = ToolPermissions.subagentSafeTools;
 
 /// An update from a running subagent, forwarded to the UI.
 class SubagentUpdate {
@@ -90,7 +91,7 @@ class AgentManager {
     final rawLlm = llmFactory.create(
       provider: effectiveProfile.provider,
       model: effectiveProfile.model,
-      apiKey: _apiKeyFor(effectiveProfile.provider),
+      apiKey: config.apiKeyFor(effectiveProfile.provider) ?? '',
       systemPrompt: systemPrompt,
     );
     final LlmClient llm = obs != null
@@ -125,7 +126,7 @@ class AgentManager {
     final core = AgentCore(
       llm: llm,
       tools: subagentTools,
-      modelName: effectiveProfile.model,
+      modelId: effectiveProfile.model,
     );
 
     // Create a span for the subagent execution.
@@ -186,11 +187,4 @@ class AgentManager {
         ),
     ]);
   }
-
-  String _apiKeyFor(LlmProvider provider) => switch (provider) {
-        LlmProvider.anthropic => config.anthropicApiKey ?? '',
-        LlmProvider.openai => config.openaiApiKey ?? '',
-        LlmProvider.mistral => config.mistralApiKey ?? '',
-        LlmProvider.ollama => '',
-      };
 }

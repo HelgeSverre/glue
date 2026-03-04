@@ -10,14 +10,14 @@ void main() {
       expect(provider.name, 'steel');
     });
 
-    test('is available when API key is set', () {
+    test('is configured when API key is set', () {
       final provider = SteelProvider(apiKey: 'test-key');
-      expect(provider.isAvailable, isTrue);
+      expect(provider.isConfigured, isTrue);
     });
 
-    test('is not available without API key', () {
+    test('is not configured without API key', () {
       final provider = SteelProvider(apiKey: null);
-      expect(provider.isAvailable, isFalse);
+      expect(provider.isConfigured, isFalse);
     });
   });
 
@@ -32,15 +32,15 @@ void main() {
 
     test('requires both API key and project ID', () {
       expect(
-        BrowserbaseProvider(apiKey: 'key', projectId: null).isAvailable,
+        BrowserbaseProvider(apiKey: 'key', projectId: null).isConfigured,
         isFalse,
       );
       expect(
-        BrowserbaseProvider(apiKey: null, projectId: 'proj').isAvailable,
+        BrowserbaseProvider(apiKey: null, projectId: 'proj').isConfigured,
         isFalse,
       );
       expect(
-        BrowserbaseProvider(apiKey: 'key', projectId: 'proj').isAvailable,
+        BrowserbaseProvider(apiKey: 'key', projectId: 'proj').isConfigured,
         isTrue,
       );
     });
@@ -55,12 +55,12 @@ void main() {
       expect(provider.name, 'browserless');
     });
 
-    test('is available with API key', () {
+    test('is configured with API key', () {
       final provider = BrowserlessProvider(
         apiKey: 'key',
         baseUrl: 'https://chrome.example.com',
       );
-      expect(provider.isAvailable, isTrue);
+      expect(provider.isConfigured, isTrue);
     });
 
     test('builds WebSocket URL from base URL', () {

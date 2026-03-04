@@ -4,6 +4,8 @@ import 'package:path/path.dart' as p;
 import 'package:glue/src/shell/docker_config.dart';
 
 class SessionState {
+  static const int _currentVersion = 1;
+
   final String _dir;
   final List<MountEntry> _dockerMounts = [];
   final List<String> _browserContainerIds = [];
@@ -21,6 +23,12 @@ class SessionState {
       try {
         final json =
             jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+        final version = _parseVersion(json['version']) ?? _currentVersion;
+        if (version > _currentVersion) {
+          // State written by a newer client; ignore unknown schema.
+          return state;
+        }
+
         final docker = json['docker'] as Map<String, dynamic>?;
         final mounts = docker?['mounts'] as List?;
         if (mounts != null) {
@@ -66,16 +74,34 @@ class SessionState {
 
   void _persist() {
     final file = File(p.join(_dir, 'state.json'));
-    file.parent.createSync(recursive: true);
     const encoder = JsonEncoder.withIndent('  ');
-    file.writeAsStringSync(encoder.convert({
-      'version': 1,
-      'docker': {
-        'mounts': _dockerMounts.map((m) => m.toJson()).toList(),
-      },
-      'browser': {
-        'container_ids': _browserContainerIds,
-      },
-    }));
+    _atomicWrite(
+      file,
+      encoder.convert({
+        'version': _currentVersion,
+        'docker': {
+          'mounts': _dockerMounts.map((m) => m.toJson()).toList(),
+        },
+        'browser': {
+          'container_ids': _browserContainerIds,
+        },
+      }),
+    );
+  }
+
+  static void _atomicWrite(File file, String content) {
+    file.parent.createSync(recursive: true);
+    final tmp = File('${file.path}.tmp');
+    tmp.writeAsStringSync(content);
+    if (Platform.isWindows && file.existsSync()) {
+      file.deleteSync();
+    }
+    tmp.renameSync(file.path);
+  }
+
+  static int? _parseVersion(Object? raw) {
+    if (raw is int) return raw;
+    if (raw is String) return int.tryParse(raw);
+    return null;
   }
 }

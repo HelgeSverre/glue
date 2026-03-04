@@ -1,6 +1,6 @@
 # Known Issues
 
-Consolidated issue tracker. Last updated: 2026-03-02.
+Consolidated issue tracker. Last updated: 2026-03-04.
 
 Items marked **[IN-FLIGHT]** are addressed by open PRs or conductor workspaces.
 Items marked **[RESOLVED]** have been fixed but are kept for reference until verified.
@@ -9,18 +9,18 @@ Items marked **[RESOLVED]** have been fixed but are kept for reference until ver
 
 ## Architecture
 
-### ARCH-001: `app.dart` is a 2,500-line god class
+### ARCH-001: `app.dart` is a 723-line orchestrator **[RESOLVED]**
 
 **Severity:** High
 **Files:** `lib/src/app.dart`
 
-The `App` class handles: terminal events, agent orchestration, permissions, bash mode, session management, slash commands, 7 UI panels, title generation, rendering, splash animation, and spinner state. 14 constructor parameters, 35+ private fields, `create()` factory is 173 lines alone.
+`app.dart` was reduced from 2,839 lines to 723 lines and now stays in the target range (~600-800). Core responsibilities were extracted into focused modules (event routers, render pipeline, panel controller, agent orchestration, shell runtime, session runtime, splash runtime, command wiring, and supporting app models/events).
 
-**Fix:** Extract into focused modules: `PermissionManager`, `SessionController`, `PanelManager`, `SlashCommandHandler`, `RenderPipeline`.
+**Fix:** Keep `App` as the top-level event-loop orchestrator and continue future feature work in extracted modules.
 
 ---
 
-### ARCH-002: `GlueHome` instantiated 8 times with no shared instance
+### ARCH-002: `GlueHome` instantiated 8 times with no shared instance **[RESOLVED]**
 
 **Severity:** Low
 **Files:** `lib/src/app.dart` (lines 294, 489, 691, 800, 822, 878, 1036, 1939)
@@ -31,7 +31,7 @@ The `App` class handles: terminal events, agent orchestration, permissions, bash
 
 ---
 
-### ARCH-003: `GlueConfig.load()` hardcodes `~/.glue/config.yaml` path
+### ARCH-003: `GlueConfig.load()` hardcodes `~/.glue/config.yaml` path **[RESOLVED]**
 
 **Severity:** Medium
 **Files:** `lib/src/config/glue_config.dart:161-163`
@@ -42,7 +42,7 @@ Bypasses `GlueHome` entirely with `'${Platform.environment['HOME']}/.glue/config
 
 ---
 
-### ARCH-004: `SkillRegistry` ignores `GlueHome.skillsDir`, re-derives HOME
+### ARCH-004: `SkillRegistry` ignores `GlueHome.skillsDir`, re-derives HOME **[RESOLVED]**
 
 **Severity:** Medium
 **Files:** `lib/src/skills/skill_registry.dart:59-63`, `lib/src/storage/glue_home.dart:14`
@@ -53,12 +53,12 @@ Bypasses `GlueHome` entirely with `'${Platform.environment['HOME']}/.glue/config
 
 ---
 
-### ARCH-005: Title generation silently skipped for non-Anthropic providers
+### ARCH-005: Title generation silently skipped for non-Anthropic providers **[RESOLVED]**
 
 **Severity:** Medium
-**Files:** `lib/src/app.dart:753-780`
+**Files:** `lib/src/app.dart`, `lib/src/llm/title_generator.dart`
 
-`_generateTitle()` checks for `anthropicApiKey` and returns early if absent. Users on OpenAI/Ollama/Mistral get no session titles with no indication why.
+Title generation now uses `LlmClientFactory` + `TitleGenerator(LlmClient)` and resolves provider/model from config instead of hardcoding Anthropic HTTP calls.
 
 **Fix:** Use the currently configured provider's client for title generation, or add a configurable `title_model` fallback.
 
@@ -66,7 +66,7 @@ Bypasses `GlueHome` entirely with `'${Platform.environment['HOME']}/.glue/config
 
 ## Dead Code
 
-### DEAD-001: `ConfigStore` dead fields — `defaultProvider`, `defaultModel`, `debug`
+### DEAD-001: `ConfigStore` dead fields — `defaultProvider`, `defaultModel`, `debug` **[RESOLVED]**
 
 **Severity:** High
 **Files:** `lib/src/storage/config_store.dart:69-87`
@@ -77,7 +77,7 @@ Only `trustedTools` is read in production (`app.dart:428`). The other three gett
 
 ---
 
-### DEAD-002: `DebugLogger` is unused in production
+### DEAD-002: `DebugLogger` is unused in production **[RESOLVED]**
 
 **Severity:** Low
 **Files:** `lib/src/storage/debug_logger.dart`
@@ -88,7 +88,7 @@ Replaced by OTel tracing (`ObservedLlmClient`, `FileSink`). Only referenced in t
 
 ---
 
-### DEAD-003: `generateSessionId()` is never called
+### DEAD-003: `generateSessionId()` is never called **[RESOLVED]**
 
 **Severity:** Medium
 **Files:** `lib/src/storage/session_id.dart`
@@ -99,7 +99,7 @@ The proper SHA-256 session ID generator exists but is bypassed. `app.dart` has t
 
 ---
 
-### DEAD-004: `SkillMeta.allowedTools` parsed but never enforced
+### DEAD-004: `SkillMeta.allowedTools` parsed but never enforced **[RESOLVED]**
 
 **Severity:** Low
 **Files:** `lib/src/skills/skill_parser.dart:24,35,120,135`
@@ -110,12 +110,12 @@ The `allowed-tools` frontmatter field is parsed into `SkillMeta.allowedTools` bu
 
 ---
 
-### DEAD-005: `sessionStore: null` discards work in `App.create()`
+### DEAD-005: `sessionStore: null` discards work in `App.create()` **[RESOLVED]**
 
 **Severity:** Medium
-**Files:** `lib/src/app.dart:296-349, 429`
+**Files:** `lib/src/app.dart`, `lib/src/core/service_locator.dart`
 
-`App.create()` builds a `SessionMeta` and session directory, then passes `sessionStore: null` to the `App` constructor. The session store is re-created lazily on first user message. The initial session ID (used for observability `resourceAttrs`) may diverge from the actual session.
+`ServiceLocator` now constructs a startup `SessionStore` and `App.create()` passes it into `App`, so observability/resource session IDs and runtime session IDs stay aligned.
 
 **Fix:** Pass the constructed `SessionStore` through instead of discarding it.
 
@@ -123,7 +123,7 @@ The `allowed-tools` frontmatter field is parsed into `SkillMeta.allowedTools` bu
 
 ## Duplication
 
-### DUP-001: API key resolution duplicated 3 times
+### DUP-001: API key resolution duplicated 3 times **[RESOLVED]**
 
 **Severity:** Medium
 **Files:** `lib/src/llm/llm_factory.dart:72-76,93-97`, `lib/src/agent/agent_manager.dart:190-194`
@@ -134,18 +134,18 @@ Identical `switch (provider) => config.xApiKey ?? ''` logic in three places. Add
 
 ---
 
-### DUP-002: Trusted tool lists hardcoded in two places
+### DUP-002: Trusted tool lists hardcoded in two places **[RESOLVED]**
 
 **Severity:** Low
-**Files:** `lib/src/app.dart:176-186`, `lib/src/agent/agent_manager.dart:14`
+**Files:** `lib/src/app.dart`, `lib/src/agent/agent_manager.dart`, `lib/src/orchestrator/tool_permissions.dart`
 
-`App._autoApprovedTools` and `AgentManager.safeSubagentTools` are related but not derived from each other. Neither references the other.
+Tool permission presets now come from shared `ToolPermissions` constants. `App` uses `ToolPermissions.defaultTrustedTools` and `AgentManager` uses `ToolPermissions.subagentSafeTools` (via the existing alias), so the sets are centralized.
 
 **Fix:** Define a single `ToolPermissions` class or constant set that both consume.
 
 ---
 
-### DUP-003: `mistralApiKey` and `openaiApiKey` resolved twice with different env coverage
+### DUP-003: `mistralApiKey` and `openaiApiKey` resolved twice with different env coverage **[RESOLVED]**
 
 **Severity:** Medium
 **Files:** `lib/src/config/glue_config.dart:194-200,307-310`
@@ -156,7 +156,7 @@ Identical `switch (provider) => config.xApiKey ?? ''` logic in three places. Add
 
 ---
 
-### DUP-004: `version` constant duplicated
+### DUP-004: `version` constant duplicated **[RESOLVED]**
 
 **Severity:** Low
 **Files:** `lib/src/config/constants.dart:6`, `bin/glue.dart:11`
@@ -169,97 +169,109 @@ Two independent `'0.1.0'` strings. Neither imports the other.
 
 ## Naming & Consistency
 
-### NAME-001: `config.json` naming confusion
+### NAME-001: `config.json` naming confusion **[RESOLVED]**
 
 **Severity:** Medium
-**Files:** `lib/src/storage/config_store.dart`, `lib/src/storage/glue_home.dart:11`
+**Files:** `lib/src/core/environment.dart`, `lib/src/storage/config_store.dart`
 
-Having `config.yaml` and `config.json` side-by-side in `~/.glue/` is confusing. They serve different purposes (user config vs machine-managed preferences). The JSON file currently only stores `trusted_tools` in practice.
+`config.yaml` and `config.json` side-by-side in `~/.glue/` was confusing. They serve different purposes (user config vs machine-managed preferences). The JSON file stores runtime preference state (`trusted_tools`).
 
-**Fix:** Rename to better reflect purpose. Consider consolidating with `config.yaml` if the override mechanism is not needed. See DEAD-001.
+**Fix:** Runtime preferences now use `~/.glue/preferences.json`. Legacy
+`~/.glue/config.json` is still read as a fallback when the new file is missing,
+and subsequent writes go to `preferences.json`.
 
 ---
 
-### NAME-002: Model identity uses 4 different names
+### NAME-002: Model identity uses 4 different names **[PARTIALLY RESOLVED]**
 
 **Severity:** Medium
-**Files:** `lib/src/config/glue_config.dart:50`, `lib/src/config/model_registry.dart:15`, `lib/src/agent/agent_core.dart:217`, `lib/src/app.dart:171`
+**Files:** `lib/src/config/glue_config.dart`, `lib/src/config/model_registry.dart`, `lib/src/agent/agent_core.dart`, `lib/src/app.dart`
 
-The same API model string is called `model`, `modelId`, `modelName`, and `_modelName` in different files.
+`modelName`/`_modelName` were standardized to `modelId` in runtime app/agent
+paths. `GlueConfig` still uses `model` for config schema compatibility.
 
-**Fix:** Standardize on `modelId` everywhere.
-
----
-
-### NAME-003: `isConfigured` vs `isAvailable` for the same concept
-
-**Severity:** Low
-**Files:** `lib/src/web/search/provider.dart:5`, `lib/src/web/browser/browser_endpoint.dart:34`
-
-Search providers use `isConfigured`, browser providers use `isAvailable`. Same boolean concept.
-
-**Fix:** Pick one name and use it consistently.
+**Fix:** Keep `modelId` as runtime naming convention; consider a later config
+schema migration if we want `GlueConfig.model` renamed too.
 
 ---
 
-### NAME-004: Browser domain mixes "backend" and "provider"
+### NAME-003: `isConfigured` vs `isAvailable` for the same concept **[RESOLVED]**
 
 **Severity:** Low
-**Files:** `lib/src/web/browser/browser_config.dart:4`, `lib/src/web/browser/browser_endpoint.dart:32`
+**Files:** `lib/src/web/search/provider.dart`, `lib/src/web/browser/browser_endpoint.dart`, `lib/src/web/browser/providers/*`
 
-The enum is `BrowserBackend`, the interface is `BrowserEndpointProvider`, the config field is `backend`. Search domain consistently uses "provider" everywhere.
+Search and browser providers now both use `isConfigured` as the canonical property name.
 
-**Fix:** Align browser domain to use "provider" consistently, or document the distinction.
+**Fix:** Browser providers and tests were updated to `isConfigured`. A deprecated `isAvailable` alias remains on `BrowserEndpointProvider` for compatibility.
 
 ---
 
-### NAME-005: Enum suffix conventions inconsistent
+### NAME-004: Browser domain mixes "backend" and "provider" **[RESOLVED]**
 
 **Severity:** Low
-**Files:** `lib/src/config/glue_config.dart:23`, `lib/src/web/web_config.dart:22,61`, `lib/src/web/browser/browser_config.dart:4`
+**Files:** `lib/src/web/browser/browser_config.dart`, `lib/src/web/browser/browser_endpoint.dart`, `docs/reference/config-yaml.md`
 
-`LlmProvider` (no suffix), `WebSearchProviderType` (`Type` suffix), `OcrProviderType` (`Type` suffix), `BrowserBackend` (different word entirely).
+The browser domain now explicitly documents the distinction:
+`backend` = runtime environment selection (local/docker/cloud), and
+`provider` = provisioning implementation for that backend.
 
-**Fix:** Pick a convention (`XxxProvider` or `XxxProviderType`) and apply it.
+**Fix:** Documented the backend/provider terminology directly in code and docs.
 
 ---
 
-### NAME-006: `ToolCallDelta` is misleadingly named
+### NAME-005: Enum suffix conventions inconsistent **[RESOLVED]**
 
 **Severity:** Low
-**Files:** `lib/src/agent/agent_core.dart:84-90`
+**Files:** `lib/src/config/glue_config.dart`, `lib/src/web/web_config.dart`, `lib/src/web/browser/browser_config.dart`
 
-Already has a TODO comment acknowledging it should be `ToolCallComplete`. The "Delta" name suggests incremental update but it carries the fully-formed call.
+Convention is now documented:
+- runtime capability interfaces use `*Provider` (e.g. `WebSearchProvider`)
+- selector enums use `*ProviderType` where needed to avoid naming collisions
+- browser keeps `Backend` terminology for runtime environment selection (see NAME-004)
+- `LlmProviderType` alias exists for consistency with selector naming.
+
+**Fix:** Documented naming convention and added `LlmProviderType` alias.
+
+---
+
+### NAME-006: `ToolCallDelta` is misleadingly named **[RESOLVED]**
+
+**Severity:** Low
+**Files:** `lib/src/agent/agent_core.dart`, `lib/src/llm/*.dart`, tests
+
+The event is now named `ToolCallComplete` throughout runtime code. A deprecated `ToolCallDelta` alias remains for compatibility.
 
 **Fix:** Rename to `ToolCallComplete` (touches ~50 references).
 
 ---
 
-### NAME-007: `ShellMode` parsed via silent fallback
+### NAME-007: `ShellMode` parsed via silent fallback **[RESOLVED]**
 
 **Severity:** Low
-**Files:** `lib/src/shell/shell_config.dart:16-20`
+**Files:** `lib/src/shell/shell_config.dart`, `lib/src/config/glue_config.dart`
 
-`'non_interactive'` is never explicitly matched — it works only because unrecognized strings fall through to the default. A typo like `'noninteractive'` also silently succeeds.
+`ShellMode.fromString()` now matches `'non_interactive'` explicitly and supports an invalid-value callback. `GlueConfig.load()` wires this to a warning message before falling back to non-interactive mode.
 
 **Fix:** Match `'non_interactive'` explicitly, log a warning on unrecognized values.
 
 ---
 
-### NAME-008: Span JSON mixes camelCase with snake_case
+### NAME-008: Span JSON mixes camelCase with snake_case **[RESOLVED]**
 
 **Severity:** Low
-**Files:** `lib/src/observability/observability.dart:48-57`
+**Files:** `lib/src/observability/observability.dart`, `test/observability/*`
 
-`ObservabilitySpan.toMap()` emits camelCase (`traceId`, `spanId`) except `duration_ms` which is snake_case. Storage layer uses snake_case consistently.
+`ObservabilitySpan.toMap()` now emits snake_case keys consistently
+(`trace_id`, `span_id`, `parent_span_id`, `start_time`, `end_time`,
+`duration_ms`).
 
-**Fix:** Pick one convention for internal JSON serialization.
+**Fix:** Standardize internal span JSON serialization to snake_case.
 
 ---
 
 ## Storage
 
-### STOR-001: `SessionStore` and `SessionState` lack atomic writes
+### STOR-001: `SessionStore` and `SessionState` lack atomic writes **[RESOLVED]**
 
 **Severity:** Medium
 **Files:** `lib/src/storage/session_store.dart:133-134`, `lib/src/storage/session_state.dart:71`
@@ -270,23 +282,23 @@ Only `ConfigStore` does tmp-file-then-rename. `SessionStore._writeMeta()` and `S
 
 ---
 
-### STOR-002: `SessionState` version field has no migration path
+### STOR-002: `SessionState` version field has no migration path **[RESOLVED]**
 
 **Severity:** Low
 **Files:** `lib/src/storage/session_state.dart:72`
 
-`_persist()` writes `'version': 1` but `load()` reads naively regardless of version. No upgrade logic exists.
+`SessionState.load()` now parses `version` and safely ignores unknown future schema versions instead of attempting a naive read.
 
 **Fix:** Either add version checking or remove the field until needed.
 
 ---
 
-### STOR-003: `SessionState` created in `App.create()` but not stored
+### STOR-003: `SessionState` created in `App.create()` but not stored **[RESOLVED]**
 
 **Severity:** Medium
-**Files:** `lib/src/app.dart:350-355`
+**Files:** `lib/src/app.dart`, `lib/src/core/service_locator.dart`
 
-`SessionState` is loaded, its docker mounts are passed to `ExecutorFactory`, then the instance is discarded. Any subsequent `addMount()` calls would need a reference that doesn't exist.
+`ServiceLocator` now passes the loaded `SessionState` through `AppServices` into `App`, so runtime code has a retained reference instead of discarding it after executor creation.
 
 **Fix:** Store `SessionState` as an `App` field.
 
@@ -294,18 +306,24 @@ Only `ConfigStore` does tmp-file-then-rename. `SessionStore._writeMeta()` and `S
 
 ## Bugs
 
-### BUG-001: Tool confirmation happens after full argument generation (wasted tokens)
+### BUG-001: Tool confirmation happens after full argument generation (wasted tokens) **[PARTIALLY RESOLVED]**
 
 **Severity:** Medium
-**Files:** `lib/src/llm/anthropic_client.dart:98-137`, `lib/src/agent/agent_core.dart:238-256`, `lib/src/app.dart:1310-1369`
+**Files:** `lib/src/agent/agent_core.dart`, `lib/src/app_agent_orchestration.dart`
 
-When the agent calls a tool requiring confirmation (`write_file`, `edit_file`, `bash`), the LLM streams the entire argument payload before the user is asked for permission. Declining wastes all generated tokens. This is an industry-wide pattern (Claude Code, OpenCode, Ampcode all have the same behavior), but the `ToolCallStart` event provides an early intervention point.
+Early confirmation now runs on `AgentToolCallPending` (`ToolCallStart`) before
+arguments are complete for providers that emit start events, and declining can
+cancel the active stream immediately.
 
-**Fix:** Show a lightweight pre-confirmation on `AgentToolCallPending` for non-auto-approved tools. If declined, cancel the LLM stream before arguments finish generating.
+Remaining limitation: providers that only emit fully-formed tool calls (no
+`ToolCallStart`) still require confirmation at full-argument time.
+
+**Fix:** Keep pending-time confirmation path; consider provider-specific
+interrupt hooks for clients that do not emit `ToolCallStart`.
 
 ---
 
-### BUG-002: `--resume` creates an empty session immediately
+### BUG-002: `--resume` creates an empty session immediately **[RESOLVED]**
 
 **Severity:** Medium
 **Files:** `lib/src/app.dart:486-501, 811-825`
@@ -316,18 +334,18 @@ When launching with `--resume`, a new empty session is created before the user s
 
 ---
 
-### BUG-003: Bash mode has no shell tab-completion
+### BUG-003: Bash mode has no shell tab-completion **[RESOLVED]**
 
 **Severity:** Low
-**Files:** `lib/src/app.dart` (bash mode), `lib/src/input/line_editor.dart`
+**Files:** `lib/src/app_terminal_event_router.dart`, `lib/src/shell/shell_completer.dart`, `lib/src/ui/shell_autocomplete.dart`
 
-In bash mode (`!` prefix), Tab does nothing. `LineEditor` emits `requestCompletion` but only slash-command and @-file completions are wired. Shell completions (commands, paths, flags) are unavailable.
+Bash mode now routes `requestCompletion` to `ShellCompleter` via `ShellAutocomplete`, with keyboard navigation and accept/dismiss behavior wired in the terminal event router.
 
 **Fix:** Add a `ShellCompleter` that uses `fish complete -C` for fish, `bash -c 'compgen ...'` for others. Wire into existing overlay system.
 
 ---
 
-### BUG-004: Session meta not updated on model switch
+### BUG-004: Session meta not updated on model switch **[RESOLVED]**
 
 **Severity:** Low
 **Files:** `lib/src/app.dart:1317-1331`, `lib/src/storage/session_store.dart:13-14`
@@ -340,45 +358,45 @@ When the user switches models mid-session via `/model`, `_config` and `_modelNam
 
 ## Documentation
 
-### DOC-001: `config-yaml.md` massively incomplete
+### DOC-001: `config-yaml.md` massively incomplete **[RESOLVED]**
 
 **Severity:** High
 **Files:** `docs/reference/config-yaml.md`
 
-10+ real config sections are undocumented: `web.fetch`, `web.search`, `web.pdf`, `web.browser`, `telemetry.langfuse`, `telemetry.otel`, `permission_mode`, `skills.paths`, `debug`, `title_model`, `mistral`. All docker/shell CLI flags (`--docker`, `--shell`, etc.) are documented but don't exist in `bin/glue.dart`.
+`docs/reference/config-yaml.md` was rewritten to match `GlueConfig.load()` and now documents implemented sections, valid values, and environment overrides without claiming unsupported CLI flags.
 
 **Fix:** Audit `GlueConfig.load()` and document every field that is actually read.
 
 ---
 
-### DOC-002: `config-store-json.md` describes features that don't exist
+### DOC-002: `config-store-json.md` describes features that don't exist **[RESOLVED]**
 
 **Severity:** High
 **Files:** `docs/reference/config-store-json.md`
 
-Claims `config.json` overrides `config.yaml` for `default_provider`/`default_model` — this mechanism is not implemented. References `/set provider` command which doesn't exist. See DEAD-001.
+`docs/reference/config-store-json.md` now reflects the actual runtime schema (`trusted_tools`) and no longer claims unsupported provider/model override behavior.
 
 **Fix:** Rewrite to document what actually exists (just `trusted_tools`).
 
 ---
 
-### DOC-003: `session-storage.md` missing fields
+### DOC-003: `session-storage.md` missing fields **[RESOLVED]**
 
 **Severity:** Medium
 **Files:** `docs/reference/session-storage.md`
 
-`SessionState`'s `browser.container_ids` field and `SessionMeta`'s `forked_from` field are undocumented.
+`docs/reference/session-storage.md` now documents `SessionMeta` and `SessionState` fields in current code, including `forked_from` and `browser.container_ids`.
 
 **Fix:** Add missing fields to the schema docs.
 
 ---
 
-### DOC-004: `ollama.base_url` documented but not implemented
+### DOC-004: `ollama.base_url` documented but not implemented **[RESOLVED]**
 
 **Severity:** Low
-**Files:** `docs/reference/config-yaml.md`, `lib/src/config/glue_config.dart`
+**Files:** `lib/src/config/glue_config.dart`, `test/config/glue_config_test.dart`
 
-The YAML schema shows `ollama.base_url` as configurable, but `GlueConfig.load()` never reads it. The field exists on the class with a hardcoded default.
+`GlueConfig.load()` now reads `ollama.base_url` from YAML and supports environment overrides via `GLUE_OLLAMA_BASE_URL` / `OLLAMA_BASE_URL`.
 
 **Fix:** Either wire up the YAML/env reading or remove from docs.
 
@@ -395,18 +413,20 @@ The YAML schema shows `ollama.base_url` as configurable, but `GlueConfig.load()`
 
 ## Integration & Merge
 
-### MERGE-001: PR #18 (cli-prompt-arg) conflicts with main **[IN-FLIGHT]**
+### MERGE-001: PR #18 (cli-prompt-arg) conflicts with main **[RESOLVED]**
 
 **Severity:** High
 **Files:** `bin/glue.dart`, `lib/src/app.dart`, `lib/src/config/glue_config.dart`
 
-PR #18 adds prompt args, print mode, model aliases, JSON output, resume-by-ID, and removes `--provider` flag. Conflicts in `app.dart` and `glue.dart` due to main divergence. `GlueConfig.copyWith()` drops `titleModel`, `skillPaths`, `permissionMode` fields — must be restored.
+The PR #18 feature set is already present in current mainline code paths:
+prompt args, print/json output modes, resume-by-ID, and corrected
+`GlueConfig.copyWith()` field preservation.
 
-**Fix:** Rebase onto main, resolve conflicts, restore copyWith fields, verify tests.
+**Fix:** No branch rebase needed; treat PR #18 as superseded by integrated work.
 
 ---
 
-### MERGE-002: PR #20 (Ollama model list) superseded by main
+### MERGE-002: PR #20 (Ollama model list) superseded by main **[RESOLVED]**
 
 **Severity:** Low
 **Files:** `lib/src/app.dart`
@@ -417,71 +437,95 @@ PR #20's goal (dynamic Ollama model fetching) already exists on main via commit 
 
 ---
 
-### MERGE-003: Salvador workspace has uncommitted WIP **[IN-FLIGHT]**
+### MERGE-003: Salvador workspace has uncommitted WIP **[PARTIALLY RESOLVED]**
 
 **Severity:** High
-**Files:** `lib/src/app.dart`, `lib/src/llm/message_mapper.dart`, `lib/src/observability/langfuse_sink.dart`, `lib/src/observability/otel_sink.dart`
+**Files:** `lib/src/session/session_manager.dart`, `lib/src/llm/message_mapper.dart`, `lib/src/observability/langfuse_sink.dart`, `lib/src/observability/otel_sink.dart`, `lib/src/app_models.dart`
 
-Uncommitted changes in `/Users/helge/conductor/workspaces/glue/salvador/cli` on the `dart-devtools-ideas` branch. Contains:
+Most of the identified Salvador fixes now exist in this codebase:
 
 - Session replay with proper tool_call/tool_result grouping (fixes broken conversation replay)
 - Orphaned tool_result filtering in message_mapper (prevents Anthropic API 400 errors)
 - `onError` callback for Langfuse/OTel sinks (replaces noisy stderr writes)
 - SubagentEntry class with JSON pretty-printing for expandable output
-- Comprehensive tests for all changes
 
-**Fix:** Commit, create branch from main, cherry-pick changes, merge.
+Remaining work is branch/workspace hygiene: decide whether to archive or merge
+the leftover `dart-devtools-ideas` branch commits not already represented.
+
+Audit snapshot (2026-03-04):
+
+- Branch `HelgeSverre/dart-devtools-ideas` (`9e749ff`) is not merged into
+  `main` as a branch, but the targeted fixes listed above are already present
+  on mainline code paths.
+- Remaining branch-only commits are mainly iterative DevTools/docs/formatting
+  history and do not currently require cherry-pick.
+
+**Fix:** Audit branch-only deltas and either merge the residual pieces or archive the branch/workspace.
 
 ---
 
-### MERGE-004: 8 unmerged feature branches without PRs
+### MERGE-004: Remaining unmerged feature branches without PRs **[PARTIALLY RESOLVED]**
 
 **Severity:** Medium
 
-Complete, tested features sitting in branches with no PRs:
+Branches already cleaned up locally:
 
-- `clickable-links-ui` (+7 commits) — OSC 8 terminal hyperlinks
-- `fix-slash-cmd-during-work` (+1) — slash commands during streaming
-- `history-dialog-panel` (+4) — history browser, panel stacking, ANSI styling API
-- `multiline-prompt-input` (+2) — Shift+Enter multiline, bracketed paste
-- `session-id-table-layout` (+1) — short session IDs, table layout refactor
-- `session-thread-titles` (+2) — auto-generated session titles via Haiku
-- `update-website-license` (+1) — website MIT license, nav, docs layout
-- `experiment/docked-panel` (+3) — dockable panel system, tool description injection
+- Deleted merged/closed branches: `fix-slash-cmd-during-work`, `session-id-table-layout`, `session-thread-titles`, `bash-tab-completion`, `cli-completions`, `update-website-license`, `clickable-links-ui`, `history-dialog-panel`, `multiline-prompt-input`.
+- Previously targeted feature work is now present on mainline code paths (`clickable-links-ui`, `multiline-prompt-input`, and history/panel-stacking foundations), so manual re-apply is no longer required.
 
-**Fix:** Create PRs or merge directly after the primary PR consolidation is complete. Two branches (`bash-tab-completion`, `cli-completions`) appear incomplete/abandoned and should be evaluated for closure.
+Remaining branches to evaluate:
+
+- `experiment/docked-panel` — still checked out by a separate worktree (cannot be deleted until that worktree is removed).
+- `comment-cleanup` — still checked out by a separate worktree (cannot be deleted until that worktree is removed).
+- `dart-devtools-ideas`, `sema-wasm-integration` — review scope and decide merge vs archive.
+
+Audit snapshot (2026-03-04):
+
+- `HelgeSverre/sema-wasm-integration` (`a16a82d`): fully merged into `main`;
+  remote tracking branch is gone. Action: delete local branch.
+- `comment-cleanup` (`1e06190`): fully merged into `main`; only retained due
+  active external worktree. Action: remove worktree, then delete local branch.
+- `experiment/docked-panel` (`f607cf4`, `1bdd03f`, `1d5c051`): not merged and
+  still experimental. Action: archive/close branch after optional manual
+  extraction of `f607cf4` (tool invocation description) if desired.
+- `HelgeSverre/dart-devtools-ideas` (`9e749ff`): not merged as a branch, but
+  core intended fixes are already represented on mainline code paths. Action:
+  archive unless additional DevTools-only deltas are explicitly desired.
+
+**Fix:** Remove/archive remaining stale branches and detached worktrees explicitly.
 
 ---
 
 ## Release Blockers
 
-### REL-001: No LICENSE file
+### REL-001: No LICENSE file **[RESOLVED]**
 
 **Severity:** Critical
-**Files:** repo root, `cli/`
+**Files:** repo root, `cli/LICENSE`
 
-No LICENSE file exists anywhere in the repository. Required for open-source release and pub.dev publishing.
+MIT license files exist at repo root and `cli/LICENSE`, covering release and pub.dev packaging expectations.
 
 **Fix:** Add MIT license file at repo root and `cli/LICENSE`.
 
 ---
 
-### REL-002: `pubspec.yaml` incomplete for pub.dev
+### REL-002: `pubspec.yaml` incomplete for pub.dev **[RESOLVED]**
 
 **Severity:** High
 **Files:** `cli/pubspec.yaml`
 
-Missing fields: `homepage`, `repository`, `issue_tracker`, `topics`, `executables`. pub.dev score estimated ~90/160 without these. With fixes: ~130-140/160.
+`pubspec.yaml` now includes release metadata fields (`homepage`, `repository`, `issue_tracker`, `topics`, `executables`) required for a strong pub.dev score.
 
 **Fix:** Add `repository: https://github.com/HelgeSverre/glue`, `topics: [cli, ai, llm, agent, terminal]`, `executables: {glue: glue}`.
 
 ---
 
-### REL-003: No CONTRIBUTING.md or SECURITY.md
+### REL-003: No CONTRIBUTING.md or SECURITY.md **[RESOLVED]**
 
 **Severity:** Medium
+**Files:** `CONTRIBUTING.md`, `SECURITY.md`
 
-Standard open-source governance files are missing. Expected by contributors and security researchers.
+Contributor and security disclosure docs now exist at repository root.
 
 **Fix:** Create both files before public announcement. See `RELEASE.md` for checklist.
 
@@ -489,12 +533,12 @@ Standard open-source governance files are missing. Expected by contributors and 
 
 ## Portability
 
-### PORT-001: "Copy to clipboard" uses macOS-specific `pbcopy`
+### PORT-001: "Copy to clipboard" uses macOS-specific `pbcopy` **[RESOLVED]**
 
 **Severity:** Low
-**Files:** `lib/src/app.dart:1262`
+**Files:** `lib/src/ui/panel_controller.dart`
 
-The history action panel uses `Process.start('pbcopy', [])` to copy text to the clipboard. This command only exists on macOS. Linux (xclip/xsel) and Windows (clip.exe) users will find this feature non-functional.
+The history action panel now detects the OS and uses clipboard command fallbacks: `pbcopy` (macOS), `clip` (Windows), and `wl-copy`/`xclip`/`xsel` (Linux). When none are available, Glue shows a failure message instead of pretending copy succeeded.
 
 **Fix:** Use a cross-platform clipboard package or detect the OS and use the appropriate command.
 
@@ -502,12 +546,11 @@ The history action panel uses `Process.start('pbcopy', [])` to copy text to the 
 
 ## Configuration
 
-### CONF-001: `GlueConfig.load()` does not support custom base paths
+### CONF-001: `GlueConfig.load()` does not support custom base paths **[RESOLVED]**
 
 **Severity:** Medium
-**Files:** `lib/src/config/glue_config.dart`
+**Files:** `lib/src/config/glue_config.dart`, `test/config/glue_config_test.dart`
 
-Unlike `GlueHome`, which accepts an optional `basePath`, `GlueConfig.load()` hardcodes the look-up of `~/.glue/config.yaml`. This makes it impossible to use Glue with a different configuration directory (e.g., for integration tests) without mocking the `HOME` environment variable.
+`GlueConfig.load()` now accepts an explicit `configPath` override (in addition to injected `Environment`), allowing custom configuration locations without depending on `HOME` path tricks.
 
 **Fix:** Add an optional `basePath` or `configPath` parameter to `GlueConfig.load()`.
-

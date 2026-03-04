@@ -187,7 +187,7 @@ void main() {
       expect(result.messages, hasLength(4));
       final ids = result.messages
           .where((m) => m['role'] == 'user')
-          .expand((m) => (m['content'] as List))
+          .expand((m) => m['content'] as List)
           .where((c) => c is Map<String, dynamic> && c['type'] == 'tool_result')
           .map((c) => (c as Map<String, dynamic>)['tool_use_id'])
           .toList();

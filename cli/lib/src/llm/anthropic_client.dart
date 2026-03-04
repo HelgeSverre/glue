@@ -136,7 +136,7 @@ class AnthropicClient implements LlmClient {
             } on FormatException {
               args = <String, dynamic>{'_raw': argsJson};
             }
-            yield ToolCallDelta(ToolCall(
+            yield ToolCallComplete(ToolCall(
               id: buf.id,
               name: buf.name,
               arguments: args,

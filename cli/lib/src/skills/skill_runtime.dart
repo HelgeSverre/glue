@@ -1,5 +1,4 @@
-import 'dart:io';
-
+import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/skills/skill_parser.dart';
 import 'package:glue/src/skills/skill_registry.dart';
 
@@ -12,19 +11,36 @@ typedef SkillPathsProvider = List<String> Function();
 class SkillRuntime {
   final String cwd;
   final SkillPathsProvider extraPathsProvider;
-  final String? home;
+  final Environment environment;
 
-  SkillRegistry _registry;
+  late SkillRegistry _registry;
 
   SkillRuntime({
     required this.cwd,
     required this.extraPathsProvider,
-    this.home,
-  }) : _registry = SkillRegistry.discover(
+    String? home,
+    Environment? environment,
+  }) : environment = _resolveEnvironment(
           cwd: cwd,
-          extraPaths: extraPathsProvider(),
-          home: home ?? Platform.environment['HOME'],
-        );
+          home: home,
+          environment: environment,
+        ) {
+    _registry = SkillRegistry.discover(
+      cwd: cwd,
+      extraPaths: extraPathsProvider(),
+      environment: this.environment,
+    );
+  }
+
+  static Environment _resolveEnvironment({
+    required String cwd,
+    String? home,
+    Environment? environment,
+  }) {
+    if (environment != null) return environment;
+    if (home != null) return Environment.test(home: home, cwd: cwd);
+    return Environment.detect(cwd: cwd);
+  }
 
   SkillRegistry get registry => _registry;
 
@@ -33,7 +49,7 @@ class SkillRuntime {
     return _registry = SkillRegistry.discover(
       cwd: cwd,
       extraPaths: extraPathsProvider(),
-      home: home ?? Platform.environment['HOME'],
+      environment: environment,
     );
   }
 

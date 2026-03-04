@@ -1,13 +1,14 @@
 # `~/.glue/` Directory Layout
 
-The `~/.glue/` directory is the user's Glue home. It stores configuration, session history, and logs. Managed by `GlueHome` (`lib/src/storage/glue_home.dart`).
+The `~/.glue/` directory is the user's Glue home. It stores configuration, session history, and logs. Managed by `Environment` (`lib/src/core/environment.dart`).
 
 ## Directory Structure
 
 ```
 ~/.glue/
 ├── config.yaml          # User-edited configuration (provider, model, shell, docker, etc.)
-├── config.json          # Machine-managed runtime state (trusted tools, debug flag)
+├── preferences.json     # Machine-managed runtime state (trusted tools)
+├── config.json          # Legacy runtime state file from older versions
 ├── sessions/
 │   └── <session-id>/
 │       ├── meta.json          # Session identity (immutable after creation)
@@ -27,7 +28,7 @@ The `~/.glue/` directory is the user's Glue home. It stores configuration, sessi
 
 Loaded once at startup by `GlueConfig.load()`. Resolution order: CLI args → env vars → config.yaml → defaults.
 
-### `config.json` — Runtime Configuration Store
+### `preferences.json` — Runtime Configuration Store
 
 **Owner:** Glue application (machine-written).  
 **Format:** JSON.  
@@ -35,6 +36,9 @@ Loaded once at startup by `GlueConfig.load()`. Resolution order: CLI args → en
 **Stability:** Internal; may change between versions.
 
 Managed by `ConfigStore` (`lib/src/storage/config_store.dart`). Read on demand with filesystem-change detection (mtime + size). Written atomically via tmp-file rename.
+
+On upgrade, Glue can still read legacy `config.json` if `preferences.json`
+does not exist yet.
 
 ### `sessions/<id>/meta.json` — Session Identity
 
@@ -63,6 +67,6 @@ Stores mutable, session-scoped settings such as Docker mount whitelist. Survives
 
 ## Lifecycle & Cleanup
 
-- **Creation:** `GlueHome.ensureDirectories()` creates `sessions/` and `logs/` on startup.
+- **Creation:** `Environment.ensureDirectories()` creates `sessions/`, `logs/`, and `cache/` on startup.
 - **Session directories** accumulate over time. No automatic GC yet — future `/sessions prune` command.
 - **Deletion:** Removing a session directory removes all its files (`meta.json`, `conversation.jsonl`, `state.json`).

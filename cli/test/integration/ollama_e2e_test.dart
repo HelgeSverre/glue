@@ -66,7 +66,7 @@ void main() {
     return AgentCore(
       llm: llm,
       tools: tools ?? {},
-      modelName: _model,
+      modelId: _model,
     );
   }
 

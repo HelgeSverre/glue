@@ -17,15 +17,19 @@ class BrowserbaseProvider implements BrowserEndpointProvider {
   String get name => 'browserbase';
 
   @override
-  bool get isAvailable =>
+  bool get isConfigured =>
       apiKey != null &&
       apiKey!.isNotEmpty &&
       projectId != null &&
       projectId!.isNotEmpty;
 
   @override
+  @Deprecated('Use isConfigured instead.')
+  bool get isAvailable => isConfigured;
+
+  @override
   Future<BrowserEndpoint> provision() async {
-    if (!isAvailable) {
+    if (!isConfigured) {
       throw StateError('Browserbase API key or project ID not configured');
     }
 

@@ -3,12 +3,13 @@ import 'dart:io';
 
 class ConfigStore {
   final String path;
+  final String? legacyPath;
   Map<String, dynamic> _cache = const {};
   DateTime? _lastMtime;
   int? _lastSize;
   bool _loaded = false;
 
-  ConfigStore(this.path);
+  ConfigStore(this.path, {this.legacyPath});
 
   Map<String, dynamic> load() {
     _ensureLoaded();
@@ -16,9 +17,15 @@ class ConfigStore {
   }
 
   void _ensureLoaded() {
-    final file = File(path);
+    var source = File(path);
+    if (!source.existsSync() && legacyPath != null) {
+      final legacy = File(legacyPath!);
+      if (legacy.existsSync()) {
+        source = legacy;
+      }
+    }
 
-    if (!file.existsSync()) {
+    if (!source.existsSync()) {
       _cache = {};
       _lastMtime = null;
       _lastSize = null;
@@ -26,14 +33,14 @@ class ConfigStore {
       return;
     }
 
-    final stat = file.statSync();
+    final stat = source.statSync();
     final changed =
         !_loaded || _lastMtime != stat.modified || _lastSize != stat.size;
 
     if (!changed) return;
 
     try {
-      final decoded = jsonDecode(file.readAsStringSync());
+      final decoded = jsonDecode(source.readAsStringSync());
       _cache = (decoded is Map<String, dynamic>) ? decoded : {};
     } catch (_) {
       // Keep last-known-good cache on parse error
@@ -66,23 +73,8 @@ class ConfigStore {
     save(next);
   }
 
-  String? get defaultProvider {
-    _ensureLoaded();
-    return _cache['default_provider'] as String?;
-  }
-
-  String? get defaultModel {
-    _ensureLoaded();
-    return _cache['default_model'] as String?;
-  }
-
   List<String> get trustedTools {
     _ensureLoaded();
     return (_cache['trusted_tools'] as List?)?.cast<String>() ?? const [];
-  }
-
-  bool get debug {
-    _ensureLoaded();
-    return (_cache['debug'] as bool?) ?? true;
   }
 }

@@ -1,15 +1,6 @@
-# Glue
-
-```
-        .__
-   ____ |  |  __ __   ____
-  / ___\|  | |  |  \_/ __ \
- / /_/  >  |_|  |  /\  ___/
- \___  /|____/____/  \___  >
-/_____/                  \/
-```
-
-**The coding agent that holds it all together.**
+<p align="center">
+  <img src="../website/brand/readme-banner.svg" alt="Glue — The coding agent that holds it all together" width="900">
+</p>
 
 Glue is a terminal-native coding agent CLI built in Dart. It streams LLM responses, executes tools, and renders everything in a responsive TUI that never blocks.
 

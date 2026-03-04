@@ -1,6 +1,9 @@
 import 'package:glue/src/config/constants.dart';
 
-/// Supported browser backend types.
+/// Supported browser execution backends.
+///
+/// We use "backend" here to describe the runtime environment where the browser
+/// session is provisioned (local process, docker container, or cloud service).
 enum BrowserBackend { local, docker, steel, browserbase, browserless }
 
 /// Configuration for the web_browser tool.
@@ -36,7 +39,7 @@ class BrowserConfig {
     this.browserlessApiKey,
   });
 
-  /// Whether the selected backend has valid credentials.
+  /// Whether the selected backend has valid credentials/configuration.
   bool get isConfigured => switch (backend) {
         BrowserBackend.local => true,
         BrowserBackend.docker => true,

@@ -70,10 +70,10 @@ class TextDelta extends LlmChunk {
 /// The model has started a tool call, but the arguments are still streaming in.
 ///
 /// Use this to show early UI feedback (e.g. "preparing read_file…") before the
-/// full [ToolCallDelta] arrives with parsed arguments.
+/// full [ToolCallComplete] arrives with parsed arguments.
 ///
 /// Not every provider emits this — Ollama delivers tool calls fully formed, so
-/// you may only receive [ToolCallDelta]. Always treat this event as optional.
+/// you may only receive [ToolCallComplete]. Always treat this event as optional.
 class ToolCallStart extends LlmChunk {
   final String id;
   final String name;
@@ -81,13 +81,15 @@ class ToolCallStart extends LlmChunk {
 }
 
 /// A fully-formed tool call with parsed arguments, ready to execute.
-///
-// TODO(rename): Consider renaming to `ToolCallComplete` — the "Delta" name
-// suggests an incremental update, but this is actually the final event.
-// Deferred because it touches 50+ references across source, tests, and docs.
-class ToolCallDelta extends LlmChunk {
+class ToolCallComplete extends LlmChunk {
   final ToolCall toolCall;
-  ToolCallDelta(this.toolCall);
+  ToolCallComplete(this.toolCall);
+}
+
+/// Deprecated compatibility alias for [ToolCallComplete].
+@Deprecated('Use ToolCallComplete')
+class ToolCallDelta extends ToolCallComplete {
+  ToolCallDelta(super.toolCall);
 }
 
 /// Token usage reported by the LLM after a response.
@@ -150,7 +152,7 @@ class ToolResult {
 abstract class LlmClient {
   /// Streams a response for the given [messages].
   ///
-  /// If [tools] are provided the model may emit [ToolCallDelta] chunks.
+  /// If [tools] are provided the model may emit [ToolCallComplete] chunks.
   Stream<LlmChunk> stream(
     List<Message> messages, {
     List<Tool>? tools,
@@ -215,7 +217,7 @@ class AgentError extends AgentEvent {
 class AgentCore {
   LlmClient llm;
   final Map<String, Tool> tools;
-  final String modelName;
+  final String modelId;
   final List<Message> _conversation = [];
   int tokenCount = 0;
 
@@ -231,8 +233,15 @@ class AgentCore {
   /// Completers keyed by tool call ID for parallel tool execution.
   final Map<String, Completer<ToolResult>> _pendingToolResults = {};
 
-  AgentCore(
-      {required this.llm, required this.tools, this.modelName = 'unknown'});
+  AgentCore({
+    required this.llm,
+    required this.tools,
+    String? modelId,
+    @Deprecated('Use modelId instead.') String? modelName,
+  }) : modelId = modelId ?? modelName ?? 'unknown';
+
+  @Deprecated('Use modelId instead.')
+  String get modelName => modelId;
 
   /// The full conversation history.
   List<Message> get conversation => List.unmodifiable(_conversation);
@@ -268,7 +277,7 @@ class AgentCore {
               yield AgentTextDelta(text);
             case ToolCallStart(:final id, :final name):
               yield AgentToolCallPending(id: id, name: name);
-            case ToolCallDelta(:final toolCall):
+            case ToolCallComplete(:final toolCall):
               toolCalls.add(toolCall);
               final completer = Completer<ToolResult>();
               _pendingToolResults[toolCall.id] = completer;

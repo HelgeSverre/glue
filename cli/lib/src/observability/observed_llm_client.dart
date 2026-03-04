@@ -53,7 +53,7 @@ class ObservedLlmClient implements LlmClient {
             span.attributes['gen_ai.usage.total_tokens'] = chunk.totalTokens;
             span.attributes['input_tokens'] = chunk.inputTokens;
             span.attributes['output_tokens'] = chunk.outputTokens;
-          case ToolCallDelta(:final toolCall):
+          case ToolCallComplete(:final toolCall):
             toolCallNames.add(toolCall.name);
           case TextDelta(:final text):
             responseBuffer.write(text);

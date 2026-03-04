@@ -100,13 +100,13 @@ void main() {
         Stream.fromIterable(events),
       ).toList();
 
-      final toolCalls = chunks.whereType<ToolCallDelta>().toList();
+      final toolCalls = chunks.whereType<ToolCallComplete>().toList();
       expect(toolCalls, hasLength(1));
       expect(toolCalls.first.toolCall.name, 'read_file');
       expect(toolCalls.first.toolCall.arguments['path'], 'main.dart');
     });
 
-    test('emits ToolCallStart before ToolCallDelta', () async {
+    test('emits ToolCallStart before ToolCallComplete', () async {
       final events = [
         {
           'choices': [
@@ -159,7 +159,7 @@ void main() {
       expect(starts.first.name, 'write_file');
 
       final startIdx = chunks.indexWhere((c) => c is ToolCallStart);
-      final deltaIdx = chunks.indexWhere((c) => c is ToolCallDelta);
+      final deltaIdx = chunks.indexWhere((c) => c is ToolCallComplete);
       expect(startIdx, lessThan(deltaIdx));
     });
   });

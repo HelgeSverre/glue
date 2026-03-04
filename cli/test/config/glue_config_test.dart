@@ -1,9 +1,22 @@
+import 'dart:io';
+
+import 'package:glue/src/core/environment.dart';
 import 'package:test/test.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/config/permission_mode.dart';
 
 void main() {
   group('GlueConfig', () {
+    late Directory tempDir;
+
+    setUp(() {
+      tempDir = Directory.systemTemp.createTempSync('glue_config_test_');
+    });
+
+    tearDown(() {
+      tempDir.deleteSync(recursive: true);
+    });
+
     test('resolves provider and model from explicit values', () {
       final config = GlueConfig(
         provider: LlmProvider.anthropic,
@@ -131,6 +144,104 @@ void main() {
       expect(copied.titleModel, 'claude-haiku-4');
       expect(copied.skillPaths, ['/opt/skills', '~/skills']);
       expect(copied.permissionMode, PermissionMode.acceptEdits);
+    });
+
+    test('load uses injected environment home for config.yaml', () {
+      final glueDir = Directory('${tempDir.path}/.glue')..createSync();
+      final configFile = File('${glueDir.path}/config.yaml');
+      configFile.writeAsStringSync('''
+provider: openai
+model: gpt-4.1-mini
+openai:
+  api_key: sk-open-file
+permission_mode: read-only
+skills:
+  paths:
+    - /opt/skills
+''');
+
+      final environment =
+          Environment.test(home: tempDir.path, cwd: tempDir.path);
+      final config = GlueConfig.load(environment: environment);
+
+      expect(config.provider, LlmProvider.openai);
+      expect(config.model, 'gpt-4.1-mini');
+      expect(config.openaiApiKey, 'sk-open-file');
+      expect(config.permissionMode, PermissionMode.readOnly);
+      expect(config.skillPaths, ['/opt/skills']);
+    });
+
+    test('load parses GLUE_SKILLS_PATHS using injected platform separator', () {
+      final environment = Environment.test(
+        home: tempDir.path,
+        cwd: tempDir.path,
+        isWindows: true,
+        vars: const {'GLUE_SKILLS_PATHS': r'C:\skills;D:\more-skills'},
+      );
+
+      final config = GlueConfig.load(environment: environment);
+      expect(config.skillPaths, [r'C:\skills', r'D:\more-skills']);
+    });
+
+    test('load honors explicit configPath override', () {
+      final customDir = Directory('${tempDir.path}/custom')..createSync();
+      final configFile = File('${customDir.path}/config.yaml');
+      configFile.writeAsStringSync('''
+provider: openai
+model: gpt-4.1
+openai:
+  api_key: sk-explicit
+''');
+
+      final environment = Environment.test(
+        home: '/does/not/matter',
+        cwd: tempDir.path,
+      );
+      final config = GlueConfig.load(
+        environment: environment,
+        configPath: configFile.path,
+      );
+
+      expect(config.provider, LlmProvider.openai);
+      expect(config.model, 'gpt-4.1');
+      expect(config.openaiApiKey, 'sk-explicit');
+    });
+
+    test('load reads ollama.base_url from config file', () {
+      final glueDir = Directory('${tempDir.path}/.glue')..createSync();
+      final configFile = File('${glueDir.path}/config.yaml');
+      configFile.writeAsStringSync('''
+provider: ollama
+model: llama3.2
+ollama:
+  base_url: http://127.0.0.1:11435
+''');
+
+      final environment =
+          Environment.test(home: tempDir.path, cwd: tempDir.path);
+      final config = GlueConfig.load(environment: environment);
+
+      expect(config.provider, LlmProvider.ollama);
+      expect(config.ollamaBaseUrl, 'http://127.0.0.1:11435');
+    });
+
+    test('GLUE_OLLAMA_BASE_URL overrides file config', () {
+      final glueDir = Directory('${tempDir.path}/.glue')..createSync();
+      final configFile = File('${glueDir.path}/config.yaml');
+      configFile.writeAsStringSync('''
+provider: ollama
+model: llama3.2
+ollama:
+  base_url: http://127.0.0.1:11435
+''');
+
+      final environment = Environment.test(
+        home: tempDir.path,
+        cwd: tempDir.path,
+        vars: const {'GLUE_OLLAMA_BASE_URL': 'http://localhost:22434'},
+      );
+      final config = GlueConfig.load(environment: environment);
+      expect(config.ollamaBaseUrl, 'http://localhost:22434');
     });
   });
 

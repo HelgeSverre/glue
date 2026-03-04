@@ -3,6 +3,7 @@ import 'package:yaml/yaml.dart';
 import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/config/model_registry.dart';
 import 'package:glue/src/config/permission_mode.dart';
+import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/shell/docker_config.dart';
 import 'package:glue/src/shell/shell_config.dart';
 import 'package:glue/src/web/web_config.dart';
@@ -21,6 +22,9 @@ List<String> splitPathList(String value, {bool? isWindows}) {
 ///
 /// {@category Core}
 enum LlmProvider { anthropic, openai, mistral, ollama }
+
+/// Alias for enum-style consistency with other provider selector enums.
+typedef LlmProviderType = LlmProvider;
 
 /// An agent profile specifying provider and model for a particular role.
 class AgentProfile {
@@ -120,12 +124,7 @@ class GlueConfig {
     // Ollama runs locally — no API key needed.
     if (provider == LlmProvider.ollama) return;
 
-    final key = switch (provider) {
-      LlmProvider.anthropic => anthropicApiKey,
-      LlmProvider.openai => openaiApiKey,
-      LlmProvider.mistral => mistralApiKey,
-      LlmProvider.ollama => '', // unreachable
-    };
+    final key = apiKeyFor(provider);
     if (key == null || key.isEmpty) {
       final envVar = switch (provider) {
         LlmProvider.anthropic => 'ANTHROPIC_API_KEY',
@@ -144,22 +143,30 @@ class GlueConfig {
   String get apiKey {
     if (provider == LlmProvider.ollama) return '';
     validate();
-    return switch (provider) {
-      LlmProvider.anthropic => anthropicApiKey!,
-      LlmProvider.openai => openaiApiKey!,
-      LlmProvider.mistral => mistralApiKey!,
-      LlmProvider.ollama => '',
-    };
+    return apiKeyFor(provider)!;
   }
+
+  /// API key for a specific provider (empty for Ollama).
+  String? apiKeyFor(LlmProvider provider) => switch (provider) {
+        LlmProvider.anthropic => anthropicApiKey,
+        LlmProvider.openai => openaiApiKey,
+        LlmProvider.mistral => mistralApiKey,
+        LlmProvider.ollama => '',
+      };
 
   /// Loads configuration from env vars, optional config file, and CLI overrides.
   factory GlueConfig.load({
     String? cliModel,
+    Environment? environment,
+    String? configPath,
   }) {
+    final env = environment?.vars ?? Platform.environment;
+
     // 1. Load from config file.
-    final configFile = File(
-      '${Platform.environment['HOME'] ?? '.'}/.glue/config.yaml',
-    );
+    final configYamlPath = configPath ??
+        environment?.configYamlPath ??
+        '${env['HOME'] ?? '.'}/.glue/config.yaml';
+    final configFile = File(configYamlPath);
     Map<String, dynamic>? fileConfig;
     if (configFile.existsSync()) {
       final content = configFile.readAsStringSync();
@@ -171,17 +178,15 @@ class GlueConfig {
 
     // 2. Resolve model: CLI → env → file → default.
     //    Resolve aliases (e.g. "opus" → "claude-opus-4-6") via registry.
-    final rawModel = cliModel ??
-        Platform.environment['GLUE_MODEL'] ??
-        fileConfig?['model'] as String?;
+    final rawModel =
+        cliModel ?? env['GLUE_MODEL'] ?? fileConfig?['model'] as String?;
 
-    final resolvedEntry = rawModel != null
-        ? ModelRegistry.findByName(rawModel)
-        : null;
+    final resolvedEntry =
+        rawModel != null ? ModelRegistry.findByName(rawModel) : null;
 
     // 3. Resolve provider: infer from model → env → file → default.
-    final providerStr = Platform.environment['GLUE_PROVIDER'] ??
-        fileConfig?['provider'] as String?;
+    final providerStr =
+        env['GLUE_PROVIDER'] ?? fileConfig?['provider'] as String?;
 
     final provider = resolvedEntry?.provider ??
         (providerStr != null
@@ -191,21 +196,24 @@ class GlueConfig {
               )
             : LlmProvider.anthropic);
 
-    final model = resolvedEntry?.modelId ??
-        rawModel ??
-        _defaultModel(provider);
+    final model = resolvedEntry?.modelId ?? rawModel ?? _defaultModel(provider);
 
-    final anthropicKey = Platform.environment['ANTHROPIC_API_KEY'] ??
-        Platform.environment['GLUE_ANTHROPIC_API_KEY'] ??
+    final anthropicKey = env['ANTHROPIC_API_KEY'] ??
+        env['GLUE_ANTHROPIC_API_KEY'] ??
         (fileConfig?['anthropic'] as Map?)?['api_key'] as String?;
 
-    final openaiKey = Platform.environment['OPENAI_API_KEY'] ??
-        Platform.environment['GLUE_OPENAI_API_KEY'] ??
+    final openaiKey = env['OPENAI_API_KEY'] ??
+        env['GLUE_OPENAI_API_KEY'] ??
         (fileConfig?['openai'] as Map?)?['api_key'] as String?;
 
-    final mistralKey = Platform.environment['MISTRAL_API_KEY'] ??
-        Platform.environment['GLUE_MISTRAL_API_KEY'] ??
+    final mistralKey = env['MISTRAL_API_KEY'] ??
+        env['GLUE_MISTRAL_API_KEY'] ??
         (fileConfig?['mistral'] as Map?)?['api_key'] as String?;
+
+    final ollamaBaseUrl = env['OLLAMA_BASE_URL'] ??
+        env['GLUE_OLLAMA_BASE_URL'] ??
+        (fileConfig?['ollama'] as Map?)?['base_url'] as String? ??
+        AppConstants.defaultOllamaBaseUrl;
 
     final bashMaxLines = (fileConfig?['bash'] as Map?)?['max_lines'] as int? ??
         AppConstants.bashMaxLinesDefault;
@@ -215,33 +223,40 @@ class GlueConfig {
 
     // 2b. Resolve shell configuration.
     final shellSection = fileConfig?['shell'] as Map?;
-    final shellExe = Platform.environment['GLUE_SHELL'] ??
-        shellSection?['executable'] as String?;
-    final shellModeStr = Platform.environment['GLUE_SHELL_MODE'] ??
-        shellSection?['mode'] as String?;
+    final shellExe =
+        env['GLUE_SHELL'] ?? shellSection?['executable'] as String?;
+    final shellModeStr =
+        env['GLUE_SHELL_MODE'] ?? shellSection?['mode'] as String?;
     final shellMode = shellModeStr != null
-        ? ShellMode.fromString(shellModeStr)
+        ? ShellMode.fromString(
+            shellModeStr,
+            onInvalid: (invalid) {
+              stderr.writeln(
+                'Warning: unknown shell mode "$invalid"; '
+                'using "non_interactive".',
+              );
+            },
+          )
         : ShellMode.nonInteractive;
     final shellConfig = ShellConfig.detect(
       explicit: shellExe,
-      shellEnv: Platform.environment['SHELL'],
+      shellEnv: env['SHELL'],
       mode: shellMode,
     );
 
     // 2c. Resolve Docker configuration.
     final dockerSection = fileConfig?['docker'] as Map?;
-    final dockerEnabled = Platform.environment['GLUE_DOCKER_ENABLED'] == '1' ||
+    final dockerEnabled = env['GLUE_DOCKER_ENABLED'] == '1' ||
         (dockerSection?['enabled'] as bool? ?? false);
-    final dockerImage = Platform.environment['GLUE_DOCKER_IMAGE'] ??
+    final dockerImage = env['GLUE_DOCKER_IMAGE'] ??
         dockerSection?['image'] as String? ??
         'ubuntu:24.04';
-    final dockerShell = Platform.environment['GLUE_DOCKER_SHELL'] ??
-        dockerSection?['shell'] as String? ??
-        'sh';
+    final dockerShell =
+        env['GLUE_DOCKER_SHELL'] ?? dockerSection?['shell'] as String? ?? 'sh';
     final dockerFallback = dockerSection?['fallback_to_host'] as bool? ?? true;
 
     final dockerMounts = <MountEntry>[];
-    final envMounts = Platform.environment['GLUE_DOCKER_MOUNTS'];
+    final envMounts = env['GLUE_DOCKER_MOUNTS'];
     if (envMounts != null && envMounts.isNotEmpty) {
       for (final spec in envMounts.split(';')) {
         if (spec.trim().isNotEmpty) {
@@ -269,17 +284,17 @@ class GlueConfig {
     final fetchSection = webSection?['fetch'] as Map?;
     final searchSection = webSection?['search'] as Map?;
 
-    final jinaApiKey = Platform.environment['JINA_API_KEY'] ??
-        fetchSection?['jina_api_key'] as String?;
-    final braveApiKey = Platform.environment['BRAVE_API_KEY'] ??
-        searchSection?['brave_api_key'] as String?;
-    final tavilyApiKey = Platform.environment['TAVILY_API_KEY'] ??
-        searchSection?['tavily_api_key'] as String?;
-    final firecrawlApiKey = Platform.environment['FIRECRAWL_API_KEY'] ??
+    final jinaApiKey =
+        env['JINA_API_KEY'] ?? fetchSection?['jina_api_key'] as String?;
+    final braveApiKey =
+        env['BRAVE_API_KEY'] ?? searchSection?['brave_api_key'] as String?;
+    final tavilyApiKey =
+        env['TAVILY_API_KEY'] ?? searchSection?['tavily_api_key'] as String?;
+    final firecrawlApiKey = env['FIRECRAWL_API_KEY'] ??
         searchSection?['firecrawl_api_key'] as String?;
 
-    final searchProviderStr = Platform.environment['GLUE_SEARCH_PROVIDER'] ??
-        searchSection?['provider'] as String?;
+    final searchProviderStr =
+        env['GLUE_SEARCH_PROVIDER'] ?? searchSection?['provider'] as String?;
     final searchProvider = searchProviderStr != null
         ? WebSearchProviderType.values.firstWhere(
             (p) => p.name == searchProviderStr,
@@ -312,12 +327,12 @@ class GlueConfig {
 
     // 2e. Resolve PDF configuration.
     final pdfSection = webSection?['pdf'] as Map?;
-    final mistralApiKey = Platform.environment['MISTRAL_API_KEY'] ??
-        pdfSection?['mistral_api_key'] as String?;
-    final pdfOpenaiApiKey = Platform.environment['OPENAI_API_KEY'] ??
-        pdfSection?['openai_api_key'] as String?;
-    final ocrProviderStr = Platform.environment['GLUE_OCR_PROVIDER'] ??
-        pdfSection?['ocr_provider'] as String?;
+    final pdfMistralApiKey =
+        pdfSection?['mistral_api_key'] as String? ?? mistralKey;
+    final pdfOpenaiApiKey =
+        pdfSection?['openai_api_key'] as String? ?? openaiKey;
+    final ocrProviderStr =
+        env['GLUE_OCR_PROVIDER'] ?? pdfSection?['ocr_provider'] as String?;
     final ocrProvider = ocrProviderStr != null
         ? OcrProviderType.values.firstWhere(
             (p) => p.name == ocrProviderStr,
@@ -331,7 +346,7 @@ class GlueConfig {
           AppConstants.pdfTimeoutSeconds,
       enableOcrFallback: pdfSection?['enable_ocr_fallback'] as bool? ?? true,
       ocrProvider: ocrProvider,
-      mistralApiKey: mistralApiKey,
+      mistralApiKey: pdfMistralApiKey,
       openaiApiKey: pdfOpenaiApiKey,
     );
 
@@ -342,8 +357,8 @@ class GlueConfig {
     final browserbaseSection = browserSection?['browserbase'] as Map?;
     final browserlessSection = browserSection?['browserless'] as Map?;
 
-    final browserBackendStr = Platform.environment['GLUE_BROWSER_BACKEND'] ??
-        browserSection?['backend'] as String?;
+    final browserBackendStr =
+        env['GLUE_BROWSER_BACKEND'] ?? browserSection?['backend'] as String?;
     final browserBackend = browserBackendStr != null
         ? BrowserBackend.values.firstWhere(
             (b) => b.name == browserBackendStr,
@@ -358,14 +373,13 @@ class GlueConfig {
           AppConstants.browserDockerImage,
       dockerPort: dockerBrowserSection?['port'] as int? ??
           AppConstants.browserDockerPort,
-      steelApiKey: Platform.environment['STEEL_API_KEY'] ??
-          steelSection?['api_key'] as String?,
-      browserbaseApiKey: Platform.environment['BROWSERBASE_API_KEY'] ??
+      steelApiKey: env['STEEL_API_KEY'] ?? steelSection?['api_key'] as String?,
+      browserbaseApiKey: env['BROWSERBASE_API_KEY'] ??
           browserbaseSection?['api_key'] as String?,
-      browserbaseProjectId: Platform.environment['BROWSERBASE_PROJECT_ID'] ??
+      browserbaseProjectId: env['BROWSERBASE_PROJECT_ID'] ??
           browserbaseSection?['project_id'] as String?,
       browserlessBaseUrl: browserlessSection?['base_url'] as String?,
-      browserlessApiKey: Platform.environment['BROWSERLESS_API_KEY'] ??
+      browserlessApiKey: env['BROWSERLESS_API_KEY'] ??
           browserlessSection?['api_key'] as String?,
     );
 
@@ -377,8 +391,8 @@ class GlueConfig {
     );
 
     // 2g. Resolve observability configuration.
-    final debug = Platform.environment['GLUE_DEBUG'] == '1' ||
-        (fileConfig?['debug'] as bool? ?? false);
+    final debug =
+        env['GLUE_DEBUG'] == '1' || (fileConfig?['debug'] as bool? ?? false);
 
     final telemetrySection = fileConfig?['telemetry'] as Map?;
     final langfuseSection = telemetrySection?['langfuse'] as Map?;
@@ -388,17 +402,17 @@ class GlueConfig {
 
     final langfuseConfig = LangfuseConfig(
       enabled: langfuseSection?['enabled'] as bool? ?? false,
-      baseUrl: Platform.environment['LANGFUSE_BASE_URL'] ??
-          langfuseSection?['base_url'] as String?,
-      publicKey: Platform.environment['LANGFUSE_PUBLIC_KEY'] ??
+      baseUrl:
+          env['LANGFUSE_BASE_URL'] ?? langfuseSection?['base_url'] as String?,
+      publicKey: env['LANGFUSE_PUBLIC_KEY'] ??
           langfuseSection?['public_key'] as String?,
-      secretKey: Platform.environment['LANGFUSE_SECRET_KEY'] ??
+      secretKey: env['LANGFUSE_SECRET_KEY'] ??
           langfuseSection?['secret_key'] as String?,
     );
 
-    final otelEndpoint = Platform.environment['OTEL_EXPORTER_OTLP_ENDPOINT'] ??
+    final otelEndpoint = env['OTEL_EXPORTER_OTLP_ENDPOINT'] ??
         otelSection?['endpoint'] as String?;
-    final otelHeadersEnv = Platform.environment['OTEL_EXPORTER_OTLP_HEADERS'];
+    final otelHeadersEnv = env['OTEL_EXPORTER_OTLP_HEADERS'];
     final otelHeaders = <String, String>{};
     if (otelHeadersEnv != null && otelHeadersEnv.isNotEmpty) {
       for (final pair in otelHeadersEnv.split(',')) {
@@ -445,7 +459,7 @@ class GlueConfig {
     }
 
     // 4. Parse permission mode.
-    final permModeStr = Platform.environment['GLUE_PERMISSION_MODE'] ??
+    final permModeStr = env['GLUE_PERMISSION_MODE'] ??
         fileConfig?['permission_mode'] as String?;
     final permissionMode = permModeStr != null
         ? PermissionMode.values.firstWhere(
@@ -456,9 +470,14 @@ class GlueConfig {
 
     // 5. Parse skill paths.
     final skillPaths = <String>[];
-    final envSkillPaths = Platform.environment['GLUE_SKILLS_PATHS'];
+    final envSkillPaths = env['GLUE_SKILLS_PATHS'];
     if (envSkillPaths != null && envSkillPaths.isNotEmpty) {
-      skillPaths.addAll(splitPathList(envSkillPaths));
+      skillPaths.addAll(
+        splitPathList(
+          envSkillPaths,
+          isWindows: environment?.isWindows,
+        ),
+      );
     }
     final skillsSection = fileConfig?['skills'] as Map?;
     final fileSkillPaths = skillsSection?['paths'] as List?;
@@ -472,6 +491,7 @@ class GlueConfig {
       anthropicApiKey: anthropicKey,
       openaiApiKey: openaiKey,
       mistralApiKey: mistralKey,
+      ollamaBaseUrl: ollamaBaseUrl,
       profiles: profiles,
       bashMaxLines: bashMaxLines,
       titleModel: titleModel,

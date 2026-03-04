@@ -136,7 +136,7 @@ void main() {
     expect(agent.tokenCount, 20);
   });
 
-  test('tool call flow: ToolCallDelta → completeToolCall → re-calls LLM',
+  test('tool call flow: ToolCallComplete → completeToolCall → re-calls LLM',
       () async {
     final toolCall = ToolCall(
       id: 'call_1',
@@ -145,7 +145,7 @@ void main() {
     );
 
     // First LLM call: returns a tool call
-    mockLlm.responses.add([ToolCallDelta(toolCall)]);
+    mockLlm.responses.add([ToolCallComplete(toolCall)]);
     // Second LLM call (after tool result): returns text
     mockLlm.responses.add([TextDelta('Done')]);
 
@@ -243,7 +243,7 @@ void main() {
     );
 
     // First call: tool call
-    mockLlm.responses.add([ToolCallDelta(toolCall)]);
+    mockLlm.responses.add([ToolCallComplete(toolCall)]);
     // Second call: text after denied result
     mockLlm.responses.add([TextDelta('Understood')]);
 
@@ -286,8 +286,8 @@ void main() {
     // First LLM call: returns 2 tool calls
     mockLlm.responses.add([
       TextDelta('thinking'),
-      ToolCallDelta(toolCall1),
-      ToolCallDelta(toolCall2),
+      ToolCallComplete(toolCall1),
+      ToolCallComplete(toolCall2),
     ]);
     // Second LLM call: text response after results
     mockLlm.responses.add([TextDelta('done')]);

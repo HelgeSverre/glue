@@ -15,7 +15,11 @@ class LocalProvider implements BrowserEndpointProvider {
   String get name => 'local';
 
   @override
-  bool get isAvailable => true;
+  bool get isConfigured => true;
+
+  @override
+  @Deprecated('Use isConfigured instead.')
+  bool get isAvailable => isConfigured;
 
   @override
   Future<BrowserEndpoint> provision() async {

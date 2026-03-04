@@ -12,6 +12,17 @@ void main() {
     test('fromString returns nonInteractive for unknown', () {
       expect(ShellMode.fromString('bogus'), ShellMode.nonInteractive);
     });
+
+    test('fromString reports unknown values via callback', () {
+      String? invalid;
+      final mode = ShellMode.fromString(
+        'bogus',
+        onInvalid: (value) => invalid = value,
+      );
+
+      expect(mode, ShellMode.nonInteractive);
+      expect(invalid, 'bogus');
+    });
   });
 
   group('ShellConfig', () {

@@ -149,7 +149,7 @@ class OpenAiClient implements LlmClient {
           } on FormatException {
             args = <String, dynamic>{'_raw': argsStr};
           }
-          yield ToolCallDelta(ToolCall(
+          yield ToolCallComplete(ToolCall(
             id: builder.id,
             name: builder.name,
             arguments: args,

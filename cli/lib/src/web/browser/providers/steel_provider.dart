@@ -16,11 +16,15 @@ class SteelProvider implements BrowserEndpointProvider {
   String get name => 'steel';
 
   @override
-  bool get isAvailable => apiKey != null && apiKey!.isNotEmpty;
+  bool get isConfigured => apiKey != null && apiKey!.isNotEmpty;
+
+  @override
+  @Deprecated('Use isConfigured instead.')
+  bool get isAvailable => isConfigured;
 
   @override
   Future<BrowserEndpoint> provision() async {
-    if (!isAvailable) throw StateError('Steel API key not configured');
+    if (!isConfigured) throw StateError('Steel API key not configured');
 
     final response = await http
         .post(

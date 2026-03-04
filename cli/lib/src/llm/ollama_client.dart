@@ -147,7 +147,7 @@ class OllamaClient implements LlmClient {
             final id = 'ollama_tc_$toolCallCounter';
             final name = fn['name'] as String;
             yield ToolCallStart(id: id, name: name);
-            yield ToolCallDelta(ToolCall(
+            yield ToolCallComplete(ToolCall(
               id: id,
               name: name,
               // Ollama returns arguments as a parsed Map, not a JSON string.

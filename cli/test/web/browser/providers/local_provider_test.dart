@@ -9,9 +9,9 @@ void main() {
       expect(provider.name, 'local');
     });
 
-    test('is always available', () {
+    test('is always configured', () {
       final provider = LocalProvider(const BrowserConfig());
-      expect(provider.isAvailable, isTrue);
+      expect(provider.isConfigured, isTrue);
     });
 
     test('respects headed config', () {

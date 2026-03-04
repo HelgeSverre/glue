@@ -28,7 +28,7 @@ class _ToolCallLlm implements LlmClient {
     if (_callCount == 1) {
       yield TextDelta('Let me check. ');
       yield ToolCallStart(id: 'tc1', name: 'list_directory');
-      yield ToolCallDelta(ToolCall(
+      yield ToolCallComplete(ToolCall(
         id: 'tc1',
         name: 'list_directory',
         arguments: {'path': '.'},

@@ -21,7 +21,6 @@ class SkillMeta {
   final String description;
   final String? license;
   final String? compatibility;
-  final String? allowedTools;
   final Map<String, String> metadata;
   final String skillDir;
   final String skillMdPath;
@@ -32,7 +31,6 @@ class SkillMeta {
     required this.description,
     this.license,
     this.compatibility,
-    this.allowedTools,
     this.metadata = const {},
     required this.skillDir,
     required this.skillMdPath,
@@ -117,7 +115,6 @@ SkillMeta parseSkillFrontmatter(
   }
 
   final license = parsed['license']?.toString();
-  final allowedTools = parsed['allowed-tools']?.toString();
 
   final rawMeta = parsed['metadata'];
   final metadata = <String, String>{};
@@ -132,7 +129,6 @@ SkillMeta parseSkillFrontmatter(
     description: description,
     license: license,
     compatibility: compatibility,
-    allowedTools: allowedTools,
     metadata: metadata,
     skillDir: skillDir,
     skillMdPath: skillMdPath,
