@@ -28,21 +28,41 @@ class Layout {
   final int _statusHeight = 1;
   int _inputHeight = 1;
   int _overlayHeight = 0;
+  int _dockLeft = 0;
+  int _dockRight = 0;
+  int _dockTop = 0;
+  int _dockBottom = 0;
 
   Layout(this.terminal);
 
   // ── Zone boundaries (1-indexed rows) ──────────────────────────────────
 
   /// First row of the scrollable output zone.
-  int get outputTop => 1;
+  int get outputTop => 1 + _dockTop;
 
   /// Last row of the scrollable output zone.
-  int get outputBottom =>
-      (terminal.rows - _statusHeight - _inputHeight - _overlayHeight)
-          .clamp(outputTop, terminal.rows);
+  int get outputBottom => (terminal.rows -
+          _statusHeight -
+          _inputHeight -
+          _overlayHeight -
+          _dockBottom)
+      .clamp(outputTop, terminal.rows);
+
+  /// Left column of the scrollable output zone.
+  int get outputLeft => 1 + _dockLeft;
+
+  /// Right column of the scrollable output zone.
+  int get outputRight =>
+      (terminal.columns - _dockRight).clamp(outputLeft, terminal.columns);
+
+  /// Width of the output zone.
+  int get outputWidth => outputRight - outputLeft + 1;
+
+  /// Height of the output zone.
+  int get outputHeight => outputBottom - outputTop + 1;
 
   /// First row of the overlay zone (between output and status bar).
-  int get overlayTop => outputBottom + 1;
+  int get overlayTop => outputBottom + _dockBottom + 1;
 
   /// Last row of the overlay zone.
   int get overlayBottom => overlayTop + _overlayHeight - 1;
@@ -74,6 +94,20 @@ class Layout {
     apply();
   }
 
+  /// Update dock gutters for pinned panels.
+  void applyDockGutters({
+    int left = 0,
+    int top = 0,
+    int right = 0,
+    int bottom = 0,
+  }) {
+    _dockLeft = left.clamp(0, terminal.columns - 1);
+    _dockRight = right.clamp(0, terminal.columns - 1);
+    _dockTop = top.clamp(0, terminal.rows - 1);
+    _dockBottom = bottom.clamp(0, terminal.rows - 1);
+    apply();
+  }
+
   /// Update the overlay zone height. Call before rendering.
   ///
   /// Only calls [apply] if the height actually changed to avoid flicker.
@@ -89,12 +123,16 @@ class Layout {
 
   /// Paint the output zone with pre-computed lines for scrollback.
   void paintOutputViewport(List<String> lines) {
-    final height = outputBottom - outputTop + 1;
+    final height = outputHeight;
     for (var i = 0; i < height; i++) {
       terminal.moveTo(outputTop + i, 1);
       terminal.clearLine();
       if (i < lines.length) {
-        terminal.write(lines[i]);
+        terminal.moveTo(outputTop + i, outputLeft);
+        final truncated = ansiTruncate(lines[i], outputWidth);
+        terminal.write(truncated);
+        final padding = outputWidth - visibleLength(truncated);
+        if (padding > 0) terminal.write(' ' * padding);
       }
     }
   }
@@ -103,7 +141,7 @@ class Layout {
   /// scroll region).
   void writeOutput(String text) {
     terminal.saveCursor();
-    terminal.moveTo(outputBottom, 1);
+    terminal.moveTo(outputBottom, outputLeft);
     terminal.write('\n$text');
     terminal.restoreCursor();
   }
@@ -114,8 +152,43 @@ class Layout {
       terminal.moveTo(overlayTop + i, 1);
       terminal.clearLine();
       if (i < lines.length) {
-        terminal.write(lines[i]);
+        terminal.moveTo(overlayTop + i, outputLeft);
+        final truncated = ansiTruncate(lines[i], outputWidth);
+        terminal.write(truncated);
+        final padding = outputWidth - visibleLength(truncated);
+        if (padding > 0) terminal.write(' ' * padding);
+      } else {
+        terminal.moveTo(overlayTop + i, outputLeft);
+        terminal.write(' ' * outputWidth);
       }
+    }
+  }
+
+  /// Paint a rectangular block without disturbing other cells.
+  void paintRect({
+    required int row,
+    required int col,
+    required int width,
+    required int height,
+    required List<String> lines,
+  }) {
+    if (width <= 0 || height <= 0) return;
+
+    final clippedRow = row.clamp(1, terminal.rows);
+    final clippedCol = col.clamp(1, terminal.columns);
+    final maxHeight = terminal.rows - clippedRow + 1;
+    final maxWidth = terminal.columns - clippedCol + 1;
+    final safeHeight = height.clamp(0, maxHeight);
+    final safeWidth = width.clamp(0, maxWidth);
+    if (safeHeight <= 0 || safeWidth <= 0) return;
+
+    for (var i = 0; i < safeHeight; i++) {
+      terminal.moveTo(clippedRow + i, clippedCol);
+      final raw = i < lines.length ? lines[i] : '';
+      final truncated = ansiTruncate(raw, safeWidth);
+      final padding = safeWidth - visibleLength(truncated);
+      terminal.write(truncated);
+      if (padding > 0) terminal.write(' ' * padding);
     }
   }
 

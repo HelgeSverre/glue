@@ -5,14 +5,11 @@ import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/config/model_registry.dart';
 import 'package:glue/src/llm/model_discovery.dart';
-import 'package:glue/src/skills/skill_parser.dart';
-import 'package:glue/src/skills/skill_registry.dart';
 import 'package:glue/src/storage/session_store.dart';
 import 'package:glue/src/terminal/terminal.dart';
 import 'package:glue/src/terminal/styled.dart';
 import 'package:glue/src/ui/model_panel_formatter.dart';
 import 'package:glue/src/ui/panel_modal.dart';
-import 'package:glue/src/ui/split_panel_modal.dart';
 
 class HistoryPanelEntry {
   final int userMessageIndex;
@@ -256,94 +253,6 @@ class PanelController {
       final entry = formatted.entries[idx];
       final result = onModelSelected(entry);
       addSystemMessage(result);
-      _render();
-    }));
-  }
-
-  void openSkills({
-    required SkillRegistry registry,
-    required String Function(String path) shortenPath,
-    required List<String> Function(String text, int width) wrapText,
-    required Future<void> Function(String name) onSkillSelected,
-    required void Function(String message) addSystemMessage,
-  }) {
-    if (registry.isEmpty) {
-      addSystemMessage('No skills found.\n\n'
-          'To add skills, create directories with SKILL.md files in:\n'
-          '  ~/.glue/skills/<skill-name>/SKILL.md (global)\n'
-          '  .glue/skills/<skill-name>/SKILL.md (project-local)');
-      _render();
-      return;
-    }
-
-    final skills = registry.list();
-
-    const cyan = '\x1b[36m';
-    const green = '\x1b[32m';
-    const rst = '\x1b[0m';
-
-    final maxNameLen =
-        skills.fold<int>(0, (m, s) => s.name.length > m ? s.name.length : m);
-    final leftItems = skills.map((s) {
-      final tag = switch (s.source) {
-        SkillSource.project => '${green}project$rst',
-        SkillSource.global => '${cyan}global$rst',
-        SkillSource.custom => '${cyan}custom$rst',
-      };
-      return '${s.name.padRight(maxNameLen)}  $tag';
-    }).toList();
-
-    List<String> buildDetail(int idx, int width) {
-      if (idx < 0 || idx >= skills.length) return [];
-      final s = skills[idx];
-      final lines = <String>[];
-
-      const bold = '\x1b[1m';
-      const dim = '\x1b[2m';
-      const lbl = '\x1b[32m';
-
-      lines.add('$bold${s.name}$rst');
-      lines.add('');
-
-      final wrapped = wrapText(s.description, width);
-      lines.addAll(wrapped);
-      lines.add('');
-
-      final shortDir = shortenPath(s.skillDir);
-      lines.add('${lbl}Source$rst      $dim$shortDir$rst');
-      if (s.license != null) {
-        lines.add('${lbl}License$rst    $dim${s.license}$rst');
-      }
-      if (s.compatibility != null) {
-        lines.add('${lbl}Requires$rst   $dim${s.compatibility}$rst');
-      }
-      for (final entry in s.metadata.entries) {
-        final key = entry.key[0].toUpperCase() + entry.key.substring(1);
-        final pad = ' ' * (11 - key.length);
-        lines.add('$lbl$key$rst$pad$dim${entry.value}$rst');
-      }
-
-      return lines;
-    }
-
-    final panel = SplitPanelModal(
-      title: 'SKILLS',
-      leftItems: leftItems,
-      buildRightLines: buildDetail,
-      barrier: BarrierStyle.dim,
-      height: PanelFluid(0.6, 12),
-    );
-    _panelStack.add(panel);
-    _render();
-
-    unawaited(panel.selection.then((idx) async {
-      _panelStack.remove(panel);
-      if (idx == null) {
-        _render();
-        return;
-      }
-      final skill = skills[idx];
-      await onSkillSelected(skill.name);
       _render();
     }));
   }

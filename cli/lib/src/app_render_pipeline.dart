@@ -32,8 +32,19 @@ void _doRenderImpl(App app) {
     app._blocks.removeRange(
         0, app._blocks.length - AppConstants.maxConversationBlocks);
   }
+  final dockInsets = app._dockManager.resolveInsets(
+    terminalColumns: app.terminal.columns,
+    terminalRows: app.terminal.rows,
+  );
+  app.layout.applyDockGutters(
+    left: dockInsets.left,
+    top: dockInsets.top,
+    right: dockInsets.right,
+    bottom: dockInsets.bottom,
+  );
+
   app.terminal.hideCursor();
-  final renderer = BlockRenderer(app.terminal.columns);
+  final renderer = BlockRenderer(app.layout.outputWidth);
 
   // 1. Build all output lines from blocks.
   final outputLines = <String>[];
@@ -81,17 +92,17 @@ void _doRenderImpl(App app) {
   } else if (isSplash) {
     app._startSplashAnimation();
     final mascotLines = renderMascot(app._liquidSim!);
-    final viewH = app.layout.outputBottom - app.layout.outputTop + 1;
+    final viewH = app.layout.outputHeight;
     final artH = mascotLines.length;
     final padTop =
         ((viewH - outputLines.length - artH) / 2).clamp(0, viewH).toInt();
     for (var i = 0; i < padTop; i++) {
       outputLines.add('');
     }
-    final padLeft = ((app.terminal.columns - mascotRenderWidth) / 2)
-        .clamp(0, app.terminal.columns)
+    final padLeft = ((app.layout.outputWidth - mascotRenderWidth) / 2)
+        .clamp(0, app.layout.outputWidth)
         .toInt();
-    app._splashOriginCol = padLeft;
+    app._splashOriginCol = app.layout.outputLeft + padLeft;
     app._splashOriginRow = app.layout.outputTop + outputLines.length;
     for (final line in mascotLines) {
       outputLines.add('${' ' * padLeft}$line');
@@ -109,7 +120,7 @@ void _doRenderImpl(App app) {
   // Inline modal (if active) — appended to the output flow.
   if (app._activeModal != null && !app._activeModal!.isComplete) {
     outputLines.add('');
-    outputLines.addAll(app._activeModal!.render(app.terminal.columns));
+    outputLines.addAll(app._activeModal!.render(app.layout.outputWidth));
   }
 
   // Trailing blank line so content doesn't butt against the status bar.
@@ -156,13 +167,34 @@ void _doRenderImpl(App app) {
 
   app.layout.paintOutputViewport(visibleLines);
 
+  // 3b. Render docked panels over output after content paint.
+  final dockPlans = app._dockManager.buildRenderPlans(
+    viewport: DockViewport(
+      outputTop: app.layout.outputTop,
+      outputBottom: app.layout.outputBottom,
+      outputLeft: app.layout.outputLeft,
+      outputRight: app.layout.outputRight,
+      overlayTop: app.layout.overlayTop,
+    ),
+    terminalColumns: app.terminal.columns,
+  );
+  for (final plan in dockPlans) {
+    app.layout.paintRect(
+      row: plan.rect.row,
+      col: plan.rect.col,
+      width: plan.rect.width,
+      height: plan.rect.height,
+      lines: plan.lines,
+    );
+  }
+
   // 4. Autocomplete / @file / shell overlay.
   if (app._shellComplete.active) {
-    app.layout.paintOverlay(app._shellComplete.render(app.terminal.columns));
+    app.layout.paintOverlay(app._shellComplete.render(app.layout.outputWidth));
   } else if (app._autocomplete.active) {
-    app.layout.paintOverlay(app._autocomplete.render(app.terminal.columns));
+    app.layout.paintOverlay(app._autocomplete.render(app.layout.outputWidth));
   } else if (app._atHint.active) {
-    app.layout.paintOverlay(app._atHint.render(app.terminal.columns));
+    app.layout.paintOverlay(app._atHint.render(app.layout.outputWidth));
   } else {
     app.layout.paintOverlay([]);
   }

@@ -19,6 +19,12 @@ void _handleTerminalEventImpl(App app, TerminalEvent event) {
         }
       }
 
+      // Focused docked panel handles input before editor/autocomplete.
+      if (app._dockManager.handleEvent(event)) {
+        app._render();
+        return;
+      }
+
       // Permission mode cycling — works in all modes.
       if (event case KeyEvent(key: Key.shiftTab)) {
         app._permissionMode = app._permissionMode.next;

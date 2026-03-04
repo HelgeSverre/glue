@@ -39,8 +39,10 @@ import 'package:glue/src/skills/skill_registry.dart';
 import 'package:glue/src/skills/skill_activation.dart';
 import 'package:glue/src/skills/skill_runtime.dart';
 import 'package:glue/src/ui/modal.dart';
+import 'package:glue/src/ui/dock_manager.dart';
 import 'package:glue/src/ui/panel_modal.dart';
 import 'package:glue/src/ui/panel_controller.dart';
+import 'package:glue/src/ui/skills_docked_panel.dart';
 import 'package:glue/src/ui/at_file_hint.dart';
 import 'package:glue/src/ui/shell_autocomplete.dart';
 import 'package:glue/src/ui/slash_autocomplete.dart';
@@ -133,6 +135,7 @@ class App {
   ConfirmModal? _activeModal;
   final List<PanelOverlay> _panelStack = [];
   late final PanelController _panels;
+  final DockManager _dockManager = DockManager();
   bool _renderedPanelLastFrame = false;
   final Set<String> _autoApprovedTools = {
     ...ToolPermissions.defaultTrustedTools,
@@ -570,21 +573,49 @@ class App {
   }
 
   void _openSkillsPanel() {
-    _panels.openSkills(
-      registry: _discoverSkills(),
-      shortenPath: _shortenPath,
-      wrapText: _wrapText,
-      onSkillSelected: _activateSkillFromUi,
-      addSystemMessage: _addSystemMessage,
-    );
+    final registry = _discoverSkills();
+    if (registry.isEmpty) {
+      _addSystemMessage('No skills found.\n\n'
+          'To add skills, create directories with SKILL.md files in:\n'
+          '  ~/.glue/skills/<skill-name>/SKILL.md (global)\n'
+          '  .glue/skills/<skill-name>/SKILL.md (project-local)');
+      _render();
+      return;
+    }
+
+    var panel = _findSkillsDockedPanel();
+    if (panel == null) {
+      panel = SkillsDockedPanel(skills: registry.list());
+      _dockManager.add(panel);
+    } else {
+      panel.updateSkills(registry.list());
+    }
+
+    if (panel.visible) {
+      panel.dismiss();
+      _render();
+      return;
+    }
+
+    panel.show();
+    unawaited(panel.selection.then((skillName) async {
+      if (skillName != null) {
+        await _activateSkillFromUi(skillName);
+      }
+      _render();
+    }));
+    _render();
+  }
+
+  SkillsDockedPanel? _findSkillsDockedPanel() {
+    for (final panel in _dockManager.panels) {
+      if (panel is SkillsDockedPanel) return panel;
+    }
+    return null;
   }
 
   Future<void> _activateSkillFromUi(String skillName) async {
     await _activateSkillFromUiImpl(this, skillName);
-  }
-
-  static List<String> _wrapText(String text, int width) {
-    return _wrapTextImpl(text, width);
   }
 
   String _switchToModelEntry(ModelEntry entry) {

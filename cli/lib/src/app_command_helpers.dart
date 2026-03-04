@@ -118,23 +118,6 @@ Future<void> _activateSkillFromUiImpl(App app, String skillName) async {
   }
 }
 
-List<String> _wrapTextImpl(String text, int width) {
-  final lines = <String>[];
-  var line = '';
-  for (final word in text.split(' ')) {
-    if (line.isEmpty) {
-      line = word;
-    } else if (line.length + 1 + word.length <= width) {
-      line = '$line $word';
-    } else {
-      lines.add(line);
-      line = word;
-    }
-  }
-  if (line.isNotEmpty) lines.add(line);
-  return lines;
-}
-
 String _switchToModelEntryImpl(App app, ModelEntry entry) {
   final factory = app._llmFactory;
   final config = app._config;
