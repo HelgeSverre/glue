@@ -66,6 +66,12 @@ void main() {
     });
 
     test('extract kills process on timeout', () async {
+      final available = await PdfTextExtractor.checkPdftotextAvailable();
+      if (!available) {
+        // Skip on systems without pdftotext.
+        return;
+      }
+
       // Use an extremely short timeout to verify kill behavior.
       final extractor = PdfTextExtractor(timeoutSeconds: 0);
 
