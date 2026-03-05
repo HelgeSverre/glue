@@ -27,4 +27,4 @@ Use `glue --continue` to pick up exactly where you left off. This is useful when
 
 - [SessionStore](/api/storage/session-store)
 - [SessionState](/api/storage/session-state)
-- [SessionId](/api/storage/session-id)
+- [SessionManager](/api/session/session-manager)

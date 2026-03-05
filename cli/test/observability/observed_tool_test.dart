@@ -168,7 +168,8 @@ void main() {
 
     await observed.execute({});
 
-    final preview = sink.spans.first.attributes['tool.result_preview'] as String;
+    final preview =
+        sink.spans.first.attributes['tool.result_preview'] as String;
     expect(preview.length, 500);
   });
 

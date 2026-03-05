@@ -111,8 +111,8 @@ void main() {
       expect(store.trustedTools, isEmpty);
 
       // Verify on disk.
-      final onDisk =
-          jsonDecode(File(configPath).readAsStringSync()) as Map<String, dynamic>;
+      final onDisk = jsonDecode(File(configPath).readAsStringSync())
+          as Map<String, dynamic>;
       expect(onDisk.containsKey('trusted_tools'), isFalse);
     });
 
@@ -120,7 +120,9 @@ void main() {
       final store = ConfigStore(configPath);
 
       // Old session had extra tools.
-      store.save({'trusted_tools': ['bash', 'write_file']});
+      store.save({
+        'trusted_tools': ['bash', 'write_file']
+      });
 
       // Clear for new session.
       store.update((c) => c.remove('trusted_tools'));
@@ -158,8 +160,8 @@ void main() {
       agent.toolFilter = (tool) => !tool.isMutating;
       await agent.run('hello').toList();
 
-      expect(llm.receivedToolNames.last,
-          unorderedEquals(['read_file', 'grep']));
+      expect(
+          llm.receivedToolNames.last, unorderedEquals(['read_file', 'grep']));
     });
 
     test('YOLO: all tools sent to LLM', () async {
@@ -167,22 +169,26 @@ void main() {
       agent.toolFilter = null;
       await agent.run('hello').toList();
 
-      expect(llm.receivedToolNames.last,
-          unorderedEquals(['read_file', 'grep', 'write_file', 'edit_file', 'bash']));
+      expect(
+          llm.receivedToolNames.last,
+          unorderedEquals(
+              ['read_file', 'grep', 'write_file', 'edit_file', 'bash']));
     });
 
     test('readOnly → YOLO toggle restores all tools', () async {
       // Start in readOnly.
       agent.toolFilter = (tool) => !tool.isMutating;
       await agent.run('hello').toList();
-      expect(llm.receivedToolNames.last,
-          unorderedEquals(['read_file', 'grep']));
+      expect(
+          llm.receivedToolNames.last, unorderedEquals(['read_file', 'grep']));
 
       // Toggle to YOLO (ignorePermissions).
       agent.toolFilter = null;
       await agent.run('hello again').toList();
-      expect(llm.receivedToolNames.last,
-          unorderedEquals(['read_file', 'grep', 'write_file', 'edit_file', 'bash']));
+      expect(
+          llm.receivedToolNames.last,
+          unorderedEquals(
+              ['read_file', 'grep', 'write_file', 'edit_file', 'bash']));
     });
 
     test('YOLO → readOnly toggle restricts tools again', () async {
@@ -194,15 +200,15 @@ void main() {
       // Toggle to readOnly.
       agent.toolFilter = (tool) => !tool.isMutating;
       await agent.run('hello again').toList();
-      expect(llm.receivedToolNames.last,
-          unorderedEquals(['read_file', 'grep']));
+      expect(
+          llm.receivedToolNames.last, unorderedEquals(['read_file', 'grep']));
     });
   });
 
-  group('Approval decisions: mode toggle does not leak auto-approved tools', () {
+  group('Approval decisions: mode toggle does not leak auto-approved tools',
+      () {
     test('readOnly denies mutating tools even if they are auto-approved', () {
-      final autoApproved = Set<String>.from(_defaultAutoApproved)
-        ..add('bash');
+      final autoApproved = Set<String>.from(_defaultAutoApproved)..add('bash');
 
       // bash is in auto-approved but readOnly should still deny it.
       expect(
