@@ -5,6 +5,14 @@ import 'package:glue/src/skills/skill_registry.dart';
 
 typedef SkillPathsProvider = List<String> Function();
 
+String skillDiscoveryHelpText() {
+  return 'Glue discovers skills from:\n'
+      '  .glue/skills/<skill-name>/SKILL.md (project-local)\n'
+      '  ~/.glue/skills/<skill-name>/SKILL.md (global)\n'
+      '  configured skill_paths (custom)\n'
+      '  bundled Glue skills';
+}
+
 /// Session-scoped skill discovery/runtime facade.
 ///
 /// Keeps a live [SkillRegistry] and supports refresh-on-demand so all

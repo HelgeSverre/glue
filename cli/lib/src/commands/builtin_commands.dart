@@ -15,6 +15,8 @@ class BuiltinCommands {
     required String Function() openDevTools,
     required String Function() toggleDebug,
     required void Function() openSkillsPanel,
+    required String Function(String skillName) activateSkillByName,
+    required void Function() openPlansPanel,
   }) {
     final commands = SlashCommandRegistry();
 
@@ -111,8 +113,20 @@ class BuiltinCommands {
     commands.register(SlashCommand(
       name: 'skills',
       description: 'Browse available skills',
+      execute: (args) {
+        if (args.isEmpty) {
+          openSkillsPanel();
+          return '';
+        }
+        return activateSkillByName(args.join(' '));
+      },
+    ));
+
+    commands.register(SlashCommand(
+      name: 'plans',
+      description: 'Browse plan files',
       execute: (_) {
-        openSkillsPanel();
+        openPlansPanel();
         return '';
       },
     ));

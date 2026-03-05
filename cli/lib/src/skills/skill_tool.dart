@@ -43,12 +43,7 @@ class SkillTool extends Tool {
   String _listSkills(SkillRegistry registry) {
     final skills = registry.list();
     if (skills.isEmpty) {
-      return 'No skills available.\n\n'
-          'Glue discovers skills from:\n'
-          '  .glue/skills/<skill-name>/SKILL.md (project-local)\n'
-          '  ~/.glue/skills/<skill-name>/SKILL.md (global)\n'
-          '  configured skill_paths (custom)\n'
-          '  bundled Glue skills (builtin)';
+      return 'No skills available.\n\n${skillDiscoveryHelpText()}';
     }
 
     final buf = StringBuffer('Available skills (${skills.length}):\n\n');

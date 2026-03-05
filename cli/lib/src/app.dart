@@ -465,6 +465,7 @@ class App {
       openDevTools: _openDevTools,
       toggleDebug: _toggleDebugMode,
       openSkillsPanel: _openSkillsPanel,
+      activateSkillByName: _activateSkillFromCommand,
       openPlansPanel: _openPlansPanel,
     );
   }
@@ -585,10 +586,7 @@ class App {
   void _openSkillsPanel() {
     final registry = _discoverSkills();
     if (registry.isEmpty) {
-      _addSystemMessage('No skills found.\n\n'
-          'To add skills, create directories with SKILL.md files in:\n'
-          '  ~/.glue/skills/<skill-name>/SKILL.md (global)\n'
-          '  .glue/skills/<skill-name>/SKILL.md (project-local)');
+      _addSystemMessage('No skills found.\n\n${skillDiscoveryHelpText()}');
       _render();
       return;
     }
@@ -638,6 +636,13 @@ class App {
 
   Future<void> _activateSkillFromUi(String skillName) async {
     await _activateSkillFromUiImpl(this, skillName);
+  }
+
+  String _activateSkillFromCommand(String skillName) {
+    final normalized = skillName.trim();
+    if (normalized.isEmpty) return 'Usage: /skills [skill-name]';
+    unawaited(_activateSkillFromUi(normalized).then((_) => _render()));
+    return 'Activating skill "$normalized"...';
   }
 
   String _switchToModelEntry(ModelEntry entry) {

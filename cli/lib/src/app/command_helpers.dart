@@ -1,4 +1,4 @@
-part of 'app.dart';
+part of '../app.dart';
 
 String _clearConversationImpl(App app) {
   app._blocks.clear();
@@ -106,6 +106,10 @@ Future<void> _activateSkillFromUiImpl(App app, String skillName) async {
     app._sessionManager.logEvent('tool_call', {
       'name': 'skill',
       'arguments': {'name': skillName},
+    });
+    app._sessionManager.logEvent('tool_result', {
+      'name': 'skill',
+      'content': activation.content,
     });
 
     app._blocks.add(_ConversationEntry.toolCall('skill', {'name': skillName}));
