@@ -30,7 +30,7 @@ Research task received → How many systems?
 │  └─ Write brief → N parallel agents → full synthesis with feature matrix
 │
 └─ Unknown / exploratory ("how do others solve X?")
-   └─ WebSearch to identify systems first → then treat as 3+ system survey
+   └─ `web_search` to identify systems first → then treat as 3+ system survey
 ```
 
 ```
@@ -38,18 +38,18 @@ Per-system research → What sources are available?
 │
 ├─ Has public API docs / OpenAPI spec?
 │  └─ Start here — API shapes reveal the data model directly
-│     WebFetch the docs URL, look for entity names and relationships
+│     Use `web_fetch` on docs URLs, look for entity names and relationships
 │
 ├─ Has help center / knowledge base?
 │  └─ Second priority — "How to set up X" articles reveal workflows
-│     WebFetch help center pages, follow links 2-3 levels deep
+│     Use `web_fetch` on help center pages, follow links 2-3 levels deep
 │
 ├─ Has open-source code / SDK?
 │  └─ Check GitHub — types, schemas, and entity definitions are gold
-│     Use Bash: gh repo view, gh api to explore
+│     Use `bash` with `gh repo view` / `gh api` to explore
 │
 ├─ Marketing site only?
-│  └─ WebSearch for reviews (G2, Capterra), blog posts, comparison articles
+│  └─ Use `web_search` for reviews (G2, Capterra), blog posts, comparisons
 │     These often contain more detail than the marketing site itself
 │
 └─ Very little public info?
@@ -160,6 +160,7 @@ For each system in the research brief:
     - The per-system report template
     - Instructions to use web search, web fetch, and any available tools
     - The confidence marking requirements
+  Prefer `spawn_parallel_subagents` to dispatch all system agents together.
 ```
 
 ### Research Techniques (Per Agent)
@@ -168,33 +169,33 @@ Each agent should use these tools in priority order:
 
 | Priority | Source Type | Tool | What to Extract |
 | --- | --- | --- | --- |
-| 1 | API docs / OpenAPI specs | `WebFetch` on docs URL | Entity names, field types, relationships, endpoint shapes |
-| 2 | Help center / knowledge base | `WebFetch` on help articles, follow links 2-3 deep | Workflows ("How to set up X"), terminology, form fields |
-| 3 | Open source code / SDKs | `Bash` with `gh api` / `gh repo view` | Type definitions, schema files, entity structures |
-| 4 | Third-party analysis | `WebSearch` for "[system] review", "[system] vs [competitor]" | Features, limitations, user pain points |
-| 5 | Product pages | `WebFetch` on main site | Positioning, pricing, feature lists |
-| 6 | Demo videos | `WebSearch` for "[system] demo" on YouTube | UI structure, workflows invisible in docs |
-| 7 | Job postings | `WebSearch` for "[system] engineer" | Tech stack, internal terminology |
+| 1 | API docs / OpenAPI specs | `web_fetch` on docs URL | Entity names, field types, relationships, endpoint shapes |
+| 2 | Help center / knowledge base | `web_fetch` on help articles, follow links 2-3 deep | Workflows ("How to set up X"), terminology, form fields |
+| 3 | Open source code / SDKs | `bash` with `gh api` / `gh repo view` | Type definitions, schema files, entity structures |
+| 4 | Third-party analysis | `web_search` for "[system] review", "[system] vs [competitor]" | Features, limitations, user pain points |
+| 5 | Product pages | `web_fetch` on main site | Positioning, pricing, feature lists |
+| 6 | Demo videos | `web_search` for "[system] demo" on YouTube | UI structure, workflows invisible in docs |
+| 7 | Job postings | `web_search` for "[system] engineer" | Tech stack, internal terminology |
 
 **Concrete patterns:**
 
-```bash
+```text
 # Find API docs
-WebSearch: "[system name] API documentation"
-WebSearch: "[system name] OpenAPI swagger"
+web_search(query: "[system name] API documentation")
+web_search(query: "[system name] OpenAPI swagger")
 
 # Deep-read help center
-WebFetch: https://docs.example.com/getting-started
+web_fetch(url: "https://docs.example.com/getting-started")
 # Then follow links found in the content
 
 # Check GitHub for schemas/types
-WebSearch: "[system name] github"
+web_search(query: "[system name] github")
 # If repo found:
-gh api repos/org/repo/contents/src/types --jq '.[].name'
+bash(command: "gh api repos/org/repo/contents/src/types --jq '.[].name'")
 
 # Find reviews with specific details
-WebSearch: "[system name] review G2 Capterra 2025"
-WebSearch: "[system name] vs [competitor] comparison"
+web_search(query: "[system name] review G2 Capterra 2025")
+web_search(query: "[system name] vs [competitor] comparison")
 ```
 
 ### Per-System Report Output

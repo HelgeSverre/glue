@@ -112,7 +112,7 @@ class BuiltinCommands {
 
     commands.register(SlashCommand(
       name: 'skills',
-      description: 'Browse available skills',
+      description: 'Browse skills or activate one by name',
       execute: (args) {
         if (args.isEmpty) {
           openSkillsPanel();

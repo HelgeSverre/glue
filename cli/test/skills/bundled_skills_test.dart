@@ -7,8 +7,9 @@ import 'package:glue/src/skills/skill_registry.dart';
 import 'package:glue/src/skills/skill_parser.dart';
 
 void main() {
+  final bundledDir = p.join(Directory.current.path, 'skills');
+
   test('bundled skills directory contains parseable builtins', () {
-    final bundledDir = p.join(Directory.current.path, 'skills');
     expect(Directory(bundledDir).existsSync(), isTrue);
 
     final tempHome =
@@ -28,5 +29,42 @@ void main() {
     );
     expect(registry.findByName('code-review'), isNotNull);
     expect(registry.findByName('agentic-research'), isNotNull);
+  });
+
+  test('bundled skills have no broken relative markdown links', () {
+    final skillFiles = Directory(bundledDir)
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((file) => p.basename(file.path).toLowerCase() == 'skill.md');
+
+    final linkPattern = RegExp(r'\[[^\]]+\]\(([^)]+)\)');
+
+    for (final skillFile in skillFiles) {
+      final content = skillFile.readAsStringSync();
+      for (final match in linkPattern.allMatches(content)) {
+        final link = match.group(1);
+        if (link == null || link.isEmpty) continue;
+        if (link.startsWith('http://') ||
+            link.startsWith('https://') ||
+            link.startsWith('#') ||
+            link.startsWith('mailto:')) {
+          continue;
+        }
+
+        final pathOnly = link.split('#').first;
+        if (pathOnly.isEmpty) continue;
+
+        final resolvedPath =
+            p.normalize(p.join(p.dirname(skillFile.path), pathOnly));
+        final exists = FileSystemEntity.typeSync(resolvedPath) !=
+            FileSystemEntityType.notFound;
+
+        expect(
+          exists,
+          isTrue,
+          reason: 'Broken relative link in ${skillFile.path}: $link',
+        );
+      }
+    }
   });
 }
