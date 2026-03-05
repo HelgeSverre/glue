@@ -1,4 +1,4 @@
-part of 'app.dart';
+part of 'package:glue/src/app.dart';
 
 void _endTurnSpanImpl(App app, {Map<String, dynamic>? extra}) {
   final span = app._turnSpan;

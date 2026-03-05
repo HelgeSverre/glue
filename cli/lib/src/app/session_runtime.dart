@@ -1,4 +1,4 @@
-part of 'app.dart';
+part of 'package:glue/src/app.dart';
 
 Future<void> _runPrintModeImpl(App app) async {
   // Optionally resume a previous session into the agent conversation.

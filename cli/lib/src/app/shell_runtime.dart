@@ -1,4 +1,4 @@
-part of 'app.dart';
+part of 'package:glue/src/app.dart';
 
 void _handleBashSubmitImpl(App app, String text) {
   if (text.isEmpty) return;

@@ -1,4 +1,4 @@
-part of 'app.dart';
+part of 'package:glue/src/app.dart';
 
 /// Events that flow through the application event bus.
 sealed class AppEvent {}

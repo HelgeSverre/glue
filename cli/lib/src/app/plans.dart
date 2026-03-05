@@ -1,4 +1,4 @@
-part of '../app.dart';
+part of 'package:glue/src/app.dart';
 
 void _openPlansPanelImpl(App app) {
   final plans = app._planStore.listPlans();

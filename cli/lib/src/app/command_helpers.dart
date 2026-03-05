@@ -1,4 +1,4 @@
-part of '../app.dart';
+part of 'package:glue/src/app.dart';
 
 String _clearConversationImpl(App app) {
   app._blocks.clear();

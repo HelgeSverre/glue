@@ -1,4 +1,4 @@
-part of 'app.dart';
+part of 'package:glue/src/app.dart';
 
 void _handleAppEventImpl(App app, AppEvent event) {
   switch (event) {
