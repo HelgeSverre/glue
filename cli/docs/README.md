@@ -23,6 +23,7 @@ Design documents for specific features and subsystems.
 - **[command-executor.md](design/command-executor.md)** — Unified shell execution (HostExecutor / DockerExecutor)
 - **[docker-sandbox.md](design/docker-sandbox.md)** — Docker-sandboxed command execution with mount whitelisting
 - **[status-line-improvements.md](design/status-line-improvements.md)** — Status bar semantic grouping and ANSI styling
+- **[tui-theme-system.md](design/tui-theme-system.md)** — Theme tokens, shared UI recipes, floating overlays, and canonical scenario fixture
 
 ## Implementation Plans
 
