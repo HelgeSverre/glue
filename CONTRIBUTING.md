@@ -11,6 +11,10 @@
 Before opening a PR, run:
 
 ```sh
+# Monorepo defaults
+just check
+
+# Or CLI-only fast path
 cd cli
 dart format --set-exit-if-changed .
 dart analyze

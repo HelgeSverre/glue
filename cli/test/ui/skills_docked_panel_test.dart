@@ -16,6 +16,15 @@ SkillMeta _skill(String name, SkillSource source) {
 
 void main() {
   group('SkillsDockedPanel', () {
+    test('defaults to bottom floating dock', () {
+      final panel = SkillsDockedPanel(
+        skills: [_skill('alpha', SkillSource.project)],
+      );
+
+      expect(panel.edge, DockEdge.bottom);
+      expect(panel.mode, DockMode.floating);
+    });
+
     test('enter selects current skill and closes panel', () async {
       final panel = SkillsDockedPanel(
         skills: [
@@ -30,6 +39,39 @@ void main() {
 
       final selected = await panel.selection;
       expect(selected, 'beta');
+      expect(panel.visible, isFalse);
+    });
+
+    test('typing filters skills and enter selects filtered item', () async {
+      final panel = SkillsDockedPanel(
+        skills: [
+          _skill('alpha', SkillSource.project),
+          _skill('beta', SkillSource.global),
+        ],
+      );
+
+      panel.show();
+      panel.render(80, 14);
+      panel.handleEvent(CharEvent('b'));
+      panel.handleEvent(KeyEvent(Key.enter));
+
+      final selected = await panel.selection;
+      expect(selected, 'beta');
+      expect(panel.visible, isFalse);
+    });
+
+    test('enter with empty filtered results dismisses with null', () async {
+      final panel = SkillsDockedPanel(
+        skills: [_skill('alpha', SkillSource.project)],
+      );
+
+      panel.show();
+      panel.render(80, 14);
+      panel.handleEvent(CharEvent('z'));
+      panel.handleEvent(KeyEvent(Key.enter));
+
+      final selected = await panel.selection;
+      expect(selected, isNull);
       expect(panel.visible, isFalse);
     });
 

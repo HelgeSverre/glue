@@ -8,10 +8,10 @@ When a destructive tool is called, Glue shows a confirmation modal with three op
 
 - **Yes** — approve this specific call
 - **No** — deny this call; the agent gets an error and can try something else
-- **Always** — permanently trust this tool (saved to `~/.glue/config.yaml`)
+- **Always** — permanently trust this tool (saved to `~/.glue/preferences.json`)
 
 ::: info Note
-You can configure permanent tool trust in `~/.glue/config.yaml`. Use with caution — the agent can run arbitrary shell commands.
+You can configure permanent tool trust in `~/.glue/preferences.json`. Use with caution — the agent can run arbitrary shell commands.
 :::
 
 ## Permission Modes

@@ -60,4 +60,4 @@ With Glue installed, head to the [Quick Start](./quick-start) guide to configure
 ## See also
 
 - [Quick Start](./quick-start) -- set up your API key and run your first session
-- [Configuration](./configuration) -- global and project-level config files
+- [Configuration](./configuration) -- global config and environment overrides

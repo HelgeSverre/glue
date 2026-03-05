@@ -24,6 +24,8 @@ build/
 dist/
 cli/glue
 cli/doc/api/
+playwright-report/
+test-results/
 
 # Environment
 .env
@@ -44,3 +46,8 @@ devdocs/.vitepress/dist/
 devdocs/.vitepress/cache/
 devdocs/.vitepress/sidebar.json
 
+# JavaScript dependencies
+node_modules/
+
+# Browser probe (generated outputs)
+browser/probe/browser/

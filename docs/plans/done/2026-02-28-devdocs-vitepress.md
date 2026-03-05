@@ -185,7 +185,7 @@ export default defineConfig({
 
     nav: [
       { text: "API Reference", link: "/api/" },
-      { text: "Website", link: "https://glue.dev" },
+      { text: "Website", link: "https://getglue.dev" },
       { text: "GitHub", link: "https://github.com/helgesverre/glue" },
     ],
 

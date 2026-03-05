@@ -35,6 +35,7 @@
       <div class="docs-sidebar-group">
         <div class="docs-sidebar-label">Usage</div>
         <a href="#interactive-mode">Interactive Mode</a>
+        <a href="#print-mode">Print Mode</a>
         <a href="#file-references">@file References</a>
         <a href="#bash-mode">Bash Mode</a>
       </div>
@@ -58,6 +59,11 @@
     <!-- ─── Content ─── -->
     <main class="docs-content">
 
+      <div class="info-box" style="margin-bottom: 20px;">
+        <div class="info-box-label">▲ Note</div>
+        <p>This page is a hand-maintained summary. For implementation-accurate behavior and API details, use <code>devdocs/</code> as the source of truth.</p>
+      </div>
+
       <!-- ─── Getting Started ─── -->
       <h2 id="getting-started">Getting Started</h2>
 
@@ -70,7 +76,7 @@
 
       <h3>Install</h3>
       <div class="code-block"><span class="comment"># Clone and install from source</span>
-<span class="p">❯</span> git clone https://github.com/…/glue.git
+<span class="p">❯</span> git clone https://github.com/helgesverre/glue.git
 <span class="p">❯</span> cd glue/cli
 <span class="p">❯</span> just install              <span class="comment"># or: dart run bin/glue.dart</span>
 
@@ -95,10 +101,24 @@
       <table class="brutal-table">
         <thead><tr><th>Flag</th><th>Description</th><th>Example</th></tr></thead>
         <tbody>
-          <tr><td><code>glue "prompt"</code></td><td>Start with an initial prompt</td><td><code>glue "add auth endpoint"</code></td></tr>
-          <tr><td><code>--model, -m</code></td><td>Select model</td><td><code>glue -m gpt-5</code></td></tr>
-          <tr><td><code>--resume</code></td><td>Open session picker</td><td><code>glue --resume</code></td></tr>
+          <tr><td><code>[prompt]</code></td><td>Start with an initial prompt (positional arg)</td><td><code>glue "add auth endpoint"</code></td></tr>
+          <tr><td><code>--model, -m</code></td><td>Select model (supports aliases: opus, sonnet, haiku)</td><td><code>glue -m sonnet</code></td></tr>
+          <tr><td><code>--print, -p</code></td><td>Print response to stdout (non-interactive)</td><td><code>glue -p "explain this"</code></td></tr>
+          <tr><td><code>--json</code></td><td>Output session as JSON (implies --print)</td><td><code>glue -p --json "summarize"</code></td></tr>
+          <tr><td><code>--resume, -r</code></td><td>Resume a session by ID</td><td><code>glue -r 1772331272529-72</code></td></tr>
           <tr><td><code>--continue</code></td><td>Resume most recent session</td><td><code>glue --continue</code></td></tr>
+          <tr><td><code>--debug, -d</code></td><td>Enable debug mode (verbose logging)</td><td><code>glue -d</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3>Model Aliases</h3>
+      <p>Short aliases are available for common models. The provider is inferred automatically from the model name.</p>
+      <table class="brutal-table">
+        <thead><tr><th>Alias</th><th>Resolves To</th></tr></thead>
+        <tbody>
+          <tr><td><code>opus</code></td><td><code>claude-opus-4-6</code></td></tr>
+          <tr><td><code>sonnet</code></td><td><code>claude-sonnet-4-6</code></td></tr>
+          <tr><td><code>haiku</code></td><td><code>claude-haiku-4-5</code></td></tr>
         </tbody>
       </table>
 
@@ -106,7 +126,7 @@
       <h2 id="configuration">Configuration</h2>
 
       <h3>Config Files</h3>
-      <p>Global settings live in <code>~/.glue/config.yaml</code>. Project-level overrides go in <code>.glue/config.yaml</code>. Settings resolve in precedence order (see below).</p>
+      <p>Global settings live in <code>~/.glue/config.yaml</code>. Environment variables and CLI flags can override these settings for a session.</p>
 
       <h3>Full Schema</h3>
       <div class="code-block"><span class="comment"># ~/.glue/config.yaml</span>
@@ -121,15 +141,7 @@
   <span class="hl">api_key</span>: <span class="string">"sk-..."</span>
 
 <span class="hl">bash</span>:
-  <span class="hl">max_lines</span>: <span class="string">50</span>               <span class="comment"># max output lines shown</span>
-
-<span class="hl">profiles</span>:                       <span class="comment"># named profiles for subagents</span>
-  <span class="hl">fast</span>:
-    <span class="hl">provider</span>: <span class="string">"openai"</span>
-    <span class="hl">model</span>: <span class="string">"gpt-4.1-nano"</span>
-  <span class="hl">deep</span>:
-    <span class="hl">provider</span>: <span class="string">"anthropic"</span>
-    <span class="hl">model</span>: <span class="string">"claude-opus-4-6"</span></div>
+  <span class="hl">max_lines</span>: <span class="string">50</span>               <span class="comment"># max output lines shown</span></div>
 
       <h3>Environment Variables</h3>
       <table class="brutal-table">
@@ -146,9 +158,8 @@
       <h3>Precedence</h3>
       <p>Settings resolve in this order (first match wins):</p>
       <ol>
-        <li>CLI flags (<code>--model</code>, <code>--provider</code>)</li>
+        <li>CLI flags (<code>--model</code>)</li>
         <li>Environment variables (<code>GLUE_MODEL</code>, etc.)</li>
-        <li>Project config (<code>.glue/config.yaml</code>)</li>
         <li>Global config (<code>~/.glue/config.yaml</code>)</li>
         <li>Built-in defaults</li>
       </ol>
@@ -205,6 +216,24 @@
           <tr><td><code>Ctrl+C</code></td><td>Cancel generation (double-tap to exit)</td></tr>
         </tbody>
       </table>
+
+      <!-- ─── Print Mode ─── -->
+      <h2 id="print-mode">Print Mode</h2>
+
+      <p>Print mode runs Glue non-interactively — it sends a prompt, prints the response to stdout, and exits. Useful for scripting, CI pipelines, and composing with other tools.</p>
+
+      <h3>Usage</h3>
+      <div class="code-block"><span class="comment"># Print mode — output to stdout</span>
+<span class="p">❯</span> glue -p <span class="string">"explain this function"</span>
+
+<span class="comment"># JSON output with session metadata</span>
+<span class="p">❯</span> glue -p --json <span class="string">"summarize the codebase"</span>
+
+<span class="comment"># Pipe stdin into the prompt</span>
+<span class="p">❯</span> cat src/auth.dart | glue -p <span class="string">"review this code"</span></div>
+
+      <h3>Stdin Piping</h3>
+      <p>When input is piped to Glue in print mode, the piped content is combined with your prompt using <code>&lt;stdin&gt;</code> tags. This lets you use Glue as a filter in shell pipelines.</p>
 
       <!-- ─── @file References ─── -->
       <h2 id="file-references">@file References</h2>
@@ -300,12 +329,12 @@
       <ul>
         <li><strong>Yes</strong> — approve this specific call</li>
         <li><strong>No</strong> — deny this call, the agent gets an error and can try something else</li>
-        <li><strong>Always</strong> — permanently trust this tool (saved to <code>~/.glue/config.yaml</code>)</li>
+        <li><strong>Always</strong> — permanently trust this tool (saved to <code>~/.glue/preferences.json</code>)</li>
       </ul>
 
       <div class="info-box">
         <div class="info-box-label">▲ Note</div>
-        <p>You can configure permanent tool trust in <code>~/.glue/config.yaml</code>. Use with caution — the agent can run arbitrary shell commands.</p>
+        <p>You can configure permanent tool trust in <code>~/.glue/preferences.json</code>. Use with caution — the agent can run arbitrary shell commands.</p>
       </div>
 
       <h3>Permission Modes</h3>
@@ -337,7 +366,7 @@
       <table class="brutal-table">
         <thead><tr><th>Method</th><th>Description</th></tr></thead>
         <tbody>
-          <tr><td><code>glue --resume</code></td><td>Open interactive session picker</td></tr>
+          <tr><td><code>glue --resume &lt;id&gt;</code></td><td>Resume a specific session by ID</td></tr>
           <tr><td><code>glue --continue</code></td><td>Auto-resume the most recent session</td></tr>
           <tr><td><code>/resume</code></td><td>Open session picker during a session</td></tr>
         </tbody>
@@ -359,9 +388,8 @@
       <p>Both files are looked up in the current working directory. If found, their contents are appended to the system prompt. Files larger than 50 KB are truncated with a note.</p>
 
       <h3>.glue/ Directory</h3>
-      <p>Project-level configuration lives in a <code>.glue/</code> directory at your project root:</p>
+      <p>Project-local extensions can live in a <code>.glue/</code> directory at your project root:</p>
       <ul>
-        <li><code>.glue/config.yaml</code> — project-level config overrides (model, provider, approval rules)</li>
         <li><code>.glue/skills/</code> — project-local skill definitions (each skill has its own <code>SKILL.md</code>)</li>
       </ul>
 
@@ -535,7 +563,7 @@ spawn_parallel_subagents({
   </div>
 
   <div class="tape"></div>
-  <footer class="footer">GLUE · MIT · <a href="#">GitHub</a> <a href="#">Docs</a> <a href="#">Discord</a></footer>
+  <footer class="footer">GLUE · MIT · <a href="https://github.com/HelgeSverre/glue">GitHub</a> <a href="docs.html">Docs</a> · getglue.dev</footer>
   <div class="tape"></div>
 
   <script>

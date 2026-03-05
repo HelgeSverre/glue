@@ -1,17 +1,14 @@
 # Configuration
 
-Glue is configured through YAML config files, environment variables, and CLI flags. This page covers all three and explains how they interact.
+Glue is configured through a global YAML config file, environment variables, and CLI flags. This page covers all three and explains how they interact.
 
 ## Config Files
 
-Glue loads configuration from two locations:
+Glue loads configuration from:
 
-| Scope       | Path                  | Purpose                                                 |
-| ----------- | --------------------- | ------------------------------------------------------- |
-| **Global**  | `~/.glue/config.yaml` | User-wide defaults shared across all projects           |
-| **Project** | `.glue/config.yaml`   | Project-specific overrides checked into version control |
-
-Project-level values override global values for any keys that are set in both files.
+| Scope      | Path                  | Purpose                                       |
+| ---------- | --------------------- | --------------------------------------------- |
+| **Global** | `~/.glue/config.yaml` | User-wide defaults shared across all projects |
 
 ## Full Schema
 
@@ -29,28 +26,11 @@ openai:
 
 bash:
   max_lines: 50
-
-profiles:
-  fast:
-    provider: "openai"
-    model: "gpt-4.1-nano"
-  deep:
-    provider: "anthropic"
-    model: "claude-opus-4-6"
 ```
 
 ::: warning
-Avoid committing API keys in config files. Use environment variables for secrets and keep config files for non-sensitive settings like `provider`, `model`, and `profiles`.
+Avoid committing API keys in config files. Use environment variables for secrets and keep config files for non-sensitive settings like `provider`, `model`, and behavior toggles.
 :::
-
-### Profiles
-
-Profiles let you define named presets that bundle a provider and model together. Switch between them with the `--profile` flag:
-
-```bash
-glue --profile fast "quick refactor on utils"
-glue --profile deep "architect a new module"
-```
 
 ## Environment Variables
 
@@ -74,14 +54,13 @@ export GLUE_MODEL=gpt-4.1
 
 When the same setting is defined in multiple places, Glue resolves it using a **first-match-wins** order:
 
-1. **CLI flags** (`--model`, `--provider`)
+1. **CLI flags** (`--model`, where applicable)
 2. **Environment variables** (`GLUE_MODEL`, `GLUE_PROVIDER`, etc.)
-3. **Project config** (`.glue/config.yaml`)
-4. **Global config** (`~/.glue/config.yaml`)
-5. **Built-in defaults**
+3. **Global config** (`~/.glue/config.yaml`)
+4. **Built-in defaults**
 
 ::: tip
-Use CLI flags for one-off overrides, environment variables for machine-level settings, project config for team-shared defaults, and global config for your personal preferences.
+Use CLI flags for one-off overrides, environment variables for machine-level settings, and global config for your personal defaults.
 :::
 
 ## Default Models

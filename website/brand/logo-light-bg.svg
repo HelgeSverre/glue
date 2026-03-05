@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 64" width="280" height="64">
+  <!-- Combined logo — yellow symbol + dark wordmark, for light backgrounds -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700&amp;display=swap');
+    text { font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+  </style>
+  <!-- Glue drop symbol -->
+  <path d="M28 2 C28 2, 46 20, 46 31 C46 42, 37.9 51, 28 51 C18.1 51, 10 42, 10 31 C10 20, 28 2, 28 2Z" fill="#FACC15"/>
+  <!-- Wordmark -->
+  <text x="62" y="44" font-size="48" fill="#0A0A0B" letter-spacing="-1">glue</text>
+</svg>

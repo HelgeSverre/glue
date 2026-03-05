@@ -1,4 +1,4 @@
-name: CI Matrix OS
+name: CI CLI Matrix OS
 
 on:
   pull_request:

@@ -1,6 +1,6 @@
 # Known Issues
 
-Consolidated issue tracker. Last updated: 2026-03-04.
+Consolidated issue tracker. Last updated: 2026-03-05.
 
 Items marked **[IN-FLIGHT]** are addressed by open PRs or conductor workspaces.
 Items marked **[RESOLVED]** have been fixed but are kept for reference until verified.
@@ -182,16 +182,17 @@ and subsequent writes go to `preferences.json`.
 
 ---
 
-### NAME-002: Model identity uses 4 different names **[PARTIALLY RESOLVED]**
+### NAME-002: Model identity uses 4 different names **[RESOLVED]**
 
 **Severity:** Medium
 **Files:** `lib/src/config/glue_config.dart`, `lib/src/config/model_registry.dart`, `lib/src/agent/agent_core.dart`, `lib/src/app.dart`
 
 `modelName`/`_modelName` were standardized to `modelId` in runtime app/agent
-paths. `GlueConfig` still uses `model` for config schema compatibility.
+paths. `GlueConfig` intentionally keeps `model` for config schema
+compatibility.
 
-**Fix:** Keep `modelId` as runtime naming convention; consider a later config
-schema migration if we want `GlueConfig.model` renamed too.
+**Fix:** Keep `modelId` as runtime naming convention and retain
+`GlueConfig.model` as the external config field.
 
 ---
 
@@ -306,20 +307,19 @@ Only `ConfigStore` does tmp-file-then-rename. `SessionStore._writeMeta()` and `S
 
 ## Bugs
 
-### BUG-001: Tool confirmation happens after full argument generation (wasted tokens) **[PARTIALLY RESOLVED]**
+### BUG-001: Tool confirmation happens after full argument generation (wasted tokens) **[RESOLVED]**
 
 **Severity:** Medium
 **Files:** `lib/src/agent/agent_core.dart`, `lib/src/app_agent_orchestration.dart`
 
-Early confirmation now runs on `AgentToolCallPending` (`ToolCallStart`) before
-arguments are complete for providers that emit start events, and declining can
-cancel the active stream immediately.
+Early confirmation runs on `AgentToolCallPending` (`ToolCallStart`) before
+arguments are complete, and declining can cancel the active stream immediately.
 
-Remaining limitation: providers that only emit fully-formed tool calls (no
-`ToolCallStart`) still require confirmation at full-argument time.
+Current built-in providers (`anthropic`, `openai`, `ollama`) all emit
+`ToolCallStart`, so the original wasteful full-argument confirmation behavior
+is resolved for supported providers.
 
-**Fix:** Keep pending-time confirmation path; consider provider-specific
-interrupt hooks for clients that do not emit `ToolCallStart`.
+**Fix:** Keep pending-time confirmation as the canonical path.
 
 ---
 
@@ -437,7 +437,7 @@ PR #20's goal (dynamic Ollama model fetching) already exists on main via commit 
 
 ---
 
-### MERGE-003: Salvador workspace has uncommitted WIP **[PARTIALLY RESOLVED]**
+### MERGE-003: Salvador workspace has uncommitted WIP **[RESOLVED]**
 
 **Severity:** High
 **Files:** `lib/src/session/session_manager.dart`, `lib/src/llm/message_mapper.dart`, `lib/src/observability/langfuse_sink.dart`, `lib/src/observability/otel_sink.dart`, `lib/src/app_models.dart`
@@ -449,22 +449,20 @@ Most of the identified Salvador fixes now exist in this codebase:
 - `onError` callback for Langfuse/OTel sinks (replaces noisy stderr writes)
 - SubagentEntry class with JSON pretty-printing for expandable output
 
-Remaining work is branch/workspace hygiene: decide whether to archive or merge
-the leftover `dart-devtools-ideas` branch commits not already represented.
-
-Audit snapshot (2026-03-04):
+Audit snapshot (2026-03-05):
 
 - Branch `HelgeSverre/dart-devtools-ideas` (`9e749ff`) is not merged into
   `main` as a branch, but the targeted fixes listed above are already present
   on mainline code paths.
 - Remaining branch-only commits are mainly iterative DevTools/docs/formatting
   history and do not currently require cherry-pick.
+- Local stale branch `HelgeSverre/dart-devtools-ideas` was deleted.
 
-**Fix:** Audit branch-only deltas and either merge the residual pieces or archive the branch/workspace.
+**Fix:** Treat branch-only leftovers as archived; keep mainline as source of truth.
 
 ---
 
-### MERGE-004: Remaining unmerged feature branches without PRs **[PARTIALLY RESOLVED]**
+### MERGE-004: Remaining unmerged feature branches without PRs **[RESOLVED]**
 
 **Severity:** Medium
 
@@ -473,26 +471,23 @@ Branches already cleaned up locally:
 - Deleted merged/closed branches: `fix-slash-cmd-during-work`, `session-id-table-layout`, `session-thread-titles`, `bash-tab-completion`, `cli-completions`, `update-website-license`, `clickable-links-ui`, `history-dialog-panel`, `multiline-prompt-input`.
 - Previously targeted feature work is now present on mainline code paths (`clickable-links-ui`, `multiline-prompt-input`, and history/panel-stacking foundations), so manual re-apply is no longer required.
 
-Remaining branches to evaluate:
+Remaining local non-main branches now correspond to active linked worktrees,
+not stale backlog branches:
 
-- `experiment/docked-panel` — still checked out by a separate worktree (cannot be deleted until that worktree is removed).
-- `comment-cleanup` — still checked out by a separate worktree (cannot be deleted until that worktree is removed).
-- `dart-devtools-ideas`, `sema-wasm-integration` — review scope and decide merge vs archive.
+- `experiment/docked-panel` — active experiment worktree with uncommitted WIP.
+- `comment-cleanup` — active external worktree (already merged content-wise).
 
-Audit snapshot (2026-03-04):
+Audit snapshot (2026-03-05):
 
-- `HelgeSverre/sema-wasm-integration` (`a16a82d`): fully merged into `main`;
-  remote tracking branch is gone. Action: delete local branch.
+- `HelgeSverre/sema-wasm-integration`: no local branch remains.
 - `comment-cleanup` (`1e06190`): fully merged into `main`; only retained due
-  active external worktree. Action: remove worktree, then delete local branch.
+  active external worktree.
 - `experiment/docked-panel` (`f607cf4`, `1bdd03f`, `1d5c051`): not merged and
-  still experimental. Action: archive/close branch after optional manual
-  extraction of `f607cf4` (tool invocation description) if desired.
-- `HelgeSverre/dart-devtools-ideas` (`9e749ff`): not merged as a branch, but
-  core intended fixes are already represented on mainline code paths. Action:
-  archive unless additional DevTools-only deltas are explicitly desired.
+  still experimental and intentionally isolated in its own worktree.
+- `HelgeSverre/dart-devtools-ideas` (`9e749ff`): local branch deleted after
+  audit; no remaining action.
 
-**Fix:** Remove/archive remaining stale branches and detached worktrees explicitly.
+**Fix:** Treat active worktree branches as intentional and exclude them from stale-branch cleanup until those worktrees are explicitly retired.
 
 ---
 

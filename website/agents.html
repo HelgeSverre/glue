@@ -304,7 +304,7 @@
       </div>
       <div class="two-col">
         <div class="reveal rd1">
-          <div class="code-block"><span class="comment"># .glue/config.yaml</span>
+          <div class="code-block"><span class="comment"># ~/.glue/config.yaml (planned role-based format)</span>
 
 <span class="hl">agents</span>:
   <span class="hl">scout</span>:
@@ -330,8 +330,8 @@
         <div class="prose reveal rd2" style="color: #ccc;">
           <h3 style="color: var(--yellow);">Mix & Match Providers</h3>
           <p>Every agent type can use a different model and provider. Use Claude for planning, GPT for building, Mistral for reviewing — whatever combination works best for your workflow.</p>
-          <h3 style="color: var(--yellow);">Per-Project Overrides</h3>
-          <p>Global defaults live in <code>~/.glue/config.yaml</code>. Project-level overrides in <code>.glue/config.yaml</code>. A Python project might use different agents than a Dart project.</p>
+          <h3 style="color: var(--yellow);">Current State</h3>
+          <p>Today, Glue uses global defaults from <code>~/.glue/config.yaml</code>. The role-based per-project override format shown here is planned, not active yet.</p>
           <h3 style="color: var(--yellow);">Coming Soon: Custom Roles</h3>
           <p>Define entirely new agent roles with Markdown files — custom system prompts, tool restrictions, and model selection. Think: a <code>security-auditor</code> agent that only runs static analysis, or a <code>docs-writer</code> that generates API documentation.</p>
         </div>
@@ -340,7 +340,7 @@
   </section>
 
   <div class="tape"></div>
-  <footer class="footer">GLUE · MIT · <a href="#">GitHub</a> <a href="#">Docs</a> <a href="#">Discord</a></footer>
+  <footer class="footer">GLUE · MIT · <a href="https://github.com/HelgeSverre/glue">GitHub</a> <a href="docs.html">Docs</a> · getglue.dev</footer>
   <div class="tape"></div>
 
   <script>

@@ -70,7 +70,7 @@ Triggers on `v*` tag push. Builds Linux, macOS, Windows binaries via `dart compi
 
 ### CI Pipelines
 
-- `ci-dart-checks.yml` — format/analyze/test on every PR and main push
+- `ci-monorepo-check.yml` — root monorepo gate (`just check`) + CLI format check on PRs/main
 - `ci-matrix-os.yml` — cross-platform tests on PRs
 - `integration-e2e-nightly.yml` — nightly E2E with Ollama
 

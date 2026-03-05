@@ -42,10 +42,21 @@ See [`cli/README.md`](cli/README.md) for full usage, configuration, and architec
 ## Development
 
 ```bash
-just test     # run all tests
-just check    # analyze + test
-just build    # compile CLI binary
+just build      # monorepo build (cli + devdocs + website validation)
+just test       # monorepo tests (cli + website validation)
+just check      # monorepo quality gate (cli + devdocs + website)
+just clean      # monorepo cleanup
+
+just cli-build  # fast cli-only build
+just cli-test   # fast cli-only tests
+just cli-check  # fast cli-only check
 ```
+
+Command scope:
+
+- Root `just ...` recipes are monorepo-wide defaults.
+- `just cli::...` (or `just cli-*`) targets only the CLI package.
+- `just infra::...` remains opt-in for local Docker infrastructure workflows.
 
 ## License
 

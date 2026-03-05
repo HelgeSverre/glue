@@ -13,9 +13,8 @@ Both files are looked up in the current working directory. If found, their conte
 
 ## .glue/ Directory
 
-Project-level configuration lives in a `.glue/` directory at your project root:
+Project-local extensions can live in a `.glue/` directory at your project root:
 
-- `.glue/config.yaml` — project-level config overrides (model, provider, approval rules)
 - `.glue/skills/` — project-local skill definitions (each skill has its own `SKILL.md`)
 
 ::: tip

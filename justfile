@@ -6,14 +6,25 @@ mod infra
 default:
     @just --list --list-submodules
 
-# Run all tests
-test: (cli::test)
+# Monorepo test pass (CLI tests + website static checks)
+test: (cli::test) (website::check)
 
-# Build everything
-build: (cli::build)
+# Monorepo build pass (CLI binary + devdocs site + website validation)
+build: (cli::build) (devdocs::build) (website::build)
 
-# Clean all build artifacts
-clean: (cli::clean)
+# Monorepo cleanup
+clean: (cli::clean) (devdocs::clean) (website::clean)
 
-# Full check: analyze + test everything
-check: (cli::check)
+# Monorepo quality gate
+check: (cli::check) (devdocs::check) (website::check)
+
+# Fast CLI-only shortcuts
+cli-build: (cli::build)
+cli-test: (cli::test)
+cli-check: (cli::check)
+cli-clean: (cli::clean)
+
+# Infra passthrough shortcuts (opt-in)
+infra-up: (infra::up)
+infra-down: (infra::down)
+infra-ps: (infra::ps)

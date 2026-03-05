@@ -1,18 +1,37 @@
 default:
     @just --list
 
+# Install JavaScript dependencies
+deps:
+    npm ci
+
+[private]
+deps-if-needed:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ ! -d node_modules ]; then
+        npm ci
+    fi
+
 # Generate API docs from Dart source
 generate:
     cd ../cli && dart run tool/generate_devdocs.dart
 
 # Serve locally for development
-dev: generate
+dev: deps-if-needed generate
     npx vitepress dev
 
 # Build static site
-build: generate
+build: deps-if-needed generate
     npx vitepress build
 
+# Quality gate for docs
+check: build
+
 # Preview production build
-preview: build
+preview: deps-if-needed build
     npx vitepress preview
+
+# Remove docs build artifacts
+clean:
+    rm -rf .vitepress/dist .vitepress/cache

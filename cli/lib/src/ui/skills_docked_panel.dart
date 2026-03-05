@@ -23,13 +23,14 @@ class SkillsDockedPanel extends DockedPanel {
   int _scrollOffset = 0;
   int _selectedIndex = 0;
   int _lastVisibleHeight = 0;
+  String _query = '';
   Completer<String?> _selectionCompleter = Completer<String?>();
 
   SkillsDockedPanel({
     required List<SkillMeta> skills,
-    this.edge = DockEdge.right,
+    this.edge = DockEdge.bottom,
     this.mode = DockMode.floating,
-    this.extent = 34,
+    this.extent = 14,
     bool visible = false,
   }) : _visible = visible {
     updateSkills(skills);
@@ -43,9 +44,7 @@ class SkillsDockedPanel extends DockedPanel {
       ..addAll(skills);
     final maxIndex = max(0, _skills.length - 1);
     _selectedIndex = _selectedIndex.clamp(0, maxIndex);
-    final visibleHeight = max(1, _lastVisibleHeight);
-    final maxScroll = max(0, _skills.length - visibleHeight);
-    _scrollOffset = _scrollOffset.clamp(0, maxScroll);
+    _normalizeSelectionForQuery();
   }
 
   @override
@@ -57,6 +56,9 @@ class SkillsDockedPanel extends DockedPanel {
   @override
   void show() {
     _visible = true;
+    _query = '';
+    _scrollOffset = 0;
+    _normalizeSelectionForQuery();
     if (_selectionCompleter.isCompleted) {
       _selectionCompleter = Completer<String?>();
     }
@@ -74,44 +76,75 @@ class SkillsDockedPanel extends DockedPanel {
   bool handleEvent(TerminalEvent event) {
     if (!_visible) return false;
 
-    final visibleHeight = max(_lastVisibleHeight, 1);
-    final maxScroll = max(0, _skills.length - visibleHeight);
+    final filtered = _filteredIndices();
+    final visibleHeight = _visibleListHeight;
+    final maxScroll = max(0, filtered.length - visibleHeight);
 
     switch (event) {
       case KeyEvent(key: Key.escape):
         dismiss();
         return true;
+      case KeyEvent(key: Key.backspace):
+        if (_query.isNotEmpty) {
+          _query = _query.substring(0, _query.length - 1);
+          _scrollOffset = 0;
+          _normalizeSelectionForQuery();
+        }
+        return true;
+      case KeyEvent(key: Key.ctrlU):
+        _query = '';
+        _scrollOffset = 0;
+        _normalizeSelectionForQuery();
+        return true;
       case KeyEvent(key: Key.enter):
-        if (_skills.isEmpty) {
+        if (filtered.isEmpty) {
           dismiss();
           return true;
         }
-        final selected = _skills[_selectedIndex].name;
+        final selectedIndex = _selectedIndexForFiltered(filtered);
+        final selected = _skills[selectedIndex].name;
         if (!_selectionCompleter.isCompleted) {
           _selectionCompleter.complete(selected);
         }
         _visible = false;
         return true;
       case KeyEvent(key: Key.up):
-        _selectedIndex = max(0, _selectedIndex - 1);
-        if (_selectedIndex < _scrollOffset) {
-          _scrollOffset = _selectedIndex;
+        if (filtered.isEmpty) return true;
+        final selectedPos = _selectedPosition(filtered);
+        final nextPos = max(0, selectedPos - 1);
+        _selectedIndex = filtered[nextPos];
+        if (nextPos < _scrollOffset) {
+          _scrollOffset = nextPos;
         }
         return true;
       case KeyEvent(key: Key.down):
-        _selectedIndex = min(max(0, _skills.length - 1), _selectedIndex + 1);
-        if (_selectedIndex >= _scrollOffset + visibleHeight) {
-          _scrollOffset = _selectedIndex - visibleHeight + 1;
+        if (filtered.isEmpty) return true;
+        final selectedPos = _selectedPosition(filtered);
+        final nextPos = min(max(0, filtered.length - 1), selectedPos + 1);
+        _selectedIndex = filtered[nextPos];
+        if (nextPos >= _scrollOffset + visibleHeight) {
+          _scrollOffset = nextPos - visibleHeight + 1;
         }
         return true;
       case KeyEvent(key: Key.pageUp):
-        _selectedIndex = max(0, _selectedIndex - visibleHeight);
+        if (filtered.isEmpty) return true;
+        final selectedPos = _selectedPosition(filtered);
+        final nextPos = max(0, selectedPos - visibleHeight);
+        _selectedIndex = filtered[nextPos];
         _scrollOffset = max(0, _scrollOffset - visibleHeight);
         return true;
       case KeyEvent(key: Key.pageDown):
-        _selectedIndex =
-            min(max(0, _skills.length - 1), _selectedIndex + visibleHeight);
+        if (filtered.isEmpty) return true;
+        final selectedPos = _selectedPosition(filtered);
+        final nextPos =
+            min(max(0, filtered.length - 1), selectedPos + visibleHeight);
+        _selectedIndex = filtered[nextPos];
         _scrollOffset = min(maxScroll, _scrollOffset + visibleHeight);
+        return true;
+      case CharEvent(:final char, alt: false) when _isSearchChar(char):
+        _query += char.toLowerCase();
+        _scrollOffset = 0;
+        _normalizeSelectionForQuery();
         return true;
       default:
         return true;
@@ -122,8 +155,12 @@ class SkillsDockedPanel extends DockedPanel {
   List<String> render(int width, int height) {
     final safeWidth = max(3, width);
     final safeHeight = max(3, height);
-    final border =
-        renderBorder(PanelStyle.simple, safeWidth, safeHeight, 'SKILLS');
+    final border = renderBorder(
+      PanelStyle.simple,
+      safeWidth,
+      safeHeight,
+      _query.isEmpty ? 'SKILLS' : 'SKILLS /$_query',
+    );
     final contentHeight = safeHeight - 2;
     final contentWidth = max(1, safeWidth - 4);
     _lastVisibleHeight = contentHeight;
@@ -134,17 +171,21 @@ class SkillsDockedPanel extends DockedPanel {
     const dividerWidth = 1;
     final rightWidth = max(1, contentWidth - leftWidth - dividerWidth);
 
-    final maxScroll = max(0, _skills.length - contentHeight);
+    final filtered = _filteredIndices();
+    _normalizeSelectionForQuery();
+
+    final listHeight = _visibleListHeight;
+    final maxScroll = max(0, filtered.length - listHeight);
     _scrollOffset = min(_scrollOffset, maxScroll);
 
-    final leftItems = _buildLeftItems();
-    final rightLines = _buildDetail(_selectedIndex, rightWidth);
+    final leftItems = _buildLeftItems(filtered);
+    final selectedIndex = _selectedIndexForFiltered(filtered);
+    final rightLines = _buildDetail(selectedIndex, rightWidth);
 
-    final hasOverflow = _skills.length > contentHeight;
-    final totalPages = contentHeight > 0
-        ? (_skills.length + contentHeight - 1) ~/ contentHeight
-        : 1;
-    final currentPage = (_scrollOffset ~/ max(contentHeight, 1)) + 1;
+    final hasOverflow = filtered.length > listHeight;
+    final totalPages =
+        listHeight > 0 ? (filtered.length + listHeight - 1) ~/ listHeight : 1;
+    final currentPage = (_scrollOffset ~/ max(listHeight, 1)) + 1;
 
     const divider = '\x1b[2m│\x1b[0m';
     const leftBorder = '\x1b[2m│\x1b[0m';
@@ -177,14 +218,26 @@ class SkillsDockedPanel extends DockedPanel {
       }
 
       final contentRow = row - 1;
-      final leftIndex = _scrollOffset + contentRow;
 
       String leftContent;
-      if (leftIndex < leftItems.length) {
-        final truncated = ansiTruncate(leftItems[leftIndex], leftWidth);
-        final padLen = leftWidth - visibleLength(truncated);
-        final padded = '$truncated${' ' * max(0, padLen)}';
-        if (leftIndex == _selectedIndex) {
+      String rightContent;
+
+      if (contentRow == 0) {
+        leftContent =
+            _padAnsi(_buildFilterRow(leftWidth, filtered.length), leftWidth);
+        rightContent = _padAnsi(
+          '\x1b[2mType to filter | Enter select | Esc close\x1b[0m',
+          rightWidth,
+        );
+        lines.add('$leftBorder $leftContent$divider$rightContent $rightBorder');
+        continue;
+      }
+
+      final leftPos = _scrollOffset + contentRow - 1;
+
+      if (leftPos < leftItems.length) {
+        final padded = _padAnsi(leftItems[leftPos], leftWidth);
+        if (leftPos < filtered.length && filtered[leftPos] == selectedIndex) {
           leftContent = '\x1b[7m${stripAnsi(padded)}\x1b[27m';
         } else {
           leftContent = padded;
@@ -193,11 +246,9 @@ class SkillsDockedPanel extends DockedPanel {
         leftContent = ' ' * leftWidth;
       }
 
-      String rightContent;
-      if (contentRow < rightLines.length) {
-        final truncated = ansiTruncate(rightLines[contentRow], rightWidth);
-        final padLen = rightWidth - visibleLength(truncated);
-        rightContent = '$truncated${' ' * max(0, padLen)}';
+      final detailRow = contentRow - 1;
+      if (detailRow < rightLines.length) {
+        rightContent = _padAnsi(rightLines[detailRow], rightWidth);
       } else {
         rightContent = ' ' * rightWidth;
       }
@@ -208,20 +259,23 @@ class SkillsDockedPanel extends DockedPanel {
     return lines;
   }
 
-  List<String> _buildLeftItems() {
+  List<String> _buildLeftItems(List<int> filteredIndices) {
     const cyan = '\x1b[36m';
     const green = '\x1b[32m';
     const rst = '\x1b[0m';
 
-    if (_skills.isEmpty) return ['No skills available'];
+    if (filteredIndices.isEmpty) {
+      return ['\x1b[2mNo matching skills\x1b[0m'];
+    }
 
-    final maxNameLen = _skills.fold<int>(
+    final filteredSkills = filteredIndices.map((i) => _skills[i]).toList();
+    final maxNameLen = filteredSkills.fold<int>(
       0,
       (current, skill) =>
           skill.name.length > current ? skill.name.length : current,
     );
 
-    return _skills.map((skill) {
+    return filteredSkills.map((skill) {
       final sourceTag = switch (skill.source) {
         SkillSource.project => '${green}project$rst',
         SkillSource.global => '${cyan}global$rst',
@@ -260,6 +314,94 @@ class SkillsDockedPanel extends DockedPanel {
       lines.add('$label$key$rst$pad$dim${entry.value}$rst');
     }
     return lines;
+  }
+
+  String _buildFilterRow(int width, int filteredCount) {
+    if (_skills.isEmpty) {
+      return _padAnsi('\x1b[2mNo skills available\x1b[0m', width);
+    }
+    if (_query.isEmpty) {
+      return _padAnsi(
+          '\x1b[2m/ filter  (${_skills.length} skills)\x1b[0m', width);
+    }
+    return _padAnsi(
+      '\x1b[2m/$_query  ($filteredCount/${_skills.length})\x1b[0m',
+      width,
+    );
+  }
+
+  String _padAnsi(String text, int width) {
+    final truncated = ansiTruncate(text, width);
+    final padLen = width - visibleLength(truncated);
+    return '$truncated${' ' * max(0, padLen)}';
+  }
+
+  int get _visibleListHeight => max(1, _lastVisibleHeight - 1);
+
+  List<int> _filteredIndices() {
+    if (_skills.isEmpty) return const [];
+    final query = _query.trim();
+    if (query.isEmpty) {
+      return List<int>.generate(_skills.length, (i) => i, growable: false);
+    }
+    final terms = query
+        .toLowerCase()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList(growable: false);
+    return List<int>.generate(_skills.length, (i) => i).where((i) {
+      final haystack = _skillSearchText(_skills[i]);
+      for (final term in terms) {
+        if (!haystack.contains(term)) return false;
+      }
+      return true;
+    }).toList(growable: false);
+  }
+
+  int _selectedPosition(List<int> filtered) {
+    final idx = filtered.indexOf(_selectedIndex);
+    return idx >= 0 ? idx : 0;
+  }
+
+  int _selectedIndexForFiltered(List<int> filtered) {
+    if (filtered.isEmpty) return -1;
+    if (!filtered.contains(_selectedIndex)) return filtered.first;
+    return _selectedIndex;
+  }
+
+  void _normalizeSelectionForQuery() {
+    final filtered = _filteredIndices();
+    if (filtered.isEmpty) {
+      _scrollOffset = 0;
+      return;
+    }
+    final selectedIndex = _selectedIndexForFiltered(filtered);
+    _selectedIndex = selectedIndex;
+
+    final selectedPos = _selectedPosition(filtered);
+    final visibleHeight = _visibleListHeight;
+    final maxScroll = max(0, filtered.length - visibleHeight);
+    if (selectedPos < _scrollOffset) {
+      _scrollOffset = selectedPos;
+    } else if (selectedPos >= _scrollOffset + visibleHeight) {
+      _scrollOffset = selectedPos - visibleHeight + 1;
+    }
+    _scrollOffset = _scrollOffset.clamp(0, maxScroll);
+  }
+
+  bool _isSearchChar(String char) {
+    if (char.isEmpty) return false;
+    final rune = char.runes.first;
+    return rune >= 0x20 && rune != 0x7f;
+  }
+
+  String _skillSearchText(SkillMeta skill) {
+    final metadata = skill.metadata.entries.map((entry) {
+      return '${entry.key} ${entry.value}';
+    }).join(' ');
+    return '${skill.name} ${skill.description} ${skill.source.name} '
+            '${skill.skillDir} $metadata'
+        .toLowerCase();
   }
 
   List<String> _wrapText(String text, int width) {

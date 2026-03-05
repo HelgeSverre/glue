@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:glue/src/rendering/ansi_utils.dart';
 import 'package:glue/src/rendering/block_renderer.dart';
+import 'package:glue/src/rendering/markdown_renderer.dart';
 import 'package:glue/src/terminal/terminal.dart';
 import 'package:glue/src/ui/dock_manager.dart';
 import 'package:glue/src/ui/docked_panel.dart';
@@ -47,8 +48,72 @@ class _ThemeDemoApp {
   int _scenarioVisibleBlocks = 1;
   bool _scenarioPaused = false;
   bool _scenarioAutoFollow = true;
+  int _planSelection = 0;
+  int _planListScroll = 0;
+  int _planPreviewScroll = 0;
+  bool _planFocusPreview = false;
 
   static const int _scenarioTotalBlocks = 22;
+  final List<_DemoPlanDoc> _demoPlans = const [
+    _DemoPlanDoc(
+      title: 'Plan Mode Ergonomics',
+      location: '~/.glue/plans/2026-03-05-plan-mode-ergonomics.md',
+      markdown: '''
+# Plan Mode Ergonomics
+
+## Goals
+- Shift+Tab enters plan capture mode
+- Ask clarifying questions before drafting
+- Save, run now, or run in background
+
+## Actions
+1. Build `PlanStore` index + metadata.
+2. Add `/plans` searchable browser.
+3. Add plan viewer with markdown rendering.
+4. Add open-in-editor shortcut.
+
+## Exit Criteria
+- Can browse plans from workspace + global paths.
+- Plan preview scrolls cleanly.
+- Editing in `\$EDITOR` returns to TUI cleanly.
+''',
+    ),
+    _DemoPlanDoc(
+      title: 'Workspace Hot-Swap',
+      location: 'docs/plans/2026-03-05-workspace-hotswap.md',
+      markdown: '''
+# Workspace Hot-Swap
+
+## Problem
+Switching projects currently requires tabs/tmux context juggling.
+
+## Proposal
+- `/workspaces` opens docked workspace/session list.
+- Keep background agents running in non-focused workspaces.
+- Focused workspace controls active input/editor.
+
+## Risks
+- Session state leaks between workspaces.
+- Unclear ownership when multiple runs write same files.
+''',
+    ),
+    _DemoPlanDoc(
+      title: 'Parallel Plan Execution',
+      location: '~/.glue/plans/2026-03-04-parallel-exec.md',
+      markdown: '''
+# Parallel Plan Execution
+
+## Modes
+- `foreground`: attached, interactive
+- `background`: detached, stream updates into run log
+
+## UI
+- `/plans` list includes status, workspace, age.
+- selecting a running plan opens live event stream.
+- failed runs show concise summary + jump to logs.
+''',
+    ),
+  ];
 
   GlueThemeTokens get _tokens => glueThemeTokens(_mode);
   GlueRecipes get _r => GlueRecipes(_tokens);
@@ -129,14 +194,14 @@ class _ThemeDemoApp {
     }
 
     if (event case KeyEvent(key: Key.tab)) {
-      _page = (_page + 1) % 7;
+      _page = (_page + 1) % 8;
       _render();
       return;
     }
 
     if (event case KeyEvent(key: Key.shiftTab)) {
-      _page = (_page - 1) % 7;
-      if (_page < 0) _page = 6;
+      _page = (_page - 1) % 8;
+      if (_page < 0) _page = 7;
       _render();
       return;
     }
@@ -148,7 +213,8 @@ class _ThemeDemoApp {
             c == '4' ||
             c == '5' ||
             c == '6' ||
-            c == '7') {
+            c == '7' ||
+            c == '8') {
       _page = int.parse(c) - 1;
       _render();
       return;
@@ -173,6 +239,11 @@ class _ThemeDemoApp {
     }
 
     if (_page == 4 && _handleScenarioInput(event)) {
+      _render();
+      return;
+    }
+
+    if (_page == 7 && _handlePlanModeInput(event)) {
       _render();
       return;
     }
@@ -320,6 +391,64 @@ class _ThemeDemoApp {
       case CharEvent(char: 'f'):
         _scenarioAutoFollow = true;
         _scenarioScroll = 1 << 20;
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  bool _handlePlanModeInput(TerminalEvent event) {
+    const previewRows = 11;
+    final selected = _demoPlans[_planSelection];
+    final previewWidth = max(30, (_terminal.columns * 0.56).floor() - 6);
+    final rendered =
+        MarkdownRenderer(previewWidth).render(selected.markdown).split('\n');
+    final maxPreviewScroll = max(0, rendered.length - previewRows);
+
+    switch (event) {
+      case CharEvent(char: 'f'):
+        _planFocusPreview = !_planFocusPreview;
+        return true;
+      case KeyEvent(key: Key.up):
+        if (_planFocusPreview) {
+          _planPreviewScroll = max(0, _planPreviewScroll - 1);
+          return true;
+        }
+        _planSelection = max(0, _planSelection - 1);
+        if (_planSelection < _planListScroll) _planListScroll = _planSelection;
+        _planPreviewScroll = 0;
+        return true;
+      case KeyEvent(key: Key.down):
+        if (_planFocusPreview) {
+          _planPreviewScroll = min(maxPreviewScroll, _planPreviewScroll + 1);
+          return true;
+        }
+        _planSelection = min(_demoPlans.length - 1, _planSelection + 1);
+        if (_planSelection >= _planListScroll + 8) {
+          _planListScroll = _planSelection - 7;
+        }
+        _planPreviewScroll = 0;
+        return true;
+      case KeyEvent(key: Key.pageUp):
+        _planPreviewScroll = max(0, _planPreviewScroll - previewRows);
+        _planFocusPreview = true;
+        return true;
+      case KeyEvent(key: Key.pageDown):
+        _planPreviewScroll =
+            min(maxPreviewScroll, _planPreviewScroll + previewRows);
+        _planFocusPreview = true;
+        return true;
+      case KeyEvent(key: Key.home):
+        _planPreviewScroll = 0;
+        _planFocusPreview = true;
+        return true;
+      case KeyEvent(key: Key.end):
+        _planPreviewScroll = maxPreviewScroll;
+        _planFocusPreview = true;
+        return true;
+      case CharEvent(char: 'e'):
+        _lastSelection =
+            'open \$EDITOR ${p.basename(_demoPlans[_planSelection].location)}';
         return true;
       default:
         return false;
@@ -537,14 +666,15 @@ class _ThemeDemoApp {
       3 => 'Editor Buffers',
       4 => 'Realistic Scenario',
       5 => 'Interactions',
-      _ => 'Adoption Plan',
+      6 => 'Adoption Plan',
+      _ => 'Plan Mode',
     };
 
     final headerLines = <String>[];
     headerLines.add(_r.brandHeading(
       'Glue TUI Design Demo',
       subtitle:
-          'mode: ${_mode.name} | page: ${_page + 1}/7 ($pageTitle) | last select: $_lastSelection',
+          'mode: ${_mode.name} | page: ${_page + 1}/8 ($pageTitle) | last select: $_lastSelection',
     ));
     headerLines.add('');
 
@@ -564,12 +694,14 @@ class _ThemeDemoApp {
         bodyLines.addAll(_interactionsPage());
       case 6:
         bodyLines.addAll(_planPage());
+      case 7:
+        bodyLines.addAll(_planModePage());
     }
 
     final footerLines = <String>[
       [
         _r.keyHint('tab/shift+tab', 'switch pages'),
-        _r.keyHint('1..7', 'jump page'),
+        _r.keyHint('1..8', 'jump page'),
         _r.keyHint('t', 'toggle theme'),
         _r.keyHint('s', 'open select preview'),
         _r.keyHint('q', 'quit'),
@@ -975,6 +1107,88 @@ class _ThemeDemoApp {
     ];
   }
 
+  List<String> _planModePage() {
+    final lines = <String>[];
+    lines.add(_r.sectionHeading('Plan Browser + Viewer'));
+    lines.add(_tokens.textMuted(
+        'Demo for `/plans` flow: searchable list, markdown preview, and open-in-editor shortcut.'));
+    lines.add(_r.keyHint('up/down', 'move plan selection'));
+    lines.add(_r.keyHint('f', 'toggle focus list/preview'));
+    lines.add(_r.keyHint('pgup/pgdn/home/end', 'scroll preview'));
+    lines.add(_r.keyHint('e', 'open selected plan in \$EDITOR'));
+    lines.add('');
+
+    final totalWidth = max(72, _terminal.columns - 4);
+    final leftWidth = (totalWidth * 0.42).floor().clamp(30, totalWidth - 26);
+    final rightWidth = max(24, totalWidth - leftWidth - 3);
+
+    final selected = _demoPlans[_planSelection];
+    final previewWidth = max(20, rightWidth - 4);
+    final previewLines =
+        MarkdownRenderer(previewWidth).render(selected.markdown).split('\n');
+
+    const previewRows = 11;
+    final maxPreviewScroll = max(0, previewLines.length - previewRows);
+    _planPreviewScroll = _planPreviewScroll.clamp(0, maxPreviewScroll);
+    final visiblePreview = previewLines
+        .skip(_planPreviewScroll)
+        .take(previewRows)
+        .toList(growable: false);
+
+    const listRows = 9;
+    final maxListScroll = max(0, _demoPlans.length - listRows);
+    _planListScroll = _planListScroll.clamp(0, maxListScroll);
+
+    final leftBox = <String>[
+      _planFocusPreview
+          ? _r.borderLine(leftWidth, title: 'PLANS')
+          : _tokens.focus(_r.borderLine(leftWidth, title: 'PLANS')),
+      for (var i = 0; i < listRows; i++)
+        _r.panelRow(
+          leftWidth,
+          () {
+            final idx = _planListScroll + i;
+            if (idx >= _demoPlans.length) return '';
+            final item = _demoPlans[idx];
+            final marker = idx == _planSelection ? '●' : '·';
+            final label = '$marker ${item.title}';
+            return idx == _planSelection
+                ? _tokens.selection(label)
+                : _tokens.textSecondary(label);
+          }(),
+        ),
+      _tokens.surfaceBorder('└${'─' * (leftWidth - 2)}┘'),
+    ];
+
+    final rightBox = <String>[
+      _planFocusPreview
+          ? _tokens.focus(_r.borderLine(rightWidth, title: 'PLAN PREVIEW'))
+          : _r.borderLine(rightWidth, title: 'PLAN PREVIEW'),
+      _r.panelRow(rightWidth,
+          _tokens.textMuted('file: ${p.basename(selected.location)}')),
+      _r.panelRow(rightWidth, _tokens.textMuted('path: ${selected.location}')),
+      for (var i = 0; i < previewRows; i++)
+        _r.panelRow(
+            rightWidth, i < visiblePreview.length ? visiblePreview[i] : ''),
+      _r.panelRow(
+        rightWidth,
+        _tokens.textMuted(
+          'scroll ${_planPreviewScroll + 1}-${min(_planPreviewScroll + previewRows, previewLines.length)}/${previewLines.length}',
+        ),
+      ),
+      _tokens.surfaceBorder('└${'─' * (rightWidth - 2)}┘'),
+    ];
+
+    final rows = max(leftBox.length, rightBox.length);
+    for (var i = 0; i < rows; i++) {
+      final left = i < leftBox.length ? leftBox[i] : ' ' * leftWidth;
+      final right = i < rightBox.length ? rightBox[i] : ' ' * rightWidth;
+      lines.add('$left   $right');
+    }
+
+    return lines;
+  }
+
   String _fit(String text, int width) {
     final truncated = ansiTruncate(text, width);
     final pad = width - visibleLength(truncated);
@@ -1017,6 +1231,18 @@ class _ThemeDemoApp {
     out.add(_tokens.surfaceBorder('└${'─' * (width - 2)}┘'));
     return out;
   }
+}
+
+class _DemoPlanDoc {
+  final String title;
+  final String location;
+  final String markdown;
+
+  const _DemoPlanDoc({
+    required this.title,
+    required this.location,
+    required this.markdown,
+  });
 }
 
 class _FsEntry {

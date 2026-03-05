@@ -800,6 +800,13 @@ void main() {
     exit(1);
   }
 
+  // Remove stale generated docs so deleted source files do not linger in
+  // the VitePress tree.
+  if (apiDir.existsSync()) {
+    apiDir.deleteSync(recursive: true);
+  }
+  apiDir.createSync(recursive: true);
+
   // Collect all Dart files.
   final dartFiles = srcDir
       .listSync(recursive: true)

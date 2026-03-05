@@ -25,7 +25,7 @@ Each tool has one of three approval levels:
 
 - **Auto** — the tool runs without asking. Read-only tools like `read_file`, `list_directory`, and `grep` fall into this category.
 - **Required** — Glue shows a confirmation modal before running the tool. Tools that modify your codebase (`write_file`, `edit_file`, `bash`) require explicit approval. See [Tool Approval](./tool-approval.md) for details.
-- **Always** — the user has permanently trusted this tool. Any tool can be promoted to this level through the approval modal or by editing `~/.glue/config.yaml`.
+- **Always** — the user has permanently trusted this tool. Any tool can be promoted to this level through the approval modal or by editing `~/.glue/preferences.json`.
 
 ::: tip
 Tools that are independent of each other run in parallel automatically. For example, the agent can read multiple files or search across different directories at the same time.

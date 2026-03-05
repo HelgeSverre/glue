@@ -1,21 +1,33 @@
-name: Docs Build Validate
+name: CI Monorepo Check
 
 on:
   pull_request:
     paths:
       - "cli/**"
-      - ".github/workflows/docs-build-validate.yml"
+      - "devdocs/**"
+      - "website/**"
+      - "justfile"
+      - "cli/justfile"
+      - "devdocs/justfile"
+      - "website/justfile"
+      - ".github/workflows/ci-monorepo-check.yml"
   push:
     branches:
       - main
     paths:
       - "cli/**"
-      - ".github/workflows/docs-build-validate.yml"
+      - "devdocs/**"
+      - "website/**"
+      - "justfile"
+      - "cli/justfile"
+      - "devdocs/justfile"
+      - "website/justfile"
+      - ".github/workflows/ci-monorepo-check.yml"
   workflow_dispatch:
 
 jobs:
-  docs:
-    name: Build Dev Docs
+  check:
+    name: Root just check
     runs-on: ubuntu-latest
 
     steps:
@@ -38,11 +50,14 @@ jobs:
       - name: Install CLI dependencies
         run: just cli::deps
 
-      - name: Install Dev Docs dependencies
+      - name: Install DevDocs dependencies
         run: npm ci --prefix devdocs
 
-      - name: Build Dev Docs
-        run: just devdocs::build
+      - name: Check CLI formatting
+        run: dart format --output=none --set-exit-if-changed cli
+
+      - name: Run monorepo quality gate
+        run: just check
 
       - name: Verify local docs output (act)
         if: ${{ env.ACT }}
