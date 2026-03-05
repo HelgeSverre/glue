@@ -11,6 +11,7 @@ class BuiltinCommands {
     required String Function() sessionInfo,
     required String Function() listTools,
     required void Function() openHistoryPanel,
+    required String Function(String query) historyActionByQuery,
     required void Function() openResumePanel,
     required String Function(String query) resumeSessionByQuery,
     required String Function() openDevTools,
@@ -84,10 +85,13 @@ class BuiltinCommands {
 
     commands.register(SlashCommand(
       name: 'history',
-      description: 'Browse conversation history',
-      execute: (_) {
-        openHistoryPanel();
-        return '';
+      description: 'Browse history or fork by index/query',
+      execute: (args) {
+        if (args.isEmpty) {
+          openHistoryPanel();
+          return '';
+        }
+        return historyActionByQuery(args.join(' '));
       },
     ));
 

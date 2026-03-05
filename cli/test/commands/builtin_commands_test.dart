@@ -6,6 +6,8 @@ import 'package:glue/src/commands/slash_commands.dart';
 void main() {
   group('BuiltinCommands', () {
     SlashCommandRegistry createRegistry({
+      void Function()? openHistoryPanel,
+      String Function(String query)? historyActionByQuery,
       void Function()? openSkillsPanel,
       String Function(String name)? activateSkillByName,
       void Function()? openResumePanel,
@@ -21,7 +23,8 @@ void main() {
         switchModelByQuery: (_) => '',
         sessionInfo: () => '',
         listTools: () => '',
-        openHistoryPanel: () {},
+        openHistoryPanel: openHistoryPanel ?? () {},
+        historyActionByQuery: historyActionByQuery ?? (_) => '',
         openResumePanel: openResumePanel ?? () {},
         resumeSessionByQuery: resumeSessionByQuery ?? (_) => '',
         openDevTools: () => '',
@@ -67,6 +70,40 @@ void main() {
       expect(result, 'Activating code-review');
       expect(opened, 0);
       expect(activated, 'code-review');
+    });
+
+    test('/history without args opens panel', () {
+      var opened = 0;
+      String? query;
+      final registry = createRegistry(
+        openHistoryPanel: () => opened++,
+        historyActionByQuery: (q) {
+          query = q;
+          return 'Forking from $q';
+        },
+      );
+
+      final result = registry.execute('/history');
+      expect(result, '');
+      expect(opened, 1);
+      expect(query, isNull);
+    });
+
+    test('/history with args delegates to historyActionByQuery', () {
+      var opened = 0;
+      String? query;
+      final registry = createRegistry(
+        openHistoryPanel: () => opened++,
+        historyActionByQuery: (q) {
+          query = q;
+          return 'Forking from $q';
+        },
+      );
+
+      final result = registry.execute('/history 3');
+      expect(result, 'Forking from 3');
+      expect(opened, 0);
+      expect(query, '3');
     });
 
     test('/resume without args opens panel', () {

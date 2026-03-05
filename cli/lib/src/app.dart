@@ -461,6 +461,7 @@ class App {
       sessionInfo: _buildSessionInfo,
       listTools: _buildToolsOutput,
       openHistoryPanel: _openHistoryPanel,
+      historyActionByQuery: _historyFromCommand,
       openResumePanel: _openResumePanel,
       resumeSessionByQuery: _resumeSessionFromCommand,
       openDevTools: _openDevTools,
@@ -649,6 +650,10 @@ class App {
 
   String _resumeSessionFromCommand(String query) {
     return _resumeSessionFromCommandImpl(this, query);
+  }
+
+  String _historyFromCommand(String query) {
+    return _historyFromCommandImpl(this, query);
   }
 
   String _openPlanFromCommand(String query) {

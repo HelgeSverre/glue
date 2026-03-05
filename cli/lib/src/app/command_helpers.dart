@@ -135,6 +135,72 @@ String _resumeSessionFromCommandImpl(App app, String query) {
   return app._resumeSession(matches.first);
 }
 
+String _historyFromCommandImpl(App app, String query) {
+  final normalized = query.trim();
+  if (normalized.isEmpty) return 'Usage: /history [index-or-query]';
+
+  final entries = <HistoryPanelEntry>[];
+  var userIndex = 0;
+  for (final block in app._blocks) {
+    if (block.kind == _EntryKind.user) {
+      entries.add(HistoryPanelEntry(
+        userMessageIndex: userIndex,
+        text: block.text,
+      ));
+      userIndex++;
+    }
+  }
+
+  if (entries.isEmpty) return 'No conversation history.';
+
+  final numeric = int.tryParse(normalized);
+  if (numeric != null) {
+    final position = numeric - 1; // UI is 1-based.
+    if (position < 0 || position >= entries.length) {
+      return 'History index out of range: $numeric (1-${entries.length}).';
+    }
+    final entry = entries[position];
+    app._forkSession(entry.userMessageIndex, entry.text);
+    return '';
+  }
+
+  final needle = normalized.toLowerCase();
+  final matches = entries.where((entry) {
+    return entry.text.toLowerCase().contains(needle);
+  }).toList();
+
+  if (matches.isEmpty) {
+    final preview = entries.take(5).toList();
+    final lines = preview.asMap().entries.map((e) {
+      final idx = e.key + 1;
+      final compact = e.value.text.replaceAll('\n', ' ').trim();
+      final short =
+          compact.length > 56 ? '${compact.substring(0, 56)}…' : compact;
+      return '  #$idx $short';
+    }).join('\n');
+    return 'No history entry matches "$normalized".\n'
+        'Recent entries:\n'
+        '${lines.isEmpty ? "  (none)" : lines}';
+  }
+
+  if (matches.length > 1) {
+    final preview = matches.take(5).map((entry) {
+      final idx = entries.indexOf(entry) + 1;
+      final compact = entry.text.replaceAll('\n', ' ').trim();
+      final short =
+          compact.length > 56 ? '${compact.substring(0, 56)}…' : compact;
+      return '  #$idx $short';
+    }).join('\n');
+    return 'Multiple history entries match "$normalized":\n'
+        '$preview\n'
+        'Use /history <index> for an exact fork point.';
+  }
+
+  final entry = matches.first;
+  app._forkSession(entry.userMessageIndex, entry.text);
+  return '';
+}
+
 String _openPlanFromCommandImpl(App app, String query) {
   final normalized = query.trim();
   if (normalized.isEmpty) return 'Usage: /plans [name-or-path]';
