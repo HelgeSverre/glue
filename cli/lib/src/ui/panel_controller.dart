@@ -250,6 +250,7 @@ class PanelController {
       }
 
       _openHistoryActionPanel(
+        parentPanel: panel,
         entry: entry,
         onFork: onFork,
         addSystemMessage: addSystemMessage,
@@ -401,6 +402,7 @@ class PanelController {
   }
 
   void _openHistoryActionPanel({
+    required SelectPanel<HistoryPanelEntry> parentPanel,
     required HistoryPanelEntry entry,
     required void Function(int userMessageIndex, String messageText) onFork,
     required void Function(String message) addSystemMessage,
@@ -417,7 +419,8 @@ class PanelController {
     _render();
 
     panel.selection.then((idx) {
-      _panelStack.clear();
+      _panelStack.remove(panel);
+      _panelStack.remove(parentPanel);
       if (idx == null) {
         _render();
         return;

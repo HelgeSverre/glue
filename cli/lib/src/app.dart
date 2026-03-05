@@ -462,11 +462,13 @@ class App {
       listTools: _buildToolsOutput,
       openHistoryPanel: _openHistoryPanel,
       openResumePanel: _openResumePanel,
+      resumeSessionByQuery: _resumeSessionFromCommand,
       openDevTools: _openDevTools,
       toggleDebug: _toggleDebugMode,
       openSkillsPanel: _openSkillsPanel,
       activateSkillByName: _activateSkillFromCommand,
       openPlansPanel: _openPlansPanel,
+      openPlanByQuery: _openPlanFromCommand,
     );
   }
 
@@ -643,6 +645,14 @@ class App {
     if (normalized.isEmpty) return 'Usage: /skills [skill-name]';
     unawaited(_activateSkillFromUi(normalized).then((_) => _render()));
     return 'Activating skill "$normalized"...';
+  }
+
+  String _resumeSessionFromCommand(String query) {
+    return _resumeSessionFromCommandImpl(this, query);
+  }
+
+  String _openPlanFromCommand(String query) {
+    return _openPlanFromCommandImpl(this, query);
   }
 
   String _switchToModelEntry(ModelEntry entry) {

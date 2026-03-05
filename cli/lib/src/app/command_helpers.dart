@@ -95,6 +95,91 @@ void _forkSessionImpl(App app, int userMessageIndex, String messageText) {
   app._render();
 }
 
+String _resumeSessionFromCommandImpl(App app, String query) {
+  final normalized = query.trim();
+  if (normalized.isEmpty) return 'Usage: /resume [session-id-or-query]';
+
+  final sessions = app._sessionManager.listSessions();
+  if (sessions.isEmpty) return 'No saved sessions found.';
+
+  final exactId = sessions.where((s) => s.id == normalized).toList();
+  if (exactId.length == 1) {
+    return app._resumeSession(exactId.first);
+  }
+
+  final needle = normalized.toLowerCase();
+  final matches = sessions.where((s) {
+    final title = (s.title ?? '').toLowerCase();
+    final cwd = s.cwd.toLowerCase();
+    return s.id.toLowerCase().contains(needle) ||
+        title.contains(needle) ||
+        cwd.contains(needle);
+  }).toList();
+
+  if (matches.isEmpty) {
+    final recent = sessions.take(5).map((s) => s.id).join(', ');
+    return 'No session matches "$normalized". '
+        'Try a session ID from: ${recent.isEmpty ? "(none)" : recent}';
+  }
+
+  if (matches.length > 1) {
+    final preview = matches.take(5).map((s) {
+      final title = (s.title ?? '').trim();
+      return title.isEmpty ? '  - ${s.id}' : '  - ${s.id} ($title)';
+    }).join('\n');
+    return 'Multiple sessions match "$normalized":\n'
+        '$preview\n'
+        'Use a more specific session ID.';
+  }
+
+  return app._resumeSession(matches.first);
+}
+
+String _openPlanFromCommandImpl(App app, String query) {
+  final normalized = query.trim();
+  if (normalized.isEmpty) return 'Usage: /plans [name-or-path]';
+
+  final plans = app._planStore.listPlans();
+  if (plans.isEmpty) {
+    return 'No plans found in workspace or ~/.glue/plans.';
+  }
+
+  final needle = normalized.toLowerCase();
+  final exact = plans.where((p) {
+    return p.title.toLowerCase() == needle || p.path.toLowerCase() == needle;
+  }).toList();
+
+  final matches = exact.isNotEmpty
+      ? exact
+      : plans.where((p) {
+          return p.title.toLowerCase().contains(needle) ||
+              p.path.toLowerCase().contains(needle);
+        }).toList();
+
+  if (matches.isEmpty) {
+    final preview = plans
+        .take(5)
+        .map((p) => '  - ${p.title} (${app._shortenPath(p.path)})')
+        .join('\n');
+    return 'No plan matches "$normalized".\n'
+        'Recent plans:\n'
+        '${preview.isEmpty ? "  (none)" : preview}';
+  }
+
+  if (matches.length > 1) {
+    final preview = matches
+        .take(5)
+        .map((p) => '  - ${p.title} (${app._shortenPath(p.path)})')
+        .join('\n');
+    return 'Multiple plans match "$normalized":\n'
+        '$preview\n'
+        'Use a more specific title or path.';
+  }
+
+  app._openPlanViewer(matches.first);
+  return '';
+}
+
 Future<void> _activateSkillFromUiImpl(App app, String skillName) async {
   try {
     final activation = await activateSkillIntoConversation(

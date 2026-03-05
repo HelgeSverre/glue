@@ -12,11 +12,13 @@ class BuiltinCommands {
     required String Function() listTools,
     required void Function() openHistoryPanel,
     required void Function() openResumePanel,
+    required String Function(String query) resumeSessionByQuery,
     required String Function() openDevTools,
     required String Function() toggleDebug,
     required void Function() openSkillsPanel,
     required String Function(String skillName) activateSkillByName,
     required void Function() openPlansPanel,
+    required String Function(String query) openPlanByQuery,
   }) {
     final commands = SlashCommandRegistry();
 
@@ -91,10 +93,13 @@ class BuiltinCommands {
 
     commands.register(SlashCommand(
       name: 'resume',
-      description: 'Resume a previous session',
-      execute: (_) {
-        openResumePanel();
-        return '';
+      description: 'Resume a session (panel or by ID/query)',
+      execute: (args) {
+        if (args.isEmpty) {
+          openResumePanel();
+          return '';
+        }
+        return resumeSessionByQuery(args.join(' '));
       },
     ));
 
@@ -124,10 +129,13 @@ class BuiltinCommands {
 
     commands.register(SlashCommand(
       name: 'plans',
-      description: 'Browse plan files',
-      execute: (_) {
-        openPlansPanel();
-        return '';
+      description: 'Browse plans or open one by name/path',
+      execute: (args) {
+        if (args.isEmpty) {
+          openPlansPanel();
+          return '';
+        }
+        return openPlanByQuery(args.join(' '));
       },
     ));
 

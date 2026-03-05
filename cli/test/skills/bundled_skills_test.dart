@@ -31,6 +31,37 @@ void main() {
     expect(registry.findByName('agentic-research'), isNotNull);
   });
 
+  test('bundled skills have unique names and non-empty bodies', () {
+    final skillFiles = Directory(bundledDir)
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((file) => p.basename(file.path).toLowerCase() == 'skill.md')
+        .toList(growable: false);
+    expect(skillFiles, isNotEmpty);
+
+    final seenNames = <String>{};
+    for (final skillFile in skillFiles) {
+      final content = skillFile.readAsStringSync();
+      final meta = parseSkillFrontmatter(
+        content,
+        p.dirname(skillFile.path),
+        skillFile.path,
+        SkillSource.custom,
+      );
+      final body = loadSkillBody(skillFile.path).trim();
+      expect(
+        seenNames.add(meta.name),
+        isTrue,
+        reason: 'Duplicate bundled skill name: ${meta.name}',
+      );
+      expect(
+        body,
+        isNotEmpty,
+        reason: 'Bundled skill has empty body: ${skillFile.path}',
+      );
+    }
+  });
+
   test('bundled skills have no broken relative markdown links', () {
     final skillFiles = Directory(bundledDir)
         .listSync(recursive: true)
