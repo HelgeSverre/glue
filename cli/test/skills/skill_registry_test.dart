@@ -65,6 +65,40 @@ void main() {
       expect(registry.list().first.description, 'Project version.');
     });
 
+    test('custom wins over global on name collision', () {
+      final homeDir = Directory(p.join(tempDir.path, 'home'))..createSync();
+      final globalDir = p.join(homeDir.path, '.glue', 'skills');
+      createSkill(globalDir, 'dupe', description: 'Global version.');
+      final extraDir = Directory(p.join(tempDir.path, 'extra'));
+      extraDir.createSync();
+      createSkill(extraDir.path, 'dupe', description: 'Custom version.');
+      final registry = SkillRegistry.discover(
+        cwd: tempDir.path,
+        home: homeDir.path,
+        extraPaths: [extraDir.path],
+      );
+      expect(registry.length, 1);
+      expect(registry.list().first.description, 'Custom version.');
+      expect(registry.list().first.source, SkillSource.custom);
+    });
+
+    test('global wins over bundled on name collision', () {
+      final homeDir = Directory(p.join(tempDir.path, 'home'))..createSync();
+      final globalDir = p.join(homeDir.path, '.glue', 'skills');
+      createSkill(globalDir, 'dupe', description: 'Global version.');
+      final bundledDir = Directory(p.join(tempDir.path, 'bundled-skills'));
+      bundledDir.createSync();
+      createSkill(bundledDir.path, 'dupe', description: 'Bundled version.');
+      final registry = SkillRegistry.discover(
+        cwd: tempDir.path,
+        home: homeDir.path,
+        bundledPaths: [bundledDir.path],
+      );
+      expect(registry.length, 1);
+      expect(registry.list().first.description, 'Global version.');
+      expect(registry.list().first.source, SkillSource.global);
+    });
+
     test('findByName returns correct skill', () {
       final skillsDir = p.join(tempDir.path, '.glue', 'skills');
       createSkill(skillsDir, 'alpha');
@@ -120,6 +154,34 @@ void main() {
           SkillRegistry.discover(cwd: tempDir.path, home: tempDir.path);
       expect(registry.length, 1);
       expect(registry.list().first.description, 'Lowercase.');
+    });
+
+    test('discovers bundled skills', () {
+      final bundledDir = Directory(p.join(tempDir.path, 'bundled-skills'));
+      bundledDir.createSync();
+      createSkill(bundledDir.path, 'builtin-one');
+      final registry = SkillRegistry.discover(
+        cwd: tempDir.path,
+        home: tempDir.path,
+        bundledPaths: [bundledDir.path],
+      );
+      expect(registry.length, 1);
+      expect(registry.list().first.name, 'builtin-one');
+      expect(registry.list().first.source, SkillSource.custom);
+    });
+
+    test('skips hidden skill directories', () {
+      final skillsDir = p.join(tempDir.path, '.glue', 'skills');
+      final hiddenDir = Directory(p.join(skillsDir, '.system-skill'));
+      hiddenDir.createSync(recursive: true);
+      File(p.join(hiddenDir.path, 'SKILL.md')).writeAsStringSync(
+        '---\nname: system-skill\ndescription: hidden\n---\nbody',
+      );
+      createSkill(skillsDir, 'visible-skill');
+      final registry =
+          SkillRegistry.discover(cwd: tempDir.path, home: tempDir.path);
+      expect(registry.length, 1);
+      expect(registry.list().first.name, 'visible-skill');
     });
   });
 }

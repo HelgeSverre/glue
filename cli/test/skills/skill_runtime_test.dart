@@ -57,5 +57,21 @@ void main() {
       final body = runtime.loadBody('reader', refreshFirst: true);
       expect(body, contains('Special body.'));
     });
+
+    test('discovers bundled skills through bundledPathsProvider', () {
+      final bundled = p.join(tempDir.path, 'bundled');
+      createSkill(bundled, 'builtin-skill');
+
+      final runtime = SkillRuntime(
+        cwd: tempDir.path,
+        home: tempDir.path,
+        extraPathsProvider: () => const [],
+        bundledPathsProvider: () => [bundled],
+      );
+
+      final meta = runtime.findByName('builtin-skill');
+      expect(meta, isNotNull);
+      expect(meta!.source.name, 'custom');
+    });
   });
 }

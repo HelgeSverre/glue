@@ -1,5 +1,6 @@
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/skills/skill_parser.dart';
+import 'package:glue/src/skills/skill_paths.dart';
 import 'package:glue/src/skills/skill_registry.dart';
 
 typedef SkillPathsProvider = List<String> Function();
@@ -12,12 +13,14 @@ class SkillRuntime {
   final String cwd;
   final SkillPathsProvider extraPathsProvider;
   final Environment environment;
+  late final SkillPathsProvider bundledPathsProvider;
 
   late SkillRegistry _registry;
 
   SkillRuntime({
     required this.cwd,
     required this.extraPathsProvider,
+    SkillPathsProvider? bundledPathsProvider,
     String? home,
     Environment? environment,
   }) : environment = _resolveEnvironment(
@@ -25,9 +28,12 @@ class SkillRuntime {
           home: home,
           environment: environment,
         ) {
+    this.bundledPathsProvider = bundledPathsProvider ??
+        () => discoverBundledSkillPaths(environment: this.environment.vars);
     _registry = SkillRegistry.discover(
       cwd: cwd,
       extraPaths: extraPathsProvider(),
+      bundledPaths: this.bundledPathsProvider(),
       environment: this.environment,
     );
   }
@@ -49,6 +55,7 @@ class SkillRuntime {
     return _registry = SkillRegistry.discover(
       cwd: cwd,
       extraPaths: extraPathsProvider(),
+      bundledPaths: bundledPathsProvider(),
       environment: environment,
     );
   }

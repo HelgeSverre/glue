@@ -15,6 +15,7 @@ class SkillRegistry {
   factory SkillRegistry.discover({
     required String cwd,
     List<String> extraPaths = const [],
+    List<String> bundledPaths = const [],
     String? home,
     Environment? environment,
   }) {
@@ -31,8 +32,14 @@ class SkillRegistry {
       final dir = Directory(dirPath);
       if (!dir.existsSync()) return;
       try {
-        for (final entry in dir.listSync()) {
-          if (entry is! Directory) continue;
+        final entries = dir
+            .listSync()
+            .whereType<Directory>()
+            .toList(growable: false)
+          ..sort((a, b) => p.basename(a.path).compareTo(p.basename(b.path)));
+        for (final entry in entries) {
+          final name = p.basename(entry.path);
+          if (name.startsWith('.')) continue;
           File? skillFile;
           final upper = File(p.join(entry.path, 'SKILL.md'));
           final lower = File(p.join(entry.path, 'skill.md'));
@@ -64,17 +71,23 @@ class SkillRegistry {
       }
     }
 
+    // Precedence is first-seen-wins:
+    // project > custom extra paths (including bundled) > global.
     scanDir(p.join(cwd, '.glue', 'skills'), SkillSource.project);
-
-    if (resolvedHome.isNotEmpty) {
-      scanDir(p.join(resolvedHome, '.glue', 'skills'), SkillSource.global);
-    }
 
     for (final extra in extraPaths) {
       final resolved = extra.startsWith('~')
           ? p.join(resolvedHome, extra.substring(1))
           : extra;
       scanDir(resolved, SkillSource.custom);
+    }
+
+    if (resolvedHome.isNotEmpty) {
+      scanDir(p.join(resolvedHome, '.glue', 'skills'), SkillSource.global);
+    }
+
+    for (final bundled in bundledPaths) {
+      scanDir(bundled, SkillSource.custom);
     }
 
     return SkillRegistry._(skills);

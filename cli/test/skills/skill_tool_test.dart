@@ -83,6 +83,7 @@ void main() {
       final emptyTool = SkillTool(emptyRuntime);
       final result = ContentPart.textOnly(await emptyTool.execute({}));
       expect(result, contains('No skills available'));
+      expect(result, contains('bundled Glue skills'));
       emptyDir.deleteSync(recursive: true);
     });
 
@@ -99,6 +100,26 @@ void main() {
 
       final result2 = ContentPart.textOnly(await tool.execute({}));
       expect(result2, contains('new-skill'));
+    });
+
+    test('shows custom source tag for bundled skills', () async {
+      final bundledDir = Directory(p.join(tempDir.path, 'bundled'));
+      final skillDir = Directory(p.join(bundledDir.path, 'builtin-skill'));
+      skillDir.createSync(recursive: true);
+      File(p.join(skillDir.path, 'SKILL.md')).writeAsStringSync(
+        '---\nname: builtin-skill\ndescription: Built in.\n---\nBody.\n',
+      );
+
+      final builtinsRuntime = SkillRuntime(
+        cwd: tempDir.path,
+        home: tempDir.path,
+        extraPathsProvider: () => const [],
+        bundledPathsProvider: () => [bundledDir.path],
+      );
+      final builtinsTool = SkillTool(builtinsRuntime);
+
+      final result = ContentPart.textOnly(await builtinsTool.execute({}));
+      expect(result, contains('builtin-skill [custom]'));
     });
   });
 }

@@ -6,6 +6,14 @@ import 'package:yaml/yaml.dart';
 /// Where a skill was discovered.
 enum SkillSource { project, global, custom }
 
+extension SkillSourceLabel on SkillSource {
+  String get label => switch (this) {
+        SkillSource.project => 'project',
+        SkillSource.global => 'global',
+        SkillSource.custom => 'custom',
+      };
+}
+
 /// An error thrown when a SKILL.md file cannot be parsed.
 class SkillParseError implements Exception {
   final String message;

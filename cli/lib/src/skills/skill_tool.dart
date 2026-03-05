@@ -44,18 +44,16 @@ class SkillTool extends Tool {
     final skills = registry.list();
     if (skills.isEmpty) {
       return 'No skills available.\n\n'
-          'To add skills, create directories with SKILL.md files in:\n'
+          'Glue discovers skills from:\n'
+          '  .glue/skills/<skill-name>/SKILL.md (project-local)\n'
           '  ~/.glue/skills/<skill-name>/SKILL.md (global)\n'
-          '  .glue/skills/<skill-name>/SKILL.md (project-local)';
+          '  configured skill_paths (custom)\n'
+          '  bundled Glue skills (builtin)';
     }
 
     final buf = StringBuffer('Available skills (${skills.length}):\n\n');
     for (final s in skills) {
-      final tag = switch (s.source) {
-        SkillSource.project => 'project',
-        SkillSource.global => 'global',
-        SkillSource.custom => 'custom',
-      };
+      final tag = s.source.label;
       buf.writeln('  ${s.name} [$tag]');
       buf.writeln('    ${s.description}');
       buf.writeln('');
