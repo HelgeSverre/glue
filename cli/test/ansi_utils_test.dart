@@ -174,6 +174,12 @@ void main() {
       expect(visibleLength(result), lessThanOrEqualTo(8));
     });
 
+    test('closes ANSI styles after truncation to prevent bleed', () {
+      final result = ansiTruncate('\x1b[31mhello world\x1b[39m', 6);
+      expect(result, endsWith('\x1b[0m'));
+      expect(visibleLength(result), equals(6));
+    });
+
     test('handles emoji truncation without splitting surrogate pairs', () {
       final result = ansiTruncate('🎉🚀🌍🎊', 5);
       expect(visibleLength(result), lessThanOrEqualTo(5));
@@ -200,6 +206,7 @@ void main() {
       const linked = '\x1b]8;;https://example.com\x07abcdefghij\x1b]8;;\x07';
       final result = ansiTruncate(linked, 5);
       expect(result, contains('\x1b]8;;https://example.com\x07'));
+      expect(result, contains('\x1b]8;;\x07'));
       expect(visibleLength(result), equals(5));
     });
 

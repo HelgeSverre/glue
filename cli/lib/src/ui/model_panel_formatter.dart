@@ -1,10 +1,13 @@
-import 'dart:math';
-
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/config/model_registry.dart';
+import 'package:glue/src/terminal/styled.dart';
+import 'package:glue/src/ui/table_formatter.dart';
 
 /// Result of formatting model entries for the panel.
 class ModelPanelLines {
+  /// Optional header rows shown above selectable lines.
+  final List<String> headerLines;
+
   /// Formatted display lines (one per entry).
   final List<String> lines;
 
@@ -15,6 +18,7 @@ class ModelPanelLines {
   final int initialIndex;
 
   ModelPanelLines({
+    this.headerLines = const [],
     required this.lines,
     required this.entries,
     required this.initialIndex,
@@ -28,49 +32,65 @@ class ModelPanelLines {
 ModelPanelLines formatModelPanelLines(
   List<ModelEntry> entries, {
   required String currentModelId,
+  int? maxTotalWidth,
 }) {
   if (entries.isEmpty) {
-    return ModelPanelLines(lines: [], entries: [], initialIndex: 0);
+    return ModelPanelLines(
+      headerLines: const [],
+      lines: const [],
+      entries: const [],
+      initialIndex: 0,
+    );
   }
 
-  const dim = '\x1b[90m';
-  const yellow = '\x1b[33m';
-  const rst = '\x1b[0m';
-
-  // Compute dynamic column widths from the data.
-  final maxProvider =
-      entries.fold<int>(0, (m, e) => max(m, e.provider.name.length));
-  final maxName = entries.fold<int>(0, (m, e) => max(m, e.displayName.length));
-  final maxTag = entries.fold<int>(0, (m, e) => max(m, e.tagline.length));
-  final maxCost = entries.fold<int>(0, (m, e) => max(m, e.costLabel.length));
-
-  final flatLines = <String>[];
+  final rows = <Map<String, String>>[];
   final flatEntries = <ModelEntry>[];
   LlmProvider? lastProvider;
   var flatInitial = 0;
 
   for (final entry in entries) {
     final isCurrent = entry.modelId == currentModelId;
-
-    // Provider header: show name for first entry of a group, spaces otherwise.
     final providerHeader = entry.provider != lastProvider
-        ? '$yellow${entry.provider.name.padRight(maxProvider)}$rst  '
-        : ' ' * (maxProvider + 2);
+        ? entry.provider.name.styled.cyan.toString()
+        : '';
     lastProvider = entry.provider;
 
     final marker = isCurrent ? '\u25cf ' : '  ';
-    final name = entry.displayName.padRight(maxName);
-    final tag = entry.tagline.padRight(maxTag);
-    final cost = entry.costLabel.padRight(maxCost);
+    final name = entry.displayName;
+    final tag = entry.tagline.styled.dim.toString();
+    final cost = entry.costLabel;
     final speed = entry.speedLabel;
 
     if (isCurrent) flatInitial = flatEntries.length;
-    flatLines.add('$providerHeader$marker$name $dim$tag$rst $cost $speed');
+    rows.add({
+      'provider': providerHeader,
+      'marker': marker,
+      'name': name,
+      'tag': tag,
+      'cost': cost,
+      'speed': speed,
+    });
     flatEntries.add(entry);
   }
 
+  final table = TableFormatter.format(
+    columns: const [
+      TableColumn(key: 'provider', header: 'PROVIDER'),
+      TableColumn(key: 'marker', header: ''),
+      TableColumn(key: 'name', header: 'MODEL'),
+      TableColumn(key: 'tag', header: 'TAGLINE'),
+      TableColumn(key: 'cost', header: 'COST', align: TableAlign.right),
+      TableColumn(key: 'speed', header: 'SPEED', align: TableAlign.right),
+    ],
+    rows: rows,
+    maxTotalWidth: maxTotalWidth,
+    includeHeader: true,
+    includeHeaderInWidth: false,
+  );
+
   return ModelPanelLines(
-    lines: flatLines,
+    headerLines: table.headerLines,
+    lines: table.rowLines,
     entries: flatEntries,
     initialIndex: flatInitial,
   );

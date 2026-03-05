@@ -37,6 +37,7 @@ class TableFormatter {
     required List<TableColumn> columns,
     required List<Map<String, String>> rows,
     String gap = '  ',
+    int? maxTotalWidth,
     bool includeHeader = true,
     bool includeHeaderInWidth = true,
     bool includeDivider = true,
@@ -62,6 +63,12 @@ class TableFormatter {
       }
       widths[column.key] = width;
     }
+    _fitWidthsToBudget(
+      columns: columns,
+      widths: widths,
+      gapWidth: visibleLength(gap),
+      maxTotalWidth: maxTotalWidth,
+    );
 
     String padCell(String raw, TableColumn column) {
       final width = widths[column.key]!;
@@ -103,5 +110,44 @@ class TableFormatter {
       headerLines: headerLines,
       rowLines: rowLines,
     );
+  }
+
+  static void _fitWidthsToBudget({
+    required List<TableColumn> columns,
+    required Map<String, int> widths,
+    required int gapWidth,
+    required int? maxTotalWidth,
+  }) {
+    if (maxTotalWidth == null || maxTotalWidth <= 0 || columns.isEmpty) return;
+
+    int totalWidth() {
+      final cols = columns.fold<int>(0, (sum, c) => sum + (widths[c.key] ?? 0));
+      final gaps = gapWidth * (columns.isNotEmpty ? columns.length - 1 : 0);
+      return cols + gaps;
+    }
+
+    var currentTotal = totalWidth();
+    if (currentTotal <= maxTotalWidth) return;
+
+    while (currentTotal > maxTotalWidth) {
+      TableColumn? candidate;
+      var candidateSlack = 0;
+
+      for (final column in columns) {
+        final width = widths[column.key] ?? 0;
+        final slack = width - column.minWidth;
+        if (slack > candidateSlack) {
+          candidate = column;
+          candidateSlack = slack;
+        }
+      }
+
+      if (candidate == null || candidateSlack <= 0) {
+        break;
+      }
+
+      widths[candidate.key] = (widths[candidate.key] ?? 0) - 1;
+      currentTotal--;
+    }
   }
 }

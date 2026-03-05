@@ -228,6 +228,36 @@ void main() {
       expect(panel.handleEvent(CharEvent('a')), true);
     });
 
+    test('triggers editor callback via e key', () async {
+      var opened = 0;
+      final view = PanelModal(
+        title: 'VIEW',
+        lines: const ['one'],
+        onOpenInEditor: () async {
+          opened++;
+        },
+      );
+
+      view.handleEvent(CharEvent('e'));
+      await Future<void>.delayed(const Duration(milliseconds: 1));
+      expect(opened, 1);
+    });
+
+    test('triggers editor callback via Ctrl+E', () async {
+      var opened = 0;
+      final view = PanelModal(
+        title: 'VIEW',
+        lines: const ['one'],
+        onOpenInEditor: () async {
+          opened++;
+        },
+      );
+
+      view.handleEvent(KeyEvent(Key.ctrlE));
+      await Future<void>.delayed(const Duration(milliseconds: 1));
+      expect(opened, 1);
+    });
+
     test('returns false when already complete', () {
       panel.dismiss();
       expect(panel.handleEvent(KeyEvent(Key.down)), false);
@@ -257,6 +287,21 @@ void main() {
       final rendered = panel.render(80, 24, bg);
       final firstLine = rendered.first;
       expect(firstLine, contains('\x1b[2m'));
+    });
+
+    test('render with barrier none preserves ANSI background outside panel',
+        () {
+      final noBarrier = PanelModal(
+        title: 'TEST',
+        lines: const ['x'],
+        barrier: BarrierStyle.none,
+        width: PanelFixed(20),
+        height: PanelFixed(6),
+      );
+      final bg = List.generate(12, (_) => '\x1b[31m${'x' * 40}\x1b[0m');
+      final rendered = noBarrier.render(40, 12, bg);
+      final centerRow = rendered[5];
+      expect(centerRow, contains('\x1b[31m'));
     });
   });
 

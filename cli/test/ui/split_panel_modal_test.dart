@@ -2,6 +2,7 @@ import 'package:test/test.dart';
 
 import 'package:glue/src/rendering/ansi_utils.dart';
 import 'package:glue/src/terminal/terminal.dart';
+import 'package:glue/src/ui/panel_modal.dart';
 import 'package:glue/src/ui/split_panel_modal.dart';
 
 void main() {
@@ -108,6 +109,20 @@ void main() {
       final between = selectedLine.substring(afterOpen, closeTag);
       expect(between.contains('\x1b[0m'), isFalse,
           reason: 'ANSI reset inside selection breaks reverse video');
+    });
+
+    test('barrier none keeps ANSI background on rows with overlay', () {
+      final ansiPanel = SplitPanelModal(
+        title: 'TEST',
+        leftItems: ['item-a', 'item-b'],
+        buildRightLines: (idx, width) => ['Detail $idx'],
+        barrier: BarrierStyle.none,
+      );
+      final bg = List.generate(20, (_) => '\x1b[35m${'x' * 80}\x1b[0m');
+      final grid = ansiPanel.render(80, 20, bg);
+      final centerRow = grid[10];
+      expect(centerRow, contains('\x1b[35m'));
+      expect(visibleLength(centerRow), equals(80));
     });
   });
 }

@@ -40,23 +40,38 @@ int visibleLength(String text) {
 /// sequences (both CSI and OSC) and handling wide characters.
 /// Appends '…' if truncated.
 String ansiTruncate(String text, int maxVisible) {
+  if (maxVisible <= 0) return '';
+  if (maxVisible == 1) return visibleLength(text) <= 1 ? text : '…';
   if (visibleLength(text) <= maxVisible) return text;
   final buf = StringBuffer();
   int visible = 0;
   var i = 0;
+  var sawAnsi = false;
+  var hasOpenOsc8 = false;
   while (i < text.length && visible < maxVisible - 1) {
     // Skip CSI sequences
     final csiMatch = _csiPattern.matchAsPrefix(text, i);
     if (csiMatch != null) {
-      buf.write(csiMatch.group(0));
-      i += csiMatch.group(0)!.length;
+      final seq = csiMatch.group(0)!;
+      sawAnsi = true;
+      buf.write(seq);
+      i += seq.length;
       continue;
     }
     // Skip OSC sequences
     final oscMatch = _oscPattern.matchAsPrefix(text, i);
     if (oscMatch != null) {
-      buf.write(oscMatch.group(0));
-      i += oscMatch.group(0)!.length;
+      final seq = oscMatch.group(0)!;
+      sawAnsi = true;
+      if (seq.startsWith('\x1b]8;;')) {
+        if (seq == '\x1b]8;;\x07') {
+          hasOpenOsc8 = false;
+        } else {
+          hasOpenOsc8 = true;
+        }
+      }
+      buf.write(seq);
+      i += seq.length;
       continue;
     }
     final codeUnit = text.codeUnitAt(i);
@@ -82,6 +97,13 @@ String ansiTruncate(String text, int maxVisible) {
     i += advance;
   }
   buf.write('…');
+  if (hasOpenOsc8) {
+    buf.write('\x1b]8;;\x07');
+  }
+  if (sawAnsi) {
+    // Ensure truncated styled text never leaks attributes into subsequent cells.
+    buf.write('\x1b[0m');
+  }
   return buf.toString();
 }
 

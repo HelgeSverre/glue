@@ -25,6 +25,8 @@ import 'package:glue/src/orchestrator/permission_gate.dart';
 import 'package:glue/src/orchestrator/tool_permissions.dart';
 import 'package:glue/src/rendering/block_renderer.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
+import 'package:glue/src/rendering/markdown_renderer.dart';
+import 'package:glue/src/plans/plan_store.dart';
 import 'package:glue/src/rendering/mascot.dart';
 import 'package:glue/src/shell/command_executor.dart';
 import 'package:glue/src/shell/host_executor.dart';
@@ -49,17 +51,18 @@ import 'package:glue/src/ui/slash_autocomplete.dart';
 import 'package:glue/src/observability/debug_controller.dart';
 import 'package:glue/src/observability/observability.dart';
 
-part 'app_event_router.dart';
-part 'app_agent_orchestration.dart';
-part 'app_command_helpers.dart';
-part 'app_events.dart';
-part 'app_models.dart';
-part 'app_render_pipeline.dart';
-part 'app_session_runtime.dart';
-part 'app_splash_runtime.dart';
-part 'app_shell_runtime.dart';
-part 'app_subagent_updates.dart';
-part 'app_terminal_event_router.dart';
+part 'app/event_router.dart';
+part 'app/agent_orchestration.dart';
+part 'app/command_helpers.dart';
+part 'app/events.dart';
+part 'app/models.dart';
+part 'app/render_pipeline.dart';
+part 'app/session_runtime.dart';
+part 'app/splash_runtime.dart';
+part 'app/shell_runtime.dart';
+part 'app/subagent_updates.dart';
+part 'app/terminal_event_router.dart';
+part 'app/plans.dart';
 
 // ---------------------------------------------------------------------------
 // Application state
@@ -151,6 +154,7 @@ class App {
   late final AtFileHint _atHint;
   late final ShellAutocomplete _shellComplete;
   late final SessionManager _sessionManager;
+  late final PlanStore _planStore;
   bool _titleGenerated = false;
   bool _bashMode = false;
   Process? _bashRunProcess;
@@ -218,7 +222,12 @@ class App {
       environment: _environment,
       sessionStore: sessionStore,
     );
-    _panels = PanelController(panelStack: _panelStack, render: _render);
+    _planStore = PlanStore(environment: _environment, cwd: _cwd);
+    _panels = PanelController(
+      panelStack: _panelStack,
+      render: _render,
+      terminalWidth: () => terminal.columns,
+    );
     _skillRuntime = skillRuntime ??
         SkillRuntime(
           cwd: _cwd,
@@ -456,6 +465,7 @@ class App {
       openDevTools: _openDevTools,
       toggleDebug: _toggleDebugMode,
       openSkillsPanel: _openSkillsPanel,
+      openPlansPanel: _openPlansPanel,
     );
   }
 
@@ -605,6 +615,18 @@ class App {
       _render();
     }));
     _render();
+  }
+
+  void _openPlansPanel() {
+    _openPlansPanelImpl(this);
+  }
+
+  void _openPlanViewer(PlanDocument plan) {
+    _openPlanViewerImpl(this, plan);
+  }
+
+  Future<void> _openPlanInEditor(String path) async {
+    await _openPlanInEditorImpl(this, path);
   }
 
   SkillsDockedPanel? _findSkillsDockedPanel() {

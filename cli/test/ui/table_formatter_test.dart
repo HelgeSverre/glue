@@ -40,5 +40,24 @@ void main() {
       expect(stripAnsi(table.rowLines.first), endsWith('…'));
       expect(visibleLength(table.rowLines.first), lessThanOrEqualTo(6));
     });
+
+    test('fits rows to max total width budget', () {
+      final table = TableFormatter.format(
+        columns: const [
+          TableColumn(key: 'id', header: 'ID', minWidth: 2),
+          TableColumn(key: 'name', header: 'NAME', minWidth: 4),
+          TableColumn(key: 'path', header: 'PATH', minWidth: 6),
+        ],
+        rows: const [
+          {'id': 's1', 'name': 'session-alpha', 'path': '/very/long/path/here'},
+        ],
+        gap: ' ',
+        maxTotalWidth: 20,
+      );
+
+      expect(table.headerLines, isNotEmpty);
+      expect(visibleLength(table.headerLines.first), lessThanOrEqualTo(20));
+      expect(visibleLength(table.rowLines.first), lessThanOrEqualTo(20));
+    });
   });
 }

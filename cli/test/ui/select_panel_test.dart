@@ -1,4 +1,5 @@
 import 'package:glue/src/terminal/terminal.dart';
+import 'package:glue/src/rendering/ansi_utils.dart';
 import 'package:glue/src/ui/panel_modal.dart';
 import 'package:glue/src/ui/select_panel.dart';
 import 'package:test/test.dart';
@@ -64,6 +65,20 @@ void main() {
 
       final lines = panel.render(100, 24, const []);
       expect(lines, hasLength(24));
+    });
+
+    test('barrier none keeps ANSI background on rows with overlay', () {
+      final panel = SelectPanel<String>(
+        title: 'Pick',
+        options: const [SelectOption(value: 'alpha', label: 'alpha')],
+        searchEnabled: false,
+        barrier: BarrierStyle.none,
+      );
+      final bg = List.generate(18, (_) => '\x1b[36m${'x' * 80}\x1b[0m');
+      final lines = panel.render(80, 18, bg);
+      final centerRow = lines[9];
+      expect(centerRow, contains('\x1b[36m'));
+      expect(visibleLength(centerRow), equals(80));
     });
   });
 }

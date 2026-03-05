@@ -366,10 +366,28 @@ class SelectPanel<T> implements PanelOverlay {
 
   String _spliceRow(
       String bgLine, int leftCol, int panelW, String overlay, int termWidth) {
-    final bgPlain = stripAnsi(bgLine).padRight(termWidth);
-    final before = bgPlain.substring(0, max(0, leftCol));
+    final bgVisible = visibleLength(bgLine);
+    final paddedBg = bgVisible < termWidth
+        ? '$bgLine${' ' * (termWidth - bgVisible)}'
+        : bgLine;
+    final safeLeft = leftCol.clamp(0, termWidth);
     final afterStart = min(termWidth, leftCol + panelW);
-    final after = bgPlain.substring(afterStart);
+    final beforeSlice = paddedBg.substring(0, _ansiIndex(paddedBg, safeLeft));
+    final afterSlice = paddedBg.substring(_ansiIndex(paddedBg, afterStart));
+    if (barrier == BarrierStyle.none) {
+      return '$beforeSlice$overlay$afterSlice';
+    }
+    final before = _applyBarrierStyle(stripAnsi(beforeSlice));
+    final after = _applyBarrierStyle(stripAnsi(afterSlice));
     return '$before$overlay$after';
+  }
+
+  String _applyBarrierStyle(String text) {
+    if (text.isEmpty) return text;
+    return switch (barrier) {
+      BarrierStyle.dim => '${text.styled.dim}',
+      BarrierStyle.obscure => '${text.styled.gray}',
+      BarrierStyle.none => text,
+    };
   }
 }

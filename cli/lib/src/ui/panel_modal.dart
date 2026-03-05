@@ -51,7 +51,7 @@ List<String> _renderSimple(int width, int height, String title) {
   final titleStr = ' $title ';
   final fillCount = max(innerWidth - titleStr.length - 1, 0);
   final top = '\x1b[2m┌─\x1b[0m'
-      '\x1b[33m$titleStr\x1b[0m'
+      '\x1b[36m$titleStr\x1b[0m'
       '\x1b[2m${'─' * fillCount}┐\x1b[0m';
   lines.add(top);
 
@@ -72,17 +72,17 @@ List<String> _renderHeavy(int width, int height, String title) {
   final innerWidth = width - 2;
   final titleStr = ' $title ';
   final fillCount = max(innerWidth - titleStr.length - 1, 0);
-  final top = '\x1b[33m╔═$titleStr${'═' * fillCount}╗\x1b[0m';
+  final top = '\x1b[36m╔═$titleStr${'═' * fillCount}╗\x1b[0m';
   lines.add(top);
 
-  final interior = '\x1b[33m║\x1b[0m'
+  final interior = '\x1b[36m║\x1b[0m'
       '${' ' * innerWidth}'
-      '\x1b[33m║\x1b[0m';
+      '\x1b[36m║\x1b[0m';
   for (var i = 1; i < height - 1; i++) {
     lines.add(interior);
   }
 
-  final bottom = '\x1b[33m╚${'═' * innerWidth}╝\x1b[0m';
+  final bottom = '\x1b[36m╚${'═' * innerWidth}╝\x1b[0m';
   lines.add(bottom);
   return lines;
 }
@@ -97,20 +97,20 @@ List<String> _renderTape(int width, int height, String title) {
   final suffixLen = max(width - titleStr.length - prefixLen, 0);
   final prefixTape = _repeatTape(tapePattern, prefixLen);
   final suffixTape = _repeatTape(tapePattern, suffixLen);
-  final top = '\x1b[33m$prefixTape\x1b[0m'
-      '\x1b[30;43m$titleStr\x1b[0m'
-      '\x1b[33m$suffixTape\x1b[0m';
+  final top = '\x1b[36m$prefixTape\x1b[0m'
+      '\x1b[30;46m$titleStr\x1b[0m'
+      '\x1b[36m$suffixTape\x1b[0m';
   lines.add(top);
 
-  final interior = '\x1b[33m│\x1b[0m'
+  final interior = '\x1b[36m│\x1b[0m'
       '${' ' * innerWidth}'
-      '\x1b[33m│\x1b[0m';
+      '\x1b[36m│\x1b[0m';
   for (var i = 1; i < height - 1; i++) {
     lines.add(interior);
   }
 
   final bottomTape = _repeatTape(tapePattern, width);
-  final bottom = '\x1b[33m$bottomTape\x1b[0m';
+  final bottom = '\x1b[36m$bottomTape\x1b[0m';
   lines.add(bottom);
   return lines;
 }
@@ -153,6 +153,7 @@ class PanelModal implements PanelOverlay {
   final PanelSize _height;
   final bool dismissable;
   final bool selectable;
+  final FutureOr<void> Function()? onOpenInEditor;
 
   int _scrollOffset = 0;
   int _selectedIndex;
@@ -170,6 +171,7 @@ class PanelModal implements PanelOverlay {
     PanelSize? height,
     this.dismissable = true,
     this.selectable = false,
+    this.onOpenInEditor,
     int initialIndex = 0,
   })  : _width = width ?? PanelFluid(0.7, 40),
         _height = height ?? PanelFluid(0.7, 10),
@@ -216,6 +218,11 @@ class PanelModal implements PanelOverlay {
           if (!_completer.isCompleted) _completer.complete();
         }
         return true;
+      case KeyEvent(key: Key.ctrlE):
+        if (onOpenInEditor != null) {
+          unawaited(Future.sync(onOpenInEditor!));
+        }
+        return true;
       case KeyEvent(key: Key.up):
         if (selectable) {
           _selectedIndex = max<int>(0, _selectedIndex - 1);
@@ -251,6 +258,11 @@ class PanelModal implements PanelOverlay {
           _scrollOffset = min<int>(maxScroll, _scrollOffset + visibleH);
         } else {
           _scrollOffset = min<int>(maxScroll, _scrollOffset + visibleH);
+        }
+        return true;
+      case CharEvent(char: 'e', alt: false):
+        if (onOpenInEditor != null) {
+          unawaited(Future.sync(onOpenInEditor!));
         }
         return true;
       default:
@@ -355,12 +367,29 @@ class PanelModal implements PanelOverlay {
 
   String _spliceRow(
       String bgLine, int leftCol, int panelW, String overlay, int termWidth) {
-    final bgPlain = stripAnsi(bgLine);
-    final padded = bgPlain.padRight(termWidth);
-    final before = padded.substring(0, max(0, leftCol));
-    final after = leftCol + panelW < padded.length
-        ? padded.substring(leftCol + panelW)
-        : '';
-    return '$before$overlay${' ' * max(0, panelW - visibleLength(overlay))}$after';
+    final bgVisible = visibleLength(bgLine);
+    final paddedBg = bgVisible < termWidth
+        ? '$bgLine${' ' * (termWidth - bgVisible)}'
+        : bgLine;
+    final safeLeft = leftCol.clamp(0, termWidth);
+    final safeRight = (leftCol + panelW).clamp(0, termWidth);
+    final beforeSlice = paddedBg.substring(0, _ansiIndex(paddedBg, safeLeft));
+    final afterSlice = paddedBg.substring(_ansiIndex(paddedBg, safeRight));
+    final overlayPad = max(0, panelW - visibleLength(overlay));
+    if (barrier == BarrierStyle.none) {
+      return '$beforeSlice$overlay${' ' * overlayPad}$afterSlice';
+    }
+    final before = _applyBarrierStyle(stripAnsi(beforeSlice));
+    final after = _applyBarrierStyle(stripAnsi(afterSlice));
+    return '$before$overlay${' ' * overlayPad}$after';
+  }
+
+  String _applyBarrierStyle(String text) {
+    if (text.isEmpty) return text;
+    return switch (barrier) {
+      BarrierStyle.dim => '${text.styled.dim}',
+      BarrierStyle.obscure => '${text.styled.gray}',
+      BarrierStyle.none => text,
+    };
   }
 }
