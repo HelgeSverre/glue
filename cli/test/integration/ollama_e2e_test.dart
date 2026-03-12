@@ -130,8 +130,8 @@ void main() {
         final result = await runner.runToCompletion(
           'Use the list_directory tool to list "." and tell me if pubspec.yaml exists.',
         );
-        expect(result.toLowerCase(),
-            anyOf(contains('yes'), contains('pubspec')));
+        expect(
+            result.toLowerCase(), anyOf(contains('yes'), contains('pubspec')));
       });
     }, timeout: const Timeout(Duration(seconds: 120)));
 
