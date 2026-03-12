@@ -28,13 +28,27 @@ jobs:
       - name: Install Ollama
         run: curl -fsSL https://ollama.com/install.sh | sh
 
+      - name: Cache Ollama model
+        id: cache-ollama
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama/models
+          key: ollama-qwen3-1.7b
+
       - name: Start Ollama
         run: |
           ollama serve > /tmp/ollama.log 2>&1 &
           sleep 5
 
-      - name: Pull qwen model
-        run: ollama pull qwen2.5:7b
+      - name: Pull model
+        if: steps.cache-ollama.outputs.cache-hit != 'true'
+        run: ollama pull qwen3:1.7b
+
+      - name: Warm up model
+        run: |
+          curl -s http://localhost:11434/api/generate \
+            -d '{"model": "qwen3:1.7b", "prompt": "hi", "keep_alive": -1}' \
+            > /dev/null
 
       - name: Run e2e tests
         run: dart test --run-skipped -t e2e

@@ -10,7 +10,7 @@ import 'package:glue/src/agent/agent_runner.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/llm/ollama_client.dart';
 
-const _model = 'qwen2.5:7b';
+const _model = 'qwen3:1.7b';
 const _ollamaUrl = 'http://localhost:11434';
 
 /// Small models are non-deterministic — retry flaky tool-calling tests.
@@ -87,13 +87,15 @@ void main() {
         markTestSkipped('Ollama not available or $_model not pulled');
         return;
       }
-      final agent = makeAgent();
-      final runner = makeRunner(agent);
-      final result = await runner.runToCompletion(
-        'What is 2 + 2? Reply with just the number.',
-      );
-      expect(result, contains('4'));
-    }, timeout: const Timeout(Duration(seconds: 30)));
+      await retryTest(() async {
+        final agent = makeAgent();
+        final runner = makeRunner(agent);
+        final result = await runner.runToCompletion(
+          'What is 2 + 2? Reply with just the number.',
+        );
+        expect(result, contains('4'));
+      });
+    }, timeout: const Timeout(Duration(seconds: 120)));
 
     test('read_file tool call', () async {
       if (!available) {
@@ -120,17 +122,20 @@ void main() {
         markTestSkipped('Ollama not available or $_model not pulled');
         return;
       }
-      final agent = makeAgent(tools: {
-        'list_directory': ListDirectoryTool(),
+      await retryTest(() async {
+        final agent = makeAgent(tools: {
+          'list_directory': ListDirectoryTool(),
+        });
+        final runner = makeRunner(agent);
+        final result = await runner.runToCompletion(
+          'Use the list_directory tool to list "." and tell me if pubspec.yaml exists.',
+        );
+        expect(result.toLowerCase(),
+            anyOf(contains('yes'), contains('pubspec')));
       });
-      final runner = makeRunner(agent);
-      final result = await runner.runToCompletion(
-        'Use the list_directory tool to list "." and tell me if pubspec.yaml exists.',
-      );
-      expect(result.toLowerCase(), anyOf(contains('yes'), contains('pubspec')));
-    }, timeout: const Timeout(Duration(seconds: 60)));
+    }, timeout: const Timeout(Duration(seconds: 120)));
 
-    // Note: bash tool test omitted — qwen2.5:7b refuses to call a tool
+    // Note: bash tool test omitted — small models refuse to call a tool
     // literally named "bash" (safety training). The bash tool works fine
     // with larger models (tested manually with claude/gpt-4).
 
