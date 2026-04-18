@@ -25,9 +25,9 @@ void _handleTerminalEventImpl(App app, TerminalEvent event) {
         return;
       }
 
-      // Permission mode cycling — works in all modes.
+      // Interaction mode cycling — works in all modes.
       if (event case KeyEvent(key: Key.shiftTab)) {
-        app._permissionMode = app._permissionMode.next;
+        app._interactionMode = app._interactionMode.next;
         app._syncToolFilter();
         app._render();
         return;

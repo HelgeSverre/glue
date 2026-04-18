@@ -64,18 +64,20 @@ class _ThemeDemoApp {
 ## Goals
 - Shift+Tab enters plan capture mode
 - Ask clarifying questions before drafting
-- Save, run now, or run in background
+- Save to one stable markdown file
+- Run now or dispatch in background only after explicit handoff
 
 ## Actions
-1. Build `PlanStore` index + metadata.
-2. Add `/plans` searchable browser.
-3. Add plan viewer with markdown rendering.
-4. Add open-in-editor shortcut.
+1. Add `PlanDraftSession` state for clarify -> draft -> revise.
+2. Add `/plans` searchable browser for saved files only.
+3. Add floating draft preview panel with visible actions.
+4. Add open-in-editor and run handoff from the saved draft.
 
 ## Exit Criteria
 - Can browse plans from workspace + global paths.
 - Plan preview scrolls cleanly.
 - Editing in `\$EDITOR` returns to TUI cleanly.
+- `/plans` stays a clean library, not a status dashboard.
 ''',
     ),
     _DemoPlanDoc(
@@ -108,8 +110,8 @@ Switching projects currently requires tabs/tmux context juggling.
 - `background`: detached, stream updates into run log
 
 ## UI
-- `/plans` list includes status, workspace, age.
-- selecting a running plan opens live event stream.
+- `/plans` list includes title, source, workspace path, age.
+- workspace/session switcher shows attached execution state and live event stream.
 - failed runs show concise summary + jump to logs.
 ''',
     ),

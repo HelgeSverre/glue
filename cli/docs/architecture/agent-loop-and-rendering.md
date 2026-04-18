@@ -616,27 +616,31 @@ observability:
 
 ---
 
-## 16. Permission Modes & Tool Approval
+## 16. Interaction Modes & Tool Approval
 
-Permission modes control the degree of human-in-the-loop oversight for tool execution. The current mode is shown in the status bar and cycled with Shift+Tab.
+Glue now splits tool visibility from approval policy. Shift+Tab cycles the interaction mode shown in the status bar, while approval is toggled separately.
 
 ```
-PermissionMode (enum)
+InteractionMode (enum)
 │
-├─ confirm         — default; ask for untrusted tools
-├─ acceptEdits     — auto-approve file edits, ask for shell
-├─ ignorePermissions — auto-approve everything (YOLO)
-└─ readOnly        — deny all mutating tools (not sent to LLM)
+├─ code       — all tool groups available
+├─ architect  — read + MCP, plus markdown edits only
+└─ ask        — read + MCP only
+
+ApprovalMode (enum)
+│
+├─ confirm    — default; ask for untrusted mutating tools
+└─ auto       — auto-approve all allowed tools
 ```
 
 Each `Tool` declares a `ToolTrust` level:
 
-| ToolTrust  | Auto-approved when                   | Examples                                                |
-| ---------- | ------------------------------------ | ------------------------------------------------------- |
-| `safe`     | Always (except readOnly)             | `read_file`, `grep`, `skill`, `web_search`, `web_fetch` |
-| `fileEdit` | `acceptEdits` or `ignorePermissions` | `write_file`, `edit_file`                               |
-| `command`  | `ignorePermissions` only             | `bash`                                                  |
+| ToolTrust  | Auto-approved when                | Examples                                                |
+| ---------- | --------------------------------- | ------------------------------------------------------- |
+| `safe`     | Always                            | `read_file`, `grep`, `skill`, `web_search`, `web_fetch` |
+| `fileEdit` | In `auto`, or in `confirm` if trusted | `write_file`, `edit_file`                               |
+| `command`  | In `auto`, or in `confirm` if trusted | `bash`                                                  |
 
-The approval flow (section 10) consults both the permission mode and the tool's trust level to decide whether to auto-approve, show a confirmation modal, or deny outright.
+The approval flow (section 10) consults both the active interaction mode and the tool's trust level to decide whether to expose the tool, auto-approve it, show a confirmation modal, or deny it outright.
 
-In `readOnly` mode, tools with trust `fileEdit` or `command` are excluded from the tool list sent to the LLM, so the model cannot even attempt to call them.
+In `ask` mode, tools with trust `fileEdit` or `command` are excluded from the tool list sent to the LLM, so the model cannot even attempt to call them.

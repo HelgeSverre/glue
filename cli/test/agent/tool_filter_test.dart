@@ -58,7 +58,7 @@ void main() {
       ]);
     });
 
-    test('readOnly filter excludes mutating tools', () async {
+    test('read-only filter excludes mutating tools', () async {
       agent.toolFilter = (tool) => !tool.isMutating;
       await agent.run('hello').toList();
       expect(llm.receivedToolNames, [

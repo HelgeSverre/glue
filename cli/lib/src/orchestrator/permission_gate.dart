@@ -1,19 +1,23 @@
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/tools.dart';
-import 'package:glue/src/config/permission_mode.dart';
-import 'package:path/path.dart' as p;
+import 'package:glue/src/config/interaction_mode.dart';
 
 enum PermissionDecision { allow, ask, deny }
 
 /// Pure permission decision logic for tool calls.
+///
+/// Combines [InteractionMode] (which tools are available) with
+/// [ApprovalMode] (whether to confirm before execution).
 class PermissionGate {
-  final PermissionMode permissionMode;
+  final InteractionMode interactionMode;
+  final ApprovalMode approvalMode;
   final Set<String> trustedTools;
   final Map<String, Tool> tools;
   final String cwd;
 
   const PermissionGate({
-    required this.permissionMode,
+    required this.interactionMode,
+    required this.approvalMode,
     required this.trustedTools,
     required this.tools,
     required this.cwd,
@@ -21,57 +25,55 @@ class PermissionGate {
 
   PermissionDecision resolve(ToolCall call) {
     final tool = tools[call.name];
+    if (tool == null) return PermissionDecision.deny;
 
-    switch (permissionMode) {
-      case PermissionMode.ignorePermissions:
-        return PermissionDecision.allow;
+    final group = tool.group;
 
-      case PermissionMode.readOnly:
-        if (tool != null && tool.isMutating) return PermissionDecision.deny;
-        return PermissionDecision.allow;
-
-      case PermissionMode.acceptEdits:
-        if (isTrusted(call.name)) return PermissionDecision.allow;
-        if (tool != null && tool.trust == ToolTrust.fileEdit) {
-          if (targetsPathOutsideCwd(call)) return PermissionDecision.ask;
-          return PermissionDecision.allow;
-        }
-        return PermissionDecision.ask;
-
-      case PermissionMode.confirm:
-        if (isTrusted(call.name)) return PermissionDecision.allow;
-        return PermissionDecision.ask;
+    // 1. Check if the interaction mode allows this tool group at all.
+    if (!interactionMode.allowsGroup(group)) {
+      return PermissionDecision.deny;
     }
+
+    // 2. Architect mode: edit tools only for .md files.
+    if (interactionMode == InteractionMode.architect &&
+        group == ToolGroup.edit) {
+      if (!_targetsMarkdownFile(call)) {
+        return PermissionDecision.deny;
+      }
+    }
+
+    // 3. Apply approval mode.
+    if (approvalMode == ApprovalMode.auto) {
+      return PermissionDecision.allow;
+    }
+
+    // confirm mode: safe tools and trusted tools auto-approve.
+    if (!tool.isMutating || isTrusted(call.name)) {
+      return PermissionDecision.allow;
+    }
+
+    return PermissionDecision.ask;
   }
 
   bool isTrusted(String toolName) => trustedTools.contains(toolName);
 
-  bool targetsPathOutsideCwd(ToolCall call) {
+  bool _targetsMarkdownFile(ToolCall call) {
     final rawPath = call.arguments['path'] as String? ??
         call.arguments['file_path'] as String?;
     if (rawPath == null) return false;
-    final resolved = p.normalize(
-      p.isAbsolute(rawPath) ? rawPath : p.join(cwd, rawPath),
-    );
-    return !p.isWithin(cwd, resolved) && resolved != cwd;
+    return rawPath.endsWith('.md');
   }
 
   /// Whether this tool needs confirmation at ToolCallPending time.
   bool needsEarlyConfirmation(String toolName) {
     final tool = tools[toolName];
+    if (tool == null) return true;
 
-    switch (permissionMode) {
-      case PermissionMode.ignorePermissions:
-      case PermissionMode.readOnly:
-        return false;
+    if (!interactionMode.allowsGroup(tool.group)) return false;
 
-      case PermissionMode.acceptEdits:
-        if (isTrusted(toolName)) return false;
-        if (tool != null && tool.trust == ToolTrust.fileEdit) return false;
-        return true;
-
-      case PermissionMode.confirm:
-        return !isTrusted(toolName);
-    }
+    if (approvalMode == ApprovalMode.auto) return false;
+    if (isTrusted(toolName)) return false;
+    if (!tool.isMutating) return false;
+    return true;
   }
 }

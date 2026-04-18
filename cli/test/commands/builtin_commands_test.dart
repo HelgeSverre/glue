@@ -33,6 +33,8 @@ void main() {
         activateSkillByName: activateSkillByName ?? (_) => '',
         openPlansPanel: openPlansPanel ?? () {},
         openPlanByQuery: openPlanByQuery ?? (_) => '',
+        switchMode: (_) => '',
+        toggleApproval: () => '',
       );
     }
 

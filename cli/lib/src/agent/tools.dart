@@ -24,16 +24,30 @@ class ToolParameter {
       };
 }
 
+/// Which group a tool belongs to for mode-based filtering.
+enum ToolGroup {
+  /// Read-only, side-effect-free tools (read_file, grep, list_directory, etc.).
+  read,
+
+  /// Tools that create or modify files (write_file, edit_file).
+  edit,
+
+  /// Tools that execute shell commands (bash).
+  command,
+
+  /// External integrations (MCP tools, web_search, web_browser).
+  mcp,
+}
+
 /// How much trust a tool requires from the permission system.
 enum ToolTrust {
   /// Read-only or side-effect-free tools. Auto-approved in most modes.
   safe,
 
-  /// Tools that create or modify files. Auto-approved in acceptEdits mode.
+  /// Tools that create or modify files.
   fileEdit,
 
-  /// Tools that execute arbitrary shell commands. Only auto-approved in
-  /// ignorePermissions mode.
+  /// Tools that execute arbitrary shell commands.
   command,
 }
 
@@ -62,6 +76,13 @@ abstract class Tool {
 
   /// Whether this tool can mutate state (files, shell commands, etc.).
   bool get isMutating => trust != ToolTrust.safe;
+
+  /// The tool group for mode-based filtering. Defaults based on [trust].
+  ToolGroup get group => switch (trust) {
+        ToolTrust.safe => ToolGroup.read,
+        ToolTrust.fileEdit => ToolGroup.edit,
+        ToolTrust.command => ToolGroup.command,
+      };
 
   /// Releases any resources held by this tool.
   Future<void> dispose() async {}
@@ -105,6 +126,8 @@ class ForwardingTool extends Tool {
   ToolTrust get trust => inner.trust;
   @override
   bool get isMutating => inner.isMutating;
+  @override
+  ToolGroup get group => inner.group;
   @override
   Future<void> dispose() => inner.dispose();
   @override

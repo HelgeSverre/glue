@@ -20,6 +20,8 @@ class BuiltinCommands {
     required String Function(String skillName) activateSkillByName,
     required void Function() openPlansPanel,
     required String Function(String query) openPlanByQuery,
+    required String Function(String modeName) switchMode,
+    required String Function() toggleApproval,
   }) {
     final commands = SlashCommandRegistry();
 
@@ -141,6 +143,30 @@ class BuiltinCommands {
         }
         return openPlanByQuery(args.join(' '));
       },
+    ));
+
+    commands.register(SlashCommand(
+      name: 'code',
+      description: 'Switch to code mode (all tools)',
+      execute: (_) => switchMode('code'),
+    ));
+
+    commands.register(SlashCommand(
+      name: 'architect',
+      description: 'Switch to architect mode (read + markdown write)',
+      execute: (_) => switchMode('architect'),
+    ));
+
+    commands.register(SlashCommand(
+      name: 'ask',
+      description: 'Switch to ask mode (read-only)',
+      execute: (_) => switchMode('ask'),
+    ));
+
+    commands.register(SlashCommand(
+      name: 'approve',
+      description: 'Toggle approval mode (confirm ↔ auto)',
+      execute: (_) => toggleApproval(),
     ));
 
     return commands;

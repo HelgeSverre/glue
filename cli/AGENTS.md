@@ -5,7 +5,7 @@
 - **Analyze:** `dart analyze`
 - **Test all:** `dart test`
 - **Single test:** `dart test test/slash_autocomplete_test.dart`
-- **E2E tests:** `dart test --run-skipped -t e2e` (requires Ollama + `qwen2.5:7b`)
+- **E2E tests:** `dart test --run-skipped -t e2e` (requires Ollama + `qwen3:1.7b`)
 - **Run:** `dart run bin/glue.dart`
 
 ## Architecture
@@ -29,11 +29,11 @@ Key directories: `agent/` (core loop, runner, manager), `llm/` (provider clients
 ## Testing
 
 - Unit tests: `dart test` (452+ tests, all should pass)
-- E2E integration tests: `dart test --run-skipped -t e2e` — requires Ollama running locally with `qwen2.5:7b` pulled (`ollama pull qwen2.5:7b`)
+- E2E integration tests: `dart test --run-skipped -t e2e` — requires Ollama running locally with `qwen3:1.7b` pulled (`ollama pull qwen3:1.7b`)
 - E2E tests use `AgentRunner` to exercise the full agent loop (LLM → tool call → tool execution → LLM response) headlessly, no terminal required
 - E2E tests are tagged `@Tags(['e2e'])` and skipped by default via `dart_test.yaml`
 - Small models are non-deterministic; e2e tests use a retry wrapper (3 attempts) for tool-calling tests
-- Note: `qwen2.5:7b` refuses to call a tool named "bash" (safety training); other tools work reliably
+- Note: small models refuse to call a tool named "bash" (safety training); other tools work reliably
 
 ## TUI Mockups
 

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:glue/src/core/environment.dart';
 import 'package:test/test.dart';
 import 'package:glue/src/config/glue_config.dart';
-import 'package:glue/src/config/permission_mode.dart';
+import 'package:glue/src/config/interaction_mode.dart';
 
 void main() {
   group('GlueConfig', () {
@@ -130,20 +130,22 @@ void main() {
       expect(config.bashMaxLines, 100);
     });
 
-    test('copyWith preserves titleModel, skillPaths, and permissionMode', () {
+    test('copyWith preserves titleModel, skillPaths, and interactionMode', () {
       final config = GlueConfig(
         provider: LlmProvider.anthropic,
         model: 'claude-sonnet-4-6',
         anthropicApiKey: 'sk-ant-test',
         titleModel: 'claude-haiku-4',
         skillPaths: const ['/opt/skills', '~/skills'],
-        permissionMode: PermissionMode.acceptEdits,
+        interactionMode: InteractionMode.architect,
+        approvalMode: ApprovalMode.auto,
       );
 
       final copied = config.copyWith(model: 'claude-opus-4-6');
       expect(copied.titleModel, 'claude-haiku-4');
       expect(copied.skillPaths, ['/opt/skills', '~/skills']);
-      expect(copied.permissionMode, PermissionMode.acceptEdits);
+      expect(copied.interactionMode, InteractionMode.architect);
+      expect(copied.approvalMode, ApprovalMode.auto);
     });
 
     test('load uses injected environment home for config.yaml', () {
@@ -154,7 +156,8 @@ provider: openai
 model: gpt-4.1-mini
 openai:
   api_key: sk-open-file
-permission_mode: read-only
+interaction_mode: ask
+approval_mode: auto
 skills:
   paths:
     - /opt/skills
@@ -167,7 +170,8 @@ skills:
       expect(config.provider, LlmProvider.openai);
       expect(config.model, 'gpt-4.1-mini');
       expect(config.openaiApiKey, 'sk-open-file');
-      expect(config.permissionMode, PermissionMode.readOnly);
+      expect(config.interactionMode, InteractionMode.ask);
+      expect(config.approvalMode, ApprovalMode.auto);
       expect(config.skillPaths, ['/opt/skills']);
     });
 

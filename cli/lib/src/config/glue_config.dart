@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:yaml/yaml.dart';
 import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/config/model_registry.dart';
-import 'package:glue/src/config/permission_mode.dart';
+import 'package:glue/src/config/interaction_mode.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/shell/docker_config.dart';
 import 'package:glue/src/shell/shell_config.dart';
@@ -65,7 +65,8 @@ class GlueConfig {
   final WebConfig webConfig;
   final ObservabilityConfig observability;
   final List<String> skillPaths;
-  final PermissionMode permissionMode;
+  final InteractionMode interactionMode;
+  final ApprovalMode approvalMode;
 
   GlueConfig({
     LlmProvider? provider,
@@ -83,7 +84,8 @@ class GlueConfig {
     WebConfig? webConfig,
     this.observability = const ObservabilityConfig(),
     this.skillPaths = const [],
-    this.permissionMode = PermissionMode.confirm,
+    this.interactionMode = InteractionMode.code,
+    this.approvalMode = ApprovalMode.confirm,
   })  : provider = provider ?? LlmProvider.anthropic,
         model = model ?? _defaultModel(provider ?? LlmProvider.anthropic),
         shellConfig = shellConfig ?? const ShellConfig(),
@@ -115,7 +117,8 @@ class GlueConfig {
       webConfig: webConfig,
       observability: observability ?? this.observability,
       skillPaths: skillPaths,
-      permissionMode: permissionMode,
+      interactionMode: interactionMode,
+      approvalMode: approvalMode,
     );
   }
 
@@ -458,15 +461,24 @@ class GlueConfig {
       }
     }
 
-    // 4. Parse permission mode.
-    final permModeStr = env['GLUE_PERMISSION_MODE'] ??
-        fileConfig?['permission_mode'] as String?;
-    final permissionMode = permModeStr != null
-        ? PermissionMode.values.firstWhere(
-            (m) => m.name == permModeStr || m.label == permModeStr,
-            orElse: () => PermissionMode.confirm,
+    // 4. Parse interaction mode and approval mode.
+    final interactionModeStr = env['GLUE_INTERACTION_MODE'] ??
+        fileConfig?['interaction_mode'] as String?;
+    final interactionMode = interactionModeStr != null
+        ? InteractionMode.values.firstWhere(
+            (m) =>
+                m.name == interactionModeStr || m.label == interactionModeStr,
+            orElse: () => InteractionMode.code,
           )
-        : PermissionMode.confirm;
+        : InteractionMode.code;
+    final approvalStr =
+        env['GLUE_APPROVAL_MODE'] ?? fileConfig?['approval_mode'] as String?;
+    final approvalMode = approvalStr != null
+        ? ApprovalMode.values.firstWhere(
+            (m) => m.name == approvalStr || m.label == approvalStr,
+            orElse: () => ApprovalMode.confirm,
+          )
+        : ApprovalMode.confirm;
 
     // 5. Parse skill paths.
     final skillPaths = <String>[];
@@ -500,7 +512,8 @@ class GlueConfig {
       webConfig: webConfig,
       observability: observabilityConfig,
       skillPaths: skillPaths,
-      permissionMode: permissionMode,
+      interactionMode: interactionMode,
+      approvalMode: approvalMode,
     );
   }
 }

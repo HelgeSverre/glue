@@ -28,6 +28,9 @@ class WebBrowserTool extends Tool {
   String get name => 'web_browser';
 
   @override
+  ToolGroup get group => ToolGroup.mcp;
+
+  @override
   String get description =>
       'Control a browser to interact with web pages that require JavaScript, '
       'authentication, or dynamic content. Supports navigation, screenshots, '

@@ -53,6 +53,7 @@ export 'src/agent/content_part.dart' show ContentPart, TextPart, ImagePart;
 export 'src/agent/tools.dart'
     show
         Tool,
+        ToolGroup,
         ToolTrust,
         ForwardingTool,
         ToolParameter,
@@ -65,7 +66,8 @@ export 'src/agent/tools.dart'
 export 'src/config/constants.dart' show AppConstants;
 export 'src/config/glue_config.dart'
     show GlueConfig, LlmProvider, AgentProfile, ConfigError, splitPathList;
-export 'src/config/permission_mode.dart' show PermissionMode, PermissionModeExt;
+export 'src/config/interaction_mode.dart'
+    show InteractionMode, InteractionModeExt, ApprovalMode, ApprovalModeExt;
 export 'src/config/model_registry.dart'
     show ModelRegistry, ModelEntry, ModelCapability, CostTier, SpeedTier;
 export 'src/llm/llm_factory.dart' show LlmClientFactory;

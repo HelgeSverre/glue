@@ -11,6 +11,9 @@ class WebSearchTool extends Tool {
   String get name => 'web_search';
 
   @override
+  ToolGroup get group => ToolGroup.mcp;
+
+  @override
   String get description =>
       'Search the web for information. Returns titles, URLs, and '
       'snippets from search results. Use web_fetch to read full '

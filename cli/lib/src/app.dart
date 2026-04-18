@@ -17,7 +17,7 @@ import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/config/model_registry.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/core/service_locator.dart';
-import 'package:glue/src/config/permission_mode.dart';
+import 'package:glue/src/config/interaction_mode.dart';
 import 'package:glue/src/dev/devtools.dart';
 import 'package:glue/src/llm/llm_factory.dart';
 import 'package:glue/src/llm/title_generator.dart';
@@ -172,7 +172,8 @@ class App {
   ObservabilitySpan? _turnSpan;
   final DebugController? _debugController;
   late final SkillRuntime _skillRuntime;
-  PermissionMode _permissionMode;
+  InteractionMode _interactionMode;
+  ApprovalMode _approvalMode;
   final Set<String> _earlyApprovedIds = {};
 
   App({
@@ -216,7 +217,8 @@ class App {
         _resumeSessionId = resumeSessionId,
         _obs = obs,
         _debugController = debugController,
-        _permissionMode = config?.permissionMode ?? PermissionMode.confirm {
+        _interactionMode = config?.interactionMode ?? InteractionMode.code,
+        _approvalMode = config?.approvalMode ?? ApprovalMode.confirm {
     _cwd = _environment.cwd;
     _sessionManager = SessionManager(
       environment: _environment,
@@ -245,7 +247,8 @@ class App {
   }
 
   PermissionGate get _permissionGate => PermissionGate(
-        permissionMode: _permissionMode,
+        interactionMode: _interactionMode,
+        approvalMode: _approvalMode,
         trustedTools: _autoApprovedTools,
         tools: agent.tools,
         cwd: _cwd,
@@ -470,7 +473,27 @@ class App {
       activateSkillByName: _activateSkillFromCommand,
       openPlansPanel: _openPlansPanel,
       openPlanByQuery: _openPlanFromCommand,
+      switchMode: _switchMode,
+      toggleApproval: _toggleApproval,
     );
+  }
+
+  String _switchMode(String name) {
+    final mode = InteractionMode.values.cast<InteractionMode?>().firstWhere(
+          (m) => m!.name == name,
+          orElse: () => null,
+        );
+    if (mode == null) return 'Unknown mode: $name';
+    _interactionMode = mode;
+    _syncToolFilter();
+    _render();
+    return 'Switched to ${mode.label} mode';
+  }
+
+  String _toggleApproval() {
+    _approvalMode = _approvalMode.toggle;
+    _render();
+    return 'Approval: ${_approvalMode.label}';
   }
 
   String _clearConversation() {

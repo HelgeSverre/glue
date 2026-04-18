@@ -145,7 +145,8 @@ void _handleAgentEventImpl(App app, AgentEvent event) {
           app._approveTool(call);
           return;
         }
-        // Path outside CWD in acceptEdits → fall through to modal.
+        // Full arguments can still change the decision (for example, a
+        // non-markdown edit in architect mode), so fall through and re-check.
       }
 
       // Permission-based approval.
@@ -221,12 +222,19 @@ void _cancelAgentImpl(App app) {
   app._render();
 }
 
+/// Updates the tool filter on the agent to match the current interaction mode.
+///
+/// Note: In architect mode, edit tools remain visible to the LLM (so it can
+/// propose .md edits), but [PermissionGate] enforces the markdown-only
+/// restriction per-call. This two-phase approach is intentional — the tool
+/// filter operates on [Tool] objects (no arguments), while the gate sees
+/// the full [ToolCall] with file paths.
 void _syncToolFilterImpl(App app) {
-  switch (app._permissionMode) {
-    case PermissionMode.readOnly:
-      app.agent.toolFilter = (tool) => !tool.isMutating;
-    default:
-      app.agent.toolFilter = null;
+  final mode = app._interactionMode;
+  if (mode == InteractionMode.code) {
+    app.agent.toolFilter = null;
+  } else {
+    app.agent.toolFilter = (tool) => mode.allowsGroup(tool.group);
   }
 }
 

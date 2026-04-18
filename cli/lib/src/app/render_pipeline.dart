@@ -208,14 +208,16 @@ void _doRenderImpl(App app) {
     AppMode.bashRunning => '! Running',
   };
   final shortCwd = app._shortenPath(app._cwd);
-  final permLabel = '[${app._permissionMode.label}]';
+  final modeLabel = app._approvalMode == ApprovalMode.auto
+      ? '[${app._interactionMode.label}\u00b7auto]'
+      : '[${app._interactionMode.label}]';
   final statusLeft = ' \x1b[1m$modeIndicator\x1b[22m ';
 
   const sep = ' │ ';
   final scrollSeg = app._scrollOffset > 0 ? '↑${app._scrollOffset}' : null;
   final rightSegs = [
     app._modelId,
-    permLabel,
+    modeLabel,
     shortCwd,
     if (scrollSeg != null) scrollSeg,
     'tok ${app.agent.tokenCount}',

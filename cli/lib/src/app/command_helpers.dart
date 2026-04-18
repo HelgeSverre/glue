@@ -33,7 +33,8 @@ String _buildSessionInfoImpl(App app) {
   buf.writeln('  Messages:     ${app.agent.conversation.length}');
   buf.writeln('  Tools:        ${app.agent.tools.length} registered');
   buf.writeln(
-      '  Permissions:  ${app._permissionMode.label} (Shift+Tab to cycle)');
+      '  Mode:         ${app._interactionMode.label} (Shift+Tab to cycle)');
+  buf.writeln('  Approval:     ${app._approvalMode.label}');
   buf.writeln('  Auto-approve: ${trustedList.join(", ")}');
   return buf.toString();
 }

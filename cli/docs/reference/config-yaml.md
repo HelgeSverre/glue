@@ -87,7 +87,8 @@ telemetry:
     endpoint: http://localhost:4318/v1/traces
     service_name: glue-cli
 
-permission_mode: confirm # read-only | confirm | accept-edits
+interaction_mode: code # code | architect | ask
+approval_mode: confirm # confirm | auto
 
 skills:
   paths:
@@ -102,7 +103,8 @@ skills:
 | `model` | string | Active model ID |
 | `title_model` | string | Model used for background session title generation |
 | `profiles` | map | Named provider/model pairs for subagents |
-| `permission_mode` | string | Tool approval policy |
+| `interaction_mode` | string | Tool visibility policy (`code`, `architect`, `ask`) |
+| `approval_mode` | string | Tool approval policy (`confirm`, `auto`) |
 | `skills.paths` | list | Extra skill search paths |
 
 ## Environment Overrides (selected)
@@ -114,6 +116,7 @@ skills:
 - Docker: `GLUE_DOCKER_ENABLED`, `GLUE_DOCKER_IMAGE`, `GLUE_DOCKER_SHELL`, `GLUE_DOCKER_MOUNTS`
 - Search provider: `GLUE_SEARCH_PROVIDER`
 - Skills paths: `GLUE_SKILLS_PATHS`
-- Permission mode: `GLUE_PERMISSION_MODE`
+- Interaction mode: `GLUE_INTERACTION_MODE`
+- Approval mode: `GLUE_APPROVAL_MODE`
 
 For exact parsing logic, see `lib/src/config/glue_config.dart`.

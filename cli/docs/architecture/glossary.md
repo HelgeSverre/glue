@@ -155,24 +155,32 @@ Session details panel. Contains:
 
 The yellow bar between output and input zones. Shows session title, branch, provider/model, token count, and relative time.
 
-## Permission Modes
+## Interaction & Approval Modes
 
-The `PermissionMode` enum (in `lib/src/config/permission_mode.dart`) controls how tool calls are approved. The user cycles through modes with Shift+Tab; the current mode is shown in the status bar.
+Glue now separates tool visibility from approval policy.
 
-| Mode                | Label          | Behavior                                              |
-| ------------------- | -------------- | ----------------------------------------------------- |
-| `confirm`           | `confirm`      | Ask for confirmation on untrusted tools (default)     |
-| `acceptEdits`       | `accept-edits` | Auto-approve file edits, still ask for shell commands |
-| `ignorePermissions` | `YOLO`         | Auto-approve everything — no confirmations            |
-| `readOnly`          | `read-only`    | Deny all mutating tools; they are not sent to the LLM |
+`InteractionMode` (in `lib/src/config/interaction_mode.dart`) controls which tool groups the LLM can see. Shift+Tab cycles between these modes, and the active mode appears in the status bar.
 
-Permission mode interacts with `ToolTrust` (in `lib/src/agent/tools.dart`):
+| Mode        | Behavior |
+| ----------- | -------- |
+| `code`      | All tool groups are available |
+| `architect` | Read + MCP tools, plus edits to `.md` files only |
+| `ask`       | Read + MCP tools only |
 
-| ToolTrust  | Examples                                                     | Auto-approved in                   |
-| ---------- | ------------------------------------------------------------ | ---------------------------------- |
-| `safe`     | `read_file`, `grep`, `list_directory`, `skill`, `web_search` | All modes except `readOnly`        |
-| `fileEdit` | `write_file`, `edit_file`                                    | `acceptEdits`, `ignorePermissions` |
-| `command`  | `bash`                                                       | `ignorePermissions` only           |
+`ApprovalMode` controls whether allowed mutating tools need confirmation.
+
+| Mode      | Behavior |
+| --------- | -------- |
+| `confirm` | Ask for confirmation on untrusted mutating tools (default) |
+| `auto`    | Auto-approve all allowed tools |
+
+Approval still interacts with `ToolTrust` (in `lib/src/agent/tools.dart`):
+
+| ToolTrust  | Examples                                                     | Behavior in `confirm` |
+| ---------- | ------------------------------------------------------------ | --------------------- |
+| `safe`     | `read_file`, `grep`, `list_directory`, `skill`, `web_search` | Auto-approved |
+| `fileEdit` | `write_file`, `edit_file`                                    | Requires confirmation unless trusted |
+| `command`  | `bash`                                                       | Requires confirmation unless trusted |
 
 ## Skills
 
