@@ -17,6 +17,7 @@ import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/config/glue_config.dart';
+import 'package:glue/src/core/clipboard.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/core/path_opener.dart';
 import 'package:glue/src/core/where_report.dart';
@@ -425,6 +426,7 @@ class App {
       openModelPanel: _openModelPanel,
       switchModelByQuery: _switchModelByQuery,
       sessionInfo: _buildSessionInfo,
+      sessionAction: _sessionAction,
       listTools: _buildToolsOutput,
       openHistoryPanel: _openHistoryPanel,
       historyActionByQuery: _historyFromCommand,
@@ -445,6 +447,7 @@ class App {
     _commands.attachArgCompleter('provider', _providerArgCandidates);
     _commands.attachArgCompleter('model', _modelArgCandidates);
     _commands.attachArgCompleter('skills', _skillsArgCandidates);
+    _commands.attachArgCompleter('session', _sessionArgCandidates);
   }
 
   String _buildPathsReport() => buildWhereReport(_environment);
@@ -516,6 +519,16 @@ class App {
   String _buildSessionInfo() {
     return _buildSessionInfoImpl(this);
   }
+
+  String _sessionAction(List<String> args) {
+    return _sessionActionImpl(this, args);
+  }
+
+  List<SlashArgCandidate> _sessionArgCandidates(
+    List<String> prior,
+    String partial,
+  ) =>
+      arg_completers.sessionArgCandidates(prior, partial);
 
   String _buildToolsOutput() {
     return _buildToolsOutputImpl(this);

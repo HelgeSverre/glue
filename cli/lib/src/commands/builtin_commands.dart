@@ -9,6 +9,7 @@ class BuiltinCommands {
     required void Function() openModelPanel,
     required String Function(String query) switchModelByQuery,
     required String Function() sessionInfo,
+    required String Function(List<String> args) sessionAction,
     required String Function() listTools,
     required void Function() openHistoryPanel,
     required String Function(String query) historyActionByQuery,
@@ -76,6 +77,12 @@ class BuiltinCommands {
       description: 'Show session info',
       hiddenAliases: ['status'],
       execute: (_) => sessionInfo(),
+    ));
+
+    commands.register(SlashCommand(
+      name: 'session',
+      description: 'Show current session info, or /session copy to copy ID',
+      execute: sessionAction,
     ));
 
     commands.register(SlashCommand(

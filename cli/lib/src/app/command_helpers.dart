@@ -79,6 +79,32 @@ String _buildSessionInfoImpl(App app) {
   return buf.toString();
 }
 
+String _sessionActionImpl(App app, List<String> args) {
+  final subcommand = args.isEmpty ? '' : args.first.toLowerCase();
+  switch (subcommand) {
+    case 'copy':
+      final sessionId = app._sessionManager.currentSessionId;
+      if (sessionId == null) {
+        return 'No active session yet — nothing to copy.';
+      }
+      unawaited(
+        copyToClipboard(sessionId).then((ok) {
+          app._addSystemMessage(
+            ok
+                ? 'Session ID copied to clipboard.\n  $sessionId'
+                : 'Could not access clipboard. Session ID:\n  $sessionId',
+          );
+          app._render();
+        }),
+      );
+      return '';
+    case '':
+      return _buildSessionInfoImpl(app);
+    default:
+      return 'Unknown subcommand "$subcommand". Try: /session copy';
+  }
+}
+
 String _buildToolsOutputImpl(App app) {
   final buf = StringBuffer('Available tools:\n');
   for (final tool in app.agent.tools.values) {

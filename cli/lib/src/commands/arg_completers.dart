@@ -104,3 +104,18 @@ List<SlashArgCandidate> skillCandidates(
           ))
       .toList();
 }
+
+const Map<String, String> sessionSubcommands = {
+  'copy': 'Copy session ID to clipboard',
+};
+
+List<SlashArgCandidate> sessionArgCandidates(
+  List<String> prior,
+  String partial,
+) {
+  if (prior.isNotEmpty) return const [];
+  return sessionSubcommands.entries
+      .where((e) => e.key.startsWith(partial))
+      .map((e) => SlashArgCandidate(value: e.key, description: e.value))
+      .toList();
+}

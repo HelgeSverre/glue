@@ -14,6 +14,7 @@ void main() {
       String Function(String query)? resumeSessionByQuery,
       String Function()? pathsReport,
       String Function(List<String> args)? openGlueTarget,
+      String Function(List<String> args)? sessionAction,
     }) {
       return BuiltinCommands.create(
         openHelpPanel: () {},
@@ -22,6 +23,7 @@ void main() {
         openModelPanel: () {},
         switchModelByQuery: (_) => '',
         sessionInfo: () => '',
+        sessionAction: sessionAction ?? (_) => '',
         listTools: () => '',
         openHistoryPanel: openHistoryPanel ?? () {},
         historyActionByQuery: historyActionByQuery ?? (_) => '',
@@ -195,6 +197,33 @@ void main() {
       final result = registry.execute('/open');
       expect(result, 'Usage: /open <target>');
       expect(received, isEmpty);
+    });
+
+    test('/session without args delegates to sessionAction with empty list', () {
+      List<String>? received;
+      final registry = createRegistry(
+        sessionAction: (args) {
+          received = args;
+          return 'Session Info';
+        },
+      );
+
+      final result = registry.execute('/session');
+      expect(result, 'Session Info');
+      expect(received, isEmpty);
+    });
+
+    test('/session copy delegates to sessionAction with [copy]', () {
+      List<String>? received;
+      final registry = createRegistry(
+        sessionAction: (args) {
+          received = args;
+          return '';
+        },
+      );
+
+      registry.execute('/session copy');
+      expect(received, ['copy']);
     });
   });
 }
