@@ -14,6 +14,7 @@ import 'package:glue/src/ui/api_key_prompt_panel.dart';
 import 'package:glue/src/ui/device_code_panel.dart';
 import 'package:glue/src/ui/model_panel_formatter.dart';
 import 'package:glue/src/ui/panel_modal.dart';
+import 'package:glue/src/ui/responsive_table.dart';
 import 'package:glue/src/ui/select_panel.dart';
 import 'package:glue/src/ui/table_formatter.dart';
 
@@ -137,30 +138,9 @@ class PanelController {
       return;
     }
 
-    final panelWidth = PanelFluid(0.7, 40);
-    final contentWidth = _contentWidthFor(panelWidth);
-    final rows = <Map<String, String>>[];
-    final options = <SelectOption<SessionMeta>>[];
-    for (var i = 0; i < sessions.length; i++) {
-      final s = sessions[i];
-      final ago = timeAgo(s.startTime);
-      final shortCwd = shortenPath(s.cwd);
-      final displayId = s.title ?? s.id;
-      rows.add({
-        'fork': s.forkedFrom != null ? '[F]'.styled.cyan.toString() : '',
-        'id': displayId.styled.cyan.toString(),
-        'model': s.modelRef,
-        'dir': shortCwd.styled.dim.toString(),
-        'age': ago.styled.dim.toString(),
-      });
-      options.add(SelectOption(
-        value: s,
-        label: '',
-        searchText: '$displayId ${s.modelRef} ${s.cwd} ${s.forkedFrom ?? ''}',
-      ));
-    }
+    final panelWidth = PanelFluid(0.8, 40);
 
-    final table = TableFormatter.format(
+    final table = ResponsiveTable<SessionMeta>(
       columns: const [
         TableColumn(key: 'fork', header: 'FORK', maxWidth: 4),
         TableColumn(key: 'id', header: 'ID', maxWidth: 24),
@@ -173,29 +153,43 @@ class PanelController {
           maxWidth: 10,
         ),
       ],
-      rows: rows,
+      rows: sessions,
       gap: ' ',
-      maxTotalWidth: contentWidth,
-      includeHeader: true,
       includeHeaderInWidth: true,
+      getValues: (s) {
+        final displayId = s.title ?? s.id;
+        return {
+          'fork': s.forkedFrom != null ? '[F]'.styled.cyan.toString() : '',
+          'id': displayId.styled.cyan.toString(),
+          'model': s.modelRef,
+          'dir': shortenPath(s.cwd).styled.dim.toString(),
+          'age': timeAgo(s.startTime).styled.dim.toString(),
+        };
+      },
     );
-    for (var i = 0; i < options.length; i++) {
-      options[i] = SelectOption(
-        value: options[i].value,
-        label: table.rowLines[i],
-        searchText: options[i].searchText,
+
+    final options = <SelectOption<SessionMeta>>[];
+    for (var i = 0; i < sessions.length; i++) {
+      final s = sessions[i];
+      final displayId = s.title ?? s.id;
+      options.add(
+        SelectOption.responsive(
+          value: s,
+          build: (w) => table.renderRow(i, w),
+          searchText: '$displayId ${s.modelRef} ${s.cwd} ${s.forkedFrom ?? ''}',
+        ),
       );
     }
 
     final panel = SelectPanel<SessionMeta>(
       title: 'Resume Session',
       options: options,
-      headerLines: table.headerLines,
+      headerBuilder: table.renderHeader,
       searchHint: 'filter sessions',
       emptyText: 'No matching sessions.',
       barrier: BarrierStyle.dim,
       width: panelWidth,
-      height: PanelFluid(0.6, 12),
+      height: PanelFluid(0.7, 10),
     );
     _panelStack.add(panel);
     _render();
