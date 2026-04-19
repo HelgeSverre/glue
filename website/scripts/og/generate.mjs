@@ -128,20 +128,20 @@ function tspansFromLines(lines, firstY, lineHeight) {
 // ── Per-page derivation ───────────────────────────────────────────────────
 
 const DEFAULTS = {
-  eyebrow: 'GLUE · TERMINAL-NATIVE CODING AGENT',
+  eyebrow: 'GLUE · TERMINAL CODING AGENT',
   // Fallback title/subtitle for frontmatter that omits them — keeps the OG
   // card on-brand even on a bare page.
-  title: 'A terminal agent where the browser is a runtime.',
-  subtitle: 'Drive Chrome from the transcript — navigate, click, extract. Local, Docker, or cloud.',
+  title: 'A small terminal coding agent.',
+  subtitle: 'Edits files, runs shell, drives a browser when the task calls for it.',
 }
 
 // Routes where we deliberately want the root-site title rather than the page's
 // frontmatter title (which would read like a doc heading).
 const ROUTE_OVERRIDES = {
   '/': {
-    eyebrow: 'GLUE · BROWSER AS A RUNTIME',
-    title: 'Drive a real browser from the terminal.',
-    subtitle: 'Navigate, click, extract. Local Chrome, Docker, or cloud — swapped with one config line.',
+    eyebrow: 'GLUE · TERMINAL CODING AGENT',
+    title: 'A small coding agent for the terminal.',
+    subtitle: 'Edits files, runs shell, drives a browser. Runs on your host or in a Docker sandbox.',
   },
 }
 

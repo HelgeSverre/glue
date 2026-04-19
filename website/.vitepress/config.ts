@@ -139,7 +139,7 @@ function ogSlugFor(relativePath: string): string {
 export default defineConfig({
   title: 'Glue',
   titleTemplate: ':title · Glue',
-  description: 'A terminal coding agent where the browser is a runtime. Navigate, click, extract — local Chrome, Docker, or cloud, swapped with one config line.',
+  description: 'A small terminal coding agent. Edits files, runs shell, drives a browser when the task calls for it. Runs on your host or in a Docker sandbox.',
   cleanUrls: true,
   lastUpdated: false,
   appearance: 'force-dark',
@@ -166,10 +166,10 @@ export default defineConfig({
     const head = pageData.frontmatter.head ?? []
     const title = pageData.title
       ? `${pageData.title} · Glue`
-      : 'Glue · A terminal agent where the browser is a runtime'
+      : 'Glue · A small terminal coding agent'
     const description = (pageData.description as string | undefined)
       ?? pageData.frontmatter.description
-      ?? 'A terminal coding agent where the browser is a runtime. Navigate, click, extract — local Chrome, Docker, or cloud, swapped with one config line.'
+      ?? 'A small terminal coding agent. Edits files, runs shell, drives a browser when the task calls for it. Runs on your host or in a Docker sandbox.'
 
     const slug = ogSlugFor(pageData.relativePath)
     const ogImage = `https://getglue.dev/og/${slug}.png`

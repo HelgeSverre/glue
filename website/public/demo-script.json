@@ -1,33 +1,33 @@
 {
-  "source": "Glue · hero demo · browser runtime scene",
-  "note": "Synthetic but accurate: the web_browser tool really does expose navigate/extract_text/screenshot/click/type/evaluate, and the session really does persist across calls within a turn. Paths shortened, tokens and timings illustrative.",
+  "source": "Glue · hero demo · mixed code + web scene",
+  "note": "A small, representative scene: read some code, make a targeted edit, then pull a data point from the web. Synthetic but the tools are real — edit, bash, web_fetch, web_search are all shipping.",
   "meta": {
-    "cwd": "~/code/research",
+    "cwd": "~/code/glue",
     "model": "anthropic/claude-sonnet-4.6",
     "approval": "confirm",
-    "tokensStart": 18240
+    "tokensStart": 14820
   },
   "events": [
-    { "kind": "user",        "text": "extract the pricing tiers from stripe.com/pricing and save as json",                     "delay": 760 },
-    { "kind": "assistant",   "text": "Opening a browser session.",                                                              "delay": 420 },
+    { "kind": "user",        "text": "add retry handling to the http client, then check if any recent issues mention it",                "delay": 760 },
+    { "kind": "assistant",   "text": "Reading the current client.",                                                                        "delay": 420 },
 
-    { "kind": "tool_call",   "name": "web_browser", "args": { "action": "navigate", "url": "https://stripe.com/pricing" },       "phase": "running", "delay": 320 },
-    { "kind": "tool_result", "ok": true, "text": "loaded · 1.8s · \"Pricing & fees | Stripe\"",                                  "delay": 340 },
+    { "kind": "tool_call",   "name": "read", "args": { "path": "cli/lib/src/llm/http_client.dart" },                 "phase": "running",  "delay": 320 },
+    { "kind": "tool_result", "ok": true, "text": "187 lines · no retry logic on transient errors",                                          "delay": 340 },
 
-    { "kind": "tool_call",   "name": "web_browser", "args": { "action": "extract_text", "selector": "main" },                    "phase": "running", "delay": 320 },
-    { "kind": "tool_result", "ok": true, "text": "5,312 chars of markdown · session kept warm",                                  "delay": 340 },
+    { "kind": "tool_call",   "name": "edit", "args": { "path": "cli/lib/src/llm/http_client.dart" },                 "phase": "running",  "delay": 320 },
+    { "kind": "tool_result", "ok": true, "text": "+14 −2 · exponential backoff, cap 5, jitter",                                             "delay": 320 },
 
-    { "kind": "tool_call",   "name": "web_browser", "args": { "action": "screenshot", "fullPage": true },                        "phase": "running", "delay": 320 },
-    { "kind": "tool_result", "ok": true, "text": "saved ./pricing.png · 1.4 MB",                                                 "delay": 300 },
+    { "kind": "assistant",   "text": "Running the llm tests.",                                                                              "delay": 520 },
+    { "kind": "tool_call",   "name": "bash", "args": { "cmd": "dart test test/llm/" },                               "phase": "running",  "delay": 320 },
+    { "kind": "tool_result", "ok": true, "text": "✓ 23 tests passed",                                                                       "delay": 300 },
 
-    { "kind": "assistant",   "text": "Three tiers: Integrated, Customized, Enterprise. Writing JSON.",                           "delay": 560 },
+    { "kind": "user",        "text": "now see if anyone has reported something similar",                                                   "delay": 760 },
+    { "kind": "tool_call",   "name": "web_search", "args": { "q": "glue cli ECONNRESET retry site:github.com" },     "phase": "running",  "delay": 320 },
+    { "kind": "tool_result", "ok": true, "text": "3 results · top: issue #412 \"retry loop hangs on 429\"",                                "delay": 340 },
 
-    { "kind": "tool_call",   "name": "write", "args": { "path": "pricing.json" },                                                "phase": "done",    "delay": 300 },
-    { "kind": "tool_result", "ok": true, "text": "+38 lines",                                                                    "delay": 280 },
+    { "kind": "tool_call",   "name": "web_fetch", "args": { "url": "https://github.com/helgesverre/glue/issues/412" }, "phase": "running", "delay": 320 },
+    { "kind": "tool_result", "ok": true, "text": "fetched 2.4 KB markdown · last comment 3d ago",                                           "delay": 320 },
 
-    { "kind": "user",        "text": "now diff this against last week's run",                                                    "delay": 760 },
-    { "kind": "tool_call",   "name": "bash", "args": { "cmd": "diff pricing.json .history/pricing-2026-04-12.json" },            "phase": "running", "delay": 320 },
-    { "kind": "tool_result", "ok": true, "text": "< transactions: 2.9% + 30¢\n> transactions: 3.0% + 30¢",                       "delay": 340 },
-    { "kind": "assistant",   "text": "Card fee bumped 10 bps since last Tuesday.",                                               "delay": 560 }
+    { "kind": "assistant",   "text": "The 429 case is open. My patch handles ECONNRESET — I'll leave #412 for a follow-up.",                "delay": 560 }
   ]
 }

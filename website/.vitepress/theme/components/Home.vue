@@ -34,21 +34,21 @@ interface ShotMeta {
 
 // Fallback script — shown if fetch fails (SSR / no network / offline build).
 const fallbackEvents: ShotEvent[] = [
-  { kind: 'user',        text: 'extract the pricing tiers from stripe.com/pricing and save as json' },
-  { kind: 'assistant',   text: 'Opening a browser session.' },
-  { kind: 'tool_call',   name: 'web_browser', args: { action: 'navigate', url: 'https://stripe.com/pricing' }, phase: 'running' },
-  { kind: 'tool_result', ok: true, text: 'loaded · 1.8s · "Pricing & fees | Stripe"' },
-  { kind: 'tool_call',   name: 'web_browser', args: { action: 'extract_text', selector: 'main' }, phase: 'running' },
-  { kind: 'tool_result', ok: true, text: '5,312 chars of markdown · session kept warm' },
-  { kind: 'tool_call',   name: 'web_browser', args: { action: 'screenshot', fullPage: true }, phase: 'running' },
-  { kind: 'tool_result', ok: true, text: 'saved ./pricing.png · 1.4 MB' },
-  { kind: 'assistant',   text: 'Three tiers: Integrated, Customized, Enterprise. Writing JSON.' },
+  { kind: 'user',        text: 'add retry handling to the http client, then check if any recent issues mention it' },
+  { kind: 'assistant',   text: 'Reading the current client.' },
+  { kind: 'tool_call',   name: 'read', args: { path: 'cli/lib/src/llm/http_client.dart' }, phase: 'running' },
+  { kind: 'tool_result', ok: true, text: '187 lines · no retry logic on transient errors' },
+  { kind: 'tool_call',   name: 'edit', args: { path: 'cli/lib/src/llm/http_client.dart' }, phase: 'running' },
+  { kind: 'tool_result', ok: true, text: '+14 −2 · exponential backoff, cap 5, jitter' },
+  { kind: 'tool_call',   name: 'bash', args: { cmd: 'dart test test/llm/' }, phase: 'running' },
+  { kind: 'tool_result', ok: true, text: '✓ 23 tests passed' },
+  { kind: 'assistant',   text: 'Retry patch landed.' },
 ]
 const fallbackMeta: ShotMeta = {
-  cwd: '~/code/research',
+  cwd: '~/code/glue',
   model: 'anthropic/claude-sonnet-4.6',
   approval: 'confirm',
-  tokensStart: 18240,
+  tokensStart: 14820,
 }
 
 const events = ref<ShotEvent[]>(fallbackEvents)
@@ -211,7 +211,7 @@ interface Backend {
 const backends: Backend[] = [
   {
     name: 'local',
-    tagline: 'Puppeteer-launched Chrome on your machine. headed: true and you can watch it work.',
+    tagline: 'Puppeteer-launched Chrome on your machine. Set headed: true to watch it work.',
     status: 'shipping',
     yaml: `web:
   browser:
@@ -220,7 +220,7 @@ const backends: Backend[] = [
   },
   {
     name: 'docker',
-    tagline: 'Ephemeral browserless/chrome container, one per session. No state touches your host.',
+    tagline: 'Ephemeral browserless/chrome container, one per session. Keeps the browser off your host.',
     status: 'shipping',
     yaml: `web:
   browser:
@@ -230,7 +230,7 @@ const backends: Backend[] = [
   },
   {
     name: 'cloud',
-    tagline: 'Browserbase, Browserless, or Steel. Session replays, self-hosting, scale.',
+    tagline: 'Browserbase, Browserless, or Steel. Hosted browsers when you need replays or to run the work elsewhere.',
     status: 'experimental',
     yaml: `web:
   browser:
@@ -297,17 +297,17 @@ const jsonlSample = [
     <section class="hero">
       <div class="wrap hero-grid">
         <div class="hero-copy">
-          <div class="eyebrow">glue · a terminal agent where the browser is a runtime</div>
+          <div class="eyebrow">glue · small terminal coding agent</div>
 
           <h1 class="headline">
-            Drive a real browser <span class="accent">from the terminal.</span>
+            A small coding agent <span class="accent">for the terminal.</span>
           </h1>
 
           <p class="sub">
-            A terminal coding agent that treats Chrome like shell — navigate, click, type,
-            screenshot, extract — with sessions that survive across tool calls. Swap between
-            local Chrome, a Docker container, or Browserbase/Browserless/Steel with one
-            config line.
+            Edits files, runs shell, keeps resumable sessions — the usual things. The web
+            tooling is a bit more developed than in most coding agents: browser automation,
+            fetch with OCR fallback, search. That's because I use Glue for scraping and
+            automation about as much as for coding. Runs on your host or in a Docker sandbox.
           </p>
 
           <div class="install">
@@ -316,19 +316,17 @@ const jsonlSample = [
 
           <div class="actions">
             <a class="btn btn-primary" href="/docs/getting-started/quick-start">Quick start →</a>
-            <a class="btn btn-ghost" href="/docs/advanced/browser-automation">Browser automation</a>
+            <a class="btn btn-ghost" href="/features">Feature list</a>
           </div>
 
           <div class="meta">
-            <span><code>anthropic</code> · <code>openai</code> · <code>gemini</code> · <code>ollama</code></span>
+            <span>providers: <code>anthropic</code> · <code>openai</code> · <code>gemini</code> · <code>ollama</code></span>
             <span class="meta-sep">·</span>
-            <span>host · docker · <span class="meta-planned">cloud</span></span>
-            <span class="meta-sep">·</span>
-            <span><code>local</code> · <code>docker</code> · <code>browserbase</code> · <code>browserless</code> · <code>steel</code></span>
+            <span>runtimes: host · docker · <span class="meta-planned">cloud</span></span>
           </div>
         </div>
 
-        <figure class="shot" aria-label="Glue driving a browser session">
+        <figure class="shot" aria-label="Glue running in the terminal">
           <div class="shot-frame">
             <div class="shot-tab">
               <span class="shot-tab-dot" />
@@ -409,16 +407,17 @@ const jsonlSample = [
       </div>
     </section>
 
-    <!-- ─── The browser is a runtime ──────────────────────────────────── -->
+    <!-- ─── Browser automation ────────────────────────────────────────── -->
     <section class="section section-divider">
       <div class="wrap">
-        <div class="kicker">one runtime · six primitives</div>
-        <h2 class="display">Chrome, driven from the transcript.</h2>
+        <div class="kicker">browser automation</div>
+        <h2 class="display">Drive a browser, when the task calls for it.</h2>
         <p class="lede">
-          Every other terminal agent treats the web as <code>fetch(url)</code>. Glue exposes a
-          real browser through Chrome DevTools Protocol — and the session stays open between
-          tool calls so the agent can fill a form, submit, and read the result without
-          re-opening the tab.
+          There's a <code>web_browser</code> tool that exposes a headless Chrome over the
+          DevTools Protocol. Useful for scraping JS-rendered pages, clicking through
+          auth flows, or taking screenshots. The browser session stays open between
+          tool calls in the same turn, so the agent can fill a form, submit, and read
+          the result without re-opening the tab.
         </p>
 
         <ul class="primitives">
@@ -429,22 +428,24 @@ const jsonlSample = [
         </ul>
 
         <p class="callout">
-          <span class="callout-label">within-turn session</span>
-          The CDP session survives across tool invocations in the same prompt —
-          navigate, click, type, screenshot, extract, all against the same live tab.
+          <span class="callout-label">status</span>
+          The CDP tool is marked <em>experimental</em> — it works across all backends but
+          is newer than the rest of Glue. Rough edges to be expected.
         </p>
       </div>
     </section>
 
-    <!-- ─── Swap backend, not code ────────────────────────────────────── -->
+    <!-- ─── Browser backends ──────────────────────────────────────────── -->
     <section class="section section-divider">
       <div class="wrap">
-        <div class="kicker">swap backend · not code</div>
-        <h2 class="display">Same six actions. Somewhere else to run them.</h2>
+        <div class="kicker">browser backends</div>
+        <h2 class="display">Local Chrome, Docker, or cloud.</h2>
         <p class="lede">
-          One interface — <code>BrowserEndpointProvider</code> — behind every backend. Pick
-          local Chrome for iteration, a Docker container when the page is sketchy, or a cloud
-          vendor when you need replays and scale. Swap is a config change, not a code change.
+          The browser tool is one interface (<code>BrowserEndpointProvider</code>) with
+          several backends behind it. Local Chrome is the default for iteration. A Docker
+          container keeps the browser off your host when the page is untrusted. Cloud
+          backends are there if you need replays or to offload scale. Swap is a config
+          change.
         </p>
 
         <div class="backends">
@@ -468,12 +469,12 @@ const jsonlSample = [
     <!-- ─── Fetch / OCR / search ──────────────────────────────────────── -->
     <section class="section section-divider">
       <div class="wrap">
-        <div class="kicker">fetch · ocr · search</div>
-        <h2 class="display">Scanned PDFs. Hostile pages. Results you can use.</h2>
+        <div class="kicker">fetch · search · ocr</div>
+        <h2 class="display">Fetch and search.</h2>
         <p class="lede">
-          Not every page needs a browser. The fetch tool reads HTML as cleaned markdown,
-          pulls text out of PDFs, and falls back to a vision model when the PDF is scanned.
-          Search picks whichever provider you've already paid for.
+          Not everything needs a full browser. The fetch tool reads HTML as cleaned
+          markdown, pulls text out of PDFs, and falls back to a vision model when the
+          PDF is scanned. Search uses whichever provider you've set an API key for.
         </p>
 
         <ul class="capabilities">
@@ -497,40 +498,42 @@ const jsonlSample = [
       </div>
     </section>
 
-    <!-- ─── Runtime × browser matrix ──────────────────────────────────── -->
+    <!-- ─── Runtimes ──────────────────────────────────────────────────── -->
     <section class="section section-divider">
       <div class="wrap">
-        <div class="kicker">pair them how you like</div>
-        <h2 class="display">Runtime × browser.</h2>
+        <div class="kicker">runtimes</div>
+        <h2 class="display">Where Glue runs.</h2>
         <p class="lede">
-          Run the agent on your host or inside an ephemeral Docker container. Drive a browser
-          on your machine, in a sibling container, or in someone else's cloud. They compose.
+          Glue itself runs on your host or inside a Docker container. The browser
+          backend composes on top — on your machine, in a sibling container, or
+          in someone else's cloud. The matrix below shows what's shipping, what's
+          experimental, and what's still planned.
         </p>
 
         <RuntimeMatrix
           :capabilities="matrixCaps"
           :rows="matrixRows as any"
-          caption='"partial" = the backend works but is still flagged experimental. "planned" = cloud runtimes are tracked but not shipped.'
+          caption='"partial" = works but flagged experimental. "planned" = not yet shipped.'
         />
 
         <p class="more"><a href="/runtimes">Full runtime capability matrix →</a></p>
       </div>
     </section>
 
-    <!-- ─── Also: coding ──────────────────────────────────────────────── -->
+    <!-- ─── The rest of the agent ─────────────────────────────────────── -->
     <section class="section section-divider">
       <div class="wrap">
-        <div class="kicker">also · coding</div>
-        <h2 class="display">Everything else you'd expect from a coding agent.</h2>
+        <div class="kicker">the rest</div>
+        <h2 class="display">The rest of the agent.</h2>
         <p class="lede">
-          Glue is still a full coding agent underneath. It edits files, runs shell, jumps
-          into Docker for risky work, and writes every session to an append-only JSONL log
-          on your machine — nothing hosted, nothing uploaded.
+          The web tooling is the part that's more developed than usual. Underneath,
+          Glue is a normal coding agent: it edits files, runs shell, and writes every
+          session to a JSONL log on your machine. Nothing hosted, nothing uploaded.
         </p>
 
         <ul class="coding-list">
           <li><strong>Edits.</strong> Multi-file changes land in the transcript as diffs.</li>
-          <li><strong>Shell.</strong> Host shell or ephemeral Docker container — your call, per session.</li>
+          <li><strong>Shell.</strong> Host shell or ephemeral Docker container, per session.</li>
           <li><strong>Sessions.</strong> Append-only JSONL under <code>~/.glue/sessions/</code>. <code>tail -f</code> works.</li>
           <li><strong>Providers.</strong> Anthropic, OpenAI, Gemini, Mistral, Groq, Ollama, OpenRouter — bring your own key.</li>
         </ul>
@@ -552,12 +555,12 @@ const jsonlSample = [
     <section class="section section-divider section-cta">
       <div class="wrap cta">
         <h2 class="display">
-          Install it. <span class="cta-run">Open a tab.</span>
+          Install it. <span class="cta-run">Try it out.</span>
         </h2>
         <div class="cta-install"><InstallSnippet /></div>
         <div class="actions">
           <a class="btn btn-primary" href="/docs/getting-started/quick-start">Quick start →</a>
-          <a class="btn btn-ghost" href="/docs/advanced/browser-automation">Browser automation</a>
+          <a class="btn btn-ghost" href="/why">Why Glue</a>
         </div>
       </div>
     </section>
