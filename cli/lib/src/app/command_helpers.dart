@@ -315,9 +315,7 @@ String _providerTest(GlueConfig config, String id) {
   if (adapter == null) {
     return 'No adapter for wire protocol "${p.adapter}".';
   }
-  final resolved = config.resolveProvider(
-    ModelRef(providerId: p.id, modelId: p.models.keys.isEmpty ? '?' : p.models.keys.first),
-  );
+  final resolved = config.resolveProviderById(p.id);
   final health = adapter.validate(resolved);
   switch (health) {
     case ProviderHealth.ok:

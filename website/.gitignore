@@ -4,3 +4,4 @@ node_modules/
 api/
 .vitepress/sidebar.json
 .vitepress/categories.json
+.vercel

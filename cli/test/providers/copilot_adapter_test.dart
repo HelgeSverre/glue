@@ -51,8 +51,7 @@ const _copilotProvider = ProviderDef(
 
 void main() {
   group('CopilotAdapter.beginInteractiveAuth', () {
-    test(
-        'returns a DeviceCodeFlow whose progress stream drives token exchange',
+    test('returns a DeviceCodeFlow whose progress stream drives token exchange',
         () async {
       final dir = _scratch();
       addTearDown(() => dir.deleteSync(recursive: true));
@@ -127,8 +126,8 @@ void main() {
       expect(success.fields[CopilotFields.expiresAt], isNotEmpty);
 
       // Also stored.
-      expect(store.getField('copilot', CopilotFields.githubToken),
-          'gho_approved');
+      expect(
+          store.getField('copilot', CopilotFields.githubToken), 'gho_approved');
     });
 
     test('emits AuthFlowFailed on access_denied', () async {
@@ -154,8 +153,8 @@ void main() {
           return _Handler((_) async => _json(200, {'error': 'access_denied'}));
         }
         return _Handler(
-          (req) async =>
-              http.StreamedResponse(const Stream.empty(), 404, headers: const {}),
+          (req) async => http.StreamedResponse(const Stream.empty(), 404,
+              headers: const {}),
         );
       });
 
@@ -167,8 +166,7 @@ void main() {
 
       final last = await flow.progress.last;
       expect(last, isA<AuthFlowFailed>());
-      expect((last as AuthFlowFailed).reason.toLowerCase(),
-          contains('denied'));
+      expect((last as AuthFlowFailed).reason.toLowerCase(), contains('denied'));
       expect(store.getField('copilot', CopilotFields.githubToken), isNull);
     });
   });

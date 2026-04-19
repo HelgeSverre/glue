@@ -106,8 +106,10 @@ void main() {
         callCount++;
         return _jsonResponse(200, {
           'token': 'tid=fresh',
-          'expires_at':
-              DateTime.now().add(const Duration(minutes: 30)).millisecondsSinceEpoch ~/ 1000,
+          'expires_at': DateTime.now()
+                  .add(const Duration(minutes: 30))
+                  .millisecondsSinceEpoch ~/
+              1000,
         });
       });
 
@@ -129,8 +131,10 @@ void main() {
       final client = _FakeHttp((req) async {
         return _jsonResponse(200, {
           'token': 'tid=initial',
-          'expires_at':
-              DateTime.now().add(const Duration(minutes: 30)).millisecondsSinceEpoch ~/ 1000,
+          'expires_at': DateTime.now()
+                  .add(const Duration(minutes: 30))
+                  .millisecondsSinceEpoch ~/
+              1000,
         });
       });
 

@@ -29,6 +29,7 @@ void main() {
         openSkillsPanel: openSkillsPanel ?? () {},
         activateSkillByName: activateSkillByName ?? (_) => '',
         toggleApproval: () => '',
+        runProviderCommand: (_) => '',
       );
     }
 

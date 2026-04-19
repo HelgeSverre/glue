@@ -67,7 +67,8 @@ void main() {
       expect(flow, isNull);
     });
 
-    test('AuthKind.apiKey returns an ApiKeyFlow with envPresent when set', () async {
+    test('AuthKind.apiKey returns an ApiKeyFlow with envPresent when set',
+        () async {
       final dir = _scratch();
       addTearDown(() => dir.deleteSync(recursive: true));
       final store = CredentialStore(
@@ -92,7 +93,8 @@ void main() {
       expect(apiKey.helpUrl, contains('example.com'));
     });
 
-    test('AuthKind.apiKey returns ApiKeyFlow with envPresent null when unset', () async {
+    test('AuthKind.apiKey returns ApiKeyFlow with envPresent null when unset',
+        () async {
       final dir = _scratch();
       addTearDown(() => dir.deleteSync(recursive: true));
       final store = CredentialStore(

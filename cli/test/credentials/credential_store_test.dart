@@ -200,7 +200,8 @@ void main() {
       );
       final p = provider(
         id: 'anthropic',
-        auth: const AuthSpec(kind: AuthKind.apiKey, envVar: 'ANTHROPIC_API_KEY'),
+        auth:
+            const AuthSpec(kind: AuthKind.apiKey, envVar: 'ANTHROPIC_API_KEY'),
       );
       expect(store.resolveForProvider(p), 'sk-env');
     });
@@ -215,7 +216,8 @@ void main() {
       store.setApiKey('anthropic', 'sk-stored-fallback');
       final p = provider(
         id: 'anthropic',
-        auth: const AuthSpec(kind: AuthKind.apiKey, envVar: 'ANTHROPIC_API_KEY'),
+        auth:
+            const AuthSpec(kind: AuthKind.apiKey, envVar: 'ANTHROPIC_API_KEY'),
       );
       expect(
         store.resolveForProvider(p),

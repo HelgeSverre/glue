@@ -26,8 +26,7 @@ import 'package:http/http.dart' as http;
 
 const String _deviceCodeUrl = 'https://github.com/login/device/code';
 const String _tokenUrl = 'https://github.com/login/oauth/access_token';
-const String _deviceGrantType =
-    'urn:ietf:params:oauth:grant-type:device_code';
+const String _deviceGrantType = 'urn:ietf:params:oauth:grant-type:device_code';
 
 class CopilotAdapter extends ProviderAdapter {
   CopilotAdapter({
