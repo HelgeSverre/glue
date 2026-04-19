@@ -18,6 +18,7 @@ class BuiltinCommands {
     required void Function() openSkillsPanel,
     required String Function(String skillName) activateSkillByName,
     required String Function() toggleApproval,
+    required String Function(List<String> args) runProviderCommand,
   }) {
     final commands = SlashCommandRegistry();
 
@@ -127,6 +128,12 @@ class BuiltinCommands {
       name: 'approve',
       description: 'Toggle approval mode (confirm ↔ auto)',
       execute: (_) => toggleApproval(),
+    ));
+
+    commands.register(SlashCommand(
+      name: 'provider',
+      description: 'Manage providers (list, add, remove, test)',
+      execute: runProviderCommand,
     ));
 
     return commands;

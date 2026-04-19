@@ -256,6 +256,116 @@ Future<void> _activateSkillFromUiImpl(App app, String skillName) async {
   }
 }
 
+String _runProviderCommandImpl(App app, List<String> args) {
+  final config = app._config;
+  if (config == null) return 'Config not ready.';
+
+  final subcommand = args.isEmpty ? 'list' : args.first.toLowerCase();
+  final rest = args.length > 1 ? args.sublist(1) : const <String>[];
+
+  switch (subcommand) {
+    case 'list':
+    case 'ls':
+      return _formatProviderList(config);
+    case 'add':
+      unawaited(
+        app._panels.openProviderAdd(
+          config: config,
+          providerId: rest.isEmpty ? null : rest.first,
+          addSystemMessage: app._addSystemMessage,
+        ),
+      );
+      return '';
+    case 'remove':
+    case 'rm':
+      if (rest.isEmpty) return 'Usage: /provider remove <id>';
+      return _providerRemove(config, rest.first);
+    case 'test':
+      if (rest.isEmpty) return 'Usage: /provider test <id>';
+      return _providerTest(config, rest.first);
+    default:
+      return 'Usage: /provider [list|add|remove|test] [<id>]';
+  }
+}
+
+String _formatProviderList(GlueConfig config) {
+  final providers = config.catalogData.providers.values
+      .where((p) => p.enabled)
+      .toList();
+  if (providers.isEmpty) return 'No providers configured.';
+
+  final buf = StringBuffer('Providers\n');
+  for (final p in providers) {
+    final status = _providerStatus(p, config);
+    final source = _providerSource(p, config);
+    buf.writeln('  ${p.id.padRight(12)}  ${status.padRight(12)}  $source');
+  }
+  return buf.toString();
+}
+
+String _providerStatus(ProviderDef p, GlueConfig config) {
+  if (p.auth.kind == AuthKind.none) return 'no auth';
+  final adapter = config.adapters.lookup(p.adapter);
+  if (adapter != null && adapter.isConnected(p, config.credentials)) {
+    return 'connected';
+  }
+  return 'missing';
+}
+
+String _providerSource(ProviderDef p, GlueConfig config) {
+  return switch (p.auth.kind) {
+    AuthKind.none => 'local',
+    AuthKind.oauth => config.credentials.getField(p.id, 'github_token') != null
+        ? 'oauth (stored)'
+        : '',
+    AuthKind.apiKey => _apiKeySource(p, config),
+  };
+}
+
+String _apiKeySource(ProviderDef p, GlueConfig config) {
+  final envVar = p.auth.envVar;
+  if (envVar != null && config.credentials.readEnv(envVar) != null) {
+    return 'env (\$$envVar)';
+  }
+  if (config.credentials.getField(p.id, 'api_key') != null) {
+    return 'stored';
+  }
+  return '';
+}
+
+String _providerRemove(GlueConfig config, String id) {
+  final p = config.catalogData.providers[id];
+  if (p == null) return 'Unknown provider "$id".';
+  config.credentials.remove(id);
+  final envVar = p.auth.envVar;
+  if (envVar != null && config.credentials.readEnv(envVar) != null) {
+    return 'Forgot stored credentials for ${p.name}. '
+        'Note: \$$envVar is still set and will keep being used.';
+  }
+  return 'Forgot stored credentials for ${p.name}.';
+}
+
+String _providerTest(GlueConfig config, String id) {
+  final p = config.catalogData.providers[id];
+  if (p == null) return 'Unknown provider "$id".';
+  final adapter = config.adapters.lookup(p.adapter);
+  if (adapter == null) {
+    return 'No adapter for wire protocol "${p.adapter}".';
+  }
+  final resolved = config.resolveProvider(
+    ModelRef(providerId: p.id, modelId: p.models.keys.isEmpty ? '?' : p.models.keys.first),
+  );
+  final health = adapter.validate(resolved);
+  switch (health) {
+    case ProviderHealth.ok:
+      return '${p.name}: ok.';
+    case ProviderHealth.missingCredential:
+      return '${p.name}: missing credential. Run /provider add ${p.id}.';
+    case ProviderHealth.unknownAdapter:
+      return '${p.name}: adapter "${p.adapter}" failed validation.';
+  }
+}
+
 String _switchToModelRowImpl(App app, CatalogRow row) {
   final factory = app._llmFactory;
   final config = app._config;

@@ -13,10 +13,12 @@ import 'package:glue/src/agent/agent_manager.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/commands/builtin_commands.dart';
 import 'package:glue/src/commands/slash_commands.dart';
+import 'package:glue/src/catalog/model_catalog.dart';
 import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/core/environment.dart';
+import 'package:glue/src/providers/provider_adapter.dart';
 import 'package:glue/src/ui/model_panel_formatter.dart' show CatalogRow;
 import 'package:glue/src/core/service_locator.dart';
 import 'package:glue/src/config/approval_mode.dart';
@@ -431,8 +433,12 @@ class App {
       openSkillsPanel: _openSkillsPanel,
       activateSkillByName: _activateSkillFromCommand,
       toggleApproval: _toggleApproval,
+      runProviderCommand: _runProviderCommand,
     );
   }
+
+  String _runProviderCommand(List<String> args) =>
+      _runProviderCommandImpl(this, args);
 
   String _toggleApproval() {
     _approvalMode = _approvalMode.toggle;

@@ -6,9 +6,12 @@ import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/credentials/credential_store.dart';
+import 'package:glue/src/providers/auth_flow.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
 import 'package:glue/src/storage/session_store.dart';
 import 'package:glue/src/terminal/styled.dart';
+import 'package:glue/src/ui/api_key_prompt_panel.dart';
+import 'package:glue/src/ui/device_code_panel.dart';
 import 'package:glue/src/ui/model_panel_formatter.dart';
 import 'package:glue/src/ui/panel_modal.dart';
 import 'package:glue/src/ui/select_panel.dart';
@@ -275,8 +278,7 @@ class PanelController {
 
     if (entries.isEmpty) {
       addSystemMessage(
-        'No models available. Run `/credentials set <provider>` or '
-        'set the relevant API key env var.',
+        'No models available. Run `/provider add <id>` to connect one.',
       );
       _render();
       return;
@@ -327,6 +329,176 @@ class PanelController {
       addSystemMessage(result);
       _render();
     }));
+  }
+
+  /// Open the `/provider add` flow. Picks a provider (if [providerId] is
+  /// null), then dispatches to [ApiKeyPromptPanel] or [DeviceCodePanel]
+  /// based on the provider's [AuthKind].
+  Future<void> openProviderAdd({
+    required GlueConfig config,
+    required String? providerId,
+    required void Function(String message) addSystemMessage,
+  }) async {
+    ProviderDef? provider;
+    if (providerId != null) {
+      provider = config.catalogData.providers[providerId];
+      if (provider == null) {
+        addSystemMessage(
+          'Unknown provider "$providerId". Try `/provider list`.',
+        );
+        _render();
+        return;
+      }
+    } else {
+      provider = await _pickProvider(config);
+      if (provider == null) {
+        _render();
+        return;
+      }
+    }
+
+    if (provider.auth.kind == AuthKind.none) {
+      addSystemMessage('${provider.name} needs no credentials.');
+      _render();
+      return;
+    }
+
+    final adapter = config.adapters.lookup(provider.adapter);
+    if (adapter == null) {
+      addSystemMessage(
+        'No adapter for wire protocol "${provider.adapter}".',
+      );
+      _render();
+      return;
+    }
+
+    final flow = await adapter.beginInteractiveAuth(
+      provider: provider,
+      store: config.credentials,
+    );
+    if (flow == null) {
+      addSystemMessage('${provider.name} needs no interactive setup.');
+      _render();
+      return;
+    }
+
+    switch (flow) {
+      case ApiKeyFlow():
+        await _runApiKeyFlow(
+          config: config,
+          provider: provider,
+          flow: flow,
+          addSystemMessage: addSystemMessage,
+        );
+      case DeviceCodeFlow():
+        await _runDeviceCodeFlow(
+          provider: provider,
+          flow: flow,
+          addSystemMessage: addSystemMessage,
+        );
+      case PkceFlow():
+        addSystemMessage(
+          'PKCE OAuth is not implemented yet for ${provider.name}.',
+        );
+        _render();
+    }
+  }
+
+  Future<ProviderDef?> _pickProvider(GlueConfig config) async {
+    final providers = config.catalogData.providers.values
+        .where((p) => p.enabled && p.auth.kind != AuthKind.none)
+        .toList();
+
+    final options = <SelectOption<ProviderDef>>[];
+    for (final p in providers) {
+      final status = _statusLabel(p, config);
+      final line = '${p.name.padRight(16)}  ${p.id.styled.dim}   '
+          '${status.styled.dim}';
+      options.add(
+        SelectOption<ProviderDef>(
+          value: p,
+          label: line,
+          searchText: '${p.id} ${p.name}',
+        ),
+      );
+    }
+
+    final panel = SelectPanel<ProviderDef>(
+      title: 'Add provider',
+      options: options,
+      searchHint: 'filter providers',
+      width: PanelFluid(0.6, 48),
+      height: PanelFluid(0.5, 10),
+    );
+    _panelStack.add(panel);
+    _render();
+    final picked = await panel.selection;
+    _panelStack.remove(panel);
+    return picked;
+  }
+
+  Future<void> _runApiKeyFlow({
+    required GlueConfig config,
+    required ProviderDef provider,
+    required ApiKeyFlow flow,
+    required void Function(String) addSystemMessage,
+  }) async {
+    final panel = ApiKeyPromptPanel(
+      providerId: flow.providerId,
+      providerName: flow.providerName,
+      envVar: flow.envVar,
+      envPresent: flow.envPresent,
+      helpUrl: flow.helpUrl,
+    );
+    _panelStack.add(panel);
+    _render();
+    final value = await panel.result;
+    _panelStack.remove(panel);
+
+    if (value == null) {
+      addSystemMessage('Cancelled.');
+      _render();
+      return;
+    }
+    if (value.isEmpty && flow.envPresent != null) {
+      addSystemMessage(
+        'Keeping env var \$${flow.envVar}. ${provider.name} connected.',
+      );
+      _render();
+      return;
+    }
+
+    config.credentials.setFields(provider.id, {'api_key': value});
+    addSystemMessage('Connected to ${provider.name}.');
+    _render();
+  }
+
+  Future<void> _runDeviceCodeFlow({
+    required ProviderDef provider,
+    required DeviceCodeFlow flow,
+    required void Function(String) addSystemMessage,
+  }) async {
+    final panel = DeviceCodePanel(flow: flow);
+    _panelStack.add(panel);
+    _render();
+    final fields = await panel.result;
+    _panelStack.remove(panel);
+
+    if (fields == null) {
+      addSystemMessage('${provider.name} connection cancelled.');
+    } else {
+      addSystemMessage('Connected to ${provider.name}.');
+    }
+    _render();
+  }
+
+  String _statusLabel(ProviderDef p, GlueConfig config) {
+    if (p.auth.kind == AuthKind.none) return 'no auth';
+    final adapter = config.adapters.lookup(p.adapter);
+    if (adapter != null && adapter.isConnected(p, config.credentials)) {
+      return 'connected';
+    }
+    return 'missing';
   }
 
   void _openHistoryActionPanel({
