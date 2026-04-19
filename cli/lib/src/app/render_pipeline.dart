@@ -184,9 +184,9 @@ void _doRenderImpl(App app) {
   final rightSegs = [
     app._modelId,
     modeLabel,
-    shortCwd,
+    ansiTruncate(shortCwd, 30),
     if (scrollSeg != null) scrollSeg,
-    '${app.agent.tokenCount} tokens',
+    '${_formatTokens(app.agent.tokenCount)} tokens',
   ];
   final statusRight = ' ${rightSegs.join(sep)} ';
   app.layout.paintStatus(statusLeft, statusRight);
@@ -212,4 +212,10 @@ void _doRenderImpl(App app) {
     showCursor: showCursor,
     promptStyle: promptStyle,
   );
+}
+
+String _formatTokens(int n) {
+  if (n < 1000) return '$n';
+  if (n < 10000) return '${n ~/ 1000}.${(n % 1000) ~/ 100}k';
+  return '${n ~/ 1000}k';
 }
