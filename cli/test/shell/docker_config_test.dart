@@ -69,9 +69,9 @@ void main() {
       final m = MountEntry(
         hostPath: '/host/project',
         mode: MountMode.rw,
-        containerPath: '/work',
+        containerPath: '/workspace',
       );
-      expect(m.toDockerArg(), '/host/project:/work:rw');
+      expect(m.toDockerArg(), '/host/project:/workspace:rw');
     });
   });
 

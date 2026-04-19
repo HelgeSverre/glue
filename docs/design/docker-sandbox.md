@@ -11,8 +11,8 @@ Each command spawns a new container via `docker run --rm`. No long-lived contain
 ```
 docker run --rm -i \
   --cidfile /tmp/glue-cid-<uuid> \
-  -w /work \
-  -v /host/cwd:/work:rw \
+  -w /workspace \
+  -v /host/cwd:/workspace:rw \
   -v /host/shared:/host/shared:rw \
   -v /host/data:/host/data:ro \
   ubuntu:24.04 sh -c "<command>"
@@ -25,7 +25,7 @@ docker run --rm -i \
 | `--rm`                     | Auto-remove container on exit                             |
 | `-i`                       | Keep stdin open (no `-t` — no TTY, breaks output capture) |
 | `--cidfile <path>`         | Write container ID to file for reliable termination       |
-| `-w /work`                 | Set working directory inside container                    |
+| `-w /workspace`            | Set working directory inside container                    |
 | `-v host:container[:mode]` | Bind mount directories                                    |
 
 ### Why no `-t`?
@@ -36,7 +36,9 @@ The TUI tool execution does not allocate a real TTY. Using `-t` causes Docker to
 
 ### CWD Mount
 
-The current working directory is **always** mounted at `/work` and set as the container's working directory. This is implicit — the user doesn't need to whitelist it.
+The current working directory is **always** mounted at `/workspace` and set as the container's working directory. This is implicit — the user doesn't need to whitelist it.
+
+`/workspace` is the universal convention shared with future cloud runtimes (E2B, Daytona, Sprites, VibeKit-style providers), so agent prompts and tool paths remain stable across backends. See `docs/plans/2026-04-19-runtime-boundary-plan.md`.
 
 ### Whitelisted Directory Mounts
 
@@ -51,7 +53,7 @@ Additional directories are mounted **at their original absolute host path** insi
 
 Mounts are merged from three sources (later overrides earlier for same path):
 
-1. **CWD** — always mounted at `/work` (rw)
+1. **CWD** — always mounted at `/workspace` (rw)
 2. **Config file** — `docker.mounts` in `~/.glue/config.yaml` (persistent)
 3. **Session state** — `docker.mounts` in `state.json` (session-scoped)
 

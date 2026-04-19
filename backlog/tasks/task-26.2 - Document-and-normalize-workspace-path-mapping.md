@@ -22,10 +22,10 @@ ordinal: 25000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Today Docker mounts cwd at `/work`. The path mapping is implicit in `DockerExecutor`. Write it down so remote runtimes can reuse the same model.
+Today Docker mounts cwd at `/workspace` (universal convention shared with cloud runtimes). The path mapping is implicit in `DockerExecutor`. Write it down so remote runtimes can reuse the same model.
 
 **Document (in code + docs):**
-- Host cwd → runtime cwd mapping (Docker: `$PWD → /work`)
+- Host cwd → runtime cwd mapping (Docker: `$PWD → /workspace`)
 - Path translation rules (absolute paths outside cwd: reject? mount separately? error?)
 - Writable vs read-only mounts
 - Artifact output directory (where tools write artifacts — see SE4)

@@ -20,7 +20,7 @@ void main() {
       expect(args, contains('--cidfile'));
       expect(args, contains('/tmp/cid'));
       expect(args, contains('-w'));
-      expect(args, contains('/work'));
+      expect(args, contains('/workspace'));
       expect(args, contains('alpine:latest'));
       expect(args.last, 'echo hello');
 
@@ -31,7 +31,7 @@ void main() {
           vArgs.add(args[i + 1]);
         }
       }
-      expect(vArgs, contains('/home/user/project:/work:rw'));
+      expect(vArgs, contains('/home/user/project:/workspace:rw'));
       expect(vArgs, contains('/home/user/libs:/home/user/libs:rw'));
       expect(vArgs, contains('/home/user/data:/home/user/data:ro'));
     });
@@ -54,7 +54,7 @@ void main() {
         }
       }
       expect(vArgs, hasLength(1));
-      expect(vArgs.first, '/my/project:/work:rw');
+      expect(vArgs.first, '/my/project:/workspace:rw');
     });
 
     test('buildDockerArgs deduplicates identical mounts', () {

@@ -8,16 +8,20 @@ import 'package:glue/src/shell/docker_config.dart';
 
 /// Runs shell commands inside a Docker container.
 ///
-/// The project's working directory is bind-mounted at `/work`, and any
+/// The project's working directory is bind-mounted at `/workspace`, and any
 /// additional [MountEntry]s from config or the session are added as volumes.
 /// Container cleanup (CID file removal, `docker stop`) is handled
 /// automatically on timeout or kill.
+///
+/// `/workspace` is the universal convention shared with future cloud runtimes
+/// (E2B, Daytona, Sprites, VibeKit-style providers). See
+/// `docs/plans/2026-04-19-runtime-boundary-plan.md`.
 class DockerExecutor implements CommandExecutor {
   final DockerConfig config;
 
   /// The host directory to use as the container's working directory.
   ///
-  /// Bind-mounted as `/work` inside the container — this is where all
+  /// Bind-mounted as `/workspace` inside the container — this is where all
   /// commands execute by default.
   final String cwd;
 
@@ -42,9 +46,9 @@ class DockerExecutor implements CommandExecutor {
       '--cidfile',
       cidfilePath,
       '-w',
-      '/work',
+      '/workspace',
       '-v',
-      '$cwd:/work:rw',
+      '$cwd:/workspace:rw',
     ];
 
     for (final mount in MountEntry.dedup(mounts)) {

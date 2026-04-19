@@ -31,7 +31,7 @@ Clarify the boundary between Glue and the place where work executes. Current run
 
 **Prep work in scope:**
 1. Decouple `ShellJob` from raw `Process` (introduce `RunningCommandHandle` interface)
-2. Normalize workspace mapping (document Docker's `/work` mount + path translation rules)
+2. Normalize workspace mapping (document Docker's `/workspace` mount + path translation rules)
 3. Emit runtime command/container events to session JSONL (depends on SE parent)
 4. Make browser endpoint acquisition runtime-aware without breaking existing providers
 5. Add runtime capability table to docs and website
