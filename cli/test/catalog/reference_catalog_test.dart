@@ -19,7 +19,7 @@ void main() {
 
     test('has expected version and defaults', () {
       expect(catalog.version, 1);
-      expect(catalog.defaults.model, 'anthropic/claude-sonnet-4.6');
+      expect(catalog.defaults.model, 'anthropic/claude-sonnet-4-6');
       expect(catalog.defaults.smallModel, 'openai/gpt-5.4-mini');
       expect(catalog.defaults.localModel, isNotEmpty);
     });
@@ -37,13 +37,46 @@ void main() {
       );
     });
 
-    test('anthropic provider has default claude-sonnet-4.6', () {
+    test('anthropic provider includes current 4.6/4.7 family models', () {
       final anthropic = catalog.providers['anthropic']!;
-      final sonnet = anthropic.models['claude-sonnet-4.6']!;
+      final opus47 = anthropic.models['claude-opus-4-7']!;
+      final sonnet46 = anthropic.models['claude-sonnet-4-6']!;
+      final opus46 = anthropic.models['claude-opus-4-6']!;
+      final haiku45 = anthropic.models['claude-haiku-4-5']!;
+      expect(opus47.recommended, isTrue);
+      expect(sonnet46.recommended, isTrue);
+      expect(opus46.recommended, isTrue);
+      expect(haiku45.recommended, isTrue);
+      expect(opus47.capabilities, contains('tools'));
+    });
+
+    test('anthropic 4.6/4.7 family advertises native 1M context', () {
+      final anthropic = catalog.providers['anthropic']!;
+      expect(anthropic.models['claude-opus-4-7']!.contextWindow, 1000000);
+      expect(anthropic.models['claude-opus-4-6']!.contextWindow, 1000000);
+      expect(anthropic.models['claude-sonnet-4-6']!.contextWindow, 1000000);
+      expect(anthropic.models['claude-haiku-4-5']!.contextWindow, 200000);
+    });
+
+    test('anthropic defaults point at the current Sonnet ID', () {
+      final anthropic = catalog.providers['anthropic']!;
+      final sonnet = anthropic.models['claude-sonnet-4-6']!;
+      expect(catalog.defaults.model, 'anthropic/claude-sonnet-4-6');
       expect(sonnet.isDefault, isTrue);
-      expect(sonnet.recommended, isTrue);
       expect(sonnet.capabilities, contains('tools'));
-      expect(sonnet.contextWindow, 200000);
+    });
+
+    test('anthropic catalog does not list the non-existent sonnet-4-7', () {
+      final anthropic = catalog.providers['anthropic']!;
+      expect(anthropic.models.containsKey('claude-sonnet-4-7'), isFalse);
+    });
+
+    test('openai catalog only advertises chat-completions-compatible models',
+        () {
+      final openai = catalog.providers['openai']!;
+      expect(openai.models.containsKey('gpt-5.3-codex'), isFalse);
+      expect(openai.models.containsKey('gpt-5.4'), isTrue);
+      expect(openai.models.containsKey('gpt-5.4-mini'), isTrue);
     });
 
     test('ollama provider uses api_key: none', () {

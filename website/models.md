@@ -22,9 +22,10 @@ Canonical source: [`docs/reference/models.yaml`](https://github.com/helgesverre/
 <ModelTable
   caption="Anthropic, OpenAI, Gemini, Mistral, Groq."
   :models="[
-    { id: 'claude-sonnet-4.6', provider: 'anthropic', recommended: true, capabilities: ['chat','tools','vision','files','json','reasoning','coding'], notes: 'Default. High-quality coding model.' },
-    { id: 'claude-opus-4.6', provider: 'anthropic', capabilities: ['chat','tools','vision','files','json','reasoning','coding'], notes: 'Architecture and long investigations.' },
-    { id: 'claude-haiku-4.5', provider: 'anthropic', recommended: true, capabilities: ['chat','tools','vision','json','coding'], notes: 'Fast small-model candidate.' },
+    { id: 'claude-opus-4-7', provider: 'anthropic', recommended: true, capabilities: ['chat','tools','vision','files','json','reasoning','coding'], notes: 'Most capable — agentic coding and long-horizon work.' },
+    { id: 'claude-sonnet-4-6', provider: 'anthropic', recommended: true, capabilities: ['chat','tools','vision','files','json','reasoning','coding'], notes: 'Default. High-quality coding model.' },
+    { id: 'claude-opus-4-6', provider: 'anthropic', capabilities: ['chat','tools','vision','files','json','reasoning','coding'], notes: 'Architecture and long investigations.' },
+    { id: 'claude-haiku-4-5', provider: 'anthropic', recommended: true, capabilities: ['chat','tools','vision','json','coding'], notes: 'Fast small-model candidate.' },
     { id: 'gpt-5.4', provider: 'openai', recommended: true, capabilities: ['chat','tools','vision','files','json','reasoning','coding'], notes: 'Frontier agentic coding.' },
     { id: 'gpt-5.4-mini', provider: 'openai', recommended: true, capabilities: ['chat','tools','vision','json','coding'], notes: 'Default small_model candidate.' },
     { id: 'gpt-5.3-codex', provider: 'openai', capabilities: ['chat','tools','files','json','reasoning','coding'], notes: 'Coding-specialized.' },

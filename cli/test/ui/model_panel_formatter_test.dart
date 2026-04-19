@@ -52,11 +52,11 @@ void main() {
     test('marks the current model with a filled dot', () {
       final rows = [
         _row(),
-        _row(modelId: 'claude-haiku-4.5', modelName: 'Haiku')
+        _row(modelId: 'claude-haiku-4-5', modelName: 'Haiku')
       ];
       final result = formatModelPanelLines(
         rows,
-        currentRef: _ref('anthropic/claude-haiku-4.5'),
+        currentRef: _ref('anthropic/claude-haiku-4-5'),
       );
       expect(result.initialIndex, 1);
       final activeLine = stripAnsi(result.lines[1]);

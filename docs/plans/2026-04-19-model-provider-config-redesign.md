@@ -181,8 +181,8 @@ can be added later, but do not block the cleanup on it.
 Recommended `~/.glue/config.yaml`:
 
 ```yaml
-model: anthropic/claude-sonnet-4.6
-small_model: anthropic/claude-haiku-4.5
+model: anthropic/claude-sonnet-4-6
+small_model: anthropic/claude-haiku-4-5
 
 catalog:
   source: bundled

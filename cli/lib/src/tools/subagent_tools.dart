@@ -31,7 +31,7 @@ class SpawnSubagentTool extends Tool {
           name: 'model_ref',
           type: 'string',
           description: 'Override model as `<provider>/<model>` (e.g. '
-              '"anthropic/claude-haiku-4.5"). Defaults to the active model.',
+              '"anthropic/claude-haiku-4-5"). Defaults to the active model.',
           required: false,
         ),
       ];

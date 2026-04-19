@@ -75,7 +75,8 @@ providers:
         recommended: true
         default: true
         capabilities: [chat, tools, vision, files, json, reasoning, coding]
-        context_window: 200000
+        context_window: 1000000
+        max_output_tokens: 64000
         speed: standard
         cost: high
         notes: Default high-quality coding model.
@@ -83,34 +84,29 @@ providers:
         name: Claude Opus 4.6
         recommended: true
         capabilities: [chat, tools, vision, files, json, reasoning, coding]
-        context_window: 200000
+        context_window: 1000000
+        max_output_tokens: 128000
         speed: slower
         cost: premium
         notes: Use for difficult architecture, debugging, and long investigations.
-      claude-haiku-4.5:
+      claude-haiku-4-5:
         name: Claude Haiku 4.5
         recommended: true
         capabilities: [chat, tools, vision, json, coding]
         context_window: 200000
+        max_output_tokens: 64000
         speed: fast
         cost: low
         notes: Good small_model candidate for titles, summaries, and quick checks.
-      claude-sonnet-4-7:
-        name: Claude Sonnet 4.7
-        recommended: true
-        capabilities: [chat, tools, vision, files, json, reasoning, coding]
-        context_window: 200000
-        speed: standard
-        cost: high
-        notes: Latest Sonnet model available for selection.
       claude-opus-4-7:
         name: Claude Opus 4.7
         recommended: true
         capabilities: [chat, tools, vision, files, json, reasoning, coding]
-        context_window: 200000
+        context_window: 1000000
+        max_output_tokens: 128000
         speed: slower
         cost: premium
-        notes: Latest Opus model available for selection.
+        notes: Most capable Claude model — agentic coding and long-horizon work.
 
   openai:
     name: OpenAI
@@ -287,7 +283,8 @@ providers:
         name: Claude Sonnet 4.6 (via Copilot)
         recommended: true
         capabilities: [chat, tools, vision, json, coding]
-        context_window: 200000
+        context_window: 1000000
+        max_output_tokens: 64000
         speed: standard
         cost: subscription
         notes: Uses your GitHub Copilot subscription.
@@ -317,7 +314,8 @@ providers:
         name: Claude Sonnet 4.6 via OpenRouter
         recommended: true
         capabilities: [chat, tools, vision, files, json, reasoning, coding]
-        context_window: 200000
+        context_window: 1000000
+        max_output_tokens: 64000
         speed: standard
         cost: provider_routed
         notes: Useful when users want one router key.
@@ -360,9 +358,8 @@ profiles:
   coding:
     description: Default interactive coding session.
     recommended:
-      - anthropic/claude-sonnet-4-7
-      - anthropic/claude-sonnet-4-6
       - anthropic/claude-opus-4-7
+      - anthropic/claude-sonnet-4-6
       - openai/gpt-5.4
       - mistral/codestral-latest
       - groq/qwen/qwen3-coder
@@ -370,7 +367,7 @@ profiles:
     description: Low-cost summaries, titles, and quick checks.
     recommended:
       - openai/gpt-5.4-mini
-      - anthropic/claude-haiku-4.5
+      - anthropic/claude-haiku-4-5
       - gemini/gemini-flash-latest
       - mistral/mistral-small-latest
   local:

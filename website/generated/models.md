@@ -26,11 +26,10 @@ Source: [`docs/reference/models.yaml`](https://github.com/helgesverre/glue/blob/
 
 | ID | Recommended | Capabilities | Context | Speed | Cost | Notes |
 | --- | :---: | --- | ---: | --- | --- | --- |
-| `anthropic/claude-sonnet-4-6` | ★ | chat, tools, vision, files, json, reasoning, coding | 200000 | standard | high | Default high-quality coding model. |
-| `anthropic/claude-opus-4-6` | ★ | chat, tools, vision, files, json, reasoning, coding | 200000 | slower | premium | Use for difficult architecture, debugging, and long investigations. |
-| `anthropic/claude-haiku-4.5` | ★ | chat, tools, vision, json, coding | 200000 | fast | low | Good small_model candidate for titles, summaries, and quick checks. |
-| `anthropic/claude-sonnet-4-7` | ★ | chat, tools, vision, files, json, reasoning, coding | 200000 | standard | high | Latest Sonnet model available for selection. |
-| `anthropic/claude-opus-4-7` | ★ | chat, tools, vision, files, json, reasoning, coding | 200000 | slower | premium | Latest Opus model available for selection. |
+| `anthropic/claude-sonnet-4-6` | ★ | chat, tools, vision, files, json, reasoning, coding | 1000000 | standard | high | Default high-quality coding model. |
+| `anthropic/claude-opus-4-6` | ★ | chat, tools, vision, files, json, reasoning, coding | 1000000 | slower | premium | Use for difficult architecture, debugging, and long investigations. |
+| `anthropic/claude-haiku-4-5` | ★ | chat, tools, vision, json, coding | 200000 | fast | low | Good small_model candidate for titles, summaries, and quick checks. |
+| `anthropic/claude-opus-4-7` | ★ | chat, tools, vision, files, json, reasoning, coding | 1000000 | slower | premium | Most capable Claude model — agentic coding and long-horizon work. |
 | `openai/gpt-5.4` | ★ | chat, tools, vision, files, json, reasoning, coding | 400000 | standard | high | Frontier general-purpose and agentic coding model. |
 | `openai/gpt-5.4-mini` | ★ | chat, tools, vision, json, coding | 400000 | fast | low | Default small_model candidate. |
 | `openai/gpt-5.2` |  | chat, tools, vision, files, json, reasoning, coding | 400000 | standard | high | Keep visible only if users still rely on it. |
@@ -44,9 +43,9 @@ Source: [`docs/reference/models.yaml`](https://github.com/helgesverre/glue/blob/
 | `ollama/qwen2.5-coder:32b` | ★ | chat, json, coding, local | 32768 | depends_on_hardware | local | Sensible local coding default if the machine can run it. |
 | `ollama/devstral:latest` | ★ | chat, tools, json, coding, local | 128000 | depends_on_hardware | local | Local agentic coding candidate. |
 | `ollama/llama3.2:latest` |  | chat, json, local | 128000 | depends_on_hardware | local | General local fallback. |
-| `copilot/claude-sonnet-4-6` | ★ | chat, tools, vision, json, coding | 200000 | standard | subscription | Uses your GitHub Copilot subscription. |
+| `copilot/claude-sonnet-4-6` | ★ | chat, tools, vision, json, coding | 1000000 | standard | subscription | Uses your GitHub Copilot subscription. |
 | `copilot/gpt-4.1` | ★ | chat, tools, json, coding | 128000 | standard | subscription | Uses your GitHub Copilot subscription. |
-| `openrouter/anthropic/claude-sonnet-4-6` | ★ | chat, tools, vision, files, json, reasoning, coding | 200000 | standard | provider_routed | Useful when users want one router key. |
+| `openrouter/anthropic/claude-sonnet-4-6` | ★ | chat, tools, vision, files, json, reasoning, coding | 1000000 | standard | provider_routed | Useful when users want one router key. |
 | `openrouter/openai/gpt-5.4-mini` | ★ | chat, tools, vision, json, coding | 400000 | fast | provider_routed | Small-model fallback through a router. |
 | `openrouter/google/gemini-flash-latest` | ★ | chat, tools, vision, files, json, browser | 1000000 | fast | provider_routed | Good for research and extraction workflows. |
 | `local-vllm/local-model` |  | chat, json, local | — | depends_on_hardware | local | Rename this entry to the model served by vLLM, LM Studio, or another local gateway. |

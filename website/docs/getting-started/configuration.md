@@ -56,10 +56,10 @@ example (`ANTHROPIC_API_KEY`).
 A fuller example with shell, Docker, and web tools:
 
 ```yaml
-active_model: anthropic/claude-sonnet-4.6
+active_model: anthropic/claude-sonnet-4-6
 
 # Optional cheap/fast model used for things like session-title generation.
-small_model: anthropic/claude-haiku-4.5
+small_model: anthropic/claude-haiku-4-5
 
 approval_mode: confirm   # confirm | auto
 

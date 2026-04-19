@@ -63,7 +63,7 @@ void main() {
       final tool = SpawnSubagentTool(manager);
       final result = (await tool.execute({
         'task': 'quick task',
-        'model_ref': 'anthropic/claude-haiku-4.5',
+        'model_ref': 'anthropic/claude-haiku-4-5',
       }))
           .content;
       expect(result, contains('Done:'));

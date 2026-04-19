@@ -49,13 +49,13 @@ void main() {
       expect(fromEnv.activeModel, ModelRef.parse('openai/gpt-5.4'));
 
       final cliWins = GlueConfig.load(
-        cliModel: 'anthropic/claude-haiku-4.5',
+        cliModel: 'anthropic/claude-haiku-4-5',
         environment: _envWith(
           home: home,
           vars: {'GLUE_MODEL': 'openai/gpt-5.4'},
         ),
       );
-      expect(cliWins.activeModel.modelId, 'claude-haiku-4.5');
+      expect(cliWins.activeModel.modelId, 'claude-haiku-4-5');
     });
 
     test('legacy v1 config format is rejected with a migration hint', () {
