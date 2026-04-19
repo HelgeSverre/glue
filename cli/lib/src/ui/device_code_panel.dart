@@ -8,6 +8,7 @@ library;
 import 'dart:async';
 import 'dart:math';
 
+import 'package:glue/src/core/clipboard.dart';
 import 'package:glue/src/core/url_launcher.dart';
 import 'package:glue/src/providers/auth_flow.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
@@ -20,8 +21,8 @@ class DeviceCodePanel implements PanelOverlay {
     required this.flow,
     PanelSize? width,
     PanelSize? height,
-  })  : _width = width ?? PanelFluid(0.7, 56),
-        _height = height ?? PanelFluid(0.4, 11) {
+  }) : _width = width ?? PanelFluid(0.7, 56),
+       _height = height ?? PanelFluid(0.4, 11) {
     _subscription = flow.progress.listen(
       (ev) {
         _latest = ev;
@@ -38,6 +39,12 @@ class DeviceCodePanel implements PanelOverlay {
         if (!_completer.isCompleted) _completer.complete(null);
       },
     );
+
+    // Auto-copy the user code so the user can paste it directly in the
+    // browser — our TUI claims the terminal in raw mode, so ordinary
+    // text-selection is blocked and they'd otherwise have to transcribe
+    // ABCD-1234 by hand.
+    unawaited(_copyUserCode());
   }
 
   final DeviceCodeFlow flow;
@@ -48,6 +55,12 @@ class DeviceCodePanel implements PanelOverlay {
   StreamSubscription<AuthFlowProgress>? _subscription;
   AuthFlowProgress _latest = const AuthFlowPolling();
   int _spinnerFrame = 0;
+  bool _copied = false;
+
+  Future<void> _copyUserCode() async {
+    final ok = await copyToClipboard(flow.userCode);
+    _copied = ok;
+  }
 
   static const _spinner = ['⣾', '⣽', '⣻', '⢿', '⡿', '⣟', '⣯', '⣷'];
 
@@ -75,6 +88,10 @@ class DeviceCodePanel implements PanelOverlay {
         // Fire-and-forget: if the launcher fails the user still has the URL
         // on screen (with OSC-8 hyperlink on supporting terminals).
         unawaited(openInBrowser(flow.verificationUri));
+        return true;
+      case CharEvent(char: 'c', alt: false):
+      case CharEvent(char: 'C', alt: false):
+        unawaited(_copyUserCode());
         return true;
       default:
         return true;
@@ -107,10 +124,11 @@ class DeviceCodePanel implements PanelOverlay {
 
     final linkedUri =
         osc8Link(flow.verificationUri, flow.verificationUri).styled.cyan;
+    final copiedHint = _copied ? '  (copied to clipboard)'.styled.dim : '';
     final content = <String>[
       '',
       ' 1. Open  $linkedUri',
-      ' 2. Enter code  ${flow.userCode.styled.bold}',
+      ' 2. Enter code  ${flow.userCode.styled.bold}$copiedHint',
       ' 3. Approve in your browser',
       '',
       ' ${statusLine.styled.dim}',
@@ -118,7 +136,9 @@ class DeviceCodePanel implements PanelOverlay {
     while (content.length < panelH - 2) {
       content.add('');
     }
-    content.add(' ${'Enter open in browser · Esc cancel'.styled.dim}');
+    content.add(
+      ' ${'Enter open in browser · c copy code · Esc cancel'.styled.dim}',
+    );
 
     return _composeModal(
       title: 'Connect ${flow.providerName}',

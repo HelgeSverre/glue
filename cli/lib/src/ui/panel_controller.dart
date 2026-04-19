@@ -1,10 +1,10 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:glue/src/catalog/model_catalog.dart';
 import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/config/glue_config.dart';
+import 'package:glue/src/core/clipboard.dart' as shared_clipboard;
 import 'package:glue/src/credentials/credential_store.dart';
 import 'package:glue/src/providers/auth_flow.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
@@ -518,9 +518,8 @@ class PanelController {
     required GlueConfig config,
     required void Function(String message) addSystemMessage,
   }) async {
-    final providers = config.catalogData.providers.values
-        .where((p) => p.enabled)
-        .toList();
+    final providers =
+        config.catalogData.providers.values.where((p) => p.enabled).toList();
     if (providers.isEmpty) {
       addSystemMessage('No providers in the catalog.');
       _render();
@@ -574,8 +573,8 @@ class PanelController {
     required void Function(String message) addSystemMessage,
   }) {
     final adapter = config.adapters.lookup(provider.adapter);
-    final connected = adapter != null &&
-        adapter.isConnected(provider, config.credentials);
+    final connected =
+        adapter != null && adapter.isConnected(provider, config.credentials);
     final isLocal = provider.auth.kind == AuthKind.none;
 
     final actions = <_ProviderAction>[
@@ -634,9 +633,8 @@ class PanelController {
             _render();
             return;
           }
-          final firstModelId = provider.models.keys.isEmpty
-              ? '?'
-              : provider.models.keys.first;
+          final firstModelId =
+              provider.models.keys.isEmpty ? '?' : provider.models.keys.first;
           final resolved = config.resolveProvider(
             ModelRef(providerId: provider.id, modelId: firstModelId),
           );
@@ -700,38 +698,8 @@ class PanelController {
     });
   }
 
-  Future<bool> _copyToClipboard(String text) async {
-    final commands = _clipboardCommands();
-    for (final command in commands) {
-      try {
-        final process = await Process.start(command.$1, command.$2);
-        process.stdin.write(text);
-        await process.stdin.close();
-        final exitCode = await process.exitCode;
-        if (exitCode == 0) return true;
-      } catch (_) {
-        // Try next clipboard command fallback.
-      }
-    }
-    return false;
-  }
-
-  List<(String, List<String>)> _clipboardCommands() {
-    if (Platform.isMacOS) {
-      return [('pbcopy', const [])];
-    }
-    if (Platform.isWindows) {
-      return [('clip', const [])];
-    }
-    if (Platform.isLinux) {
-      return [
-        ('wl-copy', const []),
-        ('xclip', const ['-selection', 'clipboard']),
-        ('xsel', const ['--clipboard', '--input']),
-      ];
-    }
-    return const [];
-  }
+  Future<bool> _copyToClipboard(String text) =>
+      shared_clipboard.copyToClipboard(text);
 
   int _contentWidthFor(PanelSize panelWidth) {
     final resolvedWidth = panelWidth.resolve(_terminalWidth());

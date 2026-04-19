@@ -190,8 +190,9 @@ List<String> _centerOverlay(
   for (var i = 0; i < panelH && topPad + i < out.length; i++) {
     final bg = out[topPad + i];
     final bgLen = visibleLength(bg);
-    final leftBg =
-        bgLen >= leftPad ? ansiTruncate(bg, leftPad) : bg + ' ' * (leftPad - bgLen);
+    final leftBg = bgLen >= leftPad
+        ? ansiTruncate(bg, leftPad)
+        : bg + ' ' * (leftPad - bgLen);
     final line = panel[i];
     out[topPad + i] = '$leftBg$line';
   }
