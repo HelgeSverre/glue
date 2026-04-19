@@ -14,14 +14,19 @@ deps-if-needed:
     fi
 
 # Generate API docs from Dart source
-generate:
+generate: deps-if-needed
     cd ../cli && dart run tool/gen_models.dart
     cd ../cli && dart run tool/generate_website_api.dart
     cd ../cli && dart run tool/generate_site_reference.dart
+    npm run og
 
 # Regenerate site reference files only (models, runtime matrix, config, sessions)
 generate-reference:
     cd ../cli && dart run tool/generate_site_reference.dart
+
+# Generate per-page OpenGraph images (public/og/*.png)
+og: deps-if-needed
+    npm run og
 
 # Fail if generated reference files are out of date with canonical sources
 check-generated: generate-reference
