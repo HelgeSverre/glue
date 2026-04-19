@@ -9,14 +9,25 @@ import 'package:glue/src/ui/panel_modal.dart';
 
 class SelectOption<T> {
   final T value;
-  final String label;
+  final String Function(int contentWidth) renderLabel;
   final String searchText;
 
-  const SelectOption({
+  SelectOption({
     required this.value,
-    required this.label,
+    required String label,
     String? searchText,
-  }) : searchText = searchText ?? label;
+  })  : renderLabel = ((_) => label),
+        searchText = searchText ?? label;
+
+  SelectOption.responsive({
+    required this.value,
+    required String Function(int contentWidth) build,
+    required this.searchText,
+  }) : renderLabel = build;
+
+  /// Back-compat getter — callers that need a one-shot snapshot at a default width.
+  /// Prefer `renderLabel(width)` directly.
+  String get label => renderLabel(80);
 }
 
 class SelectPanel<T> implements PanelOverlay {
@@ -36,6 +47,7 @@ class SelectPanel<T> implements PanelOverlay {
   int _scrollOffset = 0;
   int _selectedIndex = 0;
   int _lastListHeight = 1;
+  int _lastContentWidth = 80;
   String _query = '';
 
   final Completer<void> _resultCompleter = Completer<void>();
@@ -186,6 +198,7 @@ class SelectPanel<T> implements PanelOverlay {
     final topRow = (termHeight - panelH) ~/ 2;
     final leftCol = (termWidth - panelW) ~/ 2;
     final contentW = max(1, panelW - 4);
+    _lastContentWidth = contentW;
 
     final selectedGlobalIndex = _selectedIndexForFiltered(filtered);
 
@@ -267,7 +280,7 @@ class SelectPanel<T> implements PanelOverlay {
       final optionIndex = filtered[optionPos];
       final option = options[optionIndex];
       final selected = optionIndex == selectedGlobalIndex;
-      return (option.label, selected);
+      return (option.renderLabel(_lastContentWidth), selected);
     }
 
     if (filtered.isEmpty && listRow == 0) {
