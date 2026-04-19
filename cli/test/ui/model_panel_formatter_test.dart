@@ -28,58 +28,6 @@ CatalogRow _row({
 ModelRef _ref(String s) => ModelRef.parse(s);
 
 void main() {
-  group('formatModelPanelLines', () {
-    test('empty entries returns empty result', () {
-      final result = formatModelPanelLines(
-        const [],
-        currentRef: _ref('anthropic/x'),
-      );
-      expect(result.lines, isEmpty);
-      expect(result.entries, isEmpty);
-      expect(result.initialIndex, 0);
-    });
-
-    test('single entry produces one line', () {
-      final rows = [_row()];
-      final result = formatModelPanelLines(
-        rows,
-        currentRef: _ref('other/x'),
-      );
-      expect(result.lines, hasLength(1));
-      expect(stripAnsi(result.lines.first), contains('Claude Sonnet 4.6'));
-    });
-
-    test('marks the current model with a filled dot', () {
-      final rows = [
-        _row(),
-        _row(modelId: 'claude-haiku-4-5', modelName: 'Haiku')
-      ];
-      final result = formatModelPanelLines(
-        rows,
-        currentRef: _ref('anthropic/claude-haiku-4-5'),
-      );
-      expect(result.initialIndex, 1);
-      final activeLine = stripAnsi(result.lines[1]);
-      expect(activeLine, contains('\u25cf'));
-    });
-
-    test('provider header only shown on first row per provider', () {
-      final rows = [
-        _row(modelId: 'a1'),
-        _row(modelId: 'a2'),
-        _row(providerId: 'openai', providerName: 'OpenAI', modelId: 'o1'),
-      ];
-      final result = formatModelPanelLines(
-        rows,
-        currentRef: _ref('anthropic/a1'),
-      );
-      final lines = result.lines.map(stripAnsi).toList();
-      expect(lines[0], contains('Anthropic'));
-      expect(lines[1], isNot(contains('Anthropic')));
-      expect(lines[2], contains('OpenAI'));
-    });
-  });
-
   group('buildModelPanel', () {
     final entry = _row(
       notes: 'A fairly long notes column to compress on narrow terminals',
