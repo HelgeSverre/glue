@@ -1,4 +1,5 @@
 ---
+pageClass: page-marketing
 title: Brand
 description: Glue marks, color, typography, and usage notes.
 sidebar: false

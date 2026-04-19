@@ -3,7 +3,7 @@
 const navLinks = [
   { text: 'Docs',      href: '/docs/getting-started/installation' },
   { text: 'Models',    href: '/models' },
-  { text: 'Runtimes',  href: '/runtimes' },
+  { text: 'Roadmap',   href: '/roadmap' },
   { text: 'Changelog', href: '/changelog' },
 ]
 

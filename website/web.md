@@ -1,4 +1,5 @@
 ---
+pageClass: page-marketing
 title: Web Tools
 description: Fetch, extract, search, and browser automation — practical web tooling that pairs with Docker or future cloud runtimes when the work is risky.
 sidebar: false

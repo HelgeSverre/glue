@@ -1,4 +1,5 @@
 ---
+pageClass: page-marketing
 title: Sessions
 description: Every Glue session is an append-only JSONL log you can read, resume, and replay.
 sidebar: false

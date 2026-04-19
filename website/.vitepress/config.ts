@@ -1,13 +1,64 @@
-import { defineConfig } from 'vitepress'
+import { defineConfig, type DefaultTheme } from 'vitepress'
 import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
 const vitepressDir = path.dirname(fileURLToPath(import.meta.url))
+const repoRoot = path.resolve(vitepressDir, '..', '..')
+
+// ── API reference sidebar (auto-generated) ───────────────────────────────
 const apiSidebarPath = path.join(vitepressDir, 'sidebar.json')
 const apiSidebar = fs.existsSync(apiSidebarPath)
   ? JSON.parse(fs.readFileSync(apiSidebarPath, 'utf-8'))
   : []
+
+// ── Changelog version sidebar (built from cli/CHANGELOG.md) ──────────────
+const changelogSidebar = buildChangelogSidebar()
+
+function buildChangelogSidebar(): DefaultTheme.SidebarItem[] {
+  const changelogPath = path.join(repoRoot, 'cli', 'CHANGELOG.md')
+  if (!fs.existsSync(changelogPath)) return []
+  const text = fs.readFileSync(changelogPath, 'utf-8')
+  const versions: { text: string; slug: string }[] = []
+  for (const line of text.split('\n')) {
+    // Matches e.g. `## [Unreleased]` or `## [0.1.0] — Initial development`
+    const match = /^##\s+(.+?)\s*$/.exec(line)
+    if (!match) continue
+    const heading = match[1]
+    if (!/^\[/.test(heading)) continue
+    versions.push({ text: heading, slug: slugify(heading) })
+  }
+  return [
+    {
+      text: 'Changelog',
+      items: [
+        { text: 'Top', link: '/changelog' },
+        ...versions.map(v => ({ text: v.text, link: `/changelog#${v.slug}` })),
+      ],
+    },
+  ]
+}
+
+// Mirrors VitePress' default slugify: lowercases, strips punctuation it
+// doesn't accept as part of an anchor, collapses runs to single `-`.
+function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\-\s]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+}
+
+// ── Site-wide default OG/Twitter meta. Per-page title/description override
+// via the transformPageData hook below.
+const ogDefaults = {
+  siteName: 'Glue',
+  image: 'https://getglue.dev/og-default.svg',
+  twitterSite: '@helgesverre',
+}
 
 export default defineConfig({
   title: 'Glue',
@@ -15,6 +66,7 @@ export default defineConfig({
   description: 'A small terminal agent for real coding work.',
   cleanUrls: true,
   lastUpdated: true,
+  appearance: 'force-dark',
 
   head: [
     ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
@@ -22,7 +74,37 @@ export default defineConfig({
     ['link', { href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap', rel: 'stylesheet' }],
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/brand/symbol-yellow.svg' }],
     ['meta', { name: 'theme-color', content: '#0A0A0B' }],
+
+    // OpenGraph / Twitter defaults. transformPageData below overrides title
+    // and description per-page.
+    ['meta', { property: 'og:type', content: 'website' }],
+    ['meta', { property: 'og:site_name', content: ogDefaults.siteName }],
+    ['meta', { property: 'og:image', content: ogDefaults.image }],
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+    ['meta', { name: 'twitter:site', content: ogDefaults.twitterSite }],
+    ['meta', { name: 'twitter:image', content: ogDefaults.image }],
   ],
+
+  // Populate og:title / og:description / og:url / twitter:* per page from
+  // the page's own `title` + `description` frontmatter.
+  transformPageData(pageData) {
+    const head = pageData.frontmatter.head ?? []
+    const title = pageData.title
+      ? `${pageData.title} · Glue`
+      : 'Glue · A small terminal agent for real coding work'
+    const description = (pageData.description as string | undefined)
+      ?? pageData.frontmatter.description
+      ?? 'A small terminal agent for real coding work.'
+    head.push(['meta', { property: 'og:title', content: title }])
+    head.push(['meta', { property: 'og:description', content: description }])
+    head.push(['meta', { name: 'twitter:title', content: title }])
+    head.push(['meta', { name: 'twitter:description', content: description }])
+
+    const relativePath = pageData.relativePath.replace(/\.md$/, '').replace(/\/index$/, '/')
+    head.push(['meta', { property: 'og:url', content: `https://getglue.dev/${relativePath}` }])
+
+    pageData.frontmatter.head = head
+  },
 
   themeConfig: {
     siteTitle: 'Glue',
@@ -44,16 +126,16 @@ export default defineConfig({
             items: [
               { text: 'Why Glue', link: '/why' },
               { text: 'Features', link: '/features' },
+              { text: 'Runtimes', link: '/runtimes' },
               { text: 'Web Tools', link: '/web' },
               { text: 'Sessions', link: '/sessions' },
-              { text: 'Roadmap', link: '/roadmap' },
               { text: 'Brand', link: '/brand' },
             ],
           },
         ],
       },
       { text: 'Models', link: '/models' },
-      { text: 'Runtimes', link: '/runtimes' },
+      { text: 'Roadmap', link: '/roadmap' },
       { text: 'Changelog', link: '/changelog' },
     ],
 
@@ -107,6 +189,7 @@ export default defineConfig({
         },
       ],
       '/api/': apiSidebar,
+      '/changelog': changelogSidebar,
     },
 
     outline: [2, 3],

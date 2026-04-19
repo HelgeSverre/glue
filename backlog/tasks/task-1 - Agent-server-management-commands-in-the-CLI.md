@@ -13,6 +13,7 @@ references:
   - cli/IDEAS.md
   - 'https://zed.dev/docs/extensions/agent-servers'
 priority: low
+milestone: FUTURE
 ---
 
 ## Description

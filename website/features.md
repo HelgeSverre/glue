@@ -1,4 +1,5 @@
 ---
+pageClass: page-marketing
 sidebar: false
 aside: false
 outline: false

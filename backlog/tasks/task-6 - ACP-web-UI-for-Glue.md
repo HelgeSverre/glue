@@ -16,7 +16,8 @@ references:
   - 'https://www.npmjs.com/package/stdio-to-ws'
 documentation:
   - cli/docs/plans/2026-02-27-acp-webui.md
-priority: medium
+priority: low
+milestone: FUTURE
 ---
 
 ## Description

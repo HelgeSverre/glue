@@ -1,8 +1,6 @@
 ---
 title: Changelog
 description: Release notes for Glue.
-sidebar: false
-aside: false
 outline: false
 ---
 

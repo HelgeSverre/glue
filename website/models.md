@@ -1,4 +1,5 @@
 ---
+pageClass: page-marketing
 title: Models and Providers
 description: The providers and models Glue ships with, how configuration binds to them, and how to add an OpenAI-compatible endpoint.
 sidebar: false

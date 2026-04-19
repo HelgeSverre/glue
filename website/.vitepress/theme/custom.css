@@ -126,3 +126,35 @@ button:focus-visible,
 .page-home .VPFooter {
   border-top: 1px solid var(--vp-c-divider);
 }
+
+/* ─── Marketing pages (pageClass: page-marketing) ────────────────────────
+   Non-docs pages sit on a wider canvas. Prose still caps at a readable
+   measure via .vp-doc p. Tables/grids stretch to the container. */
+.page-marketing .VPDoc:not(.has-sidebar) .container,
+.page-marketing .VPDoc:not(.has-sidebar) .content,
+.page-marketing .VPDoc:not(.has-sidebar) .content-container {
+  max-width: 1200px !important;
+}
+
+.page-marketing .vp-doc {
+  max-width: 1200px;
+}
+
+.page-marketing .vp-doc > p,
+.page-marketing .vp-doc > ul,
+.page-marketing .vp-doc > ol,
+.page-marketing .vp-doc > blockquote {
+  max-width: 70ch;
+}
+
+.page-marketing .vp-doc h1 {
+  font-size: clamp(2rem, 4.2vw, 3rem);
+  letter-spacing: -0.02em;
+  margin-top: 1rem;
+}
+
+.page-marketing .vp-doc h2 {
+  font-size: clamp(1.4rem, 2.6vw, 1.75rem);
+  letter-spacing: -0.01em;
+  margin-top: 3rem;
+}

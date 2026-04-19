@@ -17,7 +17,8 @@ references:
 documentation:
   - cli/docs/plans/2026-02-27-acp-webui.md
 parent_task_id: TASK-6
-priority: medium
+priority: low
+milestone: FUTURE
 ---
 
 ## Description
