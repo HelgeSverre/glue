@@ -21,7 +21,8 @@ void main() {
       final table = buildTable();
       final wide = table.renderRow(0, 40);
       final narrow = table.renderRow(0, 12);
-      expect(stripAnsi(wide).length, greaterThanOrEqualTo(stripAnsi(narrow).length));
+      expect(stripAnsi(wide).length,
+          greaterThanOrEqualTo(stripAnsi(narrow).length));
     });
 
     test('renderHeader returns the column headers', () {
@@ -36,7 +37,9 @@ void main() {
     test('includeDivider: false suppresses the divider line', () {
       final table = ResponsiveTable(
         columns: const [TableColumn(key: 'a', header: 'A')],
-        rows: const [{'a': 'x'}],
+        rows: const [
+          {'a': 'x'}
+        ],
         getValues: (row) => row,
         includeDivider: false,
       );
