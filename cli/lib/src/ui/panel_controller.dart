@@ -5,7 +5,6 @@ import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/core/clipboard.dart' as shared_clipboard;
-import 'package:glue/src/credentials/credential_store.dart';
 import 'package:glue/src/providers/auth_flow.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
@@ -301,9 +300,10 @@ class PanelController {
     final defaultCaps = <String>{Capability.chat, Capability.tools};
     final entries = flattenCatalog(
       config.catalogData,
-      where: (p) =>
-          config.credentials.health(p) == CredentialHealth.ok ||
-          p.auth.kind == AuthKind.none,
+      where: (p) {
+        final adapter = config.adapters.lookup(p.adapter);
+        return adapter != null && adapter.isConnected(p, config.credentials);
+      },
     ).where((row) => row.model.capabilities.containsAll(defaultCaps)).toList();
 
     if (entries.isEmpty) {
@@ -314,20 +314,21 @@ class PanelController {
       return;
     }
 
-    final panelWidth = PanelFluid(0.7, 40);
-    final contentWidth = _contentWidthFor(panelWidth);
-    final formatted = formatModelPanelLines(
-      entries,
-      currentRef: currentRef,
-      maxTotalWidth: contentWidth,
-    );
+    final panelWidth = PanelFluid(0.8, 30);
+    final builder = buildModelPanel(entries, currentRef: currentRef);
+
     final options = <SelectOption<CatalogRow>>[];
-    for (var i = 0; i < formatted.entries.length; i++) {
+    for (var i = 0; i < entries.length; i++) {
+      final entry = entries[i];
+      final searchText = stripAnsi(
+        '${entry.providerName} ${entry.model.name} '
+        '${entry.model.notes ?? ''}',
+      );
       options.add(
-        SelectOption(
-          value: formatted.entries[i],
-          label: formatted.lines[i],
-          searchText: stripAnsi(formatted.lines[i]),
+        SelectOption.responsive(
+          value: entry,
+          build: (w) => builder.renderRow(i, w),
+          searchText: searchText,
         ),
       );
     }
@@ -335,12 +336,12 @@ class PanelController {
     final panel = SelectPanel<CatalogRow>(
       title: 'Switch Model',
       options: options,
-      headerLines: formatted.headerLines,
+      headerBuilder: builder.renderHeader,
       searchHint: 'filter models',
       barrier: BarrierStyle.dim,
       width: panelWidth,
-      height: PanelFluid(0.6, 12),
-      initialIndex: formatted.initialIndex,
+      height: PanelFluid(0.7, 10),
+      initialIndex: builder.initialIndex,
     );
     _panelStack.add(panel);
     _render();

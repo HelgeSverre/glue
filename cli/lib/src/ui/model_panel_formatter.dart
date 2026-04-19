@@ -1,6 +1,7 @@
 import 'package:glue/src/catalog/model_catalog.dart';
 import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/terminal/styled.dart';
+import 'package:glue/src/ui/responsive_table.dart';
 import 'package:glue/src/ui/table_formatter.dart';
 
 /// A single row for the model picker: one provider's name plus one of its
@@ -67,8 +68,6 @@ ModelPanelLines formatModelPanelLines(
     final marker = isCurrent ? '\u25cf ' : '  ';
     final name = row.model.name;
     final tag = (row.model.notes ?? '').styled.dim.toString();
-    final cost = row.model.cost ?? '';
-    final speed = row.model.speed ?? '';
 
     if (isCurrent) flatInitial = i;
     rows.add({
@@ -76,8 +75,6 @@ ModelPanelLines formatModelPanelLines(
       'marker': marker,
       'name': name,
       'tag': tag,
-      'cost': cost,
-      'speed': speed,
     });
   }
 
@@ -87,8 +84,6 @@ ModelPanelLines formatModelPanelLines(
       TableColumn(key: 'marker', header: ''),
       TableColumn(key: 'name', header: 'MODEL'),
       TableColumn(key: 'tag', header: 'NOTES'),
-      TableColumn(key: 'cost', header: 'COST', align: TableAlign.right),
-      TableColumn(key: 'speed', header: 'SPEED', align: TableAlign.right),
     ],
     rows: rows,
     maxTotalWidth: maxTotalWidth,
@@ -102,6 +97,76 @@ ModelPanelLines formatModelPanelLines(
     entries: entries,
     initialIndex: flatInitial,
   );
+}
+
+/// Width-aware builder for the model picker.
+///
+/// Unlike [formatModelPanelLines], this does not pre-render at a fixed width.
+/// Instead it holds the row data and re-formats on demand, so the picker
+/// can reflow its columns as the user resizes the terminal.
+class ModelPanelBuilder {
+  ModelPanelBuilder._(this._table, this.initialIndex, this.entries);
+
+  final ResponsiveTable<int> _table;
+
+  /// Index into [entries] for the currently active model, or 0 if none match.
+  final int initialIndex;
+
+  /// Flat list of entries corresponding 1:1 with the builder's rows.
+  final List<CatalogRow> entries;
+
+  int get rowCount => entries.length;
+  List<String> renderHeader(int width) => _table.renderHeader(width);
+  String renderRow(int index, int width) => _table.renderRow(index, width);
+}
+
+/// Builds a [ModelPanelBuilder] that reflows column widths with the
+/// terminal. Provider headers are shown only on the first row of each
+/// provider group; the current model is marked with a filled dot.
+ModelPanelBuilder buildModelPanel(
+  List<CatalogRow> entries, {
+  required ModelRef currentRef,
+}) {
+  var flatInitial = 0;
+  final headers = <String>[];
+  String? lastProvider;
+  for (var i = 0; i < entries.length; i++) {
+    final row = entries[i];
+    if (row.providerId == currentRef.providerId &&
+        row.model.id == currentRef.modelId) {
+      flatInitial = i;
+    }
+    headers.add(
+      row.providerId != lastProvider
+          ? row.providerName.styled.cyan.toString()
+          : '',
+    );
+    lastProvider = row.providerId;
+  }
+
+  final indexed = List<int>.generate(entries.length, (i) => i);
+  final table = ResponsiveTable<int>(
+    columns: const [
+      TableColumn(key: 'provider', header: 'PROVIDER'),
+      TableColumn(key: 'marker', header: ''),
+      TableColumn(key: 'name', header: 'MODEL'),
+      TableColumn(key: 'tag', header: 'NOTES'),
+    ],
+    rows: indexed,
+    getValues: (i) {
+      final row = entries[i];
+      final isCurrent = row.providerId == currentRef.providerId &&
+          row.model.id == currentRef.modelId;
+      return {
+        'provider': headers[i],
+        'marker': isCurrent ? '\u25cf ' : '  ',
+        'name': row.model.name,
+        'tag': (row.model.notes ?? '').styled.dim.toString(),
+      };
+    },
+  );
+
+  return ModelPanelBuilder._(table, flatInitial, entries);
 }
 
 /// Flatten a [ModelCatalog] into rows suitable for the model panel.
