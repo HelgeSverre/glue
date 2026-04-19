@@ -54,6 +54,10 @@ check-consistency:
 preview: deps-if-needed build
     npx vitepress preview
 
+# Deploy to Vercel production (runs `vc --prod`)
+deploy: build
+    vc --prod
+
 # Remove docs build artifacts
 clean:
     rm -rf .vitepress/dist .vitepress/cache
