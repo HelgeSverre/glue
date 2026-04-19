@@ -2,6 +2,7 @@
 
 Status: **proposed — deferred**
 Date: 2026-04-19
+Last revised: 2026-04-19 (Option D locked in; VibeKit alignment section; `/workspace` universal path)
 Owner: unassigned
 Prerequisite: runtime boundary prep (task-26) must land first
 
@@ -13,8 +14,9 @@ Fly.io Sprites, Bunnyshell/hopx, Northflank.
 
 ## Status — why deferred
 
-Research is complete. Design decisions are partially made. Implementation
-is **not scheduled**. Revisit when:
+Research is complete. Workspace sync (Option D) and universal workspace
+path (`/workspace`) are decided; remaining design decisions listed under
+"Open questions" below. Implementation is **not scheduled**. Revisit when:
 
 - Runtime boundary prep (task-26, subtasks 26.1–26.5) has landed — the
   `RunningCommandHandle` interface and JSONL runtime events make cloud
@@ -43,7 +45,8 @@ is **not scheduled**. Revisit when:
 | Implementation scope | Top 3 only |
 | Top-3 selection criterion | Blend of popularity and capability/coverage |
 | Credentials (V1) | Env vars only (`E2B_API_KEY`, `DAYTONA_API_KEY`, etc.). Defer integration with task-22's `CredentialStore` to a follow-up. |
-| Workspace sync model | **Undecided** — options A/B/C/D captured below; D is the leading candidate |
+| Workspace sync model | **Option D — git-first bootstrap + per-provider persistence opt-in** (decided 2026-04-19; see §"Workspace sync" below). Aligns with VibeKit's `.withGithub({ token, repository })` + `branch` model. |
+| Universal workspace path | **`/workspace`** across all runtimes — Docker, host, cloud. Landed in Docker 2026-04-19. Matches VibeKit / E2B / Daytona / Sprites defaults. |
 | Top-3 providers | **Undecided** — candidate shortlist proposed |
 | Browser endpoint ownership | **Undecided** |
 | Per-session vs global runtime selection | **Undecided** |
@@ -201,12 +204,77 @@ product that lives at hopx.ai. Docs at `bunnyshell.mintlify.app`.
 
 ---
 
-## Workspace sync — options captured for later decision
+## VibeKit alignment
+
+VibeKit (`docs.vibekit.sh`) ships a production TypeScript SDK that already
+solves much of the abstraction Glue needs. We're not adopting VibeKit as a
+dependency — they're TS, we're Dart, and their provider list only partially
+overlaps ours — but their shape validates our direction and gives us a free
+head-start on API ergonomics.
+
+### Patterns we're stealing wholesale
+
+1. **`executeCommand` as the single universal primitive.** VibeKit resists
+   adding `readFile`/`writeFile`/`uploadDir` to the executor; everything
+   routes through shell (`cat`, `tee`, `tar`). Glue's `CommandExecutor`
+   already has this shape — keep it.
+2. **Git as the workspace-sync protocol.** VibeKit's
+   `.withGithub({ token, repository })` + `branch` parameter pushes git as
+   the transport. This is Option A in our sync matrix and the foundation of
+   Option D (the chosen model).
+3. **Ephemeral-by-default, persistent-opt-in.** Only Northflank opts into
+   persistence in VibeKit. Daytona, Sprites, E2B treat persistence as an
+   explicit capability. Matches Option D's persistence-capability flag.
+4. **Session ≡ warm sandbox handle.** VibeKit's `.withSession(id)` /
+   `setSession(id)` reattaches to an existing sandbox; `sandboxId` flows
+   out of every call. For Glue: `CaptureResult` should carry `runtimeId` +
+   `sessionId` so clients can always reattach.
+5. **`getHost(port)` as the escape hatch.** When the agent spawns a dev
+   server in the sandbox, users need a URL. VibeKit returns a reachable
+   host for any port. Bake into the future `RuntimeSession` interface.
+6. **Provider factories in separate packages.** VibeKit ships
+   `@vibe-kit/daytona`, `@vibe-kit/e2b`, etc. — core stays SDK-free. Glue
+   should ship `glue_e2b`, `glue_daytona`, `glue_sprites` as separate pub
+   packages depending only on the boundary interface.
+7. **Ask Mode = read-only capability.** VibeKit's `mode: "ask"` disables
+   filesystem writes. Single flag, high leverage. Add to Glue's capability
+   table (see runtime-boundary plan §"Ask Mode").
+8. **Three-tier image resolution (Dagger).** Local cache → registry → build.
+   Good pattern for Glue's Docker executor too.
+
+### Patterns we're **not** copying
+
+- **Fluent builder API** (`new VibeKit().withAgent().withSandbox()...`).
+  Dart cascades give us the same ergonomics, but our existing `GlueConfig`
+  → `ExecutorFactory` flow is more testable than a method chain.
+- **Per-provider-specific feature surfaces** (Cloudflare `hostname`,
+  Northflank `billingPlan`). Glue keeps these in provider-local config
+  sections; no polymorphic `spawnSandbox()` that ignores provider
+  differences.
+- **`generateCode()` higher-level agent primitive.** VibeKit is
+  deprecating this in favor of `executeCommand + events` — signals we
+  should not build a symmetric thing.
+
+### Gaps VibeKit leaves us to fill
+
+- **No browser/CDP integration story.** VibeKit expects the agent to run
+  its own browser tooling inside the sandbox; our browser-provider layer
+  is ahead of them here (task-26.4 extends it with runtime-owned endpoints).
+- **No declarative resource limits.** CPU/memory caps are per-provider
+  (`billingPlan` etc.). Glue should document this limitation, not
+  abstract it.
+- **CLI and SDK have divergent sandbox configs in VibeKit.** We should
+  unify from day one — one config shape, whether invoked from
+  `~/.glue/config.yaml`, env vars, or a programmatic API.
+
+---
+
+## Workspace sync — Option D chosen (other options kept for context)
 
 ### Today's baseline
 
 - **HostExecutor:** cwd is the workspace; no sync needed.
-- **DockerExecutor:** cwd mounted at `/work`; real-time shared FS.
+- **DockerExecutor:** cwd mounted at `/workspace`; real-time shared FS.
 - Tools (read/write/edit/shell) operate live, not on batched diffs.
 - Sessions logged to JSONL for replay (task-27 on the board).
 
@@ -248,15 +316,17 @@ pause/resume, Sprites persistent FS, Modal Volume.
 **Cons:** biggest abstraction surface; per-adapter config balloons; hard
 to port sessions across providers.
 
-### Option D — A + per-provider persistence opt-in (leading candidate)
+### Option D — A + per-provider persistence opt-in (chosen 2026-04-19)
 
-Default = A (git-first + tarball fallback). Providers whose killer feature
-is persistence (Daytona, Sprites, E2B pause/resume) declare a `persistent`
-capability. On session resume, Glue wakes the existing sandbox instead of
-re-bootstrapping.
+**Status: decided.** Default = A (git-first + tarball fallback). Providers
+whose killer feature is persistence (Daytona, Sprites, E2B pause/resume)
+declare a `persistent` capability. On session resume, Glue wakes the
+existing sandbox instead of re-bootstrapping.
 
 **Pros:** uniform debuggable default; escape hatch where persistence
-materially beats re-bootstrap.
+materially beats re-bootstrap. Matches VibeKit's own design
+(`.withGithub({ token, repository })` + `branch` parameter — see
+"VibeKit alignment" below).
 **Cons:** two code paths per adapter; users must understand which
 mechanism is active.
 
@@ -381,22 +451,33 @@ Working glossary. Align with the vocabulary in
 
 ## Open questions (all deferred)
 
+### Resolved since original draft
+
+- **Workspace sync A/B/C/D final pick.** ✅ Decided 2026-04-19: **Option D**
+  (git-first bootstrap + per-provider persistence opt-in). Validated by
+  VibeKit's identical approach.
+- **Universal workspace path.** ✅ Decided 2026-04-19: **`/workspace`**
+  across all runtimes. Docker migration landed same day.
+
+### Still open
+
 1. **Browser endpoint ownership.** Today `BrowserEndpointProvider` is
    separate from executors. Cloud runtimes that bundle browsers (E2B
    `browser` template, hopx Chrome, Daytona Computer Use) — do they
    become browser providers too, or stay purely command executors?
+   Runtime-boundary plan task-26.4 sketches a `BrowserEndpointSource`
+   abstraction that would accommodate both.
 2. **Per-session vs global runtime selection.** Is the runtime picked
    once in config, or selectable per session / per tool call?
-3. **Workspace sync A/B/C/D final pick.** D is the leading candidate.
-4. **Credentials beyond V1.** Integration with task-22's
+3. **Credentials beyond V1.** Integration with task-22's
    `CredentialStore` deferred.
-5. **Non-git workspace handling.** Tarball fallback mechanics —
+4. **Non-git workspace handling.** Tarball fallback mechanics —
    compression, `.gitignore` semantics, size caps.
-6. **Outbound network egress policy.** Allowlist, block-all, or inherit
+5. **Outbound network egress policy.** Allowlist, block-all, or inherit
    provider defaults per runtime.
-7. **Artifact retention.** Where artifacts land locally when
+6. **Artifact retention.** Where artifacts land locally when
    `collectArtifacts()` is called, and for how long.
-8. **Cancel semantics.** Behavior for in-flight commands on session
+7. **Cancel semantics.** Behavior for in-flight commands on session
    cancel; provider-specific cleanup races.
 
 ---
@@ -416,9 +497,9 @@ Triggers for revisiting:
 1. Refresh the 6-provider landscape — this space moves fast (Sprites
    launched Jan 2026; Daytona's Series A is Feb 2026; OpenAI's SDK
    sandbox list landed Apr 2026).
-2. Finalize workspace sync decision (A/B/C/D).
-3. Confirm or revise the top-3.
-4. Resolve the 8 open questions above.
+2. Confirm or revise the top-3.
+3. Resolve the 7 remaining open questions above (workspace sync and
+   universal path are already decided).
 5. Draft the `ExecutionRuntime` interface, informed by actual adapter
    needs rather than speculation.
 6. Create a backlog parent task and kick off the `writing-plans` skill
