@@ -15,6 +15,7 @@ deps-if-needed:
 
 # Generate API docs from Dart source
 generate:
+    cd ../cli && dart run tool/gen_models.dart
     cd ../cli && dart run tool/generate_website_api.dart
     cd ../cli && dart run tool/generate_site_reference.dart
 

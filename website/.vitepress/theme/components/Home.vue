@@ -291,8 +291,8 @@ const jsonlSample = [
     <header class="topbar">
       <div class="wrap topbar-inner">
         <a class="brand" href="/" aria-label="Glue home">
-          <span class="brand-mark" aria-hidden="true">◆</span>
-          <span class="brand-name">glue</span>
+          <img class="brand-mark" src="/brand/symbol-yellow.svg" alt="" width="24" height="24" />
+          <span class="brand-name">Glue</span>
         </a>
         <nav class="nav" aria-label="Primary">
           <a
@@ -668,18 +668,19 @@ const jsonlSample = [
 
 .brand {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.5rem;
   color: var(--fg);
-  font-family: var(--vp-font-family-mono);
-  font-size: 0.98rem;
+  font-family: var(--vp-font-family-base);
+  font-size: 1.05rem;
   font-weight: 600;
-  letter-spacing: 0.005em;
+  letter-spacing: normal;
 }
 
 .brand-mark {
-  color: var(--accent);
-  font-size: 0.9em;
+  width: 24px;
+  height: 24px;
+  display: block;
 }
 
 .brand-name {
