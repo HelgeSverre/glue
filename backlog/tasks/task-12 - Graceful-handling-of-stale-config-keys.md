@@ -1,13 +1,15 @@
 ---
 id: TASK-12
 title: Graceful handling of stale config keys
-status: To Do
+status: Won't Do
 assignee: []
 created_date: '2026-04-19 00:28'
+updated_date: '2026-04-19 03:45'
 labels:
   - simplification-2026-04
   - config
   - compatibility
+  - cancelled
 dependencies: []
 references:
   - cli/lib/src/config/glue_config.dart
@@ -49,3 +51,15 @@ Warning text should: name the key, say it was removed, and suggest an action ("r
 - [ ] #5 Tests cover each retired key (YAML + env)
 - [ ] #6 `dart test test/config/` green
 <!-- AC:END -->
+
+## Final Summary
+
+**Cancelled — no backwards-compatibility policy.** Glue has no released
+version, so there are no user configs in the wild to preserve. Retired keys
+(`interaction_mode`, `approval_mode`, `telemetry.*`, `LANGFUSE_*`,
+`OTEL_EXPORTER_OTLP_*`) are silently ignored by `GlueConfig.load()`'s
+existing null-safe lookups, which is adequate for development. No warning
+infrastructure required.
+
+If a released version ever lands and we need to migrate real user configs,
+re-open this task then.
