@@ -11,16 +11,22 @@ class ToolParameter {
   final String description;
   final bool required;
 
+  /// JSON Schema for array element type. Required by OpenAI's strict
+  /// function-calling validator when [type] is `'array'`.
+  final Map<String, dynamic>? items;
+
   const ToolParameter({
     required this.name,
     required this.type,
     required this.description,
     this.required = true,
+    this.items,
   });
 
   Map<String, dynamic> toSchema() => {
         'type': type,
         'description': description,
+        if (items != null) 'items': items,
       };
 }
 

@@ -78,6 +78,13 @@ void main() {
       expect(tool.parameters.any((p) => p.name == 'model_ref'), isTrue);
     });
 
+    test('tasks parameter declares string items for OpenAI validator', () {
+      final tool = SpawnParallelSubagentsTool(manager);
+      final tasks = tool.parameters.firstWhere((p) => p.name == 'tasks');
+      expect(tasks.type, 'array');
+      expect(tasks.items, {'type': 'string'});
+    });
+
     test('executes parallel tasks', () async {
       final tool = SpawnParallelSubagentsTool(manager);
       final result = (await tool.execute({

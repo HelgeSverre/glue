@@ -81,6 +81,7 @@ class SpawnParallelSubagentsTool extends Tool {
           name: 'tasks',
           type: 'array',
           description: 'List of task descriptions, one per subagent.',
+          items: {'type': 'string'},
         ),
         ToolParameter(
           name: 'model_ref',
