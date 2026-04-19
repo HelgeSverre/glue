@@ -430,15 +430,17 @@ class PanelController {
         .where((p) => p.enabled && p.auth.kind != AuthKind.none)
         .toList();
 
+    if (providers.isEmpty) return null;
+
+    final table = _buildProviderTable(providers, config);
+
     final options = <SelectOption<ProviderDef>>[];
-    for (final p in providers) {
-      final status = _statusLabel(p, config);
-      final line = '${p.name.padRight(16)}  ${p.id.styled.dim}   '
-          '${status.styled.dim}';
+    for (var i = 0; i < providers.length; i++) {
+      final p = providers[i];
       options.add(
-        SelectOption<ProviderDef>(
+        SelectOption.responsive(
           value: p,
-          label: line,
+          build: (w) => table.renderRow(i, w),
           searchText: '${p.id} ${p.name}',
         ),
       );
@@ -447,9 +449,10 @@ class PanelController {
     final panel = SelectPanel<ProviderDef>(
       title: 'Add provider',
       options: options,
+      headerBuilder: table.renderHeader,
       searchHint: 'filter providers',
-      width: PanelFluid(0.6, 48),
-      height: PanelFluid(0.5, 10),
+      width: PanelFluid(0.7, 40),
+      height: PanelFluid(0.6, 10),
     );
     _panelStack.add(panel);
     _render();
@@ -522,6 +525,28 @@ class PanelController {
     return 'missing';
   }
 
+  /// Width-aware table shared by `_pickProvider` (`/provider add`) and
+  /// `openProviderPanel` (`/provider list`). Rows reflow with terminal width.
+  ResponsiveTable<ProviderDef> _buildProviderTable(
+    List<ProviderDef> providers,
+    GlueConfig config,
+  ) {
+    return ResponsiveTable<ProviderDef>(
+      columns: const [
+        TableColumn(key: 'name', header: 'PROVIDER', maxWidth: 24),
+        TableColumn(key: 'id', header: 'ID', maxWidth: 14),
+        TableColumn(key: 'status', header: 'STATUS', maxWidth: 12),
+      ],
+      rows: providers,
+      includeHeaderInWidth: true,
+      getValues: (p) => {
+        'name': p.name,
+        'id': p.id.styled.dim.toString(),
+        'status': _statusLabel(p, config).styled.dim.toString(),
+      },
+    );
+  }
+
   /// Open a filterable picker of all catalogued providers with their current
   /// connection status. Selection opens an action submenu (Connect /
   /// Disconnect / Test), mirroring the `_openHistoryActionPanel` pattern.
@@ -537,16 +562,16 @@ class PanelController {
       return;
     }
 
+    final table = _buildProviderTable(providers, config);
+
     final options = <SelectOption<ProviderDef>>[];
-    for (final p in providers) {
-      final status = _statusLabel(p, config);
-      final line = '${p.name.padRight(18)}  ${p.id.padRight(12).styled.dim}  '
-          '${status.styled.dim}';
+    for (var i = 0; i < providers.length; i++) {
+      final p = providers[i];
       options.add(
-        SelectOption<ProviderDef>(
+        SelectOption.responsive(
           value: p,
-          label: line,
-          searchText: '${p.id} ${p.name} $status',
+          build: (w) => table.renderRow(i, w),
+          searchText: '${p.id} ${p.name} ${_statusLabel(p, config)}',
         ),
       );
     }
@@ -554,10 +579,11 @@ class PanelController {
     final panel = SelectPanel<ProviderDef>(
       title: 'Providers',
       options: options,
+      headerBuilder: table.renderHeader,
       searchHint: 'filter providers',
       barrier: BarrierStyle.dim,
-      width: PanelFluid(0.7, 50),
-      height: PanelFluid(0.6, 12),
+      width: PanelFluid(0.8, 40),
+      height: PanelFluid(0.7, 10),
     );
     _panelStack.add(panel);
     _render();
