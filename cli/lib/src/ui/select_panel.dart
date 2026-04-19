@@ -248,8 +248,7 @@ class SelectPanel<T> implements PanelOverlay {
       );
       final truncated = ansiTruncate(raw.$1, contentW);
       final padded = _padAnsi(truncated, contentW);
-      final styledContent =
-          raw.$2 ? '${stripAnsi(padded).styled.inverse}' : padded;
+      final styledContent = raw.$2 ? '${padded.styled.bg256(237)}' : padded;
       final (leftBorder, rightBorder) = box.styledSides(color: borderColor);
       panelLines.add('$leftBorder $styledContent $rightBorder');
     }

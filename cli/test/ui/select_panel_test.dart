@@ -137,6 +137,21 @@ void main() {
       expect(widths.first, isNot(widths.last));
     });
 
+    test('selected row uses dim-gray background, not inverse video', () {
+      final panel = SelectPanel<String>(
+        title: 'Pick',
+        options: [
+          SelectOption(value: 'alpha', label: 'alpha'),
+          SelectOption(value: 'beta', label: 'beta'),
+        ],
+        searchEnabled: false,
+      );
+      final grid = panel.render(80, 20, const []);
+      final joined = grid.join();
+      expect(joined, contains('\x1b[48;5;237m'));
+      expect(joined, isNot(contains('\x1b[7m')));
+    });
+
     test('headerBuilder output appears above options in rendered grid', () {
       final panel = SelectPanel<String>(
         title: 'Pick',

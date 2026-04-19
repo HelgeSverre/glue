@@ -380,7 +380,8 @@ class PanelModal implements PanelOverlay {
 
         final isSelected =
             selectable && (contentIdx + _scrollOffset) == _selectedIndex;
-        final styledContent = isSelected ? '${padded.styled.inverse}' : padded;
+        final styledContent =
+            isSelected ? '${padded.styled.bg256(237)}' : padded;
 
         final (leftBorder, rightBorder) = box.styledSides(color: borderColor);
 

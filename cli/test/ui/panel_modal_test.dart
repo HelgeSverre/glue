@@ -406,11 +406,12 @@ void main() {
       expect(panel.scrollOffset, greaterThan(0));
     });
 
-    test('render highlights selected row with inverse video', () {
+    test('render highlights selected row with a dim-gray background', () {
       final bg = List.generate(24, (i) => '');
       final rendered = panel.render(80, 24, bg);
       final allText = rendered.join();
-      expect(allText, contains('\x1b[7m'));
+      expect(allText, contains('\x1b[48;5;237m'));
+      expect(allText, isNot(contains('\x1b[7m')));
     });
 
     test('non-selectable panel has no selection future', () async {
