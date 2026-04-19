@@ -4,7 +4,7 @@ title: /provider add command with Copilot OAuth
 status: In Review
 assignee: []
 created_date: '2026-04-19 12:00'
-updated_date: '2026-04-19 12:00'
+updated_date: '2026-04-19 20:38'
 labels:
   - model-provider-2026-04
   - commands
@@ -73,7 +73,6 @@ Close the credential-onboarding gap. After MP3–7 shipped, users with no API ke
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
-
 <!-- AC:BEGIN -->
 - [x] #1 `/provider add anthropic` with no env opens masked input modal, stores on submit, reports "Connected". (panel_controller._runApiKeyFlow)
 - [x] #2 `/provider add copilot` shows device URL + user code, polls, exchanges for Copilot token, stores all three fields. (panel_controller._runDeviceCodeFlow + CopilotAdapter)
@@ -89,24 +88,38 @@ Close the credential-onboarding gap. After MP3–7 shipped, users with no API ke
 - [ ] #12 Manual verification: `./glue` → `/provider add copilot` → browser approval → `--model copilot/claude-sonnet-4.6 "hi"` responds. *(not yet run — needs real GitHub Copilot subscription)*
 <!-- AC:END -->
 
-## Files
+## Final Summary
 
-**Create:**
-- `cli/lib/src/providers/auth_flow.dart`
-- `cli/lib/src/providers/copilot_adapter.dart`
-- `cli/lib/src/providers/copilot_token_manager.dart`
-- `cli/lib/src/ui/api_key_prompt_panel.dart`
-- `cli/lib/src/ui/device_code_panel.dart`
-- `cli/lib/src/app/commands/provider_command.dart`
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+## Follow-up (post-review fix)
 
-**Modify:**
-- `cli/lib/src/catalog/model_catalog.dart` (`AuthKind`, `AuthSpec.helpUrl`)
-- `cli/lib/src/catalog/catalog_parser.dart`
-- `cli/tool/gen_models.dart`
-- `cli/lib/src/catalog/models_generated.dart` (regen)
-- `cli/lib/src/credentials/credential_store.dart` (`setFields`, `getField`)
-- `cli/lib/src/providers/provider_adapter.dart` (`beginInteractiveAuth`, `isConnected`)
-- `cli/lib/src/config/glue_config.dart` (register `CopilotAdapter`, new error wording)
-- `cli/lib/src/commands/slash_commands.dart`
-- `cli/lib/src/ui/panel_controller.dart`
-- `docs/reference/models.yaml` (new `copilot` entry, `help_url` sprinkled)
+Manual check surfaced that Copilot models were missing from the `/model` / `/models` picker even after `/provider add copilot` reported "connected". Root cause was a leftover code path from the pre-OAuth era: the picker filtered catalog rows through `CredentialStore.health()`, which explicitly returns `missing` for `AuthKind.oauth` (since OAuth tokens don't live under a single `api_key` field).
+
+**Fix** (in this session):
+
+- `cli/lib/src/ui/panel_controller.dart` — `openModel()` filter now uses `adapter.isConnected(p, config.credentials)`, matching the pattern already used for `/provider list` and the provider action panel. Drops the `AuthKind.none` branch; the base `ProviderAdapter.isConnected()` handles it.
+- `cli/lib/src/credentials/credential_store.dart` — deleted `CredentialHealth` enum and `health()` method (sole caller replaced; no production code still references them).
+- `cli/lib/glue.dart` — removed `CredentialHealth` from the public export.
+- `cli/test/credentials/credential_store_test.dart` — removed the three `CredentialStore.health` tests.
+
+`dart analyze --fatal-infos` clean; `dart test` all pass (the pre-existing Docker executor test is unrelated and fails on main as well when Docker isn't running).
+
+AC #12 is still partially verified — user confirmed the OAuth connect path works; sending a completion via `--model copilot/...` now becomes possible once they run `/model` and pick a Copilot entry.
+
+## Follow-up 2: responsive TUI panels (2026-04-19)
+
+The `/models` visibility fix above was a symptom of a wider issue: every picker (`/model`, `/resume`, `/history`, `/provider`, `/help`) baked its rendered content at open time and never re-flowed on terminal resize. A unified refactor landed as an 11-commit series on `main`:
+
+- `PanelFluid` small-terminal fallback (`7484f0d`) — when the min floor dominates (>75% of terminal width), expand to `available - margin` instead of an awkward cramped box.
+- `SelectOption.responsive` (`174cf1e`) — per-render label builder `String Function(int contentWidth)`.
+- `SelectPanel.headerBuilder` (`4b0bd71`) — per-render header list.
+- `PanelModal.responsive` (`d31bffb`) — per-render content list with cached `_lastLines` for `handleEvent`.
+- `ResponsiveTable<T>` helper (`61df08a`) — width-aware wrapper over `TableFormatter` with single-slot memoization.
+- Picker migrations: model (`621b042`), resume (`132866c`), history (`1c2241a`, also deleted dead `_contentWidthFor`/`_terminalWidth`/`_defaultTerminalWidth`), provider list + `/provider add` picker (`566242d`), help (`bb87b5c`).
+- Dead code removal (`4571b89`): `formatModelPanelLines` + `ModelPanelLines` class (-142 LoC net).
+- Formatter sweep (`f06567c`).
+
+`dart analyze --fatal-infos` clean; `dart test` all pass (1270) except the pre-existing Docker test that fails without a Docker daemon.
+
+Future follow-up tracked in TASK-30: `BlockRenderer` / `MarkdownRenderer` also take `width` once at construction and would benefit from the same pattern, but they don't cause user-visible breakage today.
+<!-- SECTION:FINAL_SUMMARY:END -->
