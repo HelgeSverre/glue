@@ -13,6 +13,7 @@ import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/credentials/credential_store.dart';
 import 'package:glue/src/observability/observability_config.dart';
 import 'package:glue/src/providers/anthropic_adapter.dart';
+import 'package:glue/src/providers/copilot_adapter.dart';
 import 'package:glue/src/providers/openai_compatible_adapter.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
 import 'package:glue/src/providers/resolved.dart';
@@ -130,6 +131,7 @@ class GlueConfig {
     return ResolvedProvider(
       def: def,
       apiKey: credentials.resolveForProvider(def),
+      credentials: credentials.getFields(def.id),
     );
   }
 
@@ -168,11 +170,12 @@ class GlueConfig {
         );
       case ProviderHealth.missingCredential:
         final auth = resolved.def.auth;
-        final hint = auth.kind == AuthKind.env && auth.envVar != null
-            ? 'Set \$${auth.envVar} or run `glue credentials set ${resolved.id}`.'
-            : 'Run `glue credentials set ${resolved.id}`.';
+        final envHint = auth.kind == AuthKind.apiKey && auth.envVar != null
+            ? ' or set \$${auth.envVar}'
+            : '';
         throw ConfigError(
-          'Missing API key for provider "${resolved.id}". $hint',
+          'Not connected to "${resolved.id}". '
+          'Run /provider add ${resolved.id}$envHint.',
         );
     }
   }
@@ -257,6 +260,7 @@ class GlueConfig {
         AdapterRegistry([
           AnthropicAdapter(),
           OpenAiCompatibleAdapter(),
+          CopilotAdapter(credentialStore: credentials),
         ]);
 
     // Resolve active model: CLI flag → GLUE_MODEL → config file → catalog default.

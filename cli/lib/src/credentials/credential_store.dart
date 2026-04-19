@@ -37,26 +37,24 @@ class CredentialStore {
     };
   }
 
-  /// Walk a provider's [AuthSpec] and try each source in turn.
+  /// Walk a provider's [AuthSpec] and return the `api_key` value when
+  /// [AuthKind.apiKey]:
+  ///   1. env var named in [AuthSpec.envVar] (if set + non-empty)
+  ///   2. stored `api_key` field under the provider id
   ///
-  /// Resolution order for [AuthKind.env]:
-  ///   1. env var named in [AuthSpec.envVar]
-  ///   2. stored key under the same provider id (same id as [ProviderDef.id])
-  ///
-  /// [AuthKind.none] always returns null (valid for e.g. Ollama).
-  /// [AuthKind.prompt] reads from the stored file only.
+  /// Returns null for [AuthKind.none] and [AuthKind.oauth] — OAuth providers
+  /// use [getField] to read their specific token fields.
   String? resolveForProvider(ProviderDef provider) {
     switch (provider.auth.kind) {
       case AuthKind.none:
+      case AuthKind.oauth:
         return null;
-      case AuthKind.env:
+      case AuthKind.apiKey:
         final envVar = provider.auth.envVar;
         if (envVar != null) {
           final v = _env[envVar];
           if (v != null && v.isNotEmpty) return v;
         }
-        return _readStored()[provider.id];
-      case AuthKind.prompt:
         return _readStored()[provider.id];
     }
   }
@@ -70,13 +68,51 @@ class CredentialStore {
         : CredentialHealth.missing;
   }
 
-  void setApiKey(String providerId, String value) {
+  /// Convenience for the common single-field api-key providers.
+  /// Equivalent to `setFields(providerId, {'api_key': value})`.
+  void setApiKey(String providerId, String value) =>
+      setFields(providerId, {'api_key': value});
+
+  /// Multi-field write — replaces any existing fields under [providerId].
+  /// OAuth providers use this to store `{github_token, copilot_token, ...}`
+  /// in one atomic commit.
+  void setFields(String providerId, Map<String, String> values) {
     final stored = _readRaw();
     final providers = (stored['providers'] as Map?) ?? <String, dynamic>{};
-    providers[providerId] = {'api_key': value};
+    providers[providerId] = <String, String>{...values};
     stored['version'] = 1;
     stored['providers'] = providers;
     _writeRaw(stored);
+  }
+
+  /// Read an environment variable from the captured env map.
+  /// Adapters use this for the "[using $ENV]" pre-fill hint in auth flows.
+  String? readEnv(String name) => _env[name];
+
+  /// Read a single stored field for [providerId]. Returns null if the
+  /// provider or field is absent.
+  String? getField(String providerId, String fieldName) {
+    final raw = _readRaw();
+    final providers = raw['providers'];
+    if (providers is! Map) return null;
+    final provider = providers[providerId];
+    if (provider is! Map) return null;
+    final value = provider[fieldName];
+    return value is String ? value : null;
+  }
+
+  /// Read all stored fields for [providerId]. Empty map if absent.
+  Map<String, String> getFields(String providerId) {
+    final raw = _readRaw();
+    final providers = raw['providers'];
+    if (providers is! Map) return const {};
+    final provider = providers[providerId];
+    if (provider is! Map) return const {};
+    final out = <String, String>{};
+    provider.forEach((key, value) {
+      if (value is String) out[key.toString()] = value;
+    });
+    return out;
   }
 
   void remove(String providerId) {

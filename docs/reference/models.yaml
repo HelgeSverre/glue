@@ -265,6 +265,33 @@ providers:
         cost: local
         notes: General local fallback.
 
+  copilot:
+    name: GitHub Copilot
+    adapter: copilot
+    enabled: true
+    base_url: https://api.githubcopilot.com
+    docs_url: https://docs.github.com/copilot
+    auth:
+      kind: oauth
+      help_url: https://github.com/login/device
+    models:
+      claude-sonnet-4.6:
+        name: Claude Sonnet 4.6 (via Copilot)
+        recommended: true
+        capabilities: [chat, tools, vision, json, coding]
+        context_window: 200000
+        speed: standard
+        cost: subscription
+        notes: Uses your GitHub Copilot subscription.
+      gpt-4.1:
+        name: GPT-4.1 (via Copilot)
+        recommended: true
+        capabilities: [chat, tools, json, coding]
+        context_window: 128000
+        speed: standard
+        cost: subscription
+        notes: Uses your GitHub Copilot subscription.
+
   openrouter:
     name: OpenRouter
     adapter: openai

@@ -129,7 +129,9 @@ String _render(ModelCatalog c) {
 
 String _renderAuth(AuthSpec a) {
   final envVar = _strOrNull(a.envVar);
-  return 'AuthSpec(kind: AuthKind.${a.kind.name}, envVar: $envVar)';
+  final helpUrl = _strOrNull(a.helpUrl);
+  return 'AuthSpec(kind: AuthKind.${a.kind.name}, envVar: $envVar, '
+      'helpUrl: $helpUrl)';
 }
 
 String _renderStringMap(Map<String, String> m, {required int indent}) {

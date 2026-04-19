@@ -8,13 +8,23 @@ library;
 import 'package:glue/src/catalog/model_catalog.dart';
 
 class ResolvedProvider {
-  const ResolvedProvider({required this.def, required this.apiKey});
+  const ResolvedProvider({
+    required this.def,
+    this.apiKey,
+    this.credentials = const {},
+  });
 
   final ProviderDef def;
 
-  /// The resolved credential, or null when none is configured
-  /// (Ollama with `api_key: none`) or required but missing.
+  /// The resolved api-key value (env > stored) for [AuthKind.apiKey]
+  /// providers. Null for oauth/none kinds.
   final String? apiKey;
+
+  /// All stored credential fields for this provider. Used by OAuth adapters
+  /// (`github_token`, `copilot_token`, `copilot_token_expires_at`) and by
+  /// multi-field API-key providers in the future. For plain api-key
+  /// providers this is `{api_key: <value>}` when stored, empty otherwise.
+  final Map<String, String> credentials;
 
   String get id => def.id;
   String get adapter => def.adapter;

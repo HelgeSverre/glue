@@ -1,7 +1,7 @@
 ---
 id: TASK-22.2
 title: ModelRef parsing + provider/model ID routing
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-04-19 00:36'
 updated_date: '2026-04-19 04:02'

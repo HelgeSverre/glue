@@ -191,7 +191,7 @@ void main() {
       expect(store.resolveForProvider(p), isNull);
     });
 
-    test('AuthKind.env pulls from environment', () {
+    test('AuthKind.apiKey pulls from environment', () {
       final dir = _scratch();
       addTearDown(() => dir.deleteSync(recursive: true));
       final store = CredentialStore(
@@ -200,12 +200,12 @@ void main() {
       );
       final p = provider(
         id: 'anthropic',
-        auth: const AuthSpec(kind: AuthKind.env, envVar: 'ANTHROPIC_API_KEY'),
+        auth: const AuthSpec(kind: AuthKind.apiKey, envVar: 'ANTHROPIC_API_KEY'),
       );
       expect(store.resolveForProvider(p), 'sk-env');
     });
 
-    test('AuthKind.env falls back to credentials.json', () {
+    test('AuthKind.apiKey falls back to credentials.json', () {
       final dir = _scratch();
       addTearDown(() => dir.deleteSync(recursive: true));
       final store = CredentialStore(
@@ -215,7 +215,7 @@ void main() {
       store.setApiKey('anthropic', 'sk-stored-fallback');
       final p = provider(
         id: 'anthropic',
-        auth: const AuthSpec(kind: AuthKind.env, envVar: 'ANTHROPIC_API_KEY'),
+        auth: const AuthSpec(kind: AuthKind.apiKey, envVar: 'ANTHROPIC_API_KEY'),
       );
       expect(
         store.resolveForProvider(p),
@@ -237,7 +237,7 @@ void main() {
         id: 'anthropic',
         name: 'Anthropic',
         adapter: 'anthropic',
-        auth: AuthSpec(kind: AuthKind.env, envVar: 'ANTHROPIC_API_KEY'),
+        auth: AuthSpec(kind: AuthKind.apiKey, envVar: 'ANTHROPIC_API_KEY'),
         models: {},
       );
       expect(store.health(p), CredentialHealth.ok);
@@ -254,7 +254,7 @@ void main() {
         id: 'anthropic',
         name: 'Anthropic',
         adapter: 'anthropic',
-        auth: AuthSpec(kind: AuthKind.env, envVar: 'ANTHROPIC_API_KEY'),
+        auth: AuthSpec(kind: AuthKind.apiKey, envVar: 'ANTHROPIC_API_KEY'),
         models: {},
       );
       expect(store.health(p), CredentialHealth.missing);

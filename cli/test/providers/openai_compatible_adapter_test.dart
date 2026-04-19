@@ -79,7 +79,7 @@ ResolvedProvider _resolved({
   String? baseUrl,
   String? apiKey,
   Map<String, String> headers = const {},
-  AuthKind authKind = AuthKind.env,
+  AuthKind authKind = AuthKind.apiKey,
 }) =>
     ResolvedProvider(
       def: ProviderDef(
@@ -89,7 +89,7 @@ ResolvedProvider _resolved({
         compatibility: compatibility,
         baseUrl: baseUrl,
         auth: AuthSpec(
-            kind: authKind, envVar: authKind == AuthKind.env ? 'X' : null),
+            kind: authKind, envVar: authKind == AuthKind.apiKey ? 'X' : null),
         requestHeaders: headers,
         models: const {},
       ),

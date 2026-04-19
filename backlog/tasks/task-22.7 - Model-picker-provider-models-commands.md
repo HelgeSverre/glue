@@ -23,6 +23,8 @@ ordinal: 17000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+**Progress (2026-04-19):** Model picker rewrite shipped in commit `c428576` (MP7 hard swap). `/provider`/`/models` command surface deferred to TASK-22.8 with a simplified scope (only `/provider` namespace, OAuth support).
+
 Replace the current single-level `/model` picker with a curated multi-provider picker and add provider/catalog commands.
 
 **New/updated commands:**

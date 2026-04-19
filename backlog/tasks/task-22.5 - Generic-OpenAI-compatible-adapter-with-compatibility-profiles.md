@@ -1,7 +1,7 @@
 ---
 id: TASK-22.5
 title: Generic OpenAI-compatible adapter with compatibility profiles
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-04-19 00:36'
 updated_date: '2026-04-19 04:02'

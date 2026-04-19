@@ -74,15 +74,25 @@ class DefaultsConfig {
 }
 
 /// How a provider obtains its credential.
-enum AuthKind { env, none, prompt }
+///
+/// - [apiKey] — a single string the user pastes in (or reads from an env var).
+/// - [oauth] — an interactive OAuth flow (device code, PKCE). The adapter
+///   drives the flow via [ProviderAdapter.beginInteractiveAuth] and decides
+///   what fields to store.
+/// - [none] — no credential needed (Ollama, local-vllm).
+enum AuthKind { apiKey, oauth, none }
 
 class AuthSpec {
-  const AuthSpec({required this.kind, this.envVar});
+  const AuthSpec({required this.kind, this.envVar, this.helpUrl});
 
   final AuthKind kind;
 
-  /// Present when [kind] is [AuthKind.env].
+  /// Name of the environment variable that backs this provider's API key
+  /// when [kind] is [AuthKind.apiKey]. When set, env wins over stored.
   final String? envVar;
+
+  /// "Where do I get a key?" link shown in the `/provider add` form.
+  final String? helpUrl;
 }
 
 class ProviderDef {

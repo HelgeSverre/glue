@@ -94,7 +94,7 @@ void main() {
     test('validate reports missing credentials', () {
       final adapter = _FakeAdapter();
       final p = _provider(
-        auth: const AuthSpec(kind: AuthKind.env, envVar: 'X'),
+        auth: const AuthSpec(kind: AuthKind.apiKey, envVar: 'X'),
       );
       expect(
         adapter.validate(ResolvedProvider(def: p, apiKey: null)),

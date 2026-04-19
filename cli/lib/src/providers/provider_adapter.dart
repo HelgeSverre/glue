@@ -10,6 +10,9 @@
 library;
 
 import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/catalog/model_catalog.dart';
+import 'package:glue/src/credentials/credential_store.dart';
+import 'package:glue/src/providers/auth_flow.dart';
 import 'package:glue/src/providers/resolved.dart';
 
 enum ProviderHealth { ok, missingCredential, unknownAdapter }
@@ -37,6 +40,53 @@ abstract class ProviderAdapter {
   Future<List<DiscoveredModel>> discoverModels(
       ResolvedProvider provider) async {
     return const [];
+  }
+
+  /// Produce the interactive flow the `/provider add` UI should display.
+  ///
+  /// Default implementation:
+  ///   - [AuthKind.none] → returns null (nothing to do).
+  ///   - [AuthKind.apiKey] → returns an [ApiKeyFlow] pre-filled from env.
+  ///   - [AuthKind.oauth] → throws [UnimplementedError]; OAuth adapters
+  ///     must override to drive a device-code or PKCE flow.
+  Future<AuthFlow?> beginInteractiveAuth({
+    required ProviderDef provider,
+    required CredentialStore store,
+  }) async {
+    switch (provider.auth.kind) {
+      case AuthKind.none:
+        return null;
+      case AuthKind.apiKey:
+        final envVar = provider.auth.envVar;
+        return ApiKeyFlow(
+          providerId: provider.id,
+          providerName: provider.name,
+          envVar: envVar,
+          envPresent: envVar != null ? store.readEnv(envVar) : null,
+          helpUrl: provider.auth.helpUrl,
+        );
+      case AuthKind.oauth:
+        throw UnimplementedError(
+          'adapter "$adapterId" declares oauth but does not implement '
+          'beginInteractiveAuth',
+        );
+    }
+  }
+
+  /// Is this provider connected (has usable credentials)?
+  ///
+  /// Default covers [AuthKind.none] (always true) and [AuthKind.apiKey]
+  /// (env or stored `api_key` resolves). OAuth adapters must override.
+  bool isConnected(ProviderDef provider, CredentialStore store) {
+    switch (provider.auth.kind) {
+      case AuthKind.none:
+        return true;
+      case AuthKind.apiKey:
+        final resolved = store.resolveForProvider(provider);
+        return resolved != null && resolved.isNotEmpty;
+      case AuthKind.oauth:
+        return false;
+    }
   }
 }
 

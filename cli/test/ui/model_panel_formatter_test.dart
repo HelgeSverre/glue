@@ -92,7 +92,7 @@ void main() {
             id: 'anthropic',
             name: 'Anthropic',
             adapter: 'anthropic',
-            auth: AuthSpec(kind: AuthKind.env, envVar: 'ANTHROPIC_API_KEY'),
+            auth: AuthSpec(kind: AuthKind.apiKey, envVar: 'ANTHROPIC_API_KEY'),
             models: {
               'claude-sonnet-4.6': ModelDef(
                 id: 'claude-sonnet-4.6',

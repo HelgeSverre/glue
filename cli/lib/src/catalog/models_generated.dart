@@ -36,7 +36,11 @@ const ModelCatalog bundledCatalog = ModelCatalog(
       enabled: true,
       baseUrl: null,
       docsUrl: 'https://docs.anthropic.com/',
-      auth: AuthSpec(kind: AuthKind.env, envVar: 'ANTHROPIC_API_KEY'),
+      auth: AuthSpec(
+        kind: AuthKind.apiKey,
+        envVar: 'ANTHROPIC_API_KEY',
+        helpUrl: null,
+      ),
       requestHeaders: {},
       models: {
         'claude-sonnet-4.6': ModelDef(
@@ -103,7 +107,11 @@ const ModelCatalog bundledCatalog = ModelCatalog(
       enabled: true,
       baseUrl: 'https://api.openai.com/v1',
       docsUrl: 'https://platform.openai.com/docs/',
-      auth: AuthSpec(kind: AuthKind.env, envVar: 'OPENAI_API_KEY'),
+      auth: AuthSpec(
+        kind: AuthKind.apiKey,
+        envVar: 'OPENAI_API_KEY',
+        helpUrl: null,
+      ),
       requestHeaders: {},
       models: {
         'gpt-5.4': ModelDef(
@@ -187,7 +195,11 @@ const ModelCatalog bundledCatalog = ModelCatalog(
       enabled: true,
       baseUrl: null,
       docsUrl: 'https://ai.google.dev/',
-      auth: AuthSpec(kind: AuthKind.env, envVar: 'GEMINI_API_KEY'),
+      auth: AuthSpec(
+        kind: AuthKind.apiKey,
+        envVar: 'GEMINI_API_KEY',
+        helpUrl: null,
+      ),
       requestHeaders: {},
       models: {
         'gemini-pro-latest': ModelDef(
@@ -233,7 +245,11 @@ const ModelCatalog bundledCatalog = ModelCatalog(
       enabled: true,
       baseUrl: 'https://api.mistral.ai/v1',
       docsUrl: 'https://docs.mistral.ai/',
-      auth: AuthSpec(kind: AuthKind.env, envVar: 'MISTRAL_API_KEY'),
+      auth: AuthSpec(
+        kind: AuthKind.apiKey,
+        envVar: 'MISTRAL_API_KEY',
+        helpUrl: null,
+      ),
       requestHeaders: {},
       models: {
         'mistral-large-latest': ModelDef(
@@ -282,7 +298,11 @@ const ModelCatalog bundledCatalog = ModelCatalog(
       enabled: true,
       baseUrl: 'https://api.groq.com/openai/v1',
       docsUrl: 'https://console.groq.com/docs/',
-      auth: AuthSpec(kind: AuthKind.env, envVar: 'GROQ_API_KEY'),
+      auth: AuthSpec(
+        kind: AuthKind.apiKey,
+        envVar: 'GROQ_API_KEY',
+        helpUrl: null,
+      ),
       requestHeaders: {},
       models: {
         'qwen/qwen3-coder': ModelDef(
@@ -319,7 +339,7 @@ const ModelCatalog bundledCatalog = ModelCatalog(
       enabled: true,
       baseUrl: 'http://localhost:11434/v1',
       docsUrl: 'https://ollama.com/',
-      auth: AuthSpec(kind: AuthKind.none, envVar: null),
+      auth: AuthSpec(kind: AuthKind.none, envVar: null, helpUrl: null),
       requestHeaders: {},
       models: {
         'qwen2.5-coder:32b': ModelDef(
@@ -360,6 +380,47 @@ const ModelCatalog bundledCatalog = ModelCatalog(
         ),
       },
     ),
+    'copilot': ProviderDef(
+      id: 'copilot',
+      name: 'GitHub Copilot',
+      adapter: 'copilot',
+      compatibility: null,
+      enabled: true,
+      baseUrl: 'https://api.githubcopilot.com',
+      docsUrl: 'https://docs.github.com/copilot',
+      auth: AuthSpec(
+        kind: AuthKind.oauth,
+        envVar: null,
+        helpUrl: 'https://github.com/login/device',
+      ),
+      requestHeaders: {},
+      models: {
+        'claude-sonnet-4.6': ModelDef(
+          id: 'claude-sonnet-4.6',
+          name: 'Claude Sonnet 4.6 (via Copilot)',
+          recommended: true,
+          isDefault: false,
+          capabilities: {'chat', 'coding', 'json', 'tools', 'vision'},
+          contextWindow: 200000,
+          maxOutputTokens: null,
+          speed: 'standard',
+          cost: 'subscription',
+          notes: 'Uses your GitHub Copilot subscription.',
+        ),
+        'gpt-4.1': ModelDef(
+          id: 'gpt-4.1',
+          name: 'GPT-4.1 (via Copilot)',
+          recommended: true,
+          isDefault: false,
+          capabilities: {'chat', 'coding', 'json', 'tools'},
+          contextWindow: 128000,
+          maxOutputTokens: null,
+          speed: 'standard',
+          cost: 'subscription',
+          notes: 'Uses your GitHub Copilot subscription.',
+        ),
+      },
+    ),
     'openrouter': ProviderDef(
       id: 'openrouter',
       name: 'OpenRouter',
@@ -368,7 +429,11 @@ const ModelCatalog bundledCatalog = ModelCatalog(
       enabled: false,
       baseUrl: 'https://openrouter.ai/api/v1',
       docsUrl: 'https://openrouter.ai/docs/',
-      auth: AuthSpec(kind: AuthKind.env, envVar: 'OPENROUTER_API_KEY'),
+      auth: AuthSpec(
+        kind: AuthKind.apiKey,
+        envVar: 'OPENROUTER_API_KEY',
+        helpUrl: null,
+      ),
       requestHeaders: {
         'HTTP-Referer': 'https://getglue.dev',
         'X-Title': 'Glue',
@@ -428,7 +493,7 @@ const ModelCatalog bundledCatalog = ModelCatalog(
       enabled: false,
       baseUrl: 'http://localhost:8000/v1',
       docsUrl: null,
-      auth: AuthSpec(kind: AuthKind.none, envVar: null),
+      auth: AuthSpec(kind: AuthKind.none, envVar: null, helpUrl: null),
       requestHeaders: {},
       models: {
         'local-model': ModelDef(

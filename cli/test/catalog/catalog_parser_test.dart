@@ -58,7 +58,7 @@ providers:
       expect(anthropic.name, 'Anthropic');
       expect(anthropic.adapter, 'anthropic');
       expect(anthropic.enabled, isTrue);
-      expect(anthropic.auth.kind, AuthKind.env);
+      expect(anthropic.auth.kind, AuthKind.apiKey);
       expect(anthropic.auth.envVar, 'ANTHROPIC_API_KEY');
 
       expect(anthropic.models.keys, ['claude-sonnet-4.6']);
@@ -176,6 +176,58 @@ providers: {}
         () => parseCatalogYaml(yaml),
         throwsA(isA<CatalogParseException>()),
       );
+    });
+
+    test('parses explicit kind: oauth with help_url', () {
+      const yaml = '''
+version: 1
+updated_at: 2026-04-19
+defaults:
+  model: copilot/gpt-4.1
+capabilities: {}
+providers:
+  copilot:
+    name: GitHub Copilot
+    adapter: copilot
+    base_url: https://api.githubcopilot.com
+    auth:
+      kind: oauth
+      help_url: https://github.com/login/device
+    models:
+      gpt-4.1:
+        name: GPT-4.1 (via Copilot)
+''';
+
+      final catalog = parseCatalogYaml(yaml);
+      final copilot = catalog.providers['copilot']!;
+      expect(copilot.auth.kind, AuthKind.oauth);
+      expect(copilot.auth.envVar, isNull);
+      expect(copilot.auth.helpUrl, 'https://github.com/login/device');
+    });
+
+    test('apiKey shorthand carries through help_url', () {
+      const yaml = '''
+version: 1
+updated_at: 2026-04-19
+defaults:
+  model: anthropic/claude
+capabilities: {}
+providers:
+  anthropic:
+    name: Anthropic
+    adapter: anthropic
+    auth:
+      api_key: env:ANTHROPIC_API_KEY
+      help_url: https://console.anthropic.com/settings/keys
+    models:
+      claude:
+        name: Claude
+''';
+      final catalog = parseCatalogYaml(yaml);
+      final a = catalog.providers['anthropic']!;
+      expect(a.auth.kind, AuthKind.apiKey);
+      expect(a.auth.envVar, 'ANTHROPIC_API_KEY');
+      expect(a.auth.helpUrl, contains('anthropic.com'));
     });
 
     test('parses request_headers map', () {

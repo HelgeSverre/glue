@@ -1,7 +1,7 @@
 ---
 id: TASK-22.3
 title: ProviderConfig + CredentialStore with sealed CredentialRef
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-04-19 00:36'
 updated_date: '2026-04-19 04:02'

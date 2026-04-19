@@ -1,7 +1,7 @@
 ---
 id: TASK-22
 title: Model/provider/credential redesign (parent)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-04-19 00:34'
 updated_date: '2026-04-19 04:02'

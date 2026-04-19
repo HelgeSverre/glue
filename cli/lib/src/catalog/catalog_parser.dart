@@ -130,32 +130,67 @@ AuthSpec _parseAuth(Object? node, {required String path}) {
   if (node is! Map) {
     throw CatalogParseException('auth is required', path: path);
   }
+
+  final helpUrl = node['help_url']?.toString();
+
+  // Explicit kind form (preferred for oauth): `auth: {kind: oauth, ...}`.
+  final kindStr = node['kind']?.toString();
+  if (kindStr != null) {
+    switch (kindStr) {
+      case 'oauth':
+        return AuthSpec(kind: AuthKind.oauth, helpUrl: helpUrl);
+      case 'api_key':
+        final envVar = _extractEnvVar(node['api_key']?.toString(), path);
+        return AuthSpec(
+          kind: AuthKind.apiKey,
+          envVar: envVar,
+          helpUrl: helpUrl,
+        );
+      case 'none':
+        return AuthSpec(kind: AuthKind.none, helpUrl: helpUrl);
+      default:
+        throw CatalogParseException(
+          'auth.kind must be one of: api_key, oauth, none (got "$kindStr")',
+          path: '$path.kind',
+        );
+    }
+  }
+
+  // Shorthand form: `auth: {api_key: env:NAME}` or `auth: {api_key: none}`.
   final raw = node['api_key']?.toString();
   if (raw == null || raw.isEmpty) {
     throw CatalogParseException('auth.api_key is required',
         path: '$path.api_key');
   }
   if (raw == 'none') {
-    return const AuthSpec(kind: AuthKind.none);
-  }
-  if (raw == 'prompt') {
-    return const AuthSpec(kind: AuthKind.prompt);
+    return AuthSpec(kind: AuthKind.none, helpUrl: helpUrl);
   }
   if (raw.startsWith('env:')) {
-    final envVar = raw.substring(4).trim();
-    if (envVar.isEmpty) {
-      throw CatalogParseException(
-        'env: must name an environment variable',
-        path: '$path.api_key',
-      );
-    }
-    return AuthSpec(kind: AuthKind.env, envVar: envVar);
+    final envVar = _extractEnvVar(raw, path);
+    return AuthSpec(
+      kind: AuthKind.apiKey,
+      envVar: envVar,
+      helpUrl: helpUrl,
+    );
   }
   throw CatalogParseException(
-    'auth.api_key must be one of: env:NAME, none, prompt (got "$raw"). '
+    'auth.api_key must be one of: env:NAME, none (got "$raw"). '
+    'For oauth providers use `auth: {kind: oauth}`. '
     'Inline API keys belong in ~/.glue/credentials.json, not the catalog.',
     path: '$path.api_key',
   );
+}
+
+String? _extractEnvVar(String? raw, String path) {
+  if (raw == null || !raw.startsWith('env:')) return null;
+  final envVar = raw.substring(4).trim();
+  if (envVar.isEmpty) {
+    throw CatalogParseException(
+      'env: must name an environment variable',
+      path: '$path.api_key',
+    );
+  }
+  return envVar;
 }
 
 Map<String, String> _parseStringMap(Object? node) {
