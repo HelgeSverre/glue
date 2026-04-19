@@ -103,7 +103,7 @@ skills:
 - Docker: `GLUE_DOCKER_ENABLED`, `GLUE_DOCKER_IMAGE`, `GLUE_DOCKER_SHELL`, `GLUE_DOCKER_MOUNTS`
 - Search provider: `GLUE_SEARCH_PROVIDER`
 - Skills paths: `GLUE_SKILLS_PATHS`
-- Interaction mode: `GLUE_INTERACTION_MODE`
 - Approval mode: `GLUE_APPROVAL_MODE`
+- Glue home: `GLUE_HOME` (overrides the default `~/.glue`)
 
 For exact parsing logic, see `lib/src/config/glue_config.dart`.
