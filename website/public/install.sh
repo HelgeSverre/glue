@@ -75,6 +75,11 @@ case "$UNAME_M" in
   *)              fail "unsupported arch: $UNAME_M" ;;
 esac
 
+# Intel Macs are not supported — glue ships Apple Silicon binaries only.
+if [ "$OS" = "macos" ] && [ "$ARCH" = "x64" ]; then
+  fail "Intel Macs are not supported; glue ships Apple Silicon (arm64) binaries only."
+fi
+
 EXT=""
 if [ "$OS" = "windows" ]; then
   EXT=".exe"

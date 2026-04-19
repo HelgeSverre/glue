@@ -26,9 +26,7 @@ jobs:
             asset: glue-linux-x64
           - os: ubuntu-24.04-arm
             asset: glue-linux-arm64
-          - os: macos-13
-            asset: glue-macos-x64
-          - os: macos-latest
+          - os: macos-15
             asset: glue-macos-arm64
           - os: windows-latest
             asset: glue-windows-x64.exe
