@@ -4,6 +4,7 @@ title: Lazy slash command registration (or /help tier reorg)
 status: To Do
 assignee: []
 created_date: '2026-04-19 00:34'
+updated_date: '2026-04-19 04:02'
 labels:
   - simplification-2026-04
   - cli
@@ -14,6 +15,7 @@ references:
 documentation:
   - cli/docs/plans/2026-04-19-simplification-removal-plan.md
 priority: low
+ordinal: 8000
 ---
 
 ## Description

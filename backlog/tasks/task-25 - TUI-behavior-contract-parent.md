@@ -4,6 +4,7 @@ title: TUI behavior contract (parent)
 status: To Do
 assignee: []
 created_date: '2026-04-19 00:34'
+updated_date: '2026-04-19 04:02'
 labels:
   - tui-contract-2026-04
   - parent
@@ -18,6 +19,7 @@ references:
 documentation:
   - cli/docs/plans/2026-04-19-tui-behavior-contract-plan.md
 priority: medium
+ordinal: 9000
 ---
 
 ## Description

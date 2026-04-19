@@ -4,6 +4,7 @@ title: Model/provider/credential redesign (parent)
 status: To Do
 assignee: []
 created_date: '2026-04-19 00:34'
+updated_date: '2026-04-19 04:02'
 labels:
   - model-provider-2026-04
   - parent
@@ -14,6 +15,7 @@ documentation:
   - cli/docs/plans/2026-04-19-provider-adapter-contract-plan.md
   - cli/docs/reference/models.yaml
 priority: high
+ordinal: 31000
 ---
 
 ## Description

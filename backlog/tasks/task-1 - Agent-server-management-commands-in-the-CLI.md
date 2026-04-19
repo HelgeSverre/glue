@@ -4,16 +4,18 @@ title: Agent-server management commands in the CLI
 status: To Do
 assignee: []
 created_date: '2026-04-18 23:56'
+updated_date: '2026-04-19 04:02'
 labels:
   - cli
   - agent-servers
   - feature
+milestone: FUTURE
 dependencies: []
 references:
   - cli/IDEAS.md
   - 'https://zed.dev/docs/extensions/agent-servers'
 priority: low
-milestone: FUTURE
+ordinal: 1000
 ---
 
 ## Description

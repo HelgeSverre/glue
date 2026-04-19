@@ -71,7 +71,7 @@ class BuiltinCommands {
     commands.register(SlashCommand(
       name: 'info',
       description: 'Show session info',
-      aliases: ['status'],
+      hiddenAliases: ['status'],
       execute: (_) => sessionInfo(),
     ));
 

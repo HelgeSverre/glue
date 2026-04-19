@@ -4,11 +4,13 @@ title: ACP web UI for Glue
 status: To Do
 assignee: []
 created_date: '2026-04-18 23:57'
+updated_date: '2026-04-19 04:02'
 labels:
   - feature
   - acp
   - webui
   - parent
+milestone: FUTURE
 dependencies: []
 references:
   - 'https://agentclientprotocol.com/'
@@ -17,7 +19,7 @@ references:
 documentation:
   - cli/docs/plans/2026-02-27-acp-webui.md
 priority: low
-milestone: FUTURE
+ordinal: 3000
 ---
 
 ## Description

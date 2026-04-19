@@ -5,27 +5,34 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v0.1.0). Must already exist."
+        required: true
 
 permissions:
   contents: write
 
 jobs:
   build:
-    name: Build ${{ matrix.target }} binary
+    name: Build ${{ matrix.asset }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
+          # Asset names match install.sh expectations: glue-<os>-<arch>[.exe]
           - os: ubuntu-latest
-            target: linux
-            output_name: glue-linux
+            asset: glue-linux-x64
+          - os: ubuntu-24.04-arm
+            asset: glue-linux-arm64
+          - os: macos-13
+            asset: glue-macos-x64
           - os: macos-latest
-            target: macos
-            output_name: glue-macos
+            asset: glue-macos-arm64
           - os: windows-latest
-            target: windows
-            output_name: glue-windows.exe
+            asset: glue-windows-x64.exe
+
     defaults:
       run:
         working-directory: cli
@@ -42,18 +49,39 @@ jobs:
         run: dart pub get
 
       - name: Build executable
-        run: dart compile exe bin/glue.dart -o "${{ matrix.output_name }}"
+        run: dart compile exe bin/glue.dart -o "${{ matrix.asset }}"
 
-      - name: Verify local binary output (act)
+      - name: Compute SHA-256 checksum
+        run: |
+          if command -v shasum >/dev/null 2>&1; then
+            shasum -a 256 "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
+          else
+            sha256sum "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
+          fi
+          cat "${{ matrix.asset }}.sha256"
+
+      - name: Smoke test (unix)
+        if: runner.os != 'Windows'
+        run: |
+          chmod +x "${{ matrix.asset }}"
+          ./"${{ matrix.asset }}" --version
+
+      - name: Smoke test (windows)
+        if: runner.os == 'Windows'
+        run: ./"${{ matrix.asset }}" --version
+
+      - name: Verify artifacts locally (act)
         if: ${{ env.ACT }}
-        run: ls -la "${{ matrix.output_name }}"
+        run: ls -la "${{ matrix.asset }}" "${{ matrix.asset }}.sha256"
 
       - name: Upload build artifact
         if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ matrix.target }}
-          path: cli/${{ matrix.output_name }}
+          name: ${{ matrix.asset }}
+          path: |
+            cli/${{ matrix.asset }}
+            cli/${{ matrix.asset }}.sha256
           if-no-files-found: error
 
   release:
@@ -62,6 +90,9 @@ jobs:
     needs: build
 
     steps:
+      - name: Checkout (for release notes template)
+        uses: actions/checkout@v6
+
       - name: Download all artifacts
         if: ${{ !env.ACT }}
         uses: actions/download-artifact@v8
@@ -69,8 +100,21 @@ jobs:
           path: release-assets
           merge-multiple: true
 
+      - name: Aggregate SHA-256 sums
+        if: ${{ !env.ACT }}
+        run: |
+          cd release-assets
+          cat *.sha256 | sort > SHA256SUMS
+          echo "--- Combined SHA256SUMS ---"
+          cat SHA256SUMS
+
       - name: Create release with binaries
         if: ${{ !env.ACT }}
         uses: softprops/action-gh-release@v2
         with:
-          files: release-assets/*
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            release-assets/glue-*
+            release-assets/SHA256SUMS

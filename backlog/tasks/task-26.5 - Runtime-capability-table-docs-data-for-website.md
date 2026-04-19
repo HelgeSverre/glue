@@ -4,6 +4,7 @@ title: Runtime capability table (docs + data for website)
 status: To Do
 assignee: []
 created_date: '2026-04-19 00:42'
+updated_date: '2026-04-19 04:02'
 labels:
   - runtime-boundary-2026-04
   - docs
@@ -12,6 +13,7 @@ documentation:
   - cli/docs/plans/2026-04-19-runtime-boundary-plan.md
 parent_task_id: TASK-26
 priority: low
+ordinal: 27000
 ---
 
 ## Description

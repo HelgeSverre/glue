@@ -4,10 +4,12 @@ title: Implement `glue --acp` ACP agent entrypoint
 status: To Do
 assignee: []
 created_date: '2026-04-18 23:57'
+updated_date: '2026-04-19 04:02'
 labels:
   - feature
   - acp
   - dart
+milestone: FUTURE
 dependencies: []
 references:
   - 'https://agentclientprotocol.com/'
@@ -16,7 +18,7 @@ documentation:
   - cli/docs/plans/2026-02-27-acp-webui.md
 parent_task_id: TASK-6
 priority: low
-milestone: FUTURE
+ordinal: 4000
 ---
 
 ## Description

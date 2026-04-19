@@ -4,6 +4,7 @@ title: Display-width wrapping + glyph policy + ASCII fallback mode
 status: To Do
 assignee: []
 created_date: '2026-04-19 00:42'
+updated_date: '2026-04-19 04:02'
 labels:
   - tui-contract-2026-04
   - rendering
@@ -12,6 +13,7 @@ documentation:
   - cli/docs/plans/2026-04-19-tui-behavior-contract-plan.md
 parent_task_id: TASK-25
 priority: medium
+ordinal: 19000
 ---
 
 ## Description

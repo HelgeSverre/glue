@@ -1,9 +1,10 @@
 ---
 id: TASK-15
 title: 'Title generation: make optional and debug-only'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-04-19 00:33'
+updated_date: '2026-04-19 04:02'
 labels:
   - simplification-2026-04
   - config
@@ -15,6 +16,7 @@ references:
 documentation:
   - cli/docs/plans/2026-04-19-simplification-removal-plan.md
 priority: low
+ordinal: 1000
 ---
 
 ## Description

@@ -4,6 +4,7 @@ title: Model picker + /provider + /models commands
 status: To Do
 assignee: []
 created_date: '2026-04-19 00:36'
+updated_date: '2026-04-19 04:02'
 labels:
   - model-provider-2026-04
   - ui
@@ -16,6 +17,7 @@ documentation:
   - cli/docs/plans/2026-04-19-model-provider-config-redesign.md
 parent_task_id: TASK-22
 priority: medium
+ordinal: 17000
 ---
 
 ## Description

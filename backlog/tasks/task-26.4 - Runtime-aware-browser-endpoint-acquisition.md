@@ -4,6 +4,7 @@ title: Runtime-aware browser endpoint acquisition
 status: To Do
 assignee: []
 created_date: '2026-04-19 00:42'
+updated_date: '2026-04-19 04:02'
 labels:
   - runtime-boundary-2026-04
   - browser
@@ -15,6 +16,7 @@ documentation:
   - cli/docs/plans/2026-04-19-runtime-boundary-plan.md
 parent_task_id: TASK-26
 priority: medium
+ordinal: 26000
 ---
 
 ## Description

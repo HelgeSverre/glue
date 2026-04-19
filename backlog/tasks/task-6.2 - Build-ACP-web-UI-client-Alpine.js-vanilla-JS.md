@@ -4,11 +4,13 @@ title: Build ACP web UI client (Alpine.js + vanilla JS)
 status: To Do
 assignee: []
 created_date: '2026-04-18 23:58'
+updated_date: '2026-04-19 04:02'
 labels:
   - feature
   - acp
   - webui
   - frontend
+milestone: FUTURE
 dependencies:
   - TASK-6.1
 references:
@@ -18,7 +20,7 @@ documentation:
   - cli/docs/plans/2026-02-27-acp-webui.md
 parent_task_id: TASK-6
 priority: low
-milestone: FUTURE
+ordinal: 5000
 ---
 
 ## Description

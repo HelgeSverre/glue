@@ -1,9 +1,10 @@
 ---
 id: TASK-18
 title: Standardize tool result schema
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-04-19 00:34'
+updated_date: '2026-04-19 04:02'
 labels:
   - simplification-2026-04
   - tools
@@ -14,6 +15,7 @@ references:
 documentation:
   - cli/docs/plans/2026-04-19-simplification-removal-plan.md
 priority: medium
+ordinal: 2000
 ---
 
 ## Description
