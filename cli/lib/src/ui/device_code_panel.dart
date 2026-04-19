@@ -19,6 +19,7 @@ import 'package:glue/src/ui/panel_modal.dart';
 class DeviceCodePanel implements PanelOverlay {
   DeviceCodePanel({
     required this.flow,
+    this.onNeedsRender,
     PanelSize? width,
     PanelSize? height,
   }) : _width = width ?? PanelFluid(0.7, 56),
@@ -31,6 +32,10 @@ class DeviceCodePanel implements PanelOverlay {
         } else if (ev is AuthFlowFailed && !_completer.isCompleted) {
           _completer.complete(null);
         }
+        // The panel stack's render is event-driven; adapter progress
+        // events (polling, success, failure) don't otherwise trigger one.
+        // Request a redraw so the status line updates in real time.
+        onNeedsRender?.call();
       },
       onDone: () {
         if (!_completer.isCompleted) _completer.complete(null);
@@ -48,6 +53,12 @@ class DeviceCodePanel implements PanelOverlay {
   }
 
   final DeviceCodeFlow flow;
+
+  /// Called when the panel's render state has changed outside the normal
+  /// event-driven render cycle (async clipboard completion, stream events).
+  /// Supplied by [PanelController] so the frame refreshes without a keypress.
+  final void Function()? onNeedsRender;
+
   final PanelSize _width;
   final PanelSize _height;
 
@@ -60,6 +71,8 @@ class DeviceCodePanel implements PanelOverlay {
   Future<void> _copyUserCode() async {
     final ok = await copyToClipboard(flow.userCode);
     _copied = ok;
+    // Surface the "(copied to clipboard)" hint on the next frame.
+    if (ok) onNeedsRender?.call();
   }
 
   static const _spinner = ['⣾', '⣽', '⣻', '⢿', '⡿', '⣟', '⣯', '⣷'];

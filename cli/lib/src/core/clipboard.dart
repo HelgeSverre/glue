@@ -39,8 +39,9 @@ Future<bool> copyToClipboard(
       await process.stdin.close();
       final code = await process.exitCode;
       if (code == 0) return true;
-    } on ProcessException {
-      // Try next command.
+    } catch (_) {
+      // Contract: never throw. Any failure (ProcessException, SocketException
+      // from pipe close, etc.) falls through to the next candidate.
     }
   }
   return false;

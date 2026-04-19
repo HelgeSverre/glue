@@ -488,7 +488,7 @@ class PanelController {
     required DeviceCodeFlow flow,
     required void Function(String) addSystemMessage,
   }) async {
-    final panel = DeviceCodePanel(flow: flow);
+    final panel = DeviceCodePanel(flow: flow, onNeedsRender: _render);
     _panelStack.add(panel);
     _render();
     final fields = await panel.result;
