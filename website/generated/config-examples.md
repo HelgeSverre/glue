@@ -62,7 +62,7 @@ web:
     mistral_api_key: your-key
     openai_api_key: your-key
   browser:
-    backend: local       # execution backend: local | docker | steel | browserbase | browserless
+    backend: local       # execution backend: local | docker | steel | browserbase | browserless | anchor
     docker_image: browserless/chrome:latest
     docker_port: 3000
     steel_api_key: your-key
@@ -70,6 +70,7 @@ web:
     browserbase_project_id: your-project
     browserless_api_key: your-key
     browserless_base_url: https://chrome.browserless.io
+    anchor_api_key: your-key
 
 debug: false
 

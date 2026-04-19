@@ -78,7 +78,7 @@ web:
   search:
     provider: brave
   browser:
-    backend: local       # local | docker | steel | browserbase | browserless
+    backend: local       # local | docker | steel | browserbase | browserless | anchor
 
 skills:
   paths:

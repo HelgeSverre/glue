@@ -70,7 +70,7 @@ class CopilotAdapter extends ProviderAdapter {
     }
     return _CopilotClient(
       store: store,
-      model: model.id,
+      model: model.apiId,
       systemPrompt: systemPrompt,
       baseUrl: provider.baseUrl ?? 'https://api.githubcopilot.com',
       httpClient: _http,

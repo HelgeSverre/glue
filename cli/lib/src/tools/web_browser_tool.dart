@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:puppeteer/puppeteer.dart' as pptr;
 
 import 'package:glue/src/agent/content_part.dart';
@@ -9,7 +11,9 @@ import 'package:glue/src/web/fetch/truncation.dart';
 
 /// Tool for browser-based web interaction via Chrome DevTools Protocol.
 class WebBrowserTool extends Tool {
-  final BrowserManager _manager;
+  final FutureOr<BrowserManager> Function() _managerProvider;
+  BrowserManager? _manager;
+  Future<BrowserManager>? _pendingManager;
   pptr.Browser? _browser;
   pptr.Page? _page;
 
@@ -22,7 +26,9 @@ class WebBrowserTool extends Tool {
     'evaluate',
   };
 
-  WebBrowserTool(this._manager);
+  WebBrowserTool(BrowserManager manager) : this.lazy(() => manager);
+
+  WebBrowserTool.lazy(this._managerProvider);
 
   @override
   String get name => 'web_browser';
@@ -81,7 +87,16 @@ class WebBrowserTool extends Tool {
       await _browser?.close();
     } catch (_) {}
     _browser = null;
-    await _manager.dispose();
+    final manager = _manager;
+    if (manager != null) {
+      await manager.dispose();
+      return;
+    }
+
+    final pending = _pendingManager;
+    if (pending != null) {
+      await (await pending).dispose();
+    }
   }
 
   @override
@@ -168,7 +183,8 @@ class WebBrowserTool extends Tool {
   Future<pptr.Page> _ensurePage() async {
     if (_page != null) return _page!;
 
-    final endpoint = await _manager.getEndpoint();
+    final manager = await _getManager();
+    final endpoint = await manager.getEndpoint();
     _browser = await pptr.puppeteer.connect(
       browserWsEndpoint: endpoint.cdpWsUrl,
     );
@@ -186,7 +202,8 @@ class WebBrowserTool extends Tool {
     await page.goto(url, wait: pptr.Until.networkIdle);
 
     final title = await page.title;
-    final endpoint = await _manager.getEndpoint();
+    final manager = await _getManager();
+    final endpoint = await manager.getEndpoint();
     final buf = StringBuffer();
     buf.writeln('Navigated to: $url');
     if (title != null && title.isNotEmpty) buf.writeln('Title: $title');
@@ -244,5 +261,22 @@ class WebBrowserTool extends Tool {
     final result = await page.evaluate<dynamic>(js);
     if (result == null) return 'null';
     return result.toString();
+  }
+
+  Future<BrowserManager> _getManager() async {
+    final manager = _manager;
+    if (manager != null) return manager;
+
+    final pending = _pendingManager;
+    if (pending != null) return pending;
+
+    final future = Future.sync(_managerProvider).then((value) {
+      _manager = value;
+      return value;
+    }).whenComplete(() {
+      _pendingManager = null;
+    });
+    _pendingManager = future;
+    return future;
   }
 }

@@ -53,6 +53,30 @@ void main() {
       expect(result, contains('mock.com'));
     });
 
+    test('lazy constructor builds router only on first valid execute',
+        () async {
+      var buildCount = 0;
+      final lazyTool = WebSearchTool.lazy(() {
+        buildCount++;
+        return SearchRouter([_MockProvider()]);
+      });
+
+      expect(buildCount, 0);
+
+      final missingQuery = await lazyTool.execute({});
+      expect(missingQuery.success, isFalse);
+      expect(buildCount, 0);
+
+      final first = await lazyTool.execute({'query': 'test search'});
+      expect(first.success, isTrue);
+      expect(first.content, contains('Mock Result'));
+      expect(buildCount, 1);
+
+      final second = await lazyTool.execute({'query': 'another search'});
+      expect(second.success, isTrue);
+      expect(buildCount, 1);
+    });
+
     test('schema has correct structure', () {
       final schema = tool.toSchema();
       expect(schema['name'], 'web_search');

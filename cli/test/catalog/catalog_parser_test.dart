@@ -103,6 +103,32 @@ providers:
       expect(model.isDefault, isFalse);
       expect(model.capabilities, isEmpty);
       expect(model.contextWindow, isNull);
+      expect(model.apiId, 'gpt-x', reason: 'api_id defaults to the YAML key');
+    });
+
+    test('api_id overrides the catalog key for the wire identifier', () {
+      const yaml = '''
+version: 1
+updated_at: 2026-04-19
+defaults:
+  model: groq/gpt-oss-120b
+capabilities: {}
+providers:
+  groq:
+    name: Groq
+    adapter: openai
+    auth:
+      api_key: env:GROQ_API_KEY
+    models:
+      gpt-oss-120b:
+        name: GPT-OSS 120B
+        api_id: openai/gpt-oss-120b
+''';
+
+      final catalog = parseCatalogYaml(yaml);
+      final model = catalog.providers['groq']!.models['gpt-oss-120b']!;
+      expect(model.id, 'gpt-oss-120b');
+      expect(model.apiId, 'openai/gpt-oss-120b');
     });
 
     test('parses auth api_key: none as AuthKind.none', () {

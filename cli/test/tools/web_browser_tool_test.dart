@@ -62,5 +62,40 @@ void main() {
       expect(result, contains('Error'));
       expect(result, contains('selector'));
     });
+
+    test('lazy constructor does not build manager for validation failures',
+        () async {
+      var buildCount = 0;
+      final lazyTool = WebBrowserTool.lazy(() {
+        buildCount++;
+        return BrowserManager(provider: _MockProvider());
+      });
+
+      expect(buildCount, 0);
+
+      final missingAction = await lazyTool.execute({});
+      expect(missingAction.success, isFalse);
+      expect(buildCount, 0);
+
+      final invalidAction = await lazyTool.execute({'action': 'invalid'});
+      expect(invalidAction.success, isFalse);
+      expect(buildCount, 0);
+
+      final missingUrl = await lazyTool.execute({'action': 'navigate'});
+      expect(missingUrl.content, contains('url'));
+      expect(buildCount, 0);
+    });
+
+    test('dispose before first use does not build manager', () async {
+      var buildCount = 0;
+      final lazyTool = WebBrowserTool.lazy(() {
+        buildCount++;
+        return BrowserManager(provider: _MockProvider());
+      });
+
+      await lazyTool.dispose();
+
+      expect(buildCount, 0);
+    });
   });
 }

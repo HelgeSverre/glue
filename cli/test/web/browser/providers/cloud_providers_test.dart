@@ -1,7 +1,45 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
+import 'package:glue/src/web/browser/providers/anchor_provider.dart';
 import 'package:glue/src/web/browser/providers/steel_provider.dart';
 import 'package:glue/src/web/browser/providers/browserbase_provider.dart';
 import 'package:glue/src/web/browser/providers/browserless_provider.dart';
+
+class _CapturedRequest {
+  _CapturedRequest(this.method, this.url, this.headers, this.body);
+
+  final String method;
+  final Uri url;
+  final Map<String, String> headers;
+  final String body;
+}
+
+class _FakeHttpClient extends http.BaseClient {
+  _FakeHttpClient(this._handler);
+
+  final FutureOr<http.Response> Function(http.BaseRequest request, String body)
+      _handler;
+  final requests = <_CapturedRequest>[];
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    final body =
+        request is http.Request ? await request.finalize().bytesToString() : '';
+    requests.add(
+      _CapturedRequest(request.method, request.url, request.headers, body),
+    );
+    final response = await _handler(request, body);
+    return http.StreamedResponse(
+      Stream.value(utf8.encode(response.body)),
+      response.statusCode,
+      headers: response.headers,
+      reasonPhrase: response.reasonPhrase,
+    );
+  }
+}
 
 void main() {
   group('SteelProvider', () {
@@ -71,6 +109,62 @@ void main() {
       final wsUrl = provider.buildWsUrl();
       expect(wsUrl, contains('wss://'));
       expect(wsUrl, contains('my-key'));
+    });
+  });
+
+  group('AnchorProvider', () {
+    test('has correct name', () {
+      final provider = AnchorProvider(apiKey: 'key');
+      expect(provider.name, 'anchor');
+    });
+
+    test('is configured with API key', () {
+      expect(AnchorProvider(apiKey: 'key').isConfigured, isTrue);
+      expect(AnchorProvider(apiKey: null).isConfigured, isFalse);
+    });
+
+    test('provisions CDP endpoint and closes session', () async {
+      final client = _FakeHttpClient((request, body) {
+        if (request.method == 'POST') {
+          expect(request.url.toString(),
+              'https://api.anchorbrowser.io/v1/sessions');
+          expect(request.headers['anchor-api-key'], 'test-key');
+          expect(request.headers['Content-Type'], 'application/json');
+          expect(body, '{}');
+          return http.Response(
+            jsonEncode({
+              'data': {
+                'id': 'session-123',
+                'cdp_url': 'wss://anchor.example/cdp',
+                'live_view_url': 'https://anchor.example/live/session-123',
+              },
+            }),
+            200,
+          );
+        }
+
+        expect(request.method, 'DELETE');
+        expect(request.url.toString(),
+            'https://api.anchorbrowser.io/v1/sessions/session-123');
+        expect(request.headers['anchor-api-key'], 'test-key');
+        return http.Response(
+          jsonEncode({
+            'data': {'status': 'ok'},
+          }),
+          200,
+        );
+      });
+
+      final provider = AnchorProvider(apiKey: 'test-key', client: client);
+      final endpoint = await provider.provision();
+
+      expect(endpoint.cdpWsUrl, 'wss://anchor.example/cdp');
+      expect(endpoint.backendName, 'anchor');
+      expect(endpoint.viewUrl, 'https://anchor.example/live/session-123');
+
+      await endpoint.close();
+
+      expect(client.requests.map((r) => r.method), ['POST', 'DELETE']);
     });
   });
 }

@@ -16,8 +16,6 @@ import 'dart:io';
 import 'package:glue/src/catalog/model_catalog.dart';
 import 'package:glue/src/credentials/credential_ref.dart';
 
-enum CredentialHealth { ok, missing }
-
 class CredentialStore {
   CredentialStore({required this.path, Map<String, String>? env})
       : _env = env ?? Platform.environment;
@@ -57,15 +55,6 @@ class CredentialStore {
         }
         return _readStored()[provider.id];
     }
-  }
-
-  /// Is this provider's credential available?
-  CredentialHealth health(ProviderDef provider) {
-    if (provider.auth.kind == AuthKind.none) return CredentialHealth.ok;
-    final resolved = resolveForProvider(provider);
-    return (resolved != null && resolved.isNotEmpty)
-        ? CredentialHealth.ok
-        : CredentialHealth.missing;
   }
 
   /// Convenience for the common single-field api-key providers.

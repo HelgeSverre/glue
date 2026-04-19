@@ -179,14 +179,14 @@ void _doRenderImpl(App app) {
   final modeLabel = '[${app._approvalMode.label}]';
   final statusLeft = ' \x1b[1m$modeIndicator\x1b[22m ';
 
-  const sep = ' │ ';
+  const sep = ' · ';
   final scrollSeg = app._scrollOffset > 0 ? '↑${app._scrollOffset}' : null;
   final rightSegs = [
     app._modelId,
     modeLabel,
     shortCwd,
     if (scrollSeg != null) scrollSeg,
-    'tok ${app.agent.tokenCount}',
+    '${app.agent.tokenCount} tokens',
   ];
   final statusRight = ' ${rightSegs.join(sep)} ';
   app.layout.paintStatus(statusLeft, statusRight);

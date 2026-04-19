@@ -25,6 +25,7 @@ import 'package:glue/src/tools/web_fetch_tool.dart';
 import 'package:glue/src/tools/web_search_tool.dart';
 import 'package:glue/src/web/browser/browser_config.dart';
 import 'package:glue/src/web/browser/browser_manager.dart';
+import 'package:glue/src/web/browser/providers/anchor_provider.dart';
 import 'package:glue/src/web/browser/providers/browserbase_provider.dart';
 import 'package:glue/src/web/browser/providers/browserless_provider.dart';
 import 'package:glue/src/web/browser/providers/docker_browser_provider.dart';
@@ -93,36 +94,42 @@ class ServiceLocator {
       sessionMounts: sessionState.dockerMounts,
     );
 
-    final searchRouter = SearchRouter([
-      BraveSearchProvider(apiKey: config.webConfig.search.braveApiKey),
-      TavilySearchProvider(apiKey: config.webConfig.search.tavilyApiKey),
-      FirecrawlSearchProvider(
-        apiKey: config.webConfig.search.firecrawlApiKey,
-        baseUrl: config.webConfig.search.firecrawlBaseUrl ??
-            'https://api.firecrawl.dev',
-      ),
-    ]);
+    SearchRouter? searchRouter;
+    SearchRouter getSearchRouter() => searchRouter ??= SearchRouter([
+          BraveSearchProvider(apiKey: config.webConfig.search.braveApiKey),
+          TavilySearchProvider(apiKey: config.webConfig.search.tavilyApiKey),
+          FirecrawlSearchProvider(
+            apiKey: config.webConfig.search.firecrawlApiKey,
+            baseUrl: config.webConfig.search.firecrawlBaseUrl ??
+                'https://api.firecrawl.dev',
+          ),
+        ]);
 
-    final browserProvider = switch (config.webConfig.browser.backend) {
-      BrowserBackend.local => LocalProvider(config.webConfig.browser),
-      BrowserBackend.docker => DockerBrowserProvider(
-          image: config.webConfig.browser.dockerImage,
-          port: config.webConfig.browser.dockerPort,
-          sessionId: sessionId,
-        ),
-      BrowserBackend.steel => SteelProvider(
-          apiKey: config.webConfig.browser.steelApiKey,
-        ),
-      BrowserBackend.browserbase => BrowserbaseProvider(
-          apiKey: config.webConfig.browser.browserbaseApiKey,
-          projectId: config.webConfig.browser.browserbaseProjectId,
-        ),
-      BrowserBackend.browserless => BrowserlessProvider(
-          apiKey: config.webConfig.browser.browserlessApiKey,
-          baseUrl: config.webConfig.browser.browserlessBaseUrl ?? '',
-        ),
-    };
-    final browserManager = BrowserManager(provider: browserProvider);
+    BrowserManager? browserManager;
+    BrowserManager getBrowserManager() => browserManager ??= BrowserManager(
+          provider: switch (config.webConfig.browser.backend) {
+            BrowserBackend.local => LocalProvider(config.webConfig.browser),
+            BrowserBackend.docker => DockerBrowserProvider(
+                image: config.webConfig.browser.dockerImage,
+                port: config.webConfig.browser.dockerPort,
+                sessionId: sessionId,
+              ),
+            BrowserBackend.steel => SteelProvider(
+                apiKey: config.webConfig.browser.steelApiKey,
+              ),
+            BrowserBackend.browserbase => BrowserbaseProvider(
+                apiKey: config.webConfig.browser.browserbaseApiKey,
+                projectId: config.webConfig.browser.browserbaseProjectId,
+              ),
+            BrowserBackend.browserless => BrowserlessProvider(
+                apiKey: config.webConfig.browser.browserlessApiKey,
+                baseUrl: config.webConfig.browser.browserlessBaseUrl ?? '',
+              ),
+            BrowserBackend.anchor => AnchorProvider(
+                apiKey: config.webConfig.browser.anchorApiKey,
+              ),
+          },
+        );
 
     final tools = <String, Tool>{
       'read_file': ReadFileTool(),
@@ -133,8 +140,8 @@ class ServiceLocator {
       'list_directory': ListDirectoryTool(),
       'web_fetch':
           WebFetchTool(config.webConfig.fetch, pdfConfig: config.webConfig.pdf),
-      'web_search': WebSearchTool(searchRouter),
-      'web_browser': WebBrowserTool(browserManager),
+      'web_search': WebSearchTool.lazy(getSearchRouter),
+      'web_browser': WebBrowserTool.lazy(getBrowserManager),
       'skill': SkillTool(skillRuntime),
     };
 

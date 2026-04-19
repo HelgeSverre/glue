@@ -3,3 +3,7 @@
 tags:
   e2e:
     skip: "Requires Ollama running locally"
+  ollama_registry:
+    skip: "Network test; opt in with -t ollama_registry"
+  anchor_browser:
+    skip: "Network test; requires ANCHOR_API_KEY or ~/.glue/config.yaml web.browser.anchor.api_key"

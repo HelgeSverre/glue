@@ -1,8 +1,9 @@
 /// A fully-qualified model identifier: `<provider-id>/<model-id>`.
 ///
 /// The split is on the **first** slash only, so model ids that themselves
-/// contain slashes (OpenRouter, Groq OSS namespaces) round-trip correctly:
-/// `groq/qwen/qwen3-coder` → provider `groq`, model `qwen/qwen3-coder`.
+/// contain slashes round-trip correctly — e.g. a user-typed OpenRouter slug:
+/// `openrouter/anthropic/claude-sonnet-4.6` → provider `openrouter`,
+/// model `anthropic/claude-sonnet-4.6`.
 library;
 
 class ModelRef {

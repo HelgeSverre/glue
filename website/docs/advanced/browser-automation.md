@@ -10,7 +10,7 @@ today; some provider integrations are newer than others. See the
 
 ## Supported backends
 
-Glue ships with five browser backends today. Each implements the same
+Glue ships with six browser backends today. Each implements the same
 `BrowserEndpointProvider` interface (`cli/lib/src/web/browser/providers/`) —
 picking one is a config change, not a code change.
 
@@ -21,6 +21,7 @@ picking one is a config change, not a code change.
 | `browserbase`  | Cloud · [browserbase.com](https://browserbase.com) | <FeatureStatus status="experimental" /> | Hosted sessions with session replays.               |
 | `browserless`  | Cloud or self-hosted · [browserless.io](https://browserless.io) | <FeatureStatus status="experimental" /> | Cheap scale-out; self-hostable. |
 | `steel`        | Cloud · [steel.dev](https://steel.dev)    | <FeatureStatus status="experimental" /> | Agent-focused cloud sessions.                       |
+| `anchor`       | Cloud · [anchorbrowser.io](https://anchorbrowser.io) | <FeatureStatus status="experimental" /> | Agentic browser sessions with live view and managed automation features. |
 
 ## Available actions
 
@@ -85,6 +86,15 @@ web:
     steel_api_key: your-key
 ```
 
+### `anchor` — cloud via Anchor Browser
+
+```yaml
+web:
+  browser:
+    backend: anchor
+    anchor_api_key: your-key
+```
+
 ::: info Credentials
 Cloud backends need an API key. Prefer env vars or
 [`~/.glue/credentials.json`](/docs/getting-started/configuration#credentials-json-api-keys)
@@ -101,14 +111,14 @@ doesn't touch your host:
 | Develop an automation quickly     | `host` runtime + `local` browser (`headed: true`)   |
 | Untrusted site inspection         | `docker` runtime + `docker` browser                 |
 | High-volume scraping              | <FeatureStatus status="planned" /> cloud runtime + cloud browser |
-| Agent-driven multi-step workflows | Any runtime + `steel` or `browserbase`              |
+| Agent-driven multi-step workflows | Any runtime + `steel`, `browserbase`, or `anchor`   |
 
 ## Providers we're evaluating
 
 More backend options are tracked in the backlog — see
 [TASK-28: Evaluate and add new browser-automation providers](https://github.com/helgesverre/glue/blob/main/backlog/tasks/task-28%20-%20Evaluate-and-add-browser-automation-providers.md).
-Candidates include agent-focused entrants (Hyperbrowser, Anchor Browser,
-Scrapybara), first-party platform browsers (Cloudflare Browser Rendering),
+Candidates include agent-focused entrants (Hyperbrowser, Scrapybara),
+first-party platform browsers (Cloudflare Browser Rendering),
 and engine options beyond Puppeteer (a Playwright-based local backend for
 Firefox/WebKit coverage).
 

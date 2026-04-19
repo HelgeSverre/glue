@@ -103,7 +103,7 @@ and read the result without reopening the tab.
 
 ### Backends
 
-All five implement the same `BrowserEndpointProvider` interface, so swapping
+All six implement the same `BrowserEndpointProvider` interface, so swapping
 is a one-line config change rather than a code change.
 
 | Backend | Runs on | Best for | Status |
@@ -113,13 +113,14 @@ is a one-line config change rather than a code change.
 | `browserbase` | Cloud — [browserbase.com](https://browserbase.com) | Hosted sessions with replays. | <FeatureStatus status="experimental" /> |
 | `browserless` | Cloud or self-hosted — [browserless.io](https://browserless.io) | Scale and self-hosting. | <FeatureStatus status="experimental" /> |
 | `steel` | Cloud — [steel.dev](https://steel.dev) | Agent-focused cloud sessions. | <FeatureStatus status="experimental" /> |
+| `anchor` | Cloud — [anchorbrowser.io](https://anchorbrowser.io) | Agentic browser sessions with live view. | <FeatureStatus status="experimental" /> |
 
 <ConfigSnippet title="~/.glue/config.yaml — switch browser backends">
 
 ```yaml
 web:
   browser:
-    backend: docker        # local | docker | browserbase | browserless | steel
+    backend: docker        # local | docker | browserbase | browserless | steel | anchor
     docker_image: browserless/chrome:latest
     docker_port: 3000
 ```
@@ -147,6 +148,7 @@ Nothing auto-reads project-local config.
 | Browserbase browser | `BROWSERBASE_API_KEY` + `BROWSERBASE_PROJECT_ID` |
 | Browserless browser | `BROWSERLESS_API_KEY` |
 | Steel browser | `STEEL_API_KEY` |
+| Anchor browser | `ANCHOR_API_KEY` |
 
 ## Pairing with runtimes
 

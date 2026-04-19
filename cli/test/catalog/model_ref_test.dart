@@ -9,17 +9,7 @@ void main() {
       expect(ref.modelId, 'claude-sonnet-4.6');
     });
 
-    test('preserves slashes inside the model id', () {
-      final ref = ModelRef.parse('groq/qwen/qwen3-coder');
-      expect(ref.providerId, 'groq');
-      expect(
-        ref.modelId,
-        'qwen/qwen3-coder',
-        reason: 'split only on the FIRST slash',
-      );
-    });
-
-    test('handles OpenRouter-style deeply-nested model ids', () {
+    test('splits only on the first slash so model ids can contain slashes', () {
       final ref = ModelRef.parse('openrouter/anthropic/claude-sonnet-4.6');
       expect(ref.providerId, 'openrouter');
       expect(ref.modelId, 'anthropic/claude-sonnet-4.6');
@@ -57,7 +47,7 @@ void main() {
     });
 
     test('toString round-trips', () {
-      const input = 'groq/qwen/qwen3-coder';
+      const input = 'openrouter/anthropic/claude-sonnet-4.6';
       expect(ModelRef.parse(input).toString(), input);
     });
 

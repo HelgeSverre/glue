@@ -104,6 +104,7 @@ String _render(ModelCatalog c) {
         ..writeln('        ${_str(mid)}: ModelDef(')
         ..writeln('          id: ${_str(m.id)},')
         ..writeln('          name: ${_str(m.name)},')
+        ..writeln('          apiId: ${_str(m.apiId)},')
         ..writeln('          recommended: ${m.recommended},')
         ..writeln('          isDefault: ${m.isDefault},')
         ..writeln(

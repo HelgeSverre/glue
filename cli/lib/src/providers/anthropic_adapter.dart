@@ -26,7 +26,7 @@ class AnthropicAdapter extends ProviderAdapter {
   }) {
     return AnthropicClient(
       apiKey: provider.apiKey ?? '',
-      model: model.id,
+      model: model.apiId,
       systemPrompt: systemPrompt,
       baseUrl: provider.baseUrl ?? 'https://api.anthropic.com',
     );

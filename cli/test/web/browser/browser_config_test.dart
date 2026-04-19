@@ -59,6 +59,17 @@ void main() {
       expect(configured.isConfigured, isTrue);
     });
 
+    test('anchor requires API key', () {
+      const config = BrowserConfig(backend: BrowserBackend.anchor);
+      expect(config.isConfigured, isFalse);
+
+      const configured = BrowserConfig(
+        backend: BrowserBackend.anchor,
+        anchorApiKey: 'key',
+      );
+      expect(configured.isConfigured, isTrue);
+    });
+
     test('empty string key is treated as not configured', () {
       const config = BrowserConfig(
         backend: BrowserBackend.steel,

@@ -91,9 +91,22 @@ void main() {
       expect(groq.compatibility, 'groq');
     });
 
-    test('model IDs may contain slashes (groq qwen)', () {
+    test('catalog keys are slug-shaped; slashes move to api_id (groq gpt-oss)',
+        () {
       final groq = catalog.providers['groq']!;
-      expect(groq.models.keys, contains('qwen/qwen3-coder'));
+      final entry = groq.models['gpt-oss-120b'];
+      expect(entry, isNotNull, reason: 'key should be slugified');
+      expect(
+        entry!.apiId,
+        'openai/gpt-oss-120b',
+        reason: 'the upstream slug lives in api_id, not the key',
+      );
+    });
+
+    test('api_id defaults to the catalog key when omitted', () {
+      final anthropic = catalog.providers['anthropic']!;
+      final sonnet = anthropic.models['claude-sonnet-4-6']!;
+      expect(sonnet.apiId, 'claude-sonnet-4-6');
     });
 
     test('openrouter declares required request headers', () {

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/core/environment.dart';
+import 'package:glue/src/web/browser/browser_config.dart';
 import 'package:test/test.dart';
 
 Directory _scratch() =>
@@ -90,6 +91,24 @@ anthropic:
       );
       expect(config.activeModel.providerId, 'anthropic');
       expect(config.activeModel.modelId, contains('sonnet'));
+    });
+
+    test('loads Anchor browser backend from environment', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      final config = GlueConfig.load(
+        environment: _envWith(
+          home: home,
+          vars: {
+            'GLUE_BROWSER_BACKEND': 'anchor',
+            'ANCHOR_API_KEY': 'anchor-key',
+          },
+        ),
+      );
+
+      expect(config.webConfig.browser.backend, BrowserBackend.anchor);
+      expect(config.webConfig.browser.anchorApiKey, 'anchor-key');
+      expect(config.webConfig.browser.isConfigured, isTrue);
     });
   });
 

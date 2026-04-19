@@ -31,12 +31,11 @@ void main() {
       expect(client, isA<OpenAiClient>());
     });
 
-    test('returns OpenAiClient for groq/qwen/qwen3-coder (slash in model id)',
-        () {
+    test('returns OpenAiClient for groq/gpt-oss-120b', () {
       final config = testConfig(env: {'GROQ_API_KEY': 'sk-groq'});
       final factory = LlmClientFactory(config);
       final client = factory.createFor(
-        ModelRef.parse('groq/qwen/qwen3-coder'),
+        ModelRef.parse('groq/gpt-oss-120b'),
         systemPrompt: 'test',
       );
       expect(client, isA<OpenAiClient>());

@@ -35,7 +35,7 @@ class OpenAiCompatibleAdapter extends ProviderAdapter {
     final profile = CompatibilityProfile.fromString(provider.compatibility);
     return OpenAiClient(
       apiKey: provider.apiKey ?? '',
-      model: model.id,
+      model: model.apiId,
       systemPrompt: systemPrompt,
       baseUrl: provider.baseUrl ?? 'https://api.openai.com',
       profile: profile,

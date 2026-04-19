@@ -89,8 +89,19 @@ Default models per provider:
 | --------- | ---------------------- |
 | anthropic | `claude-sonnet-4-6`    |
 | openai    | `gpt-4.1`              |
-| mistral   | `mistral-large-latest` |
-| ollama    | `llama3.2`             |
+| mistral   | `devstral-latest`      |
+| ollama    | `qwen3-coder:30b`      |
+
+Ollama hardware-tier suggestions:
+
+| Hardware                    | Suggested pull                          |
+| --------------------------- | --------------------------------------- |
+| 16 GB laptop / CPU-only     | `ollama pull qwen3:8b`                  |
+| 12–24 GB GPU (mainstream)   | `ollama pull qwen3-coder:30b` (default) |
+| 32 GB dense-only GPU        | `ollama pull devstral-small-2:24b`      |
+| 48 GB+ workstation          | `ollama pull qwen3-coder-next:80b`      |
+
+Ollama tags default to Q4_K_M. For higher fidelity on large tool schemas, pull `:size-q5_K_M` (~1.2× memory), `:size-q6_K` (~1.5×), or `:size-q8_0` (~2×) and select the tag in `/model`.
 
 ### Shell configuration
 
@@ -123,7 +134,7 @@ docker:
 
 Or via environment: `GLUE_DOCKER_ENABLED=1 GLUE_DOCKER_IMAGE=alpine:latest glue`
 
-The current working directory is always mounted at `/work` inside the container. Additional directories can be mounted per-session (persisted in session state).
+The current working directory is always mounted at `/workspace` inside the container. Additional directories can be mounted per-session (persisted in session state).
 
 ### Debug logging
 
@@ -199,7 +210,7 @@ App (event bus, state machine, render loop @ 60fps)
   ├─ Web (fetch, search, browser automation)
   │    ├─ Fetch (HTML-to-markdown, PDF text extraction, OCR fallback via Mistral/OpenAI)
   │    ├─ Search (Brave, Tavily, Firecrawl backends via SearchRouter)
-  │    └─ Browser (CDP automation: local Chrome, Docker, Browserless, Browserbase, Steel)
+  │    └─ Browser (CDP automation: local Chrome, Docker, Browserless, Browserbase, Steel, Anchor)
   ├─ Skills (agentskills.io-compatible skill loading)
   │    ├─ SkillRegistry (discover from ~/.glue/skills/ and .glue/skills/)
   │    └─ SkillParser (YAML frontmatter + markdown body)

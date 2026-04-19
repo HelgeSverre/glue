@@ -145,7 +145,7 @@ void main() {
           baseUrl: 'https://api.groq.com/openai/v1',
           apiKey: 'sk-groq',
         ),
-        model: _model('qwen/qwen3-coder'),
+        model: _model('gpt-oss-120b'),
         systemPrompt: '',
       ) as OpenAiClient;
       expect(client.profile, CompatibilityProfile.groq);

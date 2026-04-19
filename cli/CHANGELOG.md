@@ -6,6 +6,19 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Added
 
+- **`ModelDef.apiId`** — optional field in `docs/reference/models.yaml`
+  decoupling the stable catalog key from the mutable upstream identifier.
+  Defaults to the YAML key when omitted (zero churn for simple entries).
+  Adapters send `model.apiId` on the wire; the YAML key stays as the
+  URL-safe, user-facing identifier in configs, sessions, and the `/model`
+  picker. Motivation: upstream renames (e.g. Groq dropping Qwen3-Coder)
+  no longer invalidate user configs. Matches precedent from OpenRouter,
+  LiteLLM, Continue.dev, MLflow, and Docker.
+- **Ollama catalog registry integration test** —
+  `test/integration/ollama_catalog_registry_test.dart` verifies every
+  Ollama catalog tag resolves via `registry.ollama.ai`. Opt-in via
+  `dart test --run-skipped -t ollama_registry`; skipped by default to
+  stay hermetic. Catches future drift when model authors rename tags.
 - **`glue --where`** — prints `GLUE_HOME` and every resolved path
   (`config.yaml`, `preferences.json`, `credentials.json`, `models.yaml`,
   `sessions/`, `logs/`, `cache/`, `skills/`, `plans/`) with an exists / not-yet
@@ -60,6 +73,22 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Changed
 
+- **Model catalog refreshed against live provider availability (April 2026).**
+  - **Mistral default → `devstral-latest`** (agentic coding model). Added
+    `mistral-medium-latest`. Kept `mistral-large-latest`, `mistral-small-latest`.
+  - **Ollama default → `qwen3-coder:30b`** (community consensus, 256K
+    context, dedicated tool-call parser). Recommended list: `qwen3-coder:30b`,
+    `qwen3.6:35b`, `gemma4:26b`, `devstral-small-2:24b`, `qwen2.5-coder:32b`,
+    `qwen3:8b`. Six popular non-agentic families (`mistral:7b`, `gemma3:12b`,
+    `codellama:13b`, `codegemma:7b`, `starcoder2:15b`, `deepseek-coder:33b`)
+    included as `recommended: false` with notes explaining why they're
+    not suitable for tool loops.
+  - **Groq default → `openai/gpt-oss-120b`** (reasoning + coding). Added
+    `gpt-oss-20b`, `llama-3.1-8b-instant`. Kept `llama-3.3-70b-versatile`.
+  - **Slash-bearing catalog keys slugified**: `groq/openai/gpt-oss-120b`
+    → `groq/gpt-oss-120b` (upstream `openai/gpt-oss-120b` now lives in
+    `api_id`). Same treatment for Groq `gpt-oss-20b` and OpenRouter's
+    three slash-keyed entries.
 - **Resize preserves scroll position.** `UserResize` no longer snaps the
   transcript back to the tail; the render pipeline clamps any out-of-range
   offset after the viewport changes.
@@ -90,6 +119,15 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Removed
 
+- **`codestral-latest` from Mistral catalog** — FIM-lineage model;
+  enumerates tools but narrates instead of calling them in agent loops.
+  Replaced by `devstral-latest`.
+- **`qwen/qwen3-coder` from Groq catalog** — Groq no longer serves this
+  model; the entry would 404. Replaced by `openai/gpt-oss-120b`.
+- **`llama3.2:latest` from Ollama catalog** — general chat model,
+  not coding/tool-focused.
+- **`devstral:latest` from Ollama catalog** — replaced by the pinned
+  `devstral-small-2:24b` (known version, known SWE-bench scores).
 - **Interaction modes** (`code` / `architect` / `ask`), plan-mode UI,
   `GLUE_INTERACTION_MODE` env var.
 - **OTEL / Langfuse / DevTools observability sinks** —

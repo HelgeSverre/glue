@@ -133,6 +133,7 @@ class ModelDef {
   const ModelDef({
     required this.id,
     required this.name,
+    String? apiId,
     this.recommended = false,
     this.isDefault = false,
     this.capabilities = const {},
@@ -141,10 +142,19 @@ class ModelDef {
     this.speed,
     this.cost,
     this.notes,
-  });
+  }) : apiId = apiId ?? id;
 
+  /// Catalog key — stable, user-facing (CLI, config, session files, URLs).
   final String id;
+
+  /// Human display label.
   final String name;
+
+  /// The exact string sent to the provider's API. Defaults to [id] when the
+  /// catalog entry doesn't override it. Let upstream slugs like
+  /// `openai/gpt-oss-120b` live here instead of leaking into user-facing ids.
+  final String apiId;
+
   final bool recommended;
   final bool isDefault;
   final Set<String> capabilities;

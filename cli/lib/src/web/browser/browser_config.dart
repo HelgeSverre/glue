@@ -4,7 +4,7 @@ import 'package:glue/src/config/constants.dart';
 ///
 /// We use "backend" here to describe the runtime environment where the browser
 /// session is provisioned (local process, docker container, or cloud service).
-enum BrowserBackend { local, docker, steel, browserbase, browserless }
+enum BrowserBackend { local, docker, steel, browserbase, browserless, anchor }
 
 /// Configuration for the web_browser tool.
 class BrowserConfig {
@@ -23,6 +23,7 @@ class BrowserConfig {
   final String? browserbaseProjectId;
   final String? browserlessBaseUrl;
   final String? browserlessApiKey;
+  final String? anchorApiKey;
 
   const BrowserConfig({
     this.backend = BrowserBackend.local,
@@ -37,6 +38,7 @@ class BrowserConfig {
     this.browserbaseProjectId,
     this.browserlessBaseUrl,
     this.browserlessApiKey,
+    this.anchorApiKey,
   });
 
   /// Whether the selected backend has valid credentials/configuration.
@@ -50,5 +52,7 @@ class BrowserConfig {
             browserbaseProjectId!.isNotEmpty,
         BrowserBackend.browserless =>
           browserlessApiKey != null && browserlessApiKey!.isNotEmpty,
+        BrowserBackend.anchor =>
+          anchorApiKey != null && anchorApiKey!.isNotEmpty,
       };
 }

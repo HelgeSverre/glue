@@ -44,4 +44,5 @@ class ResolvedModel {
 
   String get id => def.id;
   String get name => def.name;
+  String get apiId => def.apiId;
 }

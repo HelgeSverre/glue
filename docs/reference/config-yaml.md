@@ -65,7 +65,7 @@ web:
     mistral_api_key: your-key
     openai_api_key: your-key
   browser:
-    backend: local       # execution backend: local | docker | steel | browserbase | browserless
+    backend: local       # execution backend: local | docker | steel | browserbase | browserless | anchor
     docker_image: browserless/chrome:latest
     docker_port: 3000
     steel_api_key: your-key
@@ -73,6 +73,7 @@ web:
     browserbase_project_id: your-project
     browserless_api_key: your-key
     browserless_base_url: https://chrome.browserless.io
+    anchor_api_key: your-key
 
 debug: false
 
@@ -102,6 +103,7 @@ skills:
 - Shell: `GLUE_SHELL`, `GLUE_SHELL_MODE`
 - Docker: `GLUE_DOCKER_ENABLED`, `GLUE_DOCKER_IMAGE`, `GLUE_DOCKER_SHELL`, `GLUE_DOCKER_MOUNTS`
 - Search provider: `GLUE_SEARCH_PROVIDER`
+- Browser backend: `GLUE_BROWSER_BACKEND`; Anchor Browser key: `ANCHOR_API_KEY`
 - Skills paths: `GLUE_SKILLS_PATHS`
 - Approval mode: `GLUE_APPROVAL_MODE`
 - Glue home: `GLUE_HOME` (overrides the default `~/.glue`)

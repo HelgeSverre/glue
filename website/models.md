@@ -31,9 +31,11 @@ Canonical source: [`docs/reference/models.yaml`](https://github.com/helgesverre/
     { id: 'gpt-5.3-codex', provider: 'openai', capabilities: ['chat','tools','files','json','reasoning','coding'], notes: 'Coding-specialized.' },
     { id: 'gemini-pro-latest', provider: 'gemini', recommended: true, capabilities: ['chat','tools','vision','files','json','reasoning','coding'], notes: '1M context; stable Pro alias.' },
     { id: 'gemini-flash-latest', provider: 'gemini', recommended: true, capabilities: ['chat','tools','vision','files','json','coding'], notes: 'Fast; good for extraction and browser work.' },
-    { id: 'mistral-large-latest', provider: 'mistral', recommended: true, capabilities: ['chat','tools','json','coding'], notes: 'Mistral default.' },
-    { id: 'codestral-latest', provider: 'mistral', recommended: true, capabilities: ['chat','tools','json','coding'], notes: 'Coding-focused Mistral.' },
-    { id: 'qwen/qwen3-coder', provider: 'groq', recommended: true, capabilities: ['chat','tools','json','coding'], notes: 'Fast coding via OpenAI-compatible endpoint.' },
+    { id: 'devstral-latest', provider: 'mistral', recommended: true, capabilities: ['chat','tools','json','coding'], notes: 'Agentic coding — Mistral default.' },
+    { id: 'mistral-large-latest', provider: 'mistral', recommended: true, capabilities: ['chat','tools','vision','json','coding'], notes: 'Flagship multimodal.' },
+    { id: 'mistral-medium-latest', provider: 'mistral', recommended: true, capabilities: ['chat','tools','vision','json'], notes: 'Balanced cost/quality.' },
+    { id: 'mistral-small-latest', provider: 'mistral', recommended: true, capabilities: ['chat','tools','vision','json','reasoning'], notes: 'Fast with reasoning toggle.' },
+    { id: 'gpt-oss-120b', provider: 'groq', recommended: true, capabilities: ['chat','tools','json','reasoning','coding'], notes: 'Fast reasoning + coding at Groq speed.' },
   ]"
 />
 
@@ -42,9 +44,12 @@ Canonical source: [`docs/reference/models.yaml`](https://github.com/helgesverre/
 <ModelTable
   caption="Ollama runs on localhost; capability depends on hardware."
   :models="[
-    { id: 'qwen2.5-coder:32b', provider: 'ollama', recommended: true, capabilities: ['chat','json','coding','local'], notes: 'Sensible local coding default.' },
-    { id: 'devstral:latest', provider: 'ollama', recommended: true, capabilities: ['chat','tools','json','coding','local'], notes: 'Local agentic coding candidate.' },
-    { id: 'llama3.2:latest', provider: 'ollama', capabilities: ['chat','json','local'], notes: 'General local fallback.' },
+    { id: 'qwen3-coder:30b', provider: 'ollama', recommended: true, capabilities: ['chat','tools','json','coding','local'], notes: 'Local default. 30B/3.3B MoE, 256K context.' },
+    { id: 'qwen3.6:35b', provider: 'ollama', recommended: true, capabilities: ['chat','tools','vision','json','reasoning','coding','local'], notes: 'Latest Qwen generalist. Agentic coding + thinking.' },
+    { id: 'gemma4:26b', provider: 'ollama', recommended: true, capabilities: ['chat','tools','vision','json','coding','local'], notes: 'Google, native function-calling. 256K context.' },
+    { id: 'devstral-small-2:24b', provider: 'ollama', recommended: true, capabilities: ['chat','tools','json','coding','local'], notes: 'Dense, fits 16 GB GPU. 68% SWE-bench.' },
+    { id: 'qwen2.5-coder:32b', provider: 'ollama', recommended: true, capabilities: ['chat','tools','json','coding','local'], notes: 'Aider-verified 73.7%. Safe fallback.' },
+    { id: 'qwen3:8b', provider: 'ollama', recommended: true, capabilities: ['chat','tools','json','local'], notes: 'Low-end floor, 16 GB laptops.' },
   ]"
 />
 

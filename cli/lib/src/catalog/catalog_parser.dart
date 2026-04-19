@@ -236,6 +236,7 @@ ModelDef _parseModel(String id, Object? node, {required String providerId}) {
   return ModelDef(
     id: id,
     name: node['name']?.toString() ?? id,
+    apiId: node['api_id']?.toString(),
     recommended: _asBool(node['recommended']),
     isDefault: _asBool(node['default']),
     capabilities: capabilities,

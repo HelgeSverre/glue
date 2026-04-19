@@ -1,10 +1,16 @@
+import 'dart:async';
+
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/web/search/search_router.dart';
 
 class WebSearchTool extends Tool {
-  final SearchRouter _router;
+  final FutureOr<SearchRouter> Function() _routerProvider;
+  SearchRouter? _router;
+  Future<SearchRouter>? _pendingRouter;
 
-  WebSearchTool(this._router);
+  WebSearchTool(SearchRouter router) : this.lazy(() => router);
+
+  WebSearchTool.lazy(this._routerProvider);
 
   @override
   String get name => 'web_search';
@@ -52,7 +58,8 @@ class WebSearchTool extends Tool {
     final providerName = args['provider'] as String?;
 
     try {
-      final response = await _router.search(
+      final router = await _getRouter();
+      final response = await router.search(
         query,
         maxResults: maxResults,
         providerName: providerName,
@@ -75,5 +82,22 @@ class WebSearchTool extends Tool {
         metadata: {'query': query, 'error': e.toString()},
       );
     }
+  }
+
+  Future<SearchRouter> _getRouter() async {
+    final router = _router;
+    if (router != null) return router;
+
+    final pending = _pendingRouter;
+    if (pending != null) return pending;
+
+    final future = Future.sync(_routerProvider).then((value) {
+      _router = value;
+      return value;
+    }).whenComplete(() {
+      _pendingRouter = null;
+    });
+    _pendingRouter = future;
+    return future;
   }
 }
