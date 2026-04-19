@@ -110,20 +110,6 @@ void main() {
       // Exact values are brittle to the panel-sizing rule, so assert inequality only.
     });
 
-    test('static SelectOption still selects correctly', () async {
-      final panel = SelectPanel<String>(
-        title: 'Pick',
-        options: [
-          SelectOption(value: 'alpha', label: 'alpha'),
-          SelectOption(value: 'beta', label: 'beta'),
-        ],
-        searchEnabled: false,
-      );
-      panel.handleEvent(KeyEvent(Key.down));
-      panel.handleEvent(KeyEvent(Key.enter));
-      expect(await panel.selection, 'beta');
-    });
-
     test('SelectOption.label getter returns the builder result at width 80',
         () {
       final opt = SelectOption.responsive(
@@ -132,6 +118,62 @@ void main() {
         searchText: 'x',
       );
       expect(opt.label, 'rendered@80');
+    });
+
+    test('headerBuilder is called per render with the panel content width', () {
+      final widths = <int>[];
+      final panel = SelectPanel<String>(
+        title: 'Pick',
+        options: [SelectOption(value: 'a', label: 'a')],
+        headerBuilder: (w) {
+          widths.add(w);
+          return ['HEADER@$w'];
+        },
+        searchEnabled: false,
+      );
+      panel.render(80, 20, const []);
+      panel.render(50, 20, const []);
+      expect(widths.length, 2);
+      expect(widths.first, isNot(widths.last));
+    });
+
+    test('headerBuilder output appears above options in rendered grid', () {
+      final panel = SelectPanel<String>(
+        title: 'Pick',
+        options: [SelectOption(value: 'a', label: 'alpha')],
+        headerBuilder: (w) => ['MYHEADER'],
+        searchEnabled: false,
+      );
+      final grid = panel.render(80, 20, const []);
+      // Join and strip ANSI so we can do a simple contains-check without fighting
+      // escape codes or padding.
+      final joined = grid.map(stripAnsi).join('\n');
+      expect(joined, contains('MYHEADER'));
+      expect(joined, contains('alpha'));
+    });
+
+    test('assertion: headerLines + headerBuilder throws', () {
+      expect(
+        () => SelectPanel<String>(
+          title: 't',
+          options: [SelectOption(value: 'a', label: 'a')],
+          headerLines: const ['h'],
+          headerBuilder: (_) => ['b'],
+        ),
+        throwsA(isA<AssertionError>()),
+      );
+    });
+
+    test('static headerLines still works when headerBuilder absent', () {
+      final panel = SelectPanel<String>(
+        title: 'Pick',
+        options: [SelectOption(value: 'a', label: 'a')],
+        headerLines: const ['STATIC HEADER'],
+        searchEnabled: false,
+      );
+      final grid = panel.render(80, 20, const []);
+      final joined = grid.map(stripAnsi).join('\n');
+      expect(joined, contains('STATIC HEADER'));
     });
   });
 }

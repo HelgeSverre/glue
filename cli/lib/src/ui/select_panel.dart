@@ -34,6 +34,7 @@ class SelectPanel<T> implements PanelOverlay {
   final String title;
   final List<SelectOption<T>> options;
   final List<String> headerLines;
+  final List<String> Function(int contentWidth)? headerBuilder;
   final String emptyText;
   final bool searchEnabled;
   final String searchHint;
@@ -57,6 +58,7 @@ class SelectPanel<T> implements PanelOverlay {
     required this.title,
     required this.options,
     this.headerLines = const [],
+    this.headerBuilder,
     this.emptyText = 'No results.',
     this.searchEnabled = true,
     this.searchHint = 'Type to filter',
@@ -67,7 +69,11 @@ class SelectPanel<T> implements PanelOverlay {
     PanelSize? height,
     this.dismissable = true,
     int initialIndex = 0,
-  })  : _width = width ?? PanelFluid(0.7, 40),
+  })  : assert(
+          headerBuilder == null || headerLines.isEmpty,
+          'Provide either headerLines or headerBuilder, not both.',
+        ),
+        _width = width ?? PanelFluid(0.7, 40),
         _height = height ?? PanelFluid(0.6, 10) {
     _selectedIndex =
         options.isEmpty ? 0 : initialIndex.clamp(0, options.length - 1);
@@ -174,7 +180,12 @@ class SelectPanel<T> implements PanelOverlay {
 
     final topRows = searchEnabled ? 1 : 0;
     final maxHeaderRows = max(0, contentHeight - topRows - 1);
-    final visibleHeaderRows = min(headerLines.length, maxHeaderRows);
+
+    final contentW = max(1, panelW - 4);
+    _lastContentWidth = contentW;
+    final effectiveHeader = headerBuilder?.call(contentW) ?? headerLines;
+
+    final visibleHeaderRows = min(effectiveHeader.length, maxHeaderRows);
     final listHeight = max(1, contentHeight - topRows - visibleHeaderRows);
     _lastListHeight = listHeight;
 
@@ -197,8 +208,6 @@ class SelectPanel<T> implements PanelOverlay {
     final border = box.renderFrame(panelW, panelH, title, color: borderColor);
     final topRow = (termHeight - panelH) ~/ 2;
     final leftCol = (termWidth - panelW) ~/ 2;
-    final contentW = max(1, panelW - 4);
-    _lastContentWidth = contentW;
 
     final selectedGlobalIndex = _selectedIndexForFiltered(filtered);
 
@@ -233,6 +242,7 @@ class SelectPanel<T> implements PanelOverlay {
         contentRow: contentRow,
         contentHeight: contentHeight,
         visibleHeaderRows: visibleHeaderRows,
+        effectiveHeader: effectiveHeader,
         filtered: filtered,
         selectedGlobalIndex: selectedGlobalIndex,
       );
@@ -258,6 +268,7 @@ class SelectPanel<T> implements PanelOverlay {
     required int contentRow,
     required int contentHeight,
     required int visibleHeaderRows,
+    required List<String> effectiveHeader,
     required List<int> filtered,
     required int selectedGlobalIndex,
   }) {
@@ -270,7 +281,7 @@ class SelectPanel<T> implements PanelOverlay {
 
     if (contentRow < rowOffset + visibleHeaderRows) {
       final headerIdx = contentRow - rowOffset;
-      return (headerLines[headerIdx], false);
+      return (effectiveHeader[headerIdx], false);
     }
     rowOffset += visibleHeaderRows;
 
