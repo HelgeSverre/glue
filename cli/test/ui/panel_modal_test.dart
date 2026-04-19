@@ -42,6 +42,48 @@ void main() {
         expect(PanelFluid(0.1, 30).resolve(10), 10);
       });
     });
+
+    group('PanelFluid small-terminal fallback', () {
+      test('expands to available-margin when floor dominates', () {
+        final size = PanelFluid(0.7, 40);
+        // 42 * 0.7 = 29 < 40 → floor hit. available - margin = 40, 40 >= min.
+        expect(size.resolve(42), 40);
+        // 43 * 0.7 = 30 < 40 → floor hit. available - margin = 41, 41 >= min.
+        expect(size.resolve(43), 41);
+        // 45 * 0.7 = 31 < 40 → floor hit. available - margin = 43.
+        expect(size.resolve(45), 43);
+        // 50 * 0.7 = 35 < 40 → floor hit. available - margin = 48.
+        expect(size.resolve(50), 48);
+      });
+
+      test('uses percent when terminal is comfortably above floor', () {
+        final size = PanelFluid(0.7, 40);
+        // 60 * 0.7 = 42 >= 40 → percent path.
+        expect(size.resolve(60), 42);
+        // 80 * 0.7 = 56 >= 40.
+        expect(size.resolve(80), 56);
+        // 120 * 0.7 = 84.
+        expect(size.resolve(120), 84);
+      });
+
+      test('falls back to available on very tiny terminals', () {
+        // available 10, min 50 → percent 9 < min, but available - margin = 8 < min,
+        // so clamp to available (10). Matches the pre-existing
+        // "clamps to available when result exceeds it" test.
+        expect(PanelFluid(0.9, 50).resolve(10), 10);
+      });
+
+      test('margin is configurable', () {
+        final size = PanelFluid(0.7, 40, margin: 4);
+        // available 50, percent 35 < 40 → floor hit. available - margin = 46.
+        expect(size.resolve(50), 46);
+      });
+
+      test('returns 0 on non-positive available', () {
+        expect(PanelFluid(0.7, 40).resolve(0), 0);
+        expect(PanelFluid(0.7, 40).resolve(-5), 0);
+      });
+    });
   });
 
   group('Box.renderFrame', () {

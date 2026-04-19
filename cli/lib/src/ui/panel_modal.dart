@@ -25,11 +25,28 @@ class PanelFixed extends PanelSize {
 class PanelFluid extends PanelSize {
   final double maxPercent;
   final int minSize;
-  PanelFluid(this.maxPercent, this.minSize);
+  final int margin;
+  PanelFluid(this.maxPercent, this.minSize, {this.margin = 2});
 
   @override
-  int resolve(int available) =>
-      min(max((available * maxPercent).floor(), minSize), available);
+  int resolve(int available) {
+    if (available <= 0) return 0;
+    final percent = (available * maxPercent).floor();
+    if (percent >= minSize) {
+      return min(percent, available);
+    }
+    // Floor hit. Only fall back to (available - margin) when the floor
+    // dominates the terminal (> 75% of available width). Otherwise the
+    // caller explicitly wanted a small panel in a big terminal; respect
+    // that and return the floor.
+    if (minSize * 4 > available * 3) {
+      if (available - margin >= minSize) {
+        return available - margin;
+      }
+      return available; // too tiny even for a margin
+    }
+    return minSize;
+  }
 }
 
 List<String> renderBorder(
