@@ -54,3 +54,4 @@ node_modules/
 
 # Browser probe (generated outputs)
 browser/probe/browser/
+settings.local.json
