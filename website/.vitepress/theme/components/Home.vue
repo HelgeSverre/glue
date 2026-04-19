@@ -57,6 +57,18 @@ const visible = ref<number>(0)
 const isRunning = ref<boolean>(false)
 let timer: ReturnType<typeof setTimeout> | null = null
 
+// ── Eyebrow pool — one gets picked at random on mount. Keep it dry; resist
+// adding exclamation marks. Add or cull as taste changes.
+const eyebrowPool = [
+  'terminal coding agent with a browser problem',
+  'small tool, misc reasons',
+  'writes code, clicks buttons',
+  'coding agent. web was an accident.',
+  'yet another terminal agent (but)',
+  'chrome as a side effect',
+]
+const eyebrow = ref<string>(eyebrowPool[0])
+
 function defaultDelay(kind: ShotEvent['kind']): number {
   switch (kind) {
     case 'user':        return 760
@@ -158,6 +170,10 @@ onMounted(async () => {
   const prefersReduced =
     typeof window !== 'undefined' &&
     window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+
+  // Pick a random eyebrow per visit. Only runs client-side so SSR stays
+  // deterministic (ships with eyebrowPool[0]).
+  eyebrow.value = eyebrowPool[Math.floor(Math.random() * eyebrowPool.length)]
 
   await loadScript()
 
@@ -297,7 +313,7 @@ const jsonlSample = [
     <section class="hero">
       <div class="wrap hero-grid">
         <div class="hero-copy">
-          <div class="eyebrow">glue · small terminal coding agent</div>
+          <div class="eyebrow">{{ eyebrow }}</div>
 
           <h1 class="headline">
             A small coding agent <span class="accent">for the terminal.</span>
@@ -317,12 +333,6 @@ const jsonlSample = [
           <div class="actions">
             <a class="btn btn-primary" href="/docs/getting-started/quick-start">Quick start →</a>
             <a class="btn btn-ghost" href="/features">Feature list</a>
-          </div>
-
-          <div class="meta">
-            <span>providers: <code>anthropic</code> · <code>openai</code> · <code>gemini</code> · <code>ollama</code></span>
-            <span class="meta-sep">·</span>
-            <span>runtimes: host · docker · <span class="meta-planned">cloud</span></span>
           </div>
         </div>
 
@@ -666,7 +676,11 @@ const jsonlSample = [
 
 /* ── Hero (2 cols) ────────────────────────────────────────────────────── */
 .hero {
-  padding: 5rem 0 6rem;
+  padding: 8rem 0 6rem;
+}
+
+@media (max-width: 720px) {
+  .hero { padding: 5rem 0 4rem; }
 }
 
 .hero-grid {
@@ -724,29 +738,6 @@ const jsonlSample = [
   display: flex;
   gap: 0.65rem;
   flex-wrap: wrap;
-}
-
-.meta {
-  margin-top: 1.75rem;
-  display: flex;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-  font-family: var(--vp-font-family-mono);
-  font-size: 0.78rem;
-  color: var(--fg-3);
-}
-
-.meta code {
-  color: var(--fg-dim);
-}
-
-.meta-sep {
-  opacity: 0.5;
-}
-
-.meta-planned {
-  color: var(--fg-3);
-  font-style: italic;
 }
 
 /* ── Buttons ──────────────────────────────────────────────────────────── */

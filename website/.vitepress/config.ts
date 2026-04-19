@@ -192,22 +192,27 @@ export default defineConfig({
     logo: { src: '/brand/symbol-yellow.svg', alt: 'Glue' },
 
     nav: [
-      { text: 'Docs', link: '/docs/getting-started/installation', activeMatch: '^/docs/' },
+      { text: 'Docs',     link: '/docs/getting-started/installation', activeMatch: '^/docs/' },
       { text: 'Features', link: '/features' },
-      { text: 'Roadmap', link: '/roadmap' },
+      { text: 'Why',      link: '/why' },
       {
-        text: 'Resources',
+        text: 'Concepts',
         items: [
-          { text: 'Brand', link: '/brand' },
-          { text: 'API Reference', link: '/api/', activeMatch: '^/api/' },
-          { text: 'Why Glue', link: '/why' },
-          { text: 'Models', link: '/models' },
-          { text: 'Runtimes', link: '/runtimes' },
-          { text: 'Web Tools', link: '/web' },
-          { text: 'Sessions', link: '/sessions' },
-          { text: 'Changelog', link: '/changelog' },
+          { text: 'Runtimes',  link: '/runtimes'  },
+          { text: 'Models',    link: '/models'    },
+          { text: 'Web Tools', link: '/web'       },
+          { text: 'Sessions',  link: '/sessions'  },
         ],
       },
+      {
+        text: 'Meta',
+        items: [
+          { text: 'Roadmap',       link: '/roadmap' },
+          { text: 'API Reference', link: '/api/',   activeMatch: '^/api/' },
+          { text: 'Brand',         link: '/brand' },
+        ],
+      },
+      { text: 'Changelog', link: '/changelog', activeMatch: '^/changelog' },
     ],
 
     sidebar: {
