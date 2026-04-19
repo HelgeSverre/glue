@@ -80,12 +80,4 @@ web:
 | High-volume scraping | <FeatureStatus status="planned" /> Cloud runtime + remote browser backend |
 | Suspicious artifacts | Docker runtime, fetch only inside the sandbox |
 
-## What we don't do
-
-- No stealth, anti-bot bypass, or CAPTCHA defeat.
-- No credential harvesting helpers.
-- No abusive automation flows.
-
-The goal is practical research and automation, not traffic you can't explain.
-
 <p><a href="/docs/advanced/web-tools">Web tools guide →</a> · <a href="/docs/advanced/browser-automation">Browser automation guide →</a></p>
