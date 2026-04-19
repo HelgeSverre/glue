@@ -14,7 +14,6 @@ void main() {
       final controller = PanelController(
         panelStack: panelStack,
         render: () => renderCount++,
-        terminalWidth: () => 120,
       );
 
       final sentinel = PanelModal(
@@ -56,7 +55,6 @@ void main() {
       final controller = PanelController(
         panelStack: panelStack,
         render: () {},
-        terminalWidth: () => 120,
       );
 
       final sentinel = PanelModal(

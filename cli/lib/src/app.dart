@@ -219,7 +219,6 @@ class App {
     _panels = PanelController(
       panelStack: _panelStack,
       render: _render,
-      terminalWidth: () => terminal.columns,
     );
     _skillRuntime = skillRuntime ??
         SkillRuntime(

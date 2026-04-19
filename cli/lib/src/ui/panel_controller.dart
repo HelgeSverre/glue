@@ -61,15 +61,12 @@ class HistoryPanelEntry {
 class PanelController {
   final List<PanelOverlay> _panelStack;
   final void Function() _render;
-  final int Function() _terminalWidth;
 
   PanelController({
     required List<PanelOverlay> panelStack,
     required void Function() render,
-    int Function()? terminalWidth,
   })  : _panelStack = panelStack,
-        _render = render,
-        _terminalWidth = terminalWidth ?? _defaultTerminalWidth;
+        _render = render;
 
   void openHelp({
     required List<SlashCommand> commands,
@@ -219,50 +216,49 @@ class PanelController {
       return;
     }
 
-    final panelWidth = PanelFluid(0.7, 40);
-    final contentWidth = _contentWidthFor(panelWidth);
-    final historyRows = <Map<String, String>>[];
-    final options = <SelectOption<HistoryPanelEntry>>[];
-    for (var i = 0; i < entries.length; i++) {
-      final text = entries[i].text.replaceAll('\n', ' ');
-      historyRows.add({
-        'idx': (i + 1).toString().padLeft(3).styled.dim.toString(),
-        'text': text,
-      });
-      options.add(SelectOption(
-        value: entries[i],
-        label: '',
-        searchText: '$i $text',
-      ));
-    }
-    final table = TableFormatter.format(
+    final panelWidth = PanelFluid(0.8, 40);
+
+    final indexed = List<int>.generate(entries.length, (i) => i);
+    final table = ResponsiveTable<int>(
       columns: const [
         TableColumn(
-            key: 'idx', header: '#', align: TableAlign.right, maxWidth: 4),
+          key: 'idx',
+          header: '#',
+          align: TableAlign.right,
+          maxWidth: 4,
+        ),
         TableColumn(key: 'text', header: 'MESSAGE', minWidth: 16),
       ],
-      rows: historyRows,
+      rows: indexed,
       gap: ' ',
-      maxTotalWidth: contentWidth,
-      includeHeader: true,
       includeHeaderInWidth: true,
+      getValues: (i) => {
+        'idx': (i + 1).toString().padLeft(3).styled.dim.toString(),
+        'text': entries[i].text.replaceAll('\n', ' '),
+      },
     );
-    for (var i = 0; i < options.length; i++) {
-      options[i] = SelectOption(
-        value: options[i].value,
-        label: table.rowLines[i],
-        searchText: options[i].searchText,
+
+    final options = <SelectOption<HistoryPanelEntry>>[];
+    for (var i = 0; i < entries.length; i++) {
+      final entry = entries[i];
+      final text = entry.text.replaceAll('\n', ' ');
+      options.add(
+        SelectOption.responsive(
+          value: entry,
+          build: (w) => table.renderRow(i, w),
+          searchText: '$i $text',
+        ),
       );
     }
 
     final panel = SelectPanel<HistoryPanelEntry>(
       title: 'History',
       options: options,
-      headerLines: table.headerLines,
+      headerBuilder: table.renderHeader,
       searchHint: 'filter history',
       barrier: BarrierStyle.dim,
       width: panelWidth,
-      height: PanelFluid(0.6, 12),
+      height: PanelFluid(0.7, 10),
     );
     _panelStack.add(panel);
     _render();
@@ -710,11 +706,4 @@ class PanelController {
 
   Future<bool> _copyToClipboard(String text) =>
       shared_clipboard.copyToClipboard(text);
-
-  int _contentWidthFor(PanelSize panelWidth) {
-    final resolvedWidth = panelWidth.resolve(_terminalWidth());
-    return resolvedWidth > 4 ? resolvedWidth - 4 : 1;
-  }
-
-  static int _defaultTerminalWidth() => 120;
 }
