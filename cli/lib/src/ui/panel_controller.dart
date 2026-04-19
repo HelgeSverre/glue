@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:math' as math;
+
+import 'package:meta/meta.dart';
 
 import 'package:glue/src/catalog/model_catalog.dart';
 import 'package:glue/src/catalog/model_ref.dart';
@@ -68,50 +71,12 @@ class PanelController {
   })  : _panelStack = panelStack,
         _render = render;
 
-  void openHelp({
-    required List<SlashCommand> commands,
-  }) {
-    final lines = <String>[];
-
-    lines.add('${'■ COMMANDS'.styled.cyan}');
-    lines.add('');
-    for (final cmd in commands) {
-      final aliases = cmd.aliases.isNotEmpty
-          ? ' ${'(${cmd.aliases.map((a) => '/$a').join(', ')})'.styled.gray}'
-          : '';
-      final name = '/${cmd.name}'.padRight(16);
-      lines.add('  ${name.styled.cyan}${cmd.description}$aliases');
-    }
-
-    lines.add('');
-    lines.add('${'■ KEYBINDINGS'.styled.cyan}');
-    lines.add('');
-    lines.add('  ${'Ctrl+C'.padRight(16)}Cancel / Exit');
-    lines.add('  ${'Escape'.padRight(16)}Cancel generation');
-    lines.add('  ${'Up / Down'.padRight(16)}History navigation');
-    lines.add('  ${'Ctrl+U'.padRight(16)}Clear line');
-    lines.add('  ${'Ctrl+W'.padRight(16)}Delete word');
-    lines.add('  ${'Ctrl+A / E'.padRight(16)}Start / End of line');
-    lines.add('  ${'PageUp / Dn'.padRight(16)}Scroll output');
-    lines.add('  ${'Tab'.padRight(16)}Accept completion');
-
-    lines.add('');
-    lines.add('${'■ PERMISSIONS'.styled.cyan}');
-    lines.add('');
-    lines.add('  ${'Shift+Tab'.padRight(16)}Cycle tool approval mode');
-    lines.add('  ${'/info'.padRight(16)}View current mode');
-
-    lines.add('');
-    lines.add('${'■ FILE REFERENCES'.styled.cyan}');
-    lines.add('');
-    lines.add('  ${'@path/to/file'.padRight(16)}Attach file to message');
-    lines.add('  ${'@dir/'.padRight(16)}Browse directory');
-
-    final panel = PanelModal(
+  void openHelp({required List<SlashCommand> commands}) {
+    final panel = PanelModal.responsive(
       title: 'HELP',
-      lines: lines,
+      linesBuilder: (w) => buildHelpLines(commands, w),
       barrier: BarrierStyle.dim,
-      height: PanelFluid(0.5, 10),
+      height: PanelFluid(0.6, 10),
     );
     _panelStack.add(panel);
     _render();
@@ -732,4 +697,65 @@ class PanelController {
 
   Future<bool> _copyToClipboard(String text) =>
       shared_clipboard.copyToClipboard(text);
+}
+
+/// Build the lines shown in the `/help` panel at a given content width.
+///
+/// The key column scales with the terminal — `clamp(contentWidth / 3, 10, 18)`
+/// — so the panel rebalances as the terminal resizes. Exposed for testing via
+/// [visibleForTesting]; call sites should go through [PanelController.openHelp].
+@visibleForTesting
+List<String> buildHelpLines(List<SlashCommand> commands, int contentWidth) {
+  // Scale the key column with the terminal; min 10 for tightness, max 18
+  // (the original fixed width).
+  final keyColWidth = math.max(10, math.min(18, contentWidth ~/ 3));
+
+  final lines = <String>[];
+  lines.add('${'■ COMMANDS'.styled.cyan}');
+  lines.add('');
+  for (final cmd in commands) {
+    final aliases = cmd.aliases.isNotEmpty
+        ? ' ${'(${cmd.aliases.map((a) => '/$a').join(', ')})'.styled.gray}'
+        : '';
+    final name = '/${cmd.name}'.padRight(keyColWidth);
+    lines.add('  ${name.styled.cyan}${cmd.description}$aliases');
+  }
+
+  lines.add('');
+  lines.add('${'■ KEYBINDINGS'.styled.cyan}');
+  lines.add('');
+  for (final b in const [
+    ('Ctrl+C', 'Cancel / Exit'),
+    ('Escape', 'Cancel generation'),
+    ('Up / Down', 'History navigation'),
+    ('Ctrl+U', 'Clear line'),
+    ('Ctrl+W', 'Delete word'),
+    ('Ctrl+A / E', 'Start / End of line'),
+    ('PageUp / Dn', 'Scroll output'),
+    ('Tab', 'Accept completion'),
+  ]) {
+    lines.add('  ${b.$1.padRight(keyColWidth)}${b.$2}');
+  }
+
+  lines.add('');
+  lines.add('${'■ PERMISSIONS'.styled.cyan}');
+  lines.add('');
+  for (final b in const [
+    ('Shift+Tab', 'Cycle tool approval mode'),
+    ('/info', 'View current mode'),
+  ]) {
+    lines.add('  ${b.$1.padRight(keyColWidth)}${b.$2}');
+  }
+
+  lines.add('');
+  lines.add('${'■ FILE REFERENCES'.styled.cyan}');
+  lines.add('');
+  for (final b in const [
+    ('@path/to/file', 'Attach file to message'),
+    ('@dir/', 'Browse directory'),
+  ]) {
+    lines.add('  ${b.$1.padRight(keyColWidth)}${b.$2}');
+  }
+
+  return lines;
 }

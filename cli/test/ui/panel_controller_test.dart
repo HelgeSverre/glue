@@ -10,6 +10,50 @@ import 'package:glue/src/terminal/terminal.dart';
 import '../_helpers/test_config.dart';
 
 void main() {
+  group('buildHelpLines', () {
+    test('help lines key column scales with width', () {
+      final wide = buildHelpLines(const [], 120);
+      final narrow = buildHelpLines(const [], 36);
+
+      // The key column in a keybinding line shows up as "Ctrl+C" then padding.
+      // At contentWidth=120 → keyCol = min(18, 40) = 18.
+      // At contentWidth=36  → keyCol = max(10, 12) = 12.
+      // Verify by measuring the distance from the padding start to the
+      // description start in a known keybinding line.
+
+      String pickLine(List<String> ls, String keyName) =>
+          ls.firstWhere((l) => stripAnsi(l).contains(keyName));
+
+      final wideLine = stripAnsi(pickLine(wide, 'Ctrl+U'));
+      final narrowLine = stripAnsi(pickLine(narrow, 'Ctrl+U'));
+
+      // Strip 2-char indent.
+      final wideRight = wideLine.substring(2);
+      final narrowRight = narrowLine.substring(2);
+
+      // Find the description offset: it's the first non-space char after the
+      // key text.
+      int descOffset(String line) {
+        var i = 'Ctrl+U'.length;
+        while (i < line.length && line[i] == ' ') {
+          i++;
+        }
+        return i;
+      }
+
+      expect(descOffset(wideRight), greaterThan(descOffset(narrowRight)));
+    });
+
+    test('help lines include all section headers', () {
+      final lines = buildHelpLines(const [], 80);
+      final joined = lines.map(stripAnsi).join('\n');
+      expect(joined, contains('COMMANDS'));
+      expect(joined, contains('KEYBINDINGS'));
+      expect(joined, contains('PERMISSIONS'));
+      expect(joined, contains('FILE REFERENCES'));
+    });
+  });
+
   group('PanelController history action flow', () {
     test('closing history action modal preserves unrelated stacked panels',
         () async {
