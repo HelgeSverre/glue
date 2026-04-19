@@ -2,16 +2,21 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as p;
 
-/// Metadata for a saved session, including model, provider, and timing.
+/// Metadata for a saved session, including model ref and timing.
 class SessionMeta {
-  static const int currentSchemaVersion = 2;
+  static const int currentSchemaVersion = 3;
 
   final int schemaVersion;
   final String id;
   final String cwd;
   final String? projectPath;
-  String model;
-  String provider;
+
+  /// Fully-qualified model reference: `<provider>/<model>`.
+  ///
+  /// Schema v3+ writes this as `model_ref`. Schema ≤ 2 is read-compatible:
+  /// if the stored value has no slash, the legacy `provider` field is
+  /// prepended on read (see [fromJson]).
+  String modelRef;
   final DateTime startTime;
   DateTime? endTime;
   final String? forkedFrom;
@@ -43,8 +48,7 @@ class SessionMeta {
     required this.id,
     required this.cwd,
     this.projectPath,
-    required this.model,
-    required this.provider,
+    required this.modelRef,
     required this.startTime,
     this.endTime,
     this.forkedFrom,
@@ -67,8 +71,7 @@ class SessionMeta {
         'id': id,
         'cwd': cwd,
         if (projectPath != null) 'project_path': projectPath,
-        'model': model,
-        'provider': provider,
+        'model_ref': modelRef,
         'start_time': startTime.toUtc().toIso8601String(),
         if (endTime != null) 'end_time': endTime!.toUtc().toIso8601String(),
         if (forkedFrom != null) 'forked_from': forkedFrom,
@@ -86,34 +89,46 @@ class SessionMeta {
         if (summary != null) 'summary': summary,
       };
 
-  factory SessionMeta.fromJson(Map<String, dynamic> json) => SessionMeta(
-        schemaVersion: json['schema_version'] as int? ?? 1,
-        id: json['id'] as String,
-        cwd: json['cwd'] as String? ?? '',
-        projectPath: json['project_path'] as String?,
-        model: json['model'] as String? ?? 'unknown',
-        provider: json['provider'] as String? ?? 'unknown',
-        startTime: DateTime.parse(json['start_time'] as String),
-        endTime: json['end_time'] != null
-            ? DateTime.parse(json['end_time'] as String)
-            : null,
-        forkedFrom: json['forked_from'] as String?,
-        worktreePath: json['worktree_path'] as String?,
-        branch: json['branch'] as String?,
-        baseBranch: json['base_branch'] as String?,
-        repoRemote: json['repo_remote'] as String?,
-        headSha: json['head_sha'] as String?,
-        title: json['title'] as String?,
-        tags: (json['tags'] as List<dynamic>?)
-                ?.map((e) => e as String)
-                .toList() ??
-            const [],
-        prUrl: json['pr_url'] as String?,
-        prStatus: json['pr_status'] as String?,
-        tokenCount: json['token_count'] as int?,
-        cost: (json['cost'] as num?)?.toDouble(),
-        summary: json['summary'] as String?,
-      );
+  factory SessionMeta.fromJson(Map<String, dynamic> json) {
+    final schema = json['schema_version'] as int? ?? 1;
+    final String resolvedRef;
+    if (schema >= 3 && json['model_ref'] is String) {
+      resolvedRef = json['model_ref'] as String;
+    } else {
+      // Legacy schema: synthesize from separate model + provider fields.
+      final legacyModel = json['model'] as String? ?? 'unknown';
+      final legacyProvider = json['provider'] as String? ?? 'anthropic';
+      resolvedRef = legacyModel.contains('/')
+          ? legacyModel
+          : '$legacyProvider/$legacyModel';
+    }
+    return SessionMeta(
+      schemaVersion: schema,
+      id: json['id'] as String,
+      cwd: json['cwd'] as String? ?? '',
+      projectPath: json['project_path'] as String?,
+      modelRef: resolvedRef,
+      startTime: DateTime.parse(json['start_time'] as String),
+      endTime: json['end_time'] != null
+          ? DateTime.parse(json['end_time'] as String)
+          : null,
+      forkedFrom: json['forked_from'] as String?,
+      worktreePath: json['worktree_path'] as String?,
+      branch: json['branch'] as String?,
+      baseBranch: json['base_branch'] as String?,
+      repoRemote: json['repo_remote'] as String?,
+      headSha: json['head_sha'] as String?,
+      title: json['title'] as String?,
+      tags:
+          (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+              const [],
+      prUrl: json['pr_url'] as String?,
+      prStatus: json['pr_status'] as String?,
+      tokenCount: json['token_count'] as int?,
+      cost: (json['cost'] as num?)?.toDouble(),
+      summary: json['summary'] as String?,
+    );
+  }
 }
 
 /// Persistent storage for a single session's metadata and conversation log.

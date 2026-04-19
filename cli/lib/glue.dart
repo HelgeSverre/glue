@@ -63,10 +63,31 @@ export 'src/agent/tools.dart'
         ListDirectoryTool;
 export 'src/config/constants.dart' show AppConstants;
 export 'src/config/glue_config.dart'
-    show GlueConfig, LlmProvider, AgentProfile, ConfigError, splitPathList;
+    show GlueConfig, CatalogSourceConfig, ConfigError, splitPathList;
 export 'src/config/approval_mode.dart' show ApprovalMode, ApprovalModeExt;
-export 'src/config/model_registry.dart'
-    show ModelRegistry, ModelEntry, ModelCapability, CostTier, SpeedTier;
+export 'src/catalog/model_catalog.dart'
+    show ModelCatalog, ProviderDef, ModelDef, AuthSpec, AuthKind, Capability;
+export 'src/catalog/model_ref.dart' show ModelRef, ModelRefParseException;
+export 'src/catalog/catalog_loader.dart' show loadCatalog;
+export 'src/catalog/catalog_parser.dart'
+    show parseCatalogYaml, CatalogParseException;
+export 'src/catalog/models_generated.dart' show bundledCatalog;
+export 'src/credentials/credential_ref.dart'
+    show
+        CredentialRef,
+        EnvCredential,
+        StoredCredential,
+        InlineCredential,
+        NoCredential;
+export 'src/credentials/credential_store.dart'
+    show CredentialStore, CredentialHealth;
+export 'src/providers/provider_adapter.dart'
+    show ProviderAdapter, AdapterRegistry, ProviderHealth, DiscoveredModel;
+export 'src/providers/resolved.dart' show ResolvedProvider, ResolvedModel;
+export 'src/providers/compatibility_profile.dart' show CompatibilityProfile;
+export 'src/providers/anthropic_adapter.dart' show AnthropicAdapter;
+export 'src/providers/openai_compatible_adapter.dart'
+    show OpenAiCompatibleAdapter;
 export 'src/llm/llm_factory.dart' show LlmClientFactory;
 export 'src/agent/agent_runner.dart' show AgentRunner, ToolApprovalPolicy;
 export 'src/agent/agent_manager.dart' show AgentManager;

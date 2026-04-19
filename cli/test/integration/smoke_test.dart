@@ -1,11 +1,12 @@
-import 'dart:async';
-import 'package:test/test.dart';
 import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/agent_runner.dart';
 import 'package:glue/src/agent/agent_manager.dart';
+import 'package:glue/src/agent/agent_runner.dart';
 import 'package:glue/src/agent/tools.dart';
-import 'package:glue/src/config/glue_config.dart';
+import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/llm/llm_factory.dart';
+import 'package:test/test.dart';
+
+import '../_helpers/test_config.dart';
 
 /// Fake LLM that exercises the full stack without network calls.
 class _MockLlm implements LlmClient {
@@ -19,11 +20,13 @@ class _MockLlm implements LlmClient {
 
     if (_calls == 1 && text.contains('read')) {
       yield TextDelta('I\'ll read that file. ');
-      yield ToolCallComplete(ToolCall(
-        id: 'tc_$_calls',
-        name: 'read_file',
-        arguments: {'path': 'pubspec.yaml'},
-      ));
+      yield ToolCallComplete(
+        ToolCall(
+          id: 'tc_$_calls',
+          name: 'read_file',
+          arguments: {'path': 'pubspec.yaml'},
+        ),
+      );
       yield UsageInfo(inputTokens: 20, outputTokens: 10);
     } else {
       yield TextDelta('Done with the task.');
@@ -32,16 +35,13 @@ class _MockLlm implements LlmClient {
   }
 }
 
-class _MockFactory extends LlmClientFactory {
+class _MockFactory implements LlmClientFactory {
   @override
-  LlmClient create({
-    required LlmProvider provider,
-    required String model,
-    required String apiKey,
-    required String systemPrompt,
-    String ollamaBaseUrl = 'http://localhost:11434',
-  }) =>
+  LlmClient createFor(ModelRef ref, {required String systemPrompt}) =>
       _MockLlm();
+
+  @override
+  LlmClient createFromConfig({required String systemPrompt}) => _MockLlm();
 }
 
 void main() {
@@ -65,7 +65,7 @@ void main() {
       final manager = AgentManager(
         tools: {'read_file': ReadFileTool()},
         llmFactory: _MockFactory(),
-        config: GlueConfig(anthropicApiKey: 'test-key'),
+        config: testConfig(env: {'ANTHROPIC_API_KEY': 'sk-test'}),
         systemPrompt: 'test',
       );
 

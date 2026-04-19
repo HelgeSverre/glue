@@ -1,12 +1,15 @@
 import 'dart:convert';
-import 'package:test/test.dart';
-import 'package:glue/src/agent/content_part.dart';
-import 'package:glue/src/tools/subagent_tools.dart';
-import 'package:glue/src/agent/agent_manager.dart';
+
 import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/agent_manager.dart';
+import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
-import 'package:glue/src/config/glue_config.dart';
+import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/llm/llm_factory.dart';
+import 'package:glue/src/tools/subagent_tools.dart';
+import 'package:test/test.dart';
+
+import '../_helpers/test_config.dart';
 
 class _EchoLlm implements LlmClient {
   @override
@@ -17,16 +20,13 @@ class _EchoLlm implements LlmClient {
   }
 }
 
-class _TestFactory extends LlmClientFactory {
+class _EchoFactory implements LlmClientFactory {
   @override
-  LlmClient create({
-    required LlmProvider provider,
-    required String model,
-    required String apiKey,
-    required String systemPrompt,
-    String ollamaBaseUrl = 'http://localhost:11434',
-  }) =>
+  LlmClient createFor(ModelRef ref, {required String systemPrompt}) =>
       _EchoLlm();
+
+  @override
+  LlmClient createFromConfig({required String systemPrompt}) => _EchoLlm();
 }
 
 void main() {
@@ -35,8 +35,8 @@ void main() {
   setUp(() {
     manager = AgentManager(
       tools: {},
-      llmFactory: _TestFactory(),
-      config: GlueConfig(anthropicApiKey: 'test'),
+      llmFactory: _EchoFactory(),
+      config: testConfig(env: {'ANTHROPIC_API_KEY': 'sk-test'}),
       systemPrompt: 'test',
     );
   });
@@ -46,13 +46,31 @@ void main() {
       final tool = SpawnSubagentTool(manager);
       expect(tool.name, 'spawn_subagent');
       expect(tool.parameters.any((p) => p.name == 'task'), isTrue);
+      expect(tool.parameters.any((p) => p.name == 'model_ref'), isTrue);
+      expect(
+        tool.parameters.any((p) => p.name == 'provider'),
+        isFalse,
+        reason: 'old {provider, model} schema is gone',
+      );
     });
 
     test('executes and returns result', () async {
       final tool = SpawnSubagentTool(manager);
-      final result =
-          ContentPart.textOnly(await tool.execute({'task': 'Write tests'}));
+      final result = ContentPart.textOnly(
+        await tool.execute({'task': 'Write tests'}),
+      );
       expect(result, contains('Done: Write tests'));
+    });
+
+    test('accepts model_ref override', () async {
+      final tool = SpawnSubagentTool(manager);
+      final result = ContentPart.textOnly(
+        await tool.execute({
+          'task': 'quick task',
+          'model_ref': 'anthropic/claude-haiku-4.5',
+        }),
+      );
+      expect(result, contains('Done:'));
     });
   });
 
@@ -61,13 +79,16 @@ void main() {
       final tool = SpawnParallelSubagentsTool(manager);
       expect(tool.name, 'spawn_parallel_subagents');
       expect(tool.parameters.any((p) => p.name == 'tasks'), isTrue);
+      expect(tool.parameters.any((p) => p.name == 'model_ref'), isTrue);
     });
 
     test('executes parallel tasks', () async {
       final tool = SpawnParallelSubagentsTool(manager);
-      final result = ContentPart.textOnly(await tool.execute({
-        'tasks': ['Task A', 'Task B'],
-      }));
+      final result = ContentPart.textOnly(
+        await tool.execute({
+          'tasks': ['Task A', 'Task B'],
+        }),
+      );
       final decoded = jsonDecode(result) as Map<String, dynamic>;
       final results = decoded['results'] as List;
       expect(results, hasLength(2));

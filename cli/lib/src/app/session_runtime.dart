@@ -124,7 +124,7 @@ String _resumeSessionImpl(App app, SessionMeta session) {
 
   app._blocks.add(_ConversationEntry.system(
     'Resuming session ${session.id} '
-    '(${session.model}, ${App._timeAgo(session.startTime)})',
+    '(${session.modelRef}, ${App._timeAgo(session.startTime)})',
   ));
 
   if (!result.hasConversation) {
@@ -162,81 +162,26 @@ LlmClient? _createTitleLlmClientImpl(App app) {
   if (config == null || factory == null) return null;
 
   final target = app._resolveTitleTarget(config);
-  final targetKey = config.apiKeyFor(target.provider);
-  final hasTargetKey =
-      target.provider == LlmProvider.ollama || (targetKey?.isNotEmpty ?? false);
-
-  if (hasTargetKey) {
-    return factory.create(
-      provider: target.provider,
-      model: target.model,
-      apiKey: targetKey ?? '',
+  try {
+    return factory.createFor(
+      target.ref,
       systemPrompt: TitleGenerator.systemPrompt,
-      ollamaBaseUrl: config.ollamaBaseUrl,
     );
+  } on ConfigError {
+    // No adapter or missing credentials for the small model — skip titling.
+    return null;
   }
-
-  final fallbackProvider = config.provider;
-  final fallbackKey = config.apiKeyFor(fallbackProvider);
-  final hasFallbackKey = fallbackProvider == LlmProvider.ollama ||
-      (fallbackKey?.isNotEmpty ?? false);
-  if (!hasFallbackKey) return null;
-
-  return factory.create(
-    provider: fallbackProvider,
-    model: config.model,
-    apiKey: fallbackKey ?? '',
-    systemPrompt: TitleGenerator.systemPrompt,
-    ollamaBaseUrl: config.ollamaBaseUrl,
-  );
 }
 
 _TitleTarget _resolveTitleTargetImpl(GlueConfig config) {
-  final titleModel = config.titleModel.trim();
-  if (titleModel.isEmpty) {
-    return _TitleTarget(provider: config.provider, model: config.model);
-  }
-
-  // Keep title generation provider-agnostic: default to active model when
-  // title_model is still the Anthropic default under non-Anthropic providers.
-  if (titleModel == AppConstants.defaultTitleModel &&
-      config.provider != LlmProvider.anthropic) {
-    return _TitleTarget(provider: config.provider, model: config.model);
-  }
-
-  final registryEntry = ModelRegistry.findByName(titleModel);
-  if (registryEntry != null) {
-    return _TitleTarget(
-      provider: registryEntry.provider,
-      model: registryEntry.modelId,
-    );
-  }
-
-  final lower = titleModel.toLowerCase();
-  if (lower.startsWith('claude')) {
-    return _TitleTarget(provider: LlmProvider.anthropic, model: titleModel);
-  }
-  if (lower.startsWith('gpt') ||
-      lower.startsWith('o1') ||
-      lower.startsWith('o3') ||
-      lower.startsWith('o4')) {
-    return _TitleTarget(provider: LlmProvider.openai, model: titleModel);
-  }
-  if (lower.startsWith('mistral') ||
-      lower.startsWith('codestral') ||
-      lower.startsWith('ministral')) {
-    return _TitleTarget(provider: LlmProvider.mistral, model: titleModel);
-  }
-
-  return _TitleTarget(provider: config.provider, model: titleModel);
+  return _TitleTarget(ref: config.smallModel ?? config.activeModel);
 }
 
 void _ensureSessionStoreImpl(App app) {
   final config = app._config;
   app._sessionManager.ensureSessionStore(
     cwd: app._cwd,
-    model: config?.model ?? app._modelId,
-    provider: config?.provider.name ?? 'unknown',
+    modelRef: config?.activeModel.toString() ?? app._modelId,
   );
 }
 

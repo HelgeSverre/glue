@@ -1,10 +1,25 @@
-import 'package:glue/src/config/glue_config.dart';
-import 'package:glue/src/config/model_registry.dart';
+import 'package:glue/src/catalog/model_catalog.dart';
+import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/terminal/styled.dart';
 import 'package:glue/src/ui/table_formatter.dart';
 
+/// A single row for the model picker: one provider's name plus one of its
+/// models. Callers flatten the catalog into this shape.
+typedef CatalogRow = ({
+  String providerId,
+  String providerName,
+  ModelDef model,
+});
+
 /// Result of formatting model entries for the panel.
 class ModelPanelLines {
+  ModelPanelLines({
+    this.headerLines = const [],
+    required this.lines,
+    required this.entries,
+    required this.initialIndex,
+  });
+
   /// Optional header rows shown above selectable lines.
   final List<String> headerLines;
 
@@ -12,17 +27,10 @@ class ModelPanelLines {
   final List<String> lines;
 
   /// Flat list of entries corresponding 1:1 with [lines].
-  final List<ModelEntry> entries;
+  final List<CatalogRow> entries;
 
   /// Index into [entries] for the currently active model, or 0 if none match.
   final int initialIndex;
-
-  ModelPanelLines({
-    this.headerLines = const [],
-    required this.lines,
-    required this.entries,
-    required this.initialIndex,
-  });
 }
 
 /// Builds the formatted lines for the model-switch panel.
@@ -30,8 +38,8 @@ class ModelPanelLines {
 /// Columns are sized dynamically so they align regardless of content length.
 /// Provider headers are normalised to the widest provider name.
 ModelPanelLines formatModelPanelLines(
-  List<ModelEntry> entries, {
-  required String currentModelId,
+  List<CatalogRow> entries, {
+  required ModelRef currentRef,
   int? maxTotalWidth,
 }) {
   if (entries.isEmpty) {
@@ -44,24 +52,25 @@ ModelPanelLines formatModelPanelLines(
   }
 
   final rows = <Map<String, String>>[];
-  final flatEntries = <ModelEntry>[];
-  LlmProvider? lastProvider;
+  String? lastProvider;
   var flatInitial = 0;
 
-  for (final entry in entries) {
-    final isCurrent = entry.modelId == currentModelId;
-    final providerHeader = entry.provider != lastProvider
-        ? entry.provider.name.styled.cyan.toString()
+  for (var i = 0; i < entries.length; i++) {
+    final row = entries[i];
+    final isCurrent = row.providerId == currentRef.providerId &&
+        row.model.id == currentRef.modelId;
+    final providerHeader = row.providerId != lastProvider
+        ? row.providerName.styled.cyan.toString()
         : '';
-    lastProvider = entry.provider;
+    lastProvider = row.providerId;
 
     final marker = isCurrent ? '\u25cf ' : '  ';
-    final name = entry.displayName;
-    final tag = entry.tagline.styled.dim.toString();
-    final cost = entry.costLabel;
-    final speed = entry.speedLabel;
+    final name = row.model.name;
+    final tag = (row.model.notes ?? '').styled.dim.toString();
+    final cost = row.model.cost ?? '';
+    final speed = row.model.speed ?? '';
 
-    if (isCurrent) flatInitial = flatEntries.length;
+    if (isCurrent) flatInitial = i;
     rows.add({
       'provider': providerHeader,
       'marker': marker,
@@ -70,7 +79,6 @@ ModelPanelLines formatModelPanelLines(
       'cost': cost,
       'speed': speed,
     });
-    flatEntries.add(entry);
   }
 
   final table = TableFormatter.format(
@@ -78,7 +86,7 @@ ModelPanelLines formatModelPanelLines(
       TableColumn(key: 'provider', header: 'PROVIDER'),
       TableColumn(key: 'marker', header: ''),
       TableColumn(key: 'name', header: 'MODEL'),
-      TableColumn(key: 'tag', header: 'TAGLINE'),
+      TableColumn(key: 'tag', header: 'NOTES'),
       TableColumn(key: 'cost', header: 'COST', align: TableAlign.right),
       TableColumn(key: 'speed', header: 'SPEED', align: TableAlign.right),
     ],
@@ -91,7 +99,30 @@ ModelPanelLines formatModelPanelLines(
   return ModelPanelLines(
     headerLines: table.headerLines,
     lines: table.rowLines,
-    entries: flatEntries,
+    entries: entries,
     initialIndex: flatInitial,
   );
+}
+
+/// Flatten a [ModelCatalog] into rows suitable for the model panel.
+///
+/// Filters to catalog-default capabilities (from `selection.default_filter`)
+/// plus the "has credentials available" check the caller provides.
+List<CatalogRow> flattenCatalog(
+  ModelCatalog catalog, {
+  bool Function(ProviderDef)? where,
+}) {
+  final rows = <CatalogRow>[];
+  for (final provider in catalog.providers.values) {
+    if (!provider.enabled) continue;
+    if (where != null && !where(provider)) continue;
+    for (final model in provider.models.values) {
+      rows.add((
+        providerId: provider.id,
+        providerName: provider.name,
+        model: model,
+      ));
+    }
+  }
+  return rows;
 }

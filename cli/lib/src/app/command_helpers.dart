@@ -10,30 +10,71 @@ String _clearConversationImpl(App app) {
 }
 
 String _switchModelByQueryImpl(App app, String query) {
-  final entry = ModelRegistry.findByName(query);
-  if (entry == null) {
-    final suggestions = ModelRegistry.models.map((m) => m.modelId).join(', ');
-    return 'Unknown model: $query\nAvailable: $suggestions';
+  final config = app._config;
+  if (config == null) return 'Config not ready.';
+  final row = _findCatalogRow(config, query);
+  if (row == null) {
+    final available = config.catalogData.providers.values
+        .expand((p) => p.models.values.map((m) => '${p.id}/${m.id}'))
+        .take(12)
+        .join(', ');
+    return 'Unknown model: $query\nTry one of: $available …';
   }
-  return app._switchToModelEntry(entry);
+  return app._switchToModelRow(row);
+}
+
+CatalogRow? _findCatalogRow(GlueConfig config, String query) {
+  final parsed = ModelRef.tryParse(query);
+  if (parsed != null) {
+    final provider = config.catalogData.providers[parsed.providerId];
+    final model = provider?.models[parsed.modelId];
+    if (provider != null && model != null) {
+      return (
+        providerId: provider.id,
+        providerName: provider.name,
+        model: model,
+      );
+    }
+  }
+  final needle = query.toLowerCase();
+  for (final p in config.catalogData.providers.values) {
+    for (final m in p.models.values) {
+      if (m.id.toLowerCase() == needle || m.name.toLowerCase() == needle) {
+        return (providerId: p.id, providerName: p.name, model: m);
+      }
+    }
+  }
+  for (final p in config.catalogData.providers.values) {
+    for (final m in p.models.values) {
+      if (m.id.toLowerCase().contains(needle) ||
+          m.name.toLowerCase().contains(needle)) {
+        return (providerId: p.id, providerName: p.name, model: m);
+      }
+    }
+  }
+  return null;
 }
 
 String _buildSessionInfoImpl(App app) {
   final shortCwd = app._shortenPath(app._cwd);
   final trustedList = app._autoApprovedTools.toList()..sort();
-  final entry = ModelRegistry.findById(app._modelId);
-  final displayModel =
-      entry != null ? '${entry.displayName} (${entry.modelId})' : app._modelId;
+  final ref = app._config?.activeModel;
+  final providerDef =
+      ref != null ? app._config?.catalogData.providers[ref.providerId] : null;
+  final modelDef = providerDef?.models[ref?.modelId];
+  final displayModel = modelDef != null
+      ? '${modelDef.name} (${ref!})'
+      : ref?.toString() ?? app._modelId;
   final buf = StringBuffer();
   buf.writeln('Session Info');
   buf.writeln('  Model:        $displayModel');
-  buf.writeln('  Provider:     ${app._config?.provider.name ?? "unknown"}');
   buf.writeln('  Directory:    $shortCwd');
   buf.writeln('  Tokens used:  ${app.agent.tokenCount}');
   buf.writeln('  Messages:     ${app.agent.conversation.length}');
   buf.writeln('  Tools:        ${app.agent.tools.length} registered');
   buf.writeln(
-      '  Approval:     ${app._approvalMode.label} (Shift+Tab to toggle)');
+    '  Approval:     ${app._approvalMode.label} (Shift+Tab to toggle)',
+  );
   buf.writeln('  Auto-approve: ${trustedList.join(", ")}');
   return buf.toString();
 }
@@ -215,22 +256,17 @@ Future<void> _activateSkillFromUiImpl(App app, String skillName) async {
   }
 }
 
-String _switchToModelEntryImpl(App app, ModelEntry entry) {
+String _switchToModelRowImpl(App app, CatalogRow row) {
   final factory = app._llmFactory;
   final config = app._config;
   final prompt = app._systemPrompt;
+  final ref = ModelRef(providerId: row.providerId, modelId: row.model.id);
   if (factory != null && config != null && prompt != null) {
-    final llm = factory.createFromEntry(entry, config, systemPrompt: prompt);
+    final llm = factory.createFor(ref, systemPrompt: prompt);
     app.agent.llm = llm;
-    app._config = config.copyWith(
-      provider: entry.provider,
-      model: entry.modelId,
-    );
+    app._config = config.copyWith(activeModel: ref);
   }
-  app._modelId = entry.modelId;
-  app._sessionManager.updateSessionModel(
-    model: app._modelId,
-    provider: app._config?.provider.name ?? entry.provider.name,
-  );
-  return 'Switched to ${entry.displayName}';
+  app._modelId = ref.modelId;
+  app._sessionManager.updateSessionModel(modelRef: ref.toString());
+  return 'Switched to ${row.model.name}';
 }

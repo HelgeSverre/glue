@@ -132,11 +132,7 @@ class _ToolCallUiState {
 }
 
 class _TitleTarget {
-  final LlmProvider provider;
-  final String model;
+  final ModelRef ref;
 
-  const _TitleTarget({
-    required this.provider,
-    required this.model,
-  });
+  const _TitleTarget({required this.ref});
 }

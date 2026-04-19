@@ -12,10 +12,11 @@ import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/agent_manager.dart';
 import 'package:glue/src/commands/builtin_commands.dart';
 import 'package:glue/src/commands/slash_commands.dart';
+import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/config/glue_config.dart';
-import 'package:glue/src/config/model_registry.dart';
 import 'package:glue/src/core/environment.dart';
+import 'package:glue/src/ui/model_panel_formatter.dart' show CatalogRow;
 import 'package:glue/src/core/service_locator.dart';
 import 'package:glue/src/config/approval_mode.dart';
 import 'package:glue/src/llm/llm_factory.dart';
@@ -258,7 +259,7 @@ class App {
       layout: services.layout,
       editor: services.editor,
       agent: services.agent,
-      modelId: services.config.model,
+      modelId: services.config.activeModel.modelId,
       manager: services.manager,
       llmFactory: services.llmFactory,
       config: services.config,
@@ -539,9 +540,8 @@ class App {
 
     unawaited(_panels.openModel(
       config: config,
-      cacheDir: _environment.cacheDir,
-      currentModelId: _modelId,
-      onModelSelected: _switchToModelEntry,
+      currentRef: config.activeModel,
+      onModelSelected: _switchToModelRow,
       addSystemMessage: _addSystemMessage,
       isSelectionEnabled: () => true,
     ));
@@ -605,8 +605,8 @@ class App {
     return _historyFromCommandImpl(this, query);
   }
 
-  String _switchToModelEntry(ModelEntry entry) {
-    return _switchToModelEntryImpl(this, entry);
+  String _switchToModelRow(CatalogRow row) {
+    return _switchToModelRowImpl(this, row);
   }
 
   // ── Terminal event handling ─────────────────────────────────────────────

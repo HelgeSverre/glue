@@ -96,8 +96,7 @@ class SessionManager {
 
   SessionStore ensureSessionStore({
     required String cwd,
-    required String model,
-    required String provider,
+    required String modelRef,
   }) {
     final id = _newSessionId();
     return _store ??= SessionStore(
@@ -105,8 +104,7 @@ class SessionManager {
       meta: SessionMeta(
         id: id,
         cwd: cwd,
-        model: model,
-        provider: provider,
+        modelRef: modelRef,
         startTime: DateTime.now(),
       ),
     );
@@ -124,14 +122,10 @@ class SessionManager {
     );
   }
 
-  void updateSessionModel({
-    required String model,
-    required String provider,
-  }) {
+  void updateSessionModel({required String modelRef}) {
     final store = _store;
     if (store == null) return;
-    store.meta.model = model;
-    store.meta.provider = provider;
+    store.meta.modelRef = modelRef;
     store.updateMeta();
   }
 
@@ -212,8 +206,7 @@ class SessionManager {
       meta: SessionMeta(
         id: newId,
         cwd: oldStore.meta.cwd,
-        model: oldStore.meta.model,
-        provider: oldStore.meta.provider,
+        modelRef: oldStore.meta.modelRef,
         startTime: DateTime.now(),
         forkedFrom: oldSessionId,
       ),

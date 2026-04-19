@@ -37,13 +37,11 @@ void main() {
 
     final first = manager.ensureSessionStore(
       cwd: environment.cwd,
-      model: 'claude-sonnet-4-6',
-      provider: 'anthropic',
+      modelRef: 'anthropic/claude-sonnet-4.6',
     );
     final second = manager.ensureSessionStore(
       cwd: environment.cwd,
-      model: 'gpt-4.1',
-      provider: 'openai',
+      modelRef: 'openai/gpt-4.1',
     );
 
     expect(identical(first, second), isTrue);
@@ -55,8 +53,7 @@ void main() {
     final meta = SessionMeta(
       id: 'resume-1',
       cwd: environment.cwd,
-      model: 'claude-sonnet-4-6',
-      provider: 'anthropic',
+      modelRef: 'anthropic/claude-sonnet-4.6',
       startTime: DateTime.now(),
     );
     final store =
@@ -89,8 +86,7 @@ void main() {
     final meta = SessionMeta(
       id: 'resume-empty',
       cwd: environment.cwd,
-      model: 'claude-sonnet-4-6',
-      provider: 'anthropic',
+      modelRef: 'anthropic/claude-sonnet-4.6',
       startTime: DateTime.now(),
     );
     SessionStore(sessionDir: environment.sessionDir(meta.id), meta: meta);
@@ -111,8 +107,7 @@ void main() {
     final manager = SessionManager(environment: environment);
     final oldStore = manager.ensureSessionStore(
       cwd: environment.cwd,
-      model: 'claude-sonnet-4-6',
-      provider: 'anthropic',
+      modelRef: 'anthropic/claude-sonnet-4.6',
     );
     oldStore.logEvent('user_message', {'text': 'first question'});
     oldStore.logEvent('assistant_message', {'text': 'first answer'});
@@ -138,29 +133,26 @@ void main() {
     expect(agent.conversation.map((m) => m.role), [Role.user]);
   });
 
-  test('updateSessionModel persists model/provider to meta.json', () {
+  test('updateSessionModel persists modelRef to meta.json', () {
     final manager = SessionManager(environment: environment);
     final store = manager.ensureSessionStore(
       cwd: environment.cwd,
-      model: 'claude-sonnet-4-6',
-      provider: 'anthropic',
+      modelRef: 'anthropic/claude-sonnet-4.6',
     );
 
-    manager.updateSessionModel(model: 'gpt-4.1', provider: 'openai');
+    manager.updateSessionModel(modelRef: 'openai/gpt-4.1');
 
     final metaJson = jsonDecode(
       File('${store.sessionDir}/meta.json').readAsStringSync(),
     ) as Map<String, dynamic>;
-    expect(metaJson['model'], 'gpt-4.1');
-    expect(metaJson['provider'], 'openai');
+    expect(metaJson['model_ref'], 'openai/gpt-4.1');
   });
 
   test('generateTitle sets title and logs title_generated event', () async {
     final manager = SessionManager(environment: environment);
     final store = manager.ensureSessionStore(
       cwd: environment.cwd,
-      model: 'claude-sonnet-4-6',
-      provider: 'anthropic',
+      modelRef: 'anthropic/claude-sonnet-4.6',
     );
 
     await manager.generateTitle(

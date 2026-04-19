@@ -1,15 +1,16 @@
 import 'dart:convert';
+
 import 'package:glue/src/agent/agent_manager.dart';
 import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
-import 'package:glue/src/config/glue_config.dart';
+import 'package:glue/src/catalog/model_ref.dart';
 
 /// Tool that spawns a single subagent to perform a focused task.
 class SpawnSubagentTool extends Tool {
+  SpawnSubagentTool(this._manager, {int depth = 0}) : _depth = depth;
+
   final AgentManager _manager;
   final int _depth;
-
-  SpawnSubagentTool(this._manager, {int depth = 0}) : _depth = depth;
 
   @override
   String get name => 'spawn_subagent';
@@ -28,17 +29,10 @@ class SpawnSubagentTool extends Tool {
           description: 'The task description for the subagent.',
         ),
         ToolParameter(
-          name: 'provider',
+          name: 'model_ref',
           type: 'string',
-          description:
-              'LLM provider: "anthropic" or "openai". Defaults to current.',
-          required: false,
-        ),
-        ToolParameter(
-          name: 'model',
-          type: 'string',
-          description:
-              'Model name override (e.g. "claude-haiku-4-5", "gpt-4.1-nano").',
+          description: 'Override model as `<provider>/<model>` (e.g. '
+              '"anthropic/claude-haiku-4.5"). Defaults to the active model.',
           required: false,
         ),
       ];
@@ -46,26 +40,12 @@ class SpawnSubagentTool extends Tool {
   @override
   Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
     final task = args['task'] as String;
-    final providerStr = args['provider'] as String?;
-    final model = args['model'] as String?;
-
-    AgentProfile? profile;
-    if (providerStr != null || model != null) {
-      final provider = providerStr != null
-          ? LlmProvider.values.firstWhere(
-              (p) => p.name == providerStr,
-              orElse: () => _manager.config.provider,
-            )
-          : _manager.config.provider;
-      profile = AgentProfile(
-        provider: provider,
-        model: model ?? GlueConfig(provider: provider).model,
-      );
-    }
+    final override = args['model_ref'] as String?;
+    final ref = override != null ? ModelRef.parse(override) : null;
 
     final result = await _manager.spawnSubagent(
       task: task,
-      profile: profile,
+      modelOverride: ref,
       currentDepth: _depth,
     );
     return [TextPart(result)];
@@ -74,10 +54,10 @@ class SpawnSubagentTool extends Tool {
 
 /// Tool that spawns multiple subagents in parallel.
 class SpawnParallelSubagentsTool extends Tool {
+  SpawnParallelSubagentsTool(this._manager, {int depth = 0}) : _depth = depth;
+
   final AgentManager _manager;
   final int _depth;
-
-  SpawnParallelSubagentsTool(this._manager, {int depth = 0}) : _depth = depth;
 
   @override
   String get name => 'spawn_parallel_subagents';
@@ -96,15 +76,9 @@ class SpawnParallelSubagentsTool extends Tool {
           description: 'List of task descriptions, one per subagent.',
         ),
         ToolParameter(
-          name: 'provider',
+          name: 'model_ref',
           type: 'string',
-          description: 'LLM provider for all subagents.',
-          required: false,
-        ),
-        ToolParameter(
-          name: 'model',
-          type: 'string',
-          description: 'Model name for all subagents.',
+          description: 'Override model as `<provider>/<model>`.',
           required: false,
         ),
       ];
@@ -112,36 +86,24 @@ class SpawnParallelSubagentsTool extends Tool {
   @override
   Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
     final tasks = (args['tasks'] as List).cast<String>();
-    final providerStr = args['provider'] as String?;
-    final model = args['model'] as String?;
-
-    AgentProfile? profile;
-    if (providerStr != null || model != null) {
-      final provider = providerStr != null
-          ? LlmProvider.values.firstWhere(
-              (p) => p.name == providerStr,
-              orElse: () => _manager.config.provider,
-            )
-          : _manager.config.provider;
-      profile = AgentProfile(
-        provider: provider,
-        model: model ?? GlueConfig(provider: provider).model,
-      );
-    }
+    final override = args['model_ref'] as String?;
+    final ref = override != null ? ModelRef.parse(override) : null;
 
     final results = await _manager.spawnParallel(
       tasks: tasks,
-      profile: profile,
+      modelOverride: ref,
       currentDepth: _depth,
     );
 
     return [
-      TextPart(jsonEncode({
-        'results': [
-          for (var i = 0; i < tasks.length; i++)
-            {'task': tasks[i], 'output': results[i]},
-        ],
-      }))
+      TextPart(
+        jsonEncode({
+          'results': [
+            for (var i = 0; i < tasks.length; i++)
+              {'task': tasks[i], 'output': results[i]},
+          ],
+        }),
+      ),
     ];
   }
 }

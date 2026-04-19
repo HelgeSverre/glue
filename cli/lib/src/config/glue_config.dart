@@ -1,43 +1,50 @@
 import 'dart:io';
+import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
-import 'package:glue/src/config/constants.dart';
+
+import 'package:glue/src/catalog/catalog_loader.dart';
+import 'package:glue/src/catalog/catalog_parser.dart';
+import 'package:glue/src/catalog/model_catalog.dart';
+import 'package:glue/src/catalog/model_ref.dart';
+import 'package:glue/src/catalog/models_generated.dart';
 import 'package:glue/src/config/approval_mode.dart';
-import 'package:glue/src/config/model_registry.dart';
+import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/core/environment.dart';
+import 'package:glue/src/credentials/credential_store.dart';
+import 'package:glue/src/observability/observability_config.dart';
+import 'package:glue/src/providers/anthropic_adapter.dart';
+import 'package:glue/src/providers/openai_compatible_adapter.dart';
+import 'package:glue/src/providers/provider_adapter.dart';
+import 'package:glue/src/providers/resolved.dart';
 import 'package:glue/src/shell/docker_config.dart';
 import 'package:glue/src/shell/shell_config.dart';
-import 'package:glue/src/web/web_config.dart';
 import 'package:glue/src/web/browser/browser_config.dart';
-import 'package:glue/src/observability/observability_config.dart';
+import 'package:glue/src/web/web_config.dart';
 
-/// Splits a path-list environment variable using platform-appropriate separators.
-///
+/// Splits a path-list env var using platform-appropriate separators.
 /// Unix uses `:` (like `$PATH`), Windows uses `;`.
 List<String> splitPathList(String value, {bool? isWindows}) {
   final sep = (isWindows ?? Platform.isWindows) ? ';' : ':';
   return value.split(sep).where((s) => s.isNotEmpty).toList();
 }
 
-/// Supported LLM providers.
-///
-/// {@category Core}
-enum LlmProvider { anthropic, openai, mistral, ollama }
+/// Configuration for how Glue sources the bundled/remote model catalog.
+class CatalogSourceConfig {
+  const CatalogSourceConfig({
+    this.refresh = 'manual',
+    this.remoteUrl,
+  });
 
-/// An agent profile specifying provider and model for a particular role.
-class AgentProfile {
-  final LlmProvider provider;
-  final String model;
+  /// `never | manual | daily | startup`. See `docs/reference/models.yaml`.
+  final String refresh;
 
-  const AgentProfile({required this.provider, required this.model});
-
-  @override
-  String toString() => 'AgentProfile($provider, $model)';
+  /// When non-null, background refresh pulls from here.
+  final Uri? remoteUrl;
 }
 
-/// Error thrown when configuration is invalid.
 class ConfigError implements Exception {
-  final String message;
   ConfigError(this.message);
+  final String message;
 
   @override
   String toString() => 'ConfigError: $message';
@@ -45,18 +52,55 @@ class ConfigError implements Exception {
 
 /// Glue application configuration.
 ///
-/// Resolution order: CLI args → env vars → config file → defaults.
+/// Resolution order for the active model: CLI args → env vars
+/// (`GLUE_MODEL`) → `~/.glue/config.yaml` → catalog defaults.
+///
+/// Credentials (API keys) live *outside* this object — in environment
+/// variables and `~/.glue/credentials.json`, accessed via [credentials].
 class GlueConfig {
-  final LlmProvider provider;
-  final String model;
-  final String? anthropicApiKey;
-  final String? openaiApiKey;
-  final String? mistralApiKey;
-  final String ollamaBaseUrl;
-  final Map<String, AgentProfile> profiles;
+  GlueConfig({
+    required this.activeModel,
+    required this.catalogData,
+    required this.credentials,
+    required this.adapters,
+    this.smallModel,
+    this.profiles = const {},
+    this.catalog = const CatalogSourceConfig(),
+    this.maxSubagentDepth = AppConstants.maxSubagentDepth,
+    this.bashMaxLines = AppConstants.bashMaxLinesDefault,
+    ShellConfig? shellConfig,
+    DockerConfig? dockerConfig,
+    WebConfig? webConfig,
+    this.observability = const ObservabilityConfig(),
+    this.skillPaths = const [],
+    this.approvalMode = ApprovalMode.confirm,
+  })  : shellConfig = shellConfig ?? const ShellConfig(),
+        dockerConfig = dockerConfig ?? const DockerConfig(),
+        webConfig = webConfig ?? const WebConfig();
+
+  /// Primary model used for agent conversations.
+  final ModelRef activeModel;
+
+  /// Cheap/fast model for session title generation, summaries, etc.
+  /// When null, [activeModel] is used.
+  final ModelRef? smallModel;
+
+  /// Named shortcuts (`/model @fast`, etc.).
+  final Map<String, ModelRef> profiles;
+
+  final CatalogSourceConfig catalog;
+
+  /// The fully-merged model catalog (bundled + cached remote + local).
+  final ModelCatalog catalogData;
+
+  /// Resolves [CredentialRef]s and walks [AuthSpec] for providers.
+  final CredentialStore credentials;
+
+  /// Registry of provider adapters (anthropic, openai-compatible, …).
+  final AdapterRegistry adapters;
+
   final int maxSubagentDepth;
   final int bashMaxLines;
-  final String titleModel;
   final ShellConfig shellConfig;
   final DockerConfig dockerConfig;
   final WebConfig webConfig;
@@ -64,49 +108,81 @@ class GlueConfig {
   final List<String> skillPaths;
   final ApprovalMode approvalMode;
 
-  GlueConfig({
-    LlmProvider? provider,
-    String? model,
-    this.anthropicApiKey,
-    this.openaiApiKey,
-    this.mistralApiKey,
-    this.ollamaBaseUrl = AppConstants.defaultOllamaBaseUrl,
-    this.profiles = const {},
-    this.maxSubagentDepth = AppConstants.maxSubagentDepth,
-    this.bashMaxLines = AppConstants.bashMaxLinesDefault,
-    this.titleModel = AppConstants.defaultTitleModel,
-    ShellConfig? shellConfig,
-    DockerConfig? dockerConfig,
-    WebConfig? webConfig,
-    this.observability = const ObservabilityConfig(),
-    this.skillPaths = const [],
-    this.approvalMode = ApprovalMode.confirm,
-  })  : provider = provider ?? LlmProvider.anthropic,
-        model = model ?? _defaultModel(provider ?? LlmProvider.anthropic),
-        shellConfig = shellConfig ?? const ShellConfig(),
-        dockerConfig = dockerConfig ?? const DockerConfig(),
-        webConfig = webConfig ?? const WebConfig();
+  /// Resolve [ref] against the loaded catalog and credential store.
+  ///
+  /// Throws [ConfigError] when the provider is unknown.
+  ResolvedProvider resolveProvider(ModelRef ref) {
+    final def = catalogData.providers[ref.providerId];
+    if (def == null) {
+      throw ConfigError(
+        'unknown provider "${ref.providerId}". '
+        'Available: ${catalogData.providers.keys.join(", ")}.',
+      );
+    }
+    return ResolvedProvider(
+      def: def,
+      apiKey: credentials.resolveForProvider(def),
+    );
+  }
 
-  static String _defaultModel(LlmProvider provider) =>
-      ModelRegistry.defaultModelId(provider);
+  /// Resolve [ref] to a concrete [ResolvedModel]. If the model id is not in
+  /// the catalog, a synthetic [ModelDef] is returned (covers user-typed ids
+  /// that provider APIs accept but we haven't catalogued).
+  ResolvedModel resolveModel(ModelRef ref) {
+    final provider = catalogData.providers[ref.providerId];
+    if (provider == null) {
+      throw ConfigError('unknown provider "${ref.providerId}"');
+    }
+    final def = provider.models[ref.modelId] ??
+        ModelDef(id: ref.modelId, name: ref.modelId);
+    return ResolvedModel(def: def, provider: provider);
+  }
 
-  /// Creates a copy with selected fields replaced.
+  /// Validates that the active model's provider has a usable credential.
+  /// Throws [ConfigError] with a remediation message on failure.
+  void validate() {
+    final resolved = resolveProvider(activeModel);
+    final adapter = adapters.lookup(resolved.adapter);
+    if (adapter == null) {
+      throw ConfigError(
+        'no adapter registered for wire protocol '
+        '"${resolved.adapter}" (provider "${resolved.id}").',
+      );
+    }
+    final health = adapter.validate(resolved);
+    switch (health) {
+      case ProviderHealth.ok:
+        return;
+      case ProviderHealth.unknownAdapter:
+        throw ConfigError(
+          'adapter "${resolved.adapter}" failed validation for '
+          'provider "${resolved.id}".',
+        );
+      case ProviderHealth.missingCredential:
+        final auth = resolved.def.auth;
+        final hint = auth.kind == AuthKind.env && auth.envVar != null
+            ? 'Set \$${auth.envVar} or run `glue credentials set ${resolved.id}`.'
+            : 'Run `glue credentials set ${resolved.id}`.';
+        throw ConfigError(
+          'Missing API key for provider "${resolved.id}". $hint',
+        );
+    }
+  }
+
   GlueConfig copyWith({
-    LlmProvider? provider,
-    String? model,
+    ModelRef? activeModel,
     ObservabilityConfig? observability,
   }) {
     return GlueConfig(
-      provider: provider ?? this.provider,
-      model: model ?? this.model,
-      anthropicApiKey: anthropicApiKey,
-      openaiApiKey: openaiApiKey,
-      mistralApiKey: mistralApiKey,
-      ollamaBaseUrl: ollamaBaseUrl,
+      activeModel: activeModel ?? this.activeModel,
+      smallModel: smallModel,
       profiles: profiles,
+      catalog: catalog,
+      catalogData: catalogData,
+      credentials: credentials,
+      adapters: adapters,
       maxSubagentDepth: maxSubagentDepth,
       bashMaxLines: bashMaxLines,
-      titleModel: titleModel,
       shellConfig: shellConfig,
       dockerConfig: dockerConfig,
       webConfig: webConfig,
@@ -116,53 +192,25 @@ class GlueConfig {
     );
   }
 
-  /// Validates that required configuration is present.
-  void validate() {
-    // Ollama runs locally — no API key needed.
-    if (provider == LlmProvider.ollama) return;
-
-    final key = apiKeyFor(provider);
-    if (key == null || key.isEmpty) {
-      final envVar = switch (provider) {
-        LlmProvider.anthropic => 'ANTHROPIC_API_KEY',
-        LlmProvider.openai => 'OPENAI_API_KEY',
-        LlmProvider.mistral => 'MISTRAL_API_KEY',
-        LlmProvider.ollama => '',
-      };
-      throw ConfigError(
-        'Missing API key for provider ${provider.name}. '
-        'Set $envVar or add it to ~/.glue/config.yaml',
-      );
-    }
-  }
-
-  /// API key for the currently selected provider (empty for Ollama).
-  String get apiKey {
-    if (provider == LlmProvider.ollama) return '';
-    validate();
-    return apiKeyFor(provider)!;
-  }
-
-  /// API key for a specific provider (empty for Ollama).
-  String? apiKeyFor(LlmProvider provider) => switch (provider) {
-        LlmProvider.anthropic => anthropicApiKey,
-        LlmProvider.openai => openaiApiKey,
-        LlmProvider.mistral => mistralApiKey,
-        LlmProvider.ollama => '',
-      };
-
-  /// Loads configuration from env vars, optional config file, and CLI overrides.
+  /// Loads configuration from env, optional `~/.glue/config.yaml`, and CLI
+  /// overrides. Constructs the merged catalog, credential store, and
+  /// adapter registry.
+  ///
+  /// Throws [ConfigError] with a migration pointer when the config file is
+  /// in the legacy v1 shape (top-level `provider:`, per-provider `api_key:`).
   factory GlueConfig.load({
     String? cliModel,
     Environment? environment,
     String? configPath,
+    ModelCatalog? catalogOverride,
+    CredentialStore? credentialsOverride,
+    AdapterRegistry? adaptersOverride,
   }) {
     final env = environment?.vars ?? Platform.environment;
+    final home = env['HOME'] ?? '.';
 
-    // 1. Load from config file.
-    final configYamlPath = configPath ??
-        environment?.configYamlPath ??
-        '${env['HOME'] ?? '.'}/.glue/config.yaml';
+    final configYamlPath =
+        configPath ?? environment?.configYamlPath ?? '$home/.glue/config.yaml';
     final configFile = File(configYamlPath);
     Map<String, dynamic>? fileConfig;
     if (configFile.existsSync()) {
@@ -173,48 +221,73 @@ class GlueConfig {
       }
     }
 
-    // 2. Resolve model: CLI → env → file → default.
-    //    Resolve aliases (e.g. "opus" → "claude-opus-4-6") via registry.
-    final rawModel =
-        cliModel ?? env['GLUE_MODEL'] ?? fileConfig?['model'] as String?;
+    // Reject legacy v1 shape with a migration message.
+    if (fileConfig != null) _rejectLegacyConfig(fileConfig, configYamlPath);
 
-    final resolvedEntry =
-        rawModel != null ? ModelRegistry.findByName(rawModel) : null;
+    // Catalog: bundled → optional cached remote → optional local overrides.
+    final catalog = catalogOverride ??
+        loadCatalog(
+          bundled: bundledCatalog,
+          cachedRemote: _loadOptionalYaml(
+            env['GLUE_CATALOG_CACHE'] ??
+                '${environment?.cacheDir ?? p.join(home, '.glue/cache')}/models.yaml',
+          ),
+          localOverrides: _loadOptionalYaml(
+            '${environment?.glueDir ?? p.join(home, '.glue')}/models.yaml',
+          ),
+        );
 
-    // 3. Resolve provider: infer from model → env → file → default.
-    final providerStr =
-        env['GLUE_PROVIDER'] ?? fileConfig?['provider'] as String?;
+    final credentials = credentialsOverride ??
+        CredentialStore(
+          path:
+              '${environment?.glueDir ?? p.join(home, '.glue')}/credentials.json',
+          env: Map<String, String>.from(env),
+        );
 
-    final provider = resolvedEntry?.provider ??
-        (providerStr != null
-            ? LlmProvider.values.firstWhere(
-                (p) => p.name == providerStr,
-                orElse: () => LlmProvider.anthropic,
-              )
-            : LlmProvider.anthropic);
+    final adapters = adaptersOverride ??
+        AdapterRegistry([
+          AnthropicAdapter(),
+          OpenAiCompatibleAdapter(),
+        ]);
 
-    final model = resolvedEntry?.modelId ?? rawModel ?? _defaultModel(provider);
+    // Resolve active model: CLI flag → GLUE_MODEL → config file → catalog default.
+    final rawActive = cliModel ??
+        env['GLUE_MODEL'] ??
+        fileConfig?['active_model'] as String? ??
+        catalog.defaults.model;
+    final activeModel = _resolveModelRef(rawActive, catalog);
 
-    final anthropicKey = env['ANTHROPIC_API_KEY'] ??
-        (fileConfig?['anthropic'] as Map?)?['api_key'] as String?;
+    final rawSmall =
+        fileConfig?['small_model'] as String? ?? catalog.defaults.smallModel;
+    final smallModel =
+        rawSmall != null ? _resolveModelRef(rawSmall, catalog) : null;
 
-    final openaiKey = env['OPENAI_API_KEY'] ??
-        (fileConfig?['openai'] as Map?)?['api_key'] as String?;
+    // Catalog source section.
+    final catalogSection = fileConfig?['catalog'] as Map?;
+    final catalogConfig = CatalogSourceConfig(
+      refresh: catalogSection?['refresh'] as String? ?? 'manual',
+      remoteUrl: (catalogSection?['remote_url'] as String?) != null
+          ? Uri.parse(catalogSection!['remote_url'] as String)
+          : null,
+    );
 
-    final mistralKey = env['MISTRAL_API_KEY'] ??
-        (fileConfig?['mistral'] as Map?)?['api_key'] as String?;
+    // Profiles: Map<String, ModelRef>.
+    final profiles = <String, ModelRef>{};
+    final profilesYaml = fileConfig?['profiles'] as Map?;
+    if (profilesYaml != null) {
+      for (final entry in profilesYaml.entries) {
+        final name = entry.key.toString();
+        final raw = entry.value.toString();
+        profiles[name] = _resolveModelRef(raw, catalog);
+      }
+    }
 
-    final ollamaBaseUrl = env['OLLAMA_BASE_URL'] ??
-        (fileConfig?['ollama'] as Map?)?['base_url'] as String? ??
-        AppConstants.defaultOllamaBaseUrl;
+    // --- non-model-related config (kept intact) ---
 
     final bashMaxLines = (fileConfig?['bash'] as Map?)?['max_lines'] as int? ??
         AppConstants.bashMaxLinesDefault;
 
-    final titleModel =
-        fileConfig?['title_model'] as String? ?? AppConstants.defaultTitleModel;
-
-    // 2b. Resolve shell configuration.
+    // Shell config.
     final shellSection = fileConfig?['shell'] as Map?;
     final shellExe =
         env['GLUE_SHELL'] ?? shellSection?['executable'] as String?;
@@ -225,8 +298,7 @@ class GlueConfig {
             shellModeStr,
             onInvalid: (invalid) {
               stderr.writeln(
-                'Warning: unknown shell mode "$invalid"; '
-                'using "non_interactive".',
+                'Warning: unknown shell mode "$invalid"; using "non_interactive".',
               );
             },
           )
@@ -237,7 +309,7 @@ class GlueConfig {
       mode: shellMode,
     );
 
-    // 2c. Resolve Docker configuration.
+    // Docker config.
     final dockerSection = fileConfig?['docker'] as Map?;
     final dockerEnabled = env['GLUE_DOCKER_ENABLED'] == '1' ||
         (dockerSection?['enabled'] as bool? ?? false);
@@ -272,7 +344,7 @@ class GlueConfig {
       mounts: dockerMounts,
     );
 
-    // 2d. Resolve web configuration.
+    // Web config.
     final webSection = fileConfig?['web'] as Map?;
     final fetchSection = webSection?['fetch'] as Map?;
     final searchSection = webSection?['search'] as Map?;
@@ -318,12 +390,18 @@ class GlueConfig {
           AppConstants.webSearchDefaultMaxResults,
     );
 
-    // 2e. Resolve PDF configuration.
+    // PDF uses the OpenAI/Mistral adapter's credentials when available.
     final pdfSection = webSection?['pdf'] as Map?;
-    final pdfMistralApiKey =
-        pdfSection?['mistral_api_key'] as String? ?? mistralKey;
-    final pdfOpenaiApiKey =
-        pdfSection?['openai_api_key'] as String? ?? openaiKey;
+    final mistralProvider = catalog.providers['mistral'];
+    final openaiProvider = catalog.providers['openai'];
+    final pdfMistralApiKey = pdfSection?['mistral_api_key'] as String? ??
+        (mistralProvider != null
+            ? credentials.resolveForProvider(mistralProvider)
+            : null);
+    final pdfOpenaiApiKey = pdfSection?['openai_api_key'] as String? ??
+        (openaiProvider != null
+            ? credentials.resolveForProvider(openaiProvider)
+            : null);
     final ocrProviderStr =
         env['GLUE_OCR_PROVIDER'] ?? pdfSection?['ocr_provider'] as String?;
     final ocrProvider = ocrProviderStr != null
@@ -343,7 +421,7 @@ class GlueConfig {
       openaiApiKey: pdfOpenaiApiKey,
     );
 
-    // 2f. Resolve browser configuration.
+    // Browser config (unchanged).
     final browserSection = webSection?['browser'] as Map?;
     final dockerBrowserSection = browserSection?['docker'] as Map?;
     final steelSection = browserSection?['steel'] as Map?;
@@ -383,29 +461,12 @@ class GlueConfig {
       browser: browserConfig,
     );
 
-    // 2g. Resolve observability configuration.
+    // Observability.
     final debug =
         env['GLUE_DEBUG'] == '1' || (fileConfig?['debug'] as bool? ?? false);
-
     final observabilityConfig = ObservabilityConfig(debug: debug);
 
-    // 3. Parse profiles.
-    final profiles = <String, AgentProfile>{};
-    final profilesYaml = fileConfig?['profiles'] as Map?;
-    if (profilesYaml != null) {
-      for (final entry in profilesYaml.entries) {
-        final name = entry.key as String;
-        final val = entry.value as Map;
-        profiles[name] = AgentProfile(
-          provider: LlmProvider.values.firstWhere(
-            (p) => p.name == (val['provider'] as String? ?? 'anthropic'),
-          ),
-          model: val['model'] as String? ?? _defaultModel(provider),
-        );
-      }
-    }
-
-    // 4. Parse approval mode.
+    // Approval mode.
     final approvalStr =
         env['GLUE_APPROVAL_MODE'] ?? fileConfig?['approval_mode'] as String?;
     final approvalMode = approvalStr != null
@@ -415,15 +476,12 @@ class GlueConfig {
           )
         : ApprovalMode.confirm;
 
-    // 5. Parse skill paths.
+    // Skill paths.
     final skillPaths = <String>[];
     final envSkillPaths = env['GLUE_SKILLS_PATHS'];
     if (envSkillPaths != null && envSkillPaths.isNotEmpty) {
       skillPaths.addAll(
-        splitPathList(
-          envSkillPaths,
-          isWindows: environment?.isWindows,
-        ),
+        splitPathList(envSkillPaths, isWindows: environment?.isWindows),
       );
     }
     final skillsSection = fileConfig?['skills'] as Map?;
@@ -433,15 +491,14 @@ class GlueConfig {
     }
 
     return GlueConfig(
-      provider: provider,
-      model: model,
-      anthropicApiKey: anthropicKey,
-      openaiApiKey: openaiKey,
-      mistralApiKey: mistralKey,
-      ollamaBaseUrl: ollamaBaseUrl,
+      activeModel: activeModel,
+      smallModel: smallModel,
       profiles: profiles,
+      catalog: catalogConfig,
+      catalogData: catalog,
+      credentials: credentials,
+      adapters: adapters,
       bashMaxLines: bashMaxLines,
-      titleModel: titleModel,
       shellConfig: shellConfig,
       dockerConfig: dockerConfig,
       webConfig: webConfig,
@@ -450,4 +507,71 @@ class GlueConfig {
       approvalMode: approvalMode,
     );
   }
+}
+
+/// Fuzzy-resolve a user-typed model identifier against the catalog.
+///
+/// Accepts:
+///   - A full `provider/model` ref (passed straight to [ModelRef.parse]).
+///   - A bare model id or a display-name fragment — matches the first
+///     catalog entry whose id or `name` contains the query.
+///
+/// Throws [ConfigError] when no match is found.
+ModelRef _resolveModelRef(String raw, ModelCatalog catalog) {
+  final parsed = ModelRef.tryParse(raw);
+  if (parsed != null && catalog.providers.containsKey(parsed.providerId)) {
+    return parsed;
+  }
+
+  final query = raw.toLowerCase();
+  for (final provider in catalog.providers.values) {
+    for (final model in provider.models.values) {
+      if (model.id.toLowerCase() == query ||
+          model.name.toLowerCase() == query) {
+        return ModelRef(providerId: provider.id, modelId: model.id);
+      }
+    }
+  }
+  for (final provider in catalog.providers.values) {
+    for (final model in provider.models.values) {
+      if (model.id.toLowerCase().contains(query) ||
+          model.name.toLowerCase().contains(query)) {
+        return ModelRef(providerId: provider.id, modelId: model.id);
+      }
+    }
+  }
+
+  if (parsed != null) return parsed; // bare ref for an unknown provider
+  throw ConfigError(
+    'could not resolve model "$raw". Use `<provider>/<model>` or a '
+    'catalogued display name (try `/models` to list options).',
+  );
+}
+
+ModelCatalog? _loadOptionalYaml(String path) {
+  final file = File(path);
+  if (!file.existsSync()) return null;
+  try {
+    return parseCatalogYaml(file.readAsStringSync());
+  } on CatalogParseException {
+    return null;
+  }
+}
+
+void _rejectLegacyConfig(Map<String, dynamic> fileConfig, String path) {
+  final hasTopLevelProvider = fileConfig.containsKey('provider');
+  final hasPerProviderKey =
+      (fileConfig['anthropic'] as Map?)?.containsKey('api_key') == true ||
+          (fileConfig['openai'] as Map?)?.containsKey('api_key') == true ||
+          (fileConfig['mistral'] as Map?)?.containsKey('api_key') == true;
+  if (!hasTopLevelProvider && !hasPerProviderKey) return;
+
+  throw ConfigError(
+    'Config file at $path uses the old (v1) format '
+    '(top-level `provider:` / `<provider>.api_key:`).\n'
+    'Glue now uses `active_model: <provider>/<model>` + a separate '
+    '~/.glue/credentials.json.\n'
+    'Migrate with: `glue credentials set <provider>` for each key, then '
+    'rewrite config.yaml per docs/migration/task-22.md.',
+  );
 }

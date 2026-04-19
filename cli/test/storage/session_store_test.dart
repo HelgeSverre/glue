@@ -15,8 +15,7 @@ void main() {
     meta = SessionMeta(
       id: 'session-001',
       cwd: '/tmp/project',
-      model: 'claude-sonnet-4-6',
-      provider: 'anthropic',
+      modelRef: 'anthropic/claude-sonnet-4.6',
       startTime: DateTime.utc(2026, 2, 27, 10, 0),
     );
   });
@@ -36,7 +35,7 @@ void main() {
       jsonDecode(metaFile.readAsStringSync()) as Map<String, dynamic>,
     );
     expect(savedMeta.id, 'session-001');
-    expect(savedMeta.model, 'claude-sonnet-4-6');
+    expect(savedMeta.modelRef, 'anthropic/claude-sonnet-4.6');
   });
 
   test('logEvent appends JSONL lines', () async {

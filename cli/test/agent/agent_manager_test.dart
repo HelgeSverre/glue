@@ -1,10 +1,11 @@
-import 'dart:async';
-import 'package:test/test.dart';
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/agent_manager.dart';
 import 'package:glue/src/agent/tools.dart';
-import 'package:glue/src/config/glue_config.dart';
+import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/llm/llm_factory.dart';
+import 'package:test/test.dart';
+
+import '../_helpers/test_config.dart';
 
 class _EchoLlm implements LlmClient {
   @override
@@ -15,16 +16,13 @@ class _EchoLlm implements LlmClient {
   }
 }
 
-class _TestLlmFactory extends LlmClientFactory {
+class _EchoFactory implements LlmClientFactory {
   @override
-  LlmClient create({
-    required LlmProvider provider,
-    required String model,
-    required String apiKey,
-    required String systemPrompt,
-    String ollamaBaseUrl = 'http://localhost:11434',
-  }) =>
+  LlmClient createFor(ModelRef ref, {required String systemPrompt}) =>
       _EchoLlm();
+
+  @override
+  LlmClient createFromConfig({required String systemPrompt}) => _EchoLlm();
 }
 
 void main() {
@@ -34,8 +32,8 @@ void main() {
     setUp(() {
       manager = AgentManager(
         tools: {'read_file': ReadFileTool()},
-        llmFactory: _TestLlmFactory(),
-        config: GlueConfig(anthropicApiKey: 'test'),
+        llmFactory: _EchoFactory(),
+        config: testConfig(env: {'ANTHROPIC_API_KEY': 'sk-test'}),
         systemPrompt: 'You are a test agent.',
       );
     });

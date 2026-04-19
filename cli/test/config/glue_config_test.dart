@@ -1,287 +1,167 @@
 import 'dart:io';
 
+import 'package:glue/src/catalog/model_ref.dart';
+import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:test/test.dart';
-import 'package:glue/src/config/glue_config.dart';
-import 'package:glue/src/config/approval_mode.dart';
+
+Directory _scratch() =>
+    Directory.systemTemp.createTempSync('glue_config_test_');
+
+Environment _envWith({
+  required Directory home,
+  Map<String, String> vars = const {},
+}) {
+  return Environment.test(home: home.path, vars: vars);
+}
 
 void main() {
-  group('GlueConfig', () {
-    late Directory tempDir;
-
-    setUp(() {
-      tempDir = Directory.systemTemp.createTempSync('glue_config_test_');
-    });
-
-    tearDown(() {
-      tempDir.deleteSync(recursive: true);
-    });
-
-    test('resolves provider and model from explicit values', () {
-      final config = GlueConfig(
-        provider: LlmProvider.anthropic,
-        model: 'claude-sonnet-4-6',
-        anthropicApiKey: 'sk-ant-test',
-      );
-      expect(config.provider, LlmProvider.anthropic);
-      expect(config.model, 'claude-sonnet-4-6');
-      expect(config.anthropicApiKey, 'sk-ant-test');
-    });
-
-    test('defaults to anthropic/claude-sonnet-4-6', () {
-      final config = GlueConfig(anthropicApiKey: 'sk-ant-test');
-      expect(config.provider, LlmProvider.anthropic);
-      expect(config.model, 'claude-sonnet-4-6');
-    });
-
-    test('resolves openai provider', () {
-      final config = GlueConfig(
-        provider: LlmProvider.openai,
-        model: 'gpt-4.1',
-        openaiApiKey: 'sk-test',
-      );
-      expect(config.provider, LlmProvider.openai);
-      expect(config.model, 'gpt-4.1');
-    });
-
-    test('resolves ollama provider (no API key needed)', () {
-      final config = GlueConfig(
-        provider: LlmProvider.ollama,
-        model: 'qwen2.5-coder',
-      );
-      expect(config.provider, LlmProvider.ollama);
-      expect(config.model, 'qwen2.5-coder');
-      config.validate(); // Should not throw
-    });
-
-    test('resolves mistral provider', () {
-      final config = GlueConfig(
-        provider: LlmProvider.mistral,
-        model: 'mistral-large-latest',
-        mistralApiKey: 'mk-test',
-      );
-      expect(config.provider, LlmProvider.mistral);
-      expect(config.model, 'mistral-large-latest');
-    });
-
-    test('validates mistral API key', () {
-      final config = GlueConfig(
-        provider: LlmProvider.mistral,
-        model: 'mistral-large-latest',
-        mistralApiKey: 'mk-test',
-      );
-      config.validate(); // Should not throw
-    });
-
-    test('validates missing mistral API key', () {
-      expect(
-        () => GlueConfig(
-          provider: LlmProvider.mistral,
-          model: 'mistral-large-latest',
-        ).validate(),
-        throwsA(isA<ConfigError>()),
-      );
-    });
-
-    test('apiKey getter returns mistral key', () {
-      final config = GlueConfig(
-        provider: LlmProvider.mistral,
-        model: 'mistral-large-latest',
-        mistralApiKey: 'mk-test',
-      );
-      expect(config.apiKey, 'mk-test');
-    });
-
-    test('validates API key presence', () {
-      expect(
-        () => GlueConfig(provider: LlmProvider.anthropic).validate(),
-        throwsA(isA<ConfigError>()),
-      );
-    });
-
-    test('profiles override defaults', () {
-      final config = GlueConfig(
-        anthropicApiKey: 'sk-ant',
-        openaiApiKey: 'sk-oai',
-        profiles: {
-          'architect': const AgentProfile(
-              provider: LlmProvider.anthropic, model: 'claude-opus-4-6'),
-          'editor': const AgentProfile(
-              provider: LlmProvider.openai, model: 'gpt-4.1-mini'),
-          'local': const AgentProfile(
-              provider: LlmProvider.ollama, model: 'qwen2.5-coder'),
-        },
-      );
-      expect(config.profiles['architect']!.model, 'claude-opus-4-6');
-      expect(config.profiles['editor']!.provider, LlmProvider.openai);
-      expect(config.profiles['local']!.provider, LlmProvider.ollama);
-    });
-
-    test('bashMaxLines defaults to 50', () {
-      final config = GlueConfig(anthropicApiKey: 'sk-ant-test');
-      expect(config.bashMaxLines, 50);
-    });
-
-    test('bashMaxLines can be set explicitly', () {
-      final config = GlueConfig(
-        anthropicApiKey: 'sk-ant-test',
-        bashMaxLines: 100,
-      );
-      expect(config.bashMaxLines, 100);
-    });
-
-    test('copyWith preserves titleModel, skillPaths, and approvalMode', () {
-      final config = GlueConfig(
-        provider: LlmProvider.anthropic,
-        model: 'claude-sonnet-4-6',
-        anthropicApiKey: 'sk-ant-test',
-        titleModel: 'claude-haiku-4',
-        skillPaths: const ['/opt/skills', '~/skills'],
-        approvalMode: ApprovalMode.auto,
-      );
-
-      final copied = config.copyWith(model: 'claude-opus-4-6');
-      expect(copied.titleModel, 'claude-haiku-4');
-      expect(copied.skillPaths, ['/opt/skills', '~/skills']);
-      expect(copied.approvalMode, ApprovalMode.auto);
-    });
-
-    test('load uses injected environment home for config.yaml', () {
-      final glueDir = Directory('${tempDir.path}/.glue')..createSync();
-      final configFile = File('${glueDir.path}/config.yaml');
-      configFile.writeAsStringSync('''
-provider: openai
-model: gpt-4.1-mini
-openai:
-  api_key: sk-open-file
-approval_mode: auto
-skills:
-  paths:
-    - /opt/skills
-''');
-
-      final environment =
-          Environment.test(home: tempDir.path, cwd: tempDir.path);
-      final config = GlueConfig.load(environment: environment);
-
-      expect(config.provider, LlmProvider.openai);
-      expect(config.model, 'gpt-4.1-mini');
-      expect(config.openaiApiKey, 'sk-open-file');
-      expect(config.approvalMode, ApprovalMode.auto);
-      expect(config.skillPaths, ['/opt/skills']);
-    });
-
-    test('load ignores stale interaction_mode key without crashing', () {
-      final glueDir = Directory('${tempDir.path}/.glue')..createSync();
-      final configFile = File('${glueDir.path}/config.yaml');
-      configFile.writeAsStringSync('''
-provider: openai
-model: gpt-4.1-mini
-openai:
-  api_key: sk-open-file
-interaction_mode: ask
-''');
-
-      final environment =
-          Environment.test(home: tempDir.path, cwd: tempDir.path);
-      final config = GlueConfig.load(environment: environment);
-
-      expect(config.provider, LlmProvider.openai);
-      expect(config.approvalMode, ApprovalMode.confirm);
-    });
-
-    test('load parses GLUE_SKILLS_PATHS using injected platform separator', () {
-      final environment = Environment.test(
-        home: tempDir.path,
-        cwd: tempDir.path,
-        isWindows: true,
-        vars: const {'GLUE_SKILLS_PATHS': r'C:\skills;D:\more-skills'},
-      );
-
-      final config = GlueConfig.load(environment: environment);
-      expect(config.skillPaths, [r'C:\skills', r'D:\more-skills']);
-    });
-
-    test('load honors explicit configPath override', () {
-      final customDir = Directory('${tempDir.path}/custom')..createSync();
-      final configFile = File('${customDir.path}/config.yaml');
-      configFile.writeAsStringSync('''
-provider: openai
-model: gpt-4.1
-openai:
-  api_key: sk-explicit
-''');
-
-      final environment = Environment.test(
-        home: '/does/not/matter',
-        cwd: tempDir.path,
-      );
+  group('GlueConfig.load', () {
+    test('uses catalog default when no CLI or env model is set', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
       final config = GlueConfig.load(
-        environment: environment,
-        configPath: configFile.path,
+        environment: _envWith(home: home),
       );
-
-      expect(config.provider, LlmProvider.openai);
-      expect(config.model, 'gpt-4.1');
-      expect(config.openaiApiKey, 'sk-explicit');
+      expect(config.activeModel.providerId, 'anthropic');
+      expect(config.activeModel.modelId, 'claude-sonnet-4.6');
     });
 
-    test('load reads ollama.base_url from config file', () {
-      final glueDir = Directory('${tempDir.path}/.glue')..createSync();
-      final configFile = File('${glueDir.path}/config.yaml');
-      configFile.writeAsStringSync('''
-provider: ollama
-model: llama3.2
-ollama:
-  base_url: http://127.0.0.1:11435
-''');
-
-      final environment =
-          Environment.test(home: tempDir.path, cwd: tempDir.path);
-      final config = GlueConfig.load(environment: environment);
-
-      expect(config.provider, LlmProvider.ollama);
-      expect(config.ollamaBaseUrl, 'http://127.0.0.1:11435');
+    test('--model CLI arg takes priority', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      final config = GlueConfig.load(
+        cliModel: 'openai/gpt-5.4',
+        environment: _envWith(home: home),
+      );
+      expect(config.activeModel, ModelRef.parse('openai/gpt-5.4'));
     });
 
-    test('OLLAMA_BASE_URL overrides file config', () {
-      final glueDir = Directory('${tempDir.path}/.glue')..createSync();
-      final configFile = File('${glueDir.path}/config.yaml');
-      configFile.writeAsStringSync('''
-provider: ollama
-model: llama3.2
-ollama:
-  base_url: http://127.0.0.1:11435
+    test('GLUE_MODEL env var wins over config but loses to CLI', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      final fromEnv = GlueConfig.load(
+        environment: _envWith(
+          home: home,
+          vars: {'GLUE_MODEL': 'openai/gpt-5.4'},
+        ),
+      );
+      expect(fromEnv.activeModel, ModelRef.parse('openai/gpt-5.4'));
+
+      final cliWins = GlueConfig.load(
+        cliModel: 'anthropic/claude-haiku-4.5',
+        environment: _envWith(
+          home: home,
+          vars: {'GLUE_MODEL': 'openai/gpt-5.4'},
+        ),
+      );
+      expect(cliWins.activeModel.modelId, 'claude-haiku-4.5');
+    });
+
+    test('legacy v1 config format is rejected with a migration hint', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      Directory('${home.path}/.glue').createSync();
+      File('${home.path}/.glue/config.yaml').writeAsStringSync('''
+provider: anthropic
+model: claude-sonnet-4-6
+anthropic:
+  api_key: sk-legacy
 ''');
 
-      final environment = Environment.test(
-        home: tempDir.path,
-        cwd: tempDir.path,
-        vars: const {'OLLAMA_BASE_URL': 'http://localhost:22434'},
+      expect(
+        () => GlueConfig.load(environment: _envWith(home: home)),
+        throwsA(
+          isA<ConfigError>().having(
+            (e) => e.message,
+            'message',
+            contains('old (v1) format'),
+          ),
+        ),
       );
-      final config = GlueConfig.load(environment: environment);
-      expect(config.ollamaBaseUrl, 'http://localhost:22434');
+    });
+
+    test('bare model name resolves via fuzzy catalog match', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      final config = GlueConfig.load(
+        cliModel: 'sonnet',
+        environment: _envWith(home: home),
+      );
+      expect(config.activeModel.providerId, 'anthropic');
+      expect(config.activeModel.modelId, contains('sonnet'));
     });
   });
 
-  group('splitPathList', () {
-    test('splits colon-separated paths on Unix', () {
-      final paths = splitPathList('~/a:~/b:/opt/c', isWindows: false);
-      expect(paths, ['~/a', '~/b', '/opt/c']);
+  group('GlueConfig.validate', () {
+    test('succeeds for ollama (auth: none) with no credentials', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      final config = GlueConfig.load(
+        cliModel: 'ollama/qwen2.5-coder:32b',
+        environment: _envWith(home: home),
+      );
+      expect(config.validate, returnsNormally);
     });
 
-    test('splits semicolon-separated paths on Windows', () {
-      final paths = splitPathList(r'C:\skills;D:\more', isWindows: true);
-      expect(paths, [r'C:\skills', r'D:\more']);
+    test('throws for anthropic when ANTHROPIC_API_KEY is missing', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      final config = GlueConfig.load(
+        environment: _envWith(home: home),
+      );
+      expect(config.validate, throwsA(isA<ConfigError>()));
     });
 
-    test('ignores empty segments', () {
-      final paths = splitPathList('~/a::~/b:', isWindows: false);
-      expect(paths, ['~/a', '~/b']);
+    test('succeeds when ANTHROPIC_API_KEY is set', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      final config = GlueConfig.load(
+        environment: _envWith(
+          home: home,
+          vars: {'ANTHROPIC_API_KEY': 'sk-test'},
+        ),
+      );
+      expect(config.validate, returnsNormally);
+    });
+  });
+
+  group('GlueConfig.resolveProvider / resolveModel', () {
+    test('resolves known provider + model', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      final config = GlueConfig.load(
+        environment: _envWith(home: home),
+      );
+      final ref = ModelRef.parse('anthropic/claude-sonnet-4.6');
+      final provider = config.resolveProvider(ref);
+      final model = config.resolveModel(ref);
+      expect(provider.id, 'anthropic');
+      expect(model.id, 'claude-sonnet-4.6');
     });
 
-    test('returns empty list for empty string', () {
-      expect(splitPathList('', isWindows: false), isEmpty);
+    test('unknown provider throws ConfigError', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      final config = GlueConfig.load(
+        environment: _envWith(home: home),
+      );
+      expect(
+        () => config.resolveProvider(ModelRef.parse('nowhere/xyz')),
+        throwsA(isA<ConfigError>()),
+      );
+    });
+
+    test('unknown model on known provider yields a synthetic ModelDef', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      final config = GlueConfig.load(
+        environment: _envWith(home: home),
+      );
+      final model = config.resolveModel(
+        ModelRef.parse('anthropic/my-custom-experiment'),
+      );
+      expect(model.id, 'my-custom-experiment');
     });
   });
 }

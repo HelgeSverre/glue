@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/agent_runner.dart';
 import 'package:glue/src/agent/tools.dart';
+import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/llm/llm_factory.dart';
 import 'package:glue/src/observability/observability.dart';
@@ -64,12 +65,12 @@ class AgentManager {
 
   /// Spawns a single subagent to complete a [task].
   ///
-  /// Optionally override [profile] for model/provider selection.
+  /// Optionally override [modelOverride] to switch model for this subagent.
   /// [currentDepth] tracks recursion to prevent infinite nesting.
   /// [index] and [total] are set when spawned as part of a parallel batch.
   Future<String> spawnSubagent({
     required String task,
-    AgentProfile? profile,
+    ModelRef? modelOverride,
     int currentDepth = 0,
     int? index,
     int? total,
@@ -81,15 +82,8 @@ class AgentManager {
       );
     }
 
-    final effectiveProfile =
-        profile ?? AgentProfile(provider: config.provider, model: config.model);
-
-    final llm = llmFactory.create(
-      provider: effectiveProfile.provider,
-      model: effectiveProfile.model,
-      apiKey: config.apiKeyFor(effectiveProfile.provider) ?? '',
-      systemPrompt: systemPrompt,
-    );
+    final ref = modelOverride ?? config.activeModel;
+    final llm = llmFactory.createFor(ref, systemPrompt: systemPrompt);
 
     final subagentTools = Map<String, Tool>.from(tools);
 
@@ -109,7 +103,7 @@ class AgentManager {
     final core = AgentCore(
       llm: llm,
       tools: subagentTools,
-      modelId: effectiveProfile.model,
+      modelId: ref.modelId,
     );
 
     // Create a span for the subagent execution.
@@ -119,7 +113,7 @@ class AgentManager {
       attributes: {
         'subagent.task': task,
         'subagent.depth': currentDepth,
-        'subagent.model': effectiveProfile.model,
+        'subagent.model': ref.toString(),
         if (index != null) 'subagent.index': index,
         if (total != null) 'subagent.total': total,
       },
@@ -156,14 +150,14 @@ class AgentManager {
   /// cause race conditions.
   Future<List<String>> spawnParallel({
     required List<String> tasks,
-    AgentProfile? profile,
+    ModelRef? modelOverride,
     int currentDepth = 0,
   }) async {
     return Future.wait([
       for (var i = 0; i < tasks.length; i++)
         spawnSubagent(
           task: tasks[i],
-          profile: profile,
+          modelOverride: modelOverride,
           currentDepth: currentDepth,
           index: i,
           total: tasks.length,

@@ -1,4 +1,3 @@
-import 'package:http/http.dart' as http;
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/agent_manager.dart';
 import 'package:glue/src/agent/prompts.dart';
@@ -72,9 +71,8 @@ class ServiceLocator {
 
     obs.addSink(FileSink(logsDir: environment.logsDir));
 
-    final httpClient = http.Client();
-    final llmFactory = LlmClientFactory(httpClient: httpClient);
-    final llm = llmFactory.createFromConfig(config, systemPrompt: systemPrompt);
+    final llmFactory = LlmClientFactory(config);
+    final llm = llmFactory.createFromConfig(systemPrompt: systemPrompt);
 
     final configStore = ConfigStore(environment.configPath);
 
@@ -82,8 +80,7 @@ class ServiceLocator {
     final sessionMeta = SessionMeta(
       id: sessionId,
       cwd: environment.cwd,
-      model: config.model,
-      provider: config.provider.name,
+      modelRef: config.activeModel.toString(),
       startTime: DateTime.now(),
     );
     final sessionStore =
@@ -141,7 +138,8 @@ class ServiceLocator {
       'skill': SkillTool(skillRuntime),
     };
 
-    final agent = AgentCore(llm: llm, tools: tools, modelId: config.model);
+    final agent =
+        AgentCore(llm: llm, tools: tools, modelId: config.activeModel.modelId);
     final manager = AgentManager(
       tools: tools,
       llmFactory: llmFactory,

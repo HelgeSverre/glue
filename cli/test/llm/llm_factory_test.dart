@@ -1,54 +1,67 @@
-import 'package:test/test.dart';
+import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/config/glue_config.dart';
-import 'package:glue/src/llm/llm_factory.dart';
 import 'package:glue/src/llm/anthropic_client.dart';
+import 'package:glue/src/llm/llm_factory.dart';
 import 'package:glue/src/llm/openai_client.dart';
-import 'package:glue/src/llm/ollama_client.dart';
+import 'package:test/test.dart';
+
+import '../_helpers/test_config.dart';
 
 void main() {
-  group('LlmClientFactory', () {
-    test('creates AnthropicClient for anthropic provider', () {
-      final factory = LlmClientFactory();
-      final client = factory.create(
-        provider: LlmProvider.anthropic,
-        model: 'claude-sonnet-4-6',
-        apiKey: 'sk-test',
+  group('LlmClientFactory.createFor', () {
+    test('returns AnthropicClient for anthropic/<model>', () {
+      final config = testConfig(
+        env: {'ANTHROPIC_API_KEY': 'sk-anthropic'},
+      );
+      final factory = LlmClientFactory(config);
+      final client = factory.createFor(
+        ModelRef.parse('anthropic/claude-sonnet-4.6'),
         systemPrompt: 'test',
       );
       expect(client, isA<AnthropicClient>());
     });
 
-    test('creates OpenAiClient for openai provider', () {
-      final factory = LlmClientFactory();
-      final client = factory.create(
-        provider: LlmProvider.openai,
-        model: 'gpt-4.1',
-        apiKey: 'sk-test',
+    test('returns OpenAiClient for openai/<model>', () {
+      final config = testConfig(env: {'OPENAI_API_KEY': 'sk-openai'});
+      final factory = LlmClientFactory(config);
+      final client = factory.createFor(
+        ModelRef.parse('openai/gpt-5.4'),
         systemPrompt: 'test',
       );
       expect(client, isA<OpenAiClient>());
     });
 
-    test('creates OpenAiClient for mistral provider', () {
-      final factory = LlmClientFactory();
-      final client = factory.create(
-        provider: LlmProvider.mistral,
-        model: 'mistral-large-latest',
-        apiKey: 'mk-test',
+    test('returns OpenAiClient for groq/qwen/qwen3-coder (slash in model id)',
+        () {
+      final config = testConfig(env: {'GROQ_API_KEY': 'sk-groq'});
+      final factory = LlmClientFactory(config);
+      final client = factory.createFor(
+        ModelRef.parse('groq/qwen/qwen3-coder'),
         systemPrompt: 'test',
       );
       expect(client, isA<OpenAiClient>());
     });
 
-    test('creates OllamaClient for ollama provider', () {
-      final factory = LlmClientFactory();
-      final client = factory.create(
-        provider: LlmProvider.ollama,
-        model: 'llama3.2',
-        apiKey: '',
+    test('returns OpenAiClient for ollama (api_key: none)', () {
+      final config = testConfig();
+      final factory = LlmClientFactory(config);
+      final client = factory.createFor(
+        ModelRef.parse('ollama/qwen2.5-coder:32b'),
         systemPrompt: 'test',
       );
-      expect(client, isA<OllamaClient>());
+      expect(client, isA<OpenAiClient>());
+    });
+
+    test('unknown provider throws ConfigError', () {
+      final config = testConfig();
+      final factory = LlmClientFactory(config);
+      expect(
+        () => factory.createFor(
+          ModelRef.parse('nope/whatever'),
+          systemPrompt: '',
+        ),
+        throwsA(isA<ConfigError>()),
+      );
     });
   });
 }

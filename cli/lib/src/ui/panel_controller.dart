@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:glue/src/catalog/model_catalog.dart';
+import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/config/glue_config.dart';
-import 'package:glue/src/config/model_registry.dart';
-import 'package:glue/src/llm/model_discovery.dart';
+import 'package:glue/src/credentials/credential_store.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
 import 'package:glue/src/storage/session_store.dart';
 import 'package:glue/src/terminal/styled.dart';
@@ -116,14 +117,14 @@ class PanelController {
       rows.add({
         'fork': s.forkedFrom != null ? '[F]'.styled.cyan.toString() : '',
         'id': displayId.styled.cyan.toString(),
-        'model': s.model,
+        'model': s.modelRef,
         'dir': shortCwd.styled.dim.toString(),
         'age': ago.styled.dim.toString(),
       });
       options.add(SelectOption(
         value: s,
         label: '',
-        searchText: '$displayId ${s.model} ${s.cwd} ${s.forkedFrom ?? ''}',
+        searchText: '$displayId ${s.modelRef} ${s.cwd} ${s.forkedFrom ?? ''}',
       ));
     }
 
@@ -258,35 +259,48 @@ class PanelController {
 
   Future<void> openModel({
     required GlueConfig config,
-    required String cacheDir,
-    required String currentModelId,
-    required String Function(ModelEntry entry) onModelSelected,
+    required ModelRef currentRef,
+    required String Function(CatalogRow entry) onModelSelected,
     required void Function(String message) addSystemMessage,
     required bool Function() isSelectionEnabled,
   }) async {
-    final discovery = ModelDiscovery(cacheDir: cacheDir);
-    final entries = await discovery.discoverAll(config);
+    // Show models that are tool-capable AND whose provider has credentials.
+    final defaultCaps = <String>{Capability.chat, Capability.tools};
+    final entries = flattenCatalog(
+      config.catalogData,
+      where: (p) =>
+          config.credentials.health(p) == CredentialHealth.ok ||
+          p.auth.kind == AuthKind.none,
+    ).where((row) => row.model.capabilities.containsAll(defaultCaps)).toList();
 
     if (entries.isEmpty) {
-      addSystemMessage('No models available (no API keys configured).');
+      addSystemMessage(
+        'No models available. Run `/credentials set <provider>` or '
+        'set the relevant API key env var.',
+      );
       _render();
       return;
     }
 
     final panelWidth = PanelFluid(0.7, 40);
     final contentWidth = _contentWidthFor(panelWidth);
-    final formatted = formatModelPanelLines(entries,
-        currentModelId: currentModelId, maxTotalWidth: contentWidth);
-    final options = <SelectOption<ModelEntry>>[];
+    final formatted = formatModelPanelLines(
+      entries,
+      currentRef: currentRef,
+      maxTotalWidth: contentWidth,
+    );
+    final options = <SelectOption<CatalogRow>>[];
     for (var i = 0; i < formatted.entries.length; i++) {
-      options.add(SelectOption(
-        value: formatted.entries[i],
-        label: formatted.lines[i],
-        searchText: stripAnsi(formatted.lines[i]),
-      ));
+      options.add(
+        SelectOption(
+          value: formatted.entries[i],
+          label: formatted.lines[i],
+          searchText: stripAnsi(formatted.lines[i]),
+        ),
+      );
     }
 
-    final panel = SelectPanel<ModelEntry>(
+    final panel = SelectPanel<CatalogRow>(
       title: 'Switch Model',
       options: options,
       headerLines: formatted.headerLines,

@@ -1,97 +1,39 @@
-import 'package:http/http.dart' as http;
-
 import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/config/glue_config.dart';
-import 'package:glue/src/config/model_registry.dart';
-import 'package:glue/src/llm/anthropic_client.dart';
-import 'package:glue/src/llm/openai_client.dart';
-import 'package:glue/src/llm/ollama_client.dart';
 
-/// Creates [LlmClient] instances from configuration.
+/// Creates [LlmClient] instances from a [ModelRef] via the adapter registry.
+///
+/// The legacy provider-enum switch is gone — every client flows through
+/// `catalog → resolved provider + model → adapter.createClient`.
 class LlmClientFactory {
-  final http.Client _httpClient;
+  LlmClientFactory(this._config);
 
-  LlmClientFactory({http.Client? httpClient})
-      : _httpClient = httpClient ?? http.Client();
+  final GlueConfig _config;
 
-  /// Creates an [LlmClient] for the given provider and model.
-  LlmClient create({
-    required LlmProvider provider,
-    required String model,
-    required String apiKey,
-    required String systemPrompt,
-    String ollamaBaseUrl = 'http://localhost:11434',
-  }) {
-    return switch (provider) {
-      LlmProvider.anthropic => AnthropicClient(
-          requestClientFactory: () => _httpClient,
-          apiKey: apiKey,
-          model: model,
-          systemPrompt: systemPrompt,
-        ),
-      LlmProvider.openai => OpenAiClient(
-          requestClientFactory: () => _httpClient,
-          apiKey: apiKey,
-          model: model,
-          systemPrompt: systemPrompt,
-        ),
-      LlmProvider.mistral => OpenAiClient(
-          requestClientFactory: () => _httpClient,
-          apiKey: apiKey,
-          model: model,
-          systemPrompt: systemPrompt,
-          baseUrl: 'https://api.mistral.ai',
-        ),
-      LlmProvider.ollama => OllamaClient(
-          requestClientFactory: () => _httpClient,
-          model: model,
-          systemPrompt: systemPrompt,
-          baseUrl: ollamaBaseUrl,
-        ),
-    };
-  }
-
-  /// Creates an [LlmClient] from a [GlueConfig] using its defaults.
-  LlmClient createFromConfig(GlueConfig config,
-      {required String systemPrompt}) {
-    return create(
-      provider: config.provider,
-      model: config.model,
-      apiKey: config.apiKey,
+  /// Build an [LlmClient] for [ref]. Resolves the provider (credentials
+  /// included), looks up the adapter by wire protocol, and delegates.
+  ///
+  /// Throws [ConfigError] when the provider is unknown or the adapter has
+  /// not been registered.
+  LlmClient createFor(ModelRef ref, {required String systemPrompt}) {
+    final provider = _config.resolveProvider(ref);
+    final model = _config.resolveModel(ref);
+    final adapter = _config.adapters.lookup(provider.adapter);
+    if (adapter == null) {
+      throw ConfigError(
+        'no adapter registered for wire protocol "${provider.adapter}" '
+        '(provider "${provider.id}").',
+      );
+    }
+    return adapter.createClient(
+      provider: provider,
+      model: model,
       systemPrompt: systemPrompt,
-      ollamaBaseUrl: config.ollamaBaseUrl,
     );
   }
 
-  /// Creates an [LlmClient] from a [ModelEntry] with keys from config.
-  LlmClient createFromEntry(
-    ModelEntry entry,
-    GlueConfig config, {
-    required String systemPrompt,
-  }) {
-    final apiKey = config.apiKeyFor(entry.provider) ?? '';
-    return create(
-      provider: entry.provider,
-      model: entry.modelId,
-      apiKey: apiKey,
-      systemPrompt: systemPrompt,
-      ollamaBaseUrl: config.ollamaBaseUrl,
-    );
-  }
-
-  /// Creates an [LlmClient] from an [AgentProfile] with keys from config.
-  LlmClient createFromProfile(
-    AgentProfile profile,
-    GlueConfig config, {
-    required String systemPrompt,
-  }) {
-    final apiKey = config.apiKeyFor(profile.provider) ?? '';
-    return create(
-      provider: profile.provider,
-      model: profile.model,
-      apiKey: apiKey,
-      systemPrompt: systemPrompt,
-      ollamaBaseUrl: config.ollamaBaseUrl,
-    );
-  }
+  /// Shortcut: use the config's [GlueConfig.activeModel].
+  LlmClient createFromConfig({required String systemPrompt}) =>
+      createFor(_config.activeModel, systemPrompt: systemPrompt);
 }
