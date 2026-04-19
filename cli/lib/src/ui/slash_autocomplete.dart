@@ -4,18 +4,35 @@ import 'package:glue/src/rendering/ansi_utils.dart';
 import 'package:glue/src/terminal/styled.dart';
 import 'package:glue/src/ui/autocomplete_overlay.dart';
 
-/// A candidate in the autocomplete list.
+/// Internal candidate, used for both name-mode and arg-mode dropdowns.
 class _Candidate {
-  final String name;
+  final String display;
   final String description;
-  _Candidate(this.name, this.description);
+  final String acceptValue;
+  final bool acceptContinues;
+  _Candidate({
+    required this.display,
+    required this.description,
+    required this.acceptValue,
+    required this.acceptContinues,
+  });
 }
+
+enum _Mode { name, arg }
 
 /// Controls slash command autocomplete state.
 ///
-/// Activates when the input buffer starts with `/` (no spaces),
-/// filters commands by prefix, and tracks selection. The owning
-/// widget (App) is responsible for intercepting keys and rendering.
+/// Two modes:
+/// - **Name mode**: buffer is `/prefix` with no space — filters registry by
+///   command name / alias.
+/// - **Arg mode**: buffer is `/<knownCmd> <partial>` and the resolved
+///   command has a [SlashArgCompleter] attached — filters that command's
+///   argument candidates.
+///
+/// The overlay itself only renders — the owning widget (App) intercepts
+/// keys and calls [update]/[accept]. [ShellAutocomplete] is the only other
+/// overlay with a similar mid-buffer splice pattern, but it only activates
+/// in bash mode, so there is no collision risk with slash commands.
 class SlashAutocomplete implements AutocompleteOverlay {
   final SlashCommandRegistry _registry;
 
@@ -23,6 +40,8 @@ class SlashAutocomplete implements AutocompleteOverlay {
   int _selected = 0;
   int _scrollOffset = 0;
   List<_Candidate> _matches = [];
+  _Mode _mode = _Mode.name;
+  String _buffer = '';
 
   static const maxVisible = AppConstants.maxVisibleDropdownItems;
 
@@ -43,34 +62,49 @@ class SlashAutocomplete implements AutocompleteOverlay {
     _matches = [];
     _selected = 0;
     _scrollOffset = 0;
+    _buffer = '';
+    _mode = _Mode.name;
   }
 
   /// Update autocomplete state based on the current editor buffer.
-  ///
-  /// Call this after every buffer change. Returns true if the popup
-  /// should be shown (state changed).
   void update(String buffer, int cursor) {
-    // Only activate when buffer starts with `/`, cursor is at end,
-    // and there's no space (still typing the command name).
     if (buffer.isEmpty ||
         !buffer.startsWith('/') ||
         cursor != buffer.length ||
-        buffer.contains(' ') ||
         buffer.contains('\n')) {
       dismiss();
       return;
     }
+    // Predictable whitespace: reject tabs and runs of multiple spaces.
+    if (buffer.contains('\t') || buffer.contains('  ')) {
+      dismiss();
+      return;
+    }
 
-    final prefix = buffer.substring(1).toLowerCase();
+    final body = buffer.substring(1);
+    final parts = body.split(' ');
+    final cmdName = parts[0].toLowerCase();
+
+    if (parts.length == 1) {
+      _updateNameMode(cmdName, buffer);
+    } else {
+      _updateArgMode(cmdName, parts, buffer);
+    }
+  }
+
+  void _updateNameMode(String prefix, String buffer) {
     final candidates = <_Candidate>[];
     for (final cmd in _registry.commands) {
       if (cmd.name.startsWith(prefix)) {
-        candidates.add(_Candidate(cmd.name, cmd.description));
+        candidates.add(_candidateForCommand(cmd, cmd.name));
       }
       for (final alias in cmd.aliases) {
         if (alias.startsWith(prefix) && alias != cmd.name) {
-          candidates
-              .add(_Candidate(alias, '${cmd.description} (→/${cmd.name})'));
+          candidates.add(_candidateForCommand(
+            cmd,
+            alias,
+            descriptionOverride: '${cmd.description} (→/${cmd.name})',
+          ));
         }
       }
     }
@@ -81,7 +115,63 @@ class SlashAutocomplete implements AutocompleteOverlay {
     }
 
     _active = true;
+    _mode = _Mode.name;
     _matches = candidates;
+    _buffer = buffer;
+    _selected = _selected.clamp(0, _matches.length - 1);
+    _scrollOffset = 0;
+    _clampScroll();
+  }
+
+  _Candidate _candidateForCommand(
+    SlashCommand cmd,
+    String displayName, {
+    String? descriptionOverride,
+  }) {
+    // Trailing space only when the command expects args — preserves the
+    // Enter-on-exact-match submit behavior for arg-less commands.
+    final continues = cmd.completeArg != null;
+    return _Candidate(
+      display: '/$displayName',
+      description: descriptionOverride ?? cmd.description,
+      acceptValue: '/$displayName',
+      acceptContinues: continues,
+    );
+  }
+
+  void _updateArgMode(String cmdName, List<String> parts, String buffer) {
+    final cmd = _registry.findByName(cmdName);
+    final completer = cmd?.completeArg;
+    if (completer == null) {
+      dismiss();
+      return;
+    }
+
+    final priorArgs = parts.sublist(1, parts.length - 1);
+    final partial = parts.last.toLowerCase();
+    final List<SlashArgCandidate> results;
+    try {
+      results = completer(priorArgs, partial);
+    } catch (_) {
+      dismiss();
+      return;
+    }
+    if (results.isEmpty) {
+      dismiss();
+      return;
+    }
+
+    _matches = results
+        .map((c) => _Candidate(
+              display: c.value,
+              description: c.description,
+              acceptValue: c.value,
+              acceptContinues: c.continues,
+            ))
+        .toList();
+    _active = true;
+    _mode = _Mode.arg;
+    _buffer = buffer;
     _selected = _selected.clamp(0, _matches.length - 1);
     _scrollOffset = 0;
     _clampScroll();
@@ -112,27 +202,44 @@ class SlashAutocomplete implements AutocompleteOverlay {
     _scrollOffset = _scrollOffset.clamp(0, maxStart);
   }
 
-  /// The full command text of the currently selected item (e.g. `/help`).
+  /// The full command text the current selection would set. Used by the
+  /// router to detect "Enter on an already-accepted selection" and submit
+  /// instead of re-accepting.
   String? get selectedText {
     if (!_active || _matches.isEmpty) return null;
-    return '/${_matches[_selected].name}';
+    final match = _matches[_selected];
+    if (_mode == _Mode.name) {
+      return match.acceptValue + (match.acceptContinues ? ' ' : '');
+    }
+    // Arg mode: reconstruct what `accept` would produce.
+    final tokenStart = _buffer.lastIndexOf(' ') + 1;
+    final before = _buffer.substring(0, tokenStart);
+    final suffix = match.acceptContinues ? ' ' : '';
+    return '$before${match.acceptValue}$suffix';
   }
 
-  /// Accept the current selection. Returns the full command as the new
-  /// buffer, with the cursor at the end. Slash commands replace the
-  /// entire buffer — [buffer] and [cursor] are ignored.
+  /// Accept the current selection.
   @override
   AcceptResult? accept(String buffer, int cursor) {
     if (!_active || _matches.isEmpty) return null;
-    final name = _matches[_selected].name;
-    final text = '/$name';
+    final match = _matches[_selected];
+
+    String text;
+    if (_mode == _Mode.name) {
+      final suffix = match.acceptContinues ? ' ' : '';
+      text = '${match.acceptValue}$suffix';
+    } else {
+      final tokenStart = _buffer.lastIndexOf(' ') + 1;
+      final before = _buffer.substring(0, tokenStart);
+      final suffix = match.acceptContinues ? ' ' : '';
+      text = '$before${match.acceptValue}$suffix';
+    }
+
     dismiss();
     return AcceptResult(text, text.length);
   }
 
   /// Render the popup as lines to be painted in the overlay zone.
-  ///
-  /// Each line is padded to [width] with the appropriate background.
   @override
   List<String> render(int width) {
     if (!_active || _matches.isEmpty) return [];
@@ -143,17 +250,15 @@ class SlashAutocomplete implements AutocompleteOverlay {
     final lines = <String>[];
     for (var i = 0; i < visible.length; i++) {
       final c = visible[i];
-      final globalIndex = i + _scrollOffset;
-      final nameCol = '/${c.name}';
-      final descCol = c.description;
-      final namePadded = nameCol.padRight(16);
-      final content = '   $namePadded $descCol';
+      final absoluteIndex = _scrollOffset + i;
+      final namePadded = c.display.padRight(16);
+      final content = '   $namePadded ${c.description}';
       final truncated = visibleLength(content) > width
           ? ansiTruncate(content, width)
           : content;
       final padCount = width - visibleLength(truncated);
       final padded = '$truncated${' ' * (padCount > 0 ? padCount : 0)}';
-      lines.add(globalIndex == _selected
+      lines.add(absoluteIndex == _selected
           ? '${padded.styled.bg256(24).brightWhite}'
           : '${padded.styled.bg256(236).white}');
     }

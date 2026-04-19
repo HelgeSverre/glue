@@ -129,5 +129,99 @@ void main() {
       expect(registry.execute('/gamma'), 'g');
       expect(registry.commands, hasLength(3));
     });
+
+    test('findByName returns registered command by primary name', () {
+      final cmd = SlashCommand(
+        name: 'open',
+        description: 'Open something',
+        execute: (_) => '',
+      );
+      registry.register(cmd);
+      expect(registry.findByName('open'), same(cmd));
+      expect(registry.findByName('OPEN'), same(cmd));
+    });
+
+    test('findByName resolves through aliases and hidden aliases', () {
+      final cmd = SlashCommand(
+        name: 'exit',
+        description: 'Exit',
+        aliases: ['quit'],
+        hiddenAliases: ['q'],
+        execute: (_) => '',
+      );
+      registry.register(cmd);
+      expect(registry.findByName('exit'), same(cmd));
+      expect(registry.findByName('quit'), same(cmd));
+      expect(registry.findByName('q'), same(cmd));
+    });
+
+    test('findByName returns null for unknown name', () {
+      expect(registry.findByName('nope'), isNull);
+    });
+  });
+
+  group('SlashArgCandidate defaults', () {
+    test('continues defaults to false and description to empty', () {
+      const candidate = SlashArgCandidate(value: 'home');
+      expect(candidate.continues, isFalse);
+      expect(candidate.description, '');
+      expect(candidate.value, 'home');
+    });
+  });
+
+  group('attachArgCompleter', () {
+    test('sets the completer on the target command', () {
+      final cmd = SlashCommand(
+        name: 'open',
+        description: 'Open',
+        execute: (_) => '',
+      );
+      registry.register(cmd);
+
+      expect(cmd.completeArg, isNull);
+      registry.attachArgCompleter(
+        'open',
+        (_, __) => const [SlashArgCandidate(value: 'home')],
+      );
+      expect(cmd.completeArg, isNotNull);
+
+      final out = cmd.completeArg!(const [], '');
+      expect(out, hasLength(1));
+      expect(out.first.value, 'home');
+    });
+
+    test('resolves through aliases and hidden aliases', () {
+      final cmd = SlashCommand(
+        name: 'exit',
+        description: 'Exit',
+        aliases: ['quit'],
+        hiddenAliases: ['q'],
+        execute: (_) => '',
+      );
+      registry.register(cmd);
+
+      registry.attachArgCompleter(
+        'q',
+        (_, __) => const [SlashArgCandidate(value: 'now')],
+      );
+      expect(cmd.completeArg, isNotNull);
+    });
+
+    test('throws StateError on unknown command name', () {
+      expect(
+        () => registry.attachArgCompleter('nope', (_, __) => const []),
+        throwsStateError,
+      );
+    });
+
+    test('command without completer still executes normally', () {
+      registry.register(SlashCommand(
+        name: 'simple',
+        description: 'Simple',
+        execute: (_) => 'ran',
+      ));
+      expect(registry.execute('/simple'), 'ran');
+      expect(registry.findByName('simple')!.completeArg, isNull);
+    });
   });
 }

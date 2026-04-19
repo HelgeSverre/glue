@@ -79,8 +79,7 @@ export 'src/credentials/credential_ref.dart'
         StoredCredential,
         InlineCredential,
         NoCredential;
-export 'src/credentials/credential_store.dart'
-    show CredentialStore, CredentialHealth;
+export 'src/credentials/credential_store.dart' show CredentialStore;
 export 'src/providers/provider_adapter.dart'
     show ProviderAdapter, AdapterRegistry, ProviderHealth, DiscoveredModel;
 export 'src/providers/resolved.dart' show ResolvedProvider, ResolvedModel;
@@ -104,7 +103,11 @@ export 'src/rendering/ansi_utils.dart'
 export 'src/rendering/block_renderer.dart' show BlockRenderer;
 export 'src/rendering/markdown_renderer.dart' show MarkdownRenderer;
 export 'src/commands/slash_commands.dart'
-    show SlashCommand, SlashCommandRegistry;
+    show
+        SlashArgCandidate,
+        SlashArgCompleter,
+        SlashCommand,
+        SlashCommandRegistry;
 export 'src/commands/builtin_commands.dart' show BuiltinCommands;
 export 'src/ui/modal.dart' show ConfirmModal, ModalChoice;
 export 'src/ui/box.dart' show Box;
@@ -125,7 +128,9 @@ export 'src/skills/skill_registry.dart' show SkillRegistry;
 export 'src/skills/skill_runtime.dart' show SkillRuntime, SkillPathsProvider;
 export 'src/skills/skill_tool.dart' show SkillTool;
 export 'src/core/environment.dart' show Environment;
+export 'src/core/path_opener.dart' show openInFileManager;
 export 'src/core/service_locator.dart' show ServiceLocator, AppServices;
+export 'src/core/where_report.dart' show buildWhereReport;
 export 'src/orchestrator/permission_gate.dart'
     show PermissionGate, PermissionDecision;
 export 'src/session/session_manager.dart'

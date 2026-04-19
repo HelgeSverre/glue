@@ -11,12 +11,15 @@ import 'package:glue/src/input/file_expander.dart';
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/agent_manager.dart';
 import 'package:glue/src/agent/tools.dart';
+import 'package:glue/src/commands/arg_completers.dart' as arg_completers;
 import 'package:glue/src/commands/builtin_commands.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/core/environment.dart';
+import 'package:glue/src/core/path_opener.dart';
+import 'package:glue/src/core/where_report.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
 import 'package:glue/src/ui/model_panel_formatter.dart' show CatalogRow;
 import 'package:glue/src/core/service_locator.dart';
@@ -432,7 +435,65 @@ class App {
       activateSkillByName: _activateSkillFromCommand,
       toggleApproval: _toggleApproval,
       runProviderCommand: _runProviderCommand,
+      pathsReport: _buildPathsReport,
+      openGlueTarget: _openGlueTarget,
     );
+
+    // Argument autocomplete — attached here (not plumbed through
+    // BuiltinCommands.create) so closures can read live app state.
+    _commands.attachArgCompleter('open', _openArgCandidates);
+    _commands.attachArgCompleter('provider', _providerArgCandidates);
+    _commands.attachArgCompleter('model', _modelArgCandidates);
+    _commands.attachArgCompleter('skills', _skillsArgCandidates);
+  }
+
+  String _buildPathsReport() => buildWhereReport(_environment);
+
+  String _openGlueTarget(List<String> args) => _openGlueTargetImpl(this, args);
+
+  List<SlashArgCandidate> _openArgCandidates(
+    List<String> prior,
+    String partial,
+  ) =>
+      arg_completers.openArgCandidates(prior, partial);
+
+  List<SlashArgCandidate> _providerArgCandidates(
+    List<String> prior,
+    String partial,
+  ) {
+    if (prior.isEmpty) {
+      return arg_completers.providerSubcommandCandidates(partial);
+    }
+    if (prior.length == 1 && {'add', 'remove', 'test'}.contains(prior.first)) {
+      final config = _config;
+      if (config == null) return const [];
+      return arg_completers.providerIdCandidates(
+        config.catalogData.providers,
+        partial,
+      );
+    }
+    return const [];
+  }
+
+  List<SlashArgCandidate> _modelArgCandidates(
+    List<String> prior,
+    String partial,
+  ) {
+    if (prior.isNotEmpty) return const [];
+    final config = _config;
+    if (config == null) return const [];
+    return arg_completers.modelRefCandidates(
+      config.catalogData.providers,
+      partial,
+    );
+  }
+
+  List<SlashArgCandidate> _skillsArgCandidates(
+    List<String> prior,
+    String partial,
+  ) {
+    if (prior.isNotEmpty) return const [];
+    return arg_completers.skillCandidates(_skillRuntime.list(), partial);
   }
 
   String _runProviderCommand(List<String> args) =>

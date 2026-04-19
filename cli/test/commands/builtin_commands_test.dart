@@ -12,6 +12,8 @@ void main() {
       String Function(String name)? activateSkillByName,
       void Function()? openResumePanel,
       String Function(String query)? resumeSessionByQuery,
+      String Function()? pathsReport,
+      String Function(List<String> args)? openGlueTarget,
     }) {
       return BuiltinCommands.create(
         openHelpPanel: () {},
@@ -30,6 +32,8 @@ void main() {
         activateSkillByName: activateSkillByName ?? (_) => '',
         toggleApproval: () => '',
         runProviderCommand: (_) => '',
+        pathsReport: pathsReport ?? () => '',
+        openGlueTarget: openGlueTarget ?? (_) => '',
       );
     }
 
@@ -135,6 +139,62 @@ void main() {
       expect(result, 'Resuming abc123');
       expect(opened, 0);
       expect(query, 'abc123');
+    });
+
+    test('/paths invokes pathsReport', () {
+      var calls = 0;
+      final registry = createRegistry(
+        pathsReport: () {
+          calls++;
+          return 'GLUE_HOME  /tmp/.glue';
+        },
+      );
+
+      final result = registry.execute('/paths');
+      expect(result, 'GLUE_HOME  /tmp/.glue');
+      expect(calls, 1);
+    });
+
+    test('/where is a hidden alias for /paths', () {
+      var calls = 0;
+      final registry = createRegistry(
+        pathsReport: () {
+          calls++;
+          return 'report';
+        },
+      );
+
+      final result = registry.execute('/where');
+      expect(result, 'report');
+      expect(calls, 1);
+    });
+
+    test('/open forwards args to openGlueTarget', () {
+      List<String>? received;
+      final registry = createRegistry(
+        openGlueTarget: (args) {
+          received = args;
+          return 'Opening ${args.join(' ')}';
+        },
+      );
+
+      final result = registry.execute('/open home');
+      expect(result, 'Opening home');
+      expect(received, ['home']);
+    });
+
+    test('/open without args still invokes openGlueTarget for usage', () {
+      List<String>? received;
+      final registry = createRegistry(
+        openGlueTarget: (args) {
+          received = args;
+          return 'Usage: /open <target>';
+        },
+      );
+
+      final result = registry.execute('/open');
+      expect(result, 'Usage: /open <target>');
+      expect(received, isEmpty);
     });
   });
 }

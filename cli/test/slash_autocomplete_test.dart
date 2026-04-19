@@ -172,4 +172,158 @@ void main() {
       expect(ac.overlayHeight, 0);
     });
   });
+
+  group('SlashAutocomplete arg mode', () {
+    late SlashCommandRegistry registry;
+    late SlashAutocomplete ac;
+
+    setUp(() {
+      registry = _makeRegistry();
+      // Attach a completer to /model with 3 static candidates.
+      registry.attachArgCompleter('model', (prior, partial) {
+        if (prior.isNotEmpty) return const [];
+        const values = ['sonnet', 'opus', 'haiku'];
+        return values
+            .where((v) => v.startsWith(partial))
+            .map((v) => SlashArgCandidate(value: v, description: 'Claude $v'))
+            .toList();
+      });
+      // Attach a 2-level completer to /exit (nonsensical semantically, but
+      // proves alias lookup works — /q should hit this completer too).
+      registry.attachArgCompleter('exit', (prior, partial) {
+        const subs = ['now', 'later'];
+        return subs
+            .where((v) => v.startsWith(partial))
+            .map((v) => SlashArgCandidate(
+                  value: v,
+                  description: 'Exit $v',
+                  continues: v == 'later',
+                ))
+            .toList();
+      });
+      ac = SlashAutocomplete(registry);
+    });
+
+    test('activates in arg mode after space on known command', () {
+      ac.update('/model ', 7);
+      expect(ac.active, isTrue);
+      expect(ac.matchCount, 3); // sonnet, opus, haiku
+    });
+
+    test('narrows arg candidates by prefix', () {
+      ac.update('/model s', 8);
+      expect(ac.active, isTrue);
+      expect(ac.matchCount, 1);
+      expect(ac.selectedText, '/model sonnet');
+    });
+
+    test('dismisses for unknown command + space', () {
+      ac.update('/notarealcmd ', 13);
+      expect(ac.active, isFalse);
+    });
+
+    test('dismisses when command has no completer', () {
+      ac.update('/help ', 6);
+      expect(ac.active, isFalse);
+    });
+
+    test('dismisses when completer returns empty list', () {
+      ac.update('/model zzz', 10);
+      expect(ac.active, isFalse);
+    });
+
+    test('accept splices arg value into buffer', () {
+      ac.update('/model s', 8);
+      final result = ac.accept('/model s', 8);
+      expect(result?.text, '/model sonnet');
+      expect(result?.cursor, '/model sonnet'.length);
+    });
+
+    test('accept with continues:true appends trailing space', () {
+      ac.update('/exit l', 7);
+      expect(ac.matchCount, 1);
+      final result = ac.accept('/exit l', 7);
+      expect(result?.text, '/exit later ');
+      expect(result?.cursor, '/exit later '.length);
+    });
+
+    test('alias lookup reaches parent command completer', () {
+      ac.update('/q n', 4);
+      expect(ac.active, isTrue);
+      expect(ac.matchCount, 1);
+      final result = ac.accept('/q n', 4);
+      expect(result?.text, '/q now');
+    });
+
+    test('name mode shows trailing space for commands with completer', () {
+      ac.update('/mod', 4);
+      expect(ac.active, isTrue);
+      // /model has a completer → selectedText includes trailing space.
+      expect(ac.selectedText, '/model ');
+      final result = ac.accept('/mod', 4);
+      expect(result?.text, '/model ');
+    });
+
+    test('name mode → arg mode transition on space', () {
+      ac.update('/mod', 4); // name mode, /model selected
+      expect(ac.active, isTrue);
+      expect(ac.matchCount, 1);
+      ac.update('/model ', 7); // space typed
+      expect(ac.active, isTrue);
+      expect(ac.matchCount, 3); // arg candidates
+    });
+
+    test('arg mode → name mode on backspace across space', () {
+      ac.update('/model ', 7);
+      expect(ac.matchCount, 3);
+      ac.update('/model', 6); // backspace removed the space
+      expect(ac.active, isTrue);
+      expect(ac.matchCount, 1); // back to /model name candidate
+      expect(ac.selectedText, '/model ');
+    });
+
+    test('nested args: priorArgs populated correctly', () {
+      // Use a completer that inspects prior args.
+      registry.attachArgCompleter('clear', (prior, partial) {
+        // Only offers candidates when prior is ['all'].
+        if (prior.length == 1 && prior[0] == 'all') {
+          return const [SlashArgCandidate(value: 'confirmed')];
+        }
+        return const [];
+      });
+
+      ac.update('/clear all ', 11);
+      expect(ac.active, isTrue);
+      expect(ac.matchCount, 1);
+      expect(ac.selectedText, '/clear all confirmed');
+    });
+  });
+
+  group('SlashAutocomplete whitespace edge cases', () {
+    late SlashAutocomplete ac;
+
+    setUp(() {
+      final registry = _makeRegistry();
+      registry.attachArgCompleter(
+        'model',
+        (_, __) => const [SlashArgCandidate(value: 'sonnet')],
+      );
+      ac = SlashAutocomplete(registry);
+    });
+
+    test('double space dismisses', () {
+      ac.update('/model  s', 9);
+      expect(ac.active, isFalse);
+    });
+
+    test('tab char dismisses', () {
+      ac.update('/model\ts', 8);
+      expect(ac.active, isFalse);
+    });
+
+    test('slash + space with no command dismisses', () {
+      ac.update('/ ', 2);
+      expect(ac.active, isFalse);
+    });
+  });
 }

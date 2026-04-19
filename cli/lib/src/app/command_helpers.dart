@@ -327,6 +327,56 @@ String _providerTest(GlueConfig config, String id) {
   }
 }
 
+const _openTargets = <String>[
+  'home',
+  'session',
+  'sessions',
+  'logs',
+  'skills',
+  'plans',
+  'cache',
+];
+
+String _openGlueTargetImpl(App app, List<String> args) {
+  if (args.isEmpty) {
+    return 'Usage: /open <target>\n'
+        'Targets: ${_openTargets.join(', ')}';
+  }
+
+  final target = args.first.toLowerCase();
+  final env = app._environment;
+  String path;
+  switch (target) {
+    case 'home':
+      path = env.glueDir;
+    case 'session':
+      final id = app._sessionManager.currentSessionId;
+      if (id == null) {
+        return 'No active session yet — nothing to open.';
+      }
+      path = env.sessionDir(id);
+    case 'sessions':
+      path = env.sessionsDir;
+    case 'logs':
+      path = env.logsDir;
+    case 'skills':
+      path = env.skillsDir;
+    case 'plans':
+      path = env.plansDir;
+    case 'cache':
+      path = env.cacheDir;
+    default:
+      return 'Unknown target "$target". Try: ${_openTargets.join(', ')}';
+  }
+
+  if (!Directory(path).existsSync()) {
+    return '$path\n(not yet created — open skipped)';
+  }
+
+  unawaited(openInFileManager(path));
+  return 'Opening $path';
+}
+
 String _switchToModelRowImpl(App app, CatalogRow row) {
   final factory = app._llmFactory;
   final config = app._config;

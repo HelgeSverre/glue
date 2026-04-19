@@ -19,6 +19,8 @@ class BuiltinCommands {
     required String Function(String skillName) activateSkillByName,
     required String Function() toggleApproval,
     required String Function(List<String> args) runProviderCommand,
+    required String Function() pathsReport,
+    required String Function(List<String> args) openGlueTarget,
   }) {
     final commands = SlashCommandRegistry();
 
@@ -134,6 +136,21 @@ class BuiltinCommands {
       name: 'provider',
       description: 'Manage providers (list, add, remove, test)',
       execute: runProviderCommand,
+    ));
+
+    commands.register(SlashCommand(
+      name: 'paths',
+      description:
+          'Show Glue data paths (config, sessions, logs, skills, plans, cache)',
+      hiddenAliases: ['where'],
+      execute: (_) => pathsReport(),
+    ));
+
+    commands.register(SlashCommand(
+      name: 'open',
+      description: 'Open a Glue directory in your file manager '
+          '(home, session, sessions, logs, skills, plans, cache)',
+      execute: openGlueTarget,
     ));
 
     return commands;
