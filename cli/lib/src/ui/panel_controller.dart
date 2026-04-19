@@ -7,6 +7,7 @@ import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/credentials/credential_store.dart';
 import 'package:glue/src/providers/auth_flow.dart';
+import 'package:glue/src/providers/provider_adapter.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
 import 'package:glue/src/storage/session_store.dart';
 import 'package:glue/src/terminal/styled.dart';
@@ -16,6 +17,15 @@ import 'package:glue/src/ui/model_panel_formatter.dart';
 import 'package:glue/src/ui/panel_modal.dart';
 import 'package:glue/src/ui/select_panel.dart';
 import 'package:glue/src/ui/table_formatter.dart';
+
+enum _ProviderAction {
+  connect('Connect'),
+  disconnect('Disconnect'),
+  test('Test');
+
+  const _ProviderAction(this.label);
+  final String label;
+}
 
 class HistoryPanelEntry {
   final int userMessageIndex;
@@ -499,6 +509,154 @@ class PanelController {
       return 'connected';
     }
     return 'missing';
+  }
+
+  /// Open a filterable picker of all catalogued providers with their current
+  /// connection status. Selection opens an action submenu (Connect /
+  /// Disconnect / Test), mirroring the `_openHistoryActionPanel` pattern.
+  Future<void> openProviderPanel({
+    required GlueConfig config,
+    required void Function(String message) addSystemMessage,
+  }) async {
+    final providers = config.catalogData.providers.values
+        .where((p) => p.enabled)
+        .toList();
+    if (providers.isEmpty) {
+      addSystemMessage('No providers in the catalog.');
+      _render();
+      return;
+    }
+
+    final options = <SelectOption<ProviderDef>>[];
+    for (final p in providers) {
+      final status = _statusLabel(p, config);
+      final line = '${p.name.padRight(18)}  ${p.id.padRight(12).styled.dim}  '
+          '${status.styled.dim}';
+      options.add(
+        SelectOption<ProviderDef>(
+          value: p,
+          label: line,
+          searchText: '${p.id} ${p.name} $status',
+        ),
+      );
+    }
+
+    final panel = SelectPanel<ProviderDef>(
+      title: 'Providers',
+      options: options,
+      searchHint: 'filter providers',
+      barrier: BarrierStyle.dim,
+      width: PanelFluid(0.7, 50),
+      height: PanelFluid(0.6, 12),
+    );
+    _panelStack.add(panel);
+    _render();
+
+    unawaited(panel.selection.then((provider) {
+      if (provider == null) {
+        _panelStack.remove(panel);
+        _render();
+        return;
+      }
+      _openProviderActionPanel(
+        config: config,
+        parentPanel: panel,
+        provider: provider,
+        addSystemMessage: addSystemMessage,
+      );
+    }));
+  }
+
+  void _openProviderActionPanel({
+    required GlueConfig config,
+    required SelectPanel<ProviderDef> parentPanel,
+    required ProviderDef provider,
+    required void Function(String message) addSystemMessage,
+  }) {
+    final adapter = config.adapters.lookup(provider.adapter);
+    final connected = adapter != null &&
+        adapter.isConnected(provider, config.credentials);
+    final isLocal = provider.auth.kind == AuthKind.none;
+
+    final actions = <_ProviderAction>[
+      if (!connected && !isLocal) _ProviderAction.connect,
+      if (connected) _ProviderAction.disconnect,
+      _ProviderAction.test,
+    ];
+    final lines = actions.map((a) => a.label).toList();
+
+    final actionPanel = PanelModal(
+      title: provider.name,
+      lines: lines,
+      barrier: BarrierStyle.dim,
+      height: PanelFixed(lines.length + 2),
+      width: PanelFixed(32),
+      selectable: true,
+    );
+    _panelStack.add(actionPanel);
+    _render();
+
+    actionPanel.selection.then((idx) async {
+      _panelStack.remove(actionPanel);
+      _panelStack.remove(parentPanel);
+      if (idx == null) {
+        _render();
+        return;
+      }
+      final action = actions[idx];
+      switch (action) {
+        case _ProviderAction.connect:
+          await openProviderAdd(
+            config: config,
+            providerId: provider.id,
+            addSystemMessage: addSystemMessage,
+          );
+        case _ProviderAction.disconnect:
+          config.credentials.remove(provider.id);
+          final envVar = provider.auth.envVar;
+          if (envVar != null && config.credentials.readEnv(envVar) != null) {
+            addSystemMessage(
+              'Forgot stored ${provider.name}. '
+              '\$$envVar is still set and will keep being used.',
+            );
+          } else {
+            addSystemMessage('Forgot stored ${provider.name}.');
+          }
+          _render();
+        case _ProviderAction.test:
+          if (adapter == null) {
+            addSystemMessage('No adapter for "${provider.adapter}".');
+            _render();
+            return;
+          }
+          if (isLocal) {
+            addSystemMessage('${provider.name}: ok (no auth).');
+            _render();
+            return;
+          }
+          final firstModelId = provider.models.keys.isEmpty
+              ? '?'
+              : provider.models.keys.first;
+          final resolved = config.resolveProvider(
+            ModelRef(providerId: provider.id, modelId: firstModelId),
+          );
+          final health = adapter.validate(resolved);
+          switch (health) {
+            case ProviderHealth.ok:
+              addSystemMessage('${provider.name}: ok.');
+            case ProviderHealth.missingCredential:
+              addSystemMessage(
+                '${provider.name}: not connected. '
+                'Run /provider add ${provider.id}.',
+              );
+            case ProviderHealth.unknownAdapter:
+              addSystemMessage(
+                '${provider.name}: adapter failed validation.',
+              );
+          }
+          _render();
+      }
+    });
   }
 
   void _openHistoryActionPanel({

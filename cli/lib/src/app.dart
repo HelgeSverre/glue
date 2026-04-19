@@ -13,7 +13,6 @@ import 'package:glue/src/agent/agent_manager.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/commands/builtin_commands.dart';
 import 'package:glue/src/commands/slash_commands.dart';
-import 'package:glue/src/catalog/model_catalog.dart';
 import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/config/glue_config.dart';

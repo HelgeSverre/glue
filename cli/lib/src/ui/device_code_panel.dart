@@ -8,6 +8,7 @@ library;
 import 'dart:async';
 import 'dart:math';
 
+import 'package:glue/src/core/url_launcher.dart';
 import 'package:glue/src/providers/auth_flow.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
 import 'package:glue/src/terminal/styled.dart';
@@ -66,11 +67,18 @@ class DeviceCodePanel implements PanelOverlay {
   @override
   bool handleEvent(TerminalEvent event) {
     if (isComplete) return false;
-    if (event case KeyEvent(key: Key.escape)) {
-      cancel();
-      return true;
+    switch (event) {
+      case KeyEvent(key: Key.escape):
+        cancel();
+        return true;
+      case KeyEvent(key: Key.enter):
+        // Fire-and-forget: if the launcher fails the user still has the URL
+        // on screen (with OSC-8 hyperlink on supporting terminals).
+        unawaited(openInBrowser(flow.verificationUri));
+        return true;
+      default:
+        return true;
     }
-    return true;
   }
 
   @override
@@ -97,9 +105,11 @@ class DeviceCodePanel implements PanelOverlay {
       AuthFlowFailed(:final reason) => '✗  Failed: $reason',
     };
 
+    final linkedUri =
+        osc8Link(flow.verificationUri, flow.verificationUri).styled.cyan;
     final content = <String>[
       '',
-      ' 1. Open  ${flow.verificationUri.styled.cyan}',
+      ' 1. Open  $linkedUri',
       ' 2. Enter code  ${flow.userCode.styled.bold}',
       ' 3. Approve in your browser',
       '',
@@ -108,7 +118,7 @@ class DeviceCodePanel implements PanelOverlay {
     while (content.length < panelH - 2) {
       content.add('');
     }
-    content.add(' ${'Esc cancel'.styled.dim}');
+    content.add(' ${'Enter open in browser · Esc cancel'.styled.dim}');
 
     return _composeModal(
       title: 'Connect ${flow.providerName}',

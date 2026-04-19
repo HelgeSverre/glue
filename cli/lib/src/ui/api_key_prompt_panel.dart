@@ -106,7 +106,10 @@ class ApiKeyPromptPanel implements PanelOverlay {
         ' ${'[using \$$envVar — leave blank to keep]'.styled.dim}',
       );
     } else if (helpUrl != null) {
-      content.add(' ${'Get one at'.styled.dim} $helpUrl');
+      final url = helpUrl!;
+      content.add(
+        ' ${'Get one at'.styled.dim} ${osc8Link(url, url).styled.cyan}',
+      );
     }
     while (content.length < panelH - 2) {
       content.add('');

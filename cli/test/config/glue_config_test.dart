@@ -24,7 +24,7 @@ void main() {
         environment: _envWith(home: home),
       );
       expect(config.activeModel.providerId, 'anthropic');
-      expect(config.activeModel.modelId, 'claude-sonnet-4.6');
+      expect(config.activeModel.modelId, 'claude-sonnet-4-6');
     });
 
     test('--model CLI arg takes priority', () {

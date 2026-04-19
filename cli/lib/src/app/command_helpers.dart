@@ -266,7 +266,15 @@ String _runProviderCommandImpl(App app, List<String> args) {
   switch (subcommand) {
     case 'list':
     case 'ls':
-      return _formatProviderList(config);
+      // Opens a SelectPanel over all providers with status; selection routes
+      // into the action submenu (Connect / Disconnect / Test).
+      unawaited(
+        app._panels.openProviderPanel(
+          config: config,
+          addSystemMessage: app._addSystemMessage,
+        ),
+      );
+      return '';
     case 'add':
       unawaited(
         app._panels.openProviderAdd(
@@ -286,51 +294,6 @@ String _runProviderCommandImpl(App app, List<String> args) {
     default:
       return 'Usage: /provider [list|add|remove|test] [<id>]';
   }
-}
-
-String _formatProviderList(GlueConfig config) {
-  final providers = config.catalogData.providers.values
-      .where((p) => p.enabled)
-      .toList();
-  if (providers.isEmpty) return 'No providers configured.';
-
-  final buf = StringBuffer('Providers\n');
-  for (final p in providers) {
-    final status = _providerStatus(p, config);
-    final source = _providerSource(p, config);
-    buf.writeln('  ${p.id.padRight(12)}  ${status.padRight(12)}  $source');
-  }
-  return buf.toString();
-}
-
-String _providerStatus(ProviderDef p, GlueConfig config) {
-  if (p.auth.kind == AuthKind.none) return 'no auth';
-  final adapter = config.adapters.lookup(p.adapter);
-  if (adapter != null && adapter.isConnected(p, config.credentials)) {
-    return 'connected';
-  }
-  return 'missing';
-}
-
-String _providerSource(ProviderDef p, GlueConfig config) {
-  return switch (p.auth.kind) {
-    AuthKind.none => 'local',
-    AuthKind.oauth => config.credentials.getField(p.id, 'github_token') != null
-        ? 'oauth (stored)'
-        : '',
-    AuthKind.apiKey => _apiKeySource(p, config),
-  };
-}
-
-String _apiKeySource(ProviderDef p, GlueConfig config) {
-  final envVar = p.auth.envVar;
-  if (envVar != null && config.credentials.readEnv(envVar) != null) {
-    return 'env (\$$envVar)';
-  }
-  if (config.credentials.getField(p.id, 'api_key') != null) {
-    return 'stored';
-  }
-  return '';
 }
 
 String _providerRemove(GlueConfig config, String id) {

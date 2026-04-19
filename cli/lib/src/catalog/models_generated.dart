@@ -9,7 +9,7 @@ const ModelCatalog bundledCatalog = ModelCatalog(
   version: 1,
   updatedAt: '2026-04-19',
   defaults: DefaultsConfig(
-    model: 'anthropic/claude-sonnet-4.6',
+    model: 'anthropic/claude-sonnet-4-6',
     smallModel: 'openai/gpt-5.4-mini',
     localModel: 'ollama/qwen2.5-coder:32b',
   ),
@@ -43,8 +43,8 @@ const ModelCatalog bundledCatalog = ModelCatalog(
       ),
       requestHeaders: {},
       models: {
-        'claude-sonnet-4.6': ModelDef(
-          id: 'claude-sonnet-4.6',
+        'claude-sonnet-4-6': ModelDef(
+          id: 'claude-sonnet-4-6',
           name: 'Claude Sonnet 4.6',
           recommended: true,
           isDefault: true,
@@ -63,8 +63,8 @@ const ModelCatalog bundledCatalog = ModelCatalog(
           cost: 'high',
           notes: 'Default high-quality coding model.',
         ),
-        'claude-opus-4.6': ModelDef(
-          id: 'claude-opus-4.6',
+        'claude-opus-4-6': ModelDef(
+          id: 'claude-opus-4-6',
           name: 'Claude Opus 4.6',
           recommended: true,
           isDefault: false,
@@ -96,6 +96,46 @@ const ModelCatalog bundledCatalog = ModelCatalog(
           cost: 'low',
           notes:
               'Good small_model candidate for titles, summaries, and quick checks.',
+        ),
+        'claude-sonnet-4-7': ModelDef(
+          id: 'claude-sonnet-4-7',
+          name: 'Claude Sonnet 4.7',
+          recommended: true,
+          isDefault: false,
+          capabilities: {
+            'chat',
+            'coding',
+            'files',
+            'json',
+            'reasoning',
+            'tools',
+            'vision',
+          },
+          contextWindow: 200000,
+          maxOutputTokens: null,
+          speed: 'standard',
+          cost: 'high',
+          notes: 'Latest Sonnet model available for selection.',
+        ),
+        'claude-opus-4-7': ModelDef(
+          id: 'claude-opus-4-7',
+          name: 'Claude Opus 4.7',
+          recommended: true,
+          isDefault: false,
+          capabilities: {
+            'chat',
+            'coding',
+            'files',
+            'json',
+            'reasoning',
+            'tools',
+            'vision',
+          },
+          contextWindow: 200000,
+          maxOutputTokens: null,
+          speed: 'slower',
+          cost: 'premium',
+          notes: 'Latest Opus model available for selection.',
         ),
       },
     ),
@@ -145,25 +185,6 @@ const ModelCatalog bundledCatalog = ModelCatalog(
           speed: 'fast',
           cost: 'low',
           notes: 'Default small_model candidate.',
-        ),
-        'gpt-5.3-codex': ModelDef(
-          id: 'gpt-5.3-codex',
-          name: 'GPT-5.3 Codex',
-          recommended: true,
-          isDefault: false,
-          capabilities: {
-            'chat',
-            'coding',
-            'files',
-            'json',
-            'reasoning',
-            'tools',
-          },
-          contextWindow: 400000,
-          maxOutputTokens: null,
-          speed: 'standard',
-          cost: 'high',
-          notes: 'Coding-specialized model.',
         ),
         'gpt-5.2': ModelDef(
           id: 'gpt-5.2',
@@ -395,8 +416,8 @@ const ModelCatalog bundledCatalog = ModelCatalog(
       ),
       requestHeaders: {},
       models: {
-        'claude-sonnet-4.6': ModelDef(
-          id: 'claude-sonnet-4.6',
+        'claude-sonnet-4-6': ModelDef(
+          id: 'claude-sonnet-4-6',
           name: 'Claude Sonnet 4.6 (via Copilot)',
           recommended: true,
           isDefault: false,
@@ -439,8 +460,8 @@ const ModelCatalog bundledCatalog = ModelCatalog(
         'X-Title': 'Glue',
       },
       models: {
-        'anthropic/claude-sonnet-4.6': ModelDef(
-          id: 'anthropic/claude-sonnet-4.6',
+        'anthropic/claude-sonnet-4-6': ModelDef(
+          id: 'anthropic/claude-sonnet-4-6',
           name: 'Claude Sonnet 4.6 via OpenRouter',
           recommended: true,
           isDefault: false,
