@@ -6,6 +6,26 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Added
 
+- **`glue --where`** — prints `GLUE_HOME` and every resolved path
+  (`config.yaml`, `preferences.json`, `credentials.json`, `models.yaml`,
+  `sessions/`, `logs/`, `cache/`, `skills/`, `plans/`) with an exists / not-yet
+  marker. Useful on a fresh install to see where Glue will read and write.
+- **`$GLUE_HOME` environment variable** — overrides the default
+  `~/.glue` root. Every on-disk path (sessions, logs, cache, credentials,
+  config) moves with it. Documented in `docs/reference/config-yaml.md` and
+  the Installation / Configuration docs.
+- **Installer script** at `getglue.dev/install.sh` — POSIX `sh`, detects
+  `linux|macos|windows × x64|arm64`, pulls the matching binary from the
+  latest GitHub Release, verifies the `.sha256`, drops it in
+  `~/.local/bin` (overridable via `--dir` or `$GLUE_INSTALL_DIR`).
+  Supports `--version vX.Y.Z` for pinned installs.
+- **`ToolCallPhase.cancelled`** — distinct from `denied` (never ran) and
+  `error` (ran but failed). Agent cancel now marks every in-flight tool —
+  including ones awaiting approval — as `cancelled` instead of overloading
+  `error`.
+- **TUI behavior contract** — `docs/reference/tui-behavior.md` codifies
+  the alt-screen, scrollback, resize, tool-phase, spinner, focus-priority,
+  wrapping, and glyph rules the TUI follows today.
 - **CLI prompt arguments and print mode** — pass prompts directly from
   the command line for non-interactive use:
   - `glue "review my code"` — positional prompt argument
@@ -40,8 +60,19 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Changed
 
-- Observability sink error handling uses `onError` callbacks instead
-  of writing directly to stderr (Langfuse and OTel sinks)
+- **Resize preserves scroll position.** `UserResize` no longer snaps the
+  transcript back to the tail; the render pipeline clamps any out-of-range
+  offset after the viewport changes.
+- **`Ctrl+End` jumps to the bottom** and resumes follow-tail. Plain `End`
+  stays reserved for the line editor (cursor-to-end-of-line).
+- **`/status` is now a hidden alias of `/info`.** One command in help +
+  autocomplete; muscle memory for `/status` keeps working.
+- **Release workflow overhaul** — five-way matrix
+  (`linux-x64 / linux-arm64 / macos-x64 / macos-arm64 / windows-x64.exe`),
+  per-asset `.sha256`, aggregated `SHA256SUMS`, smoke-test of every binary,
+  prerelease auto-flag for tags containing `-`.
+- **GH Action version audit.** `actions/cache v4 → v5` (Node 24);
+  everything else already on current major.
 - Status bar reformatted: bold mode indicator on left, model/mode/
   cwd as right-aligned segments with `│` separators
 - `GlueConfig.load()` no longer accepts `cliProvider` parameter
@@ -49,8 +80,22 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Fixed
 
+- **Spinner no longer stuck after cancel.** `_cancelAgentImpl` now stops
+  the spinner before flipping mode; `_cancelBashImpl` mirrors the pattern
+  defensively.
+- **Tool phase no longer stuck on `awaiting approval` after cancel** —
+  approval-modal-open cancels now transition to `cancelled` too.
 - Sema scripting skill documentation examples corrected (8 runtime
   errors fixed in documented code)
+
+### Removed
+
+- **Interaction modes** (`code` / `architect` / `ask`), plan-mode UI,
+  `GLUE_INTERACTION_MODE` env var.
+- **OTEL / Langfuse / DevTools observability sinks** —
+  `~/.glue/logs/spans-YYYY-MM-DD.jsonl` is the single local trace log
+  now. (Stale Unreleased entries below still describe these removed
+  sinks; treat them as historical context, not ship-now features.)
 
 ---
 
