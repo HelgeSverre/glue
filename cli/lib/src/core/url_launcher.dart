@@ -1,9 +1,16 @@
 /// Opens URLs in the user's default browser.
 ///
 /// Platform-agnostic wrapper over the usual open-a-URL commands:
-///   - macOS:   `open <url>`
-///   - Windows: `cmd /c start "" <url>` (empty title avoids window-title parsing)
-///   - other:   `xdg-open <url>` (Linux, BSD, Unix-likes)
+///   - macOS:   `open <url>`                         (argv, no shell)
+///   - Windows: `rundll32 url.dll,FileProtocolHandler <url>`
+///              (argv, no shell — avoids the `cmd /c start` metachar
+///              interpretation that would treat `&`, `^`, `|` etc. as
+///              shell operators on URLs merged from untrusted catalogs)
+///   - other:   `xdg-open <url>`                     (Linux, BSD, Unix-likes)
+///
+/// URLs are validated before launch: only `http`/`https` schemes are allowed
+/// and any character that cmd.exe would special-case (`& | ^ < > " ` `` ` ``
+/// plus control chars) is rejected even on non-Windows, as defence in depth.
 ///
 /// The runner is injectable so tests don't spawn real processes.
 library;
@@ -15,13 +22,15 @@ typedef ProcessRunner = Future<ProcessResult> Function(
   List<String> arguments,
 );
 
-/// Open [url] in the default browser. Returns true on success (exit 0).
-/// Never throws — failures fall through as `false` so the caller can decide
-/// whether to surface them (e.g. "couldn't open browser; copy the URL").
+/// Open [url] in the default browser. Returns false (never throws) when:
+///   - [url] isn't http/https or contains shell metacharacters
+///   - the launched command exits non-zero
+///   - the launcher itself throws (`ProcessException`, etc.)
 Future<bool> openInBrowser(
   String url, {
   ProcessRunner? runner,
 }) async {
+  if (!_isSafeHttpUrl(url)) return false;
   final run = runner ?? Process.run;
   final (exe, args) = _commandFor(url);
   try {
@@ -32,8 +41,26 @@ Future<bool> openInBrowser(
   }
 }
 
+bool _isSafeHttpUrl(String url) {
+  if (url.isEmpty) return false;
+  final uri = Uri.tryParse(url);
+  if (uri == null) return false;
+  if (uri.scheme != 'http' && uri.scheme != 'https') return false;
+  // Reject chars that cmd.exe / PowerShell parse as shell operators, plus
+  // control chars and anything outside printable ASCII. Legitimate URLs
+  // percent-encode these.
+  const blocked = {'&', '|', '^', '<', '>', '"', '`', r'$', '\\'};
+  for (final codeUnit in url.codeUnits) {
+    if (codeUnit < 0x20 || codeUnit > 0x7e) return false;
+    if (blocked.contains(String.fromCharCode(codeUnit))) return false;
+  }
+  return true;
+}
+
 (String, List<String>) _commandFor(String url) {
   if (Platform.isMacOS) return ('open', [url]);
-  if (Platform.isWindows) return ('cmd', ['/c', 'start', '', url]);
+  if (Platform.isWindows) {
+    return ('rundll32', ['url.dll,FileProtocolHandler', url]);
+  }
   return ('xdg-open', [url]);
 }

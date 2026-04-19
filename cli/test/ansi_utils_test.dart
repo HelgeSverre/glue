@@ -23,9 +23,9 @@ void main() {
       );
     });
 
-    test('handles empty URL', () {
-      final result = osc8Link('');
-      expect(result, equals('\x1b]8;;\x07\x1b]8;;\x07'));
+    test('empty URL returns plain display text (no hyperlink envelope)', () {
+      expect(osc8Link(''), equals(''));
+      expect(osc8Link('', 'Click me'), equals('Click me'));
     });
 
     test('handles URL with special characters', () {

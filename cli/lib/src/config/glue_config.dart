@@ -120,11 +120,16 @@ class GlueConfig {
   /// Resolve [ref] against the loaded catalog and credential store.
   ///
   /// Throws [ConfigError] when the provider is unknown.
-  ResolvedProvider resolveProvider(ModelRef ref) {
-    final def = catalogData.providers[ref.providerId];
+  ResolvedProvider resolveProvider(ModelRef ref) =>
+      resolveProviderById(ref.providerId);
+
+  /// Resolve a provider without requiring a model id — useful for health
+  /// checks and action menus where no particular model is in play.
+  ResolvedProvider resolveProviderById(String providerId) {
+    final def = catalogData.providers[providerId];
     if (def == null) {
       throw ConfigError(
-        'unknown provider "${ref.providerId}". '
+        'unknown provider "$providerId". '
         'Available: ${catalogData.providers.keys.join(", ")}.',
       );
     }

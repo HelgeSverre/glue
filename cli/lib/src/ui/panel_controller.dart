@@ -18,13 +18,33 @@ import 'package:glue/src/ui/panel_modal.dart';
 import 'package:glue/src/ui/select_panel.dart';
 import 'package:glue/src/ui/table_formatter.dart';
 
-enum _ProviderAction {
+/// Actions offered on a selected provider in `/provider`'s action submenu.
+/// Public so the list-builder ([providerActionsFor]) can be unit-tested.
+enum ProviderAction {
   connect('Connect'),
   disconnect('Disconnect'),
   test('Test');
 
-  const _ProviderAction(this.label);
+  const ProviderAction(this.label);
   final String label;
+}
+
+/// Decide which actions `_openProviderActionPanel` should show for a given
+/// provider, given its state.
+///
+/// - Local providers (auth: none) can only be tested — there's nothing to
+///   connect to or disconnect from.
+/// - Remote providers show Connect-or-Disconnect depending on state, plus
+///   Test.
+List<ProviderAction> providerActionsFor({
+  required bool connected,
+  required bool isLocal,
+}) {
+  if (isLocal) return const [ProviderAction.test];
+  return [
+    connected ? ProviderAction.disconnect : ProviderAction.connect,
+    ProviderAction.test,
+  ];
 }
 
 class HistoryPanelEntry {
@@ -577,11 +597,10 @@ class PanelController {
         adapter != null && adapter.isConnected(provider, config.credentials);
     final isLocal = provider.auth.kind == AuthKind.none;
 
-    final actions = <_ProviderAction>[
-      if (!connected && !isLocal) _ProviderAction.connect,
-      if (connected) _ProviderAction.disconnect,
-      _ProviderAction.test,
-    ];
+    final actions = providerActionsFor(
+      connected: connected,
+      isLocal: isLocal,
+    );
     final lines = actions.map((a) => a.label).toList();
 
     final actionPanel = PanelModal(
@@ -604,13 +623,13 @@ class PanelController {
       }
       final action = actions[idx];
       switch (action) {
-        case _ProviderAction.connect:
+        case ProviderAction.connect:
           await openProviderAdd(
             config: config,
             providerId: provider.id,
             addSystemMessage: addSystemMessage,
           );
-        case _ProviderAction.disconnect:
+        case ProviderAction.disconnect:
           config.credentials.remove(provider.id);
           final envVar = provider.auth.envVar;
           if (envVar != null && config.credentials.readEnv(envVar) != null) {
@@ -622,7 +641,7 @@ class PanelController {
             addSystemMessage('Forgot stored ${provider.name}.');
           }
           _render();
-        case _ProviderAction.test:
+        case ProviderAction.test:
           if (adapter == null) {
             addSystemMessage('No adapter for "${provider.adapter}".');
             _render();
@@ -633,11 +652,7 @@ class PanelController {
             _render();
             return;
           }
-          final firstModelId =
-              provider.models.keys.isEmpty ? '?' : provider.models.keys.first;
-          final resolved = config.resolveProvider(
-            ModelRef(providerId: provider.id, modelId: firstModelId),
-          );
+          final resolved = config.resolveProviderById(provider.id);
           final health = adapter.validate(resolved);
           switch (health) {
             case ProviderHealth.ok:

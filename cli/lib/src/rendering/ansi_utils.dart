@@ -6,9 +6,14 @@ import 'dart:math';
 /// render this as a clickable link. Terminals that don't support OSC 8
 /// simply show the visible text — graceful degradation.
 ///
+/// Empty [url] returns the plain display text; this avoids emitting an
+/// empty OSC-8 envelope (`\x1b]8;;\x07…\x1b]8;;\x07`) that some terminals
+/// would render as a visible artifact.
+///
 /// Protocol: \x1b]8;;URL\x07VISIBLE_TEXT\x1b]8;;\x07
 String osc8Link(String url, [String? text]) {
   final display = text ?? url;
+  if (url.isEmpty) return display;
   return '\x1b]8;;$url\x07$display\x1b]8;;\x07';
 }
 
