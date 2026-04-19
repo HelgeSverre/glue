@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
 import 'package:glue/src/terminal/styled.dart';
+import 'package:glue/src/ui/autocomplete_overlay.dart';
 
 class _Candidate {
   final String displayName;
@@ -20,7 +21,7 @@ class _TreeEntry {
   _TreeEntry(this.relPath, this.name, this.isDirectory);
 }
 
-class AtFileHint {
+class AtFileHint implements AutocompleteOverlay {
   final String cwd;
   static const maxVisible = AppConstants.maxVisibleDropdownItems;
 
@@ -38,16 +39,21 @@ class AtFileHint {
 
   AtFileHint({String? cwd}) : cwd = cwd ?? Directory.current.path;
 
+  @override
   bool get active => _active;
+  @override
   int get selected => _selected;
+  @override
   int get matchCount => _matches.length;
   int get tokenStart => _tokenStart;
 
+  @override
   int get overlayHeight {
     if (!_active || _matches.isEmpty) return 0;
     return _matches.length > maxVisible ? maxVisible : _matches.length;
   }
 
+  @override
   void dismiss() {
     _active = false;
     _matches = [];
@@ -242,27 +248,39 @@ class AtFileHint {
     return entries;
   }
 
+  @override
   void moveUp() {
     if (!_active || _matches.isEmpty) return;
     _selected = (_selected - 1) % _matches.length;
   }
 
+  @override
   void moveDown() {
     if (!_active || _matches.isEmpty) return;
     _selected = (_selected + 1) % _matches.length;
   }
 
-  String? accept() {
+  /// Accept the current selection by splicing the `@path` token into
+  /// [buffer] at [_tokenStart]…[cursor]. Returns the new buffer and
+  /// cursor position.
+  @override
+  AcceptResult? accept(String buffer, int cursor) {
     if (!_active || _matches.isEmpty) return null;
     final candidate = _matches[_selected];
     final path = candidate.completionPath;
+    final token = path.contains(' ') ? '@"$path"' : '@$path';
+    // Capture token start before `dismiss()` clears it.
+    final start = _tokenStart;
     dismiss();
-    if (path.contains(' ')) {
-      return '@"$path"';
-    }
-    return '@$path';
+
+    final before = buffer.substring(0, start);
+    final after = cursor < buffer.length ? buffer.substring(cursor) : '';
+    final newText = '$before$token$after';
+    final newCursor = before.length + token.length;
+    return AcceptResult(newText, newCursor);
   }
 
+  @override
   List<String> render(int width) {
     if (!_active || _matches.isEmpty) return [];
 

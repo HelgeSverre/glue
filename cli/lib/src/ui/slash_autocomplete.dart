@@ -2,6 +2,7 @@ import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
 import 'package:glue/src/terminal/styled.dart';
+import 'package:glue/src/ui/autocomplete_overlay.dart';
 
 /// A candidate in the autocomplete list.
 class _Candidate {
@@ -15,7 +16,7 @@ class _Candidate {
 /// Activates when the input buffer starts with `/` (no spaces),
 /// filters commands by prefix, and tracks selection. The owning
 /// widget (App) is responsible for intercepting keys and rendering.
-class SlashAutocomplete {
+class SlashAutocomplete implements AutocompleteOverlay {
   final SlashCommandRegistry _registry;
 
   bool _active = false;
@@ -26,16 +27,16 @@ class SlashAutocomplete {
 
   SlashAutocomplete(this._registry);
 
-  /// Whether the autocomplete popup is currently shown.
+  @override
   bool get active => _active;
 
-  /// The currently selected index.
+  @override
   int get selected => _selected;
 
-  /// The current matches.
+  @override
   int get matchCount => _matches.length;
 
-  /// Dismiss the autocomplete popup.
+  @override
   void dismiss() {
     _active = false;
     _matches = [];
@@ -82,13 +83,13 @@ class SlashAutocomplete {
     _selected = _selected.clamp(0, _matches.length - 1);
   }
 
-  /// Move selection up.
+  @override
   void moveUp() {
     if (!_active || _matches.isEmpty) return;
     _selected = (_selected - 1) % _matches.length;
   }
 
-  /// Move selection down.
+  @override
   void moveDown() {
     if (!_active || _matches.isEmpty) return;
     _selected = (_selected + 1) % _matches.length;
@@ -100,18 +101,22 @@ class SlashAutocomplete {
     return '/${_matches[_selected].name}';
   }
 
-  /// Accept the current selection. Returns the full command text
-  /// (e.g. `/help`) to fill into the editor.
-  String? accept() {
+  /// Accept the current selection. Returns the full command as the new
+  /// buffer, with the cursor at the end. Slash commands replace the
+  /// entire buffer — [buffer] and [cursor] are ignored.
+  @override
+  AcceptResult? accept(String buffer, int cursor) {
     if (!_active || _matches.isEmpty) return null;
     final name = _matches[_selected].name;
+    final text = '/$name';
     dismiss();
-    return '/$name';
+    return AcceptResult(text, text.length);
   }
 
   /// Render the popup as lines to be painted in the overlay zone.
   ///
   /// Each line is padded to [width] with the appropriate background.
+  @override
   List<String> render(int width) {
     if (!_active || _matches.isEmpty) return [];
 
@@ -140,6 +145,7 @@ class SlashAutocomplete {
   }
 
   /// How many rows the overlay needs.
+  @override
   int get overlayHeight {
     if (!_active || _matches.isEmpty) return 0;
     return _matches.length > maxVisible ? maxVisible : _matches.length;

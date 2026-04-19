@@ -6,12 +6,14 @@
 ///   - ../docs/reference/runtime-capabilities.yaml
 ///   - ../docs/reference/config-yaml.md
 ///   - ../docs/reference/session-storage.md
+///   - lib/src/ui/theme_tokens.dart (parsed for TUI design tokens)
 ///
 /// Outputs:
 ///   - ../website/generated/models.md
 ///   - ../website/generated/runtime-matrix.md
 ///   - ../website/generated/config-examples.md
 ///   - ../website/generated/session-events.md
+///   - ../website/generated/brand-tokens.md
 ///
 /// Every output begins with a `<!-- Generated from <source>. Do not edit. -->`
 /// header so editors know not to hand-edit.
@@ -28,11 +30,13 @@ const _modelsYamlPath = '../docs/reference/models.yaml';
 const _runtimeYamlPath = '../docs/reference/runtime-capabilities.yaml';
 const _configMdPath = '../docs/reference/config-yaml.md';
 const _sessionMdPath = '../docs/reference/session-storage.md';
+const _themeTokensPath = 'lib/src/ui/theme_tokens.dart';
 
 const _modelsOut = '../website/generated/models.md';
 const _runtimeOut = '../website/generated/runtime-matrix.md';
 const _configOut = '../website/generated/config-examples.md';
 const _sessionOut = '../website/generated/session-events.md';
+const _brandOut = '../website/generated/brand-tokens.md';
 
 void main(List<String> args) {
   final outDir = Directory('../website/generated');
@@ -42,8 +46,9 @@ void main(List<String> args) {
   _writeRuntimeMatrix();
   _writeConfigExamples();
   _writeSessionEvents();
+  _writeBrandTokens();
 
-  print('Generated 4 files in ../website/generated/');
+  print('Generated 5 files in ../website/generated/');
 }
 
 // ---------------------------------------------------------------------------
@@ -323,4 +328,118 @@ class _Event {
   _Event({required this.name, required this.fields});
   final String name;
   final String fields;
+}
+
+// ---------------------------------------------------------------------------
+// Brand / terminal design tokens (parsed from theme_tokens.dart)
+// ---------------------------------------------------------------------------
+
+void _writeBrandTokens() {
+  final src = File(_themeTokensPath).readAsStringSync();
+
+  // Human-facing description for each known token. Keep in sync with
+  // theme_tokens.dart; unknown tokens fall back to the literal field name.
+  const descriptions = <String, String>{
+    'textPrimary': 'Main transcript text.',
+    'textSecondary': 'Supporting text (timestamps, inline meta).',
+    'textMuted': 'De-emphasised, dim, or placeholder copy.',
+    'accent': 'Brand accent — prompts, highlights, active chip.',
+    'accentSubtle': 'Quieter accent — borders, focused backgrounds.',
+    'surfaceBorder': 'Panel and divider lines.',
+    'surfaceMuted': 'Subtle panel fill.',
+    'focus': 'Focus indicator.',
+    'selection': 'Selected text / row.',
+    'info': 'Informational messages.',
+    'success': 'Successful tool calls, passing tests.',
+    'warning': 'Non-fatal warnings.',
+    'danger': 'Errors and destructive prompts.',
+  };
+
+  // Tones exposed via GlueTone — keep ordered like the enum definition.
+  const tones = <String, String>{
+    'accent': 'Brand accent.',
+    'info': 'Informational.',
+    'success': 'Success, complete, OK.',
+    'warning': 'Non-fatal warning.',
+    'danger': 'Error, destructive.',
+    'muted': 'De-emphasised.',
+  };
+
+  final minimal = _parseThemeMode(src, 'minimal');
+  final hc = _parseThemeMode(src, 'highContrast');
+
+  final sb = StringBuffer();
+  sb.writeln(
+      '<!-- Generated from cli/lib/src/ui/theme_tokens.dart. Do not edit by hand. -->');
+  sb.writeln(
+      '<!-- Re-run: `just site-generate` (or `dart run tool/generate_site_reference.dart` in cli/) -->');
+  sb.writeln();
+  sb.writeln('## Terminal design tokens');
+  sb.writeln();
+  sb.writeln('The TUI ships two theme modes: **minimal** (the default; quiet,');
+  sb.writeln('low-contrast) and **highContrast** (for environments where');
+  sb.writeln('default ANSI contrast is insufficient). Both modes share the');
+  sb.writeln('same token surface; only the ANSI chain differs.');
+  sb.writeln();
+  sb.writeln('> Tokens are ANSI styling chains — read them as calls on a');
+  sb.writeln('> `styled` builder. For example, `bold.yellow` means the text');
+  sb.writeln('> is rendered bold and foreground-yellow.');
+  sb.writeln();
+
+  sb.writeln('### Brand dot');
+  sb.writeln();
+  sb.writeln('The brand dot is `●` (U+25CF). It prefixes section headings,');
+  sb.writeln('selected list items, and prompt rows.');
+  sb.writeln();
+
+  sb.writeln('### Token styling');
+  sb.writeln();
+  sb.writeln('| Token | Minimal | High contrast | Description |');
+  sb.writeln('| --- | --- | --- | --- |');
+  for (final key in descriptions.keys) {
+    final minStyle = minimal[key] ?? 'unstyled';
+    final hcStyle = hc[key] ?? 'unstyled';
+    final desc = descriptions[key]!;
+    sb.writeln('| `$key` | `$minStyle` | `$hcStyle` | $desc |');
+  }
+  sb.writeln();
+
+  sb.writeln('### Tones');
+  sb.writeln();
+  sb.writeln('`GlueTone` maps each semantic role to one of the tokens above,');
+  sb.writeln('so components pick a tone without hardcoding a style.');
+  sb.writeln();
+  sb.writeln('| Tone | Backing token | Description |');
+  sb.writeln('| --- | --- | --- |');
+  for (final entry in tones.entries) {
+    final token = entry.key == 'muted' ? 'textMuted' : entry.key;
+    sb.writeln('| `${entry.key}` | `$token` | ${entry.value} |');
+  }
+  sb.writeln();
+
+  File(_brandOut).writeAsStringSync(sb.toString());
+}
+
+/// Extract `{tokenName: ansiChain}` pairs for a single GlueThemeMode block.
+///
+/// The parser isolates the block between `case GlueThemeMode.<mode>:` and the
+/// next `case` or end of `switch`, then pulls each
+/// `tokenName: (text) => text.styled.<chain>.toString()` line.
+Map<String, String> _parseThemeMode(String src, String mode) {
+  final blockRe = RegExp(
+    'case\\s+GlueThemeMode\\.$mode\\s*:(.*?)(?=case\\s+GlueThemeMode|\\}\\s*\$)',
+    dotAll: true,
+  );
+  final blockMatch = blockRe.firstMatch(src);
+  if (blockMatch == null) return const {};
+  final block = blockMatch.group(1)!;
+
+  final tokenRe = RegExp(
+    r'(\w+):\s*\(text\)\s*=>\s*text\.styled\.([A-Za-z0-9_.()]+?)\.toString\(\)',
+  );
+  final result = <String, String>{};
+  for (final m in tokenRe.allMatches(block)) {
+    result[m.group(1)!] = m.group(2)!;
+  }
+  return result;
 }

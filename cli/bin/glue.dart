@@ -10,13 +10,8 @@ import 'package:path/path.dart' as p;
 
 const appDescription = 'The coding agent that holds it all together.';
 
-const logo = '''
-        .__
-   ____ |  |  __ __   ____
-  / ___\\|  | |  |  \\_/ __ \\
- / /_/  >  |_|  |  /\\  ___/
- \\___  /|____/____/  \\___  >
-/_____/                  \\/''';
+// Yellow dot (#FACC15 via truecolor) + bold "glue" — mirrors the website mark.
+const logo = '\x1b[38;2;250;204;21m\u25cf\x1b[0m \x1b[1mglue\x1b[0m';
 
 void main(List<String> args) async {
   final runner = GlueCommandRunner();

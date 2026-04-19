@@ -1,33 +1,86 @@
 <script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+
 // ── Slim nav (replaces VitePress nav on homepage) ─────────────────────────
 const navLinks = [
   { text: 'Docs',      href: '/docs/getting-started/installation' },
   { text: 'Models',    href: '/models' },
+  { text: 'Features',  href: '/features' },
   { text: 'Roadmap',   href: '/roadmap' },
   { text: 'Changelog', href: '/changelog' },
 ]
 
-// ── Hero screenshot: a realistic Glue session ─────────────────────────────
-// Shown as an illustrative product shot. Not a live demo — stable copy,
-// readable at a glance, balanced for the 2-col hero.
+// ── Hero terminal: animated playback of a real Claude Code session ────────
+// Script is curated + redacted from the actual conversation that built this
+// website. See website/public/demo-script.json.
 interface ShotLine {
   kind: 'prompt' | 'assistant' | 'tool' | 'output' | 'group'
   text: string
+  delay?: number
 }
 
-const shot: ShotLine[] = [
-  { kind: 'prompt',    text: 'explain the retry logic in http_client.dart' },
-  { kind: 'assistant', text: 'Reading the file and tests around it.' },
-  { kind: 'group',     text: 'tool group · 3 calls · 210ms' },
-  { kind: 'tool',      text: 'read  cli/lib/src/web/http_client.dart' },
-  { kind: 'tool',      text: 'grep  retry  cli/test/' },
-  { kind: 'output',    text: '3 matches in http_client_test.dart' },
-  { kind: 'assistant', text: 'Exponential backoff with jitter, capped at 5 attempts.' },
-  { kind: 'prompt',    text: 'add a retry for ECONNRESET' },
-  { kind: 'tool',      text: 'edit  cli/lib/src/web/http_client.dart · +4 −0' },
-  { kind: 'tool',      text: 'run   dart test test/web/http_client_test.dart' },
-  { kind: 'output',    text: '✓ 12 tests passed' },
+interface ShotMeta {
+  workspace: string
+  file: string
+  branch: string
+  model: string
+  runtime: string
+  approval: string
+}
+
+// Fallback script — shown if fetch fails (SSR / no network / offline build).
+const fallbackEvents: ShotLine[] = [
+  { kind: 'prompt',    text: 'fetch task about redoing the website from backlog' },
+  { kind: 'assistant', text: 'Searching the backlog for a website task.' },
+  { kind: 'tool',      text: 'search  backlog://tasks  website docs' },
+  { kind: 'output',    text: 'TASK-23 · Website redesign · 10 subtasks' },
+  { kind: 'prompt',    text: 'see if the plan was deleted in git' },
+  { kind: 'tool',      text: "git log --diff-filter=D -- 'docs/plans/*'" },
+  { kind: 'output',    text: '(no deletion commits found)' },
+  { kind: 'assistant', text: 'Referenced in the task but never committed.' },
 ]
+const fallbackMeta: ShotMeta = {
+  workspace: '~/code/glue',
+  file: 'docs/plans/2026-04-19-website-redesign-plan.md',
+  branch: 'main',
+  model: 'anthropic/claude-sonnet-4.6',
+  runtime: 'host',
+  approval: 'confirm',
+}
+
+const events = ref<ShotLine[]>(fallbackEvents)
+const meta = ref<ShotMeta>(fallbackMeta)
+const visible = ref<number>(0)
+const isRunning = ref<boolean>(false)
+let timer: ReturnType<typeof setTimeout> | null = null
+
+function defaultDelay(kind: ShotLine['kind']): number {
+  switch (kind) {
+    case 'prompt':    return 720
+    case 'assistant': return 560
+    case 'tool':      return 340
+    case 'output':    return 280
+    case 'group':     return 300
+  }
+}
+
+function scheduleNext() {
+  const i = visible.value
+  if (i >= events.value.length) {
+    // pause at the end, then loop
+    timer = setTimeout(() => {
+      visible.value = 0
+      scheduleNext()
+    }, 5200)
+    return
+  }
+  const step = events.value[i]
+  const d = step.delay ?? defaultDelay(step.kind)
+  timer = setTimeout(() => {
+    visible.value = i + 1
+    scheduleNext()
+  }, d)
+}
 
 function gutter(kind: ShotLine['kind']) {
   switch (kind) {
@@ -38,6 +91,57 @@ function gutter(kind: ShotLine['kind']) {
     case 'group':     return '⌄'
   }
 }
+
+const visibleEvents = computed(() => events.value.slice(0, visible.value))
+const caretVisible = computed(() => isRunning.value && visible.value < events.value.length)
+
+async function loadScript() {
+  try {
+    const res = await fetch('/demo-script.json', { cache: 'no-store' })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json()
+    if (Array.isArray(data.events) && data.events.length > 0) {
+      events.value = data.events
+    }
+    if (data.meta) {
+      meta.value = { ...fallbackMeta, ...data.meta }
+    }
+  } catch {
+    // keep fallback
+  }
+}
+
+onMounted(async () => {
+  const prefersReduced =
+    typeof window !== 'undefined' &&
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+
+  await loadScript()
+
+  if (prefersReduced) {
+    visible.value = events.value.length
+    isRunning.value = false
+    return
+  }
+
+  isRunning.value = true
+  visible.value = 1
+  scheduleNext()
+})
+
+onBeforeUnmount(() => {
+  if (timer) clearTimeout(timer)
+  isRunning.value = false
+})
+
+// Auto-scroll the body as new lines land so the latest output is in view.
+const bodyRef = ref<HTMLElement | null>(null)
+watch(visible, async () => {
+  await Promise.resolve()
+  const el = bodyRef.value
+  if (!el) return
+  el.scrollTop = el.scrollHeight
+})
 
 // ── Featured moves ────────────────────────────────────────────────────────
 const moves = [
@@ -169,19 +273,19 @@ const jsonlSample = [
           <div class="shot-frame">
             <div class="shot-head">
               <span class="shot-path">
-                <span class="shot-path-dim">~/code/glue</span>
+                <span class="shot-path-dim">{{ meta.workspace }}</span>
                 <span class="shot-path-sep">/</span>
-                <span>cli/lib/src/web/http_client.dart</span>
+                <span>{{ meta.file }}</span>
               </span>
               <span class="shot-branch">
                 <span class="shot-branch-glyph" aria-hidden="true">⎇</span>
-                main · clean
+                {{ meta.branch }} · clean
               </span>
             </div>
 
-            <div class="shot-body">
+            <div ref="bodyRef" class="shot-body">
               <div
-                v-for="(line, i) in shot"
+                v-for="(line, i) in visibleEvents"
                 :key="i"
                 class="shot-line"
                 :class="`shot-${line.kind}`"
@@ -189,21 +293,27 @@ const jsonlSample = [
                 <span class="shot-gutter" aria-hidden="true">{{ gutter(line.kind) }}</span>
                 <span class="shot-text">{{ line.text }}</span>
               </div>
+              <span v-if="caretVisible" class="shot-caret" aria-hidden="true" />
             </div>
 
             <div class="shot-foot">
               <span class="shot-foot-item">
                 <span class="shot-dot shot-dot-ok" aria-hidden="true" />
-                anthropic/claude-sonnet-4.6
+                {{ meta.model }}
               </span>
               <span class="shot-foot-sep">│</span>
-              <span class="shot-foot-item">runtime: host</span>
+              <span class="shot-foot-item">runtime: {{ meta.runtime }}</span>
               <span class="shot-foot-sep">│</span>
-              <span class="shot-foot-item">approval: confirm</span>
+              <span class="shot-foot-item">approval: {{ meta.approval }}</span>
               <span class="shot-foot-spacer" />
-              <span class="shot-foot-item shot-foot-dim">142 events</span>
+              <span class="shot-foot-item shot-foot-dim">
+                {{ visible }} / {{ events.length }}
+              </span>
             </div>
           </div>
+          <figcaption class="shot-caption">
+            Real Claude Code session from this project — curated, redacted.
+          </figcaption>
         </figure>
       </div>
     </section>
@@ -677,14 +787,52 @@ const jsonlSample = [
   font-family: var(--vp-font-family-mono);
   font-size: 13.5px;
   line-height: 1.75;
-  min-height: 22em;
-  overflow: hidden;
+  height: 24em;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: #2a2b2e transparent;
+}
+
+.shot-body::-webkit-scrollbar {
+  width: 6px;
+}
+.shot-body::-webkit-scrollbar-thumb {
+  background: #2a2b2e;
+  border-radius: 3px;
 }
 
 .shot-line {
   display: grid;
   grid-template-columns: 1.4em 1fr;
   gap: 0.6rem;
+  animation: shot-slide-in 220ms ease-out both;
+}
+
+@keyframes shot-slide-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.shot-caret {
+  display: inline-block;
+  width: 0.55em;
+  height: 1.05em;
+  margin-top: 0.3em;
+  background: var(--accent);
+  animation: shot-blink 1s steps(1) infinite;
+  vertical-align: text-bottom;
+}
+
+@keyframes shot-blink {
+  50% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shot-line,
+  .shot-caret {
+    animation: none;
+  }
 }
 
 .shot-gutter {
@@ -726,6 +874,15 @@ const jsonlSample = [
 .shot-foot-sep { opacity: 0.4; }
 .shot-foot-spacer { flex: 1; }
 .shot-foot-dim { color: var(--fg-3); }
+
+.shot-caption {
+  margin-top: 0.75rem;
+  text-align: right;
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.72rem;
+  color: var(--fg-3);
+  letter-spacing: 0.02em;
+}
 
 .shot-foot-item {
   display: inline-flex;

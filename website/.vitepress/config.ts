@@ -19,21 +19,63 @@ function buildChangelogSidebar(): DefaultTheme.SidebarItem[] {
   const changelogPath = path.join(repoRoot, 'cli', 'CHANGELOG.md')
   if (!fs.existsSync(changelogPath)) return []
   const text = fs.readFileSync(changelogPath, 'utf-8')
-  const versions: { text: string; slug: string }[] = []
-  for (const line of text.split('\n')) {
-    // Matches e.g. `## [Unreleased]` or `## [0.1.0] — Initial development`
-    const match = /^##\s+(.+?)\s*$/.exec(line)
-    if (!match) continue
-    const heading = match[1]
-    if (!/^\[/.test(heading)) continue
-    versions.push({ text: heading, slug: slugify(heading) })
+
+  // Two-pass parse: collect (level, text) heading pairs, then group H3 under
+  // each H2 version. Anchor slugs mirror VitePress' slugify; duplicates within
+  // the same page get -1, -2, … suffixes to match VitePress' output.
+  interface Heading { level: 2 | 3; text: string }
+  const headings: Heading[] = []
+  for (const raw of text.split('\n')) {
+    const m = /^(##+)\s+(.+?)\s*$/.exec(raw)
+    if (!m) continue
+    const level = m[1].length
+    if (level !== 2 && level !== 3) continue
+    headings.push({ level: level as 2 | 3, text: m[2] })
   }
+
+  const slugSeen = new Map<string, number>()
+  const anchorFor = (text: string) => {
+    const base = slugify(text)
+    const n = slugSeen.get(base) ?? 0
+    slugSeen.set(base, n + 1)
+    return n === 0 ? base : `${base}-${n}`
+  }
+
+  const versions: DefaultTheme.SidebarItem[] = []
+  let currentVersion: DefaultTheme.SidebarItem | null = null
+  for (const h of headings) {
+    if (h.level === 2) {
+      if (!/^\[/.test(h.text)) continue
+      const slug = anchorFor(h.text)
+      currentVersion = {
+        text: h.text,
+        link: `/changelog#${slug}`,
+        collapsed: false,
+        items: [],
+      }
+      versions.push(currentVersion)
+    } else if (h.level === 3 && currentVersion) {
+      const slug = anchorFor(h.text)
+      ;(currentVersion.items as DefaultTheme.SidebarItem[]).push({
+        text: h.text,
+        link: `/changelog#${slug}`,
+      })
+    }
+  }
+
+  // Prune empty items arrays so VitePress doesn't render an empty caret.
+  for (const v of versions) {
+    if (Array.isArray(v.items) && v.items.length === 0) {
+      delete (v as { items?: unknown }).items
+    }
+  }
+
   return [
     {
       text: 'Changelog',
       items: [
         { text: 'Top', link: '/changelog' },
-        ...versions.map(v => ({ text: v.text, link: `/changelog#${v.slug}` })),
+        ...versions,
       ],
     },
   ]
@@ -125,7 +167,6 @@ export default defineConfig({
             text: 'Overviews',
             items: [
               { text: 'Why Glue', link: '/why' },
-              { text: 'Features', link: '/features' },
               { text: 'Runtimes', link: '/runtimes' },
               { text: 'Web Tools', link: '/web' },
               { text: 'Sessions', link: '/sessions' },
@@ -135,6 +176,7 @@ export default defineConfig({
         ],
       },
       { text: 'Models', link: '/models' },
+      { text: 'Features', link: '/features' },
       { text: 'Roadmap', link: '/roadmap' },
       { text: 'Changelog', link: '/changelog' },
     ],

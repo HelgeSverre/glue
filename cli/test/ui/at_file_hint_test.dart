@@ -109,8 +109,9 @@ void main() {
     test('accept returns @path', () {
       hint.update('@main', 5);
       expect(hint.active, isTrue);
-      final result = hint.accept();
-      expect(result, '@main.dart');
+      final result = hint.accept('@main', 5);
+      expect(result?.text, '@main.dart');
+      expect(result?.cursor, '@main.dart'.length);
       expect(hint.active, isFalse);
     });
 
@@ -118,16 +119,16 @@ void main() {
       hint.update('@my', 3);
       expect(hint.active, isTrue);
       // 'my dir/' should be a match (directory)
-      final result = hint.accept();
-      expect(result, '@"my dir/"');
+      final result = hint.accept('@my', 3);
+      expect(result?.text, '@"my dir/"');
     });
 
     test('accept returns directory with trailing /', () {
       hint.update('@lib', 4);
       expect(hint.active, isTrue);
       // 'lib/' directory should match
-      final result = hint.accept();
-      expect(result, '@lib/');
+      final result = hint.accept('@lib', 4);
+      expect(result?.text, '@lib/');
     });
 
     test('dismiss clears state', () {
@@ -195,40 +196,36 @@ void main() {
     test('accept for subdirectory file returns full relative path', () {
       hint.update('@lib/app', 8);
       expect(hint.active, isTrue);
-      final result = hint.accept();
-      expect(result, '@lib/app.dart');
+      final result = hint.accept('@lib/app', 8);
+      expect(result?.text, '@lib/app.dart');
     });
 
     test('tokenStart preserved after accept for mid-buffer @mention', () {
-      hint.update('look in the file at @lib', 24);
-      expect(hint.active, isTrue);
-      expect(hint.tokenStart, 20);
-      final start = hint.tokenStart;
-      final accepted = hint.accept();
-      expect(accepted, isNotNull);
-      // Simulate what app.dart does: splice into buffer
       const buffer = 'look in the file at @lib';
       const cursor = 24;
-      final before = buffer.substring(0, start);
-      final after = buffer.substring(cursor);
-      final result = '$before$accepted$after';
-      expect(result, startsWith('look in the file at @lib/'));
-      expect(before, 'look in the file at ');
+      hint.update(buffer, cursor);
+      expect(hint.active, isTrue);
+      expect(hint.tokenStart, 20);
+      final result = hint.accept(buffer, cursor);
+      expect(result, isNotNull);
+      expect(result!.text, startsWith('look in the file at @lib/'));
+      // cursor lands at end of the spliced token
+      expect(result.cursor, result.text.length);
     });
 
     test('recursive fuzzy finds file in nested dir', () {
       hint.update('@config', 7);
       expect(hint.active, isTrue);
       expect(hint.matchCount, greaterThanOrEqualTo(1));
-      final result = hint.accept();
-      expect(result, '@lib/src/config.dart');
+      final result = hint.accept('@config', 7);
+      expect(result?.text, '@lib/src/config.dart');
     });
 
     test('recursive fuzzy finds file at depth 3', () {
       hint.update('@grep', 5);
       expect(hint.active, isTrue);
-      final result = hint.accept();
-      expect(result, '@lib/src/tools/grep.dart');
+      final result = hint.accept('@grep', 5);
+      expect(result?.text, '@lib/src/tools/grep.dart');
     });
 
     test('recursive fuzzy shows relative path in display', () {
@@ -242,15 +239,15 @@ void main() {
     test('recursive fuzzy ranks exact match first', () {
       hint.update('@app', 4);
       expect(hint.active, isTrue);
-      final result = hint.accept();
-      expect(result, '@lib/app.dart');
+      final result = hint.accept('@app', 4);
+      expect(result?.text, '@lib/app.dart');
     });
 
     test('recursive fuzzy prefers shorter paths', () {
       hint.update('@app.dart', 9);
       expect(hint.active, isTrue);
-      final result = hint.accept();
-      expect(result, '@lib/app.dart');
+      final result = hint.accept('@app.dart', 9);
+      expect(result?.text, '@lib/app.dart');
     });
 
     test('recursive fuzzy skips hidden directories', () {

@@ -112,19 +112,19 @@ void main() {
       ac.update('/c', 2);
       expect(ac.active, isTrue);
       ac.moveDown(); // select compact
-      final result = ac.accept();
-      expect(result, '/compact');
+      final result = ac.accept('', 0);
+      expect(result?.text, '/compact');
       expect(ac.active, isFalse);
     });
 
     test('accept returns first match by default', () {
       ac.update('/c', 2);
-      final result = ac.accept();
-      expect(result, '/clear');
+      final result = ac.accept('', 0);
+      expect(result?.text, '/clear');
     });
 
     test('accept returns null when inactive', () {
-      final result = ac.accept();
+      final result = ac.accept('', 0);
       expect(result, isNull);
     });
 

@@ -77,6 +77,8 @@ Yellow is an **accent**, not decoration. Use it for focus states, the
 Do not use uppercase styling on headings. Do not stretch letter-spacing. The
 default theme metrics are the canonical ones.
 
+<!--@include: ./generated/brand-tokens.md-->
+
 ## Voice
 
 - Say what Glue does; show commands and config; avoid marketing hype.

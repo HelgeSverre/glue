@@ -93,103 +93,53 @@ void _handleTerminalEventImpl(App app, TerminalEvent event) {
         return;
       }
 
-      // Autocomplete intercepts keys when active.
-      if (app._autocomplete.active) {
-        if (event case KeyEvent(key: Key.up)) {
-          app._autocomplete.moveUp();
-          app._render();
-          return;
-        }
-        if (event case KeyEvent(key: Key.down)) {
-          app._autocomplete.moveDown();
-          app._render();
-          return;
-        }
-        if (event case KeyEvent(key: Key.tab)) {
-          final accepted = app._autocomplete.accept();
-          if (accepted != null) {
-            app.editor.setText(accepted);
-          }
-          app._render();
-          return;
-        }
-        if (event case KeyEvent(key: Key.enter)) {
-          if (app._autocomplete.selectedText == app.editor.text) {
-            app._autocomplete.dismiss();
-            // Fall through to normal submit handling.
-          } else {
-            final accepted = app._autocomplete.accept();
-            if (accepted != null) {
-              app.editor.setText(accepted);
-            }
-            app._render();
-            return;
-          }
-        }
-        if (event case KeyEvent(key: Key.escape)) {
-          app._autocomplete.dismiss();
-          app._render();
-          return;
+      // Any active autocomplete overlay intercepts Up/Down/Tab/Enter/Esc.
+      AutocompleteOverlay? activeOverlay;
+      for (final o in <AutocompleteOverlay>[
+        app._autocomplete,
+        app._shellComplete,
+        app._atHint,
+      ]) {
+        if (o.active) {
+          activeOverlay = o;
+          break;
         }
       }
 
-      // Shell completion intercepts keys when active (bash mode).
-      if (app._shellComplete.active) {
+      if (activeOverlay != null) {
         if (event case KeyEvent(key: Key.up)) {
-          app._shellComplete.moveUp();
+          activeOverlay.moveUp();
           app._render();
           return;
         }
         if (event case KeyEvent(key: Key.down)) {
-          app._shellComplete.moveDown();
+          activeOverlay.moveDown();
+          app._render();
+          return;
+        }
+        if (event case KeyEvent(key: Key.escape)) {
+          activeOverlay.dismiss();
           app._render();
           return;
         }
         if (event case KeyEvent(key: Key.tab) || KeyEvent(key: Key.enter)) {
-          final result = app._shellComplete.accept();
-          if (result != null) {
-            app.editor.setText(result.text, cursor: result.cursor);
+          // Slash-autocomplete: Enter on an exact match submits instead
+          // of re-accepting the same text — fall through to submit below.
+          final isEnter = event.key == Key.enter;
+          final isEnterOnExactMatch = isEnter &&
+              identical(activeOverlay, app._autocomplete) &&
+              app._autocomplete.selectedText == app.editor.text;
+          if (isEnterOnExactMatch) {
+            app._autocomplete.dismiss();
+          } else {
+            final result =
+                activeOverlay.accept(app.editor.text, app.editor.cursor);
+            if (result != null) {
+              app.editor.setText(result.text, cursor: result.cursor);
+            }
+            app._render();
+            return;
           }
-          app._render();
-          return;
-        }
-        if (event case KeyEvent(key: Key.escape)) {
-          app._shellComplete.dismiss();
-          app._render();
-          return;
-        }
-      }
-
-      // @file hint intercepts keys when active.
-      if (app._atHint.active) {
-        if (event case KeyEvent(key: Key.up)) {
-          app._atHint.moveUp();
-          app._render();
-          return;
-        }
-        if (event case KeyEvent(key: Key.down)) {
-          app._atHint.moveDown();
-          app._render();
-          return;
-        }
-        if (event case KeyEvent(key: Key.enter) || KeyEvent(key: Key.tab)) {
-          final start = app._atHint.tokenStart;
-          final cursor = app.editor.cursor;
-          final accepted = app._atHint.accept();
-          if (accepted != null) {
-            final buf = app.editor.text;
-            final before = buf.substring(0, start);
-            final after = buf.substring(cursor);
-            app.editor.setText('$before$accepted$after',
-                cursor: before.length + accepted.length);
-          }
-          app._render();
-          return;
-        }
-        if (event case KeyEvent(key: Key.escape)) {
-          app._atHint.dismiss();
-          app._render();
-          return;
         }
       }
 

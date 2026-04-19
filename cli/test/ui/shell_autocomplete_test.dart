@@ -95,7 +95,7 @@ void main() {
       completer.nextResults = [ShellCandidate('echo')];
       await ac.requestCompletions('ech', 3);
 
-      final result = ac.accept();
+      final result = ac.accept('', 0);
       expect(result, isNotNull);
       expect(result!.text, 'echo ');
       expect(result.cursor, 5); // "echo " length
@@ -107,7 +107,7 @@ void main() {
       // "git ch" → tokenStart=4, token="ch"
       await ac.requestCompletions('git ch', 6);
 
-      final result = ac.accept();
+      final result = ac.accept('', 0);
       expect(result, isNotNull);
       expect(result!.text, 'git checkout ');
       expect(result.cursor, 13); // "git checkout " length
@@ -119,7 +119,7 @@ void main() {
       ];
       await ac.requestCompletions('cat f', 5);
 
-      final result = ac.accept();
+      final result = ac.accept('', 0);
       expect(result, isNotNull);
       expect(result!.text, endsWith('file.txt '));
     });
@@ -130,7 +130,7 @@ void main() {
       ];
       await ac.requestCompletions('ls s', 4);
 
-      final result = ac.accept();
+      final result = ac.accept('', 0);
       expect(result, isNotNull);
       expect(result!.text, endsWith('src/'));
       // No trailing space — user continues typing path.
@@ -145,13 +145,13 @@ void main() {
       await ac.requestCompletions('x', 1);
 
       ac.moveDown(); // select bravo
-      final result = ac.accept();
+      final result = ac.accept('', 0);
       expect(result, isNotNull);
       expect(result!.text, 'bravo ');
     });
 
     test('accept returns null when inactive', () {
-      final result = ac.accept();
+      final result = ac.accept('', 0);
       expect(result, isNull);
     });
 
@@ -183,7 +183,7 @@ void main() {
 
       // The first request was stale — only second should be active.
       expect(ac.active, isTrue);
-      final result = ac.accept();
+      final result = ac.accept('', 0);
       expect(result!.text, 'second ');
     });
 
@@ -251,7 +251,7 @@ void main() {
       // Cursor in the middle: "git ch|out" — cursor at 6, full buffer is "git chout"
       await ac.requestCompletions('git chout', 6);
 
-      final result = ac.accept();
+      final result = ac.accept('', 0);
       expect(result, isNotNull);
       // before="git ", completion="checkout ", after="out"
       expect(result!.text, 'git checkout out');

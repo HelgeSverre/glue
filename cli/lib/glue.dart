@@ -124,6 +124,8 @@ export 'src/observability/observability_config.dart' show ObservabilityConfig;
 export 'src/storage/config_store.dart' show ConfigStore;
 export 'src/input/file_expander.dart' show expandFileRefs, extractFileRefs;
 export 'src/ui/at_file_hint.dart' show AtFileHint;
+export 'src/ui/autocomplete_overlay.dart'
+    show AutocompleteOverlay, AcceptResult;
 export 'src/shell/command_executor.dart'
     show CommandExecutor, CaptureResult, RunningCommand;
 export 'src/shell/docker_config.dart' show DockerConfig, MountEntry, MountMode;

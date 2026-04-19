@@ -75,8 +75,8 @@ StreamingInputResult handleStreamingInput({
       return (action: StreamingAction.render, commandOutput: null);
     }
     if (event case KeyEvent(key: Key.tab)) {
-      final accepted = autocomplete.accept();
-      if (accepted != null) editor.setText(accepted);
+      final result = autocomplete.accept(editor.text, editor.cursor);
+      if (result != null) editor.setText(result.text, cursor: result.cursor);
       return (action: StreamingAction.render, commandOutput: null);
     }
     if (event case KeyEvent(key: Key.enter)) {
@@ -84,11 +84,11 @@ StreamingInputResult handleStreamingInput({
         autocomplete.dismiss();
         final text = editor.text;
         editor.setText('');
-        final result = commands.execute(text);
-        return (action: StreamingAction.render, commandOutput: result);
+        final out = commands.execute(text);
+        return (action: StreamingAction.render, commandOutput: out);
       } else {
-        final accepted = autocomplete.accept();
-        if (accepted != null) editor.setText(accepted);
+        final result = autocomplete.accept(editor.text, editor.cursor);
+        if (result != null) editor.setText(result.text, cursor: result.cursor);
         return (action: StreamingAction.render, commandOutput: null);
       }
     }

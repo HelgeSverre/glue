@@ -1,101 +1,230 @@
 ---
-pageClass: page-marketing
+title: Features
+description: The shipping, experimental, and planned pieces of Glue — honestly labelled.
 sidebar: false
 aside: false
 outline: false
+pageClass: page-marketing
 ---
+
+<div class="features-hero">
 
 # Features
 
-Every feature has a status: <FeatureStatus status="shipping" />
-available today, <FeatureStatus status="experimental" /> works but rough, and
-<FeatureStatus status="planned" /> not yet in the binary.
+Every feature carries a status —
+<FeatureStatus status="shipping" /> is in the binary today,
+<FeatureStatus status="experimental" /> works but rough,
+<FeatureStatus status="planned" /> not yet shipped.
 
-## Agent loop
+</div>
 
-<FeatureStatus status="shipping" /> The core ReAct loop: prompt → reason → tool
-call → tool result → next step. Streamed to the terminal, interruptible, and
-fully logged.
+<div class="feature-grid">
 
-**When you use this:** any time you want an agent to make multi-step progress
-rather than one-shot answers.
+<article class="feature-card">
+  <div class="fc-icon">›</div>
+  <div class="fc-head">
+    <h3>Agent loop</h3>
+    <FeatureStatus status="shipping" />
+  </div>
+  <p>The core ReAct loop — prompt, reason, tool, result, next step. Streamed, interruptible, and fully logged.</p>
+</article>
 
-## File editing
+<article class="feature-card">
+  <div class="fc-icon">✎</div>
+  <div class="fc-head">
+    <h3>File editing</h3>
+    <FeatureStatus status="shipping" />
+  </div>
+  <p>Targeted patches, multi-file edits, new files. Every change lands in the transcript as a diff summary.</p>
+</article>
 
-<FeatureStatus status="shipping" /> Targeted edits, multi-file patches, write
-new files. Every edit is visible in the transcript as a diff summary.
+<article class="feature-card">
+  <div class="fc-icon">⏵</div>
+  <div class="fc-head">
+    <h3>Command execution</h3>
+    <FeatureStatus status="shipping" />
+  </div>
+  <p>Run shell commands through your <code>$SHELL</code>. Output is captured, streamed back, and written to the session log.</p>
+</article>
 
-**When you use this:** "add a retry for ECONNRESET" · "rename this helper
-across the repo" · "convert these tests to the new fixture style".
+<article class="feature-card">
+  <div class="fc-icon">◆</div>
+  <div class="fc-head">
+    <h3>Models &amp; providers</h3>
+    <FeatureStatus status="shipping" />
+  </div>
+  <p>Curated catalog. <code>provider/model</code> IDs. <code>adapter: openai</code> for any compatible endpoint. Credentials stay out of project config. <a href="/models">Catalog →</a></p>
+</article>
 
-## Command execution
+<article class="feature-card">
+  <div class="fc-icon">⌂</div>
+  <div class="fc-head">
+    <h3>Host runtime</h3>
+    <FeatureStatus status="shipping" />
+  </div>
+  <p>Commands run in your shell on your machine — fastest path, uses the tools you already have installed.</p>
+</article>
 
-<FeatureStatus status="shipping" /> Run shell commands through the user's
-`$SHELL`. Output is captured, streamed back, and written to the session log.
+<article class="feature-card">
+  <div class="fc-icon">⊟</div>
+  <div class="fc-head">
+    <h3>Docker sandbox</h3>
+    <FeatureStatus status="shipping" />
+  </div>
+  <p>Ephemeral containers for risky work. Workspace mounted in, container torn down with the session. Sandbox polish is <FeatureStatus status="experimental" />.</p>
+</article>
 
-**When you use this:** running tests, build steps, linters, or any command you
-want the agent to observe.
+<article class="feature-card">
+  <div class="fc-icon">☁</div>
+  <div class="fc-head">
+    <h3>Cloud runtimes</h3>
+    <FeatureStatus status="planned" />
+  </div>
+  <p>Offload to remote workers (E2B, Modal, Daytona, custom SSH or container). Tracked by the runtime boundary plan. <a href="/runtimes">Runtimes →</a></p>
+</article>
 
-## Models and providers
+<article class="feature-card">
+  <div class="fc-icon">⌘</div>
+  <div class="fc-head">
+    <h3>Sessions</h3>
+    <FeatureStatus status="shipping" />
+  </div>
+  <p>Append-only JSONL logs under <code>~/.glue/sessions/</code>. Resumable across runs. Replay UI is <FeatureStatus status="planned" />. <a href="/sessions">How it works →</a></p>
+</article>
 
-<FeatureStatus status="shipping" /> Curated default catalog. `provider/model`
-IDs. `adapter: openai` for any OpenAI-compatible endpoint. Credentials live in
-`~/.glue/credentials.json`, separate from project config.
+<article class="feature-card">
+  <div class="fc-icon">◐</div>
+  <div class="fc-head">
+    <h3>Web tools</h3>
+    <FeatureStatus status="shipping" />
+  </div>
+  <p>Fetch, search, extract, PDF OCR, browser automation. The CDP backend is <FeatureStatus status="experimental" />. <a href="/web">Web →</a></p>
+</article>
 
-**When you use this:** switching providers mid-session, running locally with
-Ollama, hitting a self-hosted endpoint.
+<article class="feature-card">
+  <div class="fc-icon">⇶</div>
+  <div class="fc-head">
+    <h3>Subagents</h3>
+    <FeatureStatus status="shipping" />
+  </div>
+  <p>Delegate a sub-task to a separate agent with its own context and tool set. Useful for parallel search or independent investigations.</p>
+</article>
 
-<p><a href="/models">Model catalog →</a></p>
+<article class="feature-card">
+  <div class="fc-icon">◇</div>
+  <div class="fc-head">
+    <h3>Skills</h3>
+    <FeatureStatus status="shipping" />
+  </div>
+  <p>Discoverable, runnable skill definitions the agent can invoke as first-class tools.</p>
+</article>
 
-## Host runtime
+<article class="feature-card">
+  <div class="fc-icon">⌁</div>
+  <div class="fc-head">
+    <h3>MCP integration</h3>
+    <FeatureStatus status="shipping" />
+  </div>
+  <p>Talk to any MCP server as a tool source. Editor integration, external search providers, custom tool backends.</p>
+</article>
 
-<FeatureStatus status="shipping" /> Commands run on your machine in your normal
-environment — fastest path, uses the tools you already have installed.
+</div>
 
-## Docker sandbox
+<style scoped>
+.features-hero {
+  max-width: 700px;
+  margin: 0 0 3rem;
+}
 
-<FeatureStatus status="shipping" /> Ephemeral containers for risky work. Mount
-the workspace, drop the container when the session ends. Sandbox polish is
-<FeatureStatus status="experimental" />.
+.features-hero h1 {
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  margin: 0 0 1.25rem;
+  font-weight: 600;
+}
 
-## Cloud runtimes
+.features-hero p {
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--vp-c-text-2);
+  margin: 0;
+  max-width: none;
+}
 
-<FeatureStatus status="planned" /> Offload to remote workers (E2B, Modal,
-Daytona, custom SSH or container workers). Tracked by the runtime boundary
-plan.
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  margin: 2rem 0 3rem;
+}
 
-<p><a href="/runtimes">Runtime capabilities →</a></p>
+.feature-card {
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 10px;
+  padding: 1.5rem 1.5rem 1.35rem;
+  background: var(--vp-c-bg-soft, #16171A);
+  transition: border-color 150ms ease, transform 150ms ease, background 150ms ease;
+  min-height: 168px;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 0.6rem;
+}
 
-## Sessions
+.feature-card:hover {
+  border-color: color-mix(in srgb, var(--glue-accent) 35%, var(--vp-c-divider));
+  transform: translateY(-1px);
+}
 
-<FeatureStatus status="shipping" /> Append-only JSONL logs of every session,
-under `~/.glue/sessions/`. Resumable across runs. Replay UI is
-<FeatureStatus status="planned" />; the expanded event schema is
-<FeatureStatus status="planned" />.
+.fc-icon {
+  font-family: var(--vp-font-family-mono);
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--glue-accent);
+  margin-bottom: 0.15rem;
+}
 
-<p><a href="/sessions">How sessions work →</a></p>
+.fc-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
 
-## Web tools
+.fc-head h3 {
+  margin: 0;
+  font-size: 1.08rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--vp-c-text-1);
+  border: none;
+  padding: 0;
+}
 
-<FeatureStatus status="shipping" /> Fetch pages, extract content, run browser
-automation. The browser CDP backend is
-<FeatureStatus status="experimental" />.
+.feature-card p {
+  margin: 0;
+  color: var(--vp-c-text-2);
+  font-size: 0.94rem;
+  line-height: 1.55;
+  max-width: none;
+}
 
-<p><a href="/web">Web tools →</a></p>
+.feature-card p :deep(a) {
+  color: var(--glue-accent);
+  border-bottom: 1px dashed color-mix(in srgb, var(--glue-accent) 40%, transparent);
+  padding-bottom: 1px;
+  text-decoration: none;
+}
 
-## Subagents
+.feature-card p :deep(a):hover {
+  border-bottom-style: solid;
+}
 
-<FeatureStatus status="shipping" /> Delegate a sub-task to a separate agent
-with its own context and tool set. Useful for parallel search or independent
-investigations.
-
-## Skills
-
-<FeatureStatus status="shipping" /> Discoverable, runnable skill definitions
-the agent can invoke as first-class tools.
-
-## MCP integration
-
-<FeatureStatus status="shipping" /> Talk to any MCP server as a tool source.
-Useful for editor integration, external search providers, and custom tool
-backends.
+.feature-card :deep(code) {
+  font-family: var(--vp-font-family-mono);
+  background: var(--vp-c-bg-alt);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+</style>

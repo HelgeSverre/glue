@@ -32,8 +32,16 @@ analyze:
 format:
     dart format .
 
-# Analyze + test
-check: analyze test
+# Regenerate bundled catalog from docs/reference/models.yaml
+gen:
+    dart run tool/gen_models.dart
+
+# Fail if the bundled catalog is out of date
+gen-check:
+    dart run tool/gen_models.dart --check
+
+# Analyze + test + codegen freshness
+check: gen-check analyze test
 
 # Get dependencies
 deps:

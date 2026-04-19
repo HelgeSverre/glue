@@ -42,6 +42,7 @@ import 'package:glue/src/ui/panel_modal.dart';
 import 'package:glue/src/ui/panel_controller.dart';
 import 'package:glue/src/ui/skills_docked_panel.dart';
 import 'package:glue/src/ui/at_file_hint.dart';
+import 'package:glue/src/ui/autocomplete_overlay.dart';
 import 'package:glue/src/ui/shell_autocomplete.dart';
 import 'package:glue/src/ui/slash_autocomplete.dart';
 import 'package:glue/src/observability/debug_controller.dart';

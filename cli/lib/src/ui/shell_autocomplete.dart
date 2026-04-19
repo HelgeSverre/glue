@@ -1,13 +1,14 @@
 import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
 import 'package:glue/src/shell/shell_completer.dart';
+import 'package:glue/src/ui/autocomplete_overlay.dart';
 
 /// Controls shell mode tab-completion overlay state.
 ///
-/// Follows the same API contract as [SlashAutocomplete] and [AtFileHint]:
-/// the owning widget (App) calls [requestCompletions] on Tab press,
-/// intercepts keys when [active], and renders the overlay.
-class ShellAutocomplete {
+/// Implements [AutocompleteOverlay]. Unlike slash/@-file overlays, this
+/// one activates only on explicit Tab press via [requestCompletions]
+/// (async, because it shells out to `fish complete -C` / `compgen`).
+class ShellAutocomplete implements AutocompleteOverlay {
   final ShellCompleter _completer;
 
   bool _active = false;
@@ -22,25 +23,25 @@ class ShellAutocomplete {
 
   ShellAutocomplete(this._completer);
 
-  /// Whether the autocomplete popup is currently shown.
+  @override
   bool get active => _active;
 
-  /// The currently selected index.
+  @override
   int get selected => _selected;
 
-  /// The current number of matches.
+  @override
   int get matchCount => _matches.length;
 
   /// The start position of the completable token in the buffer.
   int get tokenStart => _tokenStart;
 
-  /// How many rows the overlay needs.
+  @override
   int get overlayHeight {
     if (!_active || _matches.isEmpty) return 0;
     return _matches.length > maxVisible ? maxVisible : _matches.length;
   }
 
-  /// Dismiss the autocomplete popup.
+  @override
   void dismiss() {
     _active = false;
     _matches = [];
@@ -80,23 +81,23 @@ class ShellAutocomplete {
     _selected = 0;
   }
 
-  /// Move selection up.
+  @override
   void moveUp() {
     if (!_active || _matches.isEmpty) return;
     _selected = (_selected - 1) % _matches.length;
   }
 
-  /// Move selection down.
+  @override
   void moveDown() {
     if (!_active || _matches.isEmpty) return;
     _selected = (_selected + 1) % _matches.length;
   }
 
-  /// Accept the current selection.
-  ///
-  /// Returns a record of (buffer, cursorPosition) to set into the editor,
-  /// or null if nothing to accept.
-  ({String text, int cursor})? accept() {
+  /// Accept the current selection. The shell overlay has cached the
+  /// triggering buffer/cursor at `requestCompletions` time, so the
+  /// passed-in [buffer] and [cursor] are ignored.
+  @override
+  AcceptResult? accept(String buffer, int cursor) {
     if (!_active || _matches.isEmpty) return null;
     final candidate = _matches[_selected];
 
@@ -110,10 +111,11 @@ class ShellAutocomplete {
     final newCursor = before.length + completion.length;
 
     dismiss();
-    return (text: newText, cursor: newCursor);
+    return AcceptResult(newText, newCursor);
   }
 
   /// Render the popup as lines to be painted in the overlay zone.
+  @override
   List<String> render(int width) {
     if (!_active || _matches.isEmpty) return [];
 

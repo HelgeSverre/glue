@@ -199,6 +199,7 @@ providers:
   groq:
     name: Groq
     adapter: openai
+    compatibility: groq
     enabled: true
     base_url: https://api.groq.com/openai/v1
     docs_url: https://console.groq.com/docs/
@@ -226,6 +227,7 @@ providers:
   ollama:
     name: Ollama
     adapter: openai
+    compatibility: ollama
     enabled: true
     base_url: http://localhost:11434/v1
     docs_url: https://ollama.com/
@@ -261,6 +263,7 @@ providers:
   openrouter:
     name: OpenRouter
     adapter: openai
+    compatibility: openrouter
     enabled: false
     base_url: https://openrouter.ai/api/v1
     docs_url: https://openrouter.ai/docs/
@@ -298,6 +301,7 @@ providers:
   local-vllm:
     name: Local vLLM
     adapter: openai
+    compatibility: vllm
     enabled: false
     base_url: http://localhost:8000/v1
     auth:
