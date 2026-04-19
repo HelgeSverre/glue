@@ -11,63 +11,72 @@ const navLinks = [
 ]
 
 // ── Hero terminal: animated playback of a real Claude Code session ────────
-// Script is curated + redacted from the actual conversation that built this
-// website. See website/public/demo-script.json.
-interface ShotLine {
-  kind: 'prompt' | 'assistant' | 'tool' | 'output' | 'group'
-  text: string
+// Rendered to match Glue's actual TUI (block_renderer.dart):
+//   ❯ You          bold blue   · user prompt
+//   ◆ Glue         bold yellow · assistant
+//   ▶ Tool: name   bold yellow · tool_call (+ args, + phase suffix)
+//   ✓ Tool result  bold green  · tool_result  (✗ red on failure)
+//   status bar     left: mode · right: model │ [approval] │ cwd │ tok N
+//   ❯ prompt       yellow      · input line
+//
+// Script source: website/public/demo-script.json (curated + redacted from the
+// real conversation that built this site).
+type Phase = 'preparing' | 'awaitingApproval' | 'running' | 'done' | 'denied' | 'error'
+
+interface ShotEvent {
+  kind: 'user' | 'assistant' | 'tool_call' | 'tool_result' | 'system'
+  text?: string
+  name?: string
+  args?: Record<string, unknown>
+  phase?: Phase
+  ok?: boolean
   delay?: number
 }
 
 interface ShotMeta {
-  workspace: string
-  file: string
-  branch: string
+  cwd: string
   model: string
-  runtime: string
   approval: string
+  tokensStart: number
 }
 
 // Fallback script — shown if fetch fails (SSR / no network / offline build).
-const fallbackEvents: ShotLine[] = [
-  { kind: 'prompt',    text: 'fetch task about redoing the website from backlog' },
-  { kind: 'assistant', text: 'Searching the backlog for a website task.' },
-  { kind: 'tool',      text: 'search  backlog://tasks  website docs' },
-  { kind: 'output',    text: 'TASK-23 · Website redesign · 10 subtasks' },
-  { kind: 'prompt',    text: 'see if the plan was deleted in git' },
-  { kind: 'tool',      text: "git log --diff-filter=D -- 'docs/plans/*'" },
-  { kind: 'output',    text: '(no deletion commits found)' },
-  { kind: 'assistant', text: 'Referenced in the task but never committed.' },
+const fallbackEvents: ShotEvent[] = [
+  { kind: 'user',        text: 'fetch task about redoing the website from backlog' },
+  { kind: 'assistant',   text: 'Searching the backlog for a website task.' },
+  { kind: 'tool_call',   name: 'backlog.task_search', args: { query: 'website docs' }, phase: 'running' },
+  { kind: 'tool_result', ok: true, text: 'TASK-23 · Website redesign · 10 subtasks' },
+  { kind: 'user',        text: 'see if the plan was deleted in git' },
+  { kind: 'tool_call',   name: 'bash', args: { cmd: "git log --diff-filter=D -- 'docs/plans/*'" }, phase: 'running' },
+  { kind: 'tool_result', ok: true, text: '(no output)' },
+  { kind: 'assistant',   text: 'Referenced in the task but never committed.' },
 ]
 const fallbackMeta: ShotMeta = {
-  workspace: '~/code/glue',
-  file: 'docs/plans/2026-04-19-website-redesign-plan.md',
-  branch: 'main',
+  cwd: '~/code/glue',
   model: 'anthropic/claude-sonnet-4.6',
-  runtime: 'host',
   approval: 'confirm',
+  tokensStart: 12340,
 }
 
-const events = ref<ShotLine[]>(fallbackEvents)
+const events = ref<ShotEvent[]>(fallbackEvents)
 const meta = ref<ShotMeta>(fallbackMeta)
 const visible = ref<number>(0)
 const isRunning = ref<boolean>(false)
 let timer: ReturnType<typeof setTimeout> | null = null
 
-function defaultDelay(kind: ShotLine['kind']): number {
+function defaultDelay(kind: ShotEvent['kind']): number {
   switch (kind) {
-    case 'prompt':    return 720
-    case 'assistant': return 560
-    case 'tool':      return 340
-    case 'output':    return 280
-    case 'group':     return 300
+    case 'user':        return 760
+    case 'assistant':   return 580
+    case 'tool_call':   return 360
+    case 'tool_result': return 320
+    case 'system':      return 260
   }
 }
 
 function scheduleNext() {
   const i = visible.value
   if (i >= events.value.length) {
-    // pause at the end, then loop
     timer = setTimeout(() => {
       visible.value = 0
       scheduleNext()
@@ -82,18 +91,61 @@ function scheduleNext() {
   }, d)
 }
 
-function gutter(kind: ShotLine['kind']) {
-  switch (kind) {
-    case 'prompt':    return '›'
-    case 'assistant': return ' '
-    case 'tool':      return '⏵'
-    case 'output':    return ' '
-    case 'group':     return '⌄'
+const visibleEvents = computed(() => events.value.slice(0, visible.value))
+
+// The next event about to land determines the mode indicator. User is "Ready",
+// assistant streaming → "Generating", tool_call → "⚙ Tool", tool_result → pass.
+const nextEvent = computed<ShotEvent | null>(() =>
+  visible.value < events.value.length ? events.value[visible.value] : null
+)
+
+const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+const spinnerFrame = ref<number>(0)
+let spinnerTimer: ReturnType<typeof setInterval> | null = null
+
+const modeLeft = computed<{ text: string; spinner: boolean }>(() => {
+  if (!isRunning.value) return { text: 'Ready', spinner: false }
+  const next = nextEvent.value
+  if (!next) return { text: 'Ready', spinner: false }
+  switch (next.kind) {
+    case 'assistant':   return { text: 'Generating', spinner: true }
+    case 'tool_call':   return { text: 'Tool',       spinner: true }
+    case 'tool_result': return { text: 'Tool',       spinner: true }
+    default:            return { text: 'Ready',      spinner: false }
   }
+})
+
+const tokenCount = computed(() => {
+  const base = meta.value.tokensStart
+  let bump = 0
+  for (const ev of visibleEvents.value) {
+    if (ev.kind === 'assistant' && ev.text) bump += Math.ceil(ev.text.length / 4)
+    if (ev.kind === 'tool_result' && ev.text) bump += Math.ceil(ev.text.length / 6)
+  }
+  return base + bump
+})
+
+function formatTokens(n: number): string {
+  return n.toLocaleString('en-US')
 }
 
-const visibleEvents = computed(() => events.value.slice(0, visible.value))
-const caretVisible = computed(() => isRunning.value && visible.value < events.value.length)
+function formatArgs(args?: Record<string, unknown>): string {
+  if (!args) return ''
+  return Object.entries(args)
+    .map(([k, v]) => `${k}: ${typeof v === 'string' ? v : JSON.stringify(v)}`)
+    .join(', ')
+}
+
+function phaseSuffix(phase: Phase | undefined): { text: string; cls: string } | null {
+  switch (phase) {
+    case 'preparing':       return { text: '(preparing…)',       cls: 'phase-prep' }
+    case 'awaitingApproval':return { text: '(awaiting approval)',cls: 'phase-wait' }
+    case 'running':         return { text: '(running…)',         cls: 'phase-run' }
+    case 'denied':          return { text: '(denied)',           cls: 'phase-deny' }
+    case 'error':           return { text: '(error)',            cls: 'phase-deny' }
+    default:                return null
+  }
+}
 
 async function loadScript() {
   try {
@@ -127,14 +179,21 @@ onMounted(async () => {
   isRunning.value = true
   visible.value = 1
   scheduleNext()
+
+  // Status-bar spinner — cycles regardless of event timer so it always feels
+  // alive when the app is "thinking".
+  spinnerTimer = setInterval(() => {
+    spinnerFrame.value = (spinnerFrame.value + 1) % spinnerFrames.length
+  }, 100)
 })
 
 onBeforeUnmount(() => {
   if (timer) clearTimeout(timer)
+  if (spinnerTimer) clearInterval(spinnerTimer)
   isRunning.value = false
 })
 
-// Auto-scroll the body as new lines land so the latest output is in view.
+// Auto-scroll the body as new events land so the latest output is in view.
 const bodyRef = ref<HTMLElement | null>(null)
 watch(visible, async () => {
   await Promise.resolve()
@@ -142,6 +201,19 @@ watch(visible, async () => {
   if (!el) return
   el.scrollTop = el.scrollHeight
 })
+
+// Compact gutter for the inline demos in the "three moves" section below.
+// The hero uses full Glue TUI blocks; these are denser by design.
+type ScriptKind = 'prompt' | 'assistant' | 'tool' | 'output' | 'note'
+function scriptGutter(kind: ScriptKind) {
+  switch (kind) {
+    case 'prompt':    return '›'
+    case 'assistant': return ' '
+    case 'tool':      return '⏵'
+    case 'output':    return ' '
+    case 'note':      return '#'
+  }
+}
 
 // ── Featured moves ────────────────────────────────────────────────────────
 const moves = [
@@ -271,49 +343,88 @@ const jsonlSample = [
 
         <figure class="shot" aria-label="Glue in a coding session">
           <div class="shot-frame">
-            <div class="shot-head">
-              <span class="shot-path">
-                <span class="shot-path-dim">{{ meta.workspace }}</span>
-                <span class="shot-path-sep">/</span>
-                <span>{{ meta.file }}</span>
-              </span>
-              <span class="shot-branch">
-                <span class="shot-branch-glyph" aria-hidden="true">⎇</span>
-                {{ meta.branch }} · clean
-              </span>
+            <div class="shot-tab">
+              <span class="shot-tab-dot" />
+              <span class="shot-tab-title">glue — {{ meta.cwd }}</span>
             </div>
 
             <div ref="bodyRef" class="shot-body">
-              <div
-                v-for="(line, i) in visibleEvents"
-                :key="i"
-                class="shot-line"
-                :class="`shot-${line.kind}`"
-              >
-                <span class="shot-gutter" aria-hidden="true">{{ gutter(line.kind) }}</span>
-                <span class="shot-text">{{ line.text }}</span>
-              </div>
-              <span v-if="caretVisible" class="shot-caret" aria-hidden="true" />
+              <template v-for="(ev, i) in visibleEvents" :key="i">
+
+                <!-- user: ❯ You (bold blue) + indented body -->
+                <div v-if="ev.kind === 'user'" class="tui-block tui-user">
+                  <div class="tui-head"><span class="glyph glyph-blue">❯</span> You</div>
+                  <div class="tui-body">{{ ev.text }}</div>
+                </div>
+
+                <!-- assistant: ◆ Glue (bold yellow) + body -->
+                <div v-else-if="ev.kind === 'assistant'" class="tui-block tui-assistant">
+                  <div class="tui-head"><span class="glyph glyph-accent">◆</span> Glue</div>
+                  <div class="tui-body">{{ ev.text }}</div>
+                </div>
+
+                <!-- tool_call: ▶ Tool: name (+ phase) + args line -->
+                <div v-else-if="ev.kind === 'tool_call'" class="tui-block tui-tool">
+                  <div class="tui-head">
+                    <span class="glyph glyph-accent">▶</span>
+                    Tool: <span class="tool-name">{{ ev.name }}</span>
+                    <span
+                      v-if="phaseSuffix(ev.phase)"
+                      class="phase"
+                      :class="phaseSuffix(ev.phase)!.cls"
+                    >
+                      {{ phaseSuffix(ev.phase)!.text }}
+                    </span>
+                  </div>
+                  <div v-if="ev.args && Object.keys(ev.args).length > 0" class="tui-args">
+                    {{ formatArgs(ev.args) }}
+                  </div>
+                </div>
+
+                <!-- tool_result: ✓ / ✗ Tool result + body -->
+                <div v-else-if="ev.kind === 'tool_result'" class="tui-block tui-result">
+                  <div class="tui-head">
+                    <span
+                      class="glyph"
+                      :class="ev.ok === false ? 'glyph-danger' : 'glyph-success'"
+                    >{{ ev.ok === false ? '✗' : '✓' }}</span>
+                    Tool result
+                  </div>
+                  <pre class="tui-body tui-body-pre">{{ ev.text }}</pre>
+                </div>
+
+                <!-- system: gray leading line -->
+                <div v-else-if="ev.kind === 'system'" class="tui-block tui-system">
+                  {{ ev.text }}
+                </div>
+
+              </template>
             </div>
 
-            <div class="shot-foot">
-              <span class="shot-foot-item">
-                <span class="shot-dot shot-dot-ok" aria-hidden="true" />
-                {{ meta.model }}
+            <!-- Glue's status bar: left mode, right model │ [approval] │ cwd │ tok N -->
+            <div class="shot-status">
+              <span class="status-left">
+                <span v-if="modeLeft.spinner" class="status-spinner">{{ spinnerFrames[spinnerFrame] }}</span>
+                <span v-else class="status-ready-dot" />
+                <span class="status-mode">{{ modeLeft.text }}</span>
               </span>
-              <span class="shot-foot-sep">│</span>
-              <span class="shot-foot-item">runtime: {{ meta.runtime }}</span>
-              <span class="shot-foot-sep">│</span>
-              <span class="shot-foot-item">approval: {{ meta.approval }}</span>
-              <span class="shot-foot-spacer" />
-              <span class="shot-foot-item shot-foot-dim">
-                {{ visible }} / {{ events.length }}
+              <span class="status-right">
+                <span>{{ meta.model }}</span>
+                <span class="status-sep">│</span>
+                <span>[{{ meta.approval }}]</span>
+                <span class="status-sep">│</span>
+                <span>{{ meta.cwd }}</span>
+                <span class="status-sep">│</span>
+                <span>tok {{ formatTokens(tokenCount) }}</span>
               </span>
             </div>
+
+            <!-- Input line: ❯ yellow prompt + blinking cursor -->
+            <div class="shot-input">
+              <span class="input-prompt">❯</span>
+              <span class="input-caret" aria-hidden="true" />
+            </div>
           </div>
-          <figcaption class="shot-caption">
-            Real Claude Code session from this project — curated, redacted.
-          </figcaption>
         </figure>
       </div>
     </section>
@@ -352,7 +463,7 @@ const jsonlSample = [
               class="script-line"
               :class="`line-${step.kind}`"
             >
-              <span class="script-gutter" aria-hidden="true">{{ gutter(step.kind as ShotLine['kind']) }}</span>
+              <span class="script-gutter" aria-hidden="true">{{ scriptGutter(step.kind as ScriptKind) }}</span>
               <span class="script-text">{{ step.text }}</span>
             </div>
           </div>
@@ -721,7 +832,7 @@ const jsonlSample = [
   color: var(--accent);
 }
 
-/* ── Hero screenshot (illustrative) ──────────────────────────────────── */
+/* ── Hero screenshot — matches Glue's real TUI (block_renderer.dart) ──── */
 .shot {
   margin: 0;
   min-width: 0;
@@ -737,169 +848,209 @@ const jsonlSample = [
     0 20px 50px -20px rgba(0,0,0,0.55),
     0 1px 0 0 color-mix(in srgb, #ffffff 5%, transparent) inset;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto 1fr auto auto;
+  font-family: var(--vp-font-family-mono);
 }
 
-.shot-head {
+/* Terminal-tab style title row */
+.shot-tab {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0.7rem 1rem;
+  gap: 0.55rem;
+  padding: 0.55rem 0.9rem;
+  background: #141416;
   border-bottom: 1px solid #1e1e21;
-  font-family: var(--vp-font-family-mono);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   color: var(--glue-term-dim);
-  background: #111113;
-  gap: 1rem;
+}
+.shot-tab-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+}
+.shot-tab-title {
+  letter-spacing: 0.01em;
 }
 
-.shot-path {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.shot-path-dim {
-  color: var(--fg-3);
-  opacity: 0.75;
-}
-
-.shot-path-sep {
-  color: var(--fg-3);
-  margin: 0 0.1rem;
-}
-
-.shot-branch {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: var(--fg-3);
-  white-space: nowrap;
-}
-
-.shot-branch-glyph {
-  color: var(--accent);
-  font-weight: 600;
-}
-
+/* Transcript body */
 .shot-body {
-  padding: 1.1rem 1.3rem 1.3rem;
-  font-family: var(--vp-font-family-mono);
-  font-size: 13.5px;
-  line-height: 1.75;
+  padding: 0.75rem 0.25rem 1rem;
+  font-size: 13px;
+  line-height: 1.65;
   height: 24em;
   overflow-y: auto;
   scroll-behavior: smooth;
   scrollbar-width: thin;
   scrollbar-color: #2a2b2e transparent;
 }
+.shot-body::-webkit-scrollbar { width: 6px; }
+.shot-body::-webkit-scrollbar-thumb { background: #2a2b2e; border-radius: 3px; }
 
-.shot-body::-webkit-scrollbar {
-  width: 6px;
-}
-.shot-body::-webkit-scrollbar-thumb {
-  background: #2a2b2e;
-  border-radius: 3px;
-}
-
-.shot-line {
-  display: grid;
-  grid-template-columns: 1.4em 1fr;
-  gap: 0.6rem;
-  animation: shot-slide-in 220ms ease-out both;
+/* Each TUI block reserves a 1-char left margin matching Glue's ` ` prefix. */
+.tui-block {
+  padding: 0 0.75rem 0 0.85rem;
+  margin-bottom: 0.5rem;
+  animation: tui-appear 220ms ease-out both;
 }
 
-@keyframes shot-slide-in {
+@keyframes tui-appear {
   from { opacity: 0; transform: translateY(3px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-.shot-caret {
-  display: inline-block;
-  width: 0.55em;
-  height: 1.05em;
-  margin-top: 0.3em;
-  background: var(--accent);
-  animation: shot-blink 1s steps(1) infinite;
-  vertical-align: text-bottom;
+.tui-head {
+  font-weight: 700;
 }
 
-@keyframes shot-blink {
-  50% { opacity: 0; }
+.tui-body,
+.tui-body-pre {
+  margin: 0;
+  padding-left: 2ch;               /* matches Glue's `   ` / `    ` indent */
+  color: var(--glue-term-fg);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--vp-font-family-mono);
+  font-size: inherit;
+  line-height: inherit;
+  background: transparent;
 }
+
+.tui-body-pre {
+  color: var(--glue-term-dim);
+}
+
+/* Role-specific colours — match block_renderer.dart headers. */
+.tui-user .tui-head      { color: #3B82F6; }          /* bold blue  */
+.tui-assistant .tui-head { color: var(--accent); }    /* bold yellow */
+.tui-tool .tui-head      { color: var(--accent); }    /* bold yellow */
+.tui-result .tui-head    { /* ok/danger handled by glyph class */ }
+.tui-system              { color: var(--glue-term-dim); }
+
+.glyph {
+  display: inline-block;
+  margin-right: 0.25rem;
+}
+.glyph-blue    { color: #3B82F6; }
+.glyph-accent  { color: var(--accent); }
+.glyph-success { color: var(--glue-success); }
+.glyph-danger  { color: var(--glue-error); }
+
+.tui-result .tui-head { color: var(--glue-success); }
+.tui-result .tui-head:has(.glyph-danger) { color: var(--glue-error); }
+
+.tool-name {
+  font-weight: 700;
+}
+
+.tui-args {
+  padding-left: 4ch;                /* Glue uses a 4-space indent for args */
+  color: var(--glue-term-dim);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.phase {
+  margin-left: 0.4rem;
+  font-weight: 500;
+}
+.phase-prep { color: var(--glue-term-dim); }
+.phase-wait { color: var(--accent); }
+.phase-run  { color: #22D3EE; }     /* cyan, matches Glue's `\x1b[36m` */
+.phase-deny { color: var(--glue-error); }
 
 @media (prefers-reduced-motion: reduce) {
-  .shot-line,
-  .shot-caret {
-    animation: none;
-  }
+  .tui-block { animation: none; }
 }
 
-.shot-gutter {
-  color: var(--glue-term-dim);
-  user-select: none;
-  text-align: center;
-}
-
-.shot-prompt    { color: var(--glue-term-fg); font-weight: 500; }
-.shot-prompt .shot-gutter { color: var(--accent); }
-
-.shot-assistant { color: var(--glue-term-fg); }
-
-.shot-tool      { color: #a6a6a6; }
-.shot-tool .shot-gutter { color: var(--accent); opacity: 0.7; }
-
-.shot-output    { color: var(--glue-term-dim); }
-
-.shot-group {
-  color: var(--fg-3);
-  font-style: italic;
-}
-.shot-group .shot-gutter { color: var(--fg-3); }
-
-.shot-foot {
+/* Status bar — Glue's bottom line, left mode · right model │ [approval] │ cwd │ tok N */
+.shot-status {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  padding: 0.55rem 1rem;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4rem 0.75rem;
   border-top: 1px solid #1e1e21;
   background: #0c0c0e;
-  font-family: var(--vp-font-family-mono);
-  font-size: 0.73rem;
+  font-size: 0.72rem;
   color: var(--glue-term-dim);
   white-space: nowrap;
   overflow: hidden;
 }
 
-.shot-foot-sep { opacity: 0.4; }
-.shot-foot-spacer { flex: 1; }
-.shot-foot-dim { color: var(--fg-3); }
-
-.shot-caption {
-  margin-top: 0.75rem;
-  text-align: right;
-  font-family: var(--vp-font-family-mono);
-  font-size: 0.72rem;
-  color: var(--fg-3);
-  letter-spacing: 0.02em;
-}
-
-.shot-foot-item {
+.status-left {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.45rem;
+  color: var(--glue-term-fg);
+  font-weight: 600;
 }
 
-.shot-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+.status-spinner {
+  color: var(--accent);
   display: inline-block;
+  width: 1ch;
+  text-align: center;
 }
 
-.shot-dot-ok {
+.status-ready-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
   background: var(--glue-success);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--glue-success) 18%, transparent);
+}
+
+.status-mode {
+  color: var(--glue-term-fg);
+}
+
+.status-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--glue-term-dim);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-sep {
+  opacity: 0.45;
+  color: var(--glue-term-dim);
+}
+
+/* Input zone — ❯ prompt + blinking cursor */
+.shot-input {
+  padding: 0.55rem 0.9rem 0.65rem;
+  border-top: 1px solid #1e1e21;
+  background: #0c0c0e;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.input-prompt {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.input-caret {
+  display: inline-block;
+  width: 0.6em;
+  height: 1.05em;
+  background: var(--accent);
+  animation: tui-caret-blink 1s steps(1) infinite;
+}
+
+@keyframes tui-caret-blink {
+  50% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .input-caret { animation: none; }
 }
 
 /* ── Moves (stacked, generous whitespace) ─────────────────────────────── */

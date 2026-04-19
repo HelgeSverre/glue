@@ -86,6 +86,12 @@ function cellLabel(c: Cell) {
   vertical-align: middle;
 }
 
+.rm-table th:first-child {
+  width: 200px;
+  min-width: 180px;
+  max-width: 220px;
+}
+
 .rm-cap-head {
   font-family: var(--vp-font-family-mono);
   font-size: 0.7rem;
