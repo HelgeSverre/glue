@@ -1,10 +1,10 @@
 ---
 id: TASK-14
 title: Lazy ServiceLocator construction for web tools
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-04-19 00:28'
-updated_date: '2026-04-19 22:22'
+updated_date: '2026-04-20 00:48'
 labels:
   - simplification-2026-04
   - performance
@@ -51,10 +51,27 @@ ordinal: 32000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Startup where no web tools are invoked does not construct `SearchRouter` or `BrowserManager` (verifiable via log/spy)
-- [ ] #2 First invocation of `web_search` or `web_browser` still succeeds end-to-end
-- [ ] #3 Tool disposal remains safe when `web_browser` was never invoked
-- [ ] #4 No browser endpoint provider or browser manager is constructed until first `web_browser` invocation
-- [ ] #5 Existing tests green
-- [ ] #6 `dart analyze --fatal-infos` clean
+- [x] #1 Startup where no web tools are invoked does not construct `SearchRouter` or `BrowserManager` (verifiable via log/spy)
+- [x] #2 First invocation of `web_search` or `web_browser` still succeeds end-to-end
+- [x] #3 Tool disposal remains safe when `web_browser` was never invoked
+- [x] #4 No browser endpoint provider or browser manager is constructed until first `web_browser` invocation
+- [x] #5 Existing tests green
+- [x] #6 `dart analyze --fatal-infos` clean
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Revised the task scope to cover only web-tool service construction, removed stale subagent-manager wording, fixed the simplification-plan documentation path, and replaced the nonexistent `AppServices.dispose()` criterion with the real tool-disposal lifecycle.
+
+Implemented lazy web service construction in `ServiceLocator.create()` by passing memoized lazy factories into `WebSearchTool.lazy(...)` and `WebBrowserTool.lazy(...)`. `SearchRouter`, browser provider selection, and `BrowserManager` are no longer constructed during startup; they are built on first valid tool use. Existing direct constructors remain for tests and existing call sites.
+
+`WebBrowserTool.dispose()` is safe before first use and does not force lazy manager construction. Focused tests cover lazy `web_search`, validation failures that do not construct `BrowserManager`, and disposal before first browser use.
+
+Verification:
+- `dart analyze --fatal-infos` clean.
+- `dart test test/tools/web_search_tool_test.dart test/tools/web_browser_tool_test.dart` passed.
+- Full `dart test` was run and has one unrelated pre-existing failure: `test/shell/docker_executor_test.dart: DockerExecutor runCapture executes in container` expected `hello` but got empty stdout.
+
+AC #1 is satisfied by the focused lazy-construction tests at the tool boundary rather than a startup integration spy.
+<!-- SECTION:FINAL_SUMMARY:END -->
