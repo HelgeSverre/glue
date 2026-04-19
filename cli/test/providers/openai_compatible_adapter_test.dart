@@ -153,6 +153,7 @@ void main() {
       final captured = await _capture(client);
       final req = captured.request!;
       expect(req.url.host, 'api.groq.com');
+      expect(req.url.path, '/openai/v1/chat/completions');
       expect(req.headers['Authorization'], 'Bearer sk-groq');
       final body = jsonDecode(captured.body!) as Map<String, dynamic>;
       expect(body.containsKey('stream_options'), isFalse);

@@ -61,9 +61,12 @@ class OpenAiClient implements LlmClient {
 
       profile.mutateBody(body);
 
+      final endpointBase = _baseUri.path.endsWith('/')
+          ? _baseUri
+          : _baseUri.replace(path: '${_baseUri.path}/');
       final request = http.Request(
         'POST',
-        _baseUri.resolve('/v1/chat/completions'),
+        endpointBase.resolve('chat/completions'),
       );
       request.headers.addAll({
         'Content-Type': 'application/json',
