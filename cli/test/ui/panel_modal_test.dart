@@ -431,4 +431,71 @@ void main() {
       expect(plain.selectedIndex, -1);
     });
   });
+
+  group('PanelModal.responsive', () {
+    test('linesBuilder is called per render with content width', () {
+      final widths = <int>[];
+      final panel = PanelModal.responsive(
+        title: 'HELP',
+        linesBuilder: (w) {
+          widths.add(w);
+          return ['line@$w'];
+        },
+      );
+      // Discard the pre-warm call made by the constructor; assert only
+      // against the per-render calls.
+      widths.clear();
+      panel.render(80, 20, const []);
+      panel.render(60, 20, const []);
+      expect(widths.length, 2);
+      expect(widths.first, isNot(widths.last));
+    });
+
+    test('rendered output reflects builder result at current width', () {
+      final panel = PanelModal.responsive(
+        title: 'HELP',
+        linesBuilder: (w) => ['WIDTH=$w'],
+      );
+      final grid = panel.render(80, 20, const []);
+      final joined = grid.map(stripAnsi).join('\n');
+      expect(joined, contains('WIDTH='));
+    });
+
+    test('static PanelModal still renders provided lines', () {
+      final panel = PanelModal(
+        title: 'HELP',
+        lines: const ['STATIC'],
+      );
+      final grid = panel.render(80, 20, const []);
+      final joined = grid.map(stripAnsi).join('\n');
+      expect(joined, contains('STATIC'));
+    });
+
+    test('handleEvent after render uses cached last lines for bounds', () {
+      final panel = PanelModal.responsive(
+        title: 'HELP',
+        linesBuilder: (_) => List.generate(50, (i) => 'line$i'),
+        selectable: true,
+      );
+      panel.render(80, 20, const []);
+      // Scroll way down; cached length 50 should allow movement.
+      for (var i = 0; i < 60; i++) {
+        panel.handleEvent(KeyEvent(Key.down));
+      }
+      // No exception, no infinite range — just verifies the cached path works.
+      expect(panel.selectedIndex, greaterThan(0));
+    });
+
+    test('selectable .responsive navigates correctly before first render', () {
+      final panel = PanelModal.responsive(
+        title: 'HELP',
+        linesBuilder: (_) => List.generate(10, (i) => 'row$i'),
+        selectable: true,
+      );
+      // Intentionally press Down BEFORE any render() call.
+      panel.handleEvent(KeyEvent(Key.down));
+      expect(panel.selectedIndex, greaterThanOrEqualTo(0));
+      expect(panel.selectedIndex, lessThan(10));
+    });
+  });
 }

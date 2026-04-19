@@ -162,7 +162,7 @@ abstract class PanelOverlay {
 
 class PanelModal implements PanelOverlay {
   final String title;
-  final List<String> lines;
+  final List<String> Function(int contentWidth) linesBuilder;
   final Box box;
   final String borderColor;
   final BarrierStyle barrier;
@@ -177,10 +177,16 @@ class PanelModal implements PanelOverlay {
   final Completer<void> _completer = Completer<void>();
   final Completer<int?> _selectionCompleter = Completer<int?>();
   int _lastVisibleHeight = 0;
+  List<String> _lastLines = const [];
+
+  /// Snapshot of the current lines at an assumed 80-col content width.
+  /// Prefer `linesBuilder(width)` for width-aware access.
+  List<String> get lines =>
+      _lastLines.isNotEmpty ? _lastLines : linesBuilder(80);
 
   PanelModal({
     required this.title,
-    required this.lines,
+    required List<String> lines,
     this.box = Box.light,
     this.borderColor = '\x1b[2m',
     this.barrier = BarrierStyle.dim,
@@ -190,7 +196,30 @@ class PanelModal implements PanelOverlay {
     this.selectable = false,
     this.onOpenInEditor,
     int initialIndex = 0,
-  })  : _width = width ?? PanelFluid(0.7, 40),
+  })  : linesBuilder = ((_) => lines),
+        _lastLines = lines,
+        _width = width ?? PanelFluid(0.7, 40),
+        _height = height ?? PanelFluid(0.7, 10),
+        _selectedIndex = initialIndex {
+    if (_height case PanelFixed(:final size)) {
+      _lastVisibleHeight = size - 2;
+    }
+  }
+
+  PanelModal.responsive({
+    required this.title,
+    required this.linesBuilder,
+    this.box = Box.light,
+    this.borderColor = '\x1b[2m',
+    this.barrier = BarrierStyle.dim,
+    PanelSize? width,
+    PanelSize? height,
+    this.dismissable = true,
+    this.selectable = false,
+    this.onOpenInEditor,
+    int initialIndex = 0,
+  })  : _lastLines = linesBuilder(80),
+        _width = width ?? PanelFluid(0.7, 40),
         _height = height ?? PanelFluid(0.7, 10),
         _selectedIndex = initialIndex {
     if (_height case PanelFixed(:final size)) {
@@ -221,7 +250,7 @@ class PanelModal implements PanelOverlay {
     if (isComplete) return false;
 
     final visibleH = max<int>(_lastVisibleHeight, 1);
-    final maxScroll = max<int>(0, lines.length - visibleH);
+    final maxScroll = max<int>(0, _lastLines.length - visibleH);
 
     switch (event) {
       case KeyEvent(key: Key.escape):
@@ -252,7 +281,7 @@ class PanelModal implements PanelOverlay {
         return true;
       case KeyEvent(key: Key.down):
         if (selectable) {
-          _selectedIndex = min<int>(lines.length - 1, _selectedIndex + 1);
+          _selectedIndex = min<int>(_lastLines.length - 1, _selectedIndex + 1);
           if (_selectedIndex >= _scrollOffset + visibleH) {
             _scrollOffset = _selectedIndex - visibleH + 1;
           }
@@ -271,7 +300,7 @@ class PanelModal implements PanelOverlay {
       case KeyEvent(key: Key.pageDown):
         if (selectable) {
           _selectedIndex =
-              min<int>(lines.length - 1, _selectedIndex + visibleH);
+              min<int>(_lastLines.length - 1, _selectedIndex + visibleH);
           _scrollOffset = min<int>(maxScroll, _scrollOffset + visibleH);
         } else {
           _scrollOffset = min<int>(maxScroll, _scrollOffset + visibleH);
@@ -295,7 +324,10 @@ class PanelModal implements PanelOverlay {
     final visibleContentH = panelH - 2;
     _lastVisibleHeight = visibleContentH;
 
-    final maxScroll = max(0, lines.length - visibleContentH);
+    final contentW = panelW - 4;
+    _lastLines = linesBuilder(contentW);
+
+    final maxScroll = max(0, _lastLines.length - visibleContentH);
     _scrollOffset = min(_scrollOffset, maxScroll);
 
     final dimmed = applyBarrier(barrier, backgroundLines);
@@ -306,15 +338,15 @@ class PanelModal implements PanelOverlay {
 
     final topRow = (termHeight - panelH) ~/ 2;
     final leftCol = (termWidth - panelW) ~/ 2;
-    final contentW = panelW - 4;
 
-    final visibleLines = lines.sublist(
+    final visibleLines = _lastLines.sublist(
       _scrollOffset,
-      min(_scrollOffset + visibleContentH, lines.length),
+      min(_scrollOffset + visibleContentH, _lastLines.length),
     );
 
-    final hasOverflow = lines.length > visibleContentH;
-    final totalPages = (lines.length + visibleContentH - 1) ~/ visibleContentH;
+    final hasOverflow = _lastLines.length > visibleContentH;
+    final totalPages =
+        (_lastLines.length + visibleContentH - 1) ~/ visibleContentH;
     final currentPage = (_scrollOffset ~/ max(visibleContentH, 1)) + 1;
 
     final panelLines = <String>[];
