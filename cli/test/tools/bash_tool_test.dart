@@ -1,5 +1,4 @@
 import 'package:test/test.dart';
-import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/shell/host_executor.dart';
 import 'package:glue/src/shell/shell_config.dart';
@@ -13,16 +12,16 @@ void main() {
     });
 
     test('executes command with default timeout', () async {
-      final result =
-          ContentPart.textOnly(await tool.execute({'command': 'echo hello'}));
+      final result = (await tool.execute({'command': 'echo hello'})).content;
       expect(result, contains('hello'));
     });
 
     test('respects timeout_seconds parameter', () async {
-      final result = ContentPart.textOnly(await tool.execute({
+      final result = (await tool.execute({
         'command': 'echo no-timeout',
         'timeout_seconds': 0,
-      }));
+      }))
+          .content;
       expect(result, contains('no-timeout'));
     });
 

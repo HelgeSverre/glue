@@ -10,6 +10,7 @@ import 'package:glue/src/input/streaming_input_handler.dart';
 import 'package:glue/src/input/file_expander.dart';
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/agent_manager.dart';
+import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/commands/builtin_commands.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/catalog/model_ref.dart';

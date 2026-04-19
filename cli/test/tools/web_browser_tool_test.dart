@@ -1,5 +1,4 @@
 import 'package:test/test.dart';
-import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/tools/web_browser_tool.dart';
 import 'package:glue/src/web/browser/browser_manager.dart';
 import 'package:glue/src/web/browser/browser_endpoint.dart';
@@ -42,27 +41,24 @@ void main() {
     });
 
     test('returns error for missing action', () async {
-      final result = ContentPart.textOnly(await tool.execute({}));
+      final result = (await tool.execute({})).content;
       expect(result, contains('Error'));
     });
 
     test('returns error for invalid action', () async {
-      final result =
-          ContentPart.textOnly(await tool.execute({'action': 'invalid'}));
+      final result = (await tool.execute({'action': 'invalid'})).content;
       expect(result, contains('Error'));
       expect(result, contains('invalid'));
     });
 
     test('navigate requires url', () async {
-      final result =
-          ContentPart.textOnly(await tool.execute({'action': 'navigate'}));
+      final result = (await tool.execute({'action': 'navigate'})).content;
       expect(result, contains('Error'));
       expect(result, contains('url'));
     });
 
     test('click requires selector', () async {
-      final result =
-          ContentPart.textOnly(await tool.execute({'action': 'click'}));
+      final result = (await tool.execute({'action': 'click'})).content;
       expect(result, contains('Error'));
       expect(result, contains('selector'));
     });

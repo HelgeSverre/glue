@@ -85,31 +85,54 @@ class WebBrowserTool extends Tool {
   }
 
   @override
-  Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
+  Future<ToolResult> execute(Map<String, dynamic> args) async {
     final action = args['action'];
     if (action is! String || action.isEmpty) {
-      return [
-        TextPart('Error: no action provided. '
-            'Valid actions: ${_validActions.join(", ")}')
-      ];
+      return ToolResult(
+        success: false,
+        content: 'Error: no action provided. '
+            'Valid actions: ${_validActions.join(", ")}',
+      );
     }
     if (!_validActions.contains(action)) {
-      return [
-        TextPart('Error: invalid action "$action". '
-            'Valid actions: ${_validActions.join(", ")}')
-      ];
+      return ToolResult(
+        success: false,
+        content: 'Error: invalid action "$action". '
+            'Valid actions: ${_validActions.join(", ")}',
+        metadata: {'action': action},
+      );
     }
 
     try {
       if (action == 'screenshot') {
-        return await _screenshotParts(args);
+        final parts = await _screenshotParts(args);
+        final textPart = parts.whereType<TextPart>().firstOrNull;
+        final imagePart = parts.whereType<ImagePart>().firstOrNull;
+        return ToolResult(
+          content: textPart?.text ?? 'Screenshot captured.',
+          summary: 'web_browser: screenshot',
+          contentParts: parts,
+          metadata: {
+            'action': action,
+            if (imagePart != null) 'image_bytes': imagePart.bytes.length,
+          },
+        );
       }
       final text = await _dispatch(action, args);
-      return [TextPart(text)];
+      return ToolResult(
+        content: text,
+        summary: 'web_browser: $action',
+        metadata: {'action': action},
+      );
     } catch (e) {
       _page = null;
       _browser = null;
-      return [TextPart('Error: $e')];
+      return ToolResult(
+        success: false,
+        content: 'Error: $e',
+        summary: 'web_browser: $action failed',
+        metadata: {'action': action, 'error': e.toString()},
+      );
     }
   }
 

@@ -46,13 +46,13 @@ export 'src/agent/agent_core.dart'
         ToolCallComplete,
         UsageInfo,
         ToolCall,
-        ToolResult,
         Message;
 export 'src/agent/content_part.dart' show ContentPart, TextPart, ImagePart;
 export 'src/agent/tools.dart'
     show
         Tool,
         ToolTrust,
+        ToolResult,
         ForwardingTool,
         ToolParameter,
         ReadFileTool,

@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:glue/src/agent/agent_manager.dart';
-import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/catalog/model_ref.dart';
 
@@ -38,7 +37,7 @@ class SpawnSubagentTool extends Tool {
       ];
 
   @override
-  Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
+  Future<ToolResult> execute(Map<String, dynamic> args) async {
     final task = args['task'] as String;
     final override = args['model_ref'] as String?;
     final ref = override != null ? ModelRef.parse(override) : null;
@@ -48,7 +47,15 @@ class SpawnSubagentTool extends Tool {
       modelOverride: ref,
       currentDepth: _depth,
     );
-    return [TextPart(result)];
+    return ToolResult(
+      content: result,
+      summary: 'subagent: $task',
+      metadata: {
+        'task': task,
+        if (override != null) 'model_ref': override,
+        'depth': _depth,
+      },
+    );
   }
 }
 
@@ -84,7 +91,7 @@ class SpawnParallelSubagentsTool extends Tool {
       ];
 
   @override
-  Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
+  Future<ToolResult> execute(Map<String, dynamic> args) async {
     final tasks = (args['tasks'] as List).cast<String>();
     final override = args['model_ref'] as String?;
     final ref = override != null ? ModelRef.parse(override) : null;
@@ -95,15 +102,20 @@ class SpawnParallelSubagentsTool extends Tool {
       currentDepth: _depth,
     );
 
-    return [
-      TextPart(
-        jsonEncode({
-          'results': [
-            for (var i = 0; i < tasks.length; i++)
-              {'task': tasks[i], 'output': results[i]},
-          ],
-        }),
-      ),
-    ];
+    final json = jsonEncode({
+      'results': [
+        for (var i = 0; i < tasks.length; i++)
+          {'task': tasks[i], 'output': results[i]},
+      ],
+    });
+    return ToolResult(
+      content: json,
+      summary: 'parallel subagents: ${tasks.length} tasks',
+      metadata: {
+        'task_count': tasks.length,
+        if (override != null) 'model_ref': override,
+        'depth': _depth,
+      },
+    );
   }
 }

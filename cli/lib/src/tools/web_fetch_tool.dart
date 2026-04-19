@@ -1,4 +1,3 @@
-import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/web/web_config.dart';
 import 'package:glue/src/web/fetch/web_fetch_client.dart';
@@ -34,17 +33,25 @@ class WebFetchTool extends Tool {
       ];
 
   @override
-  Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
+  Future<ToolResult> execute(Map<String, dynamic> args) async {
     final url = args['url'];
     if (url is! String || url.isEmpty) {
-      return [const TextPart('Error: no URL provided')];
+      return ToolResult(
+        success: false,
+        content: 'Error: no URL provided',
+      );
     }
 
     final maxTokens = args['max_tokens'] as int?;
     final result = await _client.fetch(url, maxTokens: maxTokens);
 
     if (!result.isSuccess) {
-      return [TextPart('Error: ${result.error}')];
+      return ToolResult(
+        success: false,
+        content: 'Error: ${result.error}',
+        summary: 'Failed to fetch $url',
+        metadata: {'url': url, 'error': result.error},
+      );
     }
 
     final buf = StringBuffer();
@@ -54,6 +61,16 @@ class WebFetchTool extends Tool {
       buf.writeln();
     }
     buf.write(result.markdown);
-    return [TextPart(buf.toString())];
+    final body = buf.toString();
+    final markdown = result.markdown ?? '';
+    return ToolResult(
+      content: body,
+      summary: 'Fetched $url (${markdown.length} chars)',
+      metadata: {
+        'url': url,
+        'title': result.title,
+        'bytes': body.length,
+      },
+    );
   }
 }

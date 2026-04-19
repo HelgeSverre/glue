@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
-import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/skills/skill_tool.dart';
 import 'package:glue/src/skills/skill_runtime.dart';
 
@@ -48,27 +47,25 @@ void main() {
     });
 
     test('list skills when no name provided', () async {
-      final result = ContentPart.textOnly(await tool.execute({}));
+      final result = (await tool.execute({})).content;
       expect(result, contains('Available skills'));
       expect(result, contains('code-review'));
       expect(result, contains('tdd'));
     });
 
     test('list skills when name is empty', () async {
-      final result = ContentPart.textOnly(await tool.execute({'name': ''}));
+      final result = (await tool.execute({'name': ''})).content;
       expect(result, contains('Available skills'));
     });
 
     test('activate skill returns body', () async {
-      final result =
-          ContentPart.textOnly(await tool.execute({'name': 'code-review'}));
+      final result = (await tool.execute({'name': 'code-review'})).content;
       expect(result, contains('# Skill: code-review'));
       expect(result, contains('Instructions for code-review'));
     });
 
     test('activate unknown skill returns error', () async {
-      final result =
-          ContentPart.textOnly(await tool.execute({'name': 'nonexistent'}));
+      final result = (await tool.execute({'name': 'nonexistent'})).content;
       expect(result, contains('Error'));
       expect(result, contains('not found'));
     });
@@ -81,14 +78,14 @@ void main() {
         extraPathsProvider: () => const [],
       );
       final emptyTool = SkillTool(emptyRuntime);
-      final result = ContentPart.textOnly(await emptyTool.execute({}));
+      final result = (await emptyTool.execute({})).content;
       expect(result, contains('No skills available'));
       expect(result, contains('bundled Glue skills'));
       emptyDir.deleteSync(recursive: true);
     });
 
     test('list reflects skills added after startup', () async {
-      final result1 = ContentPart.textOnly(await tool.execute({}));
+      final result1 = (await tool.execute({})).content;
       expect(result1, isNot(contains('new-skill')));
 
       final skillsDir = p.join(tempDir.path, '.glue', 'skills');
@@ -98,7 +95,7 @@ void main() {
         '---\nname: new-skill\ndescription: A new one.\n---\nBody.\n',
       );
 
-      final result2 = ContentPart.textOnly(await tool.execute({}));
+      final result2 = (await tool.execute({})).content;
       expect(result2, contains('new-skill'));
     });
 
@@ -118,7 +115,7 @@ void main() {
       );
       final builtinsTool = SkillTool(builtinsRuntime);
 
-      final result = ContentPart.textOnly(await builtinsTool.execute({}));
+      final result = (await builtinsTool.execute({})).content;
       expect(result, contains('builtin-skill [custom]'));
     });
   });

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/tools.dart';
 
 /// Policy for automatic tool approval in headless execution.
 ///

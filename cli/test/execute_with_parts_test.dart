@@ -13,8 +13,8 @@ class _TextTool extends Tool {
   List<ToolParameter> get parameters => const [];
 
   @override
-  Future<List<ContentPart>> execute(Map<String, dynamic> args) async =>
-      [const TextPart('hello')];
+  Future<ToolResult> execute(Map<String, dynamic> args) async =>
+      ToolResult(content: 'hello');
 }
 
 /// A tool that returns images alongside text.
@@ -27,11 +27,14 @@ class _ImageTool extends Tool {
   List<ToolParameter> get parameters => const [];
 
   @override
-  Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
-    return [
-      const TextPart('Screenshot captured.'),
-      const ImagePart(bytes: [1, 2, 3], mimeType: 'image/png'),
-    ];
+  Future<ToolResult> execute(Map<String, dynamic> args) async {
+    return ToolResult(
+      content: 'Screenshot captured.',
+      contentParts: const [
+        TextPart('Screenshot captured.'),
+        ImagePart(bytes: [1, 2, 3], mimeType: 'image/png'),
+      ],
+    );
   }
 }
 
@@ -41,21 +44,51 @@ class _StubLlm extends LlmClient {
 }
 
 void main() {
-  group('Tool.execute returns ContentParts', () {
-    test('text tool returns TextPart list', () async {
+  group('Tool.execute returns ToolResult', () {
+    test('text tool returns a ToolResult with content', () async {
       final tool = _TextTool();
-      final parts = await tool.execute({});
-      expect(parts.length, 1);
-      expect(parts[0], isA<TextPart>());
-      expect((parts[0] as TextPart).text, 'hello');
+      final result = await tool.execute({});
+      expect(result.content, 'hello');
+      expect(result.contentParts, isNull);
     });
 
-    test('image tool returns ImagePart', () async {
+    test('image tool returns ToolResult with contentParts', () async {
       final tool = _ImageTool();
-      final parts = await tool.execute({});
-      expect(parts.length, 2);
+      final result = await tool.execute({});
+      expect(result.content, 'Screenshot captured.');
+      expect(result.contentParts, isNotNull);
+      expect(result.contentParts!.length, 2);
+      expect(result.contentParts![1], isA<ImagePart>());
+    });
+
+    test('toContentParts wraps text-only content in a single TextPart', () {
+      final result = ToolResult(content: 'just text');
+      final parts = result.toContentParts();
+      expect(parts, hasLength(1));
       expect(parts[0], isA<TextPart>());
-      expect(parts[1], isA<ImagePart>());
+      expect((parts[0] as TextPart).text, 'just text');
+    });
+
+    test('toContentParts returns artifacts when present', () {
+      final artifacts = [
+        const TextPart('caption'),
+        const ImagePart(bytes: [1], mimeType: 'image/png'),
+      ];
+      final result = ToolResult(content: 'caption', contentParts: artifacts);
+      expect(result.toContentParts(), same(artifacts));
+    });
+
+    test('withCallId copies fields and sets callId', () {
+      final result = ToolResult(
+        content: 'hi',
+        summary: 'one-liner',
+        metadata: {'k': 1},
+      );
+      final stamped = result.withCallId('abc');
+      expect(stamped.callId, 'abc');
+      expect(stamped.content, 'hi');
+      expect(stamped.summary, 'one-liner');
+      expect(stamped.metadata, {'k': 1});
     });
   });
 
@@ -69,6 +102,7 @@ void main() {
         ToolCall(id: 'c1', name: 'text_tool', arguments: {}),
       );
       expect(result.content, 'hello');
+      expect(result.callId, 'c1');
       expect(result.contentParts, isNull);
     });
 

@@ -126,6 +126,61 @@ anthropic:
     });
   });
 
+  group('GlueConfig.titleGenerationEnabled', () {
+    test('defaults to true when nothing sets it', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      final config = GlueConfig.load(environment: _envWith(home: home));
+      expect(config.titleGenerationEnabled, isTrue);
+    });
+
+    test('YAML title_generation_enabled: false disables it', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      Directory('${home.path}/.glue').createSync();
+      File('${home.path}/.glue/config.yaml').writeAsStringSync('''
+active_model: anthropic/claude-sonnet-4.6
+title_generation_enabled: false
+''');
+      final config = GlueConfig.load(environment: _envWith(home: home));
+      expect(config.titleGenerationEnabled, isFalse);
+    });
+
+    test('env GLUE_TITLE_GENERATION_ENABLED=false overrides YAML=true', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      Directory('${home.path}/.glue').createSync();
+      File('${home.path}/.glue/config.yaml').writeAsStringSync('''
+active_model: anthropic/claude-sonnet-4.6
+title_generation_enabled: true
+''');
+      final config = GlueConfig.load(
+        environment: _envWith(
+          home: home,
+          vars: {'GLUE_TITLE_GENERATION_ENABLED': 'false'},
+        ),
+      );
+      expect(config.titleGenerationEnabled, isFalse);
+    });
+
+    test('env GLUE_TITLE_GENERATION_ENABLED=true overrides YAML=false', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      Directory('${home.path}/.glue').createSync();
+      File('${home.path}/.glue/config.yaml').writeAsStringSync('''
+active_model: anthropic/claude-sonnet-4.6
+title_generation_enabled: false
+''');
+      final config = GlueConfig.load(
+        environment: _envWith(
+          home: home,
+          vars: {'GLUE_TITLE_GENERATION_ENABLED': 'true'},
+        ),
+      );
+      expect(config.titleGenerationEnabled, isTrue);
+    });
+  });
+
   group('GlueConfig.resolveProvider / resolveModel', () {
     test('resolves known provider + model', () {
       final home = _scratch();

@@ -1,4 +1,3 @@
-import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/web/search/search_router.dart';
 
@@ -40,10 +39,13 @@ class WebSearchTool extends Tool {
       ];
 
   @override
-  Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
+  Future<ToolResult> execute(Map<String, dynamic> args) async {
     final query = args['query'];
     if (query is! String || query.isEmpty) {
-      return [const TextPart('Error: no query provided')];
+      return ToolResult(
+        success: false,
+        content: 'Error: no query provided',
+      );
     }
 
     final maxResults = (args['max_results'] as num?)?.toInt() ?? 5;
@@ -55,9 +57,23 @@ class WebSearchTool extends Tool {
         maxResults: maxResults,
         providerName: providerName,
       );
-      return [TextPart(response.toText())];
+      final text = response.toText();
+      return ToolResult(
+        content: text,
+        summary: 'web_search: $query',
+        metadata: {
+          'query': query,
+          'max_results': maxResults,
+          if (providerName != null) 'provider': providerName,
+        },
+      );
     } catch (e) {
-      return [TextPart('Error: $e')];
+      return ToolResult(
+        success: false,
+        content: 'Error: $e',
+        summary: 'web_search failed: $query',
+        metadata: {'query': query, 'error': e.toString()},
+      );
     }
   }
 }

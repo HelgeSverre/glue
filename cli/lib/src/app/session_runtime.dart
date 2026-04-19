@@ -161,6 +161,13 @@ LlmClient? _createTitleLlmClientImpl(App app) {
   final factory = app._llmFactory;
   if (config == null || factory == null) return null;
 
+  if (!config.titleGenerationEnabled) {
+    if (config.observability.debug) {
+      stderr.writeln('[debug] title generation disabled; skipping');
+    }
+    return null;
+  }
+
   final target = app._resolveTitleTarget(config);
   try {
     return factory.createFor(

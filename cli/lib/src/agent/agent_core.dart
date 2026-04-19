@@ -113,27 +113,6 @@ class ToolCall {
   });
 }
 
-/// The result of executing a tool.
-class ToolResult {
-  final String callId;
-  final String content;
-  final List<ContentPart>? contentParts;
-  final bool success;
-
-  ToolResult({
-    required this.callId,
-    required this.content,
-    this.contentParts,
-    this.success = true,
-  });
-
-  factory ToolResult.denied(String callId) => ToolResult(
-        callId: callId,
-        content: 'User denied tool execution',
-        success: false,
-      );
-}
-
 // ---------------------------------------------------------------------------
 // Abstract LLM client
 // ---------------------------------------------------------------------------
@@ -385,13 +364,8 @@ class AgentCore {
       );
     }
     try {
-      final parts = await tool.execute(call.arguments);
-      final textContent = ContentPart.textOnly(parts);
-      return ToolResult(
-        callId: call.id,
-        content: textContent,
-        contentParts: ContentPart.hasImages(parts) ? parts : null,
-      );
+      final result = await tool.execute(call.arguments);
+      return result.withCallId(call.id);
     } catch (e) {
       return ToolResult(
         callId: call.id,

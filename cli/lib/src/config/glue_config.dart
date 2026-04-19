@@ -74,6 +74,7 @@ class GlueConfig {
     this.observability = const ObservabilityConfig(),
     this.skillPaths = const [],
     this.approvalMode = ApprovalMode.confirm,
+    this.titleGenerationEnabled = true,
   })  : shellConfig = shellConfig ?? const ShellConfig(),
         dockerConfig = dockerConfig ?? const DockerConfig(),
         webConfig = webConfig ?? const WebConfig();
@@ -107,6 +108,13 @@ class GlueConfig {
   final ObservabilityConfig observability;
   final List<String> skillPaths;
   final ApprovalMode approvalMode;
+
+  /// When `false`, session title generation is skipped entirely. No LLM
+  /// client is created and the session title remains `null`.
+  ///
+  /// Resolution order: `GLUE_TITLE_GENERATION_ENABLED` env var →
+  /// `title_generation_enabled` YAML key → default `true`.
+  final bool titleGenerationEnabled;
 
   /// Resolve [ref] against the loaded catalog and credential store.
   ///
@@ -189,6 +197,7 @@ class GlueConfig {
       observability: observability ?? this.observability,
       skillPaths: skillPaths,
       approvalMode: approvalMode,
+      titleGenerationEnabled: titleGenerationEnabled,
     );
   }
 
@@ -476,6 +485,13 @@ class GlueConfig {
           )
         : ApprovalMode.confirm;
 
+    // Title generation toggle. Env wins over YAML; default enabled.
+    final titleEnabledEnv = env['GLUE_TITLE_GENERATION_ENABLED'];
+    final titleEnabledYaml = fileConfig?['title_generation_enabled'] as bool?;
+    final titleGenerationEnabled = titleEnabledEnv != null
+        ? (titleEnabledEnv.toLowerCase() == 'true' || titleEnabledEnv == '1')
+        : (titleEnabledYaml ?? true);
+
     // Skill paths.
     final skillPaths = <String>[];
     final envSkillPaths = env['GLUE_SKILLS_PATHS'];
@@ -505,6 +521,7 @@ class GlueConfig {
       observability: observabilityConfig,
       skillPaths: skillPaths,
       approvalMode: approvalMode,
+      titleGenerationEnabled: titleGenerationEnabled,
     );
   }
 }

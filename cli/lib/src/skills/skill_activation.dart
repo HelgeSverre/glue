@@ -1,5 +1,4 @@
 import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/content_part.dart';
 
 class SkillActivationError implements Exception {
   final String message;
@@ -33,9 +32,9 @@ Future<SkillActivationResult> activateSkillIntoConversation({
     throw SkillActivationError('Error: skill tool is unavailable.');
   }
 
-  final parts = await tool.execute({'name': skillName});
-  final content = ContentPart.textOnly(parts);
-  if (content.startsWith('Error')) {
+  final result = await tool.execute({'name': skillName});
+  final content = result.content;
+  if (!result.success || content.startsWith('Error')) {
     throw SkillActivationError(content);
   }
 

@@ -1,4 +1,3 @@
-import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/skills/skill_runtime.dart';
 import 'package:glue/src/skills/skill_registry.dart';
@@ -29,15 +28,30 @@ class SkillTool extends Tool {
       ];
 
   @override
-  Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
+  Future<ToolResult> execute(Map<String, dynamic> args) async {
     final registry = _runtime.refresh();
     final skillName = args['name'] as String?;
 
     if (skillName == null || skillName.isEmpty) {
-      return [TextPart(_listSkills(registry))];
+      final skills = registry.list();
+      return ToolResult(
+        content: _listSkills(registry),
+        summary:
+            'Listed ${skills.length} skill${skills.length == 1 ? '' : 's'}',
+        metadata: {'skill_count': skills.length},
+      );
     }
 
-    return [TextPart(_activateSkill(registry, skillName))];
+    final meta = registry.findByName(skillName);
+    final text = _activateSkill(registry, skillName);
+    return ToolResult(
+      success: meta != null,
+      content: text,
+      summary: meta != null
+          ? 'Activated skill: $skillName'
+          : 'Skill not found: $skillName',
+      metadata: {'skill_name': skillName, 'found': meta != null},
+    );
   }
 
   String _listSkills(SkillRegistry registry) {

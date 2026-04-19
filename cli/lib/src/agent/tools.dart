@@ -36,6 +36,75 @@ enum ToolTrust {
   command,
 }
 
+/// Structured result of a tool invocation.
+///
+/// Tools produce a [ToolResult] with [callId] left as `''` — the agent
+/// fills it in via [withCallId] when wrapping the result for the
+/// conversation envelope. The [content] string is what the LLM sees;
+/// [summary] is an optional one-liner preferred by the UI; [metadata]
+/// carries structured fields (bytes, line_count, exit_code, paths, …).
+class ToolResult {
+  /// The call-site identifier, set by the agent. Empty when produced
+  /// directly by a [Tool].
+  final String callId;
+
+  /// Whether the invocation succeeded. `false` flags the UI and LLM that
+  /// the tool could not complete its task.
+  final bool success;
+
+  /// Primary payload sent to the LLM. For errors, a human-readable
+  /// description.
+  final String content;
+
+  /// Optional one-liner preferred by the UI (e.g. "Read foo.dart (42
+  /// lines)"). When `null`, renderers fall back to truncating [content].
+  final String? summary;
+
+  /// Structured metadata populated by the tool (bytes, line_count,
+  /// exit_code, match_count, entry_count, etc.). Always non-null.
+  final Map<String, dynamic> metadata;
+
+  /// Multimodal artifacts (e.g. screenshots). When present, these replace
+  /// [content] in the LLM payload.
+  final List<ContentPart>? contentParts;
+
+  ToolResult({
+    this.callId = '',
+    this.success = true,
+    required this.content,
+    this.summary,
+    Map<String, dynamic>? metadata,
+    this.contentParts,
+  }) : metadata = metadata ?? const {};
+
+  factory ToolResult.denied(String callId) => ToolResult(
+        callId: callId,
+        success: false,
+        content: 'User denied tool execution',
+      );
+
+  /// Returns a copy with [callId] set. The agent invokes this to stamp a
+  /// tool's bare output with the originating call's identifier.
+  ToolResult withCallId(String id) => ToolResult(
+        callId: id,
+        success: success,
+        content: content,
+        summary: summary,
+        metadata: metadata,
+        contentParts: contentParts,
+      );
+
+  /// Serialises the LLM-facing payload into [ContentPart]s.
+  ///
+  /// When [contentParts] is non-null (e.g. a screenshot) those parts are
+  /// returned directly; otherwise [content] is wrapped in a single
+  /// [TextPart].
+  List<ContentPart> toContentParts() {
+    if (contentParts != null) return contentParts!;
+    return [TextPart(content)];
+  }
+}
+
 /// Base class for all tools available to the agent.
 ///
 /// Each tool declares its [name], [description], and [parameters] so the
@@ -53,8 +122,12 @@ abstract class Tool {
   /// Parameter definitions used to build the JSON schema sent to the LLM.
   List<ToolParameter> get parameters;
 
-  /// Executes this tool with the given [args] and returns structured content.
-  Future<List<ContentPart>> execute(Map<String, dynamic> args);
+  /// Executes this tool with the given [args] and returns a [ToolResult].
+  ///
+  /// Implementations should leave [ToolResult.callId] as its default
+  /// (empty) — the agent stamps it in via [ToolResult.withCallId] when
+  /// wrapping the result for the conversation.
+  Future<ToolResult> execute(Map<String, dynamic> args);
 
   /// The trust level this tool requires. Defaults to [ToolTrust.safe].
   ToolTrust get trust => ToolTrust.safe;
@@ -98,8 +171,7 @@ class ForwardingTool extends Tool {
   @override
   List<ToolParameter> get parameters => inner.parameters;
   @override
-  Future<List<ContentPart>> execute(Map<String, dynamic> args) =>
-      inner.execute(args);
+  Future<ToolResult> execute(Map<String, dynamic> args) => inner.execute(args);
   @override
   ToolTrust get trust => inner.trust;
   @override
@@ -132,23 +204,50 @@ class ReadFileTool extends Tool {
       ];
 
   @override
-  Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
+  Future<ToolResult> execute(Map<String, dynamic> args) async {
     final path = args['path'];
     if (path is! String || path.isEmpty) {
-      return [const TextPart('Error: no path provided')];
+      return ToolResult(
+        success: false,
+        content: 'Error: no path provided',
+      );
     }
     final file = File(path);
     if (!await file.exists()) {
-      return [TextPart('Error: file not found: $path')];
+      return ToolResult(
+        success: false,
+        content: 'Error: file not found: $path',
+        metadata: {'path': path},
+      );
     }
     final stat = await file.stat();
     if (stat.size > 1024 * 1024) {
-      return [
-        TextPart('Error: file too large (${stat.size} bytes, max 1MB): $path')
-      ];
+      return ToolResult(
+        success: false,
+        content: 'Error: file too large (${stat.size} bytes, max 1MB): $path',
+        metadata: {'path': path, 'bytes': stat.size},
+      );
     }
-    return [TextPart(await file.readAsString())];
+    final text = await file.readAsString();
+    final lineCount = _countLines(text);
+    return ToolResult(
+      content: text,
+      summary: 'Read $path ($lineCount lines, ${stat.size} bytes)',
+      metadata: {
+        'path': path,
+        'bytes': stat.size,
+        'line_count': lineCount,
+      },
+    );
   }
+}
+
+/// Counts newlines + 1 for a trailing non-newline-terminated line.
+/// Returns 0 for an empty string.
+int _countLines(String s) {
+  if (s.isEmpty) return 0;
+  final newlines = '\n'.allMatches(s).length;
+  return s.endsWith('\n') ? newlines : newlines + 1;
 }
 
 /// A tool that writes content to a file on disk.
@@ -178,19 +277,38 @@ class WriteFileTool extends Tool {
       ];
 
   @override
-  Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
+  Future<ToolResult> execute(Map<String, dynamic> args) async {
     final path = args['path'];
     final content = args['content'];
     if (path is! String || path.isEmpty) {
-      return [const TextPart('Error: no path provided')];
+      return ToolResult(
+        success: false,
+        content: 'Error: no path provided',
+      );
     }
     if (content is! String) {
-      return [const TextPart('Error: no content provided')];
+      return ToolResult(
+        success: false,
+        content: 'Error: no content provided',
+      );
     }
     final file = File(path);
+    final isNew = !await file.exists();
     await file.parent.create(recursive: true);
     await file.writeAsString(content);
-    return [TextPart('Wrote ${content.length} bytes to $path')];
+    final lineCount = _countLines(content);
+    return ToolResult(
+      content: 'Wrote ${content.length} bytes to $path',
+      summary: isNew
+          ? 'Created $path ($lineCount lines)'
+          : 'Wrote $path ($lineCount lines)',
+      metadata: {
+        'path': path,
+        'bytes': content.length,
+        'line_count': lineCount,
+        'is_new_file': isNew,
+      },
+    );
   }
 }
 
@@ -226,10 +344,13 @@ class BashTool extends Tool {
       ];
 
   @override
-  Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
+  Future<ToolResult> execute(Map<String, dynamic> args) async {
     final command = args['command'];
     if (command is! String || command.isEmpty) {
-      return [const TextPart('Error: no command provided')];
+      return ToolResult(
+        success: false,
+        content: 'Error: no command provided',
+      );
     }
     final t = args['timeout_seconds'];
     final timeoutSeconds =
@@ -240,17 +361,39 @@ class BashTool extends Tool {
     final result = await executor.runCapture(command, timeout: timeout);
 
     if (result.exitCode == -1 && timeout != null) {
-      return [
-        TextPart('Error: command timed out after $timeoutSeconds seconds')
-      ];
+      return ToolResult(
+        success: false,
+        content: 'Error: command timed out after $timeoutSeconds seconds',
+        summary: 'bash: timed out',
+        metadata: {
+          'command': command,
+          'timeout_seconds': timeoutSeconds,
+          'timed_out': true,
+        },
+      );
     }
 
     final buf = StringBuffer();
     if (result.stdout.isNotEmpty) buf.writeln(result.stdout);
     if (result.stderr.isNotEmpty) buf.writeln('STDERR: ${result.stderr}');
     buf.writeln('Exit code: ${result.exitCode}');
-    return [TextPart(buf.toString())];
+    return ToolResult(
+      success: result.exitCode == 0,
+      content: buf.toString(),
+      summary: 'bash: ${_snippet(command)} (exit ${result.exitCode})',
+      metadata: {
+        'command': command,
+        'exit_code': result.exitCode,
+        'stdout_bytes': result.stdout.length,
+        'stderr_bytes': result.stderr.length,
+      },
+    );
   }
+}
+
+String _snippet(String s, {int max = 40}) {
+  final oneLine = s.replaceAll('\n', ' ');
+  return oneLine.length <= max ? oneLine : '${oneLine.substring(0, max)}…';
 }
 
 /// A tool that searches for patterns in files using ripgrep-style semantics.
@@ -278,10 +421,13 @@ class GrepTool extends Tool {
       ];
 
   @override
-  Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
+  Future<ToolResult> execute(Map<String, dynamic> args) async {
     final pattern = args['pattern'];
     if (pattern is! String || pattern.isEmpty) {
-      return [const TextPart('Error: no pattern provided')];
+      return ToolResult(
+        success: false,
+        content: 'Error: no pattern provided',
+      );
     }
     final path = args['path'];
     final dir = (path is String && path.isNotEmpty) ? path : '.';
@@ -296,15 +442,42 @@ class GrepTool extends Tool {
     try {
       final result = await Process.run(executable, arguments)
           .timeout(const Duration(seconds: AppConstants.grepTimeoutSeconds));
-      if ((result.stdout as String).isEmpty) {
-        return [const TextPart('No matches found.')];
+      final output = result.stdout as String;
+      if (output.isEmpty) {
+        return ToolResult(
+          content: 'No matches found.',
+          summary: 'grep "$pattern": 0 matches',
+          metadata: {
+            'pattern': pattern,
+            'path': dir,
+            'match_count': 0,
+          },
+        );
       }
-      return [TextPart(result.stdout as String)];
+      final matchCount =
+          '\n'.allMatches(output).length + (output.endsWith('\n') ? 0 : 1);
+      return ToolResult(
+        content: output,
+        summary:
+            'grep "$pattern": $matchCount match${matchCount == 1 ? '' : 'es'}',
+        metadata: {
+          'pattern': pattern,
+          'path': dir,
+          'match_count': matchCount,
+        },
+      );
     } on TimeoutException {
-      return [
-        const TextPart(
-            'Error: grep timed out after ${AppConstants.grepTimeoutSeconds} seconds')
-      ];
+      return ToolResult(
+        success: false,
+        content:
+            'Error: grep timed out after ${AppConstants.grepTimeoutSeconds} seconds',
+        summary: 'grep: timed out',
+        metadata: {
+          'pattern': pattern,
+          'path': dir,
+          'timed_out': true,
+        },
+      );
     }
   }
 
@@ -355,10 +528,13 @@ class EditFileTool extends Tool {
       ];
 
   @override
-  Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
+  Future<ToolResult> execute(Map<String, dynamic> args) async {
     final path = args['path'];
     if (path is! String || path.isEmpty) {
-      return [const TextPart('Error: no path provided')];
+      return ToolResult(
+        success: false,
+        content: 'Error: no path provided',
+      );
     }
     final oldString = args['old_string'] as String? ?? '';
     final newString = args['new_string'] as String? ?? '';
@@ -368,30 +544,49 @@ class EditFileTool extends Tool {
     if (oldString.isEmpty) {
       await file.parent.create(recursive: true);
       await file.writeAsString(newString);
-      return [TextPart('Created ${file.path} (${newString.length} bytes)')];
+      final newLines = _countLines(newString);
+      return ToolResult(
+        content: 'Created ${file.path} (${newString.length} bytes)',
+        summary: 'Created $path ($newLines lines)',
+        metadata: {
+          'path': path,
+          'bytes': newString.length,
+          'old_lines': 0,
+          'new_lines': newLines,
+          'is_new_file': true,
+        },
+      );
     }
 
     if (!await file.exists()) {
-      return [TextPart('Error: file not found: $path')];
+      return ToolResult(
+        success: false,
+        content: 'Error: file not found: $path',
+        metadata: {'path': path},
+      );
     }
 
     final content = await file.readAsString();
 
     final firstIndex = content.indexOf(oldString);
     if (firstIndex == -1) {
-      return [
-        TextPart('Error: old_string not found in $path. '
+      return ToolResult(
+        success: false,
+        content: 'Error: old_string not found in $path. '
             'Make sure it matches the file content exactly, '
-            'including whitespace and indentation.')
-      ];
+            'including whitespace and indentation.',
+        metadata: {'path': path},
+      );
     }
 
     final lastIndex = content.lastIndexOf(oldString);
     if (firstIndex != lastIndex) {
-      return [
-        TextPart('Error: old_string appears multiple times in $path. '
-            'Include more surrounding context lines to make the match unique.')
-      ];
+      return ToolResult(
+        success: false,
+        content: 'Error: old_string appears multiple times in $path. '
+            'Include more surrounding context lines to make the match unique.',
+        metadata: {'path': path},
+      );
     }
 
     final newContent = content.substring(0, firstIndex) +
@@ -402,10 +597,17 @@ class EditFileTool extends Tool {
 
     final oldLines = oldString.split('\n').length;
     final newLines = newString.split('\n').length;
-    return [
-      TextPart(
-          'Applied edit to $path: replaced $oldLines line(s) with $newLines line(s)')
-    ];
+    return ToolResult(
+      content:
+          'Applied edit to $path: replaced $oldLines line(s) with $newLines line(s)',
+      summary: 'Edited $path ($oldLines→$newLines lines)',
+      metadata: {
+        'path': path,
+        'old_lines': oldLines,
+        'new_lines': newLines,
+        'is_new_file': false,
+      },
+    );
   }
 }
 
@@ -427,14 +629,21 @@ class ListDirectoryTool extends Tool {
       ];
 
   @override
-  Future<List<ContentPart>> execute(Map<String, dynamic> args) async {
+  Future<ToolResult> execute(Map<String, dynamic> args) async {
     final path = args['path'];
     if (path is! String || path.isEmpty) {
-      return [const TextPart('Error: no path provided')];
+      return ToolResult(
+        success: false,
+        content: 'Error: no path provided',
+      );
     }
     final dir = Directory(path);
     if (!await dir.exists()) {
-      return [TextPart('Error: directory not found: $path')];
+      return ToolResult(
+        success: false,
+        content: 'Error: directory not found: $path',
+        metadata: {'path': path},
+      );
     }
     final entries = await dir.list().take(AppConstants.globMaxEntries).toList();
     final buf = StringBuffer();
@@ -442,9 +651,20 @@ class ListDirectoryTool extends Tool {
       final suffix = entry is Directory ? '/' : '';
       buf.writeln('${entry.path}$suffix');
     }
-    if (entries.length == AppConstants.globMaxEntries) {
+    final capped = entries.length == AppConstants.globMaxEntries;
+    if (capped) {
       buf.writeln('(output capped at ${AppConstants.globMaxEntries} entries)');
     }
-    return [TextPart(buf.toString())];
+    return ToolResult(
+      content: buf.toString(),
+      summary: '$path: ${entries.length}'
+          '${capped ? "+" : ""} '
+          'entr${entries.length == 1 ? "y" : "ies"}',
+      metadata: {
+        'path': path,
+        'entry_count': entries.length,
+        'capped': capped,
+      },
+    );
   }
 }

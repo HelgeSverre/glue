@@ -163,8 +163,11 @@ void _handleAgentEventImpl(App app, AgentEvent event) {
       app._sessionManager.logEvent('tool_result', {
         'call_id': result.callId,
         'content': result.content,
+        if (result.summary != null) 'summary': result.summary,
+        if (result.metadata.isNotEmpty) 'metadata': result.metadata,
       });
-      app._blocks.add(_ConversationEntry.toolResult(result.content));
+      app._blocks
+          .add(_ConversationEntry.toolResult(result.summary ?? result.content));
       app._mode = AppMode.streaming;
       app._startSpinner();
       app._render();

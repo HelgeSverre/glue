@@ -1,5 +1,4 @@
 import 'package:test/test.dart';
-import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/tools/web_fetch_tool.dart';
 import 'package:glue/src/web/web_config.dart';
 
@@ -24,13 +23,12 @@ void main() {
     });
 
     test('returns error for missing url', () async {
-      final result = ContentPart.textOnly(await tool.execute({}));
+      final result = (await tool.execute({})).content;
       expect(result, contains('Error'));
     });
 
     test('returns error for invalid url', () async {
-      final result =
-          ContentPart.textOnly(await tool.execute({'url': 'not-a-url'}));
+      final result = (await tool.execute({'url': 'not-a-url'})).content;
       expect(result, contains('Invalid URL'));
     });
 

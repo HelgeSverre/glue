@@ -1,5 +1,4 @@
 import 'package:test/test.dart';
-import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/tools/web_search_tool.dart';
 import 'package:glue/src/web/search/search_router.dart';
 import 'package:glue/src/web/search/models.dart';
@@ -44,13 +43,12 @@ void main() {
     });
 
     test('returns error for missing query', () async {
-      final result = ContentPart.textOnly(await tool.execute({}));
+      final result = (await tool.execute({})).content;
       expect(result, contains('Error'));
     });
 
     test('returns formatted results', () async {
-      final result =
-          ContentPart.textOnly(await tool.execute({'query': 'test search'}));
+      final result = (await tool.execute({'query': 'test search'})).content;
       expect(result, contains('Mock Result'));
       expect(result, contains('mock.com'));
     });

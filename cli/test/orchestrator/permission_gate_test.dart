@@ -1,5 +1,4 @@
 import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/config/approval_mode.dart';
 import 'package:glue/src/orchestrator/permission_gate.dart';
@@ -18,8 +17,8 @@ class _StubTool extends Tool {
   @override
   List<ToolParameter> get parameters => const [];
   @override
-  Future<List<ContentPart>> execute(Map<String, dynamic> args) async =>
-      [const TextPart('ok')];
+  Future<ToolResult> execute(Map<String, dynamic> args) async =>
+      ToolResult(content: 'ok');
   @override
   ToolTrust get trust => _trust;
 }

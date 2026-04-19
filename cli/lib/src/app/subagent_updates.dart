@@ -28,12 +28,15 @@ void _handleSubagentUpdateImpl(App app, SubagentUpdate update) {
       group.entries.add(_SubagentEntry('$prefix ▶ ${call.name}  $argsPreview'));
       app._render();
     case AgentToolResult(:final result):
-      final preview = result.content.length > 80
-          ? '${result.content.substring(0, 80)}…'
-          : result.content;
+      final display = result.summary ??
+          (result.content.length > 80
+              ? '${result.content.substring(0, 80)}…'
+              : result.content);
       group.entries.add(_SubagentEntry(
-        '$prefix ✓ ${preview.replaceAll('\n', ' ')}',
-        rawContent: result.content.length > 80 ? result.content : null,
+        '$prefix ✓ ${display.replaceAll('\n', ' ')}',
+        rawContent: result.summary != null || result.content.length > 80
+            ? result.content
+            : null,
       ));
       app._render();
     case AgentError(:final error):

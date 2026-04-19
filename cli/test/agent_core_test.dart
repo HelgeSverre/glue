@@ -47,8 +47,8 @@ class MockTool extends Tool {
   List<ToolParameter> get parameters => [];
 
   @override
-  Future<List<ContentPart>> execute(Map<String, dynamic> args) async =>
-      [const TextPart('mock result')];
+  Future<ToolResult> execute(Map<String, dynamic> args) async =>
+      ToolResult(content: 'mock result');
 }
 
 class ThrowingTool extends Tool {
@@ -62,7 +62,7 @@ class ThrowingTool extends Tool {
   List<ToolParameter> get parameters => [];
 
   @override
-  Future<List<ContentPart>> execute(Map<String, dynamic> args) async =>
+  Future<ToolResult> execute(Map<String, dynamic> args) async =>
       throw Exception('boom');
 }
 
