@@ -106,17 +106,9 @@ button:focus-visible,
 }
 
 /* ─── Homepage overrides (pageClass: page-home) ───────────────────────── */
-/* The homepage renders its own slim top bar inside <Home />. Hide the
-   default VitePress nav so the hero can breathe. */
-.page-home .VPNav,
-.page-home .VPLocalNav {
-  display: none !important;
-}
-
-.page-home .VPContent {
-  padding-top: 0 !important;
-}
-
+/* Homepage shares the default VitePress nav with the rest of the site.
+   These overrides just let its hero and sections stretch full-bleed
+   instead of being capped by VitePress' default content max-width. */
 .page-home #VPContent,
 .page-home .VPPage {
   padding: 0 !important;

@@ -1,16 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
-// ── Slim nav (replaces VitePress nav on homepage) ─────────────────────────
-const navLinks = [
-  { text: 'Docs',      href: '/docs/getting-started/installation' },
-  { text: 'Models',    href: '/models' },
-  { text: 'Features',  href: '/features' },
-  { text: 'Roadmap',   href: '/roadmap' },
-  { text: 'Changelog', href: '/changelog' },
-]
-
-// ── Hero terminal: animated playback of a real Claude Code session ────────
+// ── Hero terminal: animated playback of a real Glue session ──────────────
 // Rendered to match Glue's actual TUI (block_renderer.dart):
 //   ❯ You          bold blue   · user prompt
 //   ◆ Glue         bold yellow · assistant
@@ -19,8 +10,9 @@ const navLinks = [
 //   status bar     left: mode · right: model │ [approval] │ cwd │ tok N
 //   ❯ prompt       yellow      · input line
 //
-// Script source: website/public/demo-script.json (curated + redacted from the
-// real conversation that built this site).
+// Script source: website/public/demo-script.json — a browser-driven scene
+// (navigate → extract_text → screenshot → diff) showing the web_browser tool
+// with a session that survives across calls.
 type Phase = 'preparing' | 'awaitingApproval' | 'running' | 'done' | 'denied' | 'error'
 
 interface ShotEvent {
@@ -42,20 +34,21 @@ interface ShotMeta {
 
 // Fallback script — shown if fetch fails (SSR / no network / offline build).
 const fallbackEvents: ShotEvent[] = [
-  { kind: 'user',        text: 'fetch task about redoing the website from backlog' },
-  { kind: 'assistant',   text: 'Searching the backlog for a website task.' },
-  { kind: 'tool_call',   name: 'backlog.task_search', args: { query: 'website docs' }, phase: 'running' },
-  { kind: 'tool_result', ok: true, text: 'TASK-23 · Website redesign · 10 subtasks' },
-  { kind: 'user',        text: 'see if the plan was deleted in git' },
-  { kind: 'tool_call',   name: 'bash', args: { cmd: "git log --diff-filter=D -- 'docs/plans/*'" }, phase: 'running' },
-  { kind: 'tool_result', ok: true, text: '(no output)' },
-  { kind: 'assistant',   text: 'Referenced in the task but never committed.' },
+  { kind: 'user',        text: 'extract the pricing tiers from stripe.com/pricing and save as json' },
+  { kind: 'assistant',   text: 'Opening a browser session.' },
+  { kind: 'tool_call',   name: 'web_browser', args: { action: 'navigate', url: 'https://stripe.com/pricing' }, phase: 'running' },
+  { kind: 'tool_result', ok: true, text: 'loaded · 1.8s · "Pricing & fees | Stripe"' },
+  { kind: 'tool_call',   name: 'web_browser', args: { action: 'extract_text', selector: 'main' }, phase: 'running' },
+  { kind: 'tool_result', ok: true, text: '5,312 chars of markdown · session kept warm' },
+  { kind: 'tool_call',   name: 'web_browser', args: { action: 'screenshot', fullPage: true }, phase: 'running' },
+  { kind: 'tool_result', ok: true, text: 'saved ./pricing.png · 1.4 MB' },
+  { kind: 'assistant',   text: 'Three tiers: Integrated, Customized, Enterprise. Writing JSON.' },
 ]
 const fallbackMeta: ShotMeta = {
-  cwd: '~/code/glue',
+  cwd: '~/code/research',
   model: 'anthropic/claude-sonnet-4.6',
   approval: 'confirm',
-  tokensStart: 12340,
+  tokensStart: 18240,
 }
 
 const events = ref<ShotEvent[]>(fallbackEvents)
@@ -93,8 +86,6 @@ function scheduleNext() {
 
 const visibleEvents = computed(() => events.value.slice(0, visible.value))
 
-// The next event about to land determines the mode indicator. User is "Ready",
-// assistant streaming → "Generating", tool_call → "⚙ Tool", tool_result → pass.
 const nextEvent = computed<ShotEvent | null>(() =>
   visible.value < events.value.length ? events.value[visible.value] : null
 )
@@ -180,8 +171,6 @@ onMounted(async () => {
   visible.value = 1
   scheduleNext()
 
-  // Status-bar spinner — cycles regardless of event timer so it always feels
-  // alive when the app is "thinking".
   spinnerTimer = setInterval(() => {
     spinnerFrame.value = (spinnerFrame.value + 1) % spinnerFrames.length
   }, 100)
@@ -193,7 +182,6 @@ onBeforeUnmount(() => {
   isRunning.value = false
 })
 
-// Auto-scroll the body as new events land so the latest output is in view.
 const bodyRef = ref<HTMLElement | null>(null)
 watch(visible, async () => {
   await Promise.resolve()
@@ -202,80 +190,98 @@ watch(visible, async () => {
   el.scrollTop = el.scrollHeight
 })
 
-// Compact gutter for the inline demos in the "three moves" section below.
-// The hero uses full Glue TUI blocks; these are denser by design.
-type ScriptKind = 'prompt' | 'assistant' | 'tool' | 'output' | 'note'
-function scriptGutter(kind: ScriptKind) {
-  switch (kind) {
-    case 'prompt':    return '›'
-    case 'assistant': return ' '
-    case 'tool':      return '⏵'
-    case 'output':    return ' '
-    case 'note':      return '#'
-  }
+// ── The six CDP primitives ────────────────────────────────────────────────
+const primitives = [
+  { name: 'navigate',     desc: 'open a URL and wait for network idle' },
+  { name: 'click',        desc: 'click any CSS selector in the live DOM' },
+  { name: 'type',         desc: 'fill inputs without reopening the tab' },
+  { name: 'screenshot',   desc: 'full page or a single element' },
+  { name: 'extract_text', desc: 'cleaned markdown of the current page' },
+  { name: 'evaluate',     desc: 'run arbitrary JavaScript in page context' },
+]
+
+// ── Browser backends ──────────────────────────────────────────────────────
+type BackendStatus = 'shipping' | 'experimental' | 'planned'
+interface Backend {
+  name: string
+  tagline: string
+  status: BackendStatus
+  yaml: string
 }
-
-// ── Featured moves ────────────────────────────────────────────────────────
-const moves = [
+const backends: Backend[] = [
   {
-    num: '01',
-    title: 'Edit with intent.',
-    blurb:
-      'Rename a helper across the repo, convert a test fixture, patch multiple files in one go. Every edit lands in the transcript as a diff summary.',
-    steps: [
-      { kind: 'prompt',    text: 'rename withRetry → retryable across the repo' },
-      { kind: 'tool',      text: 'grep  withRetry  cli/lib/' },
-      { kind: 'output',    text: '14 hits in 7 files' },
-      { kind: 'tool',      text: 'edit  7 files · +14 −14' },
-      { kind: 'assistant', text: 'Renamed. Tests still compile.' },
-    ],
+    name: 'local',
+    tagline: 'Puppeteer-launched Chrome on your machine. headed: true and you can watch it work.',
+    status: 'shipping',
+    yaml: `web:
+  browser:
+    backend: local
+    headed: true`,
   },
   {
-    num: '02',
-    title: 'Run in a sandbox.',
-    blurb:
-      'Risky install? Untrusted script? Spin up an ephemeral Docker container, mount the workspace, run it there. The container goes away with the session.',
-    steps: [
-      { kind: 'prompt',    text: 'install the suspicious npm tarball and check for network calls' },
-      { kind: 'output',    text: 'runtime · docker · ubuntu:24.04' },
-      { kind: 'tool',      text: 'run   npm i ./odd-pkg.tgz' },
-      { kind: 'output',    text: 'added 42 packages · 0 vulnerabilities' },
-      { kind: 'assistant', text: 'No outbound calls on install. Runtime calls on import.' },
-    ],
+    name: 'docker',
+    tagline: 'Ephemeral browserless/chrome container, one per session. No state touches your host.',
+    status: 'shipping',
+    yaml: `web:
+  browser:
+    backend: docker
+    docker_image: browserless/chrome:latest
+    docker_port: 3000`,
   },
   {
-    num: '03',
-    title: 'Resume anything.',
-    blurb:
-      'Every session is an append-only JSONL log on your machine. Stop mid-task, come back tomorrow, pick up exactly where you left off. No hosted service, no account, no upload.',
-    steps: [
-      { kind: 'prompt',    text: 'glue --resume 1740654600000-abc' },
-      { kind: 'output',    text: 'resumed · 142 events · last: 2h ago' },
-      { kind: 'assistant', text: 'Picking up where we left off — 3 tests still red.' },
-      { kind: 'tool',      text: 'run   dart test test/shell/' },
-      { kind: 'output',    text: '✓ all tests passing' },
-    ],
+    name: 'cloud',
+    tagline: 'Browserbase, Browserless, or Steel. Session replays, self-hosting, scale.',
+    status: 'experimental',
+    yaml: `web:
+  browser:
+    backend: browserbase
+    browserbase_project_id: proj_…`,
   },
 ]
 
-// ── Runtime ladder ────────────────────────────────────────────────────────
-const runtimes = [
-  { label: 'host',   status: 'shipping', line: 'your shell, your machine' },
-  { label: 'docker', status: 'shipping', line: 'ephemeral container · workspace mounted' },
-  { label: 'cloud',  status: 'planned',  line: 'e2b · modal · daytona · ssh workers' },
-]
+// ── Fetch / OCR / search config snippet ───────────────────────────────────
+const fetchCfg = `web:
+  fetch:
+    jina_api_key: \${JINA_API_KEY}   # optional, for hostile pages
+  pdf:
+    enabled: true
+    ocr_provider: mistral            # or openai — scanned PDFs → vision
+  search:
+    provider: brave                  # auto-detects brave | tavily | firecrawl`
 
-// ── Providers ─────────────────────────────────────────────────────────────
-const providers = [
-  { id: 'anthropic',  model: 'claude-sonnet-4.6',   tag: 'default' },
-  { id: 'openai',     model: 'gpt-5.4',             tag: 'hosted' },
-  { id: 'gemini',     model: 'gemini-pro-latest',   tag: 'hosted' },
-  { id: 'mistral',    model: 'codestral-latest',    tag: 'hosted' },
-  { id: 'groq',       model: 'qwen/qwen3-coder',    tag: 'hosted' },
-  { id: 'ollama',     model: 'qwen2.5-coder:32b',   tag: 'local' },
-  { id: 'openrouter', model: 'any route',           tag: 'hosted' },
-]
+// ── Runtime × browser matrix ──────────────────────────────────────────────
+const matrixCaps = ['local', 'docker', 'browserbase', 'browserless', 'steel']
+const matrixRows = [
+  {
+    runtime: 'host',
+    status: 'shipping' as const,
+    notes: 'your shell, your machine',
+    capabilities: {
+      local: 'yes', docker: 'yes',
+      browserbase: 'partial', browserless: 'partial', steel: 'partial',
+    },
+  },
+  {
+    runtime: 'docker',
+    status: 'shipping' as const,
+    notes: 'ephemeral container, workspace mounted',
+    capabilities: {
+      local: 'no', docker: 'yes',
+      browserbase: 'partial', browserless: 'partial', steel: 'partial',
+    },
+  },
+  {
+    runtime: 'cloud',
+    status: 'planned' as const,
+    notes: 'e2b · modal · daytona · ssh workers',
+    capabilities: {
+      local: 'no', docker: 'planned',
+      browserbase: 'planned', browserless: 'planned', steel: 'planned',
+    },
+  },
+] as const
 
+// ── JSONL sample for the "also: coding" section ───────────────────────────
 const jsonlSample = [
   `{"t":"10:30:00.000Z","type":"user_message","text":"explain retry logic"}`,
   `{"t":"10:30:00.510Z","type":"tool_call","name":"read","args":{"path":"http_client.dart"}}`,
@@ -287,42 +293,21 @@ const jsonlSample = [
 
 <template>
   <main class="home">
-    <!-- ─── Slim nav ──────────────────────────────────────────────────── -->
-    <header class="topbar">
-      <div class="wrap topbar-inner">
-        <a class="brand" href="/" aria-label="Glue home">
-          <img class="brand-mark" src="/brand/symbol-yellow.svg" alt="" width="24" height="24" />
-          <span class="brand-name">Glue</span>
-        </a>
-        <nav class="nav" aria-label="Primary">
-          <a
-            v-for="link in navLinks"
-            :key="link.href"
-            :href="link.href"
-            class="nav-link"
-          >{{ link.text }}</a>
-          <a
-            href="https://github.com/helgesverre/glue"
-            class="nav-link nav-github"
-            aria-label="GitHub"
-          >GitHub ↗</a>
-        </nav>
-      </div>
-    </header>
-
-    <!-- ─── Hero (2 cols) ─────────────────────────────────────────────── -->
+    <!-- ─── Hero ──────────────────────────────────────────────────────── -->
     <section class="hero">
       <div class="wrap hero-grid">
         <div class="hero-copy">
-          <div class="eyebrow">glue · terminal-native coding agent</div>
+          <div class="eyebrow">glue · a terminal agent where the browser is a runtime</div>
 
           <h1 class="headline">
-            A small terminal agent for <span class="accent">real coding work.</span>
+            Drive a real browser <span class="accent">from the terminal.</span>
           </h1>
 
           <p class="sub">
-            Edits files. Runs tools. Keeps resumable sessions. Stays on your machine —
-            or jumps into Docker when the work gets risky.
+            A terminal coding agent that treats Chrome like shell — navigate, click, type,
+            screenshot, extract — with sessions that survive across tool calls. Swap between
+            local Chrome, a Docker container, or Browserbase/Browserless/Steel with one
+            config line.
           </p>
 
           <div class="install">
@@ -331,17 +316,19 @@ const jsonlSample = [
 
           <div class="actions">
             <a class="btn btn-primary" href="/docs/getting-started/quick-start">Quick start →</a>
-            <a class="btn btn-ghost" href="/why">Why Glue</a>
+            <a class="btn btn-ghost" href="/docs/advanced/browser-automation">Browser automation</a>
           </div>
 
           <div class="meta">
             <span><code>anthropic</code> · <code>openai</code> · <code>gemini</code> · <code>ollama</code></span>
             <span class="meta-sep">·</span>
             <span>host · docker · <span class="meta-planned">cloud</span></span>
+            <span class="meta-sep">·</span>
+            <span><code>local</code> · <code>docker</code> · <code>browserbase</code> · <code>browserless</code> · <code>steel</code></span>
           </div>
         </div>
 
-        <figure class="shot" aria-label="Glue in a coding session">
+        <figure class="shot" aria-label="Glue driving a browser session">
           <div class="shot-frame">
             <div class="shot-tab">
               <span class="shot-tab-dot" />
@@ -351,19 +338,16 @@ const jsonlSample = [
             <div ref="bodyRef" class="shot-body">
               <template v-for="(ev, i) in visibleEvents" :key="i">
 
-                <!-- user: ❯ You (bold blue) + indented body -->
                 <div v-if="ev.kind === 'user'" class="tui-block tui-user">
                   <div class="tui-head"><span class="glyph glyph-blue">❯</span> You</div>
                   <div class="tui-body">{{ ev.text }}</div>
                 </div>
 
-                <!-- assistant: ◆ Glue (bold yellow) + body -->
                 <div v-else-if="ev.kind === 'assistant'" class="tui-block tui-assistant">
                   <div class="tui-head"><span class="glyph glyph-accent">◆</span> Glue</div>
                   <div class="tui-body">{{ ev.text }}</div>
                 </div>
 
-                <!-- tool_call: ▶ Tool: name (+ phase) + args line -->
                 <div v-else-if="ev.kind === 'tool_call'" class="tui-block tui-tool">
                   <div class="tui-head">
                     <span class="glyph glyph-accent">▶</span>
@@ -381,7 +365,6 @@ const jsonlSample = [
                   </div>
                 </div>
 
-                <!-- tool_result: ✓ / ✗ Tool result + body -->
                 <div v-else-if="ev.kind === 'tool_result'" class="tui-block tui-result">
                   <div class="tui-head">
                     <span
@@ -393,7 +376,6 @@ const jsonlSample = [
                   <pre class="tui-body tui-body-pre">{{ ev.text }}</pre>
                 </div>
 
-                <!-- system: gray leading line -->
                 <div v-else-if="ev.kind === 'system'" class="tui-block tui-system">
                   {{ ev.text }}
                 </div>
@@ -401,7 +383,6 @@ const jsonlSample = [
               </template>
             </div>
 
-            <!-- Glue's status bar: left mode, right model │ [approval] │ cwd │ tok N -->
             <div class="shot-status">
               <span class="status-left">
                 <span v-if="modeLeft.spinner" class="status-spinner">{{ spinnerFrames[spinnerFrame] }}</span>
@@ -419,7 +400,6 @@ const jsonlSample = [
               </span>
             </div>
 
-            <!-- Input line: ❯ yellow prompt + blinking cursor -->
             <div class="shot-input">
               <span class="input-prompt">❯</span>
               <span class="input-caret" aria-hidden="true" />
@@ -429,116 +409,142 @@ const jsonlSample = [
       </div>
     </section>
 
-    <!-- ─── Loop ──────────────────────────────────────────────────────── -->
+    <!-- ─── The browser is a runtime ──────────────────────────────────── -->
     <section class="section section-divider">
       <div class="wrap">
-        <div class="kicker">the loop</div>
-        <h2 class="display">
-          Ask → inspect → edit → run → verify.
-        </h2>
+        <div class="kicker">one runtime · six primitives</div>
+        <h2 class="display">Chrome, driven from the transcript.</h2>
         <p class="lede">
-          Nothing hidden. Every step lands in the transcript in order — so you
-          can stop, scroll, and challenge anything Glue did.
+          Every other terminal agent treats the web as <code>fetch(url)</code>. Glue exposes a
+          real browser through Chrome DevTools Protocol — and the session stays open between
+          tool calls so the agent can fill a form, submit, and read the result without
+          re-opening the tab.
+        </p>
+
+        <ul class="primitives">
+          <li v-for="p in primitives" :key="p.name" class="primitive">
+            <code class="prim-name">{{ p.name }}</code>
+            <span class="prim-desc">{{ p.desc }}</span>
+          </li>
+        </ul>
+
+        <p class="callout">
+          <span class="callout-label">within-turn session</span>
+          The CDP session survives across tool invocations in the same prompt —
+          navigate, click, type, screenshot, extract, all against the same live tab.
         </p>
       </div>
     </section>
 
-    <!-- ─── Three moves ───────────────────────────────────────────────── -->
+    <!-- ─── Swap backend, not code ────────────────────────────────────── -->
     <section class="section section-divider">
       <div class="wrap">
-        <div class="kicker">three moves, over and over</div>
-      </div>
+        <div class="kicker">swap backend · not code</div>
+        <h2 class="display">Same six actions. Somewhere else to run them.</h2>
+        <p class="lede">
+          One interface — <code>BrowserEndpointProvider</code> — behind every backend. Pick
+          local Chrome for iteration, a Docker container when the page is sketchy, or a cloud
+          vendor when you need replays and scale. Swap is a config change, not a code change.
+        </p>
 
-      <article v-for="move in moves" :key="move.num" class="move">
-        <div class="wrap move-inner">
-          <div class="move-copy">
-            <div class="move-num">{{ move.num }}</div>
-            <h3 class="move-title">{{ move.title }}</h3>
-            <p class="move-blurb">{{ move.blurb }}</p>
-          </div>
-          <div class="move-script">
-            <div
-              v-for="(step, i) in move.steps"
-              :key="i"
-              class="script-line"
-              :class="`line-${step.kind}`"
-            >
-              <span class="script-gutter" aria-hidden="true">{{ scriptGutter(step.kind as ScriptKind) }}</span>
-              <span class="script-text">{{ step.text }}</span>
-            </div>
-          </div>
+        <div class="backends">
+          <article
+            v-for="b in backends"
+            :key="b.name"
+            class="backend"
+            :data-status="b.status"
+          >
+            <header class="backend-head">
+              <span class="backend-name">{{ b.name }}</span>
+              <FeatureStatus :status="b.status" />
+            </header>
+            <p class="backend-sub">{{ b.tagline }}</p>
+            <pre class="backend-code"><code>{{ b.yaml }}</code></pre>
+          </article>
         </div>
-      </article>
-    </section>
-
-    <!-- ─── Runtimes ──────────────────────────────────────────────────── -->
-    <section class="section section-divider">
-      <div class="wrap">
-        <div class="kicker">run it where it belongs</div>
-        <h2 class="display">Host. Docker. Cloud.</h2>
-        <p class="lede">
-          Same agent, different backstops. Swap between them per session when
-          you want a clean environment.
-        </p>
-
-        <ul class="ladder">
-          <li
-            v-for="rt in runtimes"
-            :key="rt.label"
-            class="rung"
-            :data-status="rt.status"
-          >
-            <span class="rung-label">{{ rt.label }}</span>
-            <span class="rung-line">{{ rt.line }}</span>
-            <FeatureStatus :status="(rt.status as 'shipping' | 'planned')" />
-          </li>
-        </ul>
-
-        <p class="more"><a href="/runtimes">Runtime capability matrix →</a></p>
       </div>
     </section>
 
-    <!-- ─── Providers ─────────────────────────────────────────────────── -->
+    <!-- ─── Fetch / OCR / search ──────────────────────────────────────── -->
     <section class="section section-divider">
       <div class="wrap">
-        <div class="kicker">bring your models</div>
-        <h2 class="display">Curated providers. No picker-zoo.</h2>
+        <div class="kicker">fetch · ocr · search</div>
+        <h2 class="display">Scanned PDFs. Hostile pages. Results you can use.</h2>
         <p class="lede">
-          Seven providers bundled, a default per profile, and an
-          <code>adapter: openai</code> escape hatch for any compatible endpoint.
-          Credentials stay out of project config.
+          Not every page needs a browser. The fetch tool reads HTML as cleaned markdown,
+          pulls text out of PDFs, and falls back to a vision model when the PDF is scanned.
+          Search picks whichever provider you've already paid for.
         </p>
 
-        <ul class="providers">
-          <li
-            v-for="p in providers"
-            :key="p.id"
-            class="provider"
-            :data-tag="p.tag"
-          >
-            <span class="provider-id"><code>{{ p.id }}/{{ p.model }}</code></span>
-            <span class="provider-tag">{{ p.tag }}</span>
+        <ul class="capabilities">
+          <li>
+            <code>web_fetch</code> · HTML → markdown · PDF → text ·
+            <strong>OCR fallback</strong> via <code>mistral</code> or <code>openai</code> vision for scanned documents.
+          </li>
+          <li>
+            <code>web_fetch</code> · optional <strong>Jina</strong> fallback for pages that don't extract cleanly
+            (<code>JINA_API_KEY</code>).
+          </li>
+          <li>
+            <code>web_search</code> · auto-detects the first available of
+            <code>BRAVE_API_KEY</code>, <code>TAVILY_API_KEY</code>, <code>FIRECRAWL_API_KEY</code>.
           </li>
         </ul>
 
-        <p class="more"><a href="/models">Full model catalog →</a></p>
+        <pre class="cfg"><code>{{ fetchCfg }}</code></pre>
+
+        <p class="more"><a href="/docs/advanced/web-tools">Web tools guide →</a></p>
       </div>
     </section>
 
-    <!-- ─── Sessions ──────────────────────────────────────────────────── -->
+    <!-- ─── Runtime × browser matrix ──────────────────────────────────── -->
     <section class="section section-divider">
       <div class="wrap">
-        <div class="kicker">sessions you can grep</div>
-        <h2 class="display">Every run is a file you own.</h2>
+        <div class="kicker">pair them how you like</div>
+        <h2 class="display">Runtime × browser.</h2>
         <p class="lede">
-          Append-only JSONL under <code>~/.glue/sessions/</code>. No hosted
-          dashboard. No telemetry upload. <code>tail&nbsp;-f</code> works.
+          Run the agent on your host or inside an ephemeral Docker container. Drive a browser
+          on your machine, in a sibling container, or in someone else's cloud. They compose.
         </p>
+
+        <RuntimeMatrix
+          :capabilities="matrixCaps"
+          :rows="matrixRows as any"
+          caption='"partial" = the backend works but is still flagged experimental. "planned" = cloud runtimes are tracked but not shipped.'
+        />
+
+        <p class="more"><a href="/runtimes">Full runtime capability matrix →</a></p>
+      </div>
+    </section>
+
+    <!-- ─── Also: coding ──────────────────────────────────────────────── -->
+    <section class="section section-divider">
+      <div class="wrap">
+        <div class="kicker">also · coding</div>
+        <h2 class="display">Everything else you'd expect from a coding agent.</h2>
+        <p class="lede">
+          Glue is still a full coding agent underneath. It edits files, runs shell, jumps
+          into Docker for risky work, and writes every session to an append-only JSONL log
+          on your machine — nothing hosted, nothing uploaded.
+        </p>
+
+        <ul class="coding-list">
+          <li><strong>Edits.</strong> Multi-file changes land in the transcript as diffs.</li>
+          <li><strong>Shell.</strong> Host shell or ephemeral Docker container — your call, per session.</li>
+          <li><strong>Sessions.</strong> Append-only JSONL under <code>~/.glue/sessions/</code>. <code>tail -f</code> works.</li>
+          <li><strong>Providers.</strong> Anthropic, OpenAI, Gemini, Mistral, Groq, Ollama, OpenRouter — bring your own key.</li>
+        </ul>
 
         <pre class="jsonl"><code v-for="(line, i) in jsonlSample" :key="i">{{ line }}
 </code></pre>
 
-        <p class="more"><a href="/sessions">How sessions work →</a></p>
+        <p class="more">
+          <a href="/sessions">How sessions work →</a>
+          <span class="more-sep">·</span>
+          <a href="/models">Model catalog →</a>
+          <span class="more-sep">·</span>
+          <a href="/features">Feature list →</a>
+        </p>
       </div>
     </section>
 
@@ -546,12 +552,12 @@ const jsonlSample = [
     <section class="section section-divider section-cta">
       <div class="wrap cta">
         <h2 class="display">
-          Install it. Run <code class="cta-run">glue</code>.
+          Install it. <span class="cta-run">Open a tab.</span>
         </h2>
         <div class="cta-install"><InstallSnippet /></div>
         <div class="actions">
           <a class="btn btn-primary" href="/docs/getting-started/quick-start">Quick start →</a>
-          <a class="btn btn-ghost" href="/features">Feature list</a>
+          <a class="btn btn-ghost" href="/docs/advanced/browser-automation">Browser automation</a>
         </div>
       </div>
     </section>
@@ -623,7 +629,7 @@ const jsonlSample = [
 }
 
 .lede {
-  max-width: 640px;
+  max-width: 680px;
   color: var(--fg-dim);
   font-size: clamp(1.02rem, 1.25vw, 1.15rem);
   line-height: 1.55;
@@ -634,6 +640,10 @@ const jsonlSample = [
   margin-top: 2rem;
   font-family: var(--vp-font-family-mono);
   font-size: 0.88rem;
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: baseline;
 }
 
 .more a {
@@ -646,74 +656,9 @@ const jsonlSample = [
   border-bottom-style: solid;
 }
 
-/* ── Topbar (slim homepage nav) ───────────────────────────────────────── */
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  padding: 0.9rem 0;
-  background: color-mix(in srgb, var(--vp-c-bg) 85%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-bottom: 1px solid transparent;
-  transition: border-color 150ms ease;
-}
-
-.topbar-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 2rem;
-}
-
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--fg);
-  font-family: var(--vp-font-family-base);
-  font-size: 1.05rem;
-  font-weight: 600;
-  letter-spacing: normal;
-}
-
-.brand-mark {
-  width: 24px;
-  height: 24px;
-  display: block;
-}
-
-.brand-name {
-  color: var(--fg);
-}
-
-.nav {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-
-.nav-link {
-  font-family: var(--vp-font-family-base);
-  font-size: 0.93rem;
-  font-weight: 500;
-  color: var(--fg-dim);
-  transition: color 120ms ease;
-}
-
-.nav-link:hover {
-  color: var(--fg);
-}
-
-.nav-github {
-  font-family: var(--vp-font-family-mono);
-  font-size: 0.88rem;
-}
-
-@media (max-width: 560px) {
-  .nav { gap: 0.85rem; font-size: 0.85rem; }
-  .nav-link { font-size: 0.85rem; }
-  .nav-github { display: none; }
+.more-sep {
+  color: var(--fg-3);
+  opacity: 0.6;
 }
 
 /* ── Hero (2 cols) ────────────────────────────────────────────────────── */
@@ -762,7 +707,7 @@ const jsonlSample = [
   font-size: clamp(1.05rem, 1.35vw, 1.2rem);
   line-height: 1.5;
   color: var(--fg-dim);
-  max-width: 560px;
+  max-width: 620px;
   margin: 0 0 2rem;
   font-weight: 400;
 }
@@ -853,7 +798,6 @@ const jsonlSample = [
   font-family: var(--vp-font-family-mono);
 }
 
-/* Terminal-tab style title row */
 .shot-tab {
   display: flex;
   align-items: center;
@@ -875,7 +819,6 @@ const jsonlSample = [
   letter-spacing: 0.01em;
 }
 
-/* Transcript body */
 .shot-body {
   padding: 0.75rem 0.25rem 1rem;
   font-size: 13px;
@@ -889,7 +832,6 @@ const jsonlSample = [
 .shot-body::-webkit-scrollbar { width: 6px; }
 .shot-body::-webkit-scrollbar-thumb { background: #2a2b2e; border-radius: 3px; }
 
-/* Each TUI block reserves a 1-char left margin matching Glue's ` ` prefix. */
 .tui-block {
   padding: 0 0.75rem 0 0.85rem;
   margin-bottom: 0.5rem;
@@ -908,7 +850,7 @@ const jsonlSample = [
 .tui-body,
 .tui-body-pre {
   margin: 0;
-  padding-left: 2ch;               /* matches Glue's `   ` / `    ` indent */
+  padding-left: 2ch;
   color: var(--glue-term-fg);
   white-space: pre-wrap;
   word-break: break-word;
@@ -922,11 +864,10 @@ const jsonlSample = [
   color: var(--glue-term-dim);
 }
 
-/* Role-specific colours — match block_renderer.dart headers. */
-.tui-user .tui-head      { color: #3B82F6; }          /* bold blue  */
-.tui-assistant .tui-head { color: var(--accent); }    /* bold yellow */
-.tui-tool .tui-head      { color: var(--accent); }    /* bold yellow */
-.tui-result .tui-head    { /* ok/danger handled by glyph class */ }
+.tui-user .tui-head      { color: #3B82F6; }
+.tui-assistant .tui-head { color: var(--accent); }
+.tui-tool .tui-head      { color: var(--accent); }
+.tui-result .tui-head    { /* handled by glyph class */ }
 .tui-system              { color: var(--glue-term-dim); }
 
 .glyph {
@@ -946,7 +887,7 @@ const jsonlSample = [
 }
 
 .tui-args {
-  padding-left: 4ch;                /* Glue uses a 4-space indent for args */
+  padding-left: 4ch;
   color: var(--glue-term-dim);
   white-space: pre-wrap;
   word-break: break-word;
@@ -958,14 +899,14 @@ const jsonlSample = [
 }
 .phase-prep { color: var(--glue-term-dim); }
 .phase-wait { color: var(--accent); }
-.phase-run  { color: #22D3EE; }     /* cyan, matches Glue's `\x1b[36m` */
+.phase-run  { color: #22D3EE; }
 .phase-deny { color: var(--glue-error); }
 
 @media (prefers-reduced-motion: reduce) {
   .tui-block { animation: none; }
 }
 
-/* Status bar — Glue's bottom line, left mode · right model │ [approval] │ cwd │ tok N */
+/* Status bar */
 .shot-status {
   display: flex;
   align-items: center;
@@ -1022,7 +963,6 @@ const jsonlSample = [
   color: var(--glue-term-dim);
 }
 
-/* Input zone — ❯ prompt + blinking cursor */
 .shot-input {
   padding: 0.55rem 0.9rem 0.65rem;
   border-top: 1px solid #1e1e21;
@@ -1054,174 +994,192 @@ const jsonlSample = [
   .input-caret { animation: none; }
 }
 
-/* ── Moves (stacked, generous whitespace) ─────────────────────────────── */
-.move {
-  padding: 4rem 0;
+/* ── Primitives grid (six actions) ────────────────────────────────────── */
+.primitives {
+  list-style: none;
+  padding: 0;
+  margin: 2.5rem 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0;
   border-top: 1px solid var(--div);
 }
 
-.move:first-of-type {
-  border-top: none;
+.primitive {
+  padding: 1.25rem 1.25rem 1.25rem 0;
+  border-bottom: 1px solid var(--div);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
-.move-inner {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
-  gap: 3rem;
-  align-items: start;
-}
-
-@media (max-width: 860px) {
-  .move-inner { grid-template-columns: 1fr; gap: 2rem; }
-}
-
-.move-num {
+.prim-name {
   font-family: var(--vp-font-family-mono);
-  font-size: 0.85rem;
-  color: var(--accent);
-  letter-spacing: 0.1em;
-  margin-bottom: 0.75rem;
-}
-
-.move-title {
-  font-size: clamp(1.75rem, 3vw, 2.25rem);
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  font-weight: 600;
-  margin: 0 0 1rem;
-}
-
-.move-blurb {
-  color: var(--fg-dim);
   font-size: 1.05rem;
-  line-height: 1.6;
-  margin: 0;
-  max-width: 42ch;
-}
-
-.move-script {
-  font-family: var(--vp-font-family-mono);
-  font-size: 0.92rem;
-  line-height: 1.8;
-}
-
-.script-line {
-  display: grid;
-  grid-template-columns: 1.4em 1fr;
-  gap: 0.6rem;
-  color: var(--fg-dim);
-}
-
-.script-gutter {
-  color: var(--fg-3);
-  user-select: none;
-  text-align: right;
-}
-
-.line-prompt    { color: var(--fg); font-weight: 500; }
-.line-prompt .script-gutter { color: var(--accent); }
-
-.line-assistant { color: var(--fg); }
-
-.line-tool      { color: var(--fg-dim); }
-.line-tool .script-gutter { color: var(--accent); opacity: 0.7; }
-
-.line-output    { color: var(--fg-3); }
-
-.line-group     { color: var(--fg-3); font-style: italic; }
-.line-group .script-gutter { color: var(--fg-3); }
-
-/* ── Runtime ladder ───────────────────────────────────────────────────── */
-.ladder {
-  list-style: none;
-  padding: 0;
-  margin: 2.5rem 0 0;
-  display: grid;
-  gap: 0;
-}
-
-.rung {
-  display: grid;
-  grid-template-columns: minmax(8rem, 14rem) 1fr auto;
-  gap: 1.5rem;
-  align-items: baseline;
-  padding: 1.5rem 0;
-  border-top: 1px solid var(--div);
-}
-
-.rung:last-child {
-  border-bottom: 1px solid var(--div);
-}
-
-.rung[data-status='planned'] .rung-label,
-.rung[data-status='planned'] .rung-line {
-  color: var(--fg-3);
-}
-
-.rung-label {
-  font-family: var(--vp-font-family-mono);
-  font-size: clamp(1.3rem, 2.2vw, 1.8rem);
   font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--fg);
+  color: var(--accent);
 }
 
-.rung-line {
-  font-family: var(--vp-font-family-mono);
-  font-size: 0.95rem;
+.prim-desc {
   color: var(--fg-dim);
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 
-@media (max-width: 640px) {
-  .rung {
-    grid-template-columns: 1fr auto;
-    gap: 0.5rem;
-  }
-  .rung-line { grid-column: 1 / -1; }
+.callout {
+  margin: 2rem 0 0;
+  padding: 1rem 1.25rem;
+  border-left: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  color: var(--fg-dim);
+  font-size: 0.98rem;
+  line-height: 1.55;
 }
 
-/* ── Providers ────────────────────────────────────────────────────────── */
-.providers {
-  list-style: none;
-  padding: 0;
-  margin: 2.5rem 0 0;
-  display: grid;
-  gap: 0;
-}
-
-.provider {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 1.5rem;
-  align-items: baseline;
-  padding: 1rem 0;
-  border-top: 1px solid var(--div);
-}
-
-.provider:last-child {
-  border-bottom: 1px solid var(--div);
-}
-
-.provider-id {
-  font-family: var(--vp-font-family-mono);
-  font-size: clamp(0.95rem, 1.35vw, 1.1rem);
-  color: var(--fg);
-}
-
-.provider-tag {
+.callout-label {
+  display: inline-block;
   font-family: var(--vp-font-family-mono);
   font-size: 0.72rem;
   letter-spacing: 0.12em;
-  color: var(--fg-3);
   text-transform: uppercase;
+  color: var(--accent);
+  margin-right: 0.6rem;
+  font-weight: 600;
 }
 
-.provider[data-tag='default'] .provider-tag { color: var(--accent); }
-.provider[data-tag='local']   .provider-tag { color: var(--glue-success); }
+/* ── Backends (three tiles) ───────────────────────────────────────────── */
+.backends {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+  margin-top: 2.5rem;
+}
 
-/* ── JSONL ────────────────────────────────────────────────────────────── */
-.jsonl {
+@media (max-width: 900px) {
+  .backends { grid-template-columns: 1fr; }
+}
+
+.backend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.5rem;
+  border: 1px solid var(--div);
+  border-radius: 10px;
+  background: var(--vp-c-bg-soft);
+}
+
+.backend[data-status='experimental'] {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--div));
+}
+
+.backend-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.backend-name {
+  font-family: var(--vp-font-family-mono);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.backend-sub {
+  margin: 0;
+  color: var(--fg-dim);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  min-height: 3em;
+}
+
+.backend-code {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  background: var(--glue-term-bg);
+  color: var(--glue-term-fg);
+  border: 1px solid #1e1e21;
+  border-radius: 6px;
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.8rem;
+  line-height: 1.55;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* ── Capabilities list (fetch/ocr/search) ─────────────────────────────── */
+.capabilities {
+  list-style: none;
+  padding: 0;
   margin: 2.5rem 0 0;
+  border-top: 1px solid var(--div);
+}
+
+.capabilities li {
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--div);
+  color: var(--fg-dim);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.capabilities code {
+  color: var(--accent);
+}
+
+.capabilities strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.cfg {
+  margin: 2rem 0 0;
+  padding: 1.25rem 1.5rem;
+  background: var(--glue-term-bg);
+  color: var(--glue-term-fg);
+  border: 1px solid #1e1e21;
+  border-radius: 8px;
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.85rem;
+  line-height: 1.7;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* ── Coding list ──────────────────────────────────────────────────────── */
+.coding-list {
+  list-style: none;
+  padding: 0;
+  margin: 2.5rem 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0;
+  border-top: 1px solid var(--div);
+}
+
+.coding-list li {
+  padding: 1.25rem 1.25rem 1.25rem 0;
+  border-bottom: 1px solid var(--div);
+  color: var(--fg-dim);
+  font-size: 0.98rem;
+  line-height: 1.55;
+}
+
+.coding-list strong {
+  color: var(--fg);
+  font-weight: 600;
+  margin-right: 0.35rem;
+}
+
+.coding-list code {
+  color: var(--accent);
+}
+
+/* ── JSONL block ──────────────────────────────────────────────────────── */
+.jsonl {
+  margin: 2rem 0 0;
   padding: 0;
   font-family: var(--vp-font-family-mono);
   font-size: 0.82rem;

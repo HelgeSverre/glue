@@ -13,7 +13,8 @@ const apiSidebar = fs.existsSync(apiSidebarPath)
   : []
 
 // ── Changelog version sidebar (built from cli/CHANGELOG.md) ──────────────
-const changelogSidebar = buildChangelogSidebar()
+// `slugify` and `prettifyVersionLabel` are defined below; the sidebar is
+// materialized at the bottom of this section, after its helpers exist.
 
 function buildChangelogSidebar(): DefaultTheme.SidebarItem[] {
   const changelogPath = path.join(repoRoot, 'cli', 'CHANGELOG.md')
@@ -48,7 +49,7 @@ function buildChangelogSidebar(): DefaultTheme.SidebarItem[] {
       if (!/^\[/.test(h.text)) continue
       const slug = anchorFor(h.text)
       currentVersion = {
-        text: h.text,
+        text: prettifyVersionLabel(h.text),
         link: `/changelog#${slug}`,
         collapsed: false,
         items: [],
@@ -81,18 +82,40 @@ function buildChangelogSidebar(): DefaultTheme.SidebarItem[] {
   ]
 }
 
-// Mirrors VitePress' default slugify: lowercases, strips punctuation it
-// doesn't accept as part of an anchor, collapses runs to single `-`.
+// Sidebar display label for a changelog H2 heading.
+// `[0.1.0] — Initial development` → `v0.1.0`
+// `[1.2.3-rc.1] - 2025-01-05`     → `v1.2.3-rc.1`
+// `[Unreleased]`                  → `Unreleased`
+// The underlying H2 text is kept intact so the anchor slug below still
+// matches the hash VitePress emits for the rendered heading.
+function prettifyVersionLabel(raw: string): string {
+  const m = /^\[(.+?)\]/.exec(raw)
+  if (!m) return raw
+  const name = m[1]
+  return /^\d/.test(name) ? `v${name}` : name
+}
+
+// Mirrors VitePress' internal slugify so sidebar hash links match the IDs
+// VitePress emits on the rendered headings. Regex set lifted verbatim from
+// node_modules/vitepress/dist/node/chunk-*.js (rControl / rSpecial / rCombining).
+// Keep this in sync with VitePress on upgrades — em-dash and a few other chars
+// are deliberately NOT treated as separators and must survive slugging.
+const rControl = /[\u0000-\u001f]/g
+const rSpecial = /[\s~`!@#$%^&*()\-_+=[\]{}|\\;:"'“”‘’<>,.?/]+/g
+const rCombining = /[\u0300-\u036F]/g
 function slugify(input: string): string {
   return input
-    .toLowerCase()
     .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\w\-\s]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
+    .replace(rCombining, '')
+    .replace(rControl, '')
+    .replace(rSpecial, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/^(\d)/, '_$1')
+    .toLowerCase()
 }
+
+const changelogSidebar = buildChangelogSidebar()
 
 // ── Site-wide default OG/Twitter meta. Per-page title/description override
 // via the transformPageData hook below.
@@ -105,7 +128,7 @@ const ogDefaults = {
 export default defineConfig({
   title: 'Glue',
   titleTemplate: ':title · Glue',
-  description: 'A small terminal agent for real coding work.',
+  description: 'A terminal coding agent where the browser is a runtime. Navigate, click, extract — local Chrome, Docker, or cloud, swapped with one config line.',
   cleanUrls: true,
   lastUpdated: false,
   appearance: 'force-dark',
@@ -133,10 +156,10 @@ export default defineConfig({
     const head = pageData.frontmatter.head ?? []
     const title = pageData.title
       ? `${pageData.title} · Glue`
-      : 'Glue · A small terminal agent for real coding work'
+      : 'Glue · A terminal agent where the browser is a runtime'
     const description = (pageData.description as string | undefined)
       ?? pageData.frontmatter.description
-      ?? 'A small terminal agent for real coding work.'
+      ?? 'A terminal coding agent where the browser is a runtime. Navigate, click, extract — local Chrome, Docker, or cloud, swapped with one config line.'
     head.push(['meta', { property: 'og:title', content: title }])
     head.push(['meta', { property: 'og:description', content: description }])
     head.push(['meta', { name: 'twitter:title', content: title }])
@@ -153,32 +176,22 @@ export default defineConfig({
     logo: { src: '/brand/symbol-yellow.svg', alt: 'Glue' },
 
     nav: [
-      {
-        text: 'Docs',
-        items: [
-          {
-            text: 'Reference',
-            items: [
-              { text: 'Guide', link: '/docs/getting-started/installation' },
-              { text: 'API Reference', link: '/api/' },
-            ],
-          },
-          {
-            text: 'Overviews',
-            items: [
-              { text: 'Why Glue', link: '/why' },
-              { text: 'Runtimes', link: '/runtimes' },
-              { text: 'Web Tools', link: '/web' },
-              { text: 'Sessions', link: '/sessions' },
-              { text: 'Brand', link: '/brand' },
-            ],
-          },
-        ],
-      },
-      { text: 'Models', link: '/models' },
+      { text: 'Docs', link: '/docs/getting-started/installation', activeMatch: '^/docs/' },
       { text: 'Features', link: '/features' },
       { text: 'Roadmap', link: '/roadmap' },
-      { text: 'Changelog', link: '/changelog' },
+      {
+        text: 'Resources',
+        items: [
+          { text: 'Brand', link: '/brand' },
+          { text: 'API Reference', link: '/api/', activeMatch: '^/api/' },
+          { text: 'Why Glue', link: '/why' },
+          { text: 'Models', link: '/models' },
+          { text: 'Runtimes', link: '/runtimes' },
+          { text: 'Web Tools', link: '/web' },
+          { text: 'Sessions', link: '/sessions' },
+          { text: 'Changelog', link: '/changelog' },
+        ],
+      },
     ],
 
     sidebar: {

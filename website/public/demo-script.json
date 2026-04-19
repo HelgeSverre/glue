@@ -1,49 +1,33 @@
 {
-  "source": "Claude Code · this project · 2026-04-19",
-  "note": "Curated and redacted from the actual session that built this website. Paths normalised to ~, user identity removed, long outputs trimmed. Rendered with Glue's real TUI formatting.",
+  "source": "Glue · hero demo · browser runtime scene",
+  "note": "Synthetic but accurate: the web_browser tool really does expose navigate/extract_text/screenshot/click/type/evaluate, and the session really does persist across calls within a turn. Paths shortened, tokens and timings illustrative.",
   "meta": {
-    "cwd": "~/code/glue",
+    "cwd": "~/code/research",
     "model": "anthropic/claude-sonnet-4.6",
     "approval": "confirm",
-    "tokensStart": 12340
+    "tokensStart": 18240
   },
   "events": [
-    { "kind": "user",        "text": "fetch task about redoing website and docs site from backlog",              "delay": 700 },
-    { "kind": "assistant",   "text": "Searching the backlog for a website task.",                                  "delay": 420 },
-    { "kind": "tool_call",   "name": "backlog.task_search", "args": { "query": "website docs" }, "phase": "running", "delay": 320 },
-    { "kind": "tool_result", "ok": true,                                                                            "delay": 360,
-      "text": "TASK-23 · Website redesign: VitePress consolidation (parent) · 10 subtasks\nTASK-23.9 · Docs generation script · To Do\nTASK-23.8 · Archive old static website + unified deploy · To Do" },
+    { "kind": "user",        "text": "extract the pricing tiers from stripe.com/pricing and save as json",                     "delay": 760 },
+    { "kind": "assistant",   "text": "Opening a browser session.",                                                              "delay": 420 },
 
-    { "kind": "tool_call",   "name": "backlog.task_view", "args": { "id": "TASK-23" }, "phase": "running",          "delay": 300 },
-    { "kind": "tool_result", "ok": true,                                                                            "delay": 340,
-      "text": "TASK-23 · 10 subtasks · labels: website-2026-04, parent, docs\nMerges website/ (static) and devdocs/ (VitePress) into a single VitePress shell." },
-    { "kind": "assistant",   "text": "10 subtasks. Merges `website/` and `devdocs/` into a single VitePress site.", "delay": 520 },
+    { "kind": "tool_call",   "name": "web_browser", "args": { "action": "navigate", "url": "https://stripe.com/pricing" },       "phase": "running", "delay": 320 },
+    { "kind": "tool_result", "ok": true, "text": "loaded · 1.8s · \"Pricing & fees | Stripe\"",                                  "delay": 340 },
 
-    { "kind": "user",        "text": "see if the plan was deleted in git",                                          "delay": 760 },
-    { "kind": "tool_call",   "name": "bash", "args": { "cmd": "git log --diff-filter=D --format='%h %s' -- 'docs/plans/*'" }, "phase": "running", "delay": 360 },
-    { "kind": "tool_result", "ok": true,  "text": "(no output)",                                                    "delay": 280 },
-    { "kind": "tool_call",   "name": "glob", "args": { "pattern": "**/2026-04-19*" }, "phase": "running",           "delay": 320 },
-    { "kind": "tool_result", "ok": true,                                                                            "delay": 340,
-      "text": "docs/plans/2026-04-19-website-redesign-plan.md\n(1 file on disk — the other was never committed)" },
-    { "kind": "assistant",   "text": "The source-of-truth plan was referenced in the task but never committed.",   "delay": 560 },
+    { "kind": "tool_call",   "name": "web_browser", "args": { "action": "extract_text", "selector": "main" },                    "phase": "running", "delay": 320 },
+    { "kind": "tool_result", "ok": true, "text": "5,312 chars of markdown · session kept warm",                                  "delay": 340 },
 
-    { "kind": "user",        "text": "lets plan out reimplementing the entire website from the plan content",      "delay": 740 },
-    { "kind": "assistant",   "text": "Starting Phase 1 — exploring the current website, devdocs, and planned changes in parallel.", "delay": 480 },
-    { "kind": "tool_call",   "name": "dispatch.Explore × 3", "args": { "targets": "website/, devdocs/, docs/plans/" }, "phase": "running", "delay": 360 },
-    { "kind": "tool_result", "ok": true,                                                                            "delay": 420,
-      "text": "website/: 7 HTML pages · devdocs/: 22 guide + 128 API · 6 plans (all proposed)" },
+    { "kind": "tool_call",   "name": "web_browser", "args": { "action": "screenshot", "fullPage": true },                        "phase": "running", "delay": 320 },
+    { "kind": "tool_result", "ok": true, "text": "saved ./pricing.png · 1.4 MB",                                                 "delay": 300 },
 
-    { "kind": "assistant",   "text": "Proposing a 10-subtask plan: shell, pages, components, reorg, archive, generator, checks.", "delay": 560 },
-    { "kind": "tool_call",   "name": "write", "args": { "path": "~/.claude/plans/website-redesign.md" }, "phase": "running", "delay": 320 },
-    { "kind": "tool_result", "ok": true,  "text": "plan ready · awaiting approval",                                 "delay": 280 },
+    { "kind": "assistant",   "text": "Three tiers: Integrated, Customized, Enterprise. Writing JSON.",                           "delay": 560 },
 
-    { "kind": "user",        "text": "continue",                                                                    "delay": 640 },
-    { "kind": "assistant",   "text": "Starting W1 — VitePress shell unification.",                                  "delay": 380 },
-    { "kind": "tool_call",   "name": "edit", "args": { "path": "website/.vitepress/config.ts" }, "phase": "running", "delay": 360 },
-    { "kind": "tool_result", "ok": true,  "text": "+72 −38",                                                        "delay": 280 },
-    { "kind": "tool_call",   "name": "bash", "args": { "cmd": "npx vitepress build" }, "phase": "running",          "delay": 360 },
-    { "kind": "tool_result", "ok": true,                                                                            "delay": 340,
-      "text": "✓ building client + server bundles\n✓ rendering pages\nbuild complete in 3.67s" },
-    { "kind": "assistant",   "text": "W1 green. Moving to components next.",                                        "delay": 560 }
+    { "kind": "tool_call",   "name": "write", "args": { "path": "pricing.json" },                                                "phase": "done",    "delay": 300 },
+    { "kind": "tool_result", "ok": true, "text": "+38 lines",                                                                    "delay": 280 },
+
+    { "kind": "user",        "text": "now diff this against last week's run",                                                    "delay": 760 },
+    { "kind": "tool_call",   "name": "bash", "args": { "cmd": "diff pricing.json .history/pricing-2026-04-12.json" },            "phase": "running", "delay": 320 },
+    { "kind": "tool_result", "ok": true, "text": "< transactions: 2.9% + 30¢\n> transactions: 3.0% + 30¢",                       "delay": 340 },
+    { "kind": "assistant",   "text": "Card fee bumped 10 bps since last Tuesday.",                                               "delay": 560 }
   ]
 }
