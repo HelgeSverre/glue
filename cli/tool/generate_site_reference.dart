@@ -10,6 +10,7 @@
 ///
 /// Outputs:
 ///   - ../website/generated/models.md
+///   - ../website/generated/models.recommended.json
 ///   - ../website/generated/runtime-matrix.md
 ///   - ../website/generated/config-examples.md
 ///   - ../website/generated/session-events.md
@@ -22,6 +23,7 @@
 ///   dart run tool/generate_site_reference.dart
 library;
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:yaml/yaml.dart';
@@ -33,6 +35,7 @@ const _sessionMdPath = '../docs/reference/session-storage.md';
 const _themeTokensPath = 'lib/src/ui/theme_tokens.dart';
 
 const _modelsOut = '../website/generated/models.md';
+const _modelsJsonOut = '../website/generated/models.recommended.json';
 const _runtimeOut = '../website/generated/runtime-matrix.md';
 const _configOut = '../website/generated/config-examples.md';
 const _sessionOut = '../website/generated/session-events.md';
@@ -43,12 +46,13 @@ void main(List<String> args) {
   if (!outDir.existsSync()) outDir.createSync(recursive: true);
 
   _writeModels();
+  _writeModelsRecommendedJson();
   _writeRuntimeMatrix();
   _writeConfigExamples();
   _writeSessionEvents();
   _writeBrandTokens();
 
-  print('Generated 5 files in ../website/generated/');
+  print('Generated 6 files in ../website/generated/');
 }
 
 // ---------------------------------------------------------------------------
@@ -120,6 +124,39 @@ void _writeModels() {
   sb.writeln();
 
   File(_modelsOut).writeAsStringSync(sb.toString());
+}
+
+/// Emits the `recommended: true` subset of the catalog as JSON for the
+/// marketing page (`website/models.md`) to import. Replaces the hand-curated
+/// model table that used to be duplicated there.
+void _writeModelsRecommendedJson() {
+  final yaml = loadYaml(File(_modelsYamlPath).readAsStringSync()) as YamlMap;
+  final providers = yaml['providers'] as YamlMap;
+
+  final rows = <Map<String, dynamic>>[];
+  for (final entry in providers.entries) {
+    final providerId = entry.key as String;
+    final provider = entry.value as YamlMap;
+    final models = provider['models'] as YamlMap? ?? YamlMap();
+    for (final mEntry in models.entries) {
+      final id = mEntry.key as String;
+      final m = mEntry.value as YamlMap;
+      if (m['recommended'] != true) continue;
+      rows.add({
+        'id': id,
+        'provider': providerId,
+        'name': m['name'] ?? id,
+        'recommended': true,
+        'capabilities':
+            (m['capabilities'] as YamlList?)?.cast<String>().toList() ??
+                const <String>[],
+        'notes': m['notes']?.toString() ?? '',
+      });
+    }
+  }
+
+  const encoder = JsonEncoder.withIndent('  ');
+  File(_modelsJsonOut).writeAsStringSync('${encoder.convert(rows)}\n');
 }
 
 // ---------------------------------------------------------------------------

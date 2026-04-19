@@ -1,0 +1,376 @@
+[
+  {
+    "id": "claude-sonnet-4-6",
+    "provider": "anthropic",
+    "name": "Claude Sonnet 4.6",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "files",
+      "json",
+      "reasoning",
+      "coding"
+    ],
+    "notes": "Default high-quality coding model."
+  },
+  {
+    "id": "claude-opus-4-6",
+    "provider": "anthropic",
+    "name": "Claude Opus 4.6",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "files",
+      "json",
+      "reasoning",
+      "coding"
+    ],
+    "notes": "Use for difficult architecture, debugging, and long investigations."
+  },
+  {
+    "id": "claude-haiku-4-5",
+    "provider": "anthropic",
+    "name": "Claude Haiku 4.5",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "json",
+      "coding"
+    ],
+    "notes": "Good small_model candidate for titles, summaries, and quick checks."
+  },
+  {
+    "id": "claude-opus-4-7",
+    "provider": "anthropic",
+    "name": "Claude Opus 4.7",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "files",
+      "json",
+      "reasoning",
+      "coding"
+    ],
+    "notes": "Most capable Claude model — agentic coding and long-horizon work."
+  },
+  {
+    "id": "gpt-5.4",
+    "provider": "openai",
+    "name": "GPT-5.4",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "files",
+      "json",
+      "reasoning",
+      "coding"
+    ],
+    "notes": "Frontier general-purpose and agentic coding model."
+  },
+  {
+    "id": "gpt-5.4-mini",
+    "provider": "openai",
+    "name": "GPT-5.4 Mini",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "json",
+      "coding"
+    ],
+    "notes": "Default small_model candidate."
+  },
+  {
+    "id": "gemini-pro-latest",
+    "provider": "gemini",
+    "name": "Gemini Pro Latest",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "files",
+      "json",
+      "reasoning",
+      "coding"
+    ],
+    "notes": "Stable alias for the current Pro-class Gemini model."
+  },
+  {
+    "id": "gemini-flash-latest",
+    "provider": "gemini",
+    "name": "Gemini Flash Latest",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "files",
+      "json",
+      "coding"
+    ],
+    "notes": "Fast model for summarization, extraction, and browser-heavy work."
+  },
+  {
+    "id": "devstral-latest",
+    "provider": "mistral",
+    "name": "Devstral Latest",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "json",
+      "coding"
+    ],
+    "notes": "Mistral's agentic coding model. Strong tool use."
+  },
+  {
+    "id": "mistral-large-latest",
+    "provider": "mistral",
+    "name": "Mistral Large Latest",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "json",
+      "coding"
+    ],
+    "notes": "Flagship multimodal general-purpose model."
+  },
+  {
+    "id": "mistral-medium-latest",
+    "provider": "mistral",
+    "name": "Mistral Medium Latest",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "json"
+    ],
+    "notes": "Balanced cost/quality option."
+  },
+  {
+    "id": "mistral-small-latest",
+    "provider": "mistral",
+    "name": "Mistral Small Latest",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "json",
+      "reasoning"
+    ],
+    "notes": "Fast with reasoning toggle; good for quick tasks."
+  },
+  {
+    "id": "gpt-oss-120b",
+    "provider": "groq",
+    "name": "GPT-OSS 120B",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "json",
+      "reasoning",
+      "coding"
+    ],
+    "notes": "Groq's flagship reasoning + coding model. 120B weights at Groq speed."
+  },
+  {
+    "id": "gpt-oss-20b",
+    "provider": "groq",
+    "name": "GPT-OSS 20B",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "json",
+      "coding"
+    ],
+    "notes": "Coding-optimized, faster/cheaper than 120B."
+  },
+  {
+    "id": "llama-3.3-70b-versatile",
+    "provider": "groq",
+    "name": "Llama 3.3 70B Versatile",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "json"
+    ],
+    "notes": "General-purpose alternative. No reasoning mode."
+  },
+  {
+    "id": "qwen3-coder:30b",
+    "provider": "ollama",
+    "name": "Qwen3 Coder 30B (MoE)",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "json",
+      "coding",
+      "local"
+    ],
+    "notes": "Consensus local coding agent. 30B/3.3B MoE. ~20 GB VRAM at Q4_K_M."
+  },
+  {
+    "id": "qwen3.6:35b",
+    "provider": "ollama",
+    "name": "Qwen3.6 35B",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "json",
+      "reasoning",
+      "coding",
+      "local"
+    ],
+    "notes": "Latest Qwen generalist with agentic coding upgrades. Vision + thinking + tools. ~24 GB at Q4_K_M."
+  },
+  {
+    "id": "gemma4:26b",
+    "provider": "ollama",
+    "name": "Gemma 4 26B",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "json",
+      "coding",
+      "local"
+    ],
+    "notes": "Google's latest with native function-calling. Multimodal, 256K context. ~18 GB at Q4_K_M."
+  },
+  {
+    "id": "devstral-small-2:24b",
+    "provider": "ollama",
+    "name": "Devstral Small 2 24B",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "json",
+      "coding",
+      "local"
+    ],
+    "notes": "Mistral's agentic coding model (Dec 2025). 68% SWE-bench. ~14 GB at Q4_K_M."
+  },
+  {
+    "id": "qwen2.5-coder:32b",
+    "provider": "ollama",
+    "name": "Qwen2.5 Coder 32B",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "json",
+      "coding",
+      "local"
+    ],
+    "notes": "Aider-verified 73.7% (GPT-4o class). Safe fallback."
+  },
+  {
+    "id": "qwen3:8b",
+    "provider": "ollama",
+    "name": "Qwen3 8B",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "json",
+      "local"
+    ],
+    "notes": "Low-end floor for tool use. ~5 GB at Q4_K_M. Fits a 16 GB laptop."
+  },
+  {
+    "id": "claude-sonnet-4-6",
+    "provider": "copilot",
+    "name": "Claude Sonnet 4.6 (via Copilot)",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "json",
+      "coding"
+    ],
+    "notes": "Uses your GitHub Copilot subscription."
+  },
+  {
+    "id": "gpt-4.1",
+    "provider": "copilot",
+    "name": "GPT-4.1 (via Copilot)",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "json",
+      "coding"
+    ],
+    "notes": "Uses your GitHub Copilot subscription."
+  },
+  {
+    "id": "claude-sonnet-4-6",
+    "provider": "openrouter",
+    "name": "Claude Sonnet 4.6 via OpenRouter",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "files",
+      "json",
+      "reasoning",
+      "coding"
+    ],
+    "notes": "Useful when users want one router key."
+  },
+  {
+    "id": "gpt-5.4-mini",
+    "provider": "openrouter",
+    "name": "GPT-5.4 Mini via OpenRouter",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "json",
+      "coding"
+    ],
+    "notes": "Small-model fallback through a router."
+  },
+  {
+    "id": "gemini-flash-latest",
+    "provider": "openrouter",
+    "name": "Gemini Flash Latest via OpenRouter",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "files",
+      "json",
+      "browser"
+    ],
+    "notes": "Good for research and extraction workflows."
+  }
+]
