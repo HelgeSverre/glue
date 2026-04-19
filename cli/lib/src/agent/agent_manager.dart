@@ -6,8 +6,6 @@ import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/llm/llm_factory.dart';
 import 'package:glue/src/observability/observability.dart';
-import 'package:glue/src/observability/observed_llm_client.dart';
-import 'package:glue/src/observability/observed_tool.dart';
 import 'package:glue/src/orchestrator/tool_permissions.dart';
 import 'package:glue/src/tools/subagent_tools.dart';
 
@@ -88,27 +86,14 @@ class AgentManager {
     final effectiveProfile =
         profile ?? AgentProfile(provider: config.provider, model: config.model);
 
-    final rawLlm = llmFactory.create(
+    final llm = llmFactory.create(
       provider: effectiveProfile.provider,
       model: effectiveProfile.model,
       apiKey: config.apiKeyFor(effectiveProfile.provider) ?? '',
       systemPrompt: systemPrompt,
     );
-    final LlmClient llm = obs != null
-        ? ObservedLlmClient(
-            inner: rawLlm,
-            obs: obs!,
-            provider: effectiveProfile.provider.name,
-            model: effectiveProfile.model,
-          )
-        : rawLlm;
 
-    var subagentTools = Map<String, Tool>.from(tools);
-
-    // Wrap subagent tools with observability if available.
-    if (obs != null) {
-      subagentTools = wrapToolsWithObservability(subagentTools, obs!);
-    }
+    final subagentTools = Map<String, Tool>.from(tools);
 
     // Give subagents depth-incremented spawning tools if they haven't
     // reached the maximum depth yet.

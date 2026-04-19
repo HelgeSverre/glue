@@ -1,53 +1,37 @@
 # Observability
 
-Glue supports debug logging and distributed tracing to help you monitor agent behavior in development and production.
+Glue logs spans and debug events to local JSONL files. External telemetry exporters (OpenTelemetry, Langfuse, DevTools sink) were removed — the single source of truth is `~/.glue/logs/`.
 
 ## Debug Logging
 
-Toggle verbose logging during a session with `/debug`. Logs are written to daily files in `~/.glue/logs/`.
+Toggle verbose logging during a session with `/debug`, or start with `--debug` / `GLUE_DEBUG=1`. Span records are written to daily JSONL files in `~/.glue/logs/spans-YYYY-MM-DD.jsonl`.
 
 ::: tip
-Debug logging is useful for inspecting the full prompt assembly, tool calls, and token usage within a session.
+Debug logging is useful for inspecting prompt assembly, tool calls, and token usage. Use `jq` or `grep` on the JSONL files to slice the stream.
 :::
 
-## OpenTelemetry (OTLP)
+## Local JSONL schema
 
-Export spans to any OTLP-compatible backend. Compatible with Grafana Tempo, Jaeger, Helicone, Opik, and LLMFlow.
+Each span is serialized with snake_case keys:
 
-```yaml
-telemetry:
-  otel:
-    enabled: true
-    endpoint: "https://otel.example.com/v1/traces"
-    headers:
-      Authorization: "Bearer ..."
+```json
+{
+  "trace_id": "...",
+  "span_id": "...",
+  "parent_span_id": "...",
+  "name": "llm.stream",
+  "kind": "llm",
+  "start_time": "2026-04-19T12:00:00.000Z",
+  "end_time": "2026-04-19T12:00:01.234Z",
+  "duration_ms": 1234,
+  "attributes": { }
+}
 ```
 
-::: info
-Any backend that accepts OTLP over HTTP can be used as an endpoint, including self-hosted collectors.
-:::
-
-## Langfuse
-
-Native Langfuse integration for LLM observability. Glue emits generation and span events with token usage, latency, and error tracking.
-
-```yaml
-telemetry:
-  langfuse:
-    enabled: true
-    base_url: "https://cloud.langfuse.com"
-    public_key: "pk-..."
-    secret_key: "sk-..."
-```
-
-::: warning
-Keep your Langfuse secret key out of version control. Use environment variables or a local override file for sensitive credentials.
-:::
+A richer per-session event schema (messages, tool calls, runtime events) is being introduced separately — see the session JSONL schema plan.
 
 ## See also
 
 - [ObservabilityConfig](/api/observability/observability-config)
-- [OtelSink](/api/observability/otel-sink)
-- [LangfuseSink](/api/observability/langfuse-sink)
 - [DebugController](/api/observability/debug-controller)
 - [FileSink](/api/observability/file-sink)

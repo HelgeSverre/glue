@@ -4,7 +4,7 @@
 
 Please do not open public issues for suspected security vulnerabilities.
 
-Report vulnerabilities privately by emailing: `security@helgesver.re`
+Report vulnerabilities privately by emailing: `helge.sverre@gmail.com`
 
 Include:
 
@@ -15,7 +15,7 @@ Include:
 
 ## Response Expectations
 
-- Initial acknowledgment: within 5 business days
+- Initial acknowledgment: within 7 business days
 - Status updates: as significant progress is made
 - Disclosure: coordinated disclosure after a fix is available
 

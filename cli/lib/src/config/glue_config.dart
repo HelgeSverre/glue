@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:yaml/yaml.dart';
 import 'package:glue/src/config/constants.dart';
+import 'package:glue/src/config/approval_mode.dart';
 import 'package:glue/src/config/model_registry.dart';
-import 'package:glue/src/config/interaction_mode.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/shell/docker_config.dart';
 import 'package:glue/src/shell/shell_config.dart';
@@ -65,7 +65,6 @@ class GlueConfig {
   final WebConfig webConfig;
   final ObservabilityConfig observability;
   final List<String> skillPaths;
-  final InteractionMode interactionMode;
   final ApprovalMode approvalMode;
 
   GlueConfig({
@@ -84,7 +83,6 @@ class GlueConfig {
     WebConfig? webConfig,
     this.observability = const ObservabilityConfig(),
     this.skillPaths = const [],
-    this.interactionMode = InteractionMode.code,
     this.approvalMode = ApprovalMode.confirm,
   })  : provider = provider ?? LlmProvider.anthropic,
         model = model ?? _defaultModel(provider ?? LlmProvider.anthropic),
@@ -117,7 +115,6 @@ class GlueConfig {
       webConfig: webConfig,
       observability: observability ?? this.observability,
       skillPaths: skillPaths,
-      interactionMode: interactionMode,
       approvalMode: approvalMode,
     );
   }
@@ -397,53 +394,7 @@ class GlueConfig {
     final debug =
         env['GLUE_DEBUG'] == '1' || (fileConfig?['debug'] as bool? ?? false);
 
-    final telemetrySection = fileConfig?['telemetry'] as Map?;
-    final langfuseSection = telemetrySection?['langfuse'] as Map?;
-    final otelSection = telemetrySection?['otel'] as Map?;
-    final flushInterval =
-        telemetrySection?['flush_interval_seconds'] as int? ?? 30;
-
-    final langfuseConfig = LangfuseConfig(
-      enabled: langfuseSection?['enabled'] as bool? ?? false,
-      baseUrl:
-          env['LANGFUSE_BASE_URL'] ?? langfuseSection?['base_url'] as String?,
-      publicKey: env['LANGFUSE_PUBLIC_KEY'] ??
-          langfuseSection?['public_key'] as String?,
-      secretKey: env['LANGFUSE_SECRET_KEY'] ??
-          langfuseSection?['secret_key'] as String?,
-    );
-
-    final otelEndpoint = env['OTEL_EXPORTER_OTLP_ENDPOINT'] ??
-        otelSection?['endpoint'] as String?;
-    final otelHeadersEnv = env['OTEL_EXPORTER_OTLP_HEADERS'];
-    final otelHeaders = <String, String>{};
-    if (otelHeadersEnv != null && otelHeadersEnv.isNotEmpty) {
-      for (final pair in otelHeadersEnv.split(',')) {
-        final idx = pair.indexOf('=');
-        if (idx > 0) {
-          otelHeaders[pair.substring(0, idx).trim()] =
-              pair.substring(idx + 1).trim();
-        }
-      }
-    } else if (otelSection?['headers'] is Map) {
-      final h = otelSection!['headers'] as Map;
-      for (final e in h.entries) {
-        otelHeaders[e.key as String] = e.value as String;
-      }
-    }
-
-    final otelConfig = OtelConfig(
-      enabled: otelSection?['enabled'] as bool? ?? false,
-      endpoint: otelEndpoint,
-      headers: otelHeaders,
-    );
-
-    final observabilityConfig = ObservabilityConfig(
-      debug: debug,
-      langfuse: langfuseConfig,
-      otel: otelConfig,
-      flushIntervalSeconds: flushInterval,
-    );
+    final observabilityConfig = ObservabilityConfig(debug: debug);
 
     // 3. Parse profiles.
     final profiles = <String, AgentProfile>{};
@@ -461,16 +412,7 @@ class GlueConfig {
       }
     }
 
-    // 4. Parse interaction mode and approval mode.
-    final interactionModeStr = env['GLUE_INTERACTION_MODE'] ??
-        fileConfig?['interaction_mode'] as String?;
-    final interactionMode = interactionModeStr != null
-        ? InteractionMode.values.firstWhere(
-            (m) =>
-                m.name == interactionModeStr || m.label == interactionModeStr,
-            orElse: () => InteractionMode.code,
-          )
-        : InteractionMode.code;
+    // 4. Parse approval mode.
     final approvalStr =
         env['GLUE_APPROVAL_MODE'] ?? fileConfig?['approval_mode'] as String?;
     final approvalMode = approvalStr != null
@@ -512,7 +454,6 @@ class GlueConfig {
       webConfig: webConfig,
       observability: observabilityConfig,
       skillPaths: skillPaths,
-      interactionMode: interactionMode,
       approvalMode: approvalMode,
     );
   }

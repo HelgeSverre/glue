@@ -51,5 +51,4 @@ glue/
   cli/           # Main CLI application
   devdocs/       # VitePress documentation site
   website/       # Marketing website
-  infra/         # Docker and infrastructure
 ```

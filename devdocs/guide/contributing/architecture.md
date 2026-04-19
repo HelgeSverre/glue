@@ -11,7 +11,7 @@ The Glue CLI is built in Dart. The codebase is organized into these main modules
 | Shell         | `lib/src/shell/`         | Command execution, Docker sandbox, job management       |
 | Web           | `lib/src/web/`           | Web fetch, search, browser automation                   |
 | Storage       | `lib/src/storage/`       | Session persistence, config store                       |
-| Observability | `lib/src/observability/` | Logging, OTLP, Langfuse integration                     |
+| Observability | `lib/src/observability/` | Local JSONL spans + debug controller                    |
 | Skills        | `lib/src/skills/`        | Skill registry, parser, tool                            |
 | UI            | `lib/src/ui/`            | Terminal rendering, modals, panels                      |
 | Input         | `lib/src/input/`         | Line editor, file expansion, streaming input            |

@@ -14,13 +14,9 @@ class BuiltinCommands {
     required String Function(String query) historyActionByQuery,
     required void Function() openResumePanel,
     required String Function(String query) resumeSessionByQuery,
-    required String Function() openDevTools,
     required String Function() toggleDebug,
     required void Function() openSkillsPanel,
     required String Function(String skillName) activateSkillByName,
-    required void Function() openPlansPanel,
-    required String Function(String query) openPlanByQuery,
-    required String Function(String modeName) switchMode,
     required String Function() toggleApproval,
   }) {
     final commands = SlashCommandRegistry();
@@ -110,12 +106,6 @@ class BuiltinCommands {
     ));
 
     commands.register(SlashCommand(
-      name: 'devtools',
-      description: 'Open Dart DevTools in browser',
-      execute: (_) => openDevTools(),
-    ));
-
-    commands.register(SlashCommand(
       name: 'debug',
       description: 'Toggle debug mode (verbose logging)',
       execute: (_) => toggleDebug(),
@@ -131,36 +121,6 @@ class BuiltinCommands {
         }
         return activateSkillByName(args.join(' '));
       },
-    ));
-
-    commands.register(SlashCommand(
-      name: 'plans',
-      description: 'Browse plans or open one by name/path',
-      execute: (args) {
-        if (args.isEmpty) {
-          openPlansPanel();
-          return '';
-        }
-        return openPlanByQuery(args.join(' '));
-      },
-    ));
-
-    commands.register(SlashCommand(
-      name: 'code',
-      description: 'Switch to code mode (all tools)',
-      execute: (_) => switchMode('code'),
-    ));
-
-    commands.register(SlashCommand(
-      name: 'architect',
-      description: 'Switch to architect mode (read + markdown write)',
-      execute: (_) => switchMode('architect'),
-    ));
-
-    commands.register(SlashCommand(
-      name: 'ask',
-      description: 'Switch to ask mode (read-only)',
-      execute: (_) => switchMode('ask'),
     ));
 
     commands.register(SlashCommand(

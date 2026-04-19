@@ -25,10 +25,9 @@ void _handleTerminalEventImpl(App app, TerminalEvent event) {
         return;
       }
 
-      // Interaction mode cycling — works in all modes.
+      // Approval mode toggle — works in all modes.
       if (event case KeyEvent(key: Key.shiftTab)) {
-        app._interactionMode = app._interactionMode.next;
-        app._syncToolFilter();
+        app._approvalMode = app._approvalMode.toggle;
         app._render();
         return;
       }

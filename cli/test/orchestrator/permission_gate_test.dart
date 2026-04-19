@@ -1,16 +1,15 @@
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
-import 'package:glue/src/config/interaction_mode.dart';
+import 'package:glue/src/config/approval_mode.dart';
 import 'package:glue/src/orchestrator/permission_gate.dart';
 import 'package:test/test.dart';
 
 class _StubTool extends Tool {
   final String _name;
   final ToolTrust _trust;
-  final ToolGroup? _groupOverride;
 
-  _StubTool(this._name, this._trust, [this._groupOverride]);
+  _StubTool(this._name, this._trust);
 
   @override
   String get name => _name;
@@ -23,8 +22,6 @@ class _StubTool extends Tool {
       [const TextPart('ok')];
   @override
   ToolTrust get trust => _trust;
-  @override
-  ToolGroup get group => _groupOverride ?? super.group;
 }
 
 void main() {
@@ -32,12 +29,10 @@ void main() {
     'read_file': _StubTool('read_file', ToolTrust.safe),
     'write_file': _StubTool('write_file', ToolTrust.fileEdit),
     'bash': _StubTool('bash', ToolTrust.command),
-    'web_search': _StubTool('web_search', ToolTrust.safe, ToolGroup.mcp),
   };
 
-  group('code mode + confirm approval', () {
+  group('confirm approval', () {
     final gate = PermissionGate(
-      interactionMode: InteractionMode.code,
       approvalMode: ApprovalMode.confirm,
       trustedTools: const {'read_file'},
       tools: tools,
@@ -50,16 +45,37 @@ void main() {
       expect(gate.resolve(call), PermissionDecision.allow);
     });
 
+    test('allows safe untrusted tools', () {
+      // read_file is trusted; use a different safe tool to cover the
+      // "!isMutating" branch without relying on trust.
+      final safeOnly = <String, Tool>{
+        'read_file': _StubTool('read_file', ToolTrust.safe),
+      };
+      final safeGate = PermissionGate(
+        approvalMode: ApprovalMode.confirm,
+        trustedTools: const {},
+        tools: safeOnly,
+        cwd: '/tmp/project',
+      );
+      final call = ToolCall(
+          id: '1', name: 'read_file', arguments: const {'path': 'a.txt'});
+      expect(safeGate.resolve(call), PermissionDecision.allow);
+    });
+
     test('asks for untrusted mutating tools', () {
       final call =
           ToolCall(id: '2', name: 'bash', arguments: const {'command': 'ls'});
       expect(gate.resolve(call), PermissionDecision.ask);
     });
+
+    test('denies unknown tool', () {
+      final call = ToolCall(id: '3', name: 'missing', arguments: const {});
+      expect(gate.resolve(call), PermissionDecision.deny);
+    });
   });
 
-  group('code mode + auto approval', () {
+  group('auto approval', () {
     final gate = PermissionGate(
-      interactionMode: InteractionMode.code,
       approvalMode: ApprovalMode.auto,
       trustedTools: const {},
       tools: tools,
@@ -71,110 +87,9 @@ void main() {
           id: '1', name: 'bash', arguments: const {'command': 'rm -rf /'});
       expect(gate.resolve(call), PermissionDecision.allow);
     });
-  });
 
-  group('ask mode', () {
-    final gate = PermissionGate(
-      interactionMode: InteractionMode.ask,
-      approvalMode: ApprovalMode.confirm,
-      trustedTools: const {},
-      tools: tools,
-      cwd: '/tmp/project',
-    );
-
-    test('allows read tools', () {
-      final call = ToolCall(
-          id: '1', name: 'read_file', arguments: const {'path': 'a.txt'});
-      expect(gate.resolve(call), PermissionDecision.allow);
-    });
-
-    test('denies edit tools', () {
-      final call = ToolCall(
-          id: '2',
-          name: 'write_file',
-          arguments: const {'path': 'a.txt', 'content': 'x'});
-      expect(gate.resolve(call), PermissionDecision.deny);
-    });
-
-    test('denies command tools', () {
-      final call =
-          ToolCall(id: '3', name: 'bash', arguments: const {'command': 'ls'});
-      expect(gate.resolve(call), PermissionDecision.deny);
-    });
-
-    test('allows mcp tools', () {
-      final call = ToolCall(
-          id: '4', name: 'web_search', arguments: const {'query': 'test'});
-      expect(gate.resolve(call), PermissionDecision.allow);
-    });
-  });
-
-  group('architect mode', () {
-    final gate = PermissionGate(
-      interactionMode: InteractionMode.architect,
-      approvalMode: ApprovalMode.confirm,
-      trustedTools: const {},
-      tools: tools,
-      cwd: '/tmp/project',
-    );
-
-    test('allows read tools', () {
-      final call = ToolCall(
-          id: '1', name: 'read_file', arguments: const {'path': 'a.txt'});
-      expect(gate.resolve(call), PermissionDecision.allow);
-    });
-
-    test('denies command tools', () {
-      final call =
-          ToolCall(id: '2', name: 'bash', arguments: const {'command': 'ls'});
-      expect(gate.resolve(call), PermissionDecision.deny);
-    });
-
-    test('asks for edit tools targeting .md files', () {
-      final call = ToolCall(
-          id: '3',
-          name: 'write_file',
-          arguments: const {'path': 'plan.md', 'content': '# Plan'});
-      expect(gate.resolve(call), PermissionDecision.ask);
-    });
-
-    test('denies edit tools targeting non-.md files', () {
-      final call = ToolCall(
-          id: '4',
-          name: 'write_file',
-          arguments: const {'path': 'main.dart', 'content': 'void main() {}'});
-      expect(gate.resolve(call), PermissionDecision.deny);
-    });
-
-    test('allows mcp tools', () {
-      final call = ToolCall(
-          id: '5', name: 'web_search', arguments: const {'query': 'test'});
-      expect(gate.resolve(call), PermissionDecision.allow);
-    });
-  });
-
-  group('architect mode + auto approval', () {
-    final gate = PermissionGate(
-      interactionMode: InteractionMode.architect,
-      approvalMode: ApprovalMode.auto,
-      trustedTools: const {},
-      tools: tools,
-      cwd: '/tmp/project',
-    );
-
-    test('auto-approves .md edits without asking', () {
-      final call = ToolCall(
-          id: '1',
-          name: 'write_file',
-          arguments: const {'path': 'plan.md', 'content': '# Plan'});
-      expect(gate.resolve(call), PermissionDecision.allow);
-    });
-
-    test('still denies non-.md edits even in auto', () {
-      final call = ToolCall(
-          id: '2',
-          name: 'write_file',
-          arguments: const {'path': 'main.dart', 'content': 'code'});
+    test('still denies unknown tool', () {
+      final call = ToolCall(id: '2', name: 'missing', arguments: const {});
       expect(gate.resolve(call), PermissionDecision.deny);
     });
   });
@@ -182,7 +97,6 @@ void main() {
   group('needsEarlyConfirmation', () {
     test('no confirmation needed in auto mode', () {
       final gate = PermissionGate(
-        interactionMode: InteractionMode.code,
         approvalMode: ApprovalMode.auto,
         trustedTools: const {},
         tools: tools,
@@ -193,7 +107,6 @@ void main() {
 
     test('no confirmation for safe tools in confirm mode', () {
       final gate = PermissionGate(
-        interactionMode: InteractionMode.code,
         approvalMode: ApprovalMode.confirm,
         trustedTools: const {},
         tools: tools,
@@ -202,9 +115,18 @@ void main() {
       expect(gate.needsEarlyConfirmation('read_file'), isFalse);
     });
 
+    test('no confirmation for trusted tools', () {
+      final gate = PermissionGate(
+        approvalMode: ApprovalMode.confirm,
+        trustedTools: const {'bash'},
+        tools: tools,
+        cwd: '/tmp/project',
+      );
+      expect(gate.needsEarlyConfirmation('bash'), isFalse);
+    });
+
     test('confirmation needed for untrusted mutating tools', () {
       final gate = PermissionGate(
-        interactionMode: InteractionMode.code,
         approvalMode: ApprovalMode.confirm,
         trustedTools: const {},
         tools: tools,
@@ -213,16 +135,14 @@ void main() {
       expect(gate.needsEarlyConfirmation('bash'), isTrue);
     });
 
-    test('no confirmation for disallowed group', () {
+    test('unknown tool requires confirmation', () {
       final gate = PermissionGate(
-        interactionMode: InteractionMode.ask,
         approvalMode: ApprovalMode.confirm,
         trustedTools: const {},
         tools: tools,
         cwd: '/tmp/project',
       );
-      // bash is denied by mode, so no early confirmation needed
-      expect(gate.needsEarlyConfirmation('bash'), isFalse);
+      expect(gate.needsEarlyConfirmation('missing'), isTrue);
     });
   });
 }

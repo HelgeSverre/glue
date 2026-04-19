@@ -53,7 +53,6 @@ export 'src/agent/content_part.dart' show ContentPart, TextPart, ImagePart;
 export 'src/agent/tools.dart'
     show
         Tool,
-        ToolGroup,
         ToolTrust,
         ForwardingTool,
         ToolParameter,
@@ -66,8 +65,7 @@ export 'src/agent/tools.dart'
 export 'src/config/constants.dart' show AppConstants;
 export 'src/config/glue_config.dart'
     show GlueConfig, LlmProvider, AgentProfile, ConfigError, splitPathList;
-export 'src/config/interaction_mode.dart'
-    show InteractionMode, InteractionModeExt, ApprovalMode, ApprovalModeExt;
+export 'src/config/approval_mode.dart' show ApprovalMode, ApprovalModeExt;
 export 'src/config/model_registry.dart'
     show ModelRegistry, ModelEntry, ModelCapability, CostTier, SpeedTier;
 export 'src/llm/llm_factory.dart' show LlmClientFactory;
@@ -123,16 +121,8 @@ export 'src/observability/observability.dart'
     show Observability, ObservabilitySink, ObservabilitySpan;
 export 'src/observability/debug_controller.dart' show DebugController;
 export 'src/observability/file_sink.dart' show FileSink;
-export 'src/observability/otel_sink.dart' show OtelSink;
-export 'src/observability/langfuse_sink.dart' show LangfuseSink;
-export 'src/observability/logging_http_client.dart' show LoggingHttpClient;
-export 'src/observability/observed_llm_client.dart' show ObservedLlmClient;
-export 'src/observability/observed_tool.dart'
-    show ObservedTool, wrapToolsWithObservability;
-export 'src/observability/observability_config.dart'
-    show ObservabilityConfig, LangfuseConfig, TelemetryProvider;
+export 'src/observability/observability_config.dart' show ObservabilityConfig;
 export 'src/storage/config_store.dart' show ConfigStore;
-export 'src/dev/devtools.dart' show GlueDev;
 export 'src/input/file_expander.dart' show expandFileRefs, extractFileRefs;
 export 'src/ui/at_file_hint.dart' show AtFileHint;
 export 'src/shell/command_executor.dart'

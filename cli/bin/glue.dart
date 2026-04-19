@@ -126,8 +126,6 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
       debug: topLevelResults.flag('debug'),
     );
 
-    GlueDev.registerExtensions(app.devtoolsState);
-
     final sigintSub =
         ProcessSignal.sigint.watch().listen((_) => app.requestExit());
 

@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:http/http.dart' as http;
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/agent_manager.dart';
@@ -10,14 +8,8 @@ import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/input/text_area_editor.dart';
 import 'package:glue/src/llm/llm_factory.dart';
 import 'package:glue/src/observability/debug_controller.dart';
-import 'package:glue/src/observability/devtools_sink.dart';
 import 'package:glue/src/observability/file_sink.dart';
-import 'package:glue/src/observability/langfuse_sink.dart';
-import 'package:glue/src/observability/logging_http_client.dart';
 import 'package:glue/src/observability/observability.dart';
-import 'package:glue/src/observability/observed_llm_client.dart';
-import 'package:glue/src/observability/observed_tool.dart';
-import 'package:glue/src/observability/otel_sink.dart';
 import 'package:glue/src/shell/command_executor.dart';
 import 'package:glue/src/shell/executor_factory.dart';
 import 'package:glue/src/shell/shell_job_manager.dart';
@@ -77,54 +69,12 @@ class ServiceLocator {
 
     final sessionId = '${DateTime.now().millisecondsSinceEpoch}-'
         '${DateTime.now().microsecond.toRadixString(36)}';
-    final resourceAttrs = <String, String>{
-      'glue.session.id': sessionId,
-      'glue.cwd': environment.cwd,
-      'gen_ai.system': config.provider.name,
-      'gen_ai.request.model': config.model,
-      'os.type': Platform.operatingSystem,
-      'os.version': Platform.operatingSystemVersion,
-      'host.arch': _hostArch(),
-      'process.pid': '$pid',
-      'deployment.environment.name': environment.vars['GLUE_ENV'] ?? 'dev',
-    };
 
-    obs.addSink(DevToolsSink());
     obs.addSink(FileSink(logsDir: environment.logsDir));
-    void sinkError(String msg) {
-      if (debugController.enabled) stderr.writeln(msg);
-    }
 
-    if (config.observability.langfuse.isConfigured) {
-      obs.addSink(LangfuseSink(
-        config: config.observability.langfuse,
-        resourceAttributes: resourceAttrs,
-        onError: sinkError,
-      ));
-    }
-    if (config.observability.otel.isConfigured) {
-      obs.addSink(OtelSink(
-        config: config.observability.otel,
-        resourceAttributes: resourceAttrs,
-        onError: sinkError,
-      ));
-    }
-    if (config.observability.flushIntervalSeconds > 0) {
-      obs.startAutoFlush(
-        Duration(seconds: config.observability.flushIntervalSeconds),
-      );
-    }
-
-    final httpClient = LoggingHttpClient(inner: http.Client(), obs: obs);
+    final httpClient = http.Client();
     final llmFactory = LlmClientFactory(httpClient: httpClient);
-    final rawLlm =
-        llmFactory.createFromConfig(config, systemPrompt: systemPrompt);
-    final llm = ObservedLlmClient(
-      inner: rawLlm,
-      obs: obs,
-      provider: config.provider.name,
-      model: config.model,
-    );
+    final llm = llmFactory.createFromConfig(config, systemPrompt: systemPrompt);
 
     final configStore = ConfigStore(
       environment.configPath,
@@ -180,7 +130,7 @@ class ServiceLocator {
     };
     final browserManager = BrowserManager(provider: browserProvider);
 
-    final rawTools = <String, Tool>{
+    final tools = <String, Tool>{
       'read_file': ReadFileTool(),
       'write_file': WriteFileTool(),
       'edit_file': EditFileTool(),
@@ -193,7 +143,6 @@ class ServiceLocator {
       'web_browser': WebBrowserTool(browserManager),
       'skill': SkillTool(skillRuntime),
     };
-    final tools = wrapToolsWithObservability(rawTools, obs);
 
     final agent = AgentCore(llm: llm, tools: tools, modelId: config.model);
     final manager = AgentManager(
@@ -225,13 +174,6 @@ class ServiceLocator {
       debugController: debugController,
       skillRuntime: skillRuntime,
     );
-  }
-
-  static String _hostArch() {
-    final ver = Platform.operatingSystemVersion.toLowerCase();
-    if (ver.contains('arm64') || ver.contains('aarch64')) return 'arm64';
-    if (ver.contains('x86_64') || ver.contains('amd64')) return 'x86_64';
-    return 'unknown';
   }
 }
 

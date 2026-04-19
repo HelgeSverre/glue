@@ -5,7 +5,6 @@ import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/config/model_registry.dart';
 import 'package:glue/src/llm/model_discovery.dart';
-import 'package:glue/src/plans/plan_store.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
 import 'package:glue/src/storage/session_store.dart';
 import 'package:glue/src/terminal/styled.dart';
@@ -13,7 +12,6 @@ import 'package:glue/src/ui/model_panel_formatter.dart';
 import 'package:glue/src/ui/panel_modal.dart';
 import 'package:glue/src/ui/select_panel.dart';
 import 'package:glue/src/ui/table_formatter.dart';
-import 'package:path/path.dart' as p;
 
 class HistoryPanelEntry {
   final int userMessageIndex;
@@ -255,90 +253,6 @@ class PanelController {
         onFork: onFork,
         addSystemMessage: addSystemMessage,
       );
-    });
-  }
-
-  void openPlans({
-    required List<PlanDocument> plans,
-    required String Function(String path) shortenPath,
-    required String Function(DateTime) timeAgo,
-    required void Function(PlanDocument plan) onOpenPlan,
-    required void Function(String message) addSystemMessage,
-  }) {
-    if (plans.isEmpty) {
-      addSystemMessage('No plans found in workspace or ~/.glue/plans.');
-      _render();
-      return;
-    }
-
-    final panelWidth = PanelFluid(0.7, 40);
-    final contentWidth = _contentWidthFor(panelWidth);
-    final rows = <Map<String, String>>[];
-    final options = <SelectOption<PlanDocument>>[];
-    for (final plan in plans) {
-      final title = plan.title.isEmpty ? p.basename(plan.path) : plan.title;
-      final source = plan.source == 'global' ? 'GLOBAL' : 'WORKSPACE';
-      final shortPath = shortenPath(plan.path);
-      rows.add({
-        'src': source.styled.dim.toString(),
-        'title': title.styled.cyan.toString(),
-        'path': shortPath.styled.dim.toString(),
-        'age': timeAgo(plan.modifiedAt).styled.dim.toString(),
-      });
-      options.add(SelectOption(
-        value: plan,
-        label: '',
-        searchText: '$title $shortPath $source',
-      ));
-    }
-
-    final table = TableFormatter.format(
-      columns: const [
-        TableColumn(key: 'src', header: 'SRC', maxWidth: 10),
-        TableColumn(key: 'title', header: 'TITLE', maxWidth: 46),
-        TableColumn(key: 'path', header: 'PATH', maxWidth: 52),
-        TableColumn(
-          key: 'age',
-          header: 'AGE',
-          align: TableAlign.right,
-          maxWidth: 10,
-        ),
-      ],
-      rows: rows,
-      gap: ' ',
-      maxTotalWidth: contentWidth,
-      includeHeader: true,
-      includeHeaderInWidth: true,
-    );
-
-    for (var i = 0; i < options.length; i++) {
-      options[i] = SelectOption(
-        value: options[i].value,
-        label: table.rowLines[i],
-        searchText: options[i].searchText,
-      );
-    }
-
-    final panel = SelectPanel<PlanDocument>(
-      title: 'Plans',
-      options: options,
-      headerLines: table.headerLines,
-      searchHint: 'filter plans',
-      emptyText: 'No matching plans.',
-      barrier: BarrierStyle.dim,
-      width: panelWidth,
-      height: PanelFluid(0.65, 12),
-    );
-    _panelStack.add(panel);
-    _render();
-
-    panel.selection.then((plan) {
-      _panelStack.remove(panel);
-      if (plan == null) {
-        _render();
-        return;
-      }
-      onOpenPlan(plan);
     });
   }
 

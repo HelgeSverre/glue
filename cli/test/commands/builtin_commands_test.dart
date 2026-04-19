@@ -12,8 +12,6 @@ void main() {
       String Function(String name)? activateSkillByName,
       void Function()? openResumePanel,
       String Function(String query)? resumeSessionByQuery,
-      void Function()? openPlansPanel,
-      String Function(String query)? openPlanByQuery,
     }) {
       return BuiltinCommands.create(
         openHelpPanel: () {},
@@ -27,13 +25,9 @@ void main() {
         historyActionByQuery: historyActionByQuery ?? (_) => '',
         openResumePanel: openResumePanel ?? () {},
         resumeSessionByQuery: resumeSessionByQuery ?? (_) => '',
-        openDevTools: () => '',
         toggleDebug: () => '',
         openSkillsPanel: openSkillsPanel ?? () {},
         activateSkillByName: activateSkillByName ?? (_) => '',
-        openPlansPanel: openPlansPanel ?? () {},
-        openPlanByQuery: openPlanByQuery ?? (_) => '',
-        switchMode: (_) => '',
         toggleApproval: () => '',
       );
     }
@@ -140,40 +134,6 @@ void main() {
       expect(result, 'Resuming abc123');
       expect(opened, 0);
       expect(query, 'abc123');
-    });
-
-    test('/plans without args opens panel', () {
-      var opened = 0;
-      String? query;
-      final registry = createRegistry(
-        openPlansPanel: () => opened++,
-        openPlanByQuery: (q) {
-          query = q;
-          return 'Opening $q';
-        },
-      );
-
-      final result = registry.execute('/plans');
-      expect(result, '');
-      expect(opened, 1);
-      expect(query, isNull);
-    });
-
-    test('/plans with args delegates to openPlanByQuery', () {
-      var opened = 0;
-      String? query;
-      final registry = createRegistry(
-        openPlansPanel: () => opened++,
-        openPlanByQuery: (q) {
-          query = q;
-          return 'Opening $q';
-        },
-      );
-
-      final result = registry.execute('/plans auth split');
-      expect(result, 'Opening auth split');
-      expect(opened, 0);
-      expect(query, 'auth split');
     });
   });
 }

@@ -1,13 +1,7 @@
+# TODO: redo this readme from scratch.
+
 # Glue
 
-```
-        .__
-   ____ |  |  __ __   ____
-  / ___\|  | |  |  \_/ __ \
- / /_/  >  |_|  |  /\  ___/
- \___  /|____/____/  \___  >
-/_____/                  \/
-```
 
 **The coding agent that holds it all together.**
 
@@ -47,16 +41,15 @@ just test       # monorepo tests (cli + website validation)
 just check      # monorepo quality gate (cli + devdocs + website)
 just clean      # monorepo cleanup
 
-just cli-build  # fast cli-only build
-just cli-test   # fast cli-only tests
-just cli-check  # fast cli-only check
+just cli::build # cli-only build
+just cli::test  # cli-only tests
+just cli::check # cli-only check
 ```
 
 Command scope:
 
 - Root `just ...` recipes are monorepo-wide defaults.
-- `just cli::...` (or `just cli-*`) targets only the CLI package.
-- `just infra::...` remains opt-in for local Docker infrastructure workflows.
+- `just cli::...` targets only the CLI package.
 
 ## License
 

@@ -33,8 +33,7 @@ String _buildSessionInfoImpl(App app) {
   buf.writeln('  Messages:     ${app.agent.conversation.length}');
   buf.writeln('  Tools:        ${app.agent.tools.length} registered');
   buf.writeln(
-      '  Mode:         ${app._interactionMode.label} (Shift+Tab to cycle)');
-  buf.writeln('  Approval:     ${app._approvalMode.label}');
+      '  Approval:     ${app._approvalMode.label} (Shift+Tab to toggle)');
   buf.writeln('  Auto-approve: ${trustedList.join(", ")}');
   return buf.toString();
 }
@@ -45,19 +44,6 @@ String _buildToolsOutputImpl(App app) {
     buf.writeln('  ${tool.name} — ${tool.description}');
   }
   return buf.toString();
-}
-
-String _openDevToolsImpl(App app) {
-  unawaited(GlueDev.getDevToolsUrl().then((url) {
-    if (url == null) {
-      app._blocks.add(_ConversationEntry.system(
-          'DevTools not available. Run with: just dev'));
-      app._render();
-      return;
-    }
-    Process.run('open', [url.toString()]);
-  }));
-  return 'Opening DevTools...';
 }
 
 String _toggleDebugModeImpl(App app) {
@@ -199,51 +185,6 @@ String _historyFromCommandImpl(App app, String query) {
 
   final entry = matches.first;
   app._forkSession(entry.userMessageIndex, entry.text);
-  return '';
-}
-
-String _openPlanFromCommandImpl(App app, String query) {
-  final normalized = query.trim();
-  if (normalized.isEmpty) return 'Usage: /plans [name-or-path]';
-
-  final plans = app._planStore.listPlans();
-  if (plans.isEmpty) {
-    return 'No plans found in workspace or ~/.glue/plans.';
-  }
-
-  final needle = normalized.toLowerCase();
-  final exact = plans.where((p) {
-    return p.title.toLowerCase() == needle || p.path.toLowerCase() == needle;
-  }).toList();
-
-  final matches = exact.isNotEmpty
-      ? exact
-      : plans.where((p) {
-          return p.title.toLowerCase().contains(needle) ||
-              p.path.toLowerCase().contains(needle);
-        }).toList();
-
-  if (matches.isEmpty) {
-    final preview = plans
-        .take(5)
-        .map((p) => '  - ${p.title} (${app._shortenPath(p.path)})')
-        .join('\n');
-    return 'No plan matches "$normalized".\n'
-        'Recent plans:\n'
-        '${preview.isEmpty ? "  (none)" : preview}';
-  }
-
-  if (matches.length > 1) {
-    final preview = matches
-        .take(5)
-        .map((p) => '  - ${p.title} (${app._shortenPath(p.path)})')
-        .join('\n');
-    return 'Multiple plans match "$normalized":\n'
-        '$preview\n'
-        'Use a more specific title or path.';
-  }
-
-  app._openPlanViewer(matches.first);
   return '';
 }
 

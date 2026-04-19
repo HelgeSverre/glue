@@ -17,16 +17,13 @@ import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/config/model_registry.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/core/service_locator.dart';
-import 'package:glue/src/config/interaction_mode.dart';
-import 'package:glue/src/dev/devtools.dart';
+import 'package:glue/src/config/approval_mode.dart';
 import 'package:glue/src/llm/llm_factory.dart';
 import 'package:glue/src/llm/title_generator.dart';
 import 'package:glue/src/orchestrator/permission_gate.dart';
 import 'package:glue/src/orchestrator/tool_permissions.dart';
 import 'package:glue/src/rendering/block_renderer.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
-import 'package:glue/src/rendering/markdown_renderer.dart';
-import 'package:glue/src/plans/plan_store.dart';
 import 'package:glue/src/rendering/mascot.dart';
 import 'package:glue/src/shell/command_executor.dart';
 import 'package:glue/src/shell/host_executor.dart';
@@ -35,7 +32,6 @@ import 'package:glue/src/shell/shell_job_manager.dart';
 import 'package:glue/src/shell/shell_completer.dart';
 import 'package:glue/src/session/session_manager.dart';
 import 'package:glue/src/storage/config_store.dart';
-import 'package:glue/src/storage/session_state.dart';
 import 'package:glue/src/storage/session_store.dart';
 import 'package:glue/src/skills/skill_registry.dart';
 import 'package:glue/src/skills/skill_activation.dart';
@@ -62,7 +58,6 @@ part 'app/splash_runtime.dart';
 part 'app/shell_runtime.dart';
 part 'app/subagent_updates.dart';
 part 'app/terminal_event_router.dart';
-part 'app/plans.dart';
 
 // ---------------------------------------------------------------------------
 // Application state
@@ -149,12 +144,10 @@ class App {
   final String? _systemPrompt;
   final CommandExecutor _executor;
   final ShellJobManager _jobManager;
-  final SessionState? _sessionState;
   late final SlashAutocomplete _autocomplete;
   late final AtFileHint _atHint;
   late final ShellAutocomplete _shellComplete;
   late final SessionManager _sessionManager;
-  late final PlanStore _planStore;
   bool _titleGenerated = false;
   bool _bashMode = false;
   Process? _bashRunProcess;
@@ -172,7 +165,6 @@ class App {
   ObservabilitySpan? _turnSpan;
   final DebugController? _debugController;
   late final SkillRuntime _skillRuntime;
-  InteractionMode _interactionMode;
   ApprovalMode _approvalMode;
   final Set<String> _earlyApprovedIds = {};
 
@@ -188,7 +180,6 @@ class App {
     String? systemPrompt,
     Set<String>? extraTrustedTools,
     SessionStore? sessionStore,
-    SessionState? sessionState,
     CommandExecutor? executor,
     ShellJobManager? jobManager,
     bool startupContinue = false,
@@ -209,7 +200,6 @@ class App {
         _executor = executor ?? HostExecutor(const ShellConfig()),
         _jobManager = jobManager ??
             ShellJobManager(executor ?? HostExecutor(const ShellConfig())),
-        _sessionState = sessionState,
         _startupContinue = startupContinue,
         _startupPrompt = startupPrompt,
         _printMode = printMode,
@@ -217,14 +207,12 @@ class App {
         _resumeSessionId = resumeSessionId,
         _obs = obs,
         _debugController = debugController,
-        _interactionMode = config?.interactionMode ?? InteractionMode.code,
         _approvalMode = config?.approvalMode ?? ApprovalMode.confirm {
     _cwd = _environment.cwd;
     _sessionManager = SessionManager(
       environment: _environment,
       sessionStore: sessionStore,
     );
-    _planStore = PlanStore(environment: _environment, cwd: _cwd);
     _panels = PanelController(
       panelStack: _panelStack,
       render: _render,
@@ -243,11 +231,9 @@ class App {
     _autocomplete = SlashAutocomplete(_commands);
     _atHint = AtFileHint();
     _shellComplete = ShellAutocomplete(ShellCompleter());
-    _syncToolFilter();
   }
 
   PermissionGate get _permissionGate => PermissionGate(
-        interactionMode: _interactionMode,
         approvalMode: _approvalMode,
         trustedTools: _autoApprovedTools,
         tools: agent.tools,
@@ -279,7 +265,6 @@ class App {
       systemPrompt: services.systemPrompt,
       extraTrustedTools: services.trustedTools,
       sessionStore: services.sessionStore,
-      sessionState: services.sessionState,
       executor: services.executor,
       jobManager: services.jobManager,
       startupContinue: startupContinue,
@@ -316,32 +301,6 @@ class App {
     _activeModal?.cancel();
     if (!_exitCompleter.isCompleted) _exitCompleter.complete();
   }
-
-  /// Returns a JSON-serializable snapshot of internal state for DevTools.
-  Map<String, dynamic> devtoolsState(String name) => switch (name) {
-        'getAgentState' => {
-            'mode': _mode.name,
-            'tokenCount': agent.tokenCount,
-            'model': _modelId,
-            'conversationLength': agent.conversation.length,
-            'pendingTools': _mode == AppMode.toolRunning ? 'active' : 'none',
-          },
-        'getConfig' => {
-            'provider': _config?.provider.name ?? 'unknown',
-            'model': _config?.model ?? 'unknown',
-            'maxSubagentDepth': _config?.maxSubagentDepth ?? 0,
-            'bashMaxLines': _config?.bashMaxLines ?? 0,
-          },
-        'getSessionInfo' => {
-            'blockCount': _blocks.length,
-            'scrollOffset': _scrollOffset,
-            'dockerMounts': _sessionState?.dockerMounts.length ?? 0,
-          },
-        'getToolHistory' => {
-            'note': 'Tool history tracking not yet implemented',
-          },
-        _ => {'error': 'Unknown extension: $name'},
-      };
 
   /// Run the application event loop.
   ///
@@ -467,27 +426,11 @@ class App {
       historyActionByQuery: _historyFromCommand,
       openResumePanel: _openResumePanel,
       resumeSessionByQuery: _resumeSessionFromCommand,
-      openDevTools: _openDevTools,
       toggleDebug: _toggleDebugMode,
       openSkillsPanel: _openSkillsPanel,
       activateSkillByName: _activateSkillFromCommand,
-      openPlansPanel: _openPlansPanel,
-      openPlanByQuery: _openPlanFromCommand,
-      switchMode: _switchMode,
       toggleApproval: _toggleApproval,
     );
-  }
-
-  String _switchMode(String name) {
-    final mode = InteractionMode.values.cast<InteractionMode?>().firstWhere(
-          (m) => m!.name == name,
-          orElse: () => null,
-        );
-    if (mode == null) return 'Unknown mode: $name';
-    _interactionMode = mode;
-    _syncToolFilter();
-    _render();
-    return 'Switched to ${mode.label} mode';
   }
 
   String _toggleApproval() {
@@ -510,10 +453,6 @@ class App {
 
   String _buildToolsOutput() {
     return _buildToolsOutputImpl(this);
-  }
-
-  String _openDevTools() {
-    return _openDevToolsImpl(this);
   }
 
   String _toggleDebugMode() {
@@ -641,18 +580,6 @@ class App {
     _render();
   }
 
-  void _openPlansPanel() {
-    _openPlansPanelImpl(this);
-  }
-
-  void _openPlanViewer(PlanDocument plan) {
-    _openPlanViewerImpl(this, plan);
-  }
-
-  Future<void> _openPlanInEditor(String path) async {
-    await _openPlanInEditorImpl(this, path);
-  }
-
   SkillsDockedPanel? _findSkillsDockedPanel() {
     for (final panel in _dockManager.panels) {
       if (panel is SkillsDockedPanel) return panel;
@@ -677,10 +604,6 @@ class App {
 
   String _historyFromCommand(String query) {
     return _historyFromCommandImpl(this, query);
-  }
-
-  String _openPlanFromCommand(String query) {
-    return _openPlanFromCommandImpl(this, query);
   }
 
   String _switchToModelEntry(ModelEntry entry) {
@@ -722,10 +645,6 @@ class App {
   }
 
   // ── Permission mode ──────────────────────────────────────────────────
-
-  void _syncToolFilter() {
-    _syncToolFilterImpl(this);
-  }
 
   void _persistTrustedTool(String name) {
     _persistTrustedToolImpl(this, name);

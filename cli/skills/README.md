@@ -10,3 +10,6 @@ Discovery precedence (highest to lowest):
 
 Each skill must live in `<name>/SKILL.md` and the frontmatter `name` must
 match the directory name.
+
+
+# todo: revamp these

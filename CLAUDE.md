@@ -31,8 +31,8 @@ dart test --run-skipped -t e2e
 
 # Monorepo shortcuts (from repo root, requires just)
 just check          # Full quality gate
-just cli-check      # CLI only: format + analyze + test
-just cli-test       # CLI tests only
+just cli::check     # CLI only: format + analyze + test
+just cli::test      # CLI tests only
 ```
 
 ## Architecture

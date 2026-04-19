@@ -82,7 +82,7 @@ For PowerShell, Glue updates the profile returned by
 
 Config is resolved in order: **CLI flags → env vars → `~/.glue/config.yaml` → defaults**.
 
-Environment variables: `GLUE_PROVIDER`, `GLUE_MODEL`, `GLUE_DEBUG`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `MISTRAL_API_KEY`, `GLUE_SHELL`, `GLUE_SHELL_MODE`, `GLUE_DOCKER_ENABLED`, `GLUE_DOCKER_IMAGE`, `GLUE_DOCKER_SHELL`, `GLUE_DOCKER_MOUNTS`, `BRAVE_API_KEY`, `TAVILY_API_KEY`, `FIRECRAWL_API_KEY`, `LANGFUSE_BASE_URL`, `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`.
+Environment variables: `GLUE_PROVIDER`, `GLUE_MODEL`, `GLUE_DEBUG`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `MISTRAL_API_KEY`, `GLUE_SHELL`, `GLUE_SHELL_MODE`, `GLUE_DOCKER_ENABLED`, `GLUE_DOCKER_IMAGE`, `GLUE_DOCKER_SHELL`, `GLUE_DOCKER_MOUNTS`, `BRAVE_API_KEY`, `TAVILY_API_KEY`, `FIRECRAWL_API_KEY`.
 
 Default models per provider:
 
@@ -126,47 +126,9 @@ Or via environment: `GLUE_DOCKER_ENABLED=1 GLUE_DOCKER_IMAGE=alpine:latest glue`
 
 The current working directory is always mounted at `/work` inside the container. Additional directories can be mounted per-session (persisted in session state).
 
-### Observability & debug logging
+### Debug logging
 
-Enable verbose debug logging with `--debug` / `-d`, `GLUE_DEBUG=1`, or the `/debug` slash command at runtime. Debug logs are written to `~/.glue/logs/glue-debug-YYYY-MM-DD.log`.
-
-Glue supports pluggable LLM observability via OpenTelemetry and Langfuse. All HTTP calls, LLM generations, and tool executions are instrumented via wrapper layers — zero changes to business logic.
-
-```yaml
-# ~/.glue/config.yaml
-debug: false
-
-telemetry:
-  # Generic OTEL — works with LLMFlow, Opik, Helicone, Laminar, Grafana Tempo, Jaeger, etc.
-  otel:
-    enabled: true
-    endpoint: http://localhost:3000/v1/traces
-    headers:
-      Authorization: Bearer your-api-key
-
-  # Langfuse native API — richer LLM generation tracking
-  langfuse:
-    enabled: true
-    base_url: http://localhost:3000
-    public_key: pk-lf-...
-    secret_key: sk-lf-...
-```
-
-**Quick start with [LLMFlow](https://github.com/HelgeSverre/llmflow):**
-
-```bash
-npx llmflow                            # start local observability UI
-glue -d                                # run glue with debug mode
-# traces appear at http://localhost:3000
-```
-
-**Quick start with Langfuse:**
-
-```bash
-git clone https://github.com/langfuse/langfuse.git && cd langfuse
-docker compose up -d                   # Langfuse at http://localhost:3000
-# Create a project in Langfuse UI, get API keys, add to config.yaml
-```
+Enable verbose debug logging with `--debug` / `-d`, `GLUE_DEBUG=1`, or the `/debug` slash command at runtime. Local span records are written to `~/.glue/logs/spans-YYYY-MM-DD.jsonl`.
 
 ## Justfile commands
 
@@ -242,11 +204,8 @@ App (event bus, state machine, render loop @ 60fps)
   ├─ Skills (agentskills.io-compatible skill loading)
   │    ├─ SkillRegistry (discover from ~/.glue/skills/ and .glue/skills/)
   │    └─ SkillParser (YAML frontmatter + markdown body)
-  ├─ Observability (pluggable telemetry)
-  │    ├─ LoggingHttpClient (wraps http.Client)
-  │    ├─ ObservedLlmClient (wraps LlmClient)
-  │    ├─ ObservedTool (wraps Tool)
-  │    └─ Sinks: FileSink, OtelSink, LangfuseSink
+  ├─ Observability (local-only spans)
+  │    └─ Sink: FileSink (JSONL under ~/.glue/logs/)
   ├─ Rendering (BlockRenderer, MarkdownRenderer, ANSI utilities)
   ├─ Mascot (liquid simulation, goo explosion particle system)
   ├─ Modals (inline confirm, full-screen panel with scrolling)
