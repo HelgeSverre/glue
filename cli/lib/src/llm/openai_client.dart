@@ -7,8 +7,13 @@ import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/llm/message_mapper.dart';
 import 'package:glue/src/llm/sse.dart';
 import 'package:glue/src/llm/tool_schema.dart';
+import 'package:glue/src/providers/compatibility_profile.dart';
 
 /// LLM client for OpenAI Chat Completions API with streaming.
+///
+/// Compatibility quirks of OpenAI-shaped endpoints (Groq, Ollama, OpenRouter,
+/// vLLM, Mistral) are handled by the injected [CompatibilityProfile] — this
+/// client stays protocol-shaped and does not branch on vendor id.
 ///
 /// {@category LLM Providers}
 class OpenAiClient implements LlmClient {
@@ -16,6 +21,9 @@ class OpenAiClient implements LlmClient {
   final String apiKey;
   final String model;
   final String systemPrompt;
+  final String baseUrl;
+  final CompatibilityProfile profile;
+  final Map<String, String> extraHeaders;
   final Uri _baseUri;
 
   static const _defaultBaseUrl = 'https://api.openai.com';
@@ -24,7 +32,9 @@ class OpenAiClient implements LlmClient {
     required this.apiKey,
     required this.model,
     required this.systemPrompt,
-    String baseUrl = _defaultBaseUrl,
+    this.baseUrl = _defaultBaseUrl,
+    this.profile = CompatibilityProfile.openai,
+    this.extraHeaders = const {},
     http.Client Function()? requestClientFactory,
   })  : _requestClientFactory = requestClientFactory ?? http.Client.new,
         _baseUri = Uri.parse(baseUrl);
@@ -49,13 +59,16 @@ class OpenAiClient implements LlmClient {
         body['tools'] = const OpenAiToolEncoder().encodeAll(tools);
       }
 
+      profile.mutateBody(body);
+
       final request = http.Request(
         'POST',
         _baseUri.resolve('/v1/chat/completions'),
       );
       request.headers.addAll({
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer $apiKey',
+        ...profile.authHeaders(apiKey),
+        ...extraHeaders,
       });
       request.body = jsonEncode(body);
 

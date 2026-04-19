@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 void main() {
   group('CredentialRef', () {
     test('sealed variants can be destructured via pattern matching', () {
-      CredentialRef ref = const EnvCredential('ANTHROPIC_API_KEY');
+      const CredentialRef ref = EnvCredential('ANTHROPIC_API_KEY');
       final description = switch (ref) {
         EnvCredential(:final name) => 'env:$name',
         StoredCredential(:final key) => 'stored:$key',
@@ -25,7 +25,8 @@ void main() {
     });
 
     test('InlineCredential equality includes the value', () {
-      expect(const InlineCredential('k1'), equals(const InlineCredential('k1')));
+      expect(
+          const InlineCredential('k1'), equals(const InlineCredential('k1')));
       expect(
         const InlineCredential('k1'),
         isNot(equals(const InlineCredential('k2'))),
