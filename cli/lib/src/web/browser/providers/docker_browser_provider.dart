@@ -25,10 +25,6 @@ class DockerBrowserProvider implements BrowserEndpointProvider {
   @override
   bool get isConfigured => true;
 
-  @override
-  @Deprecated('Use isConfigured instead.')
-  bool get isAvailable => isConfigured;
-
   String buildWsUrl(int port) => 'ws://localhost:$port';
 
   /// Parse host port from Docker port output.

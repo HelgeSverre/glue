@@ -24,9 +24,6 @@ class BrowserbaseProvider implements BrowserEndpointProvider {
       projectId!.isNotEmpty;
 
   @override
-  @Deprecated('Use isConfigured instead.')
-  bool get isAvailable => isConfigured;
-
   @override
   Future<BrowserEndpoint> provision() async {
     if (!isConfigured) {

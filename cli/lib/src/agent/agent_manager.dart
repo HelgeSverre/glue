@@ -9,9 +9,6 @@ import 'package:glue/src/observability/observability.dart';
 import 'package:glue/src/orchestrator/tool_permissions.dart';
 import 'package:glue/src/tools/subagent_tools.dart';
 
-/// Backward-compat alias for subagent-safe tools.
-const safeSubagentTools = ToolPermissions.subagentSafeTools;
-
 /// An update from a running subagent, forwarded to the UI.
 class SubagentUpdate {
   /// Short description of the subagent's task.
@@ -62,7 +59,8 @@ class AgentManager {
     required this.systemPrompt,
     Set<String>? allowedSubagentTools,
     this.obs,
-  }) : allowedSubagentTools = allowedSubagentTools ?? safeSubagentTools;
+  }) : allowedSubagentTools =
+            allowedSubagentTools ?? ToolPermissions.subagentSafeTools;
 
   /// Spawns a single subagent to complete a [task].
   ///

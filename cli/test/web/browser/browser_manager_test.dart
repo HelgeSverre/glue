@@ -15,10 +15,6 @@ class _MockProvider implements BrowserEndpointProvider {
   bool get isConfigured => true;
 
   @override
-  @Deprecated('Use isConfigured instead.')
-  bool get isAvailable => isConfigured;
-
-  @override
   Future<BrowserEndpoint> provision() async {
     if (provisionDelay > Duration.zero) {
       await Future.delayed(provisionDelay);

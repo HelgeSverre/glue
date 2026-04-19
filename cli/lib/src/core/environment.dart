@@ -47,9 +47,7 @@ class Environment {
   }
 
   String get glueDir => p.join(home, '.glue');
-  String get preferencesPath => p.join(glueDir, 'preferences.json');
-  String get legacyConfigPath => p.join(glueDir, 'config.json');
-  String get configPath => preferencesPath;
+  String get configPath => p.join(glueDir, 'preferences.json');
   String get configYamlPath => p.join(glueDir, 'config.yaml');
   String get sessionsDir => p.join(glueDir, 'sessions');
   String get logsDir => p.join(glueDir, 'logs');

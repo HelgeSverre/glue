@@ -23,9 +23,6 @@ List<String> splitPathList(String value, {bool? isWindows}) {
 /// {@category Core}
 enum LlmProvider { anthropic, openai, mistral, ollama }
 
-/// Alias for enum-style consistency with other provider selector enums.
-typedef LlmProviderType = LlmProvider;
-
 /// An agent profile specifying provider and model for a particular role.
 class AgentProfile {
   final LlmProvider provider;
@@ -199,19 +196,15 @@ class GlueConfig {
     final model = resolvedEntry?.modelId ?? rawModel ?? _defaultModel(provider);
 
     final anthropicKey = env['ANTHROPIC_API_KEY'] ??
-        env['GLUE_ANTHROPIC_API_KEY'] ??
         (fileConfig?['anthropic'] as Map?)?['api_key'] as String?;
 
     final openaiKey = env['OPENAI_API_KEY'] ??
-        env['GLUE_OPENAI_API_KEY'] ??
         (fileConfig?['openai'] as Map?)?['api_key'] as String?;
 
     final mistralKey = env['MISTRAL_API_KEY'] ??
-        env['GLUE_MISTRAL_API_KEY'] ??
         (fileConfig?['mistral'] as Map?)?['api_key'] as String?;
 
     final ollamaBaseUrl = env['OLLAMA_BASE_URL'] ??
-        env['GLUE_OLLAMA_BASE_URL'] ??
         (fileConfig?['ollama'] as Map?)?['base_url'] as String? ??
         AppConstants.defaultOllamaBaseUrl;
 

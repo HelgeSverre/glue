@@ -116,26 +116,4 @@ void main() {
     // Should keep last-known-good cache
     expect(store.trustedTools, ['read_file']);
   });
-
-  test('falls back to legacy path when new path is missing', () {
-    final preferencesPath = p.join(tempDir.path, 'preferences.json');
-    final legacyPath = p.join(tempDir.path, 'config.json');
-    File(legacyPath).writeAsStringSync(
-      jsonEncode({
-        'trusted_tools': ['bash']
-      }),
-    );
-
-    final store = ConfigStore(preferencesPath, legacyPath: legacyPath);
-    expect(store.trustedTools, ['bash']);
-
-    store.update((c) {
-      c['trusted_tools'] = ['bash', 'read_file'];
-    });
-
-    expect(File(preferencesPath).existsSync(), isTrue);
-    final newOnDisk = jsonDecode(File(preferencesPath).readAsStringSync())
-        as Map<String, dynamic>;
-    expect(newOnDisk['trusted_tools'], ['bash', 'read_file']);
-  });
 }

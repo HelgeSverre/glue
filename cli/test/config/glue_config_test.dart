@@ -244,7 +244,7 @@ ollama:
       expect(config.ollamaBaseUrl, 'http://127.0.0.1:11435');
     });
 
-    test('GLUE_OLLAMA_BASE_URL overrides file config', () {
+    test('OLLAMA_BASE_URL overrides file config', () {
       final glueDir = Directory('${tempDir.path}/.glue')..createSync();
       final configFile = File('${glueDir.path}/config.yaml');
       configFile.writeAsStringSync('''
@@ -257,7 +257,7 @@ ollama:
       final environment = Environment.test(
         home: tempDir.path,
         cwd: tempDir.path,
-        vars: const {'GLUE_OLLAMA_BASE_URL': 'http://localhost:22434'},
+        vars: const {'OLLAMA_BASE_URL': 'http://localhost:22434'},
       );
       final config = GlueConfig.load(environment: environment);
       expect(config.ollamaBaseUrl, 'http://localhost:22434');

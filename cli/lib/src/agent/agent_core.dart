@@ -85,12 +85,6 @@ class ToolCallComplete extends LlmChunk {
   ToolCallComplete(this.toolCall);
 }
 
-/// Deprecated compatibility alias for [ToolCallComplete].
-@Deprecated('Use ToolCallComplete')
-class ToolCallDelta extends ToolCallComplete {
-  ToolCallDelta(super.toolCall);
-}
-
 /// Token usage reported by the LLM after a response.
 class UsageInfo extends LlmChunk {
   final int inputTokens;
@@ -236,11 +230,7 @@ class AgentCore {
     required this.llm,
     required this.tools,
     String? modelId,
-    @Deprecated('Use modelId instead.') String? modelName,
-  }) : modelId = modelId ?? modelName ?? 'unknown';
-
-  @Deprecated('Use modelId instead.')
-  String get modelName => modelId;
+  }) : modelId = modelId ?? 'unknown';
 
   /// The full conversation history.
   List<Message> get conversation => List.unmodifiable(_conversation);

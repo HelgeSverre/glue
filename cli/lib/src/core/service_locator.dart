@@ -76,10 +76,7 @@ class ServiceLocator {
     final llmFactory = LlmClientFactory(httpClient: httpClient);
     final llm = llmFactory.createFromConfig(config, systemPrompt: systemPrompt);
 
-    final configStore = ConfigStore(
-      environment.configPath,
-      legacyPath: environment.legacyConfigPath,
-    );
+    final configStore = ConfigStore(environment.configPath);
 
     final sessionDir = environment.sessionDir(sessionId);
     final sessionMeta = SessionMeta(

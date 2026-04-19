@@ -158,7 +158,8 @@ void _checkHomeNoPlanned() {
 // ---------------------------------------------------------------------------
 
 void _checkInstallSnippetSingleSource() {
-  final installLine = RegExp(r'curl\s+-fsSL\s+https://getglue\.dev/install\.sh');
+  final installLine =
+      RegExp(r'curl\s+-fsSL\s+https://getglue\.dev/install\.sh');
   for (final file in _siteMarkdownFiles()) {
     if (_rel(file) == 'snippets/install.md') continue;
     final text = file.readAsStringSync();

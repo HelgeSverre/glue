@@ -35,8 +35,5 @@ class BrowserEndpoint {
 abstract class BrowserEndpointProvider {
   String get name;
   bool get isConfigured;
-
-  @Deprecated('Use isConfigured instead.')
-  bool get isAvailable => isConfigured;
   Future<BrowserEndpoint> provision();
 }

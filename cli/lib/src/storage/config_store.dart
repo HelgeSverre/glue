@@ -3,13 +3,12 @@ import 'dart:io';
 
 class ConfigStore {
   final String path;
-  final String? legacyPath;
   Map<String, dynamic> _cache = const {};
   DateTime? _lastMtime;
   int? _lastSize;
   bool _loaded = false;
 
-  ConfigStore(this.path, {this.legacyPath});
+  ConfigStore(this.path);
 
   Map<String, dynamic> load() {
     _ensureLoaded();
@@ -17,14 +16,7 @@ class ConfigStore {
   }
 
   void _ensureLoaded() {
-    var source = File(path);
-    if (!source.existsSync() && legacyPath != null) {
-      final legacy = File(legacyPath!);
-      if (legacy.existsSync()) {
-        source = legacy;
-      }
-    }
-
+    final source = File(path);
     if (!source.existsSync()) {
       _cache = {};
       _lastMtime = null;

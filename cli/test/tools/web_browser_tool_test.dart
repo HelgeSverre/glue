@@ -11,10 +11,6 @@ class _MockProvider implements BrowserEndpointProvider {
   bool get isConfigured => true;
 
   @override
-  @Deprecated('Use isConfigured instead.')
-  bool get isAvailable => isConfigured;
-
-  @override
   Future<BrowserEndpoint> provision() async => BrowserEndpoint(
         cdpWsUrl: 'ws://localhost:9222/devtools/browser/mock',
         backendName: 'mock',

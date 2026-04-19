@@ -19,9 +19,6 @@ class SteelProvider implements BrowserEndpointProvider {
   bool get isConfigured => apiKey != null && apiKey!.isNotEmpty;
 
   @override
-  @Deprecated('Use isConfigured instead.')
-  bool get isAvailable => isConfigured;
-
   @override
   Future<BrowserEndpoint> provision() async {
     if (!isConfigured) throw StateError('Steel API key not configured');

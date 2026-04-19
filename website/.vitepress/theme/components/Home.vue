@@ -1,16 +1,24 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+// ── Slim nav (replaces VitePress nav on homepage) ─────────────────────────
+const navLinks = [
+  { text: 'Docs',      href: '/docs/getting-started/installation' },
+  { text: 'Models',    href: '/models' },
+  { text: 'Runtimes',  href: '/runtimes' },
+  { text: 'Changelog', href: '/changelog' },
+]
 
-// ── Hero: auto-cycling script shown as plain lines (no fake window) ───────
-interface Step {
-  kind: 'prompt' | 'assistant' | 'tool' | 'output'
+// ── Hero screenshot: a realistic Glue session ─────────────────────────────
+// Shown as an illustrative product shot. Not a live demo — stable copy,
+// readable at a glance, balanced for the 2-col hero.
+interface ShotLine {
+  kind: 'prompt' | 'assistant' | 'tool' | 'output' | 'group'
   text: string
-  delay?: number
 }
 
-const heroScript: Step[] = [
+const shot: ShotLine[] = [
   { kind: 'prompt',    text: 'explain the retry logic in http_client.dart' },
-  { kind: 'assistant', text: 'Reading the file and the tests around it.' },
+  { kind: 'assistant', text: 'Reading the file and tests around it.' },
+  { kind: 'group',     text: 'tool group · 3 calls · 210ms' },
   { kind: 'tool',      text: 'read  cli/lib/src/web/http_client.dart' },
   { kind: 'tool',      text: 'grep  retry  cli/test/' },
   { kind: 'output',    text: '3 matches in http_client_test.dart' },
@@ -21,52 +29,17 @@ const heroScript: Step[] = [
   { kind: 'output',    text: '✓ 12 tests passed' },
 ]
 
-const visible = ref<number>(0)
-let timer: ReturnType<typeof setTimeout> | null = null
-
-function schedule() {
-  const i = visible.value
-  if (i >= heroScript.length) {
-    timer = setTimeout(() => {
-      visible.value = 0
-      schedule()
-    }, 4500)
-    return
-  }
-  const step = heroScript[i]
-  const baseDelay = step.delay ?? (step.kind === 'output' ? 260 : step.kind === 'tool' ? 340 : 620)
-  timer = setTimeout(() => {
-    visible.value = i + 1
-    schedule()
-  }, baseDelay)
-}
-
-function gutter(kind: Step['kind']) {
+function gutter(kind: ShotLine['kind']) {
   switch (kind) {
     case 'prompt':    return '›'
     case 'assistant': return ' '
     case 'tool':      return '⏵'
     case 'output':    return ' '
+    case 'group':     return '⌄'
   }
 }
 
-onMounted(() => {
-  const prefersReduced =
-    typeof window !== 'undefined' &&
-    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-  if (prefersReduced) {
-    visible.value = heroScript.length
-    return
-  }
-  visible.value = 1
-  schedule()
-})
-
-onBeforeUnmount(() => {
-  if (timer) clearTimeout(timer)
-})
-
-// ── Featured moves (stacked, not cards) ───────────────────────────────────
+// ── Featured moves ────────────────────────────────────────────────────────
 const moves = [
   {
     num: '01',
@@ -138,48 +111,100 @@ const jsonlSample = [
 
 <template>
   <main class="home">
-    <!-- ─── Hero ──────────────────────────────────────────────────────── -->
-    <section class="hero">
-      <div class="wrap">
-        <div class="eyebrow">glue · terminal-native coding agent</div>
-
-        <h1 class="headline">
-          A small terminal agent for<br />
-          <span class="accent">real coding work.</span>
-        </h1>
-
-        <p class="sub">
-          Edits files. Runs tools. Keeps resumable sessions. Stays on your machine —
-          or jumps into Docker when the work gets risky.
-        </p>
-
-        <div class="install">
-          <InstallSnippet />
-        </div>
-
-        <div class="actions">
-          <a class="btn btn-primary" href="/docs/getting-started/quick-start">Quick start →</a>
-          <a class="btn btn-ghost" href="/why">Why Glue</a>
-          <a class="btn btn-ghost" href="https://github.com/helgesverre/glue">GitHub ↗</a>
-        </div>
+    <!-- ─── Slim nav ──────────────────────────────────────────────────── -->
+    <header class="topbar">
+      <div class="wrap topbar-inner">
+        <a class="brand" href="/" aria-label="Glue home">
+          <span class="brand-mark" aria-hidden="true">◆</span>
+          <span class="brand-name">glue</span>
+        </a>
+        <nav class="nav" aria-label="Primary">
+          <a
+            v-for="link in navLinks"
+            :key="link.href"
+            :href="link.href"
+            class="nav-link"
+          >{{ link.text }}</a>
+          <a
+            href="https://github.com/helgesverre/glue"
+            class="nav-link nav-github"
+            aria-label="GitHub"
+          >GitHub ↗</a>
+        </nav>
       </div>
-    </section>
+    </header>
 
-    <!-- ─── Live script ───────────────────────────────────────────────── -->
-    <section class="section">
-      <div class="wrap">
-        <div class="script" aria-label="Glue interactive session">
-          <div
-            v-for="(step, i) in heroScript.slice(0, visible)"
-            :key="i"
-            class="script-line"
-            :class="`line-${step.kind}`"
-          >
-            <span class="script-gutter" aria-hidden="true">{{ gutter(step.kind) }}</span>
-            <span class="script-text">{{ step.text }}</span>
+    <!-- ─── Hero (2 cols) ─────────────────────────────────────────────── -->
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <div class="eyebrow">glue · terminal-native coding agent</div>
+
+          <h1 class="headline">
+            A small terminal agent for <span class="accent">real coding work.</span>
+          </h1>
+
+          <p class="sub">
+            Edits files. Runs tools. Keeps resumable sessions. Stays on your machine —
+            or jumps into Docker when the work gets risky.
+          </p>
+
+          <div class="install">
+            <InstallSnippet />
           </div>
-          <div v-if="visible < heroScript.length" class="script-caret" aria-hidden="true" />
+
+          <div class="actions">
+            <a class="btn btn-primary" href="/docs/getting-started/quick-start">Quick start →</a>
+            <a class="btn btn-ghost" href="/why">Why Glue</a>
+          </div>
+
+          <div class="meta">
+            <span><code>anthropic</code> · <code>openai</code> · <code>gemini</code> · <code>ollama</code></span>
+            <span class="meta-sep">·</span>
+            <span>host · docker · <span class="meta-planned">cloud</span></span>
+          </div>
         </div>
+
+        <figure class="shot" aria-label="Glue in a coding session">
+          <div class="shot-frame">
+            <div class="shot-head">
+              <span class="shot-path">
+                <span class="shot-path-dim">~/code/glue</span>
+                <span class="shot-path-sep">/</span>
+                <span>cli/lib/src/web/http_client.dart</span>
+              </span>
+              <span class="shot-branch">
+                <span class="shot-branch-glyph" aria-hidden="true">⎇</span>
+                main · clean
+              </span>
+            </div>
+
+            <div class="shot-body">
+              <div
+                v-for="(line, i) in shot"
+                :key="i"
+                class="shot-line"
+                :class="`shot-${line.kind}`"
+              >
+                <span class="shot-gutter" aria-hidden="true">{{ gutter(line.kind) }}</span>
+                <span class="shot-text">{{ line.text }}</span>
+              </div>
+            </div>
+
+            <div class="shot-foot">
+              <span class="shot-foot-item">
+                <span class="shot-dot shot-dot-ok" aria-hidden="true" />
+                anthropic/claude-sonnet-4.6
+              </span>
+              <span class="shot-foot-sep">│</span>
+              <span class="shot-foot-item">runtime: host</span>
+              <span class="shot-foot-sep">│</span>
+              <span class="shot-foot-item">approval: confirm</span>
+              <span class="shot-foot-spacer" />
+              <span class="shot-foot-item shot-foot-dim">142 events</span>
+            </div>
+          </div>
+        </figure>
       </div>
     </section>
 
@@ -197,7 +222,7 @@ const jsonlSample = [
       </div>
     </section>
 
-    <!-- ─── Three moves (stacked) ─────────────────────────────────────── -->
+    <!-- ─── Three moves ───────────────────────────────────────────────── -->
     <section class="section section-divider">
       <div class="wrap">
         <div class="kicker">three moves, over and over</div>
@@ -217,7 +242,7 @@ const jsonlSample = [
               class="script-line"
               :class="`line-${step.kind}`"
             >
-              <span class="script-gutter" aria-hidden="true">{{ gutter(step.kind as Step['kind']) }}</span>
+              <span class="script-gutter" aria-hidden="true">{{ gutter(step.kind as ShotLine['kind']) }}</span>
               <span class="script-text">{{ step.text }}</span>
             </div>
           </div>
@@ -323,7 +348,6 @@ const jsonlSample = [
 
   font-family: var(--vp-font-family-base);
   color: var(--fg);
-  font-feature-settings: "ss01", "ss02";
 }
 
 .home :deep(a) {
@@ -339,13 +363,21 @@ const jsonlSample = [
 }
 
 .wrap {
-  max-width: 1040px;
+  max-width: 1320px;
   margin: 0 auto;
-  padding: 0 1.75rem;
+  padding: 0 2rem;
+}
+
+@media (max-width: 720px) {
+  .wrap { padding: 0 1.25rem; }
 }
 
 .section {
   padding: 6rem 0;
+}
+
+@media (max-width: 720px) {
+  .section { padding: 4rem 0; }
 }
 
 .section-divider {
@@ -393,9 +425,89 @@ const jsonlSample = [
   border-bottom-style: solid;
 }
 
-/* ── Hero ──────────────────────────────────────────────────────────────── */
+/* ── Topbar (slim homepage nav) ───────────────────────────────────────── */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 0.9rem 0;
+  background: color-mix(in srgb, var(--vp-c-bg) 85%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid transparent;
+  transition: border-color 150ms ease;
+}
+
+.topbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  color: var(--fg);
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.98rem;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+}
+
+.brand-mark {
+  color: var(--accent);
+  font-size: 0.9em;
+}
+
+.brand-name {
+  color: var(--fg);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.nav-link {
+  font-family: var(--vp-font-family-base);
+  font-size: 0.93rem;
+  font-weight: 500;
+  color: var(--fg-dim);
+  transition: color 120ms ease;
+}
+
+.nav-link:hover {
+  color: var(--fg);
+}
+
+.nav-github {
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.88rem;
+}
+
+@media (max-width: 560px) {
+  .nav { gap: 0.85rem; font-size: 0.85rem; }
+  .nav-link { font-size: 0.85rem; }
+  .nav-github { display: none; }
+}
+
+/* ── Hero (2 cols) ────────────────────────────────────────────────────── */
 .hero {
-  padding: 8rem 0 5rem;
+  padding: 5rem 0 6rem;
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: 4rem;
+  align-items: center;
+}
+
+@media (max-width: 1040px) {
+  .hero-grid { grid-template-columns: 1fr; gap: 2.5rem; }
 }
 
 .eyebrow {
@@ -403,7 +515,7 @@ const jsonlSample = [
   font-size: 0.78rem;
   letter-spacing: 0.12em;
   color: var(--fg-3);
-  margin-bottom: 2rem;
+  margin-bottom: 1.75rem;
 }
 
 .eyebrow::before {
@@ -413,12 +525,11 @@ const jsonlSample = [
 }
 
 .headline {
-  font-size: clamp(2.75rem, 7vw, 5.75rem);
+  font-size: clamp(2.5rem, 5.5vw, 4.75rem);
   line-height: 1;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.03em;
   font-weight: 600;
   margin: 0 0 1.75rem;
-  max-width: 14ch;
 }
 
 .accent {
@@ -426,23 +537,46 @@ const jsonlSample = [
 }
 
 .sub {
-  font-size: clamp(1.1rem, 1.6vw, 1.35rem);
+  font-size: clamp(1.05rem, 1.35vw, 1.2rem);
   line-height: 1.5;
   color: var(--fg-dim);
-  max-width: 620px;
-  margin: 0 0 2.25rem;
+  max-width: 560px;
+  margin: 0 0 2rem;
   font-weight: 400;
 }
 
 .install {
-  max-width: 560px;
-  margin: 0 0 1.75rem;
+  max-width: 540px;
+  margin: 0 0 1.5rem;
 }
 
 .actions {
   display: flex;
   gap: 0.65rem;
   flex-wrap: wrap;
+}
+
+.meta {
+  margin-top: 1.75rem;
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.78rem;
+  color: var(--fg-3);
+}
+
+.meta code {
+  color: var(--fg-dim);
+}
+
+.meta-sep {
+  opacity: 0.5;
+}
+
+.meta-planned {
+  color: var(--fg-3);
+  font-style: italic;
 }
 
 /* ── Buttons ──────────────────────────────────────────────────────────── */
@@ -477,56 +611,138 @@ const jsonlSample = [
   color: var(--accent);
 }
 
-/* ── Script (no window chrome — just monospace lines) ─────────────────── */
-.script {
-  font-family: var(--vp-font-family-mono);
-  font-size: clamp(0.88rem, 1.2vw, 1.02rem);
-  line-height: 1.75;
-  letter-spacing: 0.005em;
-  color: var(--fg-dim);
-  min-height: 16em;
+/* ── Hero screenshot (illustrative) ──────────────────────────────────── */
+.shot {
+  margin: 0;
+  min-width: 0;
 }
 
-.script-line {
+.shot-frame {
+  background: var(--glue-term-bg);
+  color: var(--glue-term-fg);
+  border: 1px solid var(--div);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow:
+    0 20px 50px -20px rgba(0,0,0,0.55),
+    0 1px 0 0 color-mix(in srgb, #ffffff 5%, transparent) inset;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+
+.shot-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid #1e1e21;
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.78rem;
+  color: var(--glue-term-dim);
+  background: #111113;
+  gap: 1rem;
+}
+
+.shot-path {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shot-path-dim {
+  color: var(--fg-3);
+  opacity: 0.75;
+}
+
+.shot-path-sep {
+  color: var(--fg-3);
+  margin: 0 0.1rem;
+}
+
+.shot-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--fg-3);
+  white-space: nowrap;
+}
+
+.shot-branch-glyph {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.shot-body {
+  padding: 1.1rem 1.3rem 1.3rem;
+  font-family: var(--vp-font-family-mono);
+  font-size: 13.5px;
+  line-height: 1.75;
+  min-height: 22em;
+  overflow: hidden;
+}
+
+.shot-line {
   display: grid;
   grid-template-columns: 1.4em 1fr;
   gap: 0.6rem;
-  animation: fade-in 200ms ease-out both;
 }
 
-@keyframes fade-in {
-  from { opacity: 0; transform: translateY(2px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.script-gutter {
-  color: var(--fg-3);
+.shot-gutter {
+  color: var(--glue-term-dim);
   user-select: none;
-  text-align: right;
+  text-align: center;
 }
 
-.line-prompt    { color: var(--fg); font-weight: 500; }
-.line-prompt .script-gutter { color: var(--accent); }
+.shot-prompt    { color: var(--glue-term-fg); font-weight: 500; }
+.shot-prompt .shot-gutter { color: var(--accent); }
 
-.line-assistant { color: var(--fg); }
+.shot-assistant { color: var(--glue-term-fg); }
 
-.line-tool      { color: var(--fg-dim); }
-.line-tool .script-gutter { color: var(--accent); opacity: 0.7; }
+.shot-tool      { color: #a6a6a6; }
+.shot-tool .shot-gutter { color: var(--accent); opacity: 0.7; }
 
-.line-output    { color: var(--fg-3); }
+.shot-output    { color: var(--glue-term-dim); }
 
-.script-caret {
+.shot-group {
+  color: var(--fg-3);
+  font-style: italic;
+}
+.shot-group .shot-gutter { color: var(--fg-3); }
+
+.shot-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 1rem;
+  border-top: 1px solid #1e1e21;
+  background: #0c0c0e;
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.73rem;
+  color: var(--glue-term-dim);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.shot-foot-sep { opacity: 0.4; }
+.shot-foot-spacer { flex: 1; }
+.shot-foot-dim { color: var(--fg-3); }
+
+.shot-foot-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.shot-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
   display: inline-block;
-  width: 0.55em;
-  height: 1.05em;
-  margin-left: 2em;
-  background: var(--accent);
-  animation: blink 1s steps(1) infinite;
-  vertical-align: text-bottom;
 }
 
-@keyframes blink {
-  50% { opacity: 0; }
+.shot-dot-ok {
+  background: var(--glue-success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--glue-success) 18%, transparent);
 }
 
 /* ── Moves (stacked, generous whitespace) ─────────────────────────────── */
@@ -580,6 +796,32 @@ const jsonlSample = [
   line-height: 1.8;
 }
 
+.script-line {
+  display: grid;
+  grid-template-columns: 1.4em 1fr;
+  gap: 0.6rem;
+  color: var(--fg-dim);
+}
+
+.script-gutter {
+  color: var(--fg-3);
+  user-select: none;
+  text-align: right;
+}
+
+.line-prompt    { color: var(--fg); font-weight: 500; }
+.line-prompt .script-gutter { color: var(--accent); }
+
+.line-assistant { color: var(--fg); }
+
+.line-tool      { color: var(--fg-dim); }
+.line-tool .script-gutter { color: var(--accent); opacity: 0.7; }
+
+.line-output    { color: var(--fg-3); }
+
+.line-group     { color: var(--fg-3); font-style: italic; }
+.line-group .script-gutter { color: var(--fg-3); }
+
 /* ── Runtime ladder ───────────────────────────────────────────────────── */
 .ladder {
   list-style: none;
@@ -629,7 +871,7 @@ const jsonlSample = [
   .rung-line { grid-column: 1 / -1; }
 }
 
-/* ── Providers (clean list, no cards) ─────────────────────────────────── */
+/* ── Providers ────────────────────────────────────────────────────────── */
 .providers {
   list-style: none;
   padding: 0;
@@ -668,7 +910,7 @@ const jsonlSample = [
 .provider[data-tag='default'] .provider-tag { color: var(--accent); }
 .provider[data-tag='local']   .provider-tag { color: var(--glue-success); }
 
-/* ── JSONL (plain pre) ────────────────────────────────────────────────── */
+/* ── JSONL ────────────────────────────────────────────────────────────── */
 .jsonl {
   margin: 2.5rem 0 0;
   padding: 0;
@@ -708,12 +950,5 @@ const jsonlSample = [
 
 .cta .actions {
   justify-content: center;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .script-caret,
-  .script-line {
-    animation: none;
-  }
 }
 </style>

@@ -44,7 +44,6 @@ export 'src/agent/agent_core.dart'
         LlmChunk,
         TextDelta,
         ToolCallComplete,
-        ToolCallDelta,
         UsageInfo,
         ToolCall,
         ToolResult,

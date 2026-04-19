@@ -15,10 +15,6 @@ class BrowserlessProvider implements BrowserEndpointProvider {
   @override
   bool get isConfigured => apiKey != null && apiKey!.isNotEmpty;
 
-  @override
-  @Deprecated('Use isConfigured instead.')
-  bool get isAvailable => isConfigured;
-
   /// Build the WebSocket URL for CDP connection.
   String buildWsUrl() {
     var wsBase = baseUrl

@@ -20,7 +20,6 @@ void main() {
     expect(environment.home, tempDir.path);
     expect(environment.cwd, '/work/cwd');
     expect(environment.configPath, endsWith('.glue/preferences.json'));
-    expect(environment.legacyConfigPath, endsWith('.glue/config.json'));
     expect(environment.configYamlPath, endsWith('.glue/config.yaml'));
     expect(environment.sessionDir('abc123'), endsWith('.glue/sessions/abc123'));
   });
