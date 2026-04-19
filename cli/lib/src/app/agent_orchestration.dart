@@ -208,6 +208,9 @@ Future<void> _executeAndCompleteToolImpl(App app, ToolCall call) async {
 void _cancelAgentImpl(App app) {
   app._agentSub?.cancel();
   app._endTurnSpan(extra: {'cancelled': true});
+  // Stop the spinner before flipping mode — otherwise the timer keeps
+  // repainting the status bar even though nothing is happening.
+  app._stopSpinner();
   app._mode = AppMode.idle;
   if (app._streamingText.isNotEmpty) {
     app._blocks.add(
@@ -216,8 +219,13 @@ void _cancelAgentImpl(App app) {
   }
   for (final state in app._toolUi.values) {
     if (state.phase == _ToolPhase.preparing ||
+        state.phase == _ToolPhase.awaitingApproval ||
         state.phase == _ToolPhase.running) {
-      state.phase = _ToolPhase.error;
+      // The tool never completed cleanly — but it wasn't an intrinsic tool
+      // error either. Use the dedicated cancelled phase so the transcript
+      // doesn't misleadingly read as a failure. awaitingApproval covers the
+      // case where the user cancelled while the approval modal was open.
+      state.phase = _ToolPhase.cancelled;
     }
   }
   app.agent.ensureToolResultsComplete();

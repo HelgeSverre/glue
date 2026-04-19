@@ -35,7 +35,10 @@ void _handleAppEventImpl(App app, AppEvent event) {
     case UserResize():
       app.layout.apply();
       app.terminal.clearScreen();
-      app._scrollOffset = 0;
+      // Preserve the user's scroll position across resize. The render
+      // pipeline clamps out-of-range offsets, so we don't need to recompute
+      // here — worst case the user drifts by a few lines because wrapping
+      // changed, which is much less jarring than snapping back to the tail.
       app._render();
   }
 }

@@ -34,8 +34,7 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
       ..addFlag('version', abbr: 'v', negatable: false, help: 'Print version.')
       ..addFlag('where',
           negatable: false,
-          help:
-              'Print the GLUE_HOME directory and resolved paths for config, '
+          help: 'Print the GLUE_HOME directory and resolved paths for config, '
               'credentials, sessions, logs, and cache.')
       ..addFlag('print',
           abbr: 'p',
@@ -109,12 +108,12 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
 
   void _printWhere() {
     final env = Environment.detect();
-    final overrideNote = env.glueHomeOverride != null
-        ? '  (via \$GLUE_HOME)'
-        : '';
+    final overrideNote =
+        env.glueHomeOverride != null ? '  (via \$GLUE_HOME)' : '';
 
     String mark(String path, {bool isDir = false}) {
-      final exists = isDir ? Directory(path).existsSync() : File(path).existsSync();
+      final exists =
+          isDir ? Directory(path).existsSync() : File(path).existsSync();
       return exists ? ' \x1b[32m✓\x1b[0m' : ' \x1b[90m-\x1b[0m';
     }
 
@@ -124,15 +123,15 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
 
     stdout.writeln('\x1b[1mGLUE_HOME\x1b[0m  ${env.glueDir}$overrideNote');
     stdout.writeln();
-    line('config.yaml',       env.configYamlPath);
-    line('preferences.json',  env.configPath);
-    line('credentials.json',  env.credentialsPath);
-    line('models.yaml',       env.modelsYamlPath);
-    line('sessions/',         env.sessionsDir, isDir: true);
-    line('logs/',             env.logsDir,     isDir: true);
-    line('cache/',            env.cacheDir,    isDir: true);
-    line('skills/',           env.skillsDir,   isDir: true);
-    line('plans/',            env.plansDir,    isDir: true);
+    line('config.yaml', env.configYamlPath);
+    line('preferences.json', env.configPath);
+    line('credentials.json', env.credentialsPath);
+    line('models.yaml', env.modelsYamlPath);
+    line('sessions/', env.sessionsDir, isDir: true);
+    line('logs/', env.logsDir, isDir: true);
+    line('cache/', env.cacheDir, isDir: true);
+    line('skills/', env.skillsDir, isDir: true);
+    line('plans/', env.plansDir, isDir: true);
     stdout.writeln();
     stdout.writeln('Legend: ✓ exists · - not yet created');
   }

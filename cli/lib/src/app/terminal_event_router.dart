@@ -45,6 +45,13 @@ void _handleTerminalEventImpl(App app, TerminalEvent event) {
         app._events.add(UserScroll(-(viewportHeight ~/ 2)));
         return;
       }
+      // Ctrl+End jumps to the bottom and resumes follow-tail. Plain End is
+      // reserved for the line editor (jump cursor to end of line).
+      if (event case KeyEvent(key: Key.end, ctrl: true)) {
+        app._scrollOffset = 0;
+        app._render();
+        return;
+      }
 
       // Bash mode switching — before passing to editor.
       if (app._mode == AppMode.idle) {

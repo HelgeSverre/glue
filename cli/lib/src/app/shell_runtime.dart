@@ -54,6 +54,10 @@ Future<void> _runBlockingBashImpl(App app, String command) async {
 void _cancelBashImpl(App app) {
   app._bashRunProcess?.kill(ProcessSignal.sigterm);
   app._bashRunProcess = null;
+  // Mirror the agent-cancel contract: every transition back to idle also
+  // stops the spinner, even if this particular path didn't start it.
+  // Cheap insurance against future reorderings that begin with a spinner.
+  app._stopSpinner();
   app._mode = AppMode.idle;
   app._blocks.add(_ConversationEntry.system('[bash command cancelled]'));
   app._render();

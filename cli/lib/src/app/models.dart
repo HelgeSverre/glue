@@ -105,7 +105,15 @@ class _SubagentGroup {
   }
 }
 
-enum _ToolPhase { preparing, awaitingApproval, running, done, denied, error }
+enum _ToolPhase {
+  preparing,
+  awaitingApproval,
+  running,
+  done,
+  denied,
+  cancelled,
+  error,
+}
 
 class _ToolCallUiState {
   final String id;
@@ -126,6 +134,7 @@ class _ToolCallUiState {
           _ToolPhase.running => ToolCallPhase.running,
           _ToolPhase.done => ToolCallPhase.done,
           _ToolPhase.denied => ToolCallPhase.denied,
+          _ToolPhase.cancelled => ToolCallPhase.cancelled,
           _ToolPhase.error => ToolCallPhase.error,
         },
       );

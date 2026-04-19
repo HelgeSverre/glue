@@ -4,7 +4,26 @@ import 'package:glue/src/terminal/styled.dart';
 
 /// The lifecycle phase of a tool call, used to drive the status suffix
 /// displayed next to the tool name in the terminal (e.g. "running…", "denied").
-enum ToolCallPhase { preparing, awaitingApproval, running, done, denied, error }
+///
+/// Semantics:
+/// - [preparing]: model named the tool; arguments still streaming.
+/// - [awaitingApproval]: user decision required before execution.
+/// - [running]: Glue is actively executing the tool.
+/// - [done]: tool completed successfully.
+/// - [denied]: user or policy refused execution before it ran.
+/// - [cancelled]: user cancelled while the tool was active (Ctrl+C or
+///   `/cancel`). Distinct from [denied] (never ran) and [error] (ran but
+///   failed on its own).
+/// - [error]: tool ran but returned an error.
+enum ToolCallPhase {
+  preparing,
+  awaitingApproval,
+  running,
+  done,
+  denied,
+  cancelled,
+  error,
+}
 
 /// Snapshot of a tool call's display state, passed to [BlockRenderer.renderToolCallRef].
 ///
@@ -91,6 +110,7 @@ class BlockRenderer {
       ToolCallPhase.running => ' \x1b[36m(running…)\x1b[0m',
       ToolCallPhase.done => '',
       ToolCallPhase.denied => ' \x1b[31m(denied)\x1b[0m',
+      ToolCallPhase.cancelled => ' \x1b[90m(cancelled)\x1b[0m',
       ToolCallPhase.error => ' \x1b[31m(error)\x1b[0m',
     };
     final header = ' \x1b[1m\x1b[33m▶ Tool: ${state.name}\x1b[0m$suffix';
