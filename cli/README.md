@@ -194,11 +194,11 @@ dart test --run-skipped -t e2e         # e2e integration tests
 E2E tests exercise the full agent loop (LLM → tool call → tool execution → LLM response) headlessly via `AgentRunner`, no terminal required. They require Ollama running locally:
 
 ```bash
-ollama pull qwen2.5:7b                 # one-time setup
+ollama pull qwen3:1.7b                 # one-time setup
 dart test --run-skipped -t e2e         # run e2e tests
 ```
 
-> **Note:** `qwen2.5:7b` is the smallest model that reliably supports Ollama tool calling. `gemma3` variants do not support tools. Small models are non-deterministic — e2e tests use a retry wrapper (3 attempts).
+> **Note:** `qwen3:1.7b` is the expected Ollama model for the current e2e suite. Small models are non-deterministic — e2e tests use a retry wrapper (3 attempts).
 
 ## Tools
 

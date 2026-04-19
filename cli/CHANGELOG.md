@@ -42,7 +42,7 @@ All notable changes to Glue CLI will be documented in this file.
 
 - Observability sink error handling uses `onError` callbacks instead
   of writing directly to stderr (Langfuse and OTel sinks)
-- Status bar reformatted: bold mode indicator on left, model/permissions/
+- Status bar reformatted: bold mode indicator on left, model/mode/
   cwd as right-aligned segments with `│` separators
 - `GlueConfig.load()` no longer accepts `cliProvider` parameter
   (provider inferred from model)
@@ -175,7 +175,7 @@ All notable changes to Glue CLI will be documented in this file.
   provider (Ollama `/api/tags`, OpenAI `/v1/models`, Anthropic
   `/v1/models`). Shows model name, size (Ollama), and marks current.
 - **E2E integration tests** — headless agent loop tests via
-  `AgentRunner` with real Ollama (`qwen2.5:7b`). Tagged `@e2e`,
+  `AgentRunner` with real Ollama (`qwen3:1.7b`). Tagged `@e2e`,
   skipped by default, run with `dart test --run-skipped -t e2e`.
   Retry wrapper handles small-model non-determinism.
 
@@ -206,11 +206,13 @@ All notable changes to Glue CLI will be documented in this file.
   Codestral. Configurable via `MISTRAL_API_KEY` env var or
   `mistral.api_key` in config.yaml.
 
-- **Permission modes** — four escalating trust levels: `confirm` (default,
-  approve each tool), `acceptEdits` (auto-approve read-only tools, confirm
-  writes), `yolo` (auto-approve everything), and `readOnly` (filter out
-  write tools entirely). Cycle modes with Shift+Tab. Each tool declares a
-  `ToolTrust` level (readOnly, write, dangerous) for granular filtering.
+- **Interaction + approval modes** — tool visibility and confirmation policy
+  are now separate concerns. `InteractionMode` controls which tool groups the
+  LLM can access (`code`, `architect`, `ask`), while `ApprovalMode` controls
+  whether allowed mutating tools require confirmation (`confirm`, `auto`).
+  Shift+Tab cycles interaction modes, `/approve` toggles approval, and each
+  tool declares a `ToolTrust` level for approval decisions plus a `ToolGroup`
+  for mode-based filtering.
 
 - **Agent Skills** (`agentskills.io` spec) — discover and activate reusable
   skill definitions from `.glue/skills/` (project-local),
