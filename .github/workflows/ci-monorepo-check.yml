@@ -4,11 +4,10 @@ on:
   pull_request:
     paths:
       - "cli/**"
-      - "devdocs/**"
       - "website/**"
+      - "docs/**"
       - "justfile"
       - "cli/justfile"
-      - "devdocs/justfile"
       - "website/justfile"
       - ".github/workflows/ci-monorepo-check.yml"
   push:
@@ -16,11 +15,10 @@ on:
       - main
     paths:
       - "cli/**"
-      - "devdocs/**"
       - "website/**"
+      - "docs/**"
       - "justfile"
       - "cli/justfile"
-      - "devdocs/justfile"
       - "website/justfile"
       - ".github/workflows/ci-monorepo-check.yml"
   workflow_dispatch:
@@ -45,13 +43,13 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
-          cache-dependency-path: devdocs/package-lock.json
+          cache-dependency-path: website/package-lock.json
 
       - name: Install CLI dependencies
         run: just cli::deps
 
-      - name: Install DevDocs dependencies
-        run: npm ci --prefix devdocs
+      - name: Install site dependencies
+        run: npm ci --prefix website
 
       - name: Check CLI formatting
         run: dart format --output=none --set-exit-if-changed cli
@@ -59,14 +57,14 @@ jobs:
       - name: Run monorepo quality gate
         run: just check
 
-      - name: Verify local docs output (act)
+      - name: Verify local site output (act)
         if: ${{ env.ACT }}
-        run: ls -la devdocs/.vitepress/dist
+        run: ls -la website/.vitepress/dist
 
-      - name: Upload docs artifact
+      - name: Upload site artifact
         if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v7
         with:
-          name: devdocs-site
-          path: devdocs/.vitepress/dist
+          name: getglue-site
+          path: website/.vitepress/dist
           if-no-files-found: error

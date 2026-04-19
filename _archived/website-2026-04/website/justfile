@@ -1,0 +1,84 @@
+default:
+    @just --list
+
+# Lightweight static website validation
+check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    node - <<'NODE'
+    const fs = require('node:fs');
+    const path = require('node:path');
+
+    const htmlFiles = fs.readdirSync('.').filter((f) => f.endsWith('.html'));
+    const placeholderIgnore = new Set(['brand.html']);
+    const placeholderLinks = [];
+    const missingTargets = [];
+    const attrRegex = /\b(href|src)\s*=\s*(['"])(.*?)\2/gi;
+    const skipSchemes = ['http://', 'https://', 'mailto:', 'tel:', 'data:', 'javascript:', '//'];
+
+    for (const file of htmlFiles) {
+      const raw = fs.readFileSync(file, 'utf8');
+      // Strip script/style blocks so regex-like strings do not create false positives.
+      const content = raw
+        .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '');
+      let match;
+      while ((match = attrRegex.exec(content)) !== null) {
+        const attr = match[1].toLowerCase();
+        const target = (match[3] || '').trim();
+
+        if (attr === 'href' && target === '#' && !placeholderIgnore.has(file)) {
+          placeholderLinks.push(`${file}: href="#"`);
+          continue;
+        }
+
+        if (!target || target.startsWith('#')) continue;
+        if (skipSchemes.some((scheme) => target.toLowerCase().startsWith(scheme))) continue;
+
+        const cleaned = target.split('#')[0].split('?')[0].trim();
+        if (!cleaned) continue;
+
+        const localTarget = cleaned.startsWith('/')
+          ? cleaned.replace(/^\/+/, '')
+          : path.join(path.dirname(file), cleaned);
+
+        if (!fs.existsSync(localTarget)) {
+          missingTargets.push(`${file}: ${attr}="${target}" -> missing ${localTarget}`);
+        }
+      }
+    }
+
+    if (placeholderLinks.length || missingTargets.length) {
+      if (placeholderLinks.length) {
+        console.error('Found placeholder links:');
+        for (const issue of placeholderLinks) console.error(`  - ${issue}`);
+      }
+      if (missingTargets.length) {
+        console.error('Found missing local targets:');
+        for (const issue of missingTargets) console.error(`  - ${issue}`);
+      }
+      process.exit(1);
+    }
+
+    console.log(`Website check passed (${htmlFiles.length} HTML files scanned).`);
+    NODE
+
+# Build contract: currently validation-only
+build: check
+
+# No generated artifacts in this package yet
+clean:
+    @true
+
+# Serve locally for development
+serve:
+    npx serve .
+
+# Deploy to Vercel (production)
+[confirm: "Deploy to production?"]
+deploy:
+    vercel --prod
+
+# Deploy a Vercel preview
+preview:
+    vercel

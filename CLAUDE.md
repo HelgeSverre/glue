@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Monorepo with three components:
 - `cli/` — Main Glue CLI application (Dart). This is where most development happens.
-- `website/` — Marketing site
-- `devdocs/` — Developer documentation (Vitepress)
+- `website/` — Unified marketing + docs site (VitePress), served at getglue.dev
+- `docs/` — Canonical reference material (models.yaml, plans, design docs)
 
 ## Common Commands
 

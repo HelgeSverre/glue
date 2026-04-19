@@ -1,84 +1,58 @@
 default:
     @just --list
 
-# Lightweight static website validation
-check:
+# Install JavaScript dependencies
+deps:
+    npm ci
+
+[private]
+deps-if-needed:
     #!/usr/bin/env bash
     set -euo pipefail
-    node - <<'NODE'
-    const fs = require('node:fs');
-    const path = require('node:path');
+    if [ ! -d node_modules ]; then
+        npm ci
+    fi
 
-    const htmlFiles = fs.readdirSync('.').filter((f) => f.endsWith('.html'));
-    const placeholderIgnore = new Set(['brand.html']);
-    const placeholderLinks = [];
-    const missingTargets = [];
-    const attrRegex = /\b(href|src)\s*=\s*(['"])(.*?)\2/gi;
-    const skipSchemes = ['http://', 'https://', 'mailto:', 'tel:', 'data:', 'javascript:', '//'];
+# Generate API docs from Dart source
+generate:
+    cd ../cli && dart run tool/generate_website_api.dart
+    cd ../cli && dart run tool/generate_site_reference.dart
 
-    for (const file of htmlFiles) {
-      const raw = fs.readFileSync(file, 'utf8');
-      // Strip script/style blocks so regex-like strings do not create false positives.
-      const content = raw
-        .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
-        .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '');
-      let match;
-      while ((match = attrRegex.exec(content)) !== null) {
-        const attr = match[1].toLowerCase();
-        const target = (match[3] || '').trim();
+# Regenerate site reference files only (models, runtime matrix, config, sessions)
+generate-reference:
+    cd ../cli && dart run tool/generate_site_reference.dart
 
-        if (attr === 'href' && target === '#' && !placeholderIgnore.has(file)) {
-          placeholderLinks.push(`${file}: href="#"`);
-          continue;
-        }
-
-        if (!target || target.startsWith('#')) continue;
-        if (skipSchemes.some((scheme) => target.toLowerCase().startsWith(scheme))) continue;
-
-        const cleaned = target.split('#')[0].split('?')[0].trim();
-        if (!cleaned) continue;
-
-        const localTarget = cleaned.startsWith('/')
-          ? cleaned.replace(/^\/+/, '')
-          : path.join(path.dirname(file), cleaned);
-
-        if (!fs.existsSync(localTarget)) {
-          missingTargets.push(`${file}: ${attr}="${target}" -> missing ${localTarget}`);
-        }
-      }
-    }
-
-    if (placeholderLinks.length || missingTargets.length) {
-      if (placeholderLinks.length) {
-        console.error('Found placeholder links:');
-        for (const issue of placeholderLinks) console.error(`  - ${issue}`);
-      }
-      if (missingTargets.length) {
-        console.error('Found missing local targets:');
-        for (const issue of missingTargets) console.error(`  - ${issue}`);
-      }
-      process.exit(1);
-    }
-
-    console.log(`Website check passed (${htmlFiles.length} HTML files scanned).`);
-    NODE
-
-# Build contract: currently validation-only
-build: check
-
-# No generated artifacts in this package yet
-clean:
-    @true
+# Fail if generated reference files are out of date with canonical sources
+check-generated: generate-reference
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! git diff --quiet -- generated/; then
+      echo "✗ Generated site reference files are out of date." >&2
+      echo "  Run 'just website::generate-reference' and commit the result." >&2
+      git --no-pager diff --stat -- generated/ >&2
+      exit 1
+    fi
+    echo "✓ Generated site reference files match canonical sources."
 
 # Serve locally for development
-serve:
-    npx serve .
+dev: deps-if-needed generate
+    npx vitepress dev
 
-# Deploy to Vercel (production)
-[confirm: "Deploy to production?"]
-deploy:
-    vercel --prod
+# Build static site
+build: deps-if-needed generate
+    npx vitepress build
 
-# Deploy a Vercel preview
-preview:
-    vercel
+# Quality gate for docs (drift check + consistency check + build)
+check: check-generated check-consistency build
+
+# Consistency checks — feature-status labels, banned terms, install-snippet uniqueness
+check-consistency:
+    cd ../cli && dart run tool/check_site_consistency.dart
+
+# Preview production build
+preview: deps-if-needed build
+    npx vitepress preview
+
+# Remove docs build artifacts
+clean:
+    rm -rf .vitepress/dist .vitepress/cache

@@ -1,0 +1,79 @@
+# Glue runtime capability matrix.
+#
+# Canonical source of truth for the /runtimes page and the RuntimeMatrix
+# component. Each capability value is one of:
+#   yes      — supported today
+#   partial  — supported but rough, incomplete, or behind a flag
+#   planned  — not yet implemented; tracked by runtime boundary plan
+#   no       — not supported and not planned
+#
+# When adding a runtime, also add an entry to feature-status.yaml.
+
+version: 1
+updated_at: 2026-04-19
+
+capabilities:
+  command_capture: Run a command and capture its stdout/stderr/exit code.
+  command_streaming: Stream output back to the TUI as it happens.
+  background_jobs: Start long-running processes that outlive one tool call.
+  filesystem_read: Read files the agent has access to.
+  filesystem_write: Write or edit files the agent has access to.
+  mount_host_paths: Mount local directories into the runtime.
+  browser_cdp: Run a headless browser reachable by the agent.
+  artifacts: Produce files the user can retrieve after the session.
+  secrets: Provide per-runtime secret storage separate from the host.
+  snapshots: Snapshot and restore runtime state between sessions.
+  internet: Outbound internet access from inside the runtime.
+  gpu: Access to GPU devices.
+
+runtimes:
+  host:
+    status: shipping
+    notes: Runs in the user's shell on the user's machine.
+    capabilities:
+      command_capture: yes
+      command_streaming: yes
+      background_jobs: yes
+      filesystem_read: yes
+      filesystem_write: yes
+      mount_host_paths: yes
+      browser_cdp: partial
+      artifacts: yes
+      secrets: no
+      snapshots: no
+      internet: yes
+      gpu: yes
+
+  docker:
+    status: shipping
+    notes: Ephemeral container with the workspace mounted; sandbox polish is experimental.
+    capabilities:
+      command_capture: yes
+      command_streaming: yes
+      background_jobs: partial
+      filesystem_read: yes
+      filesystem_write: yes
+      mount_host_paths: yes
+      browser_cdp: partial
+      artifacts: yes
+      secrets: no
+      snapshots: no
+      internet: yes
+      gpu: partial
+
+  cloud:
+    status: planned
+    notes: Remote runtimes — E2B, Modal, Daytona, custom SSH or container workers.
+    capabilities:
+      command_capture: planned
+      command_streaming: planned
+      background_jobs: planned
+      filesystem_read: planned
+      filesystem_write: planned
+      mount_host_paths: no
+      browser_cdp: planned
+      artifacts: planned
+      secrets: planned
+      snapshots: planned
+      internet: planned
+      gpu: planned

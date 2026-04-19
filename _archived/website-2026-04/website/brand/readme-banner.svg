@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 240" width="900" height="240">
+  <!-- README banner — dark background, centered logo + tagline + tape accent -->
+  <defs>
+    <pattern id="tape" patternUnits="userSpaceOnUse" width="16" height="8" patternTransform="rotate(45)">
+      <rect width="8" height="8" fill="#FACC15"/>
+      <rect x="8" width="8" height="8" fill="#0A0A0B"/>
+    </pattern>
+  </defs>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&amp;display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400&amp;display=swap');
+  </style>
+
+  <!-- Background -->
+  <rect width="900" height="240" fill="#0A0A0B"/>
+
+  <!-- Tape stripe at bottom -->
+  <rect y="232" width="900" height="8" fill="url(#tape)"/>
+
+  <!-- Glue drop symbol (centered, above text) -->
+  <path d="M450 30 C450 30, 476 56, 476 66 C476 76, 464.3 84, 450 84 C435.7 84, 424 76, 424 66 C424 56, 450 30, 450 30Z" fill="#FACC15"/>
+
+  <!-- Wordmark -->
+  <text x="450" y="140" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-weight="700" font-size="56" fill="#FFFFFF" letter-spacing="-1">glue</text>
+
+  <!-- Tagline -->
+  <text x="450" y="172" text-anchor="middle" font-family="'Inter', sans-serif" font-weight="400" font-size="16" fill="#71717A">The coding agent that holds it all together</text>
+
+  <!-- Domain -->
+  <text x="450" y="210" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-weight="400" font-size="13" fill="#3F3F46">getglue.dev</text>
+</svg>

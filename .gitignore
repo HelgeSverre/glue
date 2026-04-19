@@ -40,11 +40,11 @@ cli/.worktrees
 cli/.junie
 
 # DevDocs (generated)
-devdocs/api/
-devdocs/node_modules/
-devdocs/.vitepress/dist/
-devdocs/.vitepress/cache/
-devdocs/.vitepress/sidebar.json
+website/api/
+website/node_modules/
+website/.vitepress/dist/
+website/.vitepress/cache/
+website/.vitepress/sidebar.json
 
 # JavaScript dependencies
 node_modules/
