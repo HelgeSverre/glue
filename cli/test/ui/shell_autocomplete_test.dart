@@ -91,6 +91,42 @@ void main() {
       expect(ac.selected, 0);
     });
 
+    test('render window scrolls to keep the selection visible', () async {
+      // 12 matches, maxVisible is 8 — selection at 9 must be rendered.
+      completer.nextResults = List.generate(
+        12,
+        (i) => ShellCandidate('cmd$i'),
+      );
+      await ac.requestCompletions('c', 1);
+
+      for (var i = 0; i < 9; i++) {
+        ac.moveDown();
+      }
+      expect(ac.selected, 9);
+
+      final lines = ac.render(80);
+      expect(lines.length, 8);
+      expect(lines.any((l) => l.contains('cmd9')), isTrue,
+          reason: 'selection at index 9 should be inside the visible window');
+      expect(lines.any((l) => l.contains('cmd0')), isFalse,
+          reason: 'index 0 should have scrolled off the top');
+    });
+
+    test('render window snaps to bottom after wrapping up from index 0',
+        () async {
+      completer.nextResults = List.generate(
+        12,
+        (i) => ShellCandidate('cmd$i'),
+      );
+      await ac.requestCompletions('c', 1);
+      // Up from 0 wraps to last index.
+      ac.moveUp();
+      expect(ac.selected, 11);
+
+      final lines = ac.render(80);
+      expect(lines.any((l) => l.contains('cmd11')), isTrue);
+    });
+
     test('accept splices correctly for single-word input', () async {
       completer.nextResults = [ShellCandidate('echo')];
       await ac.requestCompletions('ech', 3);

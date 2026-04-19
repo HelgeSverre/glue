@@ -13,6 +13,7 @@ class ShellAutocomplete implements AutocompleteOverlay {
 
   bool _active = false;
   int _selected = 0;
+  int _scrollOffset = 0;
   int _tokenStart = 0;
   String _buffer = '';
   int _cursor = 0;
@@ -46,6 +47,7 @@ class ShellAutocomplete implements AutocompleteOverlay {
     _active = false;
     _matches = [];
     _selected = 0;
+    _scrollOffset = 0;
     _tokenStart = 0;
     _buffer = '';
     _cursor = 0;
@@ -79,18 +81,32 @@ class ShellAutocomplete implements AutocompleteOverlay {
     _tokenStart = _completer.tokenStart(line);
     _matches = candidates;
     _selected = 0;
+    _scrollOffset = 0;
   }
 
   @override
   void moveUp() {
     if (!_active || _matches.isEmpty) return;
     _selected = (_selected - 1) % _matches.length;
+    if (_selected < 0) _selected += _matches.length;
+    _clampScroll();
   }
 
   @override
   void moveDown() {
     if (!_active || _matches.isEmpty) return;
     _selected = (_selected + 1) % _matches.length;
+    _clampScroll();
+  }
+
+  void _clampScroll() {
+    if (_selected < _scrollOffset) {
+      _scrollOffset = _selected;
+    } else if (_selected >= _scrollOffset + maxVisible) {
+      _scrollOffset = _selected - maxVisible + 1;
+    }
+    final maxStart = (_matches.length - maxVisible).clamp(0, _matches.length);
+    _scrollOffset = _scrollOffset.clamp(0, maxStart);
   }
 
   /// Accept the current selection. The shell overlay has cached the
@@ -119,9 +135,8 @@ class ShellAutocomplete implements AutocompleteOverlay {
   List<String> render(int width) {
     if (!_active || _matches.isEmpty) return [];
 
-    final visible = _matches.length > maxVisible
-        ? _matches.sublist(0, maxVisible)
-        : _matches;
+    final end = (_scrollOffset + maxVisible).clamp(0, _matches.length);
+    final visible = _matches.sublist(_scrollOffset, end);
 
     const bgDim = '\x1b[48;5;236m\x1b[37m';
     const bgSel = '\x1b[48;5;24m\x1b[97m';
@@ -130,7 +145,8 @@ class ShellAutocomplete implements AutocompleteOverlay {
     final lines = <String>[];
     for (var i = 0; i < visible.length; i++) {
       final c = visible[i];
-      final bg = i == _selected ? bgSel : bgDim;
+      final globalIndex = i + _scrollOffset;
+      final bg = globalIndex == _selected ? bgSel : bgDim;
       final icon = c.isDirectory ? '📁 ' : '   ';
       final descPart = c.description != null ? '  ${c.description}' : '';
       final content = '   $icon${c.text}$descPart';

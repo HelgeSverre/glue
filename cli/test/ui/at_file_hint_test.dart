@@ -106,6 +106,32 @@ void main() {
       expect(hint.selected, count - 1);
     });
 
+    test('render window scrolls with selection past maxVisible', () {
+      // Create 12 distinct top-level files so @-of-empty has > 8 matches.
+      for (var i = 0; i < 12; i++) {
+        File(p.join(tmpDir.path, 'file$i.txt')).createSync();
+      }
+      hint.update('@', 1);
+      expect(hint.active, isTrue);
+      expect(hint.matchCount, greaterThanOrEqualTo(9));
+
+      for (var i = 0; i < 9; i++) {
+        hint.moveDown();
+      }
+      expect(hint.selected, 9);
+
+      final lines = hint.render(80);
+      expect(lines.length, lessThanOrEqualTo(8));
+      // The 10th match (index 9) must be visible.
+      // Match names depend on sort order, so verify via the highlighted row:
+      // only the selected row carries bg256(24) (dark blue). The others carry
+      // bg256(236) (dark gray).
+      final selectedLines =
+          lines.where((l) => l.contains('\x1b[48;5;24m')).toList();
+      expect(selectedLines.length, 1,
+          reason: 'exactly one rendered row should carry the selection bg');
+    });
+
     test('accept returns @path', () {
       hint.update('@main', 5);
       expect(hint.active, isTrue);

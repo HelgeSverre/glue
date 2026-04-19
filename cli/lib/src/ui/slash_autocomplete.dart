@@ -21,6 +21,7 @@ class SlashAutocomplete implements AutocompleteOverlay {
 
   bool _active = false;
   int _selected = 0;
+  int _scrollOffset = 0;
   List<_Candidate> _matches = [];
 
   static const maxVisible = AppConstants.maxVisibleDropdownItems;
@@ -41,6 +42,7 @@ class SlashAutocomplete implements AutocompleteOverlay {
     _active = false;
     _matches = [];
     _selected = 0;
+    _scrollOffset = 0;
   }
 
   /// Update autocomplete state based on the current editor buffer.
@@ -81,18 +83,33 @@ class SlashAutocomplete implements AutocompleteOverlay {
     _active = true;
     _matches = candidates;
     _selected = _selected.clamp(0, _matches.length - 1);
+    _scrollOffset = 0;
+    _clampScroll();
   }
 
   @override
   void moveUp() {
     if (!_active || _matches.isEmpty) return;
     _selected = (_selected - 1) % _matches.length;
+    if (_selected < 0) _selected += _matches.length;
+    _clampScroll();
   }
 
   @override
   void moveDown() {
     if (!_active || _matches.isEmpty) return;
     _selected = (_selected + 1) % _matches.length;
+    _clampScroll();
+  }
+
+  void _clampScroll() {
+    if (_selected < _scrollOffset) {
+      _scrollOffset = _selected;
+    } else if (_selected >= _scrollOffset + maxVisible) {
+      _scrollOffset = _selected - maxVisible + 1;
+    }
+    final maxStart = (_matches.length - maxVisible).clamp(0, _matches.length);
+    _scrollOffset = _scrollOffset.clamp(0, maxStart);
   }
 
   /// The full command text of the currently selected item (e.g. `/help`).
@@ -120,13 +137,13 @@ class SlashAutocomplete implements AutocompleteOverlay {
   List<String> render(int width) {
     if (!_active || _matches.isEmpty) return [];
 
-    final visible = _matches.length > maxVisible
-        ? _matches.sublist(0, maxVisible)
-        : _matches;
+    final end = (_scrollOffset + maxVisible).clamp(0, _matches.length);
+    final visible = _matches.sublist(_scrollOffset, end);
 
     final lines = <String>[];
     for (var i = 0; i < visible.length; i++) {
       final c = visible[i];
+      final globalIndex = i + _scrollOffset;
       final nameCol = '/${c.name}';
       final descCol = c.description;
       final namePadded = nameCol.padRight(16);
@@ -136,7 +153,7 @@ class SlashAutocomplete implements AutocompleteOverlay {
           : content;
       final padCount = width - visibleLength(truncated);
       final padded = '$truncated${' ' * (padCount > 0 ? padCount : 0)}';
-      lines.add(i == _selected
+      lines.add(globalIndex == _selected
           ? '${padded.styled.bg256(24).brightWhite}'
           : '${padded.styled.bg256(236).white}');
     }
