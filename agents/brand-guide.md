@@ -142,7 +142,7 @@ The design is deliberately **loud, confident, and anti-minimalist** — it rejec
 
 1. **Full**: `GLUE` wordmark — all caps, mono, black on yellow or yellow on black
 2. **Compact**: Blob favicon for browser tabs and small spaces
-3. **CLI**: ASCII art for terminal splash screen
+3. **CLI**: ASCII art (shown below) for headers and help output
 
 ### ASCII Logo
 

@@ -24,7 +24,6 @@ import 'package:glue/src/orchestrator/permission_gate.dart';
 import 'package:glue/src/orchestrator/tool_permissions.dart';
 import 'package:glue/src/rendering/block_renderer.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
-import 'package:glue/src/rendering/mascot.dart';
 import 'package:glue/src/shell/command_executor.dart';
 import 'package:glue/src/shell/host_executor.dart';
 import 'package:glue/src/shell/shell_config.dart';
@@ -55,7 +54,7 @@ part 'app/events.dart';
 part 'app/models.dart';
 part 'app/render_pipeline.dart';
 part 'app/session_runtime.dart';
-part 'app/splash_runtime.dart';
+part 'app/spinner_runtime.dart';
 part 'app/shell_runtime.dart';
 part 'app/subagent_updates.dart';
 part 'app/terminal_event_router.dart';
@@ -368,7 +367,6 @@ class App {
       await _exitCompleter.future;
     } finally {
       // Stop all event sources before touching terminal state.
-      _stopSplashAnimation();
       _stopSpinner();
       // Dispose tools (closes browser sessions, containers, etc.).
       for (final tool in agent.tools.values) {
@@ -696,29 +694,6 @@ class App {
   DateTime _lastRender = DateTime(0);
   bool _renderScheduled = false;
   static const _minRenderInterval = Duration(milliseconds: 16); // ~60fps
-
-  // Splash liquid simulation state.
-  LiquidSim? _liquidSim;
-  Timer? _splashTimer;
-  int _splashOriginCol = 0; // screen col of mascot left edge
-  int _splashOriginRow = 0; // screen row of mascot top edge
-  GooExplosion? _gooExplosion;
-
-  void _startSplashAnimation() {
-    _startSplashAnimationImpl(this);
-  }
-
-  void _stopSplashAnimation() {
-    _stopSplashAnimationImpl(this);
-  }
-
-  void _triggerExplosion() {
-    _triggerExplosionImpl(this);
-  }
-
-  void _handleSplashClick(int screenX, int screenY) {
-    _handleSplashClickImpl(this, screenX, screenY);
-  }
 
   void _startSpinner() {
     _startSpinnerImpl(this);

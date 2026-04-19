@@ -193,7 +193,6 @@ void _handleTerminalEventImpl(App app, TerminalEvent event) {
       app._events.add(UserResize(cols, rows));
 
     case MouseEvent(
-        :final x,
         :final y,
         :final isScroll,
         :final isScrollUp,
@@ -218,9 +217,6 @@ void _handleTerminalEventImpl(App app, TerminalEvent event) {
               return;
             }
           }
-        }
-        if (app._liquidSim != null) {
-          app._handleSplashClick(x, y);
         }
       }
 

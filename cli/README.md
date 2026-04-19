@@ -17,7 +17,6 @@ Glue is a terminal-native coding agent CLI built in Dart. It streams LLM respons
 - **Bash mode** — `!` prefix for shell passthrough with background job management
 - **Readline input** — Emacs keybindings, word-level navigation (Alt+Left/Right), history
 - **YAML config** — `~/.glue/config.yaml` with CLI and env-var overrides
-- **Mascot** — animated Glue Blob splash screen with liquid physics simulation
 
 ## Install
 
@@ -207,7 +206,6 @@ App (event bus, state machine, render loop @ 60fps)
   ├─ Observability (local-only spans)
   │    └─ Sink: FileSink (JSONL under ~/.glue/logs/)
   ├─ Rendering (BlockRenderer, MarkdownRenderer, ANSI utilities)
-  ├─ Mascot (liquid simulation, goo explosion particle system)
   ├─ Modals (inline confirm, full-screen panel with scrolling)
   └─ Overlays (slash autocomplete, @file hints)
 ```
@@ -240,5 +238,3 @@ The TUI and agent core run on separate async tracks — the UI is always respons
 - **Warm white**: `#FAFAFA` — primary text
 - **Gold**: `#EAB308` — hover states, secondary accent
 - **Amber**: `#F59E0B` — warnings, tool call highlights
-
-The Glue Blob mascot is a cheerful, honey-yellow amorphous blob character that appears on the splash screen with a liquid physics simulation — click it too many times and it explodes into goo particles.

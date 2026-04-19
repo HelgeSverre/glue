@@ -79,38 +79,6 @@ void _doRenderImpl(App app) {
     outputLines.add('');
   }
 
-  // Splash screen: show animated mascot when only the initial system block.
-  final isSplash = app._blocks.length == 1 &&
-      app._blocks.first.kind == _EntryKind.system &&
-      app._streamingText.isEmpty;
-  if (isSplash && app._gooExplosion != null) {
-    // Explosion takes over the entire output viewport.
-    app._startSplashAnimation();
-    final explosionLines = app._gooExplosion!.render();
-    outputLines.clear();
-    outputLines.addAll(explosionLines);
-  } else if (isSplash) {
-    app._startSplashAnimation();
-    final mascotLines = renderMascot(app._liquidSim!);
-    final viewH = app.layout.outputHeight;
-    final artH = mascotLines.length;
-    final padTop =
-        ((viewH - outputLines.length - artH) / 2).clamp(0, viewH).toInt();
-    for (var i = 0; i < padTop; i++) {
-      outputLines.add('');
-    }
-    final padLeft = ((app.layout.outputWidth - mascotRenderWidth) / 2)
-        .clamp(0, app.layout.outputWidth)
-        .toInt();
-    app._splashOriginCol = app.layout.outputLeft + padLeft;
-    app._splashOriginRow = app.layout.outputTop + outputLines.length;
-    for (final line in mascotLines) {
-      outputLines.add('${' ' * padLeft}$line');
-    }
-  } else {
-    app._stopSplashAnimation();
-  }
-
   // If streaming, add the partial text.
   if (app._streamingText.isNotEmpty) {
     outputLines
