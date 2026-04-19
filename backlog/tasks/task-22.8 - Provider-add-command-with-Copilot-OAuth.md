@@ -1,7 +1,7 @@
 ---
 id: TASK-22.8
 title: /provider add command with Copilot OAuth
-status: In Progress
+status: In Review
 assignee: []
 created_date: '2026-04-19 12:00'
 updated_date: '2026-04-19 12:00'
@@ -75,18 +75,18 @@ Close the credential-onboarding gap. After MP3–7 shipped, users with no API ke
 ## Acceptance Criteria
 
 <!-- AC:BEGIN -->
-- [ ] #1 `/provider add anthropic` with no env opens masked input modal, stores on submit, reports "Connected".
-- [ ] #2 `/provider add copilot` shows device URL + user code, polls, exchanges for Copilot token, stores all three fields.
-- [ ] #3 Copilot token refreshes automatically when stored `copilot_token_expires_at` is past.
-- [ ] #4 Copilot request carries `Copilot-Integration-Id: vscode-chat` + `Editor-Version: Glue/<ver>` headers.
-- [ ] #5 `/provider list` renders table with status per provider (connected / missing / no-auth).
-- [ ] #6 `/provider remove <id>` clears stored fields; notes if env var is still set.
-- [ ] #7 `/provider test <id>` runs `adapter.validate` without HTTP or side effects.
-- [ ] #8 Word "credentials" / "auth" does not appear in any user-visible string (slash command names, error messages, panel titles).
-- [ ] #9 `GlueConfig.validate()` error message references `/provider add <id>`, not a legacy command.
-- [ ] #10 Anthropic TOS risk: Claude Pro / ChatGPT-subscription OAuth is NOT shipped.
-- [ ] #11 Tests: `auth_flow`, `credential_store` multi-field, `copilot_token_manager`, `copilot_adapter`, `provider_command`. `dart test` + `dart analyze --fatal-infos` green.
-- [ ] #12 Manual: `./glue` → `/provider add copilot` → browser approval → `--model copilot/claude-sonnet-4.6 "hi"` responds.
+- [x] #1 `/provider add anthropic` with no env opens masked input modal, stores on submit, reports "Connected". (panel_controller._runApiKeyFlow)
+- [x] #2 `/provider add copilot` shows device URL + user code, polls, exchanges for Copilot token, stores all three fields. (panel_controller._runDeviceCodeFlow + CopilotAdapter)
+- [x] #3 Copilot token refreshes automatically when stored `copilot_token_expires_at` is past. (copilot_token_manager.freshCopilotToken — `copilot_token_manager_test`)
+- [x] #4 Copilot request carries `Copilot-Integration-Id: vscode-chat` + `Editor-Version: Glue/<ver>` headers. (_CopilotClient.stream injects via extraHeaders)
+- [x] #5 `/provider list` renders table with status per provider (connected / missing / no-auth). (_formatProviderList)
+- [x] #6 `/provider remove <id>` clears stored fields; notes if env var is still set. (_providerRemove)
+- [x] #7 `/provider test <id>` runs `adapter.validate` without HTTP or side effects. (_providerTest)
+- [x] #8 Word "credentials" / "auth" does not appear in any user-visible string.
+- [x] #9 `GlueConfig.validate()` error message references `/provider add <id>`, not a legacy command.
+- [x] #10 Claude Pro / ChatGPT-subscription OAuth is NOT shipped.
+- [x] #11 Tests: `auth_flow` (6), `credential_store` (multi-field), `copilot_token_manager` (6), `copilot_adapter` (5), `provider_adapter_auth` (7), `provider_command` (1). `dart test` + `dart analyze --fatal-infos` green (1208 tests).
+- [ ] #12 Manual verification: `./glue` → `/provider add copilot` → browser approval → `--model copilot/claude-sonnet-4.6 "hi"` responds. *(not yet run — needs real GitHub Copilot subscription)*
 <!-- AC:END -->
 
 ## Files
