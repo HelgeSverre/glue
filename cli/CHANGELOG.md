@@ -73,6 +73,10 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Changed
 
+- Web search and browser automation support are constructed lazily during
+  startup. `ServiceLocator.create()` now wires memoized lazy factories into
+  `WebSearchTool` and `WebBrowserTool`, so `SearchRouter`, browser provider
+  selection, and `BrowserManager` are only built on first valid tool use.
 - **Model catalog refreshed against live provider availability (April 2026).**
   - **Mistral default → `devstral-latest`** (agentic coding model). Added
     `mistral-medium-latest`. Kept `mistral-large-latest`, `mistral-small-latest`.
