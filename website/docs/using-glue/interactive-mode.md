@@ -4,19 +4,20 @@ Glue runs as an interactive REPL. Type messages, use slash commands, or enter ba
 
 ## Slash Commands
 
-| Command    | Aliases       | Description                                            |
-| ---------- | ------------- | ------------------------------------------------------ |
-| `/help`    |               | Show all commands and keybindings                      |
-| `/clear`   |               | Clear conversation history                             |
-| `/exit`    | `/quit`, `/q` | Exit the application                                   |
-| `/model`   |               | Show or switch the current model                       |
-| `/info`    | `/status`     | Show session metadata (model, tokens, cwd)             |
-| `/tools`   |               | List all available tools                               |
-| `/history` |               | Show input history (last 10 by default)                |
-| `/resume`  |               | Open session picker to restore a conversation          |
-| `/models`  |               | List available models from the current provider        |
-| `/debug`   |               | Toggle debug mode (verbose logging to `~/.glue/logs/`) |
-| `/skills`  |               | Browse available skills                                |
+| Command     | Aliases       | Description                                                  |
+| ----------- | ------------- | ------------------------------------------------------------ |
+| `/help`     |               | Show all commands and keybindings                            |
+| `/clear`    |               | Clear conversation history                                   |
+| `/exit`     | `/quit`, `/q` | Exit the application                                         |
+| `/model`    |               | Open the model picker, or fuzzy-switch by name (`/model X`)  |
+| `/models`   |               | Browse and switch models across all providers                |
+| `/info`     | `/status`     | Show session info (model, tokens, cwd)                       |
+| `/tools`    |               | List all available tools                                     |
+| `/history`  |               | Browse history; fork by index or query (`/history <q>`)      |
+| `/resume`   |               | Open the session picker, or resume by ID/query               |
+| `/debug`    |               | Toggle debug mode (verbose logging to `~/.glue/logs/`)       |
+| `/skills`   |               | Browse skills, or activate one by name (`/skills <name>`)    |
+| `/approve`  |               | Toggle approval mode (`confirm` ↔ `auto`)                    |
 
 ## Keybindings
 
@@ -31,7 +32,7 @@ Glue runs as an interactive REPL. Type messages, use slash commands, or enter ba
 | `Up` / `Down`         | Navigate input history                                               |
 | `Tab`                 | Accept autocomplete suggestion                                       |
 | `PageUp` / `PageDown` | Scroll output                                                        |
-| `Shift+Tab`           | Cycle permission mode (confirm -> accept-edits -> YOLO -> read-only) |
+| `Shift+Tab`           | Toggle approval mode (`confirm` ↔ `auto`)                            |
 | `Escape`              | Cancel current generation                                            |
 | `Ctrl+C`              | Cancel generation (double-tap to exit)                               |
 

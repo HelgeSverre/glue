@@ -6,7 +6,7 @@ Before installing Glue, make sure you have the following:
 
 - **Dart SDK 3.0+** -- available at [dart.dev/get-dart](https://dart.dev/get-dart)
 - **Git** -- required for worktree support and cloning the repository
-- **API key** for at least one LLM provider (Anthropic, OpenAI, Mistral, or a local Ollama instance)
+- **API key** for at least one LLM provider (Anthropic, OpenAI, Gemini, Mistral, Groq, OpenRouter, or a local Ollama instance — no key needed for Ollama)
 
 ::: tip
 If you already have the Flutter SDK installed, the Dart SDK is included. You can verify with `dart --version`.

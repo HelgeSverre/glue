@@ -12,7 +12,7 @@ call `GLUE_HOME`. By default that's `~/.glue`.
 | Purpose                            | Path (default)                     | Written by       | Safe to commit? |
 | ---------------------------------- | ---------------------------------- | ---------------- | --------------- |
 | Personal YAML config               | `~/.glue/config.yaml`              | You              | Usually no — may hold defaults only |
-| Provider credentials               | `~/.glue/credentials.json`         | You / `glue login` | **No**        |
+| Provider credentials               | `~/.glue/credentials.json`         | You              | **No**        |
 | Machine-managed preferences        | `~/.glue/preferences.json`         | Glue             | No — internal state |
 | Session logs (append-only JSONL)   | `~/.glue/sessions/<id>/`           | Glue             | No              |
 | Debug logs                         | `~/.glue/logs/`                    | Glue             | No              |
@@ -47,8 +47,7 @@ Everything else (sessions, logs, cache) moves with it.
 The main file you edit is `~/.glue/config.yaml`. Minimal example:
 
 ```yaml
-provider: anthropic
-model: anthropic/claude-sonnet-4.6
+active_model: anthropic/claude-sonnet-4.6
 ```
 
 That's enough to start. Credentials come from the environment in this
@@ -57,10 +56,10 @@ example (`ANTHROPIC_API_KEY`).
 A fuller example with shell, Docker, and web tools:
 
 ```yaml
-provider: anthropic
-model: anthropic/claude-sonnet-4.6
+active_model: anthropic/claude-sonnet-4.6
 
-title_model: anthropic/claude-haiku-4.5
+# Optional cheap/fast model used for things like session-title generation.
+small_model: anthropic/claude-haiku-4.5
 
 approval_mode: confirm   # confirm | auto
 
@@ -138,16 +137,16 @@ schema.
 
 Most config keys can be overridden by an env var prefixed with `GLUE_`:
 
-| Variable                      | Override                          |
-| ----------------------------- | --------------------------------- |
-| `GLUE_HOME`                   | Root config directory             |
-| `GLUE_PROVIDER` / `GLUE_MODEL`| Active provider and model         |
-| `GLUE_SHELL` / `GLUE_SHELL_MODE` | Shell binary and mode          |
-| `GLUE_DOCKER_ENABLED` etc.    | Docker runtime toggles            |
-| `GLUE_SEARCH_PROVIDER`        | Web search backend                |
-| `GLUE_APPROVAL_MODE`          | `confirm` or `auto`               |
-| `GLUE_DEBUG=1`                | Enables verbose debug logging     |
-| `GLUE_SKILLS_PATHS`           | Extra skill discovery roots       |
+| Variable                         | Override                          |
+| -------------------------------- | --------------------------------- |
+| `GLUE_HOME`                      | Root config directory             |
+| `GLUE_MODEL`                     | Active model (`provider/model`)   |
+| `GLUE_SHELL` / `GLUE_SHELL_MODE` | Shell binary and mode             |
+| `GLUE_DOCKER_ENABLED` etc.       | Docker runtime toggles            |
+| `GLUE_SEARCH_PROVIDER`           | Web search backend                |
+| `GLUE_APPROVAL_MODE`             | `confirm` or `auto`               |
+| `GLUE_DEBUG=1`                   | Enables verbose debug logging     |
+| `GLUE_SKILLS_PATHS`              | Extra skill discovery roots       |
 
 Full list in the [canonical config reference](https://github.com/helgesverre/glue/blob/main/docs/reference/config-yaml.md).
 

@@ -34,7 +34,7 @@ description: Describe what this skill does
 Instructions for the agent when this skill is activated...
 ```
 
-The frontmatter defines the skill's name, description, and trigger rules. The body contains the actual prompt instructions the agent follows when the skill is activated.
+The frontmatter defines the skill's name and description (plus optional `license`, `compatibility`, and arbitrary `metadata`). The agent uses the `description` to decide when the skill is relevant. The body contains the actual prompt instructions the agent follows when the skill is activated.
 
 ## Using Skills
 

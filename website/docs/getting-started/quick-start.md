@@ -13,9 +13,14 @@ export ANTHROPIC_API_KEY=sk-ant-...
 # OpenAI
 export OPENAI_API_KEY=sk-...
 
-# Mistral
+# Other supported providers
+export GEMINI_API_KEY=...
 export MISTRAL_API_KEY=...
+export GROQ_API_KEY=...
+export OPENROUTER_API_KEY=sk-or-...
 ```
+
+For local Ollama no key is needed. See [Configuration](./configuration#credentials-json-api-keys) for the full list.
 
 ::: tip
 Add the export to your shell profile (`~/.zshrc`, `~/.bashrc`, etc.) so the key persists across terminal sessions.
@@ -46,12 +51,14 @@ Glue will analyze your project, propose changes, and ask for confirmation before
 
 Common flags to customize your session:
 
-| Flag            | Description                                          | Example                    |
-| --------------- | ---------------------------------------------------- | -------------------------- |
-| `glue "prompt"` | Start with an initial prompt                         | `glue "add auth endpoint"` |
-| `--model`, `-m` | Select a specific model                              | `glue -m gpt-5`            |
-| `--resume`      | Open the session picker to resume a previous session | `glue --resume`            |
-| `--continue`    | Resume the most recent session                       | `glue --continue`          |
+| Flag                | Description                                | Example                                     |
+| ------------------- | ------------------------------------------ | ------------------------------------------- |
+| `glue "prompt"`     | Start with an initial prompt               | `glue "add auth endpoint"`                  |
+| `--model`, `-m`     | Select a specific model                    | `glue -m gpt-5`                             |
+| `--resume`, `-r ID` | Resume a session by ID                     | `glue --resume 1740654600000-abc`           |
+| `--continue`        | Resume the most recent session             | `glue --continue`                           |
+| `--print`, `-p`     | Print response and exit (no interactive UI)| `glue -p "summarise this repo"`             |
+| `--json`            | Print conversation as JSON (implies `-p`)  | `glue --json "list TODOs"`                  |
 
 ### Examples
 
@@ -61,11 +68,13 @@ Select a different model for a single session:
 glue -m gpt-4.1 "refactor the database layer"
 ```
 
-Pick up where you left off:
+Pick up a specific previous session by ID:
 
 ```bash
-glue --resume
+glue --resume 1740654600000-abc
 ```
+
+Or use the runtime `/resume` slash command to pick from a list once you're inside a session.
 
 Continue your most recent conversation without the picker:
 

@@ -1,70 +1,60 @@
 # Models & Providers
 
-Glue supports four LLM providers. Set your preferred provider and model in config or via environment variables.
+Glue talks to LLMs through two wire protocols: **Anthropic native** and **OpenAI-compatible**. The OpenAI-compatible adapter covers OpenAI itself plus everything that speaks its API (Mistral, Ollama, Groq, OpenRouter, Gemini, vLLM, …). The full list of providers and models lives in the bundled catalog (browse it at [/models](/models)) and can be extended with a `~/.glue/models.yaml` overlay.
 
-## Providers
+Set credentials with the standard env vars (e.g. `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) or in `~/.glue/credentials.json`. See [Configuration](/docs/getting-started/configuration) for the full list.
 
-### Anthropic (default)
+## Picking the active model
 
-Set `ANTHROPIC_API_KEY`. Default model: `claude-sonnet-4-6`.
+Set it once in `~/.glue/config.yaml`:
 
-### OpenAI
+```yaml
+active_model: anthropic/claude-sonnet-4.6
+```
 
-Set `OPENAI_API_KEY`. Default model: `gpt-4.1`.
-
-### Mistral
-
-Set `MISTRAL_API_KEY`. Default model: `mistral-large-latest`.
-
-### Ollama
-
-Local inference, no API key needed. Default model: `llama3.2`. Runs on `localhost:11434`.
-
-## Default Models
-
-| Provider  | Default Model                |
-| --------- | ---------------------------- |
-| Anthropic | `claude-sonnet-4-6`          |
-| OpenAI    | `gpt-4.1`                    |
-| Mistral   | `mistral-large-latest`       |
-| Ollama    | `llama3.2` (localhost:11434) |
-
-## Switching Models at Runtime
+Override per-invocation with the CLI flag:
 
 ```bash
+glue -m openai/gpt-4.1
+glue -m ollama/llama3.2
+```
+
+Or switch interactively:
+
+```text
 /model              # show current model
-/model gpt-5        # switch model
-/models             # list available models
+/model gpt-5        # fuzzy-switch by name
+/models             # browse all models in the catalog
 ```
 
-Or via CLI flag:
+## Profiles (model shortcuts)
 
-```bash
-glue -m claude-opus-4-6
-```
+Profiles are named shortcuts for model refs. They make `/model` switching faster — they do **not** assign models to subagents (subagents take a `model_ref` argument directly when spawned).
 
-## Profiles
-
-Named profiles let you assign different models to subagents:
+Define them in `~/.glue/config.yaml` as a flat map of `name: provider/model`:
 
 ```yaml
 profiles:
-  fast:
-    provider: "openai"
-    model: "gpt-4.1-nano"
-  deep:
-    provider: "anthropic"
-    model: "claude-opus-4-6"
+  fast: openai/gpt-4.1-nano
+  deep: anthropic/claude-opus-4-6
+  local: ollama/llama3.2
 ```
 
-::: info
-Profiles are defined in your Glue config file. Each subagent can reference a profile by name to use its provider and model settings.
-:::
+Then switch with the `@` prefix:
+
+```text
+/model @fast
+/model @deep
+```
+
+## Adding a model the catalog doesn't know about
+
+Drop a `models.yaml` into `~/.glue/` with your provider/model entry — it merges on top of the bundled catalog. Or, for any OpenAI-compatible endpoint, define a provider with `adapter: openai` and a custom `base_url`. See [Troubleshooting → "The model I want isn't in the catalog"](/docs/advanced/troubleshooting).
 
 ## See also
 
-- [ModelRegistry](/api/config/model-registry)
-- [LlmFactory](/api/llm/llm-factory)
+- [Configuration](/docs/getting-started/configuration) — credentials and config keys
+- [LlmFactory](/api/llm/llm-factory) — adapter dispatch
 - [AnthropicClient](/api/llm/anthropic-client)
 - [OpenAiClient](/api/llm/openai-client)
 - [OllamaClient](/api/llm/ollama-client)

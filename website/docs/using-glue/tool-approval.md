@@ -14,18 +14,26 @@ When a destructive tool is called, Glue shows a confirmation modal with three op
 You can configure permanent tool trust in `~/.glue/preferences.json`. Use with caution — the agent can run arbitrary shell commands.
 :::
 
-## Permission Modes
+## Approval Modes
 
-Glue has four permission modes that control how tool calls are approved. Cycle through them with `Shift+Tab` during a session, or set a default via the `GLUE_PERMISSION_MODE` environment variable.
+Glue has two approval modes:
 
-| Mode                | Label        | Behavior                                                    |
-| ------------------- | ------------ | ----------------------------------------------------------- |
-| `confirm`           | confirm      | Ask for confirmation on untrusted tools (default)           |
-| `acceptEdits`       | accept-edits | Auto-approve file edits, still ask for shell commands       |
-| `ignorePermissions` | YOLO         | Auto-approve everything — no confirmations at all           |
-| `readOnly`          | read-only    | Deny all mutating tools — they are not even sent to the LLM |
+| Mode      | Behavior                                                       |
+| --------- | -------------------------------------------------------------- |
+| `confirm` | Ask for confirmation on untrusted tools (default)              |
+| `auto`    | Auto-approve everything — no confirmations at all              |
+
+Toggle between them at runtime with `Shift+Tab` or the `/approve` slash command. Set the default via config or env var:
+
+```yaml
+# ~/.glue/config.yaml
+approval_mode: confirm   # confirm | auto
+```
+
+```bash
+export GLUE_APPROVAL_MODE=auto
+```
 
 ::: warning
-The `ignorePermissions` mode disables all safety checks. The agent can run arbitrary shell commands, overwrite files, and make network requests without any confirmation. Only use this mode in disposable environments or when you fully trust the task.
+`auto` mode disables all confirmation prompts. The agent can run arbitrary shell commands, overwrite files, and make network requests without prompting. Only use it in disposable environments or when you fully trust the task.
 :::
-

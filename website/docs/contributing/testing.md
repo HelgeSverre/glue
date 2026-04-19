@@ -9,7 +9,7 @@ just test
 # Run tests in a specific directory
 just test test/llm/
 
-# Run e2e integration tests (requires: ollama + qwen2.5:7b)
+# Run e2e integration tests (requires: ollama + qwen3:1.7b)
 just e2e
 ```
 

@@ -107,7 +107,7 @@ export default defineConfig({
   titleTemplate: ':title · Glue',
   description: 'A small terminal agent for real coding work.',
   cleanUrls: true,
-  lastUpdated: true,
+  lastUpdated: false,
   appearance: 'force-dark',
 
   head: [
@@ -211,7 +211,6 @@ export default defineConfig({
             { text: 'Runtimes', link: '/docs/advanced/runtimes' },
             { text: 'Browser Automation', link: '/docs/advanced/browser-automation' },
             { text: 'Web Tools', link: '/docs/advanced/web-tools' },
-            { text: 'MCP Integration', link: '/docs/advanced/mcp-integration' },
             { text: 'Skills', link: '/docs/advanced/skills' },
             { text: 'Subagents', link: '/docs/advanced/subagents' },
             { text: 'Project Context', link: '/docs/advanced/project-context' },
