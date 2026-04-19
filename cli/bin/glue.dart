@@ -10,9 +10,6 @@ import 'package:path/path.dart' as p;
 
 const appDescription = 'The coding agent that holds it all together.';
 
-// Yellow dot (#FACC15 via truecolor) + bold "glue" — mirrors the website mark.
-const logo = '\x1b[38;2;250;204;21m\u25cf\x1b[0m \x1b[1mglue\x1b[0m';
-
 void main(List<String> args) async {
   final runner = GlueCommandRunner();
   try {
@@ -30,7 +27,8 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
   GlueCommandRunner()
       : super(
           'glue',
-          'glue v${AppConstants.version} — $appDescription',
+          '\x1b[38;2;250;204;21m\u25cf\x1b[0m \x1b[1mglue\x1b[0m'
+              ' v${AppConstants.version} — $appDescription',
         ) {
     argParser
       ..addFlag('version', abbr: 'v', negatable: false, help: 'Print version.')
@@ -76,8 +74,6 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
 
   @override
   void printUsage() {
-    stdout.writeln(logo);
-    stdout.writeln();
     stdout.writeln(usage);
   }
 
