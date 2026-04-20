@@ -50,13 +50,15 @@ analyze:
 format:
     dart format .
 
-# Regenerate bundled catalog from docs/reference/models.yaml
+# Regenerate bundled catalog + version constant from their source files
 gen:
     dart run tool/gen_models.dart
+    dart run tool/gen_version.dart
 
-# Fail if the bundled catalog is out of date
+# Fail if any generated file is out of date
 gen-check:
     dart run tool/gen_models.dart --check
+    dart run tool/gen_version.dart --check
 
 # Analyze + test + codegen freshness
 check: gen-check analyze test
@@ -79,8 +81,9 @@ release version:
     #!/usr/bin/env bash
     set -euo pipefail
     sed -i '' "s/^version: .*/version: {{version}}/" pubspec.yaml
+    dart run tool/gen_version.dart
     echo "Updated pubspec.yaml to {{version}}"
-    git add pubspec.yaml
+    git add pubspec.yaml lib/src/config/version_generated.dart
     git commit -m "release: v{{version}}"
     git tag "v{{version}}"
     just build

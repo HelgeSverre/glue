@@ -1,9 +1,14 @@
+import 'package:glue/src/config/version_generated.dart';
+
 /// Application-wide configuration constants.
 ///
 /// Centralizes magic values for timeouts, limits, and defaults to improve
 /// maintainability and enable easy tuning of behavior.
 class AppConstants {
-  static const String version = '0.1.1';
+  /// Package version — sourced from `pubspec.yaml` via
+  /// `tool/gen_version.dart`. Do not edit by hand; bump `pubspec.yaml`
+  /// and run `just gen` (or `just release <version>`).
+  static const String version = packageVersion;
 
   // App behavior
   static const int maxConversationBlocks = 200;
