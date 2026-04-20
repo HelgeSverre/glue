@@ -3,8 +3,8 @@ id: TASK-26.2
 title: Document and normalize workspace path mapping
 status: To Do
 assignee: []
-created_date: '2026-04-19 00:42'
-updated_date: '2026-04-20 00:05'
+created_date: "2026-04-19 00:42"
+updated_date: "2026-04-20 00:05"
 labels:
   - runtime-boundary-2026-04
   - docs
@@ -23,9 +23,11 @@ ordinal: 25000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+
 Today Docker mounts cwd at `/workspace` (universal convention shared with cloud runtimes). The path mapping is implicit in `DockerExecutor`. Write it down so remote runtimes can reuse the same model.
 
 **Document (in code + docs):**
+
 - Host cwd → runtime cwd mapping (Docker: `$PWD → /workspace`)
 - Path translation rules (absolute paths outside cwd: reject? mount separately? error?)
 - Writable vs read-only mounts
@@ -33,6 +35,7 @@ Today Docker mounts cwd at `/workspace` (universal convention shared with cloud 
 - Additional configurable mounts (`docker.mounts: ["/host:/container:ro"]`)
 
 **Files:**
+
 - Modify: `cli/docs/design/docker-sandbox.md` — add "Workspace path mapping" section
 - Modify: `cli/docs/reference/config-yaml.md` — document `docker.mounts`
 - Create: `cli/lib/src/shell/workspace_mapping.dart` — `WorkspaceMapping` type holding host cwd + runtime cwd + translation helpers
@@ -40,10 +43,13 @@ Today Docker mounts cwd at `/workspace` (universal convention shared with cloud 
 - Tests: path translation for absolute paths inside/outside cwd, relative paths, symlinks
 
 **Why now:** future remote runtimes (E2B, Modal) will do the same mapping. Writing it down once prevents three implementations diverging later.
+
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
+
 <!-- AC:BEGIN -->
+
 - [ ] #1 `WorkspaceMapping` type exists + used by `DockerExecutor`
 - [ ] #2 Path translation rules documented (inside cwd, outside cwd, symlinks)
 - [ ] #3 Configurable additional mounts (`docker.mounts`) documented

@@ -3,8 +3,8 @@ id: TASK-34
 title: Cloud runtimes (E2B / Daytona / Modal) — adapter implementation
 status: To Do
 assignee: []
-created_date: '2026-04-20 00:08'
-updated_date: '2026-04-20 00:32'
+created_date: "2026-04-20 00:08"
+updated_date: "2026-04-20 00:32"
 labels:
   - runtime
   - cloud
@@ -24,6 +24,7 @@ ordinal: 35000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+
 Implement at least one remote cloud sandbox runtime adapter (E2B, Daytona, Modal, Fly.io Sprites, Bunnyshell/hopx, or Northflank) so Glue can execute work outside the user's host and Docker.
 
 **Status: deferred.** The plan (`docs/plans/2026-04-19-cloud-runtimes-plan.md`) marks itself `proposed — deferred`. Research is complete; workspace sync (Option D — git-first + persistence opt-in) and `/workspace` universal path are decided. Implementation is gated on:
@@ -35,4 +36,5 @@ Implement at least one remote cloud sandbox runtime adapter (E2B, Daytona, Modal
 Living in **Deferred** milestone so it's discoverable without polluting the active backlog. Promote out of Deferred when at least one of the gating conditions changes.
 
 Plan reference: `docs/plans/2026-04-19-cloud-runtimes-plan.md` (full research + open questions + Option D rationale).
+
 <!-- SECTION:DESCRIPTION:END -->

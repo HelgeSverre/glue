@@ -3,8 +3,8 @@ id: TASK-39
 title: Thinking tokens in the TUI (streaming reasoning traces)
 status: To Do
 assignee: []
-created_date: '2026-04-20 00:08'
-updated_date: '2026-04-20 00:32'
+created_date: "2026-04-20 00:08"
+updated_date: "2026-04-20 00:32"
 labels:
   - llm
   - tui
@@ -27,6 +27,7 @@ ordinal: 39000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+
 Surface streaming reasoning / "thinking" traces from reasoning-capable models (Claude extended thinking, OpenAI gpt-5/o-series, DeepSeek R1 via Ollama) in the Glue TUI as a distinct, visually muted block inline with the conversation.
 
 **Per the plan (`docs/plans/2026-04-19-thinking-tokens-tui.md`, Phase 1):**
@@ -42,16 +43,20 @@ Surface streaming reasoning / "thinking" traces from reasoning-capable models (C
 - Runtime toggle to hide/show thinking (keybinding + config).
 
 **Phase 2 (out of scope):**
+
 - Enabling thinking on providers that require opt-in (Anthropic `thinking: {budget_tokens}`, OpenAI `reasoning_effort`).
 - Redacted-thinking handling for Anthropic (signed/encrypted blocks).
 - Thinking token counting in `UsageInfo` (separate billing concern).
 - ACP/WebUI surfaces — kept out so TASK-6.x can mirror later.
 
 **Why now:** Catalog already tags reasoning-capable models with the `reasoning` capability, so the UX gap is visible. Provider parsers currently silently drop thinking deltas at three sites.
+
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
+
 <!-- AC:BEGIN -->
+
 - [ ] #1 `ThinkingDelta` added to `LlmChunk`; `AgentThinkingDelta` added to `AgentEvent`.
 - [ ] #2 Anthropic parser surfaces `thinking_delta`; OpenAI parser surfaces `delta.reasoning` / `delta.reasoning_content`; Ollama parser surfaces `message.thinking`.
 - [ ] #3 Block renderer shows thinking dim/italic, distinct from final answer.

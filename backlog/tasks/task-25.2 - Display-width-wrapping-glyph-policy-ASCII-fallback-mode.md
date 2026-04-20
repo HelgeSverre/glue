@@ -3,8 +3,8 @@ id: TASK-25.2
 title: Display-width wrapping + glyph policy + ASCII fallback mode
 status: To Do
 assignee: []
-created_date: '2026-04-19 00:42'
-updated_date: '2026-04-20 00:05'
+created_date: "2026-04-19 00:42"
+updated_date: "2026-04-20 00:05"
 labels:
   - tui-contract-2026-04
   - rendering
@@ -20,9 +20,11 @@ ordinal: 19000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+
 Wrap by **display width**, not code unit count. Establish a glyph policy for state markers with a mandatory ASCII fallback for every semantic symbol.
 
 **Wrapping rules:**
+
 - Wrap by display width (not code unit count)
 - ANSI escape sequences do not count toward width
 - Wide glyphs count as width 2
@@ -33,23 +35,28 @@ Wrap by **display width**, not code unit count. Establish a glyph policy for sta
 - Tool output wraps or truncates by block type (not ad hoc)
 
 **Glyph policy:**
+
 - Use single-cell symbols for control and state markers
 - AVOID: double-width-in-common-fonts symbols, Nerd Fonts, long dotted rules, color-only state
 - REQUIRED: ASCII fallback for every semantic symbol
 
 **ASCII/no-color mode:**
+
 - Add `--ascii` or env `GLUE_ASCII=1` (decide during implementation)
 - All semantic symbols fall back to plain ASCII (`*`, `>`, `+/-`, `[x]`)
 - Respect `NO_COLOR` env var (standard)
 
 **Files:**
+
 - Modify: rendering code in `cli/lib/src/rendering/` + `cli/lib/src/ui/`
 - Create: `cli/lib/src/rendering/glyph_set.dart` — Unicode + ASCII fallback mappings
 - Tests: wide-glyph wrapping, ANSI-safe truncation, ASCII fallback mode
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
+
 <!-- AC:BEGIN -->
+
 - [ ] #1 Wrapping uses display width; ANSI sequences don't count; wide glyphs count as 2
 - [ ] #2 Ambiguous-width glyphs default to width 1
 - [ ] #3 `--ascii` / `NO_COLOR` triggers ASCII fallback mode

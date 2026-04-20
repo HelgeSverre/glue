@@ -3,8 +3,8 @@ id: TASK-25
 title: TUI behavior contract (parent)
 status: To Do
 assignee: []
-created_date: '2026-04-19 00:34'
-updated_date: '2026-04-20 00:05'
+created_date: "2026-04-19 00:34"
+updated_date: "2026-04-20 00:05"
 labels:
   - tui-contract-2026-04
   - parent
@@ -26,9 +26,11 @@ ordinal: 9000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+
 Define how Glue's TUI behaves (not just how it looks). The theme system and demo are useful, but the implementation needs a behavior contract for wrapping, resize, scrollback, alternate screen, tool states, spinner, keyboard focus, and transcript grouping.
 
 **Product-level decisions (from plan):**
+
 - Alternate screen stays default (add `--no-alt-screen` later)
 - Internal scrollback canonical during interactive mode; `End` jumps to bottom; show `up N` indicator when user has scrolled up
 - Resize preserves scroll anchor (current reset-to-bottom is too aggressive)
@@ -40,10 +42,13 @@ Define how Glue's TUI behaves (not just how it looks). The theme system and demo
 - Input focus priority: modal > active panel > autocomplete > file hint > shell completion > editor
 
 **Subtasks:** T1–T6 (TranscriptModel+scroll anchor, wrapping+glyphs, spinner state machine, tool display states+groups, input focus, extended demo+tests).
+
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
+
 <!-- AC:BEGIN -->
+
 - [ ] #1 Behavior is predictable across narrow and wide terminals
 - [ ] #2 TUI state understandable without relying on color alone
 - [ ] #3 User can scroll, resize, expand groups without losing context

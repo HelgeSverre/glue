@@ -3,8 +3,8 @@ id: TASK-22.9
 title: Catalog refresh + api_id / catalog-key split
 status: Done
 assignee: []
-created_date: '2026-04-20 00:00'
-updated_date: '2026-04-20 00:00'
+created_date: "2026-04-20 00:00"
+updated_date: "2026-04-20 00:00"
 labels:
   - model-provider-2026-04
   - config
@@ -20,6 +20,7 @@ ordinal: 9000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+
 Refresh the bundled model catalog against live provider availability (April 2026)
 and decouple the stable catalog key from the mutable upstream identifier.
 
@@ -48,6 +49,7 @@ upstream HTTP body; the YAML key stays as the stable, URL-safe, user-facing
 identifier in configs, sessions, and the `/model` picker.
 
 Slash-bearing keys renamed to slugs with upstream strings moved to `api_id`:
+
 - `groq/openai/gpt-oss-120b` → key `gpt-oss-120b`, `api_id: openai/gpt-oss-120b`
 - `groq/openai/gpt-oss-20b` → key `gpt-oss-20b`, `api_id: openai/gpt-oss-20b`
 - OpenRouter `anthropic/claude-sonnet-4-6` → `claude-sonnet-4-6`
@@ -68,10 +70,13 @@ New test `test/integration/ollama_catalog_registry_test.dart` verifies every
 Ollama catalog tag resolves via `https://registry.ollama.ai/v2/library/...`.
 Opt-in via `-t ollama_registry`; skipped by default (network). Catches future
 drift when upstream renames or retires tags.
+
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
+
 <!-- AC:BEGIN -->
+
 - [x] #1 Mistral catalog drops codestral; devstral-latest is default
 - [x] #2 Ollama catalog uses qwen3-coder:30b default; has 4 recommended + 6 discoverability entries
 - [x] #3 Groq catalog replaces removed qwen/qwen3-coder with gpt-oss-120b default

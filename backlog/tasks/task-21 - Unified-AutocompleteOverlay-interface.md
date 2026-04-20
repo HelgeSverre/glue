@@ -3,8 +3,8 @@ id: TASK-21
 title: Unified AutocompleteOverlay interface
 status: Done
 assignee: []
-created_date: '2026-04-19 00:34'
-updated_date: '2026-04-20 00:32'
+created_date: "2026-04-19 00:34"
+updated_date: "2026-04-20 00:32"
 labels:
   - simplification-2026-04
   - refactor
@@ -24,9 +24,11 @@ ordinal: 33000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+
 Three near-identical autocomplete implementations share state shape but no base class (~595 LOC total).
 
 **Files:**
+
 - `cli/lib/src/ui/slash_autocomplete.dart` (~147 LOC)
 - `cli/lib/src/ui/shell_autocomplete.dart` (~144 LOC)
 - `cli/lib/src/ui/at_file_hint.dart` (~304 LOC)
@@ -35,6 +37,7 @@ Three near-identical autocomplete implementations share state shape but no base 
 **Duplicated state across all three:** `active`, `selected`, `matchCount`, `overlayHeight`, `maxVisible`, `dismiss()`, `selectNext/Prev`, accept logic.
 
 **Proposed interface (in new file `cli/lib/src/ui/autocomplete_overlay.dart`):**
+
 ```dart
 abstract class AutocompleteOverlay {
   bool get active;
@@ -50,13 +53,16 @@ abstract class AutocompleteOverlay {
 ```
 
 **Gotchas:**
+
 - `ShellAutocomplete.update` is async (subprocess); `SlashAutocomplete.update` is sync — interface must be async-friendly
 - `AtFileHint` caches directory listings — keep cache private
 - Overlaps with existing task-2 (nushell/reedline spike); if reedline is adopted later, it supersedes this work
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
+
 <!-- AC:BEGIN -->
+
 - [x] #1 `AutocompleteOverlay` interface exists at `cli/lib/src/ui/autocomplete_overlay.dart`
 - [x] #2 All three overlays implement it
 - [x] #3 `terminal_event_router.dart` uses polymorphism (no `if (x.active) else if (y.active)` chain)
@@ -68,6 +74,7 @@ abstract class AutocompleteOverlay {
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
+
 ### Interface
 
 New file `cli/lib/src/ui/autocomplete_overlay.dart`:
@@ -119,21 +126,26 @@ Preserves per-overlay quirks only where absolutely necessary (e.g. the shell's T
 ### Tests
 
 Add `cli/test/ui/autocomplete_overlay_test.dart` that exercises each impl through the interface for:
+
 - moveUp/moveDown wrapping
 - dismiss()
 - accept(buffer, cursor) → AcceptResult shape
 
 Verify existing tests still pass after the signature change (slash + atfile tests that assert on `String?` from `accept()` need updating).
+
 <!-- SECTION:PLAN:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
+
 New file `cli/lib/src/ui/autocomplete_overlay.dart` defines:
+
 - `AcceptResult { text, cursor }` — final buffer + cursor after accept
 - `AutocompleteOverlay` — abstract contract: `active`, `selected`, `matchCount`, `overlayHeight`, `moveUp`, `moveDown`, `accept(buffer, cursor)`, `dismiss`, `render(width)`
 
 Each overlay implements the interface and keeps its own trigger entry point:
+
 - `SlashAutocomplete` → sync `update(buffer, cursor)` on every buffer change
 - `ShellAutocomplete` → async `requestCompletions(buffer, cursor)` on Tab
 - `AtFileHint` → sync `update(buffer, cursor)` on every buffer change
@@ -155,10 +167,12 @@ The only non-uniform quirk preserved: SlashAutocomplete's Enter-on-exact-match f
 `AtFileHint.accept` now splices internally (was previously splicing in the router). Bug caught during testing: `dismiss()` was clearing `_tokenStart` before the splice read it — captured in a local first.
 
 Also:
+
 - `lib/src/input/streaming_input_handler.dart` updated to the new `accept(buffer, cursor) → AcceptResult?` shape
 - `lib/glue.dart` barrel exports `AutocompleteOverlay` and `AcceptResult`
 - Existing tests for each overlay updated to new signature
 - New `test/ui/autocomplete_overlay_test.dart` exercises each impl through the abstract type
 
 Verification: `dart analyze --fatal-infos lib/` clean, `dart format` clean, full test suite (`dart test`) = 1157 pass / 0 failed. (`test/catalog/*` analyze warnings exist but belong to task-22 (parallel work).)
+
 <!-- SECTION:FINAL_SUMMARY:END -->

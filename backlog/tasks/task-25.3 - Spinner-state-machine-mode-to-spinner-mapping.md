@@ -3,8 +3,8 @@ id: TASK-25.3
 title: Spinner state machine (mode-to-spinner mapping)
 status: To Do
 assignee: []
-created_date: '2026-04-19 00:42'
-updated_date: '2026-04-20 00:05'
+created_date: "2026-04-19 00:42"
+updated_date: "2026-04-20 00:05"
 labels:
   - tui-contract-2026-04
   - state-machine
@@ -20,9 +20,11 @@ ordinal: 20000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+
 Spinner today animates but the mapping between app mode and spinner state is implicit. Make it explicit so the spinner never gets stuck.
 
 **Rules (from plan):**
+
 - Spinner only animates while work is actually active
 - Streaming text ("thinking" / "writing"): spinner may animate
 - Tool running: show tool state; keep spinner separate or paused
@@ -32,18 +34,22 @@ Spinner today animates but the mapping between app mode and spinner state is imp
 - Timer MUST stop when mode returns to idle
 
 **Target:**
+
 - Explicit state machine: `idle → thinking → streaming → toolRunning → awaitingApproval → idle`
 - One place that maps mode → spinner-on/off
 - Timer lifecycle owned by the mapping
 
 **Files:**
+
 - Modify: `cli/lib/src/app/render_pipeline.dart` (look for `_spinnerFrames`, `_startSpinner`, `_stopSpinner`)
 - Create: `cli/lib/src/app/spinner_state.dart` — explicit state machine
 - Tests: spinner starts/stops with mode changes; timer stops when idle
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
+
 <!-- AC:BEGIN -->
+
 - [ ] #1 Explicit spinner state machine documented + implemented
 - [ ] #2 Spinner only animates during active work
 - [ ] #3 Waiting for user approval: no spinner; approval state shown instead
@@ -56,5 +62,7 @@ Spinner today animates but the mapping between app mode and spinner state is imp
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-**2026-04-20 sweep:** Stuck-spinner-on-cancel bugs fixed in Unreleased. CHANGELOG: *"Spinner no longer stuck after cancel. _cancelAgentImpl now stops the spinner before flipping mode; _cancelBashImpl mirrors the pattern defensively."* That partially addresses AC #5 (timer stops cleanly when returning to idle) for the cancel path specifically, but the broader explicit state machine + mode→spinner mapping (AC #1, #4, #6) is still outstanding. Treat current fix as defensive plumbing; the architectural refactor remains.
+
+**2026-04-20 sweep:** Stuck-spinner-on-cancel bugs fixed in Unreleased. CHANGELOG: _"Spinner no longer stuck after cancel. \_cancelAgentImpl now stops the spinner before flipping mode; \_cancelBashImpl mirrors the pattern defensively."_ That partially addresses AC #5 (timer stops cleanly when returning to idle) for the cancel path specifically, but the broader explicit state machine + mode→spinner mapping (AC #1, #4, #6) is still outstanding. Treat current fix as defensive plumbing; the architectural refactor remains.
+
 <!-- SECTION:NOTES:END -->

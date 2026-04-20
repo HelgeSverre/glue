@@ -3,8 +3,8 @@ id: TASK-25.4
 title: Tool display states + transcript groups (collapse/expand)
 status: To Do
 assignee: []
-created_date: '2026-04-19 00:42'
-updated_date: '2026-04-20 00:05'
+created_date: "2026-04-19 00:42"
+updated_date: "2026-04-20 00:05"
 labels:
   - tui-contract-2026-04
   - rendering
@@ -20,9 +20,11 @@ ordinal: 21000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+
 Normalize tool rendering around canonical states and make long transcript blocks collapsible/expandable.
 
 **Canonical tool states** (align with SE event schema `tool_call.{pending,started,output,completed,failed,denied,cancelled}`):
+
 - `pending` — model has named a tool but args still streaming
 - `awaitingApproval` — user decision required
 - `running` — Glue is executing the tool
@@ -32,6 +34,7 @@ Normalize tool rendering around canonical states and make long transcript blocks
 - `cancelled` — user cancelled while active
 
 **Each state should render:**
+
 - Compact collapsed header
 - Expanded arguments
 - Streamed output chunks
@@ -41,6 +44,7 @@ Normalize tool rendering around canonical states and make long transcript blocks
 - Artifact link for long output (from SE4)
 
 **Transcript groups (collapsible):**
+
 - Tool call + result pair
 - Delegated agent transcript
 - Long command output
@@ -48,21 +52,26 @@ Normalize tool rendering around canonical states and make long transcript blocks
 - Very long markdown assistant response
 
 **Rules:**
+
 - Collapsed summary fits on one or two lines
 - Expanded state is keyboard + mouse accessible
 - Collapsed state persists during session (memory only for now)
 - Session JSONL `ui.group.{collapsed,expanded}` events (SE1) optionally restore state on replay
 
 **Files:**
+
 - Modify: `cli/lib/src/rendering/block_renderer.dart` or `tool_block.dart`
 - Create: `cli/lib/src/rendering/transcript_group.dart`
 - Keybinding: decide expand/collapse key (open question in plan; candidate: `Ctrl+Space` or `Space` when focused)
 
 **Coordinates with:** SE1 (event state names) + SE3 (emission).
+
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
+
 <!-- AC:BEGIN -->
+
 - [ ] #1 Seven tool states render with distinct semantic markers
 - [ ] #2 Each state has both compact and expanded rendering
 - [ ] #3 Transcript groups (tool, agent, long-output, file-diff) support collapse/expand
@@ -75,5 +84,7 @@ Normalize tool rendering around canonical states and make long transcript blocks
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-**2026-04-20 sweep:** Canonical state vocabulary advanced in Unreleased. CHANGELOG: *"ToolCallPhase.cancelled — distinct from denied (never ran) and error (ran but failed). Agent cancel now marks every in-flight tool — including ones awaiting approval — as cancelled instead of overloading error."* and *"Tool phase no longer stuck on awaiting approval after cancel."* That formalizes three of the seven canonical states in this task (`cancelled`, `denied`, `error/failed`) and the `awaitingApproval → cancelled` transition. Compact/expanded rendering, transcript groups, and collapse/expand UX (AC #2, #3, #4, #5) still pending.
+
+**2026-04-20 sweep:** Canonical state vocabulary advanced in Unreleased. CHANGELOG: _"ToolCallPhase.cancelled — distinct from denied (never ran) and error (ran but failed). Agent cancel now marks every in-flight tool — including ones awaiting approval — as cancelled instead of overloading error."_ and _"Tool phase no longer stuck on awaiting approval after cancel."_ That formalizes three of the seven canonical states in this task (`cancelled`, `denied`, `error/failed`) and the `awaitingApproval → cancelled` transition. Compact/expanded rendering, transcript groups, and collapse/expand UX (AC #2, #3, #4, #5) still pending.
+
 <!-- SECTION:NOTES:END -->

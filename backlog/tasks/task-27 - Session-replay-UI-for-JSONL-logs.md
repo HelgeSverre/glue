@@ -3,8 +3,8 @@ id: TASK-27
 title: Session replay UI for JSONL logs
 status: To Do
 assignee: []
-created_date: '2026-04-19 05:00'
-updated_date: '2026-04-20 00:05'
+created_date: "2026-04-19 05:00"
+updated_date: "2026-04-20 00:05"
 labels:
   - sessions
   - ui
@@ -23,17 +23,20 @@ ordinal: 29000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+
 Build a dedicated replay surface that reads `~/.glue/sessions/<id>/conversation.jsonl`
 and renders the session step-by-step with the same block format Glue shows
 live. Sessions are already append-only JSONL today; this task adds the
 playback UI on top.
 
 **Entry points:**
+
 - `glue replay <session-id>` — opens the session in replay mode.
 - `glue replay --last` — most recent session in the current workspace.
 - From inside the TUI: `/replay <id>` slash command.
 
 **Replay surface:**
+
 - Event log rendered via `BlockRenderer` (same renderer the live TUI uses).
 - Scrubbable timeline: keyboard ← → step-by-step, ⇧← ⇧→ jump by
   tool-call group, Home/End jump to start/end.
@@ -47,11 +50,13 @@ playback UI on top.
   for the first cut.
 
 **Non-goals (for now):**
+
 - No server-side replay, no hosted dashboard (Glue stays local-first).
 - No multi-session timeline/browser — single session at a time.
 - No editing/annotating events — playback only.
 
 **Dependencies / order:**
+
 - TASK-25 (TUI behavior contract) pins the behavior we need to replay
   deterministically.
 - TASK-18 (standardized tool result schema) makes it safe to render old
@@ -60,17 +65,21 @@ playback UI on top.
   replay should gracefully degrade on the narrower event set in use today.
 
 **Files (anticipated):**
+
 - `cli/lib/src/replay/replay_controller.dart` — loads + walks the JSONL.
 - `cli/lib/src/replay/replay_app.dart` — TUI entry point, keybinds.
 - `cli/lib/src/commands/builtin_commands.dart` — `/replay` registration.
 - `cli/bin/glue.dart` — CLI arg plumbing for `glue replay`.
 
 **Website/roadmap:** already listed as `planned` on `/roadmap` under
-*Later*. Promote to *Next* when the TUI behavior contract ships.
+_Later_. Promote to _Next_ when the TUI behavior contract ships.
+
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
+
 <!-- AC:BEGIN -->
+
 - [ ] #1 `glue replay <session-id>` loads and renders an existing
       `conversation.jsonl` end-to-end without errors.
 - [ ] #2 `glue replay --last` picks the most recent session rooted at the
@@ -86,10 +95,8 @@ playback UI on top.
       JSONL schema plan land).
 - [ ] #7 Works offline — no network calls during replay.
 - [ ] #8 Handles a corrupted trailing line gracefully (skip + warn at the
-      status bar, continue replay).
+    status bar, continue replay).
 <!-- AC:END -->
-
-
 
 ## Notes
 

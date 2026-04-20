@@ -3,8 +3,8 @@ id: TASK-26.1
 title: Decouple ShellJob from raw Process (RunningCommandHandle interface)
 status: To Do
 assignee: []
-created_date: '2026-04-19 00:42'
-updated_date: '2026-04-20 00:05'
+created_date: "2026-04-19 00:42"
+updated_date: "2026-04-20 00:05"
 labels:
   - runtime-boundary-2026-04
   - refactor
@@ -22,9 +22,11 @@ ordinal: 24000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+
 `ShellJob` currently stores a `Process` directly. That makes remote command handles awkward — remote runtimes don't produce local `Process` objects.
 
 **Introduce:**
+
 ```dart
 abstract class RunningCommandHandle {
   Stream<List<int>> get stdout;
@@ -35,21 +37,26 @@ abstract class RunningCommandHandle {
 ```
 
 **Refactor:**
+
 - `ShellJob` stores `RunningCommandHandle`, not `Process`
 - Local/Docker commands wrap `Process` in a `ProcessCommandHandle` adapter
 - Future remote runtimes implement `RunningCommandHandle` without a local `Process`
 
 **Files:**
+
 - Create: `cli/lib/src/shell/running_command_handle.dart` — interface + `ProcessCommandHandle` adapter
 - Modify: `cli/lib/src/shell/shell_job_manager.dart` — store handle, not Process
 - Modify: `cli/lib/src/shell/host_executor.dart` + `docker_executor.dart` — return handles
 - Tests: `test/shell/shell_job_manager_test.dart` — kill calls handle's `kill()`, not raw Process
 
 **Explicit non-goal:** do NOT build the full `ExecutionRuntime` interface yet. Just replace the `Process` field with the handle.
+
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
+
 <!-- AC:BEGIN -->
+
 - [ ] #1 `RunningCommandHandle` interface exists with stdout/stderr/exitCode/kill
 - [ ] #2 `ProcessCommandHandle` adapter wraps `dart:io` Process for host/Docker
 - [ ] #3 `ShellJob` stores the handle, not a raw Process

@@ -1,10 +1,10 @@
 ---
 id: TASK-29
-title: 'Friendlier Ollama errors: daemon-down + model-missing handling'
+title: "Friendlier Ollama errors: daemon-down + model-missing handling"
 status: To Do
 assignee: []
-created_date: '2026-04-19 03:49'
-updated_date: '2026-04-20 00:05'
+created_date: "2026-04-19 03:49"
+updated_date: "2026-04-20 00:05"
 labels:
   - providers
   - ux
@@ -25,6 +25,7 @@ ordinal: 28000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+
 Today, when Ollama isn't running or the requested model isn't pulled, Glue surfaces raw transport exceptions — e.g. `Exception: OpenAI API error 404: {"error":{"message":"model 'devstral:latest' not found", "type":"not_found_error", ...}}`. Translate these two common failure modes into actionable, user-friendly messages at the LLM-client boundary.
 
 Glue talks to Ollama via the OpenAI-compatible endpoint at `http://localhost:11434/v1/chat/completions` (see `cli/lib/src/llm/ollama_client.dart`), so the translation lives in the Ollama client's error path, not in the generic OpenAI client.
@@ -57,7 +58,7 @@ Scope deliberately narrow: two error modes, one provider. The generalization to 
 - `cli/lib/src/llm/ollama_client.dart:27` — hardcoded base URL `http://localhost:11434`
 - `cli/lib/src/providers/compatibility_profile.dart:9-51` — `CompatibilityProfile.ollama` variant
 - `cli/lib/src/providers/openai_compatible_adapter.dart:1-45` — adapter wiring
-- `cli/lib/src/agent/agent_core.dart:305-306` — exceptions wrapped as `AgentError(e)`; translate *before* this boundary
+- `cli/lib/src/agent/agent_core.dart:305-306` — exceptions wrapped as `AgentError(e)`; translate _before_ this boundary
 - `cli/lib/src/app/session_runtime.dart:74-76` — print-mode stderr path
 - `cli/lib/src/rendering/block_renderer.dart:126-134` — existing red ✗ error renderer
 - `cli/lib/src/app/spinner_runtime.dart` — reusable for phase-2 pull progress
@@ -68,7 +69,9 @@ Scope deliberately narrow: two error modes, one provider. The generalization to 
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
+
 <!-- AC:BEGIN -->
+
 - [ ] #1 Starting Glue with the Ollama daemon stopped yields a single-line, actionable message telling the user to start Ollama — no raw `Exception:` prefix, no JSON blob.
 - [ ] #2 Requesting a model that isn't installed yields a single-line, actionable message naming the missing model and the exact `ollama pull <name>` command.
 - [ ] #3 Raw error details remain accessible via existing `--verbose` / log paths (verified by test or manual check).
@@ -78,6 +81,8 @@ Scope deliberately narrow: two error modes, one provider. The generalization to 
 <!-- AC:END -->
 
 ## Definition of Done
+
 <!-- DOD:BEGIN -->
+
 - [ ] #1 Manual verification: run `glue` with Ollama stopped, then separately against an uninstalled model name; paste before/after messages into finalSummary.
 <!-- DOD:END -->

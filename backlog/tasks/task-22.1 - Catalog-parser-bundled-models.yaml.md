@@ -3,8 +3,8 @@ id: TASK-22.1
 title: Catalog parser + bundled models.yaml
 status: Done
 assignee: []
-created_date: '2026-04-19 00:36'
-updated_date: '2026-04-19 04:02'
+created_date: "2026-04-19 00:36"
+updated_date: "2026-04-19 04:02"
 labels:
   - model-provider-2026-04
   - config
@@ -21,6 +21,7 @@ ordinal: 11000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+
 Load a curated model catalog from YAML instead of hardcoded Dart `ModelRegistry`. The canonical catalog shape lives in `cli/docs/reference/models.yaml` — a reference example.
 
 **Catalog shape (top-level keys):** `version`, `updated_at`, `defaults`, `catalog`, `selection`, `capabilities`, `providers`, `profiles`
@@ -32,19 +33,23 @@ Load a curated model catalog from YAML instead of hardcoded Dart `ModelRegistry`
 **Rule:** Missing capability = false/unknown, NOT "probably supported". App checks capabilities before enabling features.
 
 **Files to create:**
+
 - `cli/lib/src/config/catalog/catalog_parser.dart`
 - `cli/lib/src/config/catalog/model_entry.dart`, `provider_entry.dart`, `profile_entry.dart`, `capability.dart`
 - `cli/assets/models.yaml` — bundled copy (initially identical to `cli/docs/reference/models.yaml`)
 - `cli/test/config/catalog/catalog_parser_test.dart`
 
 **Gotchas:**
+
 - Ollama `api_key: none` is a valid distinct value, not empty string
 - Parse errors must include YAML path + key path + reason
 - Unknown fields ignored gracefully (forward-compat)
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
+
 <!-- AC:BEGIN -->
+
 - [ ] #1 Parser produces typed structs for every field in `cli/docs/reference/models.yaml`
 - [ ] #2 Unknown fields ignored gracefully (forward-compat)
 - [ ] #3 Parse errors include YAML file path + key path + reason

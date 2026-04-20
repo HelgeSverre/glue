@@ -3,8 +3,8 @@ id: TASK-22.7
 title: Model picker + /provider + /models commands
 status: To Do
 assignee: []
-created_date: '2026-04-19 00:36'
-updated_date: '2026-04-20 00:05'
+created_date: "2026-04-19 00:36"
+updated_date: "2026-04-20 00:05"
 labels:
   - model-provider-2026-04
   - ui
@@ -24,11 +24,13 @@ ordinal: 17000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+
 **Progress (2026-04-19):** Model picker rewrite shipped in commit `c428576` (MP7 hard swap). `/provider`/`/models` command surface deferred to TASK-22.8 with a simplified scope (only `/provider` namespace, OAuth support).
 
 Replace the current single-level `/model` picker with a curated multi-provider picker and add provider/catalog commands.
 
 **New/updated commands:**
+
 - `/model` — opens picker (filtered to curated, tool-capable, credentials-available models)
 - `/model anthropic/claude-sonnet-4.6` — direct switch
 - `/models` — list all catalog entries (including hidden)
@@ -39,20 +41,25 @@ Replace the current single-level `/model` picker with a curated multi-provider p
 - `/models import <provider>` — prompt user to pick models and append to `~/.glue/models.yaml`
 
 **Picker filters:**
+
 - Default: `selection.default_filter.capabilities` from catalog (typically `chat` + `tools`)
 - Hidden models (`hidden_models` in user config) excluded from default view
 - User filters: `@provider:openai`, `@capability:vision`, `@capability:local`, `@speed:fast`, `@cost:low`, `@visible:true`
 
 **Files:**
+
 - Modify: `cli/lib/src/commands/builtin_commands.dart`
 - Create: `cli/lib/src/commands/provider_commands.dart`, `model_commands.dart`
 - Modify: model picker UI in `cli/lib/src/ui/` (find existing via grep)
 
 **Depends on:** MP1, MP3, MP4.
+
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
+
 <!-- AC:BEGIN -->
+
 - [ ] #1 Picker default-filters by `selection.default_filter.capabilities` from catalog
 - [ ] #2 Hidden models excluded from default picker view
 - [ ] #3 Picker supports filters: `@provider:`, `@capability:`, `@speed:`, `@cost:`, `@visible:`

@@ -3,8 +3,8 @@ id: TASK-6.2
 title: Build ACP web UI client (Alpine.js + vanilla JS)
 status: To Do
 assignee: []
-created_date: '2026-04-18 23:58'
-updated_date: '2026-04-20 00:05'
+created_date: "2026-04-18 23:58"
+updated_date: "2026-04-20 00:05"
 labels:
   - feature
   - acp
@@ -14,8 +14,8 @@ milestone: m-3
 dependencies:
   - TASK-6.1
 references:
-  - 'https://agentclientprotocol.com/'
-  - 'https://www.npmjs.com/package/stdio-to-ws'
+  - "https://agentclientprotocol.com/"
+  - "https://www.npmjs.com/package/stdio-to-ws"
 documentation:
   - cli/docs/plans/2026-02-27-acp-webui.md
 parent_task_id: TASK-6
@@ -26,6 +26,7 @@ ordinal: 5000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+
 Build the browser-side ACP Client for Glue's web UI. Connects to `glue --acp` via WebSocket (bridged by `npx stdio-to-ws`), sends prompts, and renders streamed agent output. Depends on `task-6.1` (the `--acp` agent) being available.
 
 **Design doc:** `cli/docs/plans/2026-02-27-acp-webui.md` — Side 2 (Web UI), Approach A (Vanilla JS).
@@ -33,6 +34,7 @@ Build the browser-side ACP Client for Glue's web UI. Connects to `glue --acp` vi
 **Why Approach A:** Zero build step, stays a single HTML file consistent with the existing static site. Full control over rendering. ~150 lines of vanilla JS handles the small ACP client surface (4 outbound methods, 2 inbound handlers).
 
 **Components:**
+
 - `GlueAcpClient` class — JSON-RPC over WebSocket (see design doc for a ~100-line sketch)
 - Alpine.js integration — reactive store for sessions, blocks, pending permissions, connection state
 - Streaming render logic:
@@ -43,19 +45,23 @@ Build the browser-side ACP Client for Glue's web UI. Connects to `glue --acp` vi
 - Bridge: documented command `npx stdio-to-ws "dart run bin/glue.dart --acp" --port 3000`
 
 **Scope for v1 (minimum viable):**
+
 - Single session at a time (multi-session deferred)
 - Advertise empty `clientCapabilities` (no fs/terminal — Glue handles file I/O via `dart:io`)
 - Plain text rendering for agent output (markdown rendering deferred)
 - No reconnection logic (page refresh is acceptable)
 
 **Explicitly out of scope for v1** (tracked separately if wanted):
+
 - Markdown rendering, code editor panel, reconnection/backoff
 - Move to TypeScript SDK + Vite (Approach B)
 - Multi-session tabs, session persistence/resume
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
+
 <!-- AC:BEGIN -->
+
 - [ ] #1 `GlueAcpClient` class handles JSON-RPC over WebSocket (request/response correlation + inbound notifications + inbound requests)
 - [ ] #2 Alpine.js store reflects connection state, sessions, blocks, and pending permissions
 - [ ] #3 User can create a session, send a prompt, and see streaming assistant text + tool calls rendered live

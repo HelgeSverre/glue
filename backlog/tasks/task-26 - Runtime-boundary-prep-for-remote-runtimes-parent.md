@@ -1,10 +1,10 @@
 ---
 id: TASK-26
-title: 'Runtime boundary: prep for remote runtimes (parent)'
+title: "Runtime boundary: prep for remote runtimes (parent)"
 status: To Do
 assignee: []
-created_date: '2026-04-19 00:34'
-updated_date: '2026-04-20 00:05'
+created_date: "2026-04-19 00:34"
+updated_date: "2026-04-20 00:05"
 labels:
   - runtime-boundary-2026-04
   - parent
@@ -26,11 +26,13 @@ ordinal: 10000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+
 Clarify the boundary between Glue and the place where work executes. Current runtimes: host shell, Docker shell, local/Docker browser backends, cloud browser providers. Future: E2B, Modal, Daytona, SSH workers.
 
 **Explicit non-goal:** do NOT over-abstract prematurely. Keep existing host/Docker concrete. Only do the prep work that unblocks future remote runtime work; full `ExecutionRuntime` interface happens when a second non-Docker runtime ships.
 
 **Prep work in scope:**
+
 1. Decouple `ShellJob` from raw `Process` (introduce `RunningCommandHandle` interface)
 2. Normalize workspace mapping (document Docker's `/workspace` mount + path translation rules)
 3. Emit runtime command/container events to session JSONL (depends on SE parent)
@@ -42,10 +44,13 @@ Clarify the boundary between Glue and the place where work executes. Current run
 **Capabilities to surface (for future capability-based UI):** `command_capture`, `command_streaming`, `background_jobs`, `filesystem_{read,write}`, `mount_host_paths`, `browser_cdp`, `artifacts`, `secrets`, `snapshots`, `internet`, `gpu`.
 
 **Subtasks:** RB1–RB5.
+
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
+
 <!-- AC:BEGIN -->
+
 - [ ] #1 Host and Docker behavior remain unchanged (no regression)
 - [ ] #2 Background jobs no longer depend directly on `Process`
 - [ ] #3 JSONL records where commands ran (via SE schema)

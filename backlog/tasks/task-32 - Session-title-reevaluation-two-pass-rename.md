@@ -1,10 +1,10 @@
 ---
 id: TASK-32
-title: 'Session title reevaluation: two-pass + /rename'
+title: "Session title reevaluation: two-pass + /rename"
 status: To Do
 assignee: []
-created_date: '2026-04-20 00:00'
-updated_date: '2026-04-20 00:32'
+created_date: "2026-04-20 00:00"
+updated_date: "2026-04-20 00:32"
 labels:
   - session
   - llm
@@ -26,11 +26,12 @@ ordinal: 33000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+
 Glue currently generates a session title once from the first user message and never revisits it. That fails for vague openers like "help me debug this" — the actual task only becomes clear after the first turn.
 
 Adopt a pragmatic two-pass design (not continuous rewriting):
 
-1. **Pass 1 — fast initial title** generated as today, treated as *provisional*.
+1. **Pass 1 — fast initial title** generated as today, treated as _provisional_.
 2. **Pass 2 — reevaluate** once the session has more evidence (after first assistant response + first tool batch, or after Nth turn — exact trigger TBD in plan).
 3. **Stabilize** after pass 2; never auto-revise again unless the user invokes `/rename`.
 4. **`/rename <new title>`** slash command sets the title manually.
@@ -38,19 +39,23 @@ Adopt a pragmatic two-pass design (not continuous rewriting):
 6. **Never overwrite a user-set title.**
 7. Avoid title churn from repeated background rewrites.
 
-**Key design problem identified in plan:** `_titleGenerated` currently means both *"we attempted to generate a title"* and *"the title should never be reconsidered"*. Decouple those — likely two flags: `titleAttempted` (rate-limit) and `titleLockedByUser` (user override).
+**Key design problem identified in plan:** `_titleGenerated` currently means both _"we attempted to generate a title"_ and _"the title should never be reconsidered"_. Decouple those — likely two flags: `titleAttempted` (rate-limit) and `titleLockedByUser` (user override).
 
 **Coordinates with TASK-15** — title generation is already gated by `titleGenerationEnabled`. Reevaluation must respect the same flag (skip pass 2 when disabled).
 
 **Out of scope:**
+
 - Continuous live retitling on every turn.
 - Resume-time backfill changes beyond what the two-pass design needs.
 
 See `docs/plans/2026-04-20-session-title-reevaluation-plan.md` for full plan, including OpenCode reference.
+
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
+
 <!-- AC:BEGIN -->
+
 - [ ] #1 First-turn provisional title still generated as before (no regression on fast feedback).
 - [ ] #2 Second pass triggers based on documented heuristic and writes a refined title to `meta.title`.
 - [ ] #3 Second pass never runs after a user has invoked `/rename`.

@@ -3,8 +3,8 @@ id: TASK-22.8
 title: /provider add command with Copilot OAuth
 status: In Review
 assignee: []
-created_date: '2026-04-19 12:00'
-updated_date: '2026-04-20 00:09'
+created_date: "2026-04-19 12:00"
+updated_date: "2026-04-20 00:09"
 labels:
   - model-provider-2026-04
   - commands
@@ -23,9 +23,11 @@ ordinal: 18000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+
 Close the credential-onboarding gap. After MP3–7 shipped, users with no API key set hit a dead-end error ("run `glue credentials set anthropic`") pointing at a command that doesn't exist. Add an in-app flow and extend it to OAuth so GitHub Copilot works end-to-end.
 
 **Research-backed decisions:**
+
 - Only `/provider` is user-facing. The word "credentials" and "auth" do not appear in UI copy — users "add a provider", not "configure credentials".
 - One real OAuth provider ships: **GitHub Copilot device-code flow** (simpler than PKCE, no loopback server).
 - Claude Pro / ChatGPT-subscription OAuth explicitly excluded (Anthropic TOS risk — OpenCode removed it in v1.3.0).
@@ -65,6 +67,7 @@ Close the credential-onboarding gap. After MP3–7 shipped, users with no API ke
 7. **Error wording** — `GlueConfig.validate()` points at `/provider add <id>`.
 
 **Out of scope:**
+
 - Claude Pro / ChatGPT OAuth (TOS risk).
 - Gemini PKCE implementation (`PkceFlow` scaffolded only).
 - OS keychain.
@@ -72,27 +75,31 @@ Close the credential-onboarding gap. After MP3–7 shipped, users with no API ke
 - First-launch wizard.
 
 **Plan document:** `/Users/helge/.claude/plans/lets-plan-out-the-goofy-scroll.md`
+
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
+
 <!-- AC:BEGIN -->
-- [x] #1 `/provider add anthropic` with no env opens masked input modal, stores on submit, reports "Connected". (panel_controller._runApiKeyFlow)
-- [x] #2 `/provider add copilot` shows device URL + user code, polls, exchanges for Copilot token, stores all three fields. (panel_controller._runDeviceCodeFlow + CopilotAdapter)
+
+- [x] #1 `/provider add anthropic` with no env opens masked input modal, stores on submit, reports "Connected". (panel_controller.\_runApiKeyFlow)
+- [x] #2 `/provider add copilot` shows device URL + user code, polls, exchanges for Copilot token, stores all three fields. (panel_controller.\_runDeviceCodeFlow + CopilotAdapter)
 - [x] #3 Copilot token refreshes automatically when stored `copilot_token_expires_at` is past. (copilot_token_manager.freshCopilotToken — `copilot_token_manager_test`)
-- [x] #4 Copilot request carries `Copilot-Integration-Id: vscode-chat` + `Editor-Version: Glue/<ver>` headers. (_CopilotClient.stream injects via extraHeaders)
-- [x] #5 `/provider list` renders table with status per provider (connected / missing / no-auth). (_formatProviderList)
-- [x] #6 `/provider remove <id>` clears stored fields; notes if env var is still set. (_providerRemove)
-- [x] #7 `/provider test <id>` runs `adapter.validate` without HTTP or side effects. (_providerTest)
+- [x] #4 Copilot request carries `Copilot-Integration-Id: vscode-chat` + `Editor-Version: Glue/<ver>` headers. (\_CopilotClient.stream injects via extraHeaders)
+- [x] #5 `/provider list` renders table with status per provider (connected / missing / no-auth). (\_formatProviderList)
+- [x] #6 `/provider remove <id>` clears stored fields; notes if env var is still set. (\_providerRemove)
+- [x] #7 `/provider test <id>` runs `adapter.validate` without HTTP or side effects. (\_providerTest)
 - [x] #8 Word "credentials" / "auth" does not appear in any user-visible string.
 - [x] #9 `GlueConfig.validate()` error message references `/provider add <id>`, not a legacy command.
 - [x] #10 Claude Pro / ChatGPT-subscription OAuth is NOT shipped.
 - [x] #11 Tests: `auth_flow` (6), `credential_store` (multi-field), `copilot_token_manager` (6), `copilot_adapter` (5), `provider_adapter_auth` (7), `provider_command` (1). `dart test` + `dart analyze --fatal-infos` green (1208 tests).
-- [ ] #12 Manual verification: `./glue` → `/provider add copilot` → browser approval → `--model copilot/claude-sonnet-4.6 "hi"` responds. *(not yet run — needs real GitHub Copilot subscription)*
+- [ ] #12 Manual verification: `./glue` → `/provider add copilot` → browser approval → `--model copilot/claude-sonnet-4.6 "hi"` responds. _(not yet run — needs real GitHub Copilot subscription)_
 <!-- AC:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
+
 ## Follow-up (post-review fix)
 
 Manual check surfaced that Copilot models were missing from the `/model` / `/models` picker even after `/provider add copilot` reported "connected". Root cause was a leftover code path from the pre-OAuth era: the picker filtered catalog rows through `CredentialStore.health()`, which explicitly returns `missing` for `AuthKind.oauth` (since OAuth tokens don't live under a single `api_key` field).
@@ -124,4 +131,5 @@ The `/models` visibility fix above was a symptom of a wider issue: every picker 
 `dart analyze --fatal-infos` clean; `dart test` all pass (1270) except the pre-existing Docker test that fails without a Docker daemon.
 
 Future follow-up tracked in TASK-30: `BlockRenderer` / `MarkdownRenderer` also take `width` once at construction and would benefit from the same pattern, but they don't cause user-visible breakage today.
+
 <!-- SECTION:FINAL_SUMMARY:END -->
