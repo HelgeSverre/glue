@@ -3,9 +3,23 @@ set dotenv-load
 default:
     @just --list
 
-# Compile AOT native binary
+# Compile AOT native binary (injects build timestamp + git SHA via -D defines)
 build:
-    dart compile exe bin/glue.dart -o glue
+    #!/usr/bin/env bash
+    set -euo pipefail
+    BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    GIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)
+    if git diff --quiet 2>/dev/null && git diff --cached --quiet 2>/dev/null; then
+      GIT_DIRTY=""
+    else
+      GIT_DIRTY="+dirty"
+    fi
+    BUILT_BY="${USER:-unknown}@$(hostname -s 2>/dev/null || echo unknown)"
+    dart compile exe bin/glue.dart -o glue \
+      --define=GLUE_BUILD_TIME="$BUILD_TIME" \
+      --define=GLUE_GIT_SHA="$GIT_SHA" \
+      --define=GLUE_GIT_DIRTY="$GIT_DIRTY" \
+      --define=GLUE_BUILT_BY="$BUILT_BY"
 
 # Compile and symlink to ~/.local/bin
 install: build
@@ -59,19 +73,20 @@ docs:
 docs-serve: docs
     npx serve doc/api
 
-# Bump version, build, tag, and print summary
+# Bump version, commit, tag, then build so the binary carries the tagged SHA
 [confirm: "Release a new version?"]
 release version:
     #!/usr/bin/env bash
     set -euo pipefail
     sed -i '' "s/^version: .*/version: {{version}}/" pubspec.yaml
     echo "Updated pubspec.yaml to {{version}}"
-    dart compile exe bin/glue.dart -o glue
     git add pubspec.yaml
     git commit -m "release: v{{version}}"
     git tag "v{{version}}"
+    just build
     echo ""
-    echo "Released v{{version}}"
+    echo "Released v{{version}} — ./glue --version"
+    ./glue --version
     echo "  Run: git push && git push --tags"
 
 # Remove build artifacts

@@ -86,7 +86,13 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
   @override
   Future<int?> runCommand(ArgResults topLevelResults) async {
     if (topLevelResults.flag('version')) {
-      stdout.writeln('glue v${AppConstants.version}');
+      if (topLevelResults.flag('debug')) {
+        stdout.writeln(BuildInfo.details(appVersion: AppConstants.version));
+      } else {
+        stdout.writeln(
+          'glue v${AppConstants.version} (${BuildInfo.summary})',
+        );
+      }
       return 0;
     }
 
@@ -117,6 +123,13 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
     final jsonMode = topLevelResults.flag('json');
     final printMode = topLevelResults.flag('print') || jsonMode;
     final resumeSessionId = topLevelResults.option('resume');
+    final debug = topLevelResults.flag('debug');
+
+    if (debug && !jsonMode) {
+      stderr.writeln(
+        '[glue] v${AppConstants.version} (${BuildInfo.summary})',
+      );
+    }
 
     // Positional args form the prompt.
     final prompt =
@@ -129,7 +142,7 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
       jsonMode: jsonMode,
       resumeSessionId: resumeSessionId,
       startupContinue: topLevelResults.flag('continue'),
-      debug: topLevelResults.flag('debug'),
+      debug: debug,
     );
 
     final sigintSub =

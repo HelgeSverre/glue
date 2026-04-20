@@ -61,6 +61,7 @@ export 'src/agent/tools.dart'
         BashTool,
         GrepTool,
         ListDirectoryTool;
+export 'src/config/build_info.dart' show BuildInfo;
 export 'src/config/constants.dart' show AppConstants;
 export 'src/config/glue_config.dart'
     show GlueConfig, CatalogSourceConfig, ConfigError, splitPathList;
