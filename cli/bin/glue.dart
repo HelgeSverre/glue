@@ -243,6 +243,15 @@ class ConfigValidateCommand extends Command<int> {
 }
 
 class DoctorCommand extends Command<int> {
+  DoctorCommand() {
+    argParser.addFlag(
+      'verbose',
+      abbr: 'v',
+      negatable: false,
+      help: 'Include informational findings (e.g., empty session directories).',
+    );
+  }
+
   @override
   String get name => 'doctor';
 
@@ -252,7 +261,10 @@ class DoctorCommand extends Command<int> {
   @override
   Future<int> run() async {
     final report = runDoctor(Environment.detect());
-    stdout.write(renderDoctorReport(report));
+    stdout.write(renderDoctorReport(
+      report,
+      verbose: argResults!.flag('verbose'),
+    ));
     return report.hasErrors ? 1 : 0;
   }
 }

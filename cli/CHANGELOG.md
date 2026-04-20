@@ -17,7 +17,11 @@ All notable changes to Glue CLI will be documented in this file.
 - **`glue doctor`** — read-only install/config diagnostic command that reports
   resolved paths, parse errors for config/preferences/credentials/catalog
   files, active config validation, malformed session files, orphaned temp
-  files, and returns non-zero when errors are found.
+  files, and returns non-zero when errors are found. Output uses the Glue
+  brand header (yellow `●`), bold section headings, and coloured severity
+  glyphs (`✓`/`·`/`!`/`✗`). Informational findings (e.g., empty session
+  directories missing `conversation.jsonl`) are hidden by default — pass
+  `--verbose`/`-v` to surface them.
 - **Hyperbrowser backend for `web_browser`** — new `hyperbrowser` browser
   backend provisions Hyperbrowser cloud sessions
   (`POST /api/session`), connects over the returned `wsEndpoint` CDP

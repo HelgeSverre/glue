@@ -10,6 +10,7 @@ import 'package:glue/src/core/environment.dart';
 
 enum DoctorSeverity {
   ok,
+  info,
   warning,
   error,
 }
@@ -35,6 +36,8 @@ class DoctorReport {
 
   int get okCount =>
       findings.where((f) => f.severity == DoctorSeverity.ok).length;
+  int get infoCount =>
+      findings.where((f) => f.severity == DoctorSeverity.info).length;
   int get warningCount =>
       findings.where((f) => f.severity == DoctorSeverity.warning).length;
   int get errorCount =>
@@ -104,34 +107,70 @@ DoctorReport runDoctor(Environment environment) {
   return DoctorReport(findings);
 }
 
-String renderDoctorReport(DoctorReport report) {
+/// ANSI sequences used for doctor output. Kept local (rather than pulling the
+/// full `Styled` helper) so this module has no dependency on TUI theming.
+const String _brandDot = '\x1b[38;2;250;204;21m●\x1b[0m';
+const String _bold = '\x1b[1m';
+const String _reset = '\x1b[22m';
+const String _green = '\x1b[32m';
+const String _yellow = '\x1b[33m';
+const String _red = '\x1b[31m';
+const String _gray = '\x1b[90m';
+const String _fgReset = '\x1b[39m';
+
+String _marker(DoctorSeverity severity) {
+  return switch (severity) {
+    DoctorSeverity.ok => '$_green✓$_fgReset',
+    DoctorSeverity.info => '$_gray·$_fgReset',
+    DoctorSeverity.warning => '$_yellow!$_fgReset',
+    DoctorSeverity.error => '$_red✗$_fgReset',
+  };
+}
+
+String renderDoctorReport(DoctorReport report, {bool verbose = false}) {
   final buf = StringBuffer();
-  buf.writeln('Glue Doctor');
-  buf.writeln('===========');
+  buf.writeln('$_brandDot ${_bold}Glue Doctor$_reset');
   buf.writeln();
 
+  final visible = verbose
+      ? report.findings
+      : report.findings
+          .where((f) => f.severity != DoctorSeverity.info)
+          .toList();
+
   String? currentSection;
-  for (final finding in report.findings) {
+  for (final finding in visible) {
     if (finding.section != currentSection) {
       if (currentSection != null) buf.writeln();
       currentSection = finding.section;
-      buf.writeln(finding.section);
+      buf.writeln('$_bold${finding.section}$_reset');
     }
-    final label = switch (finding.severity) {
-      DoctorSeverity.ok => 'OK',
-      DoctorSeverity.warning => 'WARN',
-      DoctorSeverity.error => 'ERROR',
-    };
-    final suffix = finding.path == null ? '' : ' (${finding.path})';
-    buf.writeln('  ${label.padRight(5)} ${finding.message}$suffix');
+    final suffix =
+        finding.path == null ? '' : '  $_gray${finding.path}$_fgReset';
+    buf.writeln('  ${_marker(finding.severity)} ${finding.message}$suffix');
   }
 
+  final hiddenInfo = report.infoCount - (verbose ? report.infoCount : 0);
+
   buf.writeln();
-  buf.writeln('Summary');
-  buf.writeln(
-    '  ${report.okCount} OK, ${report.warningCount} WARN, '
-    '${report.errorCount} ERROR',
-  );
+  buf.writeln('${_bold}Summary$_reset');
+  if (report.hasErrors || report.warningCount > 0) {
+    buf.writeln(
+      '  $_green${report.okCount} ok$_fgReset  '
+      '$_yellow${report.warningCount} warn$_fgReset  '
+      '$_red${report.errorCount} error$_fgReset',
+    );
+  } else {
+    buf.writeln(
+      '  $_green✓ All checks passed$_fgReset  '
+      '$_gray(${report.okCount} ok)$_fgReset',
+    );
+  }
+  if (hiddenInfo > 0) {
+    buf.writeln(
+      '  $_gray$hiddenInfo info hidden — rerun with --verbose to show$_fgReset',
+    );
+  }
   return buf.toString();
 }
 
@@ -367,7 +406,7 @@ void _checkConversationJsonl(List<DoctorFinding> findings, String path) {
   final file = File(path);
   if (!file.existsSync()) {
     findings.add(DoctorFinding(
-      severity: DoctorSeverity.warning,
+      severity: DoctorSeverity.info,
       section: 'Sessions',
       message: 'conversation.jsonl missing',
       path: path,
