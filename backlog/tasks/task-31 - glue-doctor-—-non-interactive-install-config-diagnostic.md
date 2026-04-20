@@ -1,10 +1,10 @@
 ---
 id: TASK-31
 title: glue doctor — non-interactive install/config diagnostic
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-04-20 00:00'
-updated_date: '2026-04-20 00:32'
+updated_date: '2026-04-20 02:44'
 labels:
   - cli
   - diagnostics
@@ -54,18 +54,22 @@ See `docs/plans/2026-04-20-glue-doctor-plan.md` for full plan.
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 `glue doctor` exits 0 on a healthy default install and prints a clean per-check report.
-- [ ] #2 Reports parse errors in `config.yaml`, `preferences.json`, `credentials.json`, `models.yaml`, and cached catalog files (does not silently swallow them).
-- [ ] #3 Reports missing required credentials for the selected active model.
-- [ ] #4 Reports malformed session files (`meta.json`, `conversation.jsonl`) and surfaces orphaned `.tmp` files.
-- [ ] #5 Returns a non-zero exit code when any check fails; tier (warning vs error) is documented in plan.
-- [ ] #6 Read-only: command never mutates user state in v1.
-- [ ] #7 Tests cover: clean install, broken config, missing credential, malformed session.
-- [ ] #8 `glue doctor --help` documents the command and is wired into `GlueCommandRunner`.
+- [x] #1 `glue doctor` exits 0 on a healthy default install and prints a clean per-check report.
+- [x] #2 Reports parse errors in `config.yaml`, `preferences.json`, `credentials.json`, `models.yaml`, and cached catalog files (does not silently swallow them).
+- [x] #3 Reports missing required credentials for the selected active model.
+- [x] #4 Reports malformed session files (`meta.json`, `conversation.jsonl`) and surfaces orphaned `.tmp` files.
+- [x] #5 Returns a non-zero exit code when any check fails; tier (warning vs error) is documented in plan.
+- [x] #6 Read-only: command never mutates user state in v1.
+- [x] #7 Tests cover: clean install, broken config, missing credential, malformed session.
+- [x] #8 `glue doctor --help` documents the command and is wired into `GlueCommandRunner`.
 <!-- AC:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 Conforms to the **CLI Command Surface Conventions** added to `CLAUDE.md` on 2026-04-20: diagnostic / non-interactive surface → top-level CLI subcommand under a noun namespace (`glue doctor`), not a slash command. Aligns with the sibling `glue completions install` precedent and the proposed `glue config init` namespace.
+
+Implemented as `cli/lib/src/doctor/doctor.dart` with CLI wiring in
+`cli/bin/glue.dart`. The initial command is read-only and human-readable; JSON
+output and repair flags remain future follow-ups.
 <!-- SECTION:NOTES:END -->

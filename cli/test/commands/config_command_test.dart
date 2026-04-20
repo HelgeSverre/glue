@@ -106,5 +106,48 @@ void main() {
       expect(config.activeModel.providerId, isNotEmpty);
       expect(config.activeModel.modelId, isNotEmpty);
     });
+
+    test('userConfigPath returns resolved config.yaml path', () {
+      final env = Environment.test(
+        home: '/tmp/home',
+        vars: {'GLUE_HOME': '/tmp/custom-glue'},
+      );
+
+      expect(userConfigPath(env), '/tmp/custom-glue/config.yaml');
+    });
+
+    test('validateUserConfig returns ok for configured local model', () {
+      final tempDir = Directory.systemTemp.createTempSync('glue_config_init_');
+      addTearDown(() {
+        if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+      });
+
+      final env = Environment.test(home: tempDir.path);
+      Directory(env.glueDir).createSync(recursive: true);
+      File(env.configYamlPath)
+          .writeAsStringSync('active_model: ollama/qwen2.5-coder:32b\n');
+
+      final result = validateUserConfig(env);
+
+      expect(result.ok, isTrue);
+      expect(result.message, contains('Config OK'));
+    });
+
+    test('validateUserConfig reports missing provider credentials', () {
+      final tempDir = Directory.systemTemp.createTempSync('glue_config_init_');
+      addTearDown(() {
+        if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+      });
+
+      final env = Environment.test(home: tempDir.path);
+      Directory(env.glueDir).createSync(recursive: true);
+      File(env.configYamlPath)
+          .writeAsStringSync('active_model: anthropic/claude-sonnet-4.6\n');
+
+      final result = validateUserConfig(env);
+
+      expect(result.ok, isFalse);
+      expect(result.message, contains('Not connected to "anthropic"'));
+    });
   });
 }

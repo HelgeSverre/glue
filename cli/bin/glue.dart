@@ -53,6 +53,7 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
           help: 'Enable debug mode (verbose logging).');
     addCommand(CompletionsCommand());
     addCommand(ConfigCommand());
+    addCommand(DoctorCommand());
   }
 
   @override
@@ -158,6 +159,8 @@ class CompletionsCommand extends Command<int> {
 class ConfigCommand extends Command<int> {
   ConfigCommand() {
     addSubcommand(ConfigInitCommand());
+    addSubcommand(ConfigPathCommand());
+    addSubcommand(ConfigValidateCommand());
   }
 
   @override
@@ -203,6 +206,54 @@ class ConfigInitCommand extends Command<int> {
     }
     stdout.writeln(result.message);
     return 0;
+  }
+}
+
+class ConfigPathCommand extends Command<int> {
+  @override
+  String get name => 'path';
+
+  @override
+  String get description => 'Print the resolved config.yaml path.';
+
+  @override
+  Future<int> run() async {
+    stdout.writeln(userConfigPath(Environment.detect()));
+    return 0;
+  }
+}
+
+class ConfigValidateCommand extends Command<int> {
+  @override
+  String get name => 'validate';
+
+  @override
+  String get description => 'Validate config.yaml and active provider setup.';
+
+  @override
+  Future<int> run() async {
+    final result = validateUserConfig(Environment.detect());
+    if (result.ok) {
+      stdout.writeln(result.message);
+      return 0;
+    }
+    stderr.writeln(result.message);
+    return 1;
+  }
+}
+
+class DoctorCommand extends Command<int> {
+  @override
+  String get name => 'doctor';
+
+  @override
+  String get description => 'Inspect Glue installation and config health.';
+
+  @override
+  Future<int> run() async {
+    final report = runDoctor(Environment.detect());
+    stdout.write(renderDoctorReport(report));
+    return report.hasErrors ? 1 : 0;
   }
 }
 

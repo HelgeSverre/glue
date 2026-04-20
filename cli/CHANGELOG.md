@@ -11,6 +11,13 @@ All notable changes to Glue CLI will be documented in this file.
   (`~/.glue/config.yaml` or `$GLUE_HOME/config.yaml`). Supports
   `--force` overwrite/reset behavior, and `/config init` now delegates to the
   same real config writer instead of creating an empty `./config.yaml`.
+- **`glue config path` and `glue config validate`** — scriptable config
+  utilities for printing the resolved `config.yaml` path and validating the
+  active config/provider credential setup.
+- **`glue doctor`** — read-only install/config diagnostic command that reports
+  resolved paths, parse errors for config/preferences/credentials/catalog
+  files, active config validation, malformed session files, orphaned temp
+  files, and returns non-zero when errors are found.
 - **Hyperbrowser backend for `web_browser`** — new `hyperbrowser` browser
   backend provisions Hyperbrowser cloud sessions
   (`POST /api/session`), connects over the returned `wsEndpoint` CDP

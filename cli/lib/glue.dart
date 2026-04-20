@@ -133,7 +133,20 @@ export 'src/core/service_locator.dart' show ServiceLocator, AppServices;
 export 'src/core/where_report.dart' show buildWhereReport;
 export 'src/config/config_template.dart' show buildConfigTemplate;
 export 'src/commands/config_command.dart'
-    show ConfigInitResult, ConfigInitStatus, initUserConfig;
+    show
+        ConfigInitResult,
+        ConfigInitStatus,
+        ConfigValidationResult,
+        initUserConfig,
+        userConfigPath,
+        validateUserConfig;
+export 'src/doctor/doctor.dart'
+    show
+        DoctorFinding,
+        DoctorReport,
+        DoctorSeverity,
+        renderDoctorReport,
+        runDoctor;
 export 'src/orchestrator/permission_gate.dart'
     show PermissionGate, PermissionDecision;
 export 'src/session/session_manager.dart'
