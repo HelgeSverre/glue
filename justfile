@@ -31,3 +31,8 @@ site-build:
 # Quality gate for the unified site
 site-check:
     just website::check
+
+# Stage and commit all changes under backlog/
+sync-backlog:
+    git add backlog/
+    git commit -m "chore(sync backlog.md files)"
