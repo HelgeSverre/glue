@@ -9,3 +9,5 @@ tags:
     skip: "Network test; requires ANCHOR_API_KEY or ~/.glue/config.yaml web.browser.anchor.api_key"
   hyperbrowser:
     skip: "Network test; requires HYPERBROWSER_API_KEY or ~/.glue/config.yaml web.browser.hyperbrowser.api_key"
+  integration:
+    skip: "Network test; opt in with -t integration"

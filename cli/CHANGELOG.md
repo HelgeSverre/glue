@@ -22,6 +22,12 @@ All notable changes to Glue CLI will be documented in this file.
   glyphs (`✓`/`·`/`!`/`✗`). Informational findings (e.g., empty session
   directories missing `conversation.jsonl`) are hidden by default — pass
   `--verbose`/`-v` to surface them.
+- **DuckDuckGo search provider** — zero-config `duckduckgo` search backend
+  that scrapes the HTML endpoint (`html.duckduckgo.com/html/`), decodes the
+  `uddg` redirect parameter to surface clean result URLs, and requires no
+  API key. Registered in the default search provider chain. Includes unit
+  tests for the HTML parser and an opt-in live integration test
+  (`dart test --run-skipped -t integration test/integration/duckduckgo_search_integration_test.dart`).
 - **Hyperbrowser backend for `web_browser`** — new `hyperbrowser` browser
   backend provisions Hyperbrowser cloud sessions
   (`POST /api/session`), connects over the returned `wsEndpoint` CDP
