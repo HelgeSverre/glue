@@ -92,7 +92,6 @@ Banned words: _autonomous developer_, _10x_, _magic_, _revolutionary_.
 - [`symbol-yellow.svg`](/brand/symbol-yellow.svg) · [`symbol-dark.svg`](/brand/symbol-dark.svg) · [`symbol-white.svg`](/brand/symbol-white.svg)
 - [`wordmark-yellow.svg`](/brand/wordmark-yellow.svg) · [`wordmark-dark.svg`](/brand/wordmark-dark.svg) · [`wordmark-white.svg`](/brand/wordmark-white.svg)
 - [`logo-yellow.svg`](/brand/logo-yellow.svg) · [`logo-dark-bg.svg`](/brand/logo-dark-bg.svg) · [`logo-light-bg.svg`](/brand/logo-light-bg.svg)
-- [`readme-banner.svg`](/brand/readme-banner.svg)
 
 <style scoped>
 .brand-row {

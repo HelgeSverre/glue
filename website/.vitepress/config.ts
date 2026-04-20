@@ -71,15 +71,8 @@ function buildChangelogSidebar(): DefaultTheme.SidebarItem[] {
     }
   }
 
-  return [
-    {
-      text: 'Changelog',
-      items: [
-        { text: 'Top', link: '/changelog' },
-        ...versions,
-      ],
-    },
-  ]
+  return versions
+
 }
 
 // Sidebar display label for a changelog H2 heading.
