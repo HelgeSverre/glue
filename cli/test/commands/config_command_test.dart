@@ -91,5 +91,20 @@ void main() {
       expect(template, isNot(contains('\nmodel: anthropic')));
       expect(template, isNot(contains('title_model:')));
     });
+
+    test('written template loads through GlueConfig.load', () {
+      final tempDir = Directory.systemTemp.createTempSync('glue_config_init_');
+      addTearDown(() {
+        if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+      });
+
+      final env = Environment.test(home: tempDir.path);
+      initUserConfig(env);
+
+      final config = GlueConfig.load(environment: env);
+
+      expect(config.activeModel.providerId, isNotEmpty);
+      expect(config.activeModel.modelId, isNotEmpty);
+    });
   });
 }
