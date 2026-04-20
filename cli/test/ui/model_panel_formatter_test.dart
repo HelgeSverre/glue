@@ -12,6 +12,7 @@ CatalogRow _row({
   String? notes,
   String? cost,
   String? speed,
+  ModelAvailability availability = ModelAvailability.unknown,
 }) =>
     (
       providerId: providerId,
@@ -23,6 +24,7 @@ CatalogRow _row({
         cost: cost,
         speed: speed,
       ),
+      availability: availability,
     );
 
 ModelRef _ref(String s) => ModelRef.parse(s);
@@ -93,6 +95,7 @@ void main() {
             name: 'Sonnet',
             capabilities: {'chat'},
           ),
+          availability: ModelAvailability.unknown,
         ),
         (
           providerId: 'anthropic',
@@ -102,6 +105,7 @@ void main() {
             name: 'Haiku',
             capabilities: {'chat'},
           ),
+          availability: ModelAvailability.unknown,
         ),
         (
           providerId: 'openai',
@@ -111,6 +115,7 @@ void main() {
             name: 'GPT-4',
             capabilities: {'chat'},
           ),
+          availability: ModelAvailability.unknown,
         ),
       ];
       final builder = buildModelPanel(
@@ -138,6 +143,7 @@ void main() {
               name: 'Sonnet',
               capabilities: {'chat'},
             ),
+            availability: ModelAvailability.unknown,
           ),
         ],
         currentRef: const ModelRef(providerId: 'x', modelId: 'y'),

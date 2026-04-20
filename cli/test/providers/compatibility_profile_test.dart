@@ -7,10 +7,6 @@ void main() {
       expect(
           CompatibilityProfile.fromString('groq'), CompatibilityProfile.groq);
       expect(
-        CompatibilityProfile.fromString('ollama'),
-        CompatibilityProfile.ollama,
-      );
-      expect(
         CompatibilityProfile.fromString('openrouter'),
         CompatibilityProfile.openrouter,
       );
@@ -26,6 +22,15 @@ void main() {
       );
     });
 
+    test(
+        'ollama is no longer a compatibility profile — falls through to '
+        'openai (Ollama has a dedicated adapter now)', () {
+      expect(
+        CompatibilityProfile.fromString('ollama'),
+        CompatibilityProfile.openai,
+      );
+    });
+
     test('defaults to openai for unknown / null values', () {
       expect(
           CompatibilityProfile.fromString(null), CompatibilityProfile.openai);
@@ -37,10 +42,6 @@ void main() {
   });
 
   group('authHeaders', () {
-    test('ollama sends no Authorization header (auth-less local server)', () {
-      expect(CompatibilityProfile.ollama.authHeaders('ignored'), isEmpty);
-    });
-
     test('openai/groq/openrouter/vllm/mistral use Bearer token', () {
       for (final p in [
         CompatibilityProfile.openai,
@@ -68,14 +69,6 @@ void main() {
         'stream_options': {'include_usage': true},
       };
       CompatibilityProfile.groq.mutateBody(body);
-      expect(body.containsKey('stream_options'), isFalse);
-    });
-
-    test('ollama strips stream_options', () {
-      final body = <String, dynamic>{
-        'stream_options': {'include_usage': true},
-      };
-      CompatibilityProfile.ollama.mutateBody(body);
       expect(body.containsKey('stream_options'), isFalse);
     });
 

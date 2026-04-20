@@ -98,10 +98,10 @@ List all systems with URLs and categories:
 ```markdown
 ### Systems to Research
 
-| System | URL | Category |
-| --- | --- | --- |
-| System A | https://... | Category 1 |
-| System B | https://... | Category 1 |
+| System   | URL         | Category              |
+| -------- | ----------- | --------------------- |
+| System A | https://... | Category 1            |
+| System B | https://... | Category 1            |
 | System C | https://... | Category 2 (adjacent) |
 ```
 
@@ -167,15 +167,15 @@ For each system in the research brief:
 
 Each agent should use these tools in priority order:
 
-| Priority | Source Type | Tool | What to Extract |
-| --- | --- | --- | --- |
-| 1 | API docs / OpenAPI specs | `web_fetch` on docs URL | Entity names, field types, relationships, endpoint shapes |
-| 2 | Help center / knowledge base | `web_fetch` on help articles, follow links 2-3 deep | Workflows ("How to set up X"), terminology, form fields |
-| 3 | Open source code / SDKs | `bash` with `gh api` / `gh repo view` | Type definitions, schema files, entity structures |
-| 4 | Third-party analysis | `web_search` for "[system] review", "[system] vs [competitor]" | Features, limitations, user pain points |
-| 5 | Product pages | `web_fetch` on main site | Positioning, pricing, feature lists |
-| 6 | Demo videos | `web_search` for "[system] demo" on YouTube | UI structure, workflows invisible in docs |
-| 7 | Job postings | `web_search` for "[system] engineer" | Tech stack, internal terminology |
+| Priority | Source Type                  | Tool                                                           | What to Extract                                           |
+| -------- | ---------------------------- | -------------------------------------------------------------- | --------------------------------------------------------- |
+| 1        | API docs / OpenAPI specs     | `web_fetch` on docs URL                                        | Entity names, field types, relationships, endpoint shapes |
+| 2        | Help center / knowledge base | `web_fetch` on help articles, follow links 2-3 deep            | Workflows ("How to set up X"), terminology, form fields   |
+| 3        | Open source code / SDKs      | `bash` with `gh api` / `gh repo view`                          | Type definitions, schema files, entity structures         |
+| 4        | Third-party analysis         | `web_search` for "[system] review", "[system] vs [competitor]" | Features, limitations, user pain points                   |
+| 5        | Product pages                | `web_fetch` on main site                                       | Positioning, pricing, feature lists                       |
+| 6        | Demo videos                  | `web_search` for "[system] demo" on YouTube                    | UI structure, workflows invisible in docs                 |
+| 7        | Job postings                 | `web_search` for "[system] engineer"                           | Tech stack, internal terminology                          |
 
 **Concrete patterns:**
 
@@ -218,11 +218,11 @@ For each Key Design Question from the brief:
 ```markdown
 ## Question 1: [The question]
 
-| System | Approach | Details | Confidence |
-| --- | --- | --- | --- |
-| System A | Approach X | [specifics] | 🟢 |
-| System B | Approach Y | [specifics] | 🟡 |
-| System C | Approach X (variant) | [specifics] | 🟡 |
+| System   | Approach             | Details     | Confidence |
+| -------- | -------------------- | ----------- | ---------- |
+| System A | Approach X           | [specifics] | 🟢         |
+| System B | Approach Y           | [specifics] | 🟡         |
+| System C | Approach X (variant) | [specifics] | 🟡         |
 
 **Pattern**: Most systems use Approach X because [reason].
 System B's Approach Y is interesting because [reason] but has the downside of [limitation].
@@ -242,11 +242,11 @@ Look across all reports for:
 ### Feature Matrix
 
 ```markdown
-| Capability | System A | System B | System C |
-| --- | --- | --- | --- |
-| Feature 1 | ✅ Full support | ⚠️ Partial | ❌ Missing |
-| Feature 2 | ✅ | ✅ | ✅ |
-| Feature 3 | ❌ | ✅ Best in class | ⚠️ |
+| Capability | System A        | System B         | System C   |
+| ---------- | --------------- | ---------------- | ---------- |
+| Feature 1  | ✅ Full support | ⚠️ Partial       | ❌ Missing |
+| Feature 2  | ✅              | ✅               | ✅         |
+| Feature 3  | ❌              | ✅ Best in class | ⚠️         |
 ```
 
 ## Phase 4: Actionable Output
@@ -286,6 +286,7 @@ Based on [System A]'s approach to [concept] and [System C]'s handling of [concep
 [Mermaid erDiagram or written description]
 
 Key decisions:
+
 - [Entity X] is the central entity because [evidence from research]
 - [Relationship Y] uses [pattern] based on [System B]'s approach
 ```
@@ -296,13 +297,16 @@ Key decisions:
 ## Feature Spec: [Feature Name]
 
 ### Background
+
 [Summary of research findings relevant to this feature]
 
 ### Requirements (informed by research)
+
 - [Requirement derived from competitive analysis]
 - [Requirement addressing gap identified in research]
 
 ### Design
+
 [Design decisions justified by research findings]
 ```
 
@@ -314,6 +318,7 @@ For validation before committing to full implementation:
 ## Prototype Scope
 
 Based on research, validate these hypotheses with a minimal prototype:
+
 1. [Hypothesis derived from research] → Build: [minimal UI/API to test]
 2. [Hypothesis] → Build: [minimal test]
 ```
@@ -333,11 +338,11 @@ A completed research project must have:
 
 ## Anti-Patterns
 
-| Anti-Pattern | Why It's Bad | Do Instead |
-| --- | --- | --- |
-| Starting research without a brief | You'll waste time on irrelevant details | Write the brief first, even if brief |
-| Researching systems sequentially | 5x slower than parallel | Dispatch all agents at once |
-| Over-researching one system | Depth without breadth | Equal effort per system, synthesis is where value lives |
-| Fabricating when info is unavailable | Undermines trust in all findings | Mark confidence 🔴, state what's unknown, move on |
-| "It depends" conclusions | Not actionable | Recommend a specific approach with reasoning |
-| Skipping adjacent domains | Misses the best ideas | Always include 2-3 analogous systems from related industries |
+| Anti-Pattern                         | Why It's Bad                            | Do Instead                                                   |
+| ------------------------------------ | --------------------------------------- | ------------------------------------------------------------ |
+| Starting research without a brief    | You'll waste time on irrelevant details | Write the brief first, even if brief                         |
+| Researching systems sequentially     | 5x slower than parallel                 | Dispatch all agents at once                                  |
+| Over-researching one system          | Depth without breadth                   | Equal effort per system, synthesis is where value lives      |
+| Fabricating when info is unavailable | Undermines trust in all findings        | Mark confidence 🔴, state what's unknown, move on            |
+| "It depends" conclusions             | Not actionable                          | Recommend a specific approach with reasoning                 |
+| Skipping adjacent domains            | Misses the best ideas                   | Always include 2-3 analogous systems from related industries |

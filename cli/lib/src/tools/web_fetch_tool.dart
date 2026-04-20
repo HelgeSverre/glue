@@ -1,12 +1,18 @@
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/web/web_config.dart';
 import 'package:glue/src/web/fetch/web_fetch_client.dart';
+import 'package:http/http.dart' as http;
 
 class WebFetchTool extends Tool {
   final WebFetchClient _client;
 
-  WebFetchTool(WebFetchConfig config, {PdfConfig? pdfConfig})
-      : _client = WebFetchClient(config: config, pdfConfig: pdfConfig);
+  WebFetchTool(WebFetchConfig config,
+      {PdfConfig? pdfConfig, http.Client? httpClient})
+      : _client = WebFetchClient(
+          config: config,
+          pdfConfig: pdfConfig,
+          client: httpClient,
+        );
 
   @override
   String get name => 'web_fetch';

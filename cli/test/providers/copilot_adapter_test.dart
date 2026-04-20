@@ -102,7 +102,7 @@ void main() {
         );
       });
 
-      final adapter = CopilotAdapter(httpClient: client);
+      final adapter = CopilotAdapter(client: client);
       final flow = await adapter.beginInteractiveAuth(
         provider: _copilotProvider,
         store: store,
@@ -158,7 +158,7 @@ void main() {
         );
       });
 
-      final adapter = CopilotAdapter(httpClient: client);
+      final adapter = CopilotAdapter(client: client);
       final flow = await adapter.beginInteractiveAuth(
         provider: _copilotProvider,
         store: store,

@@ -8,11 +8,13 @@ import 'package:glue/src/web/search/provider.dart';
 
 class DuckDuckGoSearchProvider implements WebSearchProvider {
   final int timeoutSeconds;
+  final http.Client _client;
   static const _baseUrl = 'https://html.duckduckgo.com/html/';
 
   DuckDuckGoSearchProvider({
     this.timeoutSeconds = 15,
-  });
+    http.Client? client,
+  }) : _client = client ?? http.Client();
 
   @override
   String get name => 'duckduckgo';
@@ -25,7 +27,7 @@ class DuckDuckGoSearchProvider implements WebSearchProvider {
     String query, {
     int maxResults = 5,
   }) async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse(_baseUrl).replace(queryParameters: {
         'q': query,
       }),

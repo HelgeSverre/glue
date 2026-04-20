@@ -24,7 +24,7 @@ Each span is serialized with snake_case keys:
   "start_time": "2026-04-19T12:00:00.000Z",
   "end_time": "2026-04-19T12:00:01.234Z",
   "duration_ms": 1234,
-  "attributes": { }
+  "attributes": {}
 }
 ```
 

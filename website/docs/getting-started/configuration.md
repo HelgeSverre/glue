@@ -9,26 +9,26 @@ importantly — tells you **where those files actually live** on your machine.
 Everything Glue stores on your machine lives under a single home directory we
 call `GLUE_HOME`. By default that's `~/.glue`.
 
-| Purpose                            | Path (default)                     | Written by       | Safe to commit? |
-| ---------------------------------- | ---------------------------------- | ---------------- | --------------- |
-| Personal YAML config               | `~/.glue/config.yaml`              | You              | Usually no — may hold defaults only |
-| Provider credentials               | `~/.glue/credentials.json`         | You              | **No**        |
-| Machine-managed preferences        | `~/.glue/preferences.json`         | Glue             | No — internal state |
-| Session logs (append-only JSONL)   | `~/.glue/sessions/<id>/`           | Glue             | No              |
-| Debug logs                         | `~/.glue/logs/`                    | Glue             | No              |
-| Cache (bundled catalogs, etc.)     | `~/.glue/cache/`                   | Glue             | No              |
-| Optional: per-user model overrides | `~/.glue/models.yaml`              | You              | Yes if curated  |
+| Purpose                            | Path (default)             | Written by | Safe to commit?                     |
+| ---------------------------------- | -------------------------- | ---------- | ----------------------------------- |
+| Personal YAML config               | `~/.glue/config.yaml`      | You        | Usually no — may hold defaults only |
+| Provider credentials               | `~/.glue/credentials.json` | You        | **No**                              |
+| Machine-managed preferences        | `~/.glue/preferences.json` | Glue       | No — internal state                 |
+| Session logs (append-only JSONL)   | `~/.glue/sessions/<id>/`   | Glue       | No                                  |
+| Debug logs                         | `~/.glue/logs/`            | Glue       | No                                  |
+| Cache (bundled catalogs, etc.)     | `~/.glue/cache/`           | Glue       | No                                  |
+| Optional: per-user model overrides | `~/.glue/models.yaml`      | You        | Yes if curated                      |
 
 ### Platform specifics
 
 `~` expands to your user home directory, so the full path depends on your OS:
 
-| OS              | `~/.glue/` resolves to           |
-| --------------- | -------------------------------- |
-| macOS           | `/Users/<you>/.glue/`            |
-| Linux           | `/home/<you>/.glue/`             |
-| Windows (WSL)   | `/home/<you>/.glue/`             |
-| Windows (native)| `C:\Users\<you>\.glue\`          |
+| OS               | `~/.glue/` resolves to  |
+| ---------------- | ----------------------- |
+| macOS            | `/Users/<you>/.glue/`   |
+| Linux            | `/home/<you>/.glue/`    |
+| Windows (WSL)    | `/home/<you>/.glue/`    |
+| Windows (native) | `C:\Users\<you>\.glue\` |
 
 ::: tip Point Glue somewhere else
 Set the `GLUE_HOME` environment variable to use a different directory — handy
@@ -47,7 +47,7 @@ Everything else (sessions, logs, cache) moves with it.
 The main file you edit is `~/.glue/config.yaml`. Minimal example:
 
 ```yaml
-active_model: anthropic/claude-sonnet-4.6
+active_model: anthropic/claude-sonnet-4-6
 ```
 
 That's enough to start. Credentials come from the environment in this
@@ -61,6 +61,21 @@ glue config init
 
 Use `glue config init --force` to replace an existing starter file.
 
+## Scriptable config helpers
+
+```sh
+glue config path
+glue config validate
+glue doctor
+glue doctor --verbose
+```
+
+Use `glue config path` to print the resolved `config.yaml` location.
+`glue config validate` parses the active config and checks whether the selected
+provider setup is usable. `glue doctor` runs a broader read-only health check
+across `GLUE_HOME`; pass `--verbose` to include informational findings alongside
+warnings and errors.
+
 A fuller example with shell, Docker, and web tools:
 
 ```yaml
@@ -69,11 +84,11 @@ active_model: anthropic/claude-sonnet-4-6
 # Optional cheap/fast model used for things like session-title generation.
 small_model: anthropic/claude-haiku-4-5
 
-approval_mode: confirm   # confirm | auto
+approval_mode: confirm # confirm | auto
 
 shell:
   executable: zsh
-  mode: non_interactive  # non_interactive | interactive | login
+  mode: non_interactive # non_interactive | interactive | login
 
 docker:
   enabled: false
@@ -84,9 +99,9 @@ docker:
 
 web:
   search:
-    provider: brave
+    provider: brave # brave | tavily | firecrawl | duckduckgo
   browser:
-    backend: local       # local | docker | steel | browserbase | browserless | anchor | hyperbrowser
+    backend: local # local | docker | steel | browserbase | browserless | anchor | hyperbrowser
 
 skills:
   paths:
@@ -110,8 +125,8 @@ version-control:
 ```json
 {
   "anthropic": { "api_key": "sk-ant-..." },
-  "openai":    { "api_key": "sk-..." },
-  "openrouter":{ "api_key": "sk-or-..." }
+  "openai": { "api_key": "sk-..." },
+  "openrouter": { "api_key": "sk-or-..." }
 }
 ```
 
@@ -120,14 +135,14 @@ Permissions are set to `0600` (owner read/write only) on write.
 Alternative: environment variables. Glue reads the standard names without
 any config:
 
-| Variable              | Purpose              |
-| --------------------- | -------------------- |
-| `ANTHROPIC_API_KEY`   | Anthropic            |
-| `OPENAI_API_KEY`      | OpenAI               |
-| `GEMINI_API_KEY`      | Google Gemini        |
-| `MISTRAL_API_KEY`     | Mistral              |
-| `GROQ_API_KEY`        | Groq                 |
-| `OPENROUTER_API_KEY`  | OpenRouter           |
+| Variable             | Purpose       |
+| -------------------- | ------------- |
+| `ANTHROPIC_API_KEY`  | Anthropic     |
+| `OPENAI_API_KEY`     | OpenAI        |
+| `GEMINI_API_KEY`     | Google Gemini |
+| `MISTRAL_API_KEY`    | Mistral       |
+| `GROQ_API_KEY`       | Groq          |
+| `OPENROUTER_API_KEY` | OpenRouter    |
 
 ## `sessions/` — one directory per run
 
@@ -145,16 +160,16 @@ schema.
 
 Most config keys can be overridden by an env var prefixed with `GLUE_`:
 
-| Variable                         | Override                          |
-| -------------------------------- | --------------------------------- |
-| `GLUE_HOME`                      | Root config directory             |
-| `GLUE_MODEL`                     | Active model (`provider/model`)   |
-| `GLUE_SHELL` / `GLUE_SHELL_MODE` | Shell binary and mode             |
-| `GLUE_DOCKER_ENABLED` etc.       | Docker runtime toggles            |
-| `GLUE_SEARCH_PROVIDER`           | Web search backend                |
-| `GLUE_APPROVAL_MODE`             | `confirm` or `auto`               |
-| `GLUE_DEBUG=1`                   | Enables verbose debug logging     |
-| `GLUE_SKILLS_PATHS`              | Extra skill discovery roots       |
+| Variable                         | Override                        |
+| -------------------------------- | ------------------------------- |
+| `GLUE_HOME`                      | Root config directory           |
+| `GLUE_MODEL`                     | Active model (`provider/model`) |
+| `GLUE_SHELL` / `GLUE_SHELL_MODE` | Shell binary and mode           |
+| `GLUE_DOCKER_ENABLED` etc.       | Docker runtime toggles          |
+| `GLUE_SEARCH_PROVIDER`           | Web search backend              |
+| `GLUE_APPROVAL_MODE`             | `confirm` or `auto`             |
+| `GLUE_DEBUG=1`                   | Enables verbose debug logging   |
+| `GLUE_SKILLS_PATHS`              | Extra skill discovery roots     |
 
 Full list in the [canonical config reference](https://github.com/helgesverre/glue/blob/main/docs/reference/config-yaml.md).
 

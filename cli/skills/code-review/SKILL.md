@@ -54,6 +54,7 @@ For each changed file, read enough surrounding context to understand what the ch
 ```
 
 Ask yourself:
+
 - What is this change trying to accomplish?
 - Does every changed line trace to that goal? (Karpathy's "surgical changes" test)
 - Are there lines that changed but shouldn't have (formatting, unrelated refactors)?
@@ -64,47 +65,47 @@ Review concerns in this order. Stop and report critical issues immediately — d
 
 ### Priority 1: Security
 
-| Check | What to Look For |
-| --- | --- |
-| Injection | SQL strings built with concatenation/interpolation, unsanitized HTML rendering, command injection via `exec`/`eval`/`subprocess` with user input |
-| Auth/authz | Missing authentication checks on endpoints, broken authorization (user A can access user B's data), hardcoded credentials or API keys |
-| Secrets | `.env` files, API keys, passwords, tokens in committed code — check new files AND diffs |
-| Data exposure | Stack traces returned to users, verbose error messages with internal details, PII in logs |
-| SSRF/redirect | User-controlled URLs used in server-side requests, open redirects |
+| Check         | What to Look For                                                                                                                                 |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Injection     | SQL strings built with concatenation/interpolation, unsanitized HTML rendering, command injection via `exec`/`eval`/`subprocess` with user input |
+| Auth/authz    | Missing authentication checks on endpoints, broken authorization (user A can access user B's data), hardcoded credentials or API keys            |
+| Secrets       | `.env` files, API keys, passwords, tokens in committed code — check new files AND diffs                                                          |
+| Data exposure | Stack traces returned to users, verbose error messages with internal details, PII in logs                                                        |
+| SSRF/redirect | User-controlled URLs used in server-side requests, open redirects                                                                                |
 
 ### Priority 2: Correctness
 
-| Check | What to Look For |
-| --- | --- |
-| Logic errors | Off-by-one, wrong comparison operator, inverted conditions, short-circuit evaluation bugs |
-| Null/undefined | Accessing properties on potentially null values without checks |
-| Race conditions | Shared mutable state without synchronization, TOCTOU bugs, concurrent map access (Go) |
-| Error handling | Swallowed errors (`catch {}` with no action), errors that should propagate but don't, missing error returns |
-| Edge cases | Empty arrays/strings, zero values, negative numbers, Unicode, very large inputs |
-| Type safety | Implicit type coercion bugs (JS `==` vs `===`), unchecked type assertions (Go/TS) |
+| Check           | What to Look For                                                                                            |
+| --------------- | ----------------------------------------------------------------------------------------------------------- |
+| Logic errors    | Off-by-one, wrong comparison operator, inverted conditions, short-circuit evaluation bugs                   |
+| Null/undefined  | Accessing properties on potentially null values without checks                                              |
+| Race conditions | Shared mutable state without synchronization, TOCTOU bugs, concurrent map access (Go)                       |
+| Error handling  | Swallowed errors (`catch {}` with no action), errors that should propagate but don't, missing error returns |
+| Edge cases      | Empty arrays/strings, zero values, negative numbers, Unicode, very large inputs                             |
+| Type safety     | Implicit type coercion bugs (JS `==` vs `===`), unchecked type assertions (Go/TS)                           |
 
 ### Priority 3: Performance
 
 Only flag if the change introduces a **measurable** concern:
 
-| Check | What to Look For |
-| --- | --- |
-| N+1 queries | Database query inside a loop — should be batched |
-| Missing indexes | New queries on columns without indexes |
-| Memory leaks | Event listeners not cleaned up, growing caches without eviction, unclosed resources |
-| Unnecessary work | Computing the same thing repeatedly, loading more data than needed |
-| Blocking operations | Synchronous I/O on async paths, long-running operations on the main thread |
+| Check               | What to Look For                                                                    |
+| ------------------- | ----------------------------------------------------------------------------------- |
+| N+1 queries         | Database query inside a loop — should be batched                                    |
+| Missing indexes     | New queries on columns without indexes                                              |
+| Memory leaks        | Event listeners not cleaned up, growing caches without eviction, unclosed resources |
+| Unnecessary work    | Computing the same thing repeatedly, loading more data than needed                  |
+| Blocking operations | Synchronous I/O on async paths, long-running operations on the main thread          |
 
 ### Priority 4: Maintainability
 
 Lower priority — these should not block merging:
 
-| Check | What to Look For |
-| --- | --- |
-| Naming | Misleading names (function named `getUser` that also deletes), abbreviations that aren't obvious |
-| Complexity | Functions doing too many things, deeply nested conditionals that could be early returns |
-| Duplication | Same logic copy-pasted (but only if it's in the new code — don't flag pre-existing duplication) |
-| Tests | New functionality without tests, tests that don't actually assert anything meaningful |
+| Check       | What to Look For                                                                                 |
+| ----------- | ------------------------------------------------------------------------------------------------ |
+| Naming      | Misleading names (function named `getUser` that also deletes), abbreviations that aren't obvious |
+| Complexity  | Functions doing too many things, deeply nested conditionals that could be early returns          |
+| Duplication | Same logic copy-pasted (but only if it's in the new code — don't flag pre-existing duplication)  |
+| Tests       | New functionality without tests, tests that don't actually assert anything meaningful            |
 
 ## Step 4: Verify Claims
 
@@ -120,12 +121,12 @@ Do not trust comments like "// deprecated in v3" without verification.
 
 ### Severity Levels
 
-| Severity | Meaning | Action |
-| --- | --- | --- |
-| **CRITICAL** | Security vulnerability, data loss risk, crash in production | Must fix before merge |
-| **HIGH** | Bug that will cause incorrect behavior, missing error handling for likely cases | Should fix before merge |
-| **MEDIUM** | Performance issue, missing edge case handling, test gap | Fix soon, can merge with follow-up |
-| **LOW** | Style nit, naming suggestion, minor improvement | Optional, author's discretion |
+| Severity     | Meaning                                                                         | Action                             |
+| ------------ | ------------------------------------------------------------------------------- | ---------------------------------- |
+| **CRITICAL** | Security vulnerability, data loss risk, crash in production                     | Must fix before merge              |
+| **HIGH**     | Bug that will cause incorrect behavior, missing error handling for likely cases | Should fix before merge            |
+| **MEDIUM**   | Performance issue, missing edge case handling, test gap                         | Fix soon, can merge with follow-up |
+| **LOW**      | Style nit, naming suggestion, minor improvement                                 | Optional, author's discretion      |
 
 ### Output Format
 
@@ -206,13 +207,13 @@ When reviewing your own code before committing:
 
 Things to avoid when reviewing:
 
-| Anti-Pattern | Why It's Bad |
-| --- | --- |
-| "LGTM" with no substance | Rubber-stamping helps nobody |
-| Reviewing style before correctness | Find the bug first, nit the naming later |
-| Blocking on style preferences | If it works and is readable, let it go |
-| Reviewing pre-existing code | Only review what changed in this diff |
-| "I would have done it differently" | Different isn't wrong — only flag actual issues |
+| Anti-Pattern                        | Why It's Bad                                      |
+| ----------------------------------- | ------------------------------------------------- |
+| "LGTM" with no substance            | Rubber-stamping helps nobody                      |
+| Reviewing style before correctness  | Find the bug first, nit the naming later          |
+| Blocking on style preferences       | If it works and is readable, let it go            |
+| Reviewing pre-existing code         | Only review what changed in this diff             |
+| "I would have done it differently"  | Different isn't wrong — only flag actual issues   |
 | Vague feedback ("this seems wrong") | Be specific: what's wrong, why, and how to fix it |
 
 ## Verification

@@ -9,9 +9,14 @@ import 'package:glue/src/web/browser/browser_endpoint.dart';
 class BrowserbaseProvider implements BrowserEndpointProvider {
   final String? apiKey;
   final String? projectId;
+  final http.Client _client;
   static const _baseUrl = 'https://www.browserbase.com/v1';
 
-  BrowserbaseProvider({required this.apiKey, required this.projectId});
+  BrowserbaseProvider({
+    required this.apiKey,
+    required this.projectId,
+    http.Client? client,
+  }) : _client = client ?? http.Client();
 
   @override
   String get name => 'browserbase';
@@ -30,7 +35,7 @@ class BrowserbaseProvider implements BrowserEndpointProvider {
       throw StateError('Browserbase API key or project ID not configured');
     }
 
-    final response = await http
+    final response = await _client
         .post(
           Uri.parse('$_baseUrl/sessions'),
           headers: {
@@ -58,7 +63,7 @@ class BrowserbaseProvider implements BrowserEndpointProvider {
       viewUrl: 'https://www.browserbase.com/sessions/$sessionId',
       onClose: () async {
         try {
-          await http.post(
+          await _client.post(
             Uri.parse('$_baseUrl/sessions/$sessionId/stop'),
             headers: {'X-BB-API-Key': apiKey!},
           );

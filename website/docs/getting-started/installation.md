@@ -58,11 +58,11 @@ Glue operates in the context of your current working directory. Always `cd` into
 All personal state — config, credentials, sessions, logs — lives under a
 single directory we call `GLUE_HOME`. By default it's `~/.glue/`:
 
-| OS                | Path                             |
-| ----------------- | -------------------------------- |
-| macOS             | `/Users/<you>/.glue/`            |
-| Linux             | `/home/<you>/.glue/`             |
-| Windows (native)  | `C:\Users\<you>\.glue\`          |
+| OS               | Path                    |
+| ---------------- | ----------------------- |
+| macOS            | `/Users/<you>/.glue/`   |
+| Linux            | `/home/<you>/.glue/`    |
+| Windows (native) | `C:\Users\<you>\.glue\` |
 
 The directory is created on first run. Override with the `GLUE_HOME`
 environment variable if you want it somewhere else (dotfiles, per-project).

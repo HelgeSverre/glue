@@ -30,13 +30,16 @@ const String _deviceGrantType = 'urn:ietf:params:oauth:grant-type:device_code';
 
 class CopilotAdapter extends ProviderAdapter {
   CopilotAdapter({
-    http.Client? httpClient,
+    http.Client? client,
     CredentialStore? credentialStore,
-  })  : _http = httpClient,
-        _store = credentialStore;
+    http.Client Function()? requestClientFactory,
+  })  : _http = client ?? http.Client(),
+        _store = credentialStore,
+        _requestClientFactory = requestClientFactory;
 
-  final http.Client? _http;
+  final http.Client _http;
   final CredentialStore? _store;
+  final http.Client Function()? _requestClientFactory;
 
   @override
   String get adapterId => 'copilot';
@@ -74,6 +77,7 @@ class CopilotAdapter extends ProviderAdapter {
       systemPrompt: systemPrompt,
       baseUrl: provider.baseUrl ?? 'https://api.githubcopilot.com',
       httpClient: _http,
+      requestClientFactory: _requestClientFactory,
     );
   }
 
@@ -82,20 +86,16 @@ class CopilotAdapter extends ProviderAdapter {
     required ProviderDef provider,
     required CredentialStore store,
   }) async {
-    final httpClient = _http ?? http.Client();
-    final ownsClient = _http == null;
-
-    final device = await _requestDeviceCode(httpClient);
+    final device = await _requestDeviceCode(_http);
 
     // ignore: close_sinks -- closed inside _runPollingLoop's finally block.
     final progress = StreamController<AuthFlowProgress>();
     unawaited(
       _runPollingLoop(
         device: device,
-        httpClient: httpClient,
+        httpClient: _http,
         store: store,
         progress: progress,
-        closeOnDone: ownsClient,
       ),
     );
 
@@ -142,7 +142,6 @@ class CopilotAdapter extends ProviderAdapter {
     required http.Client httpClient,
     required CredentialStore store,
     required StreamController<AuthFlowProgress> progress,
-    required bool closeOnDone,
   }) async {
     final deadline = DateTime.now().toUtc().add(device.expiresIn);
     var interval = device.interval;
@@ -223,7 +222,6 @@ class CopilotAdapter extends ProviderAdapter {
       }
     } finally {
       await progress.close();
-      if (closeOnDone) httpClient.close();
     }
   }
 }
@@ -253,13 +251,16 @@ class _CopilotClient implements LlmClient {
     required this.systemPrompt,
     required this.baseUrl,
     http.Client? httpClient,
-  }) : _http = httpClient;
+    http.Client Function()? requestClientFactory,
+  })  : _http = httpClient,
+        _requestClientFactory = requestClientFactory;
 
   final CredentialStore store;
   final String model;
   final String systemPrompt;
   final String baseUrl;
   final http.Client? _http;
+  final http.Client Function()? _requestClientFactory;
 
   @override
   Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
@@ -274,7 +275,8 @@ class _CopilotClient implements LlmClient {
         'Copilot-Integration-Id': 'vscode-chat',
         'Editor-Version': 'Glue/${AppConstants.version}',
       },
-      requestClientFactory: _http != null ? () => _http : null,
+      requestClientFactory:
+          _requestClientFactory ?? (_http != null ? () => _http : null),
     );
     yield* inner.stream(messages, tools: tools);
   }

@@ -72,7 +72,9 @@ const report = JSON.parse(readFileSync("report.json", "utf-8"));
 // Overall scores (0-1, multiply by 100 for percentage)
 const { categories, audits } = report;
 console.log(`Performance: ${(categories.performance.score * 100).toFixed(0)}`);
-console.log(`Accessibility: ${(categories.accessibility.score * 100).toFixed(0)}`);
+console.log(
+  `Accessibility: ${(categories.accessibility.score * 100).toFixed(0)}`,
+);
 
 // Core Web Vitals
 const lcp = audits["largest-contentful-paint"].numericValue; // ms
@@ -117,7 +119,9 @@ for (const [name, auditId, unit] of metrics) {
   const b = before.audits[auditId].numericValue;
   const a = after.audits[auditId].numericValue;
   const change = b ? ((a - b) / b) * 100 : 0;
-  console.log(`${name}: ${b.toFixed(1)}${unit} → ${a.toFixed(1)}${unit} (${change > 0 ? "+" : ""}${change.toFixed(1)}%)`);
+  console.log(
+    `${name}: ${b.toFixed(1)}${unit} → ${a.toFixed(1)}${unit} (${change > 0 ? "+" : ""}${change.toFixed(1)}%)`,
+  );
 }
 ```
 
@@ -125,50 +129,56 @@ for (const [name, auditId, unit] of metrics) {
 
 ### Thresholds Reference
 
-| Metric | Good | Needs Improvement | Poor |
-| --- | --- | --- | --- |
-| LCP (Largest Contentful Paint) | < 2.5s | 2.5s - 4.0s | > 4.0s |
-| INP (Interaction to Next Paint) | < 200ms | 200ms - 500ms | > 500ms |
-| CLS (Cumulative Layout Shift) | < 0.1 | 0.1 - 0.25 | > 0.25 |
+| Metric                          | Good    | Needs Improvement | Poor    |
+| ------------------------------- | ------- | ----------------- | ------- |
+| LCP (Largest Contentful Paint)  | < 2.5s  | 2.5s - 4.0s       | > 4.0s  |
+| INP (Interaction to Next Paint) | < 200ms | 200ms - 500ms     | > 500ms |
+| CLS (Cumulative Layout Shift)   | < 0.1   | 0.1 - 0.25        | > 0.25  |
 
 ### LCP — Target: < 2500ms
 
-| Cause | Diagnosis | Fix |
-| --- | --- | --- |
-| Slow server response | TTFB > 800ms in Lighthouse | Server-side caching, CDN, edge rendering |
-| Render-blocking CSS/JS | "Eliminate render-blocking resources" audit | Inline critical CSS, defer non-critical JS, `async`/`defer` attributes |
-| Large hero image | LCP element is an `<img>` with large file size | Compress, use WebP/AVIF, add `loading="eager"` + `fetchpriority="high"` |
-| Web fonts blocking render | FOIT visible in filmstrip | `font-display: swap`, preload key fonts |
-| Client-side rendering | LCP element rendered by JavaScript | SSR/SSG the critical content |
+| Cause                     | Diagnosis                                      | Fix                                                                     |
+| ------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------- |
+| Slow server response      | TTFB > 800ms in Lighthouse                     | Server-side caching, CDN, edge rendering                                |
+| Render-blocking CSS/JS    | "Eliminate render-blocking resources" audit    | Inline critical CSS, defer non-critical JS, `async`/`defer` attributes  |
+| Large hero image          | LCP element is an `<img>` with large file size | Compress, use WebP/AVIF, add `loading="eager"` + `fetchpriority="high"` |
+| Web fonts blocking render | FOIT visible in filmstrip                      | `font-display: swap`, preload key fonts                                 |
+| Client-side rendering     | LCP element rendered by JavaScript             | SSR/SSG the critical content                                            |
 
 ```html
 <!-- Preload LCP image -->
-<link rel="preload" as="image" href="/hero.webp" fetchpriority="high">
+<link rel="preload" as="image" href="/hero.webp" fetchpriority="high" />
 
 <!-- Preload critical font -->
-<link rel="preload" as="font" type="font/woff2" href="/font.woff2" crossorigin>
+<link
+  rel="preload"
+  as="font"
+  type="font/woff2"
+  href="/font.woff2"
+  crossorigin
+/>
 ```
 
 ### INP — Target: < 200ms
 
 43% of websites fail the INP threshold — it is the most commonly failed Core Web Vital.
 
-| Cause | Diagnosis | Fix |
-| --- | --- | --- |
-| Long tasks blocking main thread | TBT > 200ms, long tasks in CDP trace | Break work into chunks with `scheduler.yield()` or `requestIdleCallback` |
-| Heavy event handlers | Specific click/input handlers > 50ms in CPU profile | Debounce, move computation to Web Worker |
-| Excessive re-renders (React) | React DevTools Profiler shows unnecessary renders | `React.memo`, `useMemo`, `useCallback` for expensive computations |
-| Layout thrashing | Alternating DOM read/write in CDP trace | Batch reads before writes (see CDP section below) |
-| Hydration blocking | Hydration takes > 100ms | Progressive hydration, islands architecture |
+| Cause                           | Diagnosis                                           | Fix                                                                      |
+| ------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------ |
+| Long tasks blocking main thread | TBT > 200ms, long tasks in CDP trace                | Break work into chunks with `scheduler.yield()` or `requestIdleCallback` |
+| Heavy event handlers            | Specific click/input handlers > 50ms in CPU profile | Debounce, move computation to Web Worker                                 |
+| Excessive re-renders (React)    | React DevTools Profiler shows unnecessary renders   | `React.memo`, `useMemo`, `useCallback` for expensive computations        |
+| Layout thrashing                | Alternating DOM read/write in CDP trace             | Batch reads before writes (see CDP section below)                        |
+| Hydration blocking              | Hydration takes > 100ms                             | Progressive hydration, islands architecture                              |
 
 ### CLS — Target: < 0.1
 
-| Cause | Diagnosis | Fix |
-| --- | --- | --- |
-| Images without dimensions | CLS audit points to `<img>` elements | Always set `width` and `height` attributes |
+| Cause                     | Diagnosis                                     | Fix                                                              |
+| ------------------------- | --------------------------------------------- | ---------------------------------------------------------------- |
+| Images without dimensions | CLS audit points to `<img>` elements          | Always set `width` and `height` attributes                       |
 | Dynamic content insertion | Ads, banners, or embeds inject above the fold | Reserve space with CSS `aspect-ratio` or fixed height containers |
-| Web fonts causing reflow | Text size changes when font loads | `font-display: swap` + `size-adjust` in `@font-face` |
-| Late-loading CSS | Stylesheet loads and shifts layout | Inline critical CSS, preload remaining |
+| Web fonts causing reflow  | Text size changes when font loads             | `font-display: swap` + `size-adjust` in `@font-face`             |
+| Late-loading CSS          | Stylesheet loads and shifts layout            | Inline critical CSS, preload remaining                           |
 
 ## CDP Runtime Profiling (Beyond Lighthouse)
 
@@ -211,23 +221,33 @@ const after = await getMetrics(client);
 
 // Key deltas
 console.log(`Layouts triggered: ${after.LayoutCount - before.LayoutCount}`);
-console.log(`Layout time: ${((after.LayoutDuration - before.LayoutDuration) * 1000).toFixed(1)}ms`);
-console.log(`Style recalcs: ${after.RecalcStyleCount - before.RecalcStyleCount}`);
-console.log(`Script time: ${((after.ScriptDuration - before.ScriptDuration) * 1000).toFixed(1)}ms`);
-console.log(`Heap used: ${((after.JSHeapUsedSize - before.JSHeapUsedSize) / 1024 / 1024).toFixed(1)}MB`);
+console.log(
+  `Layout time: ${((after.LayoutDuration - before.LayoutDuration) * 1000).toFixed(1)}ms`,
+);
+console.log(
+  `Style recalcs: ${after.RecalcStyleCount - before.RecalcStyleCount}`,
+);
+console.log(
+  `Script time: ${((after.ScriptDuration - before.ScriptDuration) * 1000).toFixed(1)}ms`,
+);
+console.log(
+  `Heap used: ${((after.JSHeapUsedSize - before.JSHeapUsedSize) / 1024 / 1024).toFixed(1)}MB`,
+);
 console.log(`DOM nodes: ${after.Nodes} (delta: ${after.Nodes - before.Nodes})`);
-console.log(`Event listeners: ${after.JSEventListeners} (delta: ${after.JSEventListeners - before.JSEventListeners})`);
+console.log(
+  `Event listeners: ${after.JSEventListeners} (delta: ${after.JSEventListeners - before.JSEventListeners})`,
+);
 ```
 
 **Key thresholds for interaction metrics:**
 
-| Metric | Good | Warning | Critical |
-| --- | --- | --- | --- |
-| LayoutCount per interaction | < 2 | 2-5 | > 5 (layout thrashing) |
-| LayoutDuration per frame | < 4ms | 4-10ms | > 10ms |
-| RecalcStyleCount per interaction | < 3 | 3-10 | > 10 |
-| ScriptDuration per interaction | < 50ms | 50-150ms | > 150ms |
-| JSHeapUsedSize growth per interaction | < 0.5MB | 0.5-2MB | > 2MB |
+| Metric                                | Good    | Warning  | Critical               |
+| ------------------------------------- | ------- | -------- | ---------------------- |
+| LayoutCount per interaction           | < 2     | 2-5      | > 5 (layout thrashing) |
+| LayoutDuration per frame              | < 4ms   | 4-10ms   | > 10ms                 |
+| RecalcStyleCount per interaction      | < 3     | 3-10     | > 10                   |
+| ScriptDuration per interaction        | < 50ms  | 50-150ms | > 150ms                |
+| JSHeapUsedSize growth per interaction | < 0.5MB | 0.5-2MB  | > 2MB                  |
 
 ### CPU Profiling (JavaScript Hot Functions)
 
@@ -255,7 +275,9 @@ const hotFunctions = nodes
 
 for (const node of hotFunctions) {
   const { functionName, url, lineNumber } = node.callFrame;
-  console.log(`${functionName || "(anonymous)"} at ${url}:${lineNumber} — ${node.hitCount} samples`);
+  console.log(
+    `${functionName || "(anonymous)"} at ${url}:${lineNumber} — ${node.hitCount} samples`,
+  );
 }
 ```
 
@@ -266,11 +288,9 @@ Capture a Chrome trace for detailed analysis of rendering, layout, and paint eve
 ```typescript
 // Standard profiling categories
 await client.send("Tracing.start", {
-  categories: [
-    "devtools.timeline",
-    "v8.execute",
-    "blink.user_timing",
-  ].join(","),
+  categories: ["devtools.timeline", "v8.execute", "blink.user_timing"].join(
+    ",",
+  ),
   options: "sampling-frequency=10000",
 });
 
@@ -294,19 +314,19 @@ writeFileSync("trace.json", JSON.stringify({ traceEvents: traceChunks }));
 
 // Analyze: find long tasks (>50ms)
 const longTasks = traceChunks.filter(
-  (e: any) => e.name === "RunTask" && e.dur && e.dur > 50_000 // microseconds
+  (e: any) => e.name === "RunTask" && e.dur && e.dur > 50_000, // microseconds
 );
 console.log(`Long tasks (>50ms): ${longTasks.length}`);
 ```
 
 **Tracing category presets:**
 
-| Preset | Categories | Use When |
-| --- | --- | --- |
-| Standard | `devtools.timeline`, `v8.execute`, `blink.user_timing` | General profiling, low overhead |
-| Deep | + `disabled-by-default-devtools.timeline.frame`, `disabled-by-default-v8.cpu_profiler` | Detailed frame timing and JS profiling |
-| Layout debug | + `disabled-by-default-devtools.timeline.invalidationTracking` | Investigating layout thrashing |
-| Memory | `devtools.timeline`, `disabled-by-default-v8.gc` | GC pressure analysis |
+| Preset       | Categories                                                                             | Use When                               |
+| ------------ | -------------------------------------------------------------------------------------- | -------------------------------------- |
+| Standard     | `devtools.timeline`, `v8.execute`, `blink.user_timing`                                 | General profiling, low overhead        |
+| Deep         | + `disabled-by-default-devtools.timeline.frame`, `disabled-by-default-v8.cpu_profiler` | Detailed frame timing and JS profiling |
+| Layout debug | + `disabled-by-default-devtools.timeline.invalidationTracking`                         | Investigating layout thrashing         |
+| Memory       | `devtools.timeline`, `disabled-by-default-v8.gc`                                       | GC pressure analysis                   |
 
 ### Collecting Core Web Vitals via CDP
 
@@ -315,7 +335,12 @@ Inject PerformanceObservers before navigation to capture real CWV metrics:
 ```typescript
 // Inject observers BEFORE navigating
 await page.evaluateOnNewDocument(() => {
-  (window as any).__perfMetrics = { lcp: null, cls: 0, longTasks: [], interactions: [] };
+  (window as any).__perfMetrics = {
+    lcp: null,
+    cls: 0,
+    longTasks: [],
+    interactions: [],
+  };
 
   new PerformanceObserver((list) => {
     const entries = list.getEntries();
@@ -344,7 +369,9 @@ await page.goto("https://example.com");
 await page.waitForLoadState("networkidle");
 
 // Collect
-const metrics = await page.evaluate(() => JSON.stringify((window as any).__perfMetrics));
+const metrics = await page.evaluate(() =>
+  JSON.stringify((window as any).__perfMetrics),
+);
 console.log(JSON.parse(metrics));
 ```
 
@@ -434,15 +461,16 @@ clearInterval(interval);
 
 **Memory thresholds:**
 
-| Metric | Good | Warning | Critical |
-| --- | --- | --- | --- |
-| Initial JS heap | < 10MB | 10-50MB | > 50MB |
-| Heap growth per interaction | < 0.5MB | 0.5-2MB | > 2MB |
-| Heap growth after GC | 0 | < 1MB/min | > 1MB/min (leak) |
-| Detached DOM nodes after GC | 0 | 1-10 | > 10 (leak) |
+| Metric                      | Good    | Warning   | Critical         |
+| --------------------------- | ------- | --------- | ---------------- |
+| Initial JS heap             | < 10MB  | 10-50MB   | > 50MB           |
+| Heap growth per interaction | < 0.5MB | 0.5-2MB   | > 2MB            |
+| Heap growth after GC        | 0       | < 1MB/min | > 1MB/min (leak) |
+| Detached DOM nodes after GC | 0       | 1-10      | > 10 (leak)      |
 | Event listener count growth | 0/cycle | < 5/cycle | > 5/cycle (leak) |
 
 Common leak sources:
+
 - Event listeners not removed on component unmount
 - `setInterval`/`setTimeout` not cleared
 - Closures holding references to detached DOM nodes
@@ -459,6 +487,7 @@ JavaScript reads a layout property, writes to the DOM, then reads again — forc
 `offsetTop/Left/Width/Height`, `scrollTop/Left/Width/Height`, `clientTop/Left/Width/Height`, `getComputedStyle()`, `getBoundingClientRect()`, `innerHeight/Width`, `scrollIntoView()`, `focus()`
 
 **Detection via CDP metrics:**
+
 ```typescript
 // If LayoutCount delta > 5 for a single interaction = layout thrashing
 const before = await getMetrics(client);
@@ -470,6 +499,7 @@ if (after.LayoutCount - before.LayoutCount > 5) {
 ```
 
 **Fix pattern:**
+
 ```javascript
 // BAD: read-write-read-write in loop (thrashing)
 items.forEach((el) => {
@@ -497,14 +527,16 @@ function countNodes(node: any): number {
 }
 
 const nodeCount = countNodes(root);
-console.log(`DOM nodes: ${nodeCount} ${nodeCount > 1500 ? "WARNING: excessive" : "OK"}`);
+console.log(
+  `DOM nodes: ${nodeCount} ${nodeCount > 1500 ? "WARNING: excessive" : "OK"}`,
+);
 ```
 
-| Metric | Good | Warning | Critical |
-| --- | --- | --- | --- |
-| Total DOM nodes | < 800 | 800-1500 | > 1500 |
-| Maximum DOM depth | < 15 | 15-32 | > 32 |
-| Max children per element | < 30 | 30-60 | > 60 |
+| Metric                   | Good  | Warning  | Critical |
+| ------------------------ | ----- | -------- | -------- |
+| Total DOM nodes          | < 800 | 800-1500 | > 1500   |
+| Maximum DOM depth        | < 15  | 15-32    | > 32     |
+| Max children per element | < 30  | 30-60    | > 60     |
 
 ### Unused CSS Detection
 
@@ -521,7 +553,9 @@ await page.waitForLoadState("networkidle");
 const { ruleUsage } = await client.send("CSS.stopRuleUsageTracking");
 const total = ruleUsage.length;
 const unused = ruleUsage.filter((r: any) => !r.used).length;
-console.log(`CSS rules: ${total} total, ${unused} unused (${((unused / total) * 100).toFixed(0)}%)`);
+console.log(
+  `CSS rules: ${total} total, ${unused} unused (${((unused / total) * 100).toFixed(0)}%)`,
+);
 ```
 
 ### JS Code Coverage
@@ -542,16 +576,25 @@ const { result } = await client.send("Profiler.takePreciseCoverage");
 for (const script of result) {
   const totalBytes = script.functions.reduce(
     (sum: number, fn: any) =>
-      sum + fn.ranges.reduce((s: number, r: any) => s + r.endOffset - r.startOffset, 0),
-    0
+      sum +
+      fn.ranges.reduce(
+        (s: number, r: any) => s + r.endOffset - r.startOffset,
+        0,
+      ),
+    0,
   );
   const usedBytes = script.functions.reduce(
     (sum: number, fn: any) =>
-      sum + fn.ranges.filter((r: any) => r.count > 0).reduce((s: number, r: any) => s + r.endOffset - r.startOffset, 0),
-    0
+      sum +
+      fn.ranges
+        .filter((r: any) => r.count > 0)
+        .reduce((s: number, r: any) => s + r.endOffset - r.startOffset, 0),
+    0,
   );
   if (totalBytes > 10000) {
-    console.log(`${script.url}: ${((usedBytes / totalBytes) * 100).toFixed(0)}% used (${(totalBytes / 1024).toFixed(0)}KB)`);
+    console.log(
+      `${script.url}: ${((usedBytes / totalBytes) * 100).toFixed(0)}% used (${(totalBytes / 1024).toFixed(0)}KB)`,
+    );
   }
 }
 ```
@@ -582,25 +625,25 @@ npx source-map-explorer dist/*.js --html analysis.html
 
 ### What to Look For
 
-| Signal | Problem | Fix |
-| --- | --- | --- |
-| `moment.js` > 200KB | Full locale data included | Switch to `date-fns` or `dayjs` |
-| `lodash` > 70KB | Entire library imported | Use `lodash-es` with tree-shaking or individual imports |
-| Duplicate packages | Same lib at multiple versions | Dedupe with `npm dedupe` or resolve in package.json |
-| Large polyfills | Babel polyfills for modern browsers | Update browserslist, use `useBuiltIns: 'usage'` |
-| Uncompressed assets | JS/CSS served without gzip/brotli | Enable compression on server/CDN |
+| Signal              | Problem                             | Fix                                                     |
+| ------------------- | ----------------------------------- | ------------------------------------------------------- |
+| `moment.js` > 200KB | Full locale data included           | Switch to `date-fns` or `dayjs`                         |
+| `lodash` > 70KB     | Entire library imported             | Use `lodash-es` with tree-shaking or individual imports |
+| Duplicate packages  | Same lib at multiple versions       | Dedupe with `npm dedupe` or resolve in package.json     |
+| Large polyfills     | Babel polyfills for modern browsers | Update browserslist, use `useBuiltIns: 'usage'`         |
+| Uncompressed assets | JS/CSS served without gzip/brotli   | Enable compression on server/CDN                        |
 
 ## Network Thresholds
 
-| Metric | Good | Warning | Critical |
-| --- | --- | --- | --- |
-| Total page weight | < 1MB | 1-3MB | > 3MB |
-| Total JS (compressed) | < 200KB | 200-500KB | > 500KB |
-| Total CSS (compressed) | < 50KB | 50-150KB | > 150KB |
-| Total images | < 500KB | 500KB-1.5MB | > 1.5MB |
-| HTTP requests | < 30 | 30-80 | > 80 |
-| Render-blocking resources | 0 | 1-2 | > 2 |
-| TTFB | < 200ms | 200-600ms | > 600ms |
+| Metric                    | Good    | Warning     | Critical |
+| ------------------------- | ------- | ----------- | -------- |
+| Total page weight         | < 1MB   | 1-3MB       | > 3MB    |
+| Total JS (compressed)     | < 200KB | 200-500KB   | > 500KB  |
+| Total CSS (compressed)    | < 50KB  | 50-150KB    | > 150KB  |
+| Total images              | < 500KB | 500KB-1.5MB | > 1.5MB  |
+| HTTP requests             | < 30    | 30-80       | > 80     |
+| Render-blocking resources | 0       | 1-2         | > 2      |
+| TTFB                      | < 200ms | 200-600ms   | > 600ms  |
 
 ## Lighthouse CI (Automated Tracking)
 

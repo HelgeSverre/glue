@@ -15,8 +15,8 @@ Machine-managed JSON file used by `ConfigStore` (`lib/src/storage/config_store.d
 
 ## Fields
 
-| Field | Type | Description |
-| --- | --- | --- |
+| Field           | Type       | Description                                                              |
+| --------------- | ---------- | ------------------------------------------------------------------------ |
 | `trusted_tools` | `string[]` | Tool names permanently approved by the user (skip confirmation prompts). |
 
 ## Behavior

@@ -5,8 +5,14 @@ import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/llm/anthropic_client.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
 import 'package:glue/src/providers/resolved.dart';
+import 'package:http/http.dart' as http;
 
 class AnthropicAdapter extends ProviderAdapter {
+  AnthropicAdapter({http.Client Function()? requestClientFactory})
+      : _requestClientFactory = requestClientFactory;
+
+  final http.Client Function()? _requestClientFactory;
+
   @override
   String get adapterId => 'anthropic';
 
@@ -29,6 +35,7 @@ class AnthropicAdapter extends ProviderAdapter {
       model: model.apiId,
       systemPrompt: systemPrompt,
       baseUrl: provider.baseUrl ?? 'https://api.anthropic.com',
+      requestClientFactory: _requestClientFactory,
     );
   }
 }

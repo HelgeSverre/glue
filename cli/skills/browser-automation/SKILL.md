@@ -81,13 +81,13 @@ await browser.close();
 
 Use the most stable selector available. Never use index-based selectors (`nth-child`, array indices).
 
-| Priority | Selector Type | Example | When to Use |
-| --- | --- | --- | --- |
-| 1 | `data-testid` | `[data-testid="submit-btn"]` | Always preferred if available |
-| 2 | ARIA role + name | `role=button[name="Submit"]` | Accessible apps |
-| 3 | Text content | `text=Sign In` | Visible, stable labels |
-| 4 | CSS with semantics | `form.login input[type="email"]` | Structural selectors |
-| 5 | CSS class (last resort) | `.btn-primary` | Only if nothing else works |
+| Priority | Selector Type           | Example                          | When to Use                   |
+| -------- | ----------------------- | -------------------------------- | ----------------------------- |
+| 1        | `data-testid`           | `[data-testid="submit-btn"]`     | Always preferred if available |
+| 2        | ARIA role + name        | `role=button[name="Submit"]`     | Accessible apps               |
+| 3        | Text content            | `text=Sign In`                   | Visible, stable labels        |
+| 4        | CSS with semantics      | `form.login input[type="email"]` | Structural selectors          |
+| 5        | CSS class (last resort) | `.btn-primary`                   | Only if nothing else works    |
 
 ```typescript
 // Good — stable selectors
@@ -129,14 +129,14 @@ await page.waitForURL("**/dashboard", { timeout: 10_000 });
 
 **When to use which wait:**
 
-| Situation | Wait Method |
-| --- | --- |
-| Page navigation | `waitForLoadState("networkidle")` |
-| Element appears | `waitForSelector(selector, { state: "visible" })` |
+| Situation                            | Wait Method                                        |
+| ------------------------------------ | -------------------------------------------------- |
+| Page navigation                      | `waitForLoadState("networkidle")`                  |
+| Element appears                      | `waitForSelector(selector, { state: "visible" })`  |
 | Element disappears (loading spinner) | `waitForSelector(".spinner", { state: "hidden" })` |
-| URL changes (SPA) | `waitForURL(pattern)` |
-| API response | `waitForResponse(urlOrPredicate)` |
-| Animation completes | `waitForTimeout(ms)` — last resort only |
+| URL changes (SPA)                    | `waitForURL(pattern)`                              |
+| API response                         | `waitForResponse(urlOrPredicate)`                  |
+| Animation completes                  | `waitForTimeout(ms)` — last resort only            |
 
 ## Authentication
 
@@ -206,7 +206,7 @@ When something doesn't work as expected, use this loop:
 async function debugStep(
   page: Page,
   stepName: string,
-  action: () => Promise<void>
+  action: () => Promise<void>,
 ) {
   await page.screenshot({
     path: `browser/screenshots/before-${stepName}.png`,
@@ -226,9 +226,7 @@ async function debugStep(
 }
 
 // Usage
-await debugStep(page, "login-click", () =>
-  page.click('[data-testid="login"]')
-);
+await debugStep(page, "login-click", () => page.click('[data-testid="login"]'));
 ```
 
 ## Recording Sessions
@@ -259,7 +257,7 @@ const data: string[][] = [];
 for (const row of rows) {
   const cells = await row.locator("td").all();
   const rowData = await Promise.all(
-    cells.map((cell) => cell.textContent().then((t) => (t ?? "").trim()))
+    cells.map((cell) => cell.textContent().then((t) => (t ?? "").trim())),
   );
   data.push(rowData);
 }
@@ -274,9 +272,7 @@ while (true) {
   const currentCount = items.length;
   if (currentCount === previousCount) break; // No new items loaded
   previousCount = currentCount;
-  await page.evaluate(() =>
-    window.scrollTo(0, document.body.scrollHeight)
-  );
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await page.waitForTimeout(1000);
   await page.waitForLoadState("networkidle");
 }
@@ -288,9 +284,7 @@ while (true) {
 const allData: string[] = [];
 while (true) {
   const items = await page.locator(".result-item").all();
-  const texts = await Promise.all(
-    items.map((item) => item.textContent())
-  );
+  const texts = await Promise.all(items.map((item) => item.textContent()));
   allData.push(...texts.filter((t): t is string => t !== null));
 
   const nextButton = page.locator('a:has-text("Next")');
@@ -404,6 +398,7 @@ services:
 ```
 
 **Key principles for Docker execution:**
+
 - Mount `./browser/` as a volume so screenshots and recordings are accessible on host
 - Mount `./scripts/` so you can edit automation scripts without rebuilding
 - Pass credentials via `-e` environment variables, never bake into image
@@ -412,17 +407,17 @@ services:
 
 ## Common Pitfalls
 
-| Pitfall | Fix |
-| --- | --- |
-| Acting before page is ready | Always `waitForLoadState("networkidle")` after navigation |
-| Selectors from source code don't match | Use reconnaissance pattern — inspect the live DOM |
-| Flaky clicks on moving elements | `waitForSelector({ state: "visible" })` before clicking |
-| Stale element references after navigation | Re-query selectors after any page change |
-| "Element is not visible" errors | Check if element is behind a modal, below fold, or hidden by CSS |
-| Timeout on slow pages | Increase timeout: `page.setDefaultTimeout(30_000)` |
-| Headless renders differently | Set viewport: `browser.newContext({ viewport: { width: 1280, height: 720 } })` |
-| File download doesn't trigger | Use `page.waitForEvent("download")` |
-| iframes not accessible | Switch context: `page.frameLocator("#iframe-id")` |
+| Pitfall                                   | Fix                                                                            |
+| ----------------------------------------- | ------------------------------------------------------------------------------ |
+| Acting before page is ready               | Always `waitForLoadState("networkidle")` after navigation                      |
+| Selectors from source code don't match    | Use reconnaissance pattern — inspect the live DOM                              |
+| Flaky clicks on moving elements           | `waitForSelector({ state: "visible" })` before clicking                        |
+| Stale element references after navigation | Re-query selectors after any page change                                       |
+| "Element is not visible" errors           | Check if element is behind a modal, below fold, or hidden by CSS               |
+| Timeout on slow pages                     | Increase timeout: `page.setDefaultTimeout(30_000)`                             |
+| Headless renders differently              | Set viewport: `browser.newContext({ viewport: { width: 1280, height: 720 } })` |
+| File download doesn't trigger             | Use `page.waitForEvent("download")`                                            |
+| iframes not accessible                    | Switch context: `page.frameLocator("#iframe-id")`                              |
 
 ## Verification Checklist
 

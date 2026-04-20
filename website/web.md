@@ -15,36 +15,38 @@ because I use Glue for scraping and automation about as much as for coding —
 nothing hype, just more practical capability than you'd typically find.
 
 Everything below works out of the box. Providers with API keys light up
-automatically. Browser backends swap with one config line.
+automatically, and DuckDuckGo gives `web_search` a zero-config fallback.
+Browser backends swap with one config line.
 
 ## The tools at a glance
 
-| Tool | What it does | Status |
-| --- | --- | --- |
-| [`web_search`](#search) | Query Brave, Tavily, or Firecrawl. Provider auto-detected from env. | <FeatureStatus status="shipping" /> |
-| [`web_fetch`](#fetch) | HTML → cleaned markdown, PDF → text. OCR and Jina fallbacks. | <FeatureStatus status="shipping" /> |
-| [`web_browser`](#browser) | Drive a real Chrome over CDP. Six actions, seven backends. | <FeatureStatus status="experimental" /> |
+| Tool                      | What it does                                                                                          | Status                                  |
+| ------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| [`web_search`](#search)   | Query Brave, DuckDuckGo, Tavily, or Firecrawl. Auto-detects keyed providers with DuckDuckGo fallback. | <FeatureStatus status="shipping" />     |
+| [`web_fetch`](#fetch)     | HTML → cleaned markdown, PDF → text. OCR and Jina fallbacks.                                          | <FeatureStatus status="shipping" />     |
+| [`web_browser`](#browser) | Drive a real Chrome over CDP. Six actions, seven backends.                                            | <FeatureStatus status="experimental" /> |
 
 ## Search
 
 <FeatureStatus status="shipping" />
 
-Three providers, one interface. Glue looks at the environment on startup and
-picks the first key it finds. You can pin a provider in config if more than
-one is set.
+Four providers, one interface. Glue prefers an explicitly configured provider.
+Otherwise it tries the first configured provider it finds and falls back to
+DuckDuckGo, which needs no API key.
 
-| Provider | Strength | Env var |
-| --- | --- | --- |
-| Brave | General results, straightforward developer plan. | `BRAVE_API_KEY` |
-| Tavily | Agent-focused; returns short summaries with results. | `TAVILY_API_KEY` |
-| Firecrawl | Search plus a crawl/scrape API on the same key. | `FIRECRAWL_API_KEY` |
+| Provider   | Strength                                                        | Env var             |
+| ---------- | --------------------------------------------------------------- | ------------------- |
+| DuckDuckGo | Zero-config fallback via the HTML endpoint. No account, no key. | None                |
+| Brave      | General results, straightforward developer plan.                | `BRAVE_API_KEY`     |
+| Tavily     | Agent-focused; returns short summaries with results.            | `TAVILY_API_KEY`    |
+| Firecrawl  | Search plus a crawl/scrape API on the same key.                 | `FIRECRAWL_API_KEY` |
 
 <ConfigSnippet title="~/.glue/config.yaml — pin a search provider">
 
 ```yaml
 web:
   search:
-    provider: brave        # brave | tavily | firecrawl
+    provider: brave # brave | tavily | firecrawl | duckduckgo
 ```
 
 </ConfigSnippet>
@@ -69,9 +71,9 @@ awkward cases:
 ```yaml
 web:
   fetch:
-    jina_api_key: ${JINA_API_KEY}       # optional, for hostile pages
+    jina_api_key: ${JINA_API_KEY} # optional, for hostile pages
   pdf:
-    ocr_provider: mistral               # mistral | openai
+    ocr_provider: mistral # mistral | openai
     mistral_api_key: ${MISTRAL_API_KEY}
 ```
 
@@ -91,36 +93,36 @@ Six verbs, all running against a single browser session that persists across
 tool calls within the same turn. The agent can navigate, fill a form, submit,
 and read the result without reopening the tab.
 
-| Action | Use for |
-| --- | --- |
-| `navigate` | Open a URL; waits for network idle. |
-| `click` | Click any selector in the live DOM. |
-| `type` | Fill an input. |
-| `screenshot` | Full page or a single element, saved to disk. |
-| `extract_text` | Cleaned markdown of the current page (capped at ~50k tokens). |
-| `evaluate` | Run arbitrary JavaScript in page context and return the result. |
+| Action         | Use for                                                         |
+| -------------- | --------------------------------------------------------------- |
+| `navigate`     | Open a URL; waits for network idle.                             |
+| `click`        | Click any selector in the live DOM.                             |
+| `type`         | Fill an input.                                                  |
+| `screenshot`   | Full page or a single element, saved to disk.                   |
+| `extract_text` | Cleaned markdown of the current page (capped at ~50k tokens).   |
+| `evaluate`     | Run arbitrary JavaScript in page context and return the result. |
 
 ### Backends
 
 All seven implement the same `BrowserEndpointProvider` interface, so swapping
 is a one-line config change rather than a code change.
 
-| Backend | Runs on | Best for | Status |
-| --- | --- | --- | --- |
-| `local` | Your machine (Puppeteer + Chrome) | Iteration. `headed: true` lets you watch it work. | <FeatureStatus status="shipping" /> |
-| `docker` | Local `browserless/chrome` container | Keeping the browser off your host. Container dies with the session. | <FeatureStatus status="shipping" /> |
-| `browserbase` | Cloud — [browserbase.com](https://browserbase.com) | Hosted sessions with replays. | <FeatureStatus status="experimental" /> |
-| `browserless` | Cloud or self-hosted — [browserless.io](https://browserless.io) | Scale and self-hosting. | <FeatureStatus status="experimental" /> |
-| `steel` | Cloud — [steel.dev](https://steel.dev) | Agent-focused cloud sessions. | <FeatureStatus status="experimental" /> |
-| `anchor` | Cloud — [anchorbrowser.io](https://anchorbrowser.io) | Agentic browser sessions with live view. | <FeatureStatus status="experimental" /> |
-| `hyperbrowser` | Cloud — [hyperbrowser.ai](https://hyperbrowser.ai) | Agent-focused cloud sessions with fast launches. | <FeatureStatus status="experimental" /> |
+| Backend        | Runs on                                                         | Best for                                                            | Status                                  |
+| -------------- | --------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------- |
+| `local`        | Your machine (Puppeteer + Chrome)                               | Iteration. `headed: true` lets you watch it work.                   | <FeatureStatus status="shipping" />     |
+| `docker`       | Local `browserless/chrome` container                            | Keeping the browser off your host. Container dies with the session. | <FeatureStatus status="shipping" />     |
+| `browserbase`  | Cloud — [browserbase.com](https://browserbase.com)              | Hosted sessions with replays.                                       | <FeatureStatus status="experimental" /> |
+| `browserless`  | Cloud or self-hosted — [browserless.io](https://browserless.io) | Scale and self-hosting.                                             | <FeatureStatus status="experimental" /> |
+| `steel`        | Cloud — [steel.dev](https://steel.dev)                          | Agent-focused cloud sessions.                                       | <FeatureStatus status="experimental" /> |
+| `anchor`       | Cloud — [anchorbrowser.io](https://anchorbrowser.io)            | Agentic browser sessions with live view.                            | <FeatureStatus status="experimental" /> |
+| `hyperbrowser` | Cloud — [hyperbrowser.ai](https://hyperbrowser.ai)              | Agent-focused cloud sessions with fast launches.                    | <FeatureStatus status="experimental" /> |
 
 <ConfigSnippet title="~/.glue/config.yaml — switch browser backends">
 
 ```yaml
 web:
   browser:
-    backend: docker        # local | docker | browserbase | browserless | steel | anchor | hyperbrowser
+    backend: docker # local | docker | browserbase | browserless | steel | anchor | hyperbrowser
     docker:
       image: browserless/chrome:latest
       port: 3000
@@ -138,31 +140,31 @@ Every API key resolves in the same order: environment first, then
 `~/.glue/credentials.json`, then — if you really insist — `config.yaml`.
 Nothing auto-reads project-local config.
 
-| What needs a key | Env var |
-| --- | --- |
-| Brave search | `BRAVE_API_KEY` |
-| Tavily search | `TAVILY_API_KEY` |
-| Firecrawl search | `FIRECRAWL_API_KEY` |
-| Jina fetch fallback | `JINA_API_KEY` |
-| Mistral OCR | `MISTRAL_API_KEY` |
-| OpenAI OCR | `OPENAI_API_KEY` |
-| Browserbase browser | `BROWSERBASE_API_KEY` + `BROWSERBASE_PROJECT_ID` |
-| Browserless browser | `BROWSERLESS_API_KEY` |
-| Steel browser | `STEEL_API_KEY` |
-| Anchor browser | `ANCHOR_API_KEY` |
-| Hyperbrowser browser | `HYPERBROWSER_API_KEY` |
+| What needs a key     | Env var                                          |
+| -------------------- | ------------------------------------------------ |
+| Brave search         | `BRAVE_API_KEY`                                  |
+| Tavily search        | `TAVILY_API_KEY`                                 |
+| Firecrawl search     | `FIRECRAWL_API_KEY`                              |
+| Jina fetch fallback  | `JINA_API_KEY`                                   |
+| Mistral OCR          | `MISTRAL_API_KEY`                                |
+| OpenAI OCR           | `OPENAI_API_KEY`                                 |
+| Browserbase browser  | `BROWSERBASE_API_KEY` + `BROWSERBASE_PROJECT_ID` |
+| Browserless browser  | `BROWSERLESS_API_KEY`                            |
+| Steel browser        | `STEEL_API_KEY`                                  |
+| Anchor browser       | `ANCHOR_API_KEY`                                 |
+| Hyperbrowser browser | `HYPERBROWSER_API_KEY`                           |
 
 ## Pairing with runtimes
 
 Web tools compose with Glue's runtime — pair them when the work is risky or
 you don't want the traffic on your host.
 
-| Goal | Suggested pairing |
-| --- | --- |
-| Quick fetch or a search | Host runtime + whatever provider you have. |
-| Clicking through an untrusted site | Docker runtime + Docker browser. |
-| Reading a scanned filing | Any runtime + fetch with OCR. |
-| Scale scraping | <FeatureStatus status="planned" /> Cloud runtime + cloud browser. |
+| Goal                               | Suggested pairing                                                 |
+| ---------------------------------- | ----------------------------------------------------------------- |
+| Quick fetch or a search            | Host runtime + whatever provider you have.                        |
+| Clicking through an untrusted site | Docker runtime + Docker browser.                                  |
+| Reading a scanned filing           | Any runtime + fetch with OCR.                                     |
+| Scale scraping                     | <FeatureStatus status="planned" /> Cloud runtime + cloud browser. |
 
 Full matrix of runtime × browser combinations lives on the
 [Runtimes page](/runtimes).

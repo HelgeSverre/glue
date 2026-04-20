@@ -79,11 +79,15 @@ void main() {
       expect(vArgs, contains('/shared:/shared:rw'));
     });
 
-    // Integration test — only runs if Docker is available
+    // Integration test — only runs if the Docker daemon is actually up.
+    // `docker --version` just checks the CLI binary and exits 0 even when
+    // the daemon is down, so the test would then fail trying to run a
+    // container. `docker info` is the minimum probe that touches the
+    // daemon.
     test('runCapture executes in container', () async {
-      final result = await Process.run('docker', ['--version']);
+      final result = await Process.run('docker', ['info']);
       if (result.exitCode != 0) {
-        markTestSkipped('Docker not available');
+        markTestSkipped('Docker daemon not available');
         return;
       }
 

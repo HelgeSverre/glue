@@ -12,8 +12,14 @@ import 'package:glue/src/llm/openai_client.dart';
 import 'package:glue/src/providers/compatibility_profile.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
 import 'package:glue/src/providers/resolved.dart';
+import 'package:http/http.dart' as http;
 
 class OpenAiCompatibleAdapter extends ProviderAdapter {
+  OpenAiCompatibleAdapter({http.Client Function()? requestClientFactory})
+      : _requestClientFactory = requestClientFactory;
+
+  final http.Client Function()? _requestClientFactory;
+
   @override
   String get adapterId => 'openai';
 
@@ -40,6 +46,7 @@ class OpenAiCompatibleAdapter extends ProviderAdapter {
       baseUrl: provider.baseUrl ?? 'https://api.openai.com',
       profile: profile,
       extraHeaders: provider.requestHeaders,
+      requestClientFactory: _requestClientFactory,
     );
   }
 }

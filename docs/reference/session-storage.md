@@ -71,9 +71,7 @@ Mutable per-session runtime state.
 {
   "version": 1,
   "docker": {
-    "mounts": [
-      { "host_path": "/Users/helge/code/shared", "mode": "rw" }
-    ]
+    "mounts": [{ "host_path": "/Users/helge/code/shared", "mode": "rw" }]
   },
   "browser": {
     "container_ids": ["abc123"]

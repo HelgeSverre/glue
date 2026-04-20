@@ -159,16 +159,16 @@ The yellow bar between output and input zones. Shows session title, branch, prov
 
 `ApprovalMode` (in `lib/src/config/approval_mode.dart`) controls whether mutating tools need confirmation. Shift+Tab toggles it; the active mode appears in the status bar.
 
-| Mode      | Behavior |
-| --------- | -------- |
+| Mode      | Behavior                                                   |
+| --------- | ---------------------------------------------------------- |
 | `confirm` | Ask for confirmation on untrusted mutating tools (default) |
-| `auto`    | Auto-approve all tools |
+| `auto`    | Auto-approve all tools                                     |
 
 Approval interacts with `ToolTrust` (in `lib/src/agent/tools.dart`):
 
-| ToolTrust  | Examples                                                     | Behavior in `confirm` |
-| ---------- | ------------------------------------------------------------ | --------------------- |
-| `safe`     | `read_file`, `grep`, `list_directory`, `skill`, `web_search` | Auto-approved |
+| ToolTrust  | Examples                                                     | Behavior in `confirm`                |
+| ---------- | ------------------------------------------------------------ | ------------------------------------ |
+| `safe`     | `read_file`, `grep`, `list_directory`, `skill`, `web_search` | Auto-approved                        |
 | `fileEdit` | `write_file`, `edit_file`                                    | Requires confirmation unless trusted |
 | `command`  | `bash`                                                       | Requires confirmation unless trusted |
 
@@ -230,17 +230,17 @@ Configuration lives in `WebConfig`, `PdfConfig`, and `BrowserConfig` (all in `li
 
 The observability subsystem traces LLM calls and tool executions as spans and routes them to pluggable backends. Core classes live in `lib/src/observability/`.
 
-| Class                          | Role                                                             |
-| ------------------------------ | ---------------------------------------------------------------- |
-| `Observability`                | Central coordinator — starts/ends spans, routes to sinks         |
-| `ObservabilitySpan`            | A span with trace ID, parent ID, name, kind, attributes, timing  |
-| `ObservabilitySink`            | Abstract interface for span export                               |
+| Class               | Role                                                            |
+| ------------------- | --------------------------------------------------------------- |
+| `Observability`     | Central coordinator — starts/ends spans, routes to sinks        |
+| `ObservabilitySpan` | A span with trace ID, parent ID, name, kind, attributes, timing |
+| `ObservabilitySink` | Abstract interface for span export                              |
 
 ### Sinks
 
-| Sink           | Backend                                      | Config class       |
-| -------------- | -------------------------------------------- | ------------------ |
-| `FileSink`     | Append spans to a local JSONL file           | (always available) |
+| Sink       | Backend                            | Config class       |
+| ---------- | ---------------------------------- | ------------------ |
+| `FileSink` | Append spans to a local JSONL file | (always available) |
 
 Configuration is in `ObservabilityConfig` (in `lib/src/observability/observability_config.dart`).
 

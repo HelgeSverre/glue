@@ -310,6 +310,7 @@ uptime  # Load average should be < 0.5
 ```
 
 **Thermal throttling**: Laptops throttle under sustained load. If your benchmark runs > 30 seconds, results will include thermal effects. Either:
+
 - Use a desktop/server for benchmarks
 - Add cooling-off periods between runs
 - Monitor CPU frequency during the run
@@ -374,10 +375,10 @@ cp bench-results.json "bench-history/$(git rev-parse HEAD).json"
 
 ## Micro vs. Macro Benchmarks
 
-| Type | Measures | When to Use | Watch Out For |
-| --- | --- | --- | --- |
-| **Micro** | Single function, tight loop | Comparing algorithms, data structures | Dead code elimination, unrealistic inputs |
-| **Macro** | End-to-end workflow | Real-world performance, system bottlenecks | Too many variables, hard to isolate changes |
+| Type      | Measures                    | When to Use                                | Watch Out For                               |
+| --------- | --------------------------- | ------------------------------------------ | ------------------------------------------- |
+| **Micro** | Single function, tight loop | Comparing algorithms, data structures      | Dead code elimination, unrealistic inputs   |
+| **Macro** | End-to-end workflow         | Real-world performance, system bottlenecks | Too many variables, hard to isolate changes |
 
 **Rule**: Start with macro benchmarks to identify bottlenecks, then use micro benchmarks to validate specific optimizations.
 

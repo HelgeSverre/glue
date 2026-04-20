@@ -74,6 +74,7 @@ cargo flamegraph --root --bench my_benchmark
 ```
 
 **Reading the flamegraph:**
+
 - Width = time spent (wider = more time)
 - Y-axis = call stack depth (bottom = entry point, top = leaf functions)
 - Look for **wide plateaus** at the top — these are the hot functions
@@ -146,16 +147,16 @@ heaptrack_gui heaptrack.my-binary.*.zst
 
 ### Common Rust Hotspots & Fixes
 
-| Hotspot Pattern | What You'll See | Fix |
-| --- | --- | --- |
-| Unnecessary `.clone()` | `clone` in flamegraph, high allocation count in DHAT | Borrow instead: `&str` instead of `String`, `&[T]` instead of `Vec<T>` |
-| `String` vs `&str` | `alloc::string::String::from` taking significant time | Accept `&str` in function signatures, use `Cow<str>` when sometimes owned |
-| Excessive `Vec` allocation | Many small `Vec::new()` / `Vec::push` | Pre-allocate with `Vec::with_capacity()`, use `SmallVec` for small collections |
-| Lock contention | `Mutex::lock` or `RwLock` wide in flamegraph | Reduce critical section scope, use `parking_lot` mutex, consider lock-free structures |
-| `Arc<Mutex<>>` everywhere | Widespread locking, thread contention | Restructure to avoid shared state, use channels, or `dashmap` for concurrent maps |
-| Serialization (serde) | `serde_json::to_string` / `from_str` hot | Use `simd-json`, or `serde_json::to_writer` (avoid intermediate String), consider binary formats |
-| Hash map overhead | `HashMap::insert` / `get` hot | Use `FxHashMap` (faster hash), or `IndexMap` if iteration order matters |
-| Regex compilation | `Regex::new` called repeatedly | Compile once with `lazy_static!` or `std::sync::OnceLock` |
+| Hotspot Pattern            | What You'll See                                       | Fix                                                                                              |
+| -------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Unnecessary `.clone()`     | `clone` in flamegraph, high allocation count in DHAT  | Borrow instead: `&str` instead of `String`, `&[T]` instead of `Vec<T>`                           |
+| `String` vs `&str`         | `alloc::string::String::from` taking significant time | Accept `&str` in function signatures, use `Cow<str>` when sometimes owned                        |
+| Excessive `Vec` allocation | Many small `Vec::new()` / `Vec::push`                 | Pre-allocate with `Vec::with_capacity()`, use `SmallVec` for small collections                   |
+| Lock contention            | `Mutex::lock` or `RwLock` wide in flamegraph          | Reduce critical section scope, use `parking_lot` mutex, consider lock-free structures            |
+| `Arc<Mutex<>>` everywhere  | Widespread locking, thread contention                 | Restructure to avoid shared state, use channels, or `dashmap` for concurrent maps                |
+| Serialization (serde)      | `serde_json::to_string` / `from_str` hot              | Use `simd-json`, or `serde_json::to_writer` (avoid intermediate String), consider binary formats |
+| Hash map overhead          | `HashMap::insert` / `get` hot                         | Use `FxHashMap` (faster hash), or `IndexMap` if iteration order matters                          |
+| Regex compilation          | `Regex::new` called repeatedly                        | Compile once with `lazy_static!` or `std::sync::OnceLock`                                        |
 
 ### Rust Optimization Patterns
 
@@ -242,6 +243,7 @@ go tool pprof -http=:8080 cpu.prof
 ```
 
 **Reading pprof output:**
+
 - **Flat time**: time spent in the function itself (excluding callees)
 - **Cumulative time**: time spent in the function + all functions it calls
 - High flat time = the function itself is slow → optimize its code
@@ -326,16 +328,16 @@ benchstat output shows whether the difference is statistically significant (p-va
 
 ### Common Go Hotspots & Fixes
 
-| Hotspot Pattern | What You'll See in pprof | Fix |
-| --- | --- | --- |
-| GC pressure from small allocations | `runtime.mallocgc` high in CPU profile | Pre-allocate slices, use `sync.Pool`, reduce pointer-heavy structures |
-| String concatenation in loops | `runtime.growslice` or `runtime.stringconcat` | Use `strings.Builder` |
-| Goroutine leaks | Goroutine count grows, never decreases | Ensure goroutines have exit conditions, use `context.Context` for cancellation |
-| Channel contention | Block profile shows channel operations | Buffer channels, restructure to avoid contention, use `sync.Mutex` for simple cases |
-| Interface boxing | `runtime.convT` or `runtime.convTslice` | Avoid interface{}/any in hot paths, use generics |
-| Excessive reflection | `reflect.Value` methods in profile | Use code generation or generics instead |
-| Map access contention | `runtime.mapaccess` with mutex | Use `sync.Map` for read-heavy workloads, or shard the map |
-| JSON marshal/unmarshal | `encoding/json` hot | Use `github.com/bytedance/sonic` or `github.com/goccy/go-json`, or switch to protobuf |
+| Hotspot Pattern                    | What You'll See in pprof                      | Fix                                                                                   |
+| ---------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------- |
+| GC pressure from small allocations | `runtime.mallocgc` high in CPU profile        | Pre-allocate slices, use `sync.Pool`, reduce pointer-heavy structures                 |
+| String concatenation in loops      | `runtime.growslice` or `runtime.stringconcat` | Use `strings.Builder`                                                                 |
+| Goroutine leaks                    | Goroutine count grows, never decreases        | Ensure goroutines have exit conditions, use `context.Context` for cancellation        |
+| Channel contention                 | Block profile shows channel operations        | Buffer channels, restructure to avoid contention, use `sync.Mutex` for simple cases   |
+| Interface boxing                   | `runtime.convT` or `runtime.convTslice`       | Avoid interface{}/any in hot paths, use generics                                      |
+| Excessive reflection               | `reflect.Value` methods in profile            | Use code generation or generics instead                                               |
+| Map access contention              | `runtime.mapaccess` with mutex                | Use `sync.Map` for read-heavy workloads, or shard the map                             |
+| JSON marshal/unmarshal             | `encoding/json` hot                           | Use `github.com/bytedance/sonic` or `github.com/goccy/go-json`, or switch to protobuf |
 
 ### Go Optimization Patterns
 
@@ -415,6 +417,7 @@ go tool pprof ...    # Go — the function should have less flat time
 ```
 
 **Warning signs that "improvement" is noise:**
+
 - Improvement < 5% on a measurement with CV > 5%
 - benchstat shows p-value > 0.05
 - Improvement disappears on a different machine or after reboot

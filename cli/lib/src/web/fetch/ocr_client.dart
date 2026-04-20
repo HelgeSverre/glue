@@ -15,15 +15,18 @@ class OcrClient {
   final String apiKey;
   final String model;
   final int timeoutSeconds;
+  final http.Client _client;
 
   OcrClient({
     required this.provider,
     required this.apiKey,
     required this.model,
     this.timeoutSeconds = 120,
-  });
+    http.Client? client,
+  }) : _client = client ?? http.Client();
 
-  factory OcrClient.fromConfig(PdfConfig config) => OcrClient(
+  factory OcrClient.fromConfig(PdfConfig config, {http.Client? client}) =>
+      OcrClient(
         provider: config.ocrProvider,
         apiKey: config.ocrProvider == OcrProviderType.mistral
             ? config.mistralApiKey ?? ''
@@ -31,6 +34,7 @@ class OcrClient {
         model: config.ocrProvider == OcrProviderType.mistral
             ? config.mistralModel
             : config.openaiModel,
+        client: client,
       );
 
   Map<String, String> get headers => {
@@ -56,7 +60,7 @@ class OcrClient {
     final uri = Uri.parse('https://api.mistral.ai/v1/ocr');
     final body = buildMistralRequestBody(pdfBytes);
 
-    final response = await http
+    final response = await _client
         .post(uri, headers: headers, body: body)
         .timeout(Duration(seconds: timeoutSeconds));
 
@@ -88,7 +92,7 @@ class OcrClient {
     final uri = Uri.parse(openaiEndpoint);
     final body = buildOpenAIRequestBody(pdfBytes);
 
-    final response = await http
+    final response = await _client
         .post(uri, headers: headers, body: body)
         .timeout(Duration(seconds: timeoutSeconds));
 

@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Repository Structure
 
 Monorepo with three components:
+
 - `cli/` — Main Glue CLI application (Dart). This is where most development happens.
 - `website/` — Unified marketing + docs site (VitePress), served at getglue.dev
 - `docs/` — Canonical reference material (models.yaml, plans, design docs)
@@ -20,6 +21,7 @@ When adding user-facing commands, prefer these surfaces consistently:
 - **Global flags** on the root `glue` command for cross-cutting concerns: `--version`, `--where` (paths report), `--print`/`-p`, `--json`, `--model`, `--resume`/`-r`, `--continue`, `--debug`.
 
 Naming guidance:
+
 - Prefer **noun namespaces** for extensible CLI areas: `glue config init`, `glue config show`, `glue doctor`.
 - Avoid adding one-off top-level verbs when the feature naturally belongs under an existing noun namespace.
 - Keep interactive slash command behavior and non-interactive CLI behavior aligned where practical, but do not force them to share the same exact grammar if that harms UX.
@@ -125,6 +127,7 @@ This project uses Backlog.md MCP for all task and project management activities.
 - **When to read it**: BEFORE creating tasks, or when you're unsure whether to track work
 
 These guides cover:
+
 - Decision framework for when to create tasks
 - Search-first workflow to avoid duplicates
 - Links to detailed guides for task creation, execution, and finalization

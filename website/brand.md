@@ -55,19 +55,19 @@ Written **Glue**. Never all-caps, never stylized. The CLI binary is `glue`.
 Yellow is an **accent**, not decoration. Use it for focus states, the
 `shipping` status pill, and the mark itself. Everything else is neutral.
 
-| Role | Hex |
-| --- | --- |
-| Accent | `#FACC15` |
-| Accent soft | `rgba(250, 204, 21, 0.12)` |
-| Surface (dark) | `#0A0A0B` |
-| Surface (light) | `#FFFFFF` |
-| Text primary (dark) | `#E6E6E6` |
-| Text primary (light) | `#111111` |
-| Divider | `#222326` |
-| Success | `#22C55E` |
-| Warning | `#EAB308` |
-| Error | `#EF4444` |
-| Info | `#3B82F6` |
+| Role                 | Hex                        |
+| -------------------- | -------------------------- |
+| Accent               | `#FACC15`                  |
+| Accent soft          | `rgba(250, 204, 21, 0.12)` |
+| Surface (dark)       | `#0A0A0B`                  |
+| Surface (light)      | `#FFFFFF`                  |
+| Text primary (dark)  | `#E6E6E6`                  |
+| Text primary (light) | `#111111`                  |
+| Divider              | `#222326`                  |
+| Success              | `#22C55E`                  |
+| Warning              | `#EAB308`                  |
+| Error                | `#EF4444`                  |
+| Info                 | `#3B82F6`                  |
 
 ## Typography
 
@@ -85,7 +85,7 @@ default theme metrics are the canonical ones.
 - Prefer examples over claims.
 - Admit what is local, what is Docker, what is future work.
 
-Banned words: *autonomous developer*, *10x*, *magic*, *revolutionary*.
+Banned words: _autonomous developer_, _10x_, _magic_, _revolutionary_.
 
 ## Downloads
 

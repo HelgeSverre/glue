@@ -159,27 +159,11 @@ void main() {
       expect(body.containsKey('stream_options'), isFalse);
     });
 
-    test('ollama profile: no Authorization header, no stream_options',
-        () async {
-      final adapter = OpenAiCompatibleAdapter();
-      final client = adapter.createClient(
-        provider: _resolved(
-          id: 'ollama',
-          compatibility: 'ollama',
-          baseUrl: 'http://localhost:11434/v1',
-          authKind: AuthKind.none,
-        ),
-        model: _model('llama3.2'),
-        systemPrompt: '',
-      ) as OpenAiClient;
-      expect(client.profile, CompatibilityProfile.ollama);
-
-      final captured = await _capture(client);
-      final req = captured.request!;
-      expect(req.headers.containsKey('Authorization'), isFalse);
-      final body = jsonDecode(captured.body!) as Map<String, dynamic>;
-      expect(body.containsKey('stream_options'), isFalse);
-    });
+    // Ollama used to ride the OpenAI-compat adapter with
+    // `compatibility: 'ollama'`. It no longer does — see `OllamaAdapter`
+    // and `OllamaClient` — so there's nothing for this adapter to cover
+    // for Ollama here. Behaviour for the native path lives in
+    // `ollama_adapter_test.dart` and `ollama_client_test.dart`.
 
     test('openrouter profile: injects HTTP-Referer and X-Title headers',
         () async {

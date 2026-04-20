@@ -226,6 +226,7 @@ The browser domain now explicitly documents the distinction:
 **Files:** `lib/src/config/glue_config.dart`, `lib/src/web/web_config.dart`, `lib/src/web/browser/browser_config.dart`
 
 Convention is now documented:
+
 - runtime capability interfaces use `*Provider` (e.g. `WebSearchProvider`)
 - selector enums use `*ProviderType` where needed to avoid naming collisions
 - browser keeps `Backend` terminology for runtime environment selection (see NAME-004)
@@ -326,11 +327,11 @@ is resolved for supported providers.
 ### BUG-002: `--resume` creates an empty session immediately **[RESOLVED]**
 
 **Severity:** Medium
-**Files:** `lib/src/app.dart:486-501, 811-825`
+**Files:** `lib/src/core/service_locator.dart`
 
-When launching with `--resume`, a new empty session is created before the user selects which session to resume. If the user quits the resume dialog, this empty session becomes the most recent one, causing `--continue` to resume it instead of the user's actual last session.
+`ServiceLocator.create()` used to eagerly construct a `SessionStore` at startup, which wrote `meta.json` to disk before anyone knew whether the user was resuming or starting fresh. With `--resume`, that stray session would then outrank the user's real last session for `--continue`.
 
-**Fix:** Defer session store creation until after the resume dialog resolves.
+**Fix:** `ServiceLocator.create()` no longer creates a `SessionStore`. `AppServices.sessionStore` is nullable; `SessionManager.ensureSessionStore()` creates the real store lazily on resume or on the user's first message. Covered by `test/core/service_locator_test.dart`.
 
 ---
 

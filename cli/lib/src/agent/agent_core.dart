@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
+import 'package:glue/src/observability/observability.dart';
+import 'package:glue/src/observability/redaction.dart';
 
 // ---------------------------------------------------------------------------
 // Message types for the conversation history
@@ -193,6 +196,10 @@ class AgentCore {
   final List<Message> _conversation = [];
   int tokenCount = 0;
 
+  /// Optional observability sink. When non-null, tool invocations emit
+  /// `tool.<name>` spans and fatal agent errors emit `agent.error` spans.
+  final Observability? _obs;
+
   /// Optional predicate to exclude tools before sending to the LLM.
   bool Function(Tool)? toolFilter;
 
@@ -209,7 +216,9 @@ class AgentCore {
     required this.llm,
     required this.tools,
     String? modelId,
-  }) : modelId = modelId ?? 'unknown';
+    Observability? obs,
+  })  : modelId = modelId ?? 'unknown',
+        _obs = obs;
 
   /// The full conversation history.
   List<Message> get conversation => List.unmodifiable(_conversation);
@@ -281,7 +290,20 @@ class AgentCore {
       }
 
       yield AgentDone();
-    } on Object catch (e) {
+    } on Object catch (e, st) {
+      if (_obs != null) {
+        final errorSpan = _obs.startSpan(
+          'agent.error',
+          kind: 'error',
+          attributes: {
+            'error': true,
+            'error.type': e.runtimeType.toString(),
+            'error.message': e.toString(),
+            'error.stack': st.toString(),
+          },
+        );
+        _obs.endSpan(errorSpan);
+      }
       yield AgentError(e);
     } finally {
       for (final completer in _pendingToolResults.values) {
@@ -363,10 +385,45 @@ class AgentCore {
         success: false,
       );
     }
+
+    ObservabilitySpan? span;
+    if (_obs != null) {
+      final encodedArgs = jsonEncode(call.arguments);
+      span = _obs.startSpan(
+        'tool.${call.name}',
+        kind: 'tool',
+        attributes: {
+          'tool.name': call.name,
+          'tool.input_size': encodedArgs.length,
+          'tool.input': redactBody(encodedArgs, maxBytes: 65536),
+        },
+      );
+    }
+    final stopwatch = Stopwatch()..start();
+
     try {
       final result = await tool.execute(call.arguments);
+      stopwatch.stop();
+      if (span != null) {
+        _obs!.endSpan(span, extra: {
+          'tool.duration_ms': stopwatch.elapsedMilliseconds,
+          'tool.success': true,
+          'tool.output': redactBody(result.content, maxBytes: 65536),
+        });
+      }
       return result.withCallId(call.id);
-    } catch (e) {
+    } catch (e, st) {
+      stopwatch.stop();
+      if (span != null) {
+        _obs!.endSpan(span, extra: {
+          'tool.duration_ms': stopwatch.elapsedMilliseconds,
+          'tool.success': false,
+          'error': true,
+          'error.type': e.runtimeType.toString(),
+          'error.message': e.toString(),
+          'error.stack': st.toString(),
+        });
+      }
       return ToolResult(
         callId: call.id,
         content: 'Tool error: $e',

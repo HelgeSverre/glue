@@ -6,7 +6,7 @@ extract across multiple tool invocations.
 
 <FeatureStatus status="experimental" /> The CDP-backed browser tool works
 today; some provider integrations are newer than others. See the
-*Status per backend* column below.
+_Status per backend_ column below.
 
 ## Supported backends
 
@@ -14,15 +14,15 @@ Glue ships with seven browser backends today. Each implements the same
 `BrowserEndpointProvider` interface (`cli/lib/src/web/browser/providers/`) —
 picking one is a config change, not a code change.
 
-| Backend        | Where it runs                             | Status                              | Best for                                                   |
-| -------------- | ----------------------------------------- | ----------------------------------- | ---------------------------------------------------------- |
-| `local`        | Your machine · Puppeteer-launched Chrome  | <FeatureStatus status="shipping" /> | Quick iteration. `headed: true` lets you watch it work.    |
-| `docker`       | Local container (`browserless/chrome`)    | <FeatureStatus status="shipping" /> | Isolation from your host without leaving your machine.     |
-| `browserbase`  | Cloud · [browserbase.com](https://browserbase.com) | <FeatureStatus status="experimental" /> | Hosted sessions with session replays.               |
-| `browserless`  | Cloud or self-hosted · [browserless.io](https://browserless.io) | <FeatureStatus status="experimental" /> | Cheap scale-out; self-hostable. |
-| `steel`        | Cloud · [steel.dev](https://steel.dev)    | <FeatureStatus status="experimental" /> | Agent-focused cloud sessions.                       |
-| `anchor`       | Cloud · [anchorbrowser.io](https://anchorbrowser.io) | <FeatureStatus status="experimental" /> | Agentic browser sessions with live view and managed automation features. |
-| `hyperbrowser` | Cloud · [hyperbrowser.ai](https://hyperbrowser.ai) | <FeatureStatus status="experimental" /> | Agent-focused cloud sessions with fast launches and a live view. |
+| Backend        | Where it runs                                                   | Status                                  | Best for                                                                 |
+| -------------- | --------------------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------ |
+| `local`        | Your machine · Puppeteer-launched Chrome                        | <FeatureStatus status="shipping" />     | Quick iteration. `headed: true` lets you watch it work.                  |
+| `docker`       | Local container (`browserless/chrome`)                          | <FeatureStatus status="shipping" />     | Isolation from your host without leaving your machine.                   |
+| `browserbase`  | Cloud · [browserbase.com](https://browserbase.com)              | <FeatureStatus status="experimental" /> | Hosted sessions with session replays.                                    |
+| `browserless`  | Cloud or self-hosted · [browserless.io](https://browserless.io) | <FeatureStatus status="experimental" /> | Cheap scale-out; self-hostable.                                          |
+| `steel`        | Cloud · [steel.dev](https://steel.dev)                          | <FeatureStatus status="experimental" /> | Agent-focused cloud sessions.                                            |
+| `anchor`       | Cloud · [anchorbrowser.io](https://anchorbrowser.io)            | <FeatureStatus status="experimental" /> | Agentic browser sessions with live view and managed automation features. |
+| `hyperbrowser` | Cloud · [hyperbrowser.ai](https://hyperbrowser.ai)              | <FeatureStatus status="experimental" /> | Agent-focused cloud sessions with fast launches and a live view.         |
 
 ## Available actions
 
@@ -40,7 +40,7 @@ Configure the backend under `web.browser` in `~/.glue/config.yaml`.
 web:
   browser:
     backend: local
-    headed: false     # set true to watch the browser interact live
+    headed: false # set true to watch the browser interact live
 ```
 
 ### `docker` — headless Chrome in a container
@@ -122,11 +122,11 @@ over writing keys into `config.yaml`.
 For risky or noisy browsing, pair the browser backend with a runtime that
 doesn't touch your host:
 
-| Goal                              | Runtime + backend                                   |
-| --------------------------------- | --------------------------------------------------- |
-| Develop an automation quickly     | `host` runtime + `local` browser (`headed: true`)   |
-| Untrusted site inspection         | `docker` runtime + `docker` browser                 |
-| High-volume scraping              | <FeatureStatus status="planned" /> cloud runtime + cloud browser |
+| Goal                              | Runtime + backend                                                 |
+| --------------------------------- | ----------------------------------------------------------------- |
+| Develop an automation quickly     | `host` runtime + `local` browser (`headed: true`)                 |
+| Untrusted site inspection         | `docker` runtime + `docker` browser                               |
+| High-volume scraping              | <FeatureStatus status="planned" /> cloud runtime + cloud browser  |
 | Agent-driven multi-step workflows | Any runtime + `steel`, `browserbase`, `anchor`, or `hyperbrowser` |
 
 ## Providers we're evaluating

@@ -1,6 +1,6 @@
 name: glue
 description: The coding agent that holds it all together.
-version: 0.1.0
+version: 0.1.1
 homepage: https://github.com/HelgeSverre/glue
 repository: https://github.com/HelgeSverre/glue
 issue_tracker: https://github.com/HelgeSverre/glue/issues

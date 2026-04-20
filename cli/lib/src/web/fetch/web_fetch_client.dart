@@ -35,17 +35,21 @@ class WebFetchResult {
 class WebFetchClient {
   final WebFetchConfig config;
   final PdfConfig pdfConfig;
+  final http.Client _client;
   late final JinaReaderClient? _jinaClient;
   late final PdfTextExtractor _pdfExtractor;
   late final OcrClient? _ocrClient;
 
-  WebFetchClient({required this.config, PdfConfig? pdfConfig})
-      : pdfConfig = pdfConfig ?? const PdfConfig() {
+  WebFetchClient(
+      {required this.config, PdfConfig? pdfConfig, http.Client? client})
+      : pdfConfig = pdfConfig ?? const PdfConfig(),
+        _client = client ?? http.Client() {
     _jinaClient = config.allowJinaFallback
         ? JinaReaderClient(
             baseUrl: config.jinaBaseUrl,
             apiKey: config.jinaApiKey,
             timeoutSeconds: config.timeoutSeconds,
+            client: client,
           )
         : null;
     _pdfExtractor = PdfTextExtractor(
@@ -53,7 +57,7 @@ class WebFetchClient {
     );
     _ocrClient =
         this.pdfConfig.enableOcrFallback && this.pdfConfig.hasOcrCredentials
-            ? OcrClient.fromConfig(this.pdfConfig)
+            ? OcrClient.fromConfig(this.pdfConfig, client: client)
             : null;
   }
 
@@ -81,7 +85,7 @@ class WebFetchClient {
 
     // Single GET — route by content-type / magic bytes.
     try {
-      final response = await http.get(uri, headers: {
+      final response = await _client.get(uri, headers: {
         'Accept': 'text/markdown, text/plain;q=0.9, '
             'text/html;q=0.8, application/pdf;q=0.7, */*;q=0.1',
         'User-Agent': 'Glue/0.1 (coding-agent)',

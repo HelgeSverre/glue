@@ -2,18 +2,17 @@
 
 # Glue
 
-
 **The coding agent that holds it all together.**
 
 A terminal-native AI coding agent built in Dart — multi-model, multi-agent, fast.
 
 ## Packages
 
-| Directory              | Description                                                           |
-| ---------------------- | --------------------------------------------------------------------- |
-| [`cli/`](cli/)         | Glue TUI — the main CLI application                                   |
-| [`website/`](website/) | Unified marketing + docs site (VitePress) — served at `getglue.dev`   |
-| [`docs/`](docs/)       | Canonical reference material (`models.yaml`, plans, design docs)      |
+| Directory              | Description                                                         |
+| ---------------------- | ------------------------------------------------------------------- |
+| [`cli/`](cli/)         | Glue TUI — the main CLI application                                 |
+| [`website/`](website/) | Unified marketing + docs site (VitePress) — served at `getglue.dev` |
+| [`docs/`](docs/)       | Canonical reference material (`models.yaml`, plans, design docs)    |
 
 ## Quick Start
 

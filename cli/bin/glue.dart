@@ -20,6 +20,15 @@ void main(List<String> args) async {
     stderr.writeln();
     stderr.writeln(e.usage);
     exit(64);
+  } on ConfigError catch (e) {
+    // Thrown from GlueConfig.load when --model / GLUE_MODEL / config.yaml
+    // can't be resolved against the catalog. Surface the message cleanly;
+    // suppress the Dart stack trace, which carries no user value here.
+    stderr.writeln('Error: ${e.message}');
+    exit(78); // EX_CONFIG
+  } on ModelRefParseException catch (e) {
+    stderr.writeln('Error: ${e.message}');
+    exit(78);
   }
 }
 

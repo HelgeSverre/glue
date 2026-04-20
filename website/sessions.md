@@ -14,6 +14,7 @@ dashboard, no telemetry upload, no agent ID tied to an account. The file is
 JSONL — one event per line, `tail`-able and `grep`-able.
 
 Canonical sources:
+
 - [`docs/reference/session-storage.md`](https://github.com/helgesverre/glue/blob/main/docs/reference/session-storage.md)
 - [`docs/reference/glue-home-layout.md`](https://github.com/helgesverre/glue/blob/main/docs/reference/glue-home-layout.md)
 

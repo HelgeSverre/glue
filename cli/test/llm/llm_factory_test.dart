@@ -2,6 +2,7 @@ import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/llm/anthropic_client.dart';
 import 'package:glue/src/llm/llm_factory.dart';
+import 'package:glue/src/llm/ollama_client.dart';
 import 'package:glue/src/llm/openai_client.dart';
 import 'package:test/test.dart';
 
@@ -41,14 +42,14 @@ void main() {
       expect(client, isA<OpenAiClient>());
     });
 
-    test('returns OpenAiClient for ollama (api_key: none)', () {
+    test('returns OllamaClient for ollama (native adapter, api_key: none)', () {
       final config = testConfig();
       final factory = LlmClientFactory(config);
       final client = factory.createFor(
         ModelRef.parse('ollama/qwen2.5-coder:32b'),
         systemPrompt: 'test',
       );
-      expect(client, isA<OpenAiClient>());
+      expect(client, isA<OllamaClient>());
     });
 
     test('unknown provider throws ConfigError', () {

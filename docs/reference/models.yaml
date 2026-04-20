@@ -261,10 +261,9 @@ providers:
 
   ollama:
     name: Ollama
-    adapter: openai
-    compatibility: ollama
+    adapter: ollama
     enabled: true
-    base_url: http://localhost:11434/v1
+    base_url: http://localhost:11434
     docs_url: https://ollama.com/
     auth:
       api_key: none

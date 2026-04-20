@@ -10,14 +10,14 @@ the source file, not this one.
 
 ```yaml
 # Primary model for agent conversations. CLI --model and GLUE_MODEL override it.
-# active_model: anthropic/claude-sonnet-4.6
+# active_model: anthropic/claude-sonnet-4-6
 
 # Cheap/fast model for session titles and other background tasks.
-# small_model: anthropic/claude-haiku-4.5
+# small_model: anthropic/claude-haiku-4-5
 
 # Named model shortcuts.
 # profiles:
-#   fast: anthropic/claude-haiku-4.5
+#   fast: anthropic/claude-haiku-4-5
 #   reasoning: openai/gpt-5.4
 
 # catalog:
@@ -49,7 +49,7 @@ the source file, not this one.
 #     max_tokens: 50000
 #
 #   search:
-#     provider: brave            # brave | tavily | firecrawl
+#     provider: brave            # brave | tavily | firecrawl | duckduckgo
 #     brave_api_key: your-brave-key
 #     tavily_api_key: your-tavily-key
 #     firecrawl_api_key: your-firecrawl-key

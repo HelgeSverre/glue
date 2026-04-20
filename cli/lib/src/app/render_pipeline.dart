@@ -182,7 +182,7 @@ void _doRenderImpl(App app) {
   const sep = ' · ';
   final scrollSeg = app._scrollOffset > 0 ? '↑${app._scrollOffset}' : null;
   final rightSegs = [
-    app._modelId,
+    _statusModelLabel(app),
     modeLabel,
     ansiTruncate(shortCwd, 30),
     if (scrollSeg != null) scrollSeg,

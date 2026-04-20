@@ -10,12 +10,14 @@ class FirecrawlSearchProvider implements WebSearchProvider {
   final String? apiKey;
   final String baseUrl;
   final int timeoutSeconds;
+  final http.Client _client;
 
   FirecrawlSearchProvider({
     required this.apiKey,
     this.baseUrl = 'https://api.firecrawl.dev',
     this.timeoutSeconds = 15,
-  });
+    http.Client? client,
+  }) : _client = client ?? http.Client();
 
   @override
   String get name => 'firecrawl';
@@ -32,7 +34,7 @@ class FirecrawlSearchProvider implements WebSearchProvider {
       throw StateError('Firecrawl API key not configured');
     }
 
-    final response = await http
+    final response = await _client
         .post(
           Uri.parse('$baseUrl/v1/search'),
           headers: {

@@ -7,6 +7,7 @@ import 'package:glue/src/catalog/models_generated.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/credentials/credential_store.dart';
 import 'package:glue/src/providers/anthropic_adapter.dart';
+import 'package:glue/src/providers/ollama_adapter.dart';
 import 'package:glue/src/providers/openai_compatible_adapter.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
 
@@ -24,6 +25,7 @@ GlueConfig testConfig({
     adapters: AdapterRegistry([
       AnthropicAdapter(),
       OpenAiCompatibleAdapter(),
+      OllamaAdapter(),
     ]),
   );
 }

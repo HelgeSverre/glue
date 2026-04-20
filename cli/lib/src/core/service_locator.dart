@@ -8,14 +8,19 @@ import 'package:glue/src/input/text_area_editor.dart';
 import 'package:glue/src/llm/llm_factory.dart';
 import 'package:glue/src/observability/debug_controller.dart';
 import 'package:glue/src/observability/file_sink.dart';
+import 'package:glue/src/observability/http_trace_sink.dart';
+import 'package:glue/src/observability/logging_http_client.dart';
 import 'package:glue/src/observability/observability.dart';
+import 'package:glue/src/providers/anthropic_adapter.dart';
+import 'package:glue/src/providers/copilot_adapter.dart';
+import 'package:glue/src/providers/openai_compatible_adapter.dart';
+import 'package:glue/src/providers/provider_adapter.dart';
 import 'package:glue/src/shell/command_executor.dart';
 import 'package:glue/src/shell/executor_factory.dart';
 import 'package:glue/src/shell/shell_job_manager.dart';
 import 'package:glue/src/skills/skill_runtime.dart';
 import 'package:glue/src/skills/skill_tool.dart';
 import 'package:glue/src/storage/config_store.dart';
-import 'package:glue/src/storage/session_state.dart';
 import 'package:glue/src/storage/session_store.dart';
 import 'package:glue/src/terminal/layout.dart';
 import 'package:glue/src/terminal/terminal.dart';
@@ -37,14 +42,16 @@ import 'package:glue/src/web/search/providers/duckduckgo_provider.dart';
 import 'package:glue/src/web/search/providers/firecrawl_provider.dart';
 import 'package:glue/src/web/search/providers/tavily_provider.dart';
 import 'package:glue/src/web/search/search_router.dart';
+import 'package:http/http.dart' as http;
 
 class ServiceLocator {
   static Future<AppServices> create({
     String? model,
     bool debug = false,
+    Environment? environment,
   }) async {
-    final environment = Environment.detect();
-    final config = GlueConfig.load(cliModel: model, environment: environment);
+    final resolvedEnv = environment ?? Environment.detect();
+    final config = GlueConfig.load(cliModel: model, environment: resolvedEnv);
     config.validate();
 
     final terminal = Terminal();
@@ -52,13 +59,13 @@ class ServiceLocator {
     final editor = TextAreaEditor();
 
     final skillRuntime = SkillRuntime(
-      cwd: environment.cwd,
+      cwd: resolvedEnv.cwd,
       extraPathsProvider: () => config.skillPaths,
-      environment: environment,
+      environment: resolvedEnv,
     );
 
     final systemPrompt = Prompts.build(
-      cwd: environment.cwd,
+      cwd: resolvedEnv.cwd,
       skills: skillRuntime.list(),
     );
 
@@ -67,45 +74,73 @@ class ServiceLocator {
     );
     final obs = Observability(debugController: debugController);
 
-    environment.ensureDirectories();
+    resolvedEnv.ensureDirectories();
 
-    final sessionId = '${DateTime.now().millisecondsSinceEpoch}-'
+    // Placeholder id used only for wiring subsystems (docker browser
+    // container naming) at startup. The real session store is created
+    // lazily by SessionManager either when resuming an existing session
+    // or when the user sends their first message — see BUG-002.
+    final startupSessionId = '${DateTime.now().millisecondsSinceEpoch}-'
         '${DateTime.now().microsecond.toRadixString(36)}';
 
-    obs.addSink(FileSink(logsDir: environment.logsDir));
+    obs.addSink(FileSink(logsDir: resolvedEnv.logsDir));
+    if (debugController.enabled) {
+      obs.addSink(HttpTraceSink(logsDir: resolvedEnv.logsDir));
+    }
+
+    // When debug is on, wrap every outbound HTTP call in a LoggingHttpClient
+    // so request/response bodies and timings land in the http trace log. When
+    // off, producers use a plain http.Client with zero overhead.
+    http.Client mkHttp(String spanKind) => debugController.enabled
+        ? LoggingHttpClient(
+            inner: http.Client(),
+            observability: obs,
+            spanKind: spanKind,
+            maxBodyBytes: config.observability.maxBodyBytes,
+          )
+        : http.Client();
+
+    // Rebuild the adapter registry with HTTP client factories routed through
+    // observability. GlueConfig.load constructed plain adapters before obs
+    // existed; we swap them here now that we can wrap.
+    config.adapters = AdapterRegistry([
+      AnthropicAdapter(requestClientFactory: () => mkHttp('llm.anthropic')),
+      OpenAiCompatibleAdapter(requestClientFactory: () => mkHttp('llm.openai')),
+      CopilotAdapter(
+        credentialStore: config.credentials,
+        client: mkHttp('llm.copilot.auth'),
+        requestClientFactory: () => mkHttp('llm.copilot'),
+      ),
+    ]);
 
     final llmFactory = LlmClientFactory(config);
     final llm = llmFactory.createFromConfig(systemPrompt: systemPrompt);
 
-    final configStore = ConfigStore(environment.configPath);
+    final configStore = ConfigStore(resolvedEnv.configPath);
 
-    final sessionDir = environment.sessionDir(sessionId);
-    final sessionMeta = SessionMeta(
-      id: sessionId,
-      cwd: environment.cwd,
-      modelRef: config.activeModel.toString(),
-      startTime: DateTime.now(),
-    );
-    final sessionStore =
-        SessionStore(sessionDir: sessionDir, meta: sessionMeta);
-    final sessionState = SessionState.load(sessionDir);
     final executor = await ExecutorFactory.create(
       shellConfig: config.shellConfig,
       dockerConfig: config.dockerConfig,
-      cwd: environment.cwd,
-      sessionMounts: sessionState.dockerMounts,
+      cwd: resolvedEnv.cwd,
     );
 
     SearchRouter? searchRouter;
     SearchRouter getSearchRouter() => searchRouter ??= SearchRouter([
-          BraveSearchProvider(apiKey: config.webConfig.search.braveApiKey),
-          TavilySearchProvider(apiKey: config.webConfig.search.tavilyApiKey),
+          BraveSearchProvider(
+            apiKey: config.webConfig.search.braveApiKey,
+            client: mkHttp('search.brave'),
+          ),
+          TavilySearchProvider(
+            apiKey: config.webConfig.search.tavilyApiKey,
+            client: mkHttp('search.tavily'),
+          ),
           FirecrawlSearchProvider(
             apiKey: config.webConfig.search.firecrawlApiKey,
             baseUrl: config.webConfig.search.firecrawlBaseUrl ??
                 'https://api.firecrawl.dev',
+            client: mkHttp('search.firecrawl'),
           ),
-          DuckDuckGoSearchProvider(),
+          DuckDuckGoSearchProvider(client: mkHttp('search.duckduckgo')),
         ]);
 
     BrowserManager? browserManager;
@@ -115,14 +150,16 @@ class ServiceLocator {
             BrowserBackend.docker => DockerBrowserProvider(
                 image: config.webConfig.browser.dockerImage,
                 port: config.webConfig.browser.dockerPort,
-                sessionId: sessionId,
+                sessionId: startupSessionId,
               ),
             BrowserBackend.steel => SteelProvider(
                 apiKey: config.webConfig.browser.steelApiKey,
+                client: mkHttp('browser.steel'),
               ),
             BrowserBackend.browserbase => BrowserbaseProvider(
                 apiKey: config.webConfig.browser.browserbaseApiKey,
                 projectId: config.webConfig.browser.browserbaseProjectId,
+                client: mkHttp('browser.browserbase'),
               ),
             BrowserBackend.browserless => BrowserlessProvider(
                 apiKey: config.webConfig.browser.browserlessApiKey,
@@ -130,9 +167,11 @@ class ServiceLocator {
               ),
             BrowserBackend.anchor => AnchorProvider(
                 apiKey: config.webConfig.browser.anchorApiKey,
+                client: mkHttp('browser.anchor'),
               ),
             BrowserBackend.hyperbrowser => HyperbrowserProvider(
                 apiKey: config.webConfig.browser.hyperbrowserApiKey,
+                client: mkHttp('browser.hyperbrowser'),
               ),
           },
         );
@@ -144,15 +183,22 @@ class ServiceLocator {
       'bash': BashTool(executor),
       'grep': GrepTool(),
       'list_directory': ListDirectoryTool(),
-      'web_fetch':
-          WebFetchTool(config.webConfig.fetch, pdfConfig: config.webConfig.pdf),
+      'web_fetch': WebFetchTool(
+        config.webConfig.fetch,
+        pdfConfig: config.webConfig.pdf,
+        httpClient: mkHttp('fetch.web'),
+      ),
       'web_search': WebSearchTool.lazy(getSearchRouter),
       'web_browser': WebBrowserTool.lazy(getBrowserManager),
       'skill': SkillTool(skillRuntime),
     };
 
-    final agent =
-        AgentCore(llm: llm, tools: tools, modelId: config.activeModel.modelId);
+    final agent = AgentCore(
+      llm: llm,
+      tools: tools,
+      modelId: config.activeModel.modelId,
+      obs: obs,
+    );
     final manager = AgentManager(
       tools: tools,
       llmFactory: llmFactory,
@@ -164,7 +210,7 @@ class ServiceLocator {
     tools['spawn_parallel_subagents'] = SpawnParallelSubagentsTool(manager);
 
     return AppServices(
-      environment: environment,
+      environment: resolvedEnv,
       config: config,
       terminal: terminal,
       layout: layout,
@@ -174,8 +220,6 @@ class ServiceLocator {
       llmFactory: llmFactory,
       systemPrompt: systemPrompt,
       trustedTools: configStore.trustedTools.toSet(),
-      sessionStore: sessionStore,
-      sessionState: sessionState,
       executor: executor,
       jobManager: ShellJobManager(executor),
       obs: obs,
@@ -196,8 +240,10 @@ class AppServices {
   final LlmClientFactory llmFactory;
   final String systemPrompt;
   final Set<String> trustedTools;
-  final SessionStore sessionStore;
-  final SessionState sessionState;
+
+  /// Null on startup. SessionManager creates the concrete store lazily —
+  /// either on resume, or when the user sends their first message.
+  final SessionStore? sessionStore;
   final CommandExecutor executor;
   final ShellJobManager jobManager;
   final Observability obs;
@@ -215,8 +261,7 @@ class AppServices {
     required this.llmFactory,
     required this.systemPrompt,
     required this.trustedTools,
-    required this.sessionStore,
-    required this.sessionState,
+    this.sessionStore,
     required this.executor,
     required this.jobManager,
     required this.obs,

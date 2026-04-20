@@ -17,7 +17,7 @@ const local = recommended.filter((m) => m.provider === 'ollama')
 # Models and Providers
 
 Glue ships with a curated catalog. Selected models are always written as
-`provider/model` — for example `anthropic/claude-sonnet-4.6`. Credentials never
+`provider/model` — for example `anthropic/claude-sonnet-4-6`. Credentials never
 live in project config; they come from env vars, `~/.glue/credentials.json`, or
 an OS keychain layer later.
 
@@ -63,7 +63,7 @@ providers:
 <ConfigSnippet title="~/.glue/config.yaml — quickest path to a running agent">
 
 ```yaml
-active_model: anthropic/claude-sonnet-4.6
+active_model: anthropic/claude-sonnet-4-6
 ```
 
 </ConfigSnippet>

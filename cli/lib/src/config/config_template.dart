@@ -90,8 +90,14 @@ String buildConfigTemplate() {
 #     hyperbrowser:
 #       api_key: your-hyperbrowser-key
 
-# Debug logging. GLUE_DEBUG=1 overrides this.
-# debug: false
+# observability: debug logging and http tracing.
+# When debug is enabled, every outbound HTTP call is traced to
+# ~/.glue/logs/http-YYYY-MM-DD.jsonl with redacted headers and bodies.
+# Precedence: --debug flag > GLUE_DEBUG env > observability.debug YAML > default.
+# observability:
+#   debug: false           # or set GLUE_DEBUG=1, or run with --debug
+#   max_body_bytes: 65536  # per-request body cap in bytes before truncation
+#   redact: true           # mask api keys/bearer tokens in logged bodies
 
 # Tool approval mode. GLUE_APPROVAL_MODE overrides this.
 # approval_mode: confirm         # confirm | auto

@@ -8,9 +8,13 @@ import 'package:glue/src/web/browser/browser_endpoint.dart';
 /// Steel.dev cloud browser provider.
 class SteelProvider implements BrowserEndpointProvider {
   final String? apiKey;
+  final http.Client _client;
   static const _baseUrl = 'https://api.steel.dev/v1';
 
-  SteelProvider({required this.apiKey});
+  SteelProvider({
+    required this.apiKey,
+    http.Client? client,
+  }) : _client = client ?? http.Client();
 
   @override
   String get name => 'steel';
@@ -23,7 +27,7 @@ class SteelProvider implements BrowserEndpointProvider {
   Future<BrowserEndpoint> provision() async {
     if (!isConfigured) throw StateError('Steel API key not configured');
 
-    final response = await http
+    final response = await _client
         .post(
           Uri.parse('$_baseUrl/sessions'),
           headers: {
@@ -51,7 +55,7 @@ class SteelProvider implements BrowserEndpointProvider {
       viewUrl: viewUrl ?? 'https://app.steel.dev/sessions/$sessionId',
       onClose: () async {
         try {
-          await http.delete(
+          await _client.delete(
             Uri.parse('$_baseUrl/sessions/$sessionId'),
             headers: {'Authorization': 'Bearer $apiKey'},
           );

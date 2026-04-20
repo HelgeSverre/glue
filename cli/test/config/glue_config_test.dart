@@ -82,15 +82,20 @@ anthropic:
       );
     });
 
-    test('bare model name resolves via fuzzy catalog match', () {
+    test('bare substring input no longer silently coerces', () {
+      // The old resolver fuzzy-matched "sonnet" → the first catalog entry
+      // containing it. That masked typos and hid which provider was picked.
+      // The new policy: exact match or error. "sonnet" is neither an id nor
+      // a display name, so it should raise.
       final home = _scratch();
       addTearDown(() => home.deleteSync(recursive: true));
-      final config = GlueConfig.load(
-        cliModel: 'sonnet',
-        environment: _envWith(home: home),
+      expect(
+        () => GlueConfig.load(
+          cliModel: 'sonnet',
+          environment: _envWith(home: home),
+        ),
+        throwsA(isA<ConfigError>()),
       );
-      expect(config.activeModel.providerId, 'anthropic');
-      expect(config.activeModel.modelId, contains('sonnet'));
     });
 
     test('loads Anchor browser backend from environment', () {

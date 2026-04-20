@@ -12,59 +12,61 @@ String _clearConversationImpl(App app) {
 String _switchModelByQueryImpl(App app, String query) {
   final config = app._config;
   if (config == null) return 'Config not ready.';
-  final row = _findCatalogRow(config, query);
-  if (row == null) {
-    final available = config.catalogData.providers.values
-        .expand((p) => p.models.values.map((m) => '${p.id}/${m.id}'))
-        .take(12)
-        .join(', ');
-    return 'Unknown model: $query\nTry one of: $available …';
-  }
-  return app._switchToModelRow(row);
-}
 
-CatalogRow? _findCatalogRow(GlueConfig config, String query) {
-  final parsed = ModelRef.tryParse(query);
-  if (parsed != null) {
-    final provider = config.catalogData.providers[parsed.providerId];
-    final model = provider?.models[parsed.modelId];
-    if (provider != null && model != null) {
-      return (
+  final outcome = resolveModelInput(query, config.catalogData);
+  switch (outcome) {
+    case ResolvedExact():
+      final provider = config.catalogData.providers[outcome.ref.providerId]!;
+      return app._switchToModelRow((
         providerId: provider.id,
         providerName: provider.name,
-        model: model,
+        model: outcome.def,
+        availability: ModelAvailability.unknown,
+      ));
+    case ResolvedPassthrough():
+      if (!outcome.providerKnown) {
+        return 'Unknown provider "${outcome.ref.providerId}". '
+            'Run `/models` to list available providers.';
+      }
+      final provider = config.catalogData.providers[outcome.ref.providerId]!;
+      final synthetic = ModelDef(
+        id: outcome.ref.modelId,
+        name: outcome.ref.modelId,
       );
-    }
+      return app._switchToModelRow((
+        providerId: provider.id,
+        providerName: provider.name,
+        model: synthetic,
+        availability: ModelAvailability.unknown,
+      ));
+    case AmbiguousBareInput():
+      final options = outcome.candidates.map((c) => '  ${c.ref}').join('\n');
+      return 'Model "$query" is ambiguous. Pick one:\n$options';
+    case UnknownBareInput():
+      final hint = config.catalogData.providers.values
+          .expand((p) => p.models.values.map((m) => '${p.id}/${m.id}'))
+          .take(12)
+          .join(', ');
+      return 'Unknown model: $query\n'
+          'Use `<provider>/<id>` (e.g. `ollama/gemma4:latest`) or one of: '
+          '$hint …';
   }
-  final needle = query.toLowerCase();
-  for (final p in config.catalogData.providers.values) {
-    for (final m in p.models.values) {
-      if (m.id.toLowerCase() == needle || m.name.toLowerCase() == needle) {
-        return (providerId: p.id, providerName: p.name, model: m);
-      }
-    }
-  }
-  for (final p in config.catalogData.providers.values) {
-    for (final m in p.models.values) {
-      if (m.id.toLowerCase().contains(needle) ||
-          m.name.toLowerCase().contains(needle)) {
-        return (providerId: p.id, providerName: p.name, model: m);
-      }
-    }
-  }
-  return null;
 }
+
+String _statusModelLabel(App app) => formatStatusModelLabel(
+      app._config?.activeModel,
+      app._config?.catalogData,
+      app._modelId,
+    );
 
 String _buildSessionInfoImpl(App app) {
   final shortCwd = app._shortenPath(app._cwd);
   final trustedList = app._autoApprovedTools.toList()..sort();
-  final ref = app._config?.activeModel;
-  final providerDef =
-      ref != null ? app._config?.catalogData.providers[ref.providerId] : null;
-  final modelDef = providerDef?.models[ref?.modelId];
-  final displayModel = modelDef != null
-      ? '${modelDef.name} (${ref!})'
-      : ref?.toString() ?? app._modelId;
+  final displayModel = formatInfoModelLabel(
+    app._config?.activeModel,
+    app._config?.catalogData,
+    app._modelId,
+  );
   final buf = StringBuffer();
   buf.writeln('Session Info');
   buf.writeln('  Model:        $displayModel');
@@ -449,6 +451,41 @@ String _openGlueTargetImpl(App app, List<String> args) {
 }
 
 String _switchToModelRowImpl(App app, CatalogRow row) {
+  // Ollama-specific: confirm and pull uninstalled tags before flipping
+  // the active model. `installedOnly` rows came from `/api/tags`, so we
+  // know they're present; `installed` rows were verified at picker-open
+  // time. Everything else (notInstalled, or unknown from typed `/model`
+  // input) runs through the confirmation flow, which is itself no-op
+  // when discovery confirms the tag is already pulled.
+  if (row.providerId == 'ollama' &&
+      row.availability != ModelAvailability.installed &&
+      row.availability != ModelAvailability.installedOnly) {
+    final config = app._config;
+    if (config != null) {
+      final provider = config.catalogData.providers['ollama'];
+      if (provider != null) {
+        final discovery = OllamaDiscovery(
+          baseUrl: Uri.parse(provider.baseUrl ?? 'http://localhost:11434'),
+        );
+        _confirmAndPullOllamaModelImpl(
+          app,
+          tag: row.model.id,
+          discovery: discovery,
+          onPull: () {
+            final message = _applyModelSwitch(app, row);
+            app._addSystemMessage(message);
+            app._render();
+          },
+        );
+        return '';
+      }
+    }
+  }
+
+  return _applyModelSwitch(app, row);
+}
+
+String _applyModelSwitch(App app, CatalogRow row) {
   final factory = app._llmFactory;
   final config = app._config;
   final prompt = app._systemPrompt;

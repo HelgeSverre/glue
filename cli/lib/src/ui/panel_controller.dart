@@ -9,6 +9,7 @@ import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/core/clipboard.dart' as shared_clipboard;
 import 'package:glue/src/providers/auth_flow.dart';
+import 'package:glue/src/providers/ollama_discovery.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
 import 'package:glue/src/storage/session_store.dart';
@@ -250,16 +251,24 @@ class PanelController {
     required String Function(CatalogRow entry) onModelSelected,
     required void Function(String message) addSystemMessage,
     required bool Function() isSelectionEnabled,
+    OllamaDiscovery? ollamaDiscovery,
   }) async {
     // Show models that are tool-capable AND whose provider has credentials.
     final defaultCaps = <String>{Capability.chat, Capability.tools};
-    final entries = flattenCatalog(
+    var entries = flattenCatalog(
       config.catalogData,
       where: (p) {
         final adapter = config.adapters.lookup(p.adapter);
         return adapter != null && adapter.isConnected(p, config.credentials);
       },
     ).where((row) => row.model.capabilities.containsAll(defaultCaps)).toList();
+
+    // Merge Ollama installed-models when discovery is available. Fail-soft
+    // by construction — `listInstalled` returns `[]` on any error.
+    if (ollamaDiscovery != null) {
+      final installed = await ollamaDiscovery.listInstalled();
+      entries = mergeOllamaDiscovery(entries, installed);
+    }
 
     if (entries.isEmpty) {
       addSystemMessage(

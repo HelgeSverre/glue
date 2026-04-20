@@ -9,15 +9,18 @@ Set credentials with the standard env vars (e.g. `ANTHROPIC_API_KEY`, `OPENAI_AP
 Set it once in `~/.glue/config.yaml`:
 
 ```yaml
-active_model: anthropic/claude-sonnet-4.6
+active_model: anthropic/claude-sonnet-4-6
 ```
 
 Override per-invocation with the CLI flag:
 
 ```bash
 glue -m openai/gpt-4.1
-glue -m ollama/llama3.2
+glue -m ollama/qwen3-coder:30b
 ```
+
+For local Ollama, `ollama/qwen3-coder:30b` is the current recommended coding
+model in the bundled catalog.
 
 Or switch interactively:
 
@@ -37,7 +40,7 @@ Define them in `~/.glue/config.yaml` as a flat map of `name: provider/model`:
 profiles:
   fast: openai/gpt-4.1-nano
   deep: anthropic/claude-opus-4-6
-  local: ollama/llama3.2
+  local: ollama/qwen3-coder:30b
 ```
 
 Then switch with the `@` prefix:

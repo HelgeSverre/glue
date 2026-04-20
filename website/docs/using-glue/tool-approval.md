@@ -18,16 +18,16 @@ You can configure permanent tool trust in `~/.glue/preferences.json`. Use with c
 
 Glue has two approval modes:
 
-| Mode      | Behavior                                                       |
-| --------- | -------------------------------------------------------------- |
-| `confirm` | Ask for confirmation on untrusted tools (default)              |
-| `auto`    | Auto-approve everything — no confirmations at all              |
+| Mode      | Behavior                                          |
+| --------- | ------------------------------------------------- |
+| `confirm` | Ask for confirmation on untrusted tools (default) |
+| `auto`    | Auto-approve everything — no confirmations at all |
 
 Toggle between them at runtime with `Shift+Tab` or the `/approve` slash command. Set the default via config or env var:
 
 ```yaml
 # ~/.glue/config.yaml
-approval_mode: confirm   # confirm | auto
+approval_mode: confirm # confirm | auto
 ```
 
 ```bash

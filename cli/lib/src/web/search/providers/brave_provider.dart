@@ -9,12 +9,14 @@ import 'package:glue/src/web/search/provider.dart';
 class BraveSearchProvider implements WebSearchProvider {
   final String? apiKey;
   final int timeoutSeconds;
+  final http.Client _client;
   static const _baseUrl = 'https://api.search.brave.com/res/v1/web/search';
 
   BraveSearchProvider({
     required this.apiKey,
     this.timeoutSeconds = 15,
-  });
+    http.Client? client,
+  }) : _client = client ?? http.Client();
 
   @override
   String get name => 'brave';
@@ -36,7 +38,7 @@ class BraveSearchProvider implements WebSearchProvider {
       'count': maxResults.toString(),
     });
 
-    final response = await http.get(uri, headers: {
+    final response = await _client.get(uri, headers: {
       'Accept': 'application/json',
       'Accept-Encoding': 'gzip',
       'X-Subscription-Token': apiKey!,

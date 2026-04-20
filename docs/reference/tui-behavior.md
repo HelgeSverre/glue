@@ -20,12 +20,12 @@ scrollback in the output zone.
 Scrolling is internal to Glue. There is no native scrollback while in
 alternate screen.
 
-| Input | Effect |
-|---|---|
-| `PageUp` / `PageDown` | Scroll half a viewport up/down |
-| Mouse wheel over the output zone | Scroll ±3 lines |
-| `Ctrl+End` | Jump to the bottom; resume follow-tail |
-| Status bar `↑N` | Indicator that you are N lines scrolled up |
+| Input                            | Effect                                     |
+| -------------------------------- | ------------------------------------------ |
+| `PageUp` / `PageDown`            | Scroll half a viewport up/down             |
+| Mouse wheel over the output zone | Scroll ±3 lines                            |
+| `Ctrl+End`                       | Jump to the bottom; resume follow-tail     |
+| Status bar `↑N`                  | Indicator that you are N lines scrolled up |
 
 While scrolled up, new output still arrives — Glue just doesn't follow
 the tail. When `_scrollOffset == 0`, new output appears at the bottom as
@@ -47,15 +47,15 @@ Terminal resize:
 Every tool call the agent makes goes through a phase sequence. The phase
 shows up next to the tool name in the transcript.
 
-| Phase | Meaning | Suffix |
-|---|---|---|
-| `preparing` | Model named a tool; arguments still streaming | `(preparing…)` dim |
-| `awaitingApproval` | User decision required before execution | `(awaiting approval)` yellow |
-| `running` | Glue is executing the tool | `(running…)` cyan |
-| `done` | Completed successfully | (no suffix) |
-| `denied` | User or policy refused execution **before it ran** | `(denied)` red |
-| `cancelled` | User cancelled while the tool was active (Ctrl+C) | `(cancelled)` dim |
-| `error` | Ran but returned an error | `(error)` red |
+| Phase              | Meaning                                            | Suffix                       |
+| ------------------ | -------------------------------------------------- | ---------------------------- |
+| `preparing`        | Model named a tool; arguments still streaming      | `(preparing…)` dim           |
+| `awaitingApproval` | User decision required before execution            | `(awaiting approval)` yellow |
+| `running`          | Glue is executing the tool                         | `(running…)` cyan            |
+| `done`             | Completed successfully                             | (no suffix)                  |
+| `denied`           | User or policy refused execution **before it ran** | `(denied)` red               |
+| `cancelled`        | User cancelled while the tool was active (Ctrl+C)  | `(cancelled)` dim            |
+| `error`            | Ran but returned an error                          | `(error)` red                |
 
 `denied` and `cancelled` are deliberately distinct: `denied` means "this
 tool never executed," `cancelled` means "this tool was running and you
@@ -89,14 +89,14 @@ else autocomplete — before reaching the editor.
 
 ### Keys with global behavior (unchanged by focus)
 
-| Key | Effect |
-|---|---|
-| `Shift+Tab` | Toggle approval mode (`confirm` ↔ `auto`) |
-| `PageUp` / `PageDown` | Scroll transcript |
-| `Ctrl+End` | Jump to bottom |
-| `Ctrl+C` (single, active work) | Cancel current agent / bash |
-| `Ctrl+C` (single, idle) | Prompt to confirm exit |
-| `Ctrl+C` (double, within ~160ms) | Exit immediately |
+| Key                              | Effect                                    |
+| -------------------------------- | ----------------------------------------- |
+| `Shift+Tab`                      | Toggle approval mode (`confirm` ↔ `auto`) |
+| `PageUp` / `PageDown`            | Scroll transcript                         |
+| `Ctrl+End`                       | Jump to bottom                            |
+| `Ctrl+C` (single, active work)   | Cancel current agent / bash               |
+| `Ctrl+C` (single, idle)          | Prompt to confirm exit                    |
+| `Ctrl+C` (double, within ~160ms) | Exit immediately                          |
 
 ### Editor
 

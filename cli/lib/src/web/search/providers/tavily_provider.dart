@@ -9,12 +9,14 @@ import 'package:glue/src/web/search/provider.dart';
 class TavilySearchProvider implements WebSearchProvider {
   final String? apiKey;
   final int timeoutSeconds;
+  final http.Client _client;
   static const _baseUrl = 'https://api.tavily.com/search';
 
   TavilySearchProvider({
     required this.apiKey,
     this.timeoutSeconds = 15,
-  });
+    http.Client? client,
+  }) : _client = client ?? http.Client();
 
   @override
   String get name => 'tavily';
@@ -31,7 +33,7 @@ class TavilySearchProvider implements WebSearchProvider {
       throw StateError('Tavily API key not configured');
     }
 
-    final response = await http
+    final response = await _client
         .post(
           Uri.parse(_baseUrl),
           headers: {

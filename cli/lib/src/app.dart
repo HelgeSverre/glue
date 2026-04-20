@@ -15,15 +15,20 @@ import 'package:glue/src/commands/arg_completers.dart' as arg_completers;
 import 'package:glue/src/commands/builtin_commands.dart';
 import 'package:glue/src/commands/config_command.dart';
 import 'package:glue/src/commands/slash_commands.dart';
+import 'package:glue/src/app/model_display.dart';
+import 'package:glue/src/catalog/model_catalog.dart';
 import 'package:glue/src/catalog/model_ref.dart';
+import 'package:glue/src/catalog/model_resolver.dart';
 import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/core/clipboard.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/core/path_opener.dart';
 import 'package:glue/src/core/where_report.dart';
+import 'package:glue/src/providers/ollama_discovery.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
-import 'package:glue/src/ui/model_panel_formatter.dart' show CatalogRow;
+import 'package:glue/src/ui/model_panel_formatter.dart'
+    show CatalogRow, ModelAvailability;
 import 'package:glue/src/core/service_locator.dart';
 import 'package:glue/src/config/approval_mode.dart';
 import 'package:glue/src/llm/llm_factory.dart';
@@ -60,6 +65,7 @@ part 'app/agent_orchestration.dart';
 part 'app/command_helpers.dart';
 part 'app/events.dart';
 part 'app/models.dart';
+part 'app/ollama_pull_flow.dart';
 part 'app/render_pipeline.dart';
 part 'app/session_runtime.dart';
 part 'app/spinner_runtime.dart';
@@ -621,12 +627,24 @@ class App {
     final config = _config;
     if (config == null) return;
 
+    // Attach Ollama discovery only when the provider is enabled in the
+    // catalog — keeps the picker honest without adding startup work.
+    final ollamaProvider = config.catalogData.providers['ollama'];
+    final discovery = (ollamaProvider != null && ollamaProvider.enabled)
+        ? OllamaDiscovery(
+            baseUrl: Uri.parse(
+              ollamaProvider.baseUrl ?? 'http://localhost:11434',
+            ),
+          )
+        : null;
+
     unawaited(_panels.openModel(
       config: config,
       currentRef: config.activeModel,
       onModelSelected: _switchToModelRow,
       addSystemMessage: _addSystemMessage,
       isSelectionEnabled: () => true,
+      ollamaDiscovery: discovery,
     ));
   }
 

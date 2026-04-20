@@ -6,6 +6,7 @@ import 'package:glue/src/catalog/catalog_loader.dart';
 import 'package:glue/src/catalog/catalog_parser.dart';
 import 'package:glue/src/catalog/model_catalog.dart';
 import 'package:glue/src/catalog/model_ref.dart';
+import 'package:glue/src/catalog/model_resolver.dart';
 import 'package:glue/src/catalog/models_generated.dart';
 import 'package:glue/src/config/approval_mode.dart';
 import 'package:glue/src/config/constants.dart';
@@ -14,6 +15,7 @@ import 'package:glue/src/credentials/credential_store.dart';
 import 'package:glue/src/observability/observability_config.dart';
 import 'package:glue/src/providers/anthropic_adapter.dart';
 import 'package:glue/src/providers/copilot_adapter.dart';
+import 'package:glue/src/providers/ollama_adapter.dart';
 import 'package:glue/src/providers/openai_compatible_adapter.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
 import 'package:glue/src/providers/resolved.dart';
@@ -99,7 +101,10 @@ class GlueConfig {
   final CredentialStore credentials;
 
   /// Registry of provider adapters (anthropic, openai-compatible, …).
-  final AdapterRegistry adapters;
+  ///
+  /// Not final — ServiceLocator swaps this after observability is constructed
+  /// so adapters can thread a logging HTTP factory into their LLM clients.
+  AdapterRegistry adapters;
 
   final int maxSubagentDepth;
   final int bashMaxLines;
@@ -265,6 +270,7 @@ class GlueConfig {
         AdapterRegistry([
           AnthropicAdapter(),
           OpenAiCompatibleAdapter(),
+          OllamaAdapter(),
           CopilotAdapter(credentialStore: credentials),
         ]);
 
@@ -488,9 +494,20 @@ class GlueConfig {
     );
 
     // Observability.
-    final debug =
-        env['GLUE_DEBUG'] == '1' || (fileConfig?['debug'] as bool? ?? false);
-    final observabilityConfig = ObservabilityConfig(debug: debug);
+    final observabilitySection =
+        fileConfig?['observability'] as Map<dynamic, dynamic>?;
+    final debug = env['GLUE_DEBUG'] == '1' ||
+        (observabilitySection?['debug'] as bool? ??
+            fileConfig?['debug'] as bool? ??
+            false);
+    final maxBodyBytes =
+        (observabilitySection?['max_body_bytes'] as int?) ?? 65536;
+    final redact = (observabilitySection?['redact'] as bool?) ?? true;
+    final observabilityConfig = ObservabilityConfig(
+      debug: debug,
+      maxBodyBytes: maxBodyBytes,
+      redact: redact,
+    );
 
     // Approval mode.
     final approvalStr =
@@ -543,43 +560,38 @@ class GlueConfig {
   }
 }
 
-/// Fuzzy-resolve a user-typed model identifier against the catalog.
+/// Resolve a user-typed model identifier against the catalog.
 ///
-/// Accepts:
-///   - A full `provider/model` ref (passed straight to [ModelRef.parse]).
-///   - A bare model id or a display-name fragment — matches the first
-///     catalog entry whose id or `name` contains the query.
-///
-/// Throws [ConfigError] when no match is found.
+/// Explicit `<provider>/<id>` is never fuzzy-matched — catalogued inputs
+/// return the catalog entry, uncatalogued inputs pass through verbatim.
+/// Bare inputs require an exact match; substring fallback is gone because
+/// it silently rewrote `gemma4` into `gemma4:26b`. See [resolveModelInput].
 ModelRef _resolveModelRef(String raw, ModelCatalog catalog) {
-  final parsed = ModelRef.tryParse(raw);
-  if (parsed != null && catalog.providers.containsKey(parsed.providerId)) {
-    return parsed;
-  }
-
-  final query = raw.toLowerCase();
-  for (final provider in catalog.providers.values) {
-    for (final model in provider.models.values) {
-      if (model.id.toLowerCase() == query ||
-          model.name.toLowerCase() == query) {
-        return ModelRef(providerId: provider.id, modelId: model.id);
+  final outcome = resolveModelInput(raw, catalog);
+  switch (outcome) {
+    case ResolvedExact():
+      return outcome.ref;
+    case ResolvedPassthrough():
+      if (!outcome.providerKnown) {
+        throw ConfigError(
+          'unknown provider "${outcome.ref.providerId}" in model "$raw". '
+          'Try `/models` to list available providers.',
+        );
       }
-    }
+      return outcome.ref;
+    case AmbiguousBareInput():
+      final options =
+          outcome.candidates.map((c) => c.ref.toString()).join(', ');
+      throw ConfigError(
+        'model "$raw" is ambiguous — matches $options. '
+        'Use `<provider>/<id>` to pick one.',
+      );
+    case UnknownBareInput():
+      throw ConfigError(
+        'could not resolve model "$raw". Use `<provider>/<id>` '
+        '(e.g. `ollama/gemma4:latest`) or run `/models` to list options.',
+      );
   }
-  for (final provider in catalog.providers.values) {
-    for (final model in provider.models.values) {
-      if (model.id.toLowerCase().contains(query) ||
-          model.name.toLowerCase().contains(query)) {
-        return ModelRef(providerId: provider.id, modelId: model.id);
-      }
-    }
-  }
-
-  if (parsed != null) return parsed; // bare ref for an unknown provider
-  throw ConfigError(
-    'could not resolve model "$raw". Use `<provider>/<model>` or a '
-    'catalogued display name (try `/models` to list options).',
-  );
 }
 
 ModelCatalog? _loadOptionalYaml(String path) {

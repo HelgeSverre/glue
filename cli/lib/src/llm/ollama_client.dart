@@ -8,23 +8,45 @@ import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/llm/ndjson.dart';
 import 'package:glue/src/llm/tool_schema.dart';
 
+/// Hard ceiling on the `num_ctx` override Glue will send.
+///
+/// Keeps us from forwarding absurd context windows (some catalogue entries
+/// claim 1M+) that would blow past the user's RAM budget on mid-range
+/// GPUs. 128K is comfortably above every real agent conversation and
+/// matches what the upstream ecosystem (Continue, Cline, opencode) settled
+/// on. Exposed publicly so tests can assert it without magic-number copies.
+const int ollamaNumCtxCeiling = 131072;
+
 /// LLM client for Ollama local API with streaming.
 ///
 /// Ollama uses NDJSON streaming (not SSE) and its own message format.
 /// Tool calling uses OpenAI-compatible tool schemas but returns
 /// arguments as parsed objects (not JSON strings).
 ///
+/// **`num_ctx` injection.** Ollama silently defaults to `num_ctx: 2048` for
+/// every request regardless of what the model was trained with — a
+/// notorious footgun that silently truncates agent loops. When [contextWindow]
+/// is set, we inject `options.num_ctx = min(contextWindow, ollamaNumCtxCeiling)`
+/// so catalogued models get the full context their metadata promises.
+///
 /// {@category LLM Providers}
 class OllamaClient implements LlmClient {
   final http.Client Function() _requestClientFactory;
   final String model;
   final String systemPrompt;
+
+  /// When non-null, injected as `options.num_ctx` on every request. Comes
+  /// from `ModelDef.contextWindow` at adapter construction time. See class
+  /// doc for why this matters.
+  final int? contextWindow;
+
   final Uri _baseUri;
 
   OllamaClient({
     required this.model,
     required this.systemPrompt,
     String baseUrl = 'http://localhost:11434',
+    this.contextWindow,
     http.Client Function()? requestClientFactory,
   })  : _requestClientFactory = requestClientFactory ?? http.Client.new,
         _baseUri = Uri.parse(baseUrl);
@@ -93,6 +115,15 @@ class OllamaClient implements LlmClient {
         'messages': mappedMessages,
         'stream': true,
       };
+
+      if (contextWindow != null && contextWindow! > 0) {
+        // Cap to a reasonable ceiling regardless of catalog claims so we
+        // don't OOM mid-range GPUs with 1M-context settings.
+        final numCtx = contextWindow! < ollamaNumCtxCeiling
+            ? contextWindow!
+            : ollamaNumCtxCeiling;
+        body['options'] = <String, dynamic>{'num_ctx': numCtx};
+      }
 
       if (tools != null && tools.isNotEmpty) {
         body['tools'] = const OpenAiToolEncoder().encodeAll(tools);

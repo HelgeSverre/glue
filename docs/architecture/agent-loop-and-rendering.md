@@ -614,9 +614,9 @@ ApprovalMode (enum)
 
 Each `Tool` declares a `ToolTrust` level:
 
-| ToolTrust  | Auto-approved when                | Examples                                                |
-| ---------- | --------------------------------- | ------------------------------------------------------- |
-| `safe`     | Always                            | `read_file`, `grep`, `skill`, `web_search`, `web_fetch` |
+| ToolTrust  | Auto-approved when                    | Examples                                                |
+| ---------- | ------------------------------------- | ------------------------------------------------------- |
+| `safe`     | Always                                | `read_file`, `grep`, `skill`, `web_search`, `web_fetch` |
 | `fileEdit` | In `auto`, or in `confirm` if trusted | `write_file`, `edit_file`                               |
 | `command`  | In `auto`, or in `confirm` if trusted | `bash`                                                  |
 

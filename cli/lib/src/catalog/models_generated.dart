@@ -391,10 +391,10 @@ const ModelCatalog bundledCatalog = ModelCatalog(
     'ollama': ProviderDef(
       id: 'ollama',
       name: 'Ollama',
-      adapter: 'openai',
-      compatibility: 'ollama',
+      adapter: 'ollama',
+      compatibility: null,
       enabled: true,
-      baseUrl: 'http://localhost:11434/v1',
+      baseUrl: 'http://localhost:11434',
       docsUrl: 'https://ollama.com/',
       auth: AuthSpec(kind: AuthKind.none, envVar: null, helpUrl: null),
       requestHeaders: {},

@@ -6,7 +6,9 @@ import 'package:yaml/yaml.dart';
 
 import 'package:glue/src/catalog/catalog_parser.dart';
 import 'package:glue/src/commands/config_command.dart';
+import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/core/environment.dart';
+import 'package:glue/src/observability/observability_config.dart';
 
 enum DoctorSeverity {
   ok,
@@ -101,6 +103,7 @@ DoctorReport runDoctor(Environment environment) {
     p.join(environment.cacheDir, 'models.yaml'),
   );
   _checkConfigValidation(findings, environment);
+  _checkObservability(findings, environment);
   _checkSessions(findings, environment.sessionsDir);
   _checkTmpFiles(findings, environment.glueDir);
 
@@ -337,6 +340,96 @@ void _checkConfigValidation(
     message: result.message,
     path: environment.configYamlPath,
   ));
+}
+
+void _checkObservability(
+  List<DoctorFinding> findings,
+  Environment environment,
+) {
+  // Pull effective observability settings from the loaded config when possible.
+  // If the config cannot be loaded (e.g. legacy-shape YAML), fall back to the
+  // default observability settings so the section still renders useful paths.
+  ObservabilityConfig observability;
+  try {
+    final config = GlueConfig.load(environment: environment);
+    observability = config.observability;
+  } on Object {
+    observability = const ObservabilityConfig();
+  }
+
+  const section = 'Observability';
+  final logsDir = environment.logsDir;
+
+  findings.add(DoctorFinding(
+    severity: DoctorSeverity.info,
+    section: section,
+    message: 'debug: ${observability.debug ? 'on' : 'off'}',
+  ));
+
+  findings.add(DoctorFinding(
+    severity: DoctorSeverity.info,
+    section: section,
+    message: 'Log directory: $logsDir',
+    path: logsDir,
+  ));
+
+  final latestSpanLog = _latestLogFile(logsDir, 'spans-', '.jsonl');
+  findings.add(DoctorFinding(
+    severity: DoctorSeverity.info,
+    section: section,
+    message: latestSpanLog == null
+        ? 'no recent span logs'
+        : 'Recent span log: ${p.basename(latestSpanLog)}',
+    path: latestSpanLog,
+  ));
+
+  if (observability.debug) {
+    final latestHttpLog = _latestLogFile(logsDir, 'http-', '.jsonl');
+    findings.add(DoctorFinding(
+      severity: DoctorSeverity.info,
+      section: section,
+      message: latestHttpLog == null
+          ? 'no recent http logs'
+          : 'Recent http log: ${p.basename(latestHttpLog)}',
+      path: latestHttpLog,
+    ));
+  }
+
+  findings.add(DoctorFinding(
+    severity: DoctorSeverity.info,
+    section: section,
+    message: 'Body cap: ${observability.maxBodyBytes} bytes',
+  ));
+
+  findings.add(DoctorFinding(
+    severity:
+        observability.redact ? DoctorSeverity.info : DoctorSeverity.warning,
+    section: section,
+    message: observability.redact
+        ? 'Redaction: enabled'
+        : 'Redaction: disabled — debug logs may contain secrets',
+  ));
+}
+
+/// Returns the absolute path of the most recently modified file in [dir]
+/// whose name starts with [prefix] and ends with [suffix], or `null` when
+/// the directory is missing or no matching file exists.
+String? _latestLogFile(String dir, String prefix, String suffix) {
+  final directory = Directory(dir);
+  if (!directory.existsSync()) return null;
+  File? newest;
+  DateTime? newestMtime;
+  for (final entry in directory.listSync()) {
+    if (entry is! File) continue;
+    final name = p.basename(entry.path);
+    if (!name.startsWith(prefix) || !name.endsWith(suffix)) continue;
+    final mtime = entry.statSync().modified;
+    if (newestMtime == null || mtime.isAfter(newestMtime)) {
+      newest = entry;
+      newestMtime = mtime;
+    }
+  }
+  return newest?.path;
 }
 
 void _checkSessions(List<DoctorFinding> findings, String sessionsDir) {

@@ -13,15 +13,18 @@ Optional Jina AI fallback for difficult pages when `JINA_API_KEY` is set.
 
 ## web_search
 
-Searches the web and returns structured results. Three providers:
+Searches the web and returns structured results. Four providers:
 
 | Provider     | API Key Env Var     |
 | ------------ | ------------------- |
+| DuckDuckGo   | None                |
 | Brave Search | `BRAVE_API_KEY`     |
 | Tavily       | `TAVILY_API_KEY`    |
 | Firecrawl    | `FIRECRAWL_API_KEY` |
 
-If no explicit provider is configured, Glue auto-detects the first available provider by checking which API key is set.
+If no explicit provider is configured, Glue auto-detects the first available
+configured provider and falls back to DuckDuckGo when no API-backed provider is
+available.
 
 ## Configuration
 
@@ -33,7 +36,7 @@ web:
     allow_jina_fallback: true
 
   search:
-    provider: "brave" # brave | tavily | firecrawl
+    provider: "brave" # brave | tavily | firecrawl | duckduckgo
     max_results: 10
 
   pdf:

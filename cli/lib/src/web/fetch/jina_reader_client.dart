@@ -5,12 +5,14 @@ class JinaReaderClient {
   final String baseUrl;
   final String? apiKey;
   final int timeoutSeconds;
+  final http.Client _client;
 
   JinaReaderClient({
     this.baseUrl = 'https://r.jina.ai',
     this.apiKey,
     this.timeoutSeconds = 30,
-  });
+    http.Client? client,
+  }) : _client = client ?? http.Client();
 
   Uri buildReaderUrl(String targetUrl) => Uri.parse('$baseUrl/$targetUrl');
 
@@ -26,7 +28,7 @@ class JinaReaderClient {
 
   Future<String?> fetch(String url) async {
     try {
-      final response = await http
+      final response = await _client
           .get(buildReaderUrl(url), headers: headers)
           .timeout(Duration(seconds: timeoutSeconds));
 

@@ -15,7 +15,7 @@ The agent has access to these tools for interacting with your codebase. Tools ru
 | `spawn_subagent`           | Spawn a single focused subagent for an isolated task.                                                                | Auto     |
 | `spawn_parallel_subagents` | Spawn multiple subagents to work concurrently on independent tasks.                                                  | Auto     |
 | `web_fetch`                | Fetch URL content as markdown. Handles PDFs with OCR fallback via Mistral/OpenAI vision.                             | Auto     |
-| `web_search`               | Search the web via Brave, Tavily, or Firecrawl. Auto-detects available provider from API keys.                       | Auto     |
+| `web_search`               | Search the web via Brave, DuckDuckGo, Tavily, or Firecrawl. Auto-detects configured providers with DuckDuckGo fallback. | Auto     |
 | `web_browser`              | Browser automation via Chrome DevTools Protocol. Actions: navigate, screenshot, click, type, extract_text, evaluate. | Required |
 | `skill`                    | List available skills (no args) or activate a skill by name.                                                         | Auto     |
 

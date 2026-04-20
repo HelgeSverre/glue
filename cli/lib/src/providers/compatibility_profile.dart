@@ -9,32 +9,32 @@ library;
 enum CompatibilityProfile {
   openai,
   groq,
-  ollama,
   openrouter,
   vllm,
   mistral;
 
   /// Parse the catalog's `compatibility:` string. Unknown / null → [openai].
+  ///
+  /// Ollama is NOT in this list — it has its own adapter
+  /// (`OllamaAdapter` / `OllamaClient`) and doesn't ride the OpenAI-compat
+  /// path anymore. See `lib/src/providers/ollama_adapter.dart`.
   static CompatibilityProfile fromString(String? id) => switch (id) {
         'groq' => groq,
-        'ollama' => ollama,
         'openrouter' => openrouter,
         'vllm' => vllm,
         'mistral' => mistral,
         _ => openai,
       };
 
-  /// Auth header to attach. Ollama (and other auth-less local gateways) omits
-  /// the header entirely — returning an empty map means "do not set".
-  Map<String, String> authHeaders(String apiKey) => switch (this) {
-        ollama => const {},
-        _ => {'Authorization': 'Bearer $apiKey'},
-      };
+  /// Auth header to attach. Auth-less local gateways omit the header
+  /// entirely — returning an empty map means "do not set".
+  Map<String, String> authHeaders(String apiKey) =>
+      {'Authorization': 'Bearer $apiKey'};
 
   /// Whether this endpoint supports `stream_options.include_usage`. When
   /// false, the body field is stripped to avoid 400 responses.
   bool get supportsStreamOptionsUsage => switch (this) {
-        groq || ollama || vllm => false,
+        groq || vllm => false,
         openai || openrouter || mistral => true,
       };
 
