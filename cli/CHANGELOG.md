@@ -6,6 +6,88 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Added
 
+- **Native `OllamaAdapter`** — Ollama now has a dedicated
+  `ProviderAdapter` + `OllamaClient` that talks to `/api/chat` directly
+  instead of riding the OpenAI-compat adapter at `/v1/chat/completions`.
+  Errors correctly attribute to Ollama (no more "OpenAI API error 404"
+  on missing Ollama models), and Ollama-specific request options now
+  have a home in the native client.
+- **`options.num_ctx` injection** — `OllamaClient` now sets
+  `options.num_ctx = min(ModelDef.contextWindow, 131072)` on every
+  request when the catalog knows the model's context window. Fixes the
+  silent agent-loop truncation when Ollama falls back to its 2048-token
+  default. Clamped at 128K so catalog entries that claim 1M contexts
+  don't OOM mid-range GPUs. Uncatalogued passthrough models (user-typed
+  tags) omit `options` and get Ollama's default.
+- **Exact-match model resolver** — new
+  `lib/src/catalog/model_resolver.dart` is the single source of truth
+  for turning a user-typed identifier into a `ModelRef`. Explicit
+  `<provider>/<id>` inputs are never fuzzy-matched: catalogued refs
+  return the catalog entry, uncatalogued refs pass through to the
+  provider verbatim. Bare inputs require an exact match against `id`
+  or display name; ambiguous bare inputs return the candidate list and
+  unknown bare inputs return a clear error. The previous substring
+  fallback silently rewrote `gemma4` into `gemma4:26b`; it's gone.
+- **Status bar + `/info` show the wire address** — the right-hand
+  status segment now reads `<provider> · <apiId>` (what the provider
+  actually receives), not the internal catalog key. `/info` expands to
+  `<name> — <provider>/<apiId>` for catalogued models and falls back to
+  `<provider>/<modelId>` for uncatalogued passthrough. Surfaces `apiId`
+  drift (e.g. Groq's `gpt-oss-120b` goes out as `openai/gpt-oss-120b`).
+- **Ollama dynamic discovery** —
+  `lib/src/providers/ollama_discovery.dart` merges Ollama's `/api/tags`
+  into the `/model` picker. Catalogued+pulled entries render normally;
+  catalogued but not-pulled show `[pull]`; tag-only locally-installed
+  models show `[local]` and are synthesised into picker rows. 2 s
+  timeout, 30 s in-memory cache. Fail-soft: picker falls back to the
+  bundled catalog silently when the daemon is down.
+- **"Pull this model?" confirmation flow** — selecting a not-installed
+  Ollama tag (via the `/model` picker or by typing `ollama/<tag>`
+  directly) opens a `ConfirmModal`. On **Yes**, Glue streams
+  `POST /api/pull` progress as system messages and only switches the
+  active model after a `{"status":"success"}` frame. On **No** or on
+  pull failure, the active model stays put.
+- **Clean `ConfigError` surface at startup** — `bin/glue.dart` now
+  catches `ConfigError` and `ModelRefParseException`, writes a
+  single-line `Error: …` to stderr, and exits with code 78 (EX_CONFIG)
+  instead of dumping a Dart "Unhandled exception" stack trace.
+
+### Changed
+
+- **Ollama no longer masquerades as OpenAI-compat.** The `ollama`
+  provider in `docs/reference/models.yaml` now uses `adapter: ollama`
+  (not `adapter: openai + compatibility: ollama`), and `base_url`
+  drops the legacy `/v1` suffix. Catalog regenerated.
+- **`/model` picker picks the user's intent, not a substring match.**
+  See "Exact-match model resolver" under Added. Errors list
+  candidates for ambiguous inputs instead of silently choosing one.
+
+### Fixed
+
+- **Docker executor test now skips when the daemon is down.** The
+  skip guard changed from `docker --version` (CLI-only check) to
+  `docker info` (requires the daemon), so the test stops failing on
+  machines that have Docker installed but not running.
+
+### Removed
+
+- **`CompatibilityProfile.ollama`** — dead after the native adapter
+  move. `CompatibilityProfile.fromString('ollama')` now falls through
+  to `openai` (kept for a forgiving parse; the native adapter handles
+  the real wiring).
+
+## [0.1.1] — 2026-04-20
+
+### Added
+
+- **Build metadata injection** — `just build` now passes `GLUE_BUILD_TIME`,
+  `GLUE_GIT_SHA`, `GLUE_GIT_DIRTY`, and `GLUE_BUILT_BY` to `dart compile` via
+  `--define` flags. `BuildInfo` reads them at startup; `glue --version` prints
+  a compact summary (e.g. `glue v0.1.1 (a1b2c3d, 2026-04-20T…)`),
+  `glue --version --debug` prints a detailed block, and `--debug` emits a
+  banner to stderr before the TUI launches. Dev builds (`dart run`) fall back
+  to `(dev)`. `just release` now builds after the tag commit so the binary
+  carries a clean SHA.
 - **`glue config init`** — non-interactive config initializer that writes an
   annotated v2 `config.yaml` template to the resolved Glue home
   (`~/.glue/config.yaml` or `$GLUE_HOME/config.yaml`). Supports
@@ -85,9 +167,6 @@ All notable changes to Glue CLI will be documented in this file.
   - `glue -p --json "query"` — JSON output for scripting
   - `glue -r <session-id>` — resume a specific session by ID
   - Model aliases: `glue -m opus` resolves to `claude-opus-4-6`
-  - Removed `--provider` flag (provider inferred from model name, frees
-    `-p` for print mode)
-
 - **DevTools instrumentation** — consolidated observability with
   `dart:developer` integration:
   - `DevToolsSink` bridges observability spans to `developer.log()` and
@@ -96,90 +175,17 @@ All notable changes to Glue CLI will be documented in this file.
     `tagToolExec`, `tagAgentLoop`), Timeline helpers, DevTools URL helper
   - TTFB (time to first byte) tracking in `ObservedLlmClient`
   - Tool call name and response preview tracking in observability spans
-
 - **Session replay improvements** — proper tool_call/tool_result
   grouping during session resume and fork:
   - Assistant messages now include their associated tool calls
   - Tool results are properly paired with their tool_use IDs
   - Orphaned `tool_result` messages are filtered from conversation
     history, preventing Anthropic API 400 errors
-
 - **Subagent output improvements** — richer grouped output display:
   - `_SubagentEntry` class with optional JSON pretty-printing for
     expandable tool result content
   - `_SubagentGroup` shows current tool name during execution
   - Expanded view renders indented JSON for structured results
-
-### Changed
-
-- Web search and browser automation support are constructed lazily during
-  startup. `ServiceLocator.create()` now wires memoized lazy factories into
-  `WebSearchTool` and `WebBrowserTool`, so `SearchRouter`, browser provider
-  selection, and `BrowserManager` are only built on first valid tool use.
-- **Model catalog refreshed against live provider availability (April 2026).**
-  - **Mistral default → `devstral-latest`** (agentic coding model). Added
-    `mistral-medium-latest`. Kept `mistral-large-latest`, `mistral-small-latest`.
-  - **Ollama default → `qwen3-coder:30b`** (community consensus, 256K
-    context, dedicated tool-call parser). Recommended list: `qwen3-coder:30b`,
-    `qwen3.6:35b`, `gemma4:26b`, `devstral-small-2:24b`, `qwen2.5-coder:32b`,
-    `qwen3:8b`. Six popular non-agentic families (`mistral:7b`, `gemma3:12b`,
-    `codellama:13b`, `codegemma:7b`, `starcoder2:15b`, `deepseek-coder:33b`)
-    included as `recommended: false` with notes explaining why they're
-    not suitable for tool loops.
-  - **Groq default → `openai/gpt-oss-120b`** (reasoning + coding). Added
-    `gpt-oss-20b`, `llama-3.1-8b-instant`. Kept `llama-3.3-70b-versatile`.
-  - **Slash-bearing catalog keys slugified**: `groq/openai/gpt-oss-120b`
-    → `groq/gpt-oss-120b` (upstream `openai/gpt-oss-120b` now lives in
-    `api_id`). Same treatment for Groq `gpt-oss-20b` and OpenRouter's
-    three slash-keyed entries.
-- **Resize preserves scroll position.** `UserResize` no longer snaps the
-  transcript back to the tail; the render pipeline clamps any out-of-range
-  offset after the viewport changes.
-- **`Ctrl+End` jumps to the bottom** and resumes follow-tail. Plain `End`
-  stays reserved for the line editor (cursor-to-end-of-line).
-- **`/status` is now a hidden alias of `/info`.** One command in help +
-  autocomplete; muscle memory for `/status` keeps working.
-- **Release workflow overhaul** — five-way matrix
-  (`linux-x64 / linux-arm64 / macos-x64 / macos-arm64 / windows-x64.exe`),
-  per-asset `.sha256`, aggregated `SHA256SUMS`, smoke-test of every binary,
-  prerelease auto-flag for tags containing `-`.
-- **GH Action version audit.** `actions/cache v4 → v5` (Node 24);
-  everything else already on current major.
-- Status bar reformatted: bold mode indicator on left, model/mode/
-  cwd as right-aligned segments with `│` separators
-- `GlueConfig.load()` no longer accepts `cliProvider` parameter
-  (provider inferred from model)
-
-### Fixed
-
-- **Spinner no longer stuck after cancel.** `_cancelAgentImpl` now stops
-  the spinner before flipping mode; `_cancelBashImpl` mirrors the pattern
-  defensively.
-- **Tool phase no longer stuck on `awaiting approval` after cancel** —
-  approval-modal-open cancels now transition to `cancelled` too.
-- Sema scripting skill documentation examples corrected (8 runtime
-  errors fixed in documented code)
-
-### Removed
-
-- **`codestral-latest` from Mistral catalog** — FIM-lineage model;
-  enumerates tools but narrates instead of calling them in agent loops.
-  Replaced by `devstral-latest`.
-- **`qwen/qwen3-coder` from Groq catalog** — Groq no longer serves this
-  model; the entry would 404. Replaced by `openai/gpt-oss-120b`.
-- **`llama3.2:latest` from Ollama catalog** — general chat model,
-  not coding/tool-focused.
-- **`devstral:latest` from Ollama catalog** — replaced by the pinned
-  `devstral-small-2:24b` (known version, known SWE-bench scores).
-- **Interaction modes** (`code` / `architect` / `ask`), plan-mode UI,
-  `GLUE_INTERACTION_MODE` env var.
-- **OTEL / Langfuse / DevTools observability sinks** —
-  `~/.glue/logs/spans-YYYY-MM-DD.jsonl` is the single local trace log
-  now. (Stale Unreleased entries below still describe these removed
-  sinks; treat them as historical context, not ship-now features.)
-
----
-
 - **Multimodal tool results** — tools can now return images (e.g.
   browser screenshots) as native content blocks instead of base64 text.
   This reduces token usage from ~738K text tokens to ~1,600 vision
@@ -195,7 +201,6 @@ All notable changes to Glue CLI will be documented in this file.
     `image_url`/`images` arrays.
   - `WebBrowserTool` screenshots now return `ImagePart` instead of
     base64 text strings.
-
 - **Observability & debug system** — pluggable telemetry with zero
   changes to business logic. Three wrapper layers instrument all
   activity without polluting core code:
@@ -210,25 +215,12 @@ All notable changes to Glue CLI will be documented in this file.
 - **File-based debug logging** — daily-rotating log files at
   `~/.glue/logs/glue-debug-YYYY-MM-DD.log` with timestamped entries
   for HTTP calls, LLM generations, tool executions, and span lifecycle.
-- **Generic OpenTelemetry OTLP/HTTP sink** — sends spans as JSON to
-  any OTEL-compatible collector. Works out of the box with LLMFlow,
-  Langfuse (OTEL endpoint), Opik, Helicone, Laminar, Grafana Tempo,
-  Jaeger, and any standard OTLP receiver. Configurable via
-  `telemetry.otel.*` in config.yaml or `OTEL_EXPORTER_OTLP_ENDPOINT`
-  / `OTEL_EXPORTER_OTLP_HEADERS` env vars.
-- **Langfuse native sink** — uses the Langfuse Ingestion REST API for
-  richer LLM observability (generation-level tracking with model,
-  token usage, cost, sessions). Configurable via `telemetry.langfuse.*`
-  in config.yaml or `LANGFUSE_BASE_URL` / `LANGFUSE_PUBLIC_KEY` /
-  `LANGFUSE_SECRET_KEY` env vars.
 - **`Observability` facade** — composite dispatcher that fans out to
-  multiple sinks (file, OTEL, Langfuse). Sinks are independently
-  enabled/disabled. The facade provides `log()`, `startSpan()`,
-  `flush()`, and `close()` methods.
+  multiple sinks. Sinks are independently enabled/disabled. The facade
+  provides `log()`, `startSpan()`, `flush()`, and `close()` methods.
 - **`ObservabilityConfig`** — configuration model for debug and
   telemetry settings, parsed from config file and env vars following
   the existing resolution chain.
-
 - **Terminology standardization** — established canonical glossary
   (`docs/architecture/glossary.md`). Two-level hierarchy: **Project**
   (registered directory) → **Session** (resumable agent conversation).
@@ -259,13 +251,8 @@ All notable changes to Glue CLI will be documented in this file.
   update in-place. Click a group to expand/collapse its full step log.
 - **Alt+Backspace** deletes previous word (same as Ctrl+W).
 - **Alt+Left / Alt+Right** word-level cursor navigation in input editor.
-- Terminal parser now decodes **CSI modifier parameters** (`;3` = Alt,
-  `;5` = Ctrl) from extended arrow key sequences.
-- Terminal parser handles **ESC + byte** sequences for Alt+char and
-  Alt+Backspace (macOS Terminal convention: ESC prefix = Alt modifier).
 - `KeyEvent` and `CharEvent` carry an `alt` flag for modifier-aware
   input handling.
-
 - **`web_fetch` tool** — fetches a URL and returns clean markdown for the
   LLM. Three-stage pipeline: (1) try `Accept: text/markdown` header,
   (2) HTML fetch → Readability-style content extraction → HTML-to-markdown
@@ -304,42 +291,19 @@ All notable changes to Glue CLI will be documented in this file.
   `AgentRunner` with real Ollama (`qwen3:1.7b`). Tagged `@e2e`,
   skipped by default, run with `dart test --run-skipped -t e2e`.
   Retry wrapper handles small-model non-determinism.
-
 - **Tool call intent indicator** — the UI now shows
   `▶ Tool: write_file (preparing…)` as soon as the LLM begins generating
   a tool call, rather than waiting for the full arguments to stream.
   Tool calls progress through visible phases: preparing → running → done
   (or denied/error). Eliminates the "hanging spinner" feel during large
   tool argument generation.
-- **Eager tool call emission** — `AgentToolCall` events are emitted during
-  LLM streaming (not after stream end), so auto-approved tools can start
-  executing while the model may still be finishing the response.
 - **`ToolCallStart` LLM chunk** — Anthropic and OpenAI clients now yield
   a `ToolCallStart` chunk at `content_block_start` / first tool delta,
   surfacing the tool name before arguments finish streaming.
-
-- **Dart analyzer hardening** — expanded `analysis_options.yaml` with
-  `always_use_package_imports`, `strict-casts`, `strict-raw-types`,
-  `avoid_dynamic_calls`, `prefer_const_constructors`, `unawaited_futures`,
-  `discarded_futures`, and other safety/style rules on top of
-  `package:lints/recommended.yaml`. Converted all relative imports to
-  `package:glue/` imports across 51 files. Applied `dart fix` auto-fixes
-  for const correctness, unnecessary lambdas, and parentheses.
-
 - **Mistral LLM provider** — fourth provider alongside Anthropic, OpenAI,
   and Ollama. Uses OpenAI-compatible API with Mistral-specific base URL.
-  Three curated models: Mistral Large (default), Mistral Small, and
-  Codestral. Configurable via `MISTRAL_API_KEY` env var or
-  `mistral.api_key` in config.yaml.
-
-- **Interaction + approval modes** — tool visibility and confirmation policy
-  are now separate concerns. `InteractionMode` controls which tool groups the
-  LLM can access (`code`, `architect`, `ask`), while `ApprovalMode` controls
-  whether allowed mutating tools require confirmation (`confirm`, `auto`).
-  Shift+Tab cycles interaction modes, `/approve` toggles approval, and each
-  tool declares a `ToolTrust` level for approval decisions plus a `ToolGroup`
-  for mode-based filtering.
-
+  Configurable via `MISTRAL_API_KEY` env var or `mistral.api_key` in
+  config.yaml.
 - **Agent Skills** (`agentskills.io` spec) — discover and activate reusable
   skill definitions from `.glue/skills/` (project-local),
   `~/.glue/skills/` (global), and extra paths via config/env. Skill parser
@@ -347,32 +311,94 @@ All notable changes to Glue CLI will be documented in this file.
   `/skills` slash command opens a two-pane `SplitPanelModal` browser.
   Configurable via `skills.paths` in config.yaml or `GLUE_SKILLS_PATHS`
   env var.
-
 - **Browser tool infrastructure** — `BrowserManager` with pluggable
   `BrowserProvider` abstraction for Chrome DevTools Protocol connections.
   Five provider implementations: local Chrome, Docker container,
   Browserbase (cloud), Browserless (cloud), and Steel (cloud).
   `BrowserConfig` with auto-detection priority chain.
-
 - **PDF text extraction** — `web_fetch` now handles PDF URLs with a
   two-stage pipeline: (1) direct text extraction from PDF bytes, (2) OCR
   fallback via Mistral Pixtral or OpenAI GPT-4o vision models for
   scanned/image-heavy PDFs.
-
 - **GitHub Actions CI/CD** — six workflows: Dart checks (analyze, format,
   test), multi-OS matrix (Ubuntu/macOS/Windows), docs build validation,
   nightly e2e integration tests, release tag builds, and auto-labeling.
   Dependabot configured for Dart and GitHub Actions dependency updates.
 
+### Changed
+
+- Web search and browser automation support are constructed lazily during
+  startup. `ServiceLocator.create()` now wires memoized lazy factories into
+  `WebSearchTool` and `WebBrowserTool`, so `SearchRouter`, browser provider
+  selection, and `BrowserManager` are only built on first valid tool use.
+- **Model catalog refreshed against live provider availability (April 2026).**
+  - **Mistral default → `devstral-latest`** (agentic coding model). Added
+    `mistral-medium-latest`. Kept `mistral-large-latest`, `mistral-small-latest`.
+  - **Ollama default → `qwen3-coder:30b`** (community consensus, 256K
+    context, dedicated tool-call parser). Recommended list: `qwen3-coder:30b`,
+    `qwen3.6:35b`, `gemma4:26b`, `devstral-small-2:24b`, `qwen2.5-coder:32b`,
+    `qwen3:8b`. Six popular non-agentic families (`mistral:7b`, `gemma3:12b`,
+    `codellama:13b`, `codegemma:7b`, `starcoder2:15b`, `deepseek-coder:33b`)
+    included as `recommended: false` with notes explaining why they're
+    not suitable for tool loops.
+  - **Groq default → `openai/gpt-oss-120b`** (reasoning + coding). Added
+    `gpt-oss-20b`, `llama-3.1-8b-instant`. Kept `llama-3.3-70b-versatile`.
+  - **Slash-bearing catalog keys slugified**: `groq/openai/gpt-oss-120b`
+    → `groq/gpt-oss-120b` (upstream `openai/gpt-oss-120b` now lives in
+    `api_id`). Same treatment for Groq `gpt-oss-20b` and OpenRouter's
+    three slash-keyed entries.
+- **Resize preserves scroll position.** `UserResize` no longer snaps the
+  transcript back to the tail; the render pipeline clamps any out-of-range
+  offset after the viewport changes.
+- **`Ctrl+End` jumps to the bottom** and resumes follow-tail. Plain `End`
+  stays reserved for the line editor (cursor-to-end-of-line).
+- **`/status` is now a hidden alias of `/info`.** One command in help +
+  autocomplete; muscle memory for `/status` keeps working.
+- **Release workflow overhaul** — five-way matrix
+  (`linux-x64 / linux-arm64 / macos-x64 / macos-arm64 / windows-x64.exe`),
+  per-asset `.sha256`, aggregated `SHA256SUMS`, smoke-test of every binary,
+  prerelease auto-flag for tags containing `-`.
+- **GH Action version audit.** `actions/cache v4 → v5` (Node 24);
+  everything else already on current major.
+- Status bar reformatted: bold mode indicator on left, model/mode/
+  cwd as right-aligned segments with `│` separators.
+- `GlueConfig.load()` no longer accepts `cliProvider` parameter
+  (provider inferred from model). Removed `--provider` flag (frees
+  `-p` for print mode).
+- Terminal parser now decodes **CSI modifier parameters** (`;3` = Alt,
+  `;5` = Ctrl) from extended arrow key sequences.
+- Terminal parser handles **ESC + byte** sequences for Alt+char and
+  Alt+Backspace (macOS Terminal convention: ESC prefix = Alt modifier).
+- **Eager tool call emission** — `AgentToolCall` events are emitted during
+  LLM streaming (not after stream end), so auto-approved tools can start
+  executing while the model may still be finishing the response.
+- **Dart analyzer hardening** — expanded `analysis_options.yaml` with
+  `always_use_package_imports`, `strict-casts`, `strict-raw-types`,
+  `avoid_dynamic_calls`, `prefer_const_constructors`, `unawaited_futures`,
+  `discarded_futures`, and other safety/style rules on top of
+  `package:lints/recommended.yaml`. Converted all relative imports to
+  `package:glue/` imports across 51 files. Applied `dart fix` auto-fixes
+  for const correctness, unnecessary lambdas, and parentheses.
+- Default model strings removed from `GlueConfig` — `_defaultModel()` now
+  delegates to `ModelRegistry.defaultModelId()`.
+- Subagent updates use a grouped data model (`_SubagentGroup`) instead
+  of individual conversation entries — reduces output noise during
+  multi-agent orchestration.
+
 ### Fixed
 
-- **Unused `callId` parameter** in `_ConversationEntry.toolResult` — was
-  accepted but silently discarded; removed the dead parameter.
+- **Spinner no longer stuck after cancel.** `_cancelAgentImpl` now stops
+  the spinner before flipping mode; `_cancelBashImpl` mirrors the pattern
+  defensively.
+- **Tool phase no longer stuck on `awaiting approval` after cancel** —
+  approval-modal-open cancels now transition to `cancelled` too.
 - **Cancel no longer corrupts conversation** — cancelling (Escape) while
   a tool was executing left the conversation with `tool_use` blocks but
   no matching `tool_result` messages, causing the next API call to fail
   with a 400 error. `ensureToolResultsComplete()` now injects synthetic
   `[cancelled by user]` results for any unmatched tool calls.
+- **Unused `callId` parameter** in `_ConversationEntry.toolResult` — was
+  accepted but silently discarded; removed the dead parameter.
 - `/model` switch now updates `_config` (provider + model) via `copyWith`,
   fixing stale config bug where session metadata and subagent spawning
   read outdated values.
@@ -383,14 +409,25 @@ All notable changes to Glue CLI will be documented in this file.
   with `/` no longer produce empty skill names.
 - **Exit message styling** — exit prompt now shows the yellow diamond brand
   mark with session ID.
+- Sema scripting skill documentation examples corrected (8 runtime
+  errors fixed in documented code).
 
-### Changed
+### Removed
 
-- Default model strings removed from `GlueConfig` — `_defaultModel()` now
-  delegates to `ModelRegistry.defaultModelId()`.
-- Subagent updates use a grouped data model (`_SubagentGroup`) instead
-  of individual conversation entries — reduces output noise during
-  multi-agent orchestration.
+- **`codestral-latest` from Mistral catalog** — FIM-lineage model;
+  enumerates tools but narrates instead of calling them in agent loops.
+  Replaced by `devstral-latest`.
+- **`qwen/qwen3-coder` from Groq catalog** — Groq no longer serves this
+  model; the entry would 404. Replaced by `openai/gpt-oss-120b`.
+- **`llama3.2:latest` from Ollama catalog** — general chat model,
+  not coding/tool-focused.
+- **`devstral:latest` from Ollama catalog** — replaced by the pinned
+  `devstral-small-2:24b` (known version, known SWE-bench scores).
+- **Interaction modes** (`code` / `architect` / `ask`), plan-mode UI,
+  `GLUE_INTERACTION_MODE` env var.
+- **OTEL / Langfuse / DevTools observability sinks** —
+  `~/.glue/logs/spans-YYYY-MM-DD.jsonl` is the single local trace log
+  now.
 
 ## [0.1.0] — Initial development
 

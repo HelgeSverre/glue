@@ -12,6 +12,7 @@ import 'package:glue/src/observability/http_trace_sink.dart';
 import 'package:glue/src/observability/logging_http_client.dart';
 import 'package:glue/src/observability/observability.dart';
 import 'package:glue/src/providers/anthropic_adapter.dart';
+import 'package:glue/src/providers/ollama_adapter.dart';
 import 'package:glue/src/providers/copilot_adapter.dart';
 import 'package:glue/src/providers/openai_compatible_adapter.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
@@ -106,6 +107,7 @@ class ServiceLocator {
     config.adapters = AdapterRegistry([
       AnthropicAdapter(requestClientFactory: () => mkHttp('llm.anthropic')),
       OpenAiCompatibleAdapter(requestClientFactory: () => mkHttp('llm.openai')),
+      OllamaAdapter(requestClientFactory: () => mkHttp('llm.ollama')),
       CopilotAdapter(
         credentialStore: config.credentials,
         client: mkHttp('llm.copilot.auth'),
