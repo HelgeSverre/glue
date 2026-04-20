@@ -32,6 +32,7 @@ test-results/
 .env.local
 
 # Aider
+.junie*
 .aider*
 
 # Worktrees
