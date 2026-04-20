@@ -19,33 +19,32 @@ selected list items, and prompt rows.
 
 ### Token styling
 
-| Token | Minimal | High contrast | Description |
-| --- | --- | --- | --- |
-| `textPrimary` | `unstyled` | `brightWhite` | Main transcript text. |
-| `textSecondary` | `gray` | `white` | Supporting text (timestamps, inline meta). |
-| `textMuted` | `dim` | `gray` | De-emphasised, dim, or placeholder copy. |
-| `accent` | `bold.yellow` | `bold.yellow` | Brand accent — prompts, highlights, active chip. |
-| `accentSubtle` | `fg256(229)` | `brightYellow` | Quieter accent — borders, focused backgrounds. |
-| `surfaceBorder` | `gray` | `brightWhite` | Panel and divider lines. |
-| `surfaceMuted` | `bg256(236).white` | `bg256(236).white` | Subtle panel fill. |
-| `focus` | `underline` | `inverse` | Focus indicator. |
-| `selection` | `bg256(236).yellow` | `bgYellow.black` | Selected text / row. |
-| `info` | `cyan` | `brightCyan` | Informational messages. |
-| `success` | `green` | `brightGreen` | Successful tool calls, passing tests. |
-| `warning` | `yellow` | `brightYellow` | Non-fatal warnings. |
-| `danger` | `red` | `brightRed` | Errors and destructive prompts. |
+| Token           | Minimal             | High contrast      | Description                                      |
+| --------------- | ------------------- | ------------------ | ------------------------------------------------ |
+| `textPrimary`   | `unstyled`          | `brightWhite`      | Main transcript text.                            |
+| `textSecondary` | `gray`              | `white`            | Supporting text (timestamps, inline meta).       |
+| `textMuted`     | `dim`               | `gray`             | De-emphasised, dim, or placeholder copy.         |
+| `accent`        | `bold.yellow`       | `bold.yellow`      | Brand accent — prompts, highlights, active chip. |
+| `accentSubtle`  | `fg256(229)`        | `brightYellow`     | Quieter accent — borders, focused backgrounds.   |
+| `surfaceBorder` | `gray`              | `brightWhite`      | Panel and divider lines.                         |
+| `surfaceMuted`  | `bg256(236).white`  | `bg256(236).white` | Subtle panel fill.                               |
+| `focus`         | `underline`         | `inverse`          | Focus indicator.                                 |
+| `selection`     | `bg256(236).yellow` | `bgYellow.black`   | Selected text / row.                             |
+| `info`          | `cyan`              | `brightCyan`       | Informational messages.                          |
+| `success`       | `green`             | `brightGreen`      | Successful tool calls, passing tests.            |
+| `warning`       | `yellow`            | `brightYellow`     | Non-fatal warnings.                              |
+| `danger`        | `red`               | `brightRed`        | Errors and destructive prompts.                  |
 
 ### Tones
 
 `GlueTone` maps each semantic role to one of the tokens above,
 so components pick a tone without hardcoding a style.
 
-| Tone | Backing token | Description |
-| --- | --- | --- |
-| `accent` | `accent` | Brand accent. |
-| `info` | `info` | Informational. |
-| `success` | `success` | Success, complete, OK. |
-| `warning` | `warning` | Non-fatal warning. |
-| `danger` | `danger` | Error, destructive. |
-| `muted` | `textMuted` | De-emphasised. |
-
+| Tone      | Backing token | Description            |
+| --------- | ------------- | ---------------------- |
+| `accent`  | `accent`      | Brand accent.          |
+| `info`    | `info`        | Informational.         |
+| `success` | `success`     | Success, complete, OK. |
+| `warning` | `warning`     | Non-fatal warning.     |
+| `danger`  | `danger`      | Error, destructive.    |
+| `muted`   | `textMuted`   | De-emphasised.         |

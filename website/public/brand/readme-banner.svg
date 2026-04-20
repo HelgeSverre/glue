@@ -1,31 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 240" width="900" height="240">
-  <!-- README banner — dark background, centered logo + tagline + tape accent -->
-  <defs>
-    <pattern id="tape" patternUnits="userSpaceOnUse" width="16" height="8" patternTransform="rotate(45)">
-      <rect width="8" height="8" fill="#FACC15"/>
-      <rect x="8" width="8" height="8" fill="#0A0A0B"/>
-    </pattern>
-  </defs>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&amp;display=swap');
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400&amp;display=swap');
-  </style>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 320" width="1280" height="320">
+  <rect width="1280" height="320" fill="#0a0a0b"/>
 
-  <!-- Background -->
-  <rect width="900" height="240" fill="#0A0A0B"/>
+  <text x="80" y="82" font-family="ui-monospace, 'JetBrains Mono', Menlo, Consolas, monospace" font-size="20" fill="#7a7a7a">$ <tspan fill="#facc15">glue</tspan><tspan fill="#7a7a7a">_</tspan></text>
 
-  <!-- Tape stripe at bottom -->
-  <rect y="232" width="900" height="8" fill="url(#tape)"/>
+  <text x="78" y="210" font-family="ui-monospace, 'JetBrains Mono', Menlo, Consolas, monospace" font-weight="700" font-size="136" fill="#facc15" letter-spacing="-4">glue</text>
 
-  <!-- Glue drop symbol (centered, above text) -->
-  <path d="M450 30 C450 30, 476 56, 476 66 C476 76, 464.3 84, 450 84 C435.7 84, 424 76, 424 66 C424 56, 450 30, 450 30Z" fill="#FACC15"/>
+  <text x="82" y="260" font-family="Inter, system-ui, -apple-system, 'Segoe UI', sans-serif" font-weight="500" font-size="22" fill="#e6e6e6">A small coding agent for the terminal.</text>
 
-  <!-- Wordmark -->
-  <text x="450" y="140" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-weight="700" font-size="56" fill="#FFFFFF" letter-spacing="-1">glue</text>
+  <g transform="translate(1040 100) scale(2.5)">
+    <path d="M32 4 C32 4, 52 24, 52 36 C52 48, 43.3 58, 32 58 C20.7 58, 12 48, 12 36 C12 24, 32 4, 32 4Z" fill="#facc15"/>
+  </g>
 
-  <!-- Tagline -->
-  <text x="450" y="172" text-anchor="middle" font-family="'Inter', sans-serif" font-weight="400" font-size="16" fill="#71717A">The coding agent that holds it all together</text>
+  <text x="1200" y="292" text-anchor="end" font-family="ui-monospace, 'JetBrains Mono', Menlo, Consolas, monospace" font-size="12" fill="#7a7a7a">getglue.dev</text>
 
-  <!-- Domain -->
-  <text x="450" y="210" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-weight="400" font-size="13" fill="#3F3F46">getglue.dev</text>
+  <line x1="0" y1="319" x2="1280" y2="319" stroke="#222326" stroke-width="1"/>
 </svg>

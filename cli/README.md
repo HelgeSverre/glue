@@ -1,22 +1,16 @@
+<h1 align="center">Glue</h1>
+
+<p align="center"><strong>A small coding agent for the terminal.</strong></p>
+
 <p align="center">
-  <img src="../website/brand/readme-banner.svg" alt="Glue — The coding agent that holds it all together" width="900">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square&labelColor=0a0a0b" alt="license MIT"></a>
+  <img src="https://img.shields.io/badge/dart-3.4+-3b82f6?style=flat-square&labelColor=0a0a0b" alt="dart 3.4+">
+  <img src="https://img.shields.io/badge/platform-macos%20%7C%20linux%20%7C%20windows-7a7a7a?style=flat-square&labelColor=0a0a0b" alt="platform macos linux windows">
+  <img src="https://img.shields.io/badge/status-alpha-facc15?style=flat-square&labelColor=0a0a0b" alt="status alpha">
+  <a href="https://getglue.dev"><img src="https://img.shields.io/badge/website-getglue.dev-facc15?style=flat-square&labelColor=0a0a0b" alt="getglue.dev"></a>
 </p>
 
-Glue is a terminal-native coding agent CLI built in Dart. It streams LLM responses, executes tools, and renders everything in a responsive TUI that never blocks.
-
-## Features
-
-- **Multi-provider LLM support** — Anthropic, OpenAI, Mistral, and Ollama out of the box
-- **Streaming tool use** — read/write/edit files, run shell commands, grep, list directories
-- **Multi-shell support** — respects `$SHELL` with bash/zsh/fish/pwsh flag mapping and interactive/login modes
-- **Docker sandbox** — run agent commands in ephemeral containers with configurable mounts and auto host fallback
-- **Subagents** — spawn child agents (single or parallel) with collapsible grouped output
-- **Session management** — persist and resume conversations (`--resume` / `--continue`)
-- **`@file` references** — inline file contents into prompts with recursive fuzzy autocomplete
-- **Responsive TUI** — 60fps async rendering with scroll regions, markdown tables, and animated status spinner
-- **Bash mode** — `!` prefix for shell passthrough with background job management
-- **Readline input** — Emacs keybindings, word-level navigation (Alt+Left/Right), history
-- **YAML config** — `~/.glue/config.yaml` with CLI and env-var overrides
+---
 
 ## Install
 
@@ -46,7 +40,7 @@ glue --help                             # show all options
 ### CLI flags
 
 | Flag         | Short | Description                                               |
-| ------------ | ----- | --------------------------------------------------------- |
+|--------------|-------|-----------------------------------------------------------|
 | `--help`     | `-h`  | Show usage information                                    |
 | `--version`  | `-v`  | Print version                                             |
 | `--provider` | `-p`  | LLM provider (`anthropic`, `openai`, `mistral`, `ollama`) |
@@ -81,12 +75,14 @@ For PowerShell, Glue updates the profile returned by
 
 Config is resolved in order: **CLI flags → env vars → `~/.glue/config.yaml` → defaults**.
 
-Environment variables: `GLUE_PROVIDER`, `GLUE_MODEL`, `GLUE_DEBUG`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `MISTRAL_API_KEY`, `GLUE_SHELL`, `GLUE_SHELL_MODE`, `GLUE_DOCKER_ENABLED`, `GLUE_DOCKER_IMAGE`, `GLUE_DOCKER_SHELL`, `GLUE_DOCKER_MOUNTS`, `BRAVE_API_KEY`, `TAVILY_API_KEY`, `FIRECRAWL_API_KEY`.
+Environment variables: `GLUE_PROVIDER`, `GLUE_MODEL`, `GLUE_DEBUG`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
+`MISTRAL_API_KEY`, `GLUE_SHELL`, `GLUE_SHELL_MODE`, `GLUE_DOCKER_ENABLED`, `GLUE_DOCKER_IMAGE`, `GLUE_DOCKER_SHELL`,
+`GLUE_DOCKER_MOUNTS`, `BRAVE_API_KEY`, `TAVILY_API_KEY`, `FIRECRAWL_API_KEY`.
 
 Default models per provider:
 
 | Provider  | Default model       |
-| --------- | ------------------- |
+|-----------|---------------------|
 | anthropic | `claude-sonnet-4-6` |
 | openai    | `gpt-4.1`           |
 | mistral   | `devstral-latest`   |
@@ -95,13 +91,14 @@ Default models per provider:
 Ollama hardware-tier suggestions:
 
 | Hardware                  | Suggested pull                          |
-| ------------------------- | --------------------------------------- |
+|---------------------------|-----------------------------------------|
 | 16 GB laptop / CPU-only   | `ollama pull qwen3:8b`                  |
 | 12–24 GB GPU (mainstream) | `ollama pull qwen3-coder:30b` (default) |
 | 32 GB dense-only GPU      | `ollama pull devstral-small-2:24b`      |
 | 48 GB+ workstation        | `ollama pull qwen3-coder-next:80b`      |
 
-Ollama tags default to Q4_K_M. For higher fidelity on large tool schemas, pull `:size-q5_K_M` (~1.2× memory), `:size-q6_K` (~1.5×), or `:size-q8_0` (~2×) and select the tag in `/model`.
+Ollama tags default to Q4_K_M. For higher fidelity on large tool schemas, pull `:size-q5_K_M` (~1.2× memory),
+`:size-q6_K` (~1.5×), or `:size-q8_0` (~2×) and select the tag in `/model`.
 
 ### Shell configuration
 
@@ -114,7 +111,8 @@ shell:
   mode: interactive # non_interactive | interactive | login
 ```
 
-Interactive mode loads your rc files (`~/.bashrc`, `~/.zshrc`, etc.), giving access to aliases and shell functions. Login mode loads profile files.
+Interactive mode loads your rc files (`~/.bashrc`, `~/.zshrc`, etc.), giving access to aliases and shell functions.
+Login mode loads profile files.
 
 ### Docker sandbox
 
@@ -134,11 +132,13 @@ docker:
 
 Or via environment: `GLUE_DOCKER_ENABLED=1 GLUE_DOCKER_IMAGE=alpine:latest glue`
 
-The current working directory is always mounted at `/workspace` inside the container. Additional directories can be mounted per-session (persisted in session state).
+The current working directory is always mounted at `/workspace` inside the container. Additional directories can be
+mounted per-session (persisted in session state).
 
 ### Debug logging
 
-Enable verbose debug logging with `--debug` / `-d`, `GLUE_DEBUG=1`, or the `/debug` slash command at runtime. Local span records are written to `~/.glue/logs/spans-YYYY-MM-DD.jsonl`.
+Enable verbose debug logging with `--debug` / `-d`, `GLUE_DEBUG=1`, or the `/debug` slash command at runtime. Local span
+records are written to `~/.glue/logs/spans-YYYY-MM-DD.jsonl`.
 
 ## Justfile commands
 
@@ -163,21 +163,23 @@ dart test                              # unit tests (452+ tests)
 dart test --run-skipped -t e2e         # e2e integration tests
 ```
 
-E2E tests exercise the full agent loop (LLM → tool call → tool execution → LLM response) headlessly via `AgentRunner`, no terminal required. They require Ollama running locally:
+E2E tests exercise the full agent loop (LLM → tool call → tool execution → LLM response) headlessly via `AgentRunner`,
+no terminal required. They require Ollama running locally:
 
 ```bash
 ollama pull qwen3:1.7b                 # one-time setup
 dart test --run-skipped -t e2e         # run e2e tests
 ```
 
-> **Note:** `qwen3:1.7b` is the expected Ollama model for the current e2e suite. Small models are non-deterministic — e2e tests use a retry wrapper (3 attempts).
+> **Note:** `qwen3:1.7b` is the expected Ollama model for the current e2e suite. Small models are non-deterministic —
+> e2e tests use a retry wrapper (3 attempts).
 
 ## Tools
 
 The agent has access to these tools:
 
 | Tool                       | Description                                                                            |
-| -------------------------- | -------------------------------------------------------------------------------------- |
+|----------------------------|----------------------------------------------------------------------------------------|
 | `read_file`                | Read file contents                                                                     |
 | `write_file`               | Create or overwrite a file                                                             |
 | `edit_file`                | Apply targeted find-and-replace edits                                                  |
@@ -221,12 +223,13 @@ App (event bus, state machine, render loop @ 60fps)
   └─ Overlays (slash autocomplete, @file hints)
 ```
 
-The TUI and agent core run on separate async tracks — the UI is always responsive because input events and agent events merge into a single render cycle via Dart streams.
+The TUI and agent core run on separate async tracks — the UI is always responsive because input events and agent events
+merge into a single render cycle via Dart streams.
 
 ## Keyboard shortcuts
 
 | Shortcut              | Action                                   |
-| --------------------- | ---------------------------------------- |
+|-----------------------|------------------------------------------|
 | `Enter`               | Submit input                             |
 | `Ctrl+C`              | Cancel / double-tap to exit              |
 | `Ctrl+U`              | Clear line before cursor                 |
