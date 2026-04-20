@@ -13,7 +13,7 @@ The first version of this plan landed `/open <target>` without autocomplete, pro
 ## Architecture
 
 1. **Data model** (`cli/lib/src/commands/slash_commands.dart`): add `SlashArgCandidate` + `SlashArgCompleter` typedef, a nullable `completeArg` field on `SlashCommand`, `SlashCommandRegistry.attachArgCompleter(name, completer)`, `findByName(name)`.
-2. **Overlay** (`cli/lib/src/ui/slash_autocomplete.dart`): two modes — *name* (current) and *arg* (new). Arg mode activates when the buffer is `/<knownCmd> <partial>` and the command has a `completeArg`. Splice-in-place on accept (mirrors `ShellAutocomplete` lines 100-114).
+2. **Overlay** (`cli/lib/src/ui/slash_autocomplete.dart`): two modes — _name_ (current) and _arg_ (new). Arg mode activates when the buffer is `/<knownCmd> <partial>` and the command has a `completeArg`. Splice-in-place on accept (mirrors `ShellAutocomplete` lines 100-114).
 3. **Wire-up** (`cli/lib/src/app.dart` in `_initCommands()`): after `BuiltinCommands.create(...)` returns, call `_commands.attachArgCompleter(name, closure)` for each supported command. Closures capture `this` and read live state per keystroke.
 4. **Per-command completers** live as small private methods on `App` (`_openArgCandidates`, `_providerArgCandidates`, etc.). No new callbacks on `BuiltinCommands.create`, no new impl functions in `command_helpers.dart`.
 
@@ -25,14 +25,14 @@ The first version of this plan landed `/open <target>` without autocomplete, pro
 
 ## Activation + acceptance semantics (explicit)
 
-| Event | Name mode | Arg mode |
-|---|---|---|
-| Buffer starts with `/`, no space yet | Active, filter by prefix | n/a |
-| User types space after known cmd | Transition to arg mode (if completer exists) | Already here |
-| User backspaces past the space | Back to name mode (revert candidates) | Transition |
-| Tab / Enter | Accept highlighted: replace buffer with `/<cmd> ` (trailing space) | Accept highlighted: splice in place; append trailing space if `candidate.continues` |
-| Escape | Dismiss | Dismiss |
-| Typing | Re-filter live | Re-filter live |
+| Event                                | Name mode                                                          | Arg mode                                                                            |
+| ------------------------------------ | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Buffer starts with `/`, no space yet | Active, filter by prefix                                           | n/a                                                                                 |
+| User types space after known cmd     | Transition to arg mode (if completer exists)                       | Already here                                                                        |
+| User backspaces past the space       | Back to name mode (revert candidates)                              | Transition                                                                          |
+| Tab / Enter                          | Accept highlighted: replace buffer with `/<cmd> ` (trailing space) | Accept highlighted: splice in place; append trailing space if `candidate.continues` |
+| Escape                               | Dismiss                                                            | Dismiss                                                                             |
+| Typing                               | Re-filter live                                                     | Re-filter live                                                                      |
 
 All modes require cursor at end of buffer (current constraint; out of scope to change). Activation uses **exact command-name match** after the leading `/`, but looks up completers through both `name` and `aliases` (so `/q <space>` still hits `/exit`'s completer if one exists).
 
@@ -41,6 +41,7 @@ All modes require cursor at end of buffer (current constraint; out of scope to c
 ## Task 1: Data model + registry helper
 
 **Files**
+
 - Modify: `cli/lib/src/commands/slash_commands.dart`
 - Modify: `cli/test/slash_commands_test.dart` (exists — 133 lines)
 
@@ -70,6 +71,7 @@ typedef SlashArgCompleter = List<SlashArgCandidate> Function(
 - Add `SlashCommand? findByName(String name)` using the same resolution.
 
 **Tests**
+
 1. `attachArgCompleter` sets the completer on the target command (by primary name).
 2. `attachArgCompleter` resolves through aliases and hidden aliases.
 3. `attachArgCompleter` throws `StateError` on unknown name.
@@ -82,6 +84,7 @@ typedef SlashArgCompleter = List<SlashArgCandidate> Function(
 ## Task 2: Dual-mode `SlashAutocomplete`
 
 **Files**
+
 - Modify: `cli/lib/src/ui/slash_autocomplete.dart`
 - Modify: `cli/test/slash_autocomplete_test.dart` (exists — 175 lines, 15 tests)
 
@@ -134,38 +137,26 @@ Render unchanged — both modes produce a `List<_Candidate>` and feed the existi
 
 **Tests**
 
-*Name-mode (existing, updated)*
+_Name-mode (existing, updated)_
+
 1. Accepting `/he` → `/help ` (trailing space — adjust existing assertion).
 
-*Arg-mode activation*
-2. `/open ` activates arg mode, lists all 7 targets.
-3. `/open s` narrows to `session`, `sessions`, `skills`.
-4. `/unknown ` dismisses (unregistered).
-5. `/help ` dismisses (no completer).
-6. Alias lookup: `/q home` resolves to `/exit`'s completer when one is attached.
+_Arg-mode activation_ 2. `/open ` activates arg mode, lists all 7 targets. 3. `/open s` narrows to `session`, `sessions`, `skills`. 4. `/unknown ` dismisses (unregistered). 5. `/help ` dismisses (no completer). 6. Alias lookup: `/q home` resolves to `/exit`'s completer when one is attached.
 
-*Splice semantics*
-7. Accept `session` from `/open s` yields `/open session`, cursor at end.
-8. Accept candidate with `continues: true` appends trailing space.
-9. Nested args: `/provider add ` → completer called with `priorArgs == ['add']`, `partial == ''`.
+_Splice semantics_ 7. Accept `session` from `/open s` yields `/open session`, cursor at end. 8. Accept candidate with `continues: true` appends trailing space. 9. Nested args: `/provider add ` → completer called with `priorArgs == ['add']`, `partial == ''`.
 
-*Mode transitions*
-10. `/op` → type space → transitions to arg mode with `/open`'s targets visible.
-11. From arg mode, backspace past the space → back to name mode with `/open` candidate.
+_Mode transitions_ 10. `/op` → type space → transitions to arg mode with `/open`'s targets visible. 11. From arg mode, backspace past the space → back to name mode with `/open` candidate.
 
-*Whitespace edge cases*
-12. `/open  s` (double space) dismisses.
-13. `/open\ts` (tab char) dismisses.
-14. `/ ` (slash + space, no command) dismisses.
+_Whitespace edge cases_ 12. `/open  s` (double space) dismisses. 13. `/open\ts` (tab char) dismisses. 14. `/ ` (slash + space, no command) dismisses.
 
-*Empty completer result*
-15. `/open zzzzz` dismisses.
+_Empty completer result_ 15. `/open zzzzz` dismisses.
 
 ---
 
 ## Task 3: `/open` completer (no app state)
 
 **Files**
+
 - Modify: `cli/lib/src/app.dart` — add `_openArgCandidates` + attach in `_initCommands`.
 - Add: `cli/test/app_arg_completers_test.dart` (new; keeps `builtin_commands_test.dart` focused).
 
@@ -193,6 +184,7 @@ _commands.attachArgCompleter('open', _openArgCandidates);
 ```
 
 **Tests**
+
 1. `/open ` → 7 targets with descriptions.
 2. `/open s` → session, sessions, skills only.
 3. `/open x` → empty.
@@ -203,6 +195,7 @@ _commands.attachArgCompleter('open', _openArgCandidates);
 ## Task 4: `/provider` completer (catalog-dependent)
 
 **Files**
+
 - Modify: `cli/lib/src/app.dart` — add `_providerArgCandidates` + attach.
 - Extend: `cli/test/app_arg_completers_test.dart`.
 
@@ -238,6 +231,7 @@ List<SlashArgCandidate> _providerArgCandidates(
 ```
 
 **Tests**
+
 1. `/provider ` → 4 subcommands; `list` has `continues: false`, others `continues: true`.
 2. `/provider add <empty>` with a test config → all provider IDs with display names.
 3. `/provider add ant` → narrowed by prefix.
@@ -249,6 +243,7 @@ List<SlashArgCandidate> _providerArgCandidates(
 ## Task 5: `/model` — decision point
 
 The swarm flagged `/model` as the weakest candidate:
+
 - Catalog size (Ollama + OpenAI + Anthropic + OpenRouter): 100-500+ refs.
 - Users type `sonnet`, not `anthropic/claude-sonnet-4-7`; prefix-match on the composite ref misses the way they think.
 - The command itself uses `_findCatalogRow` (fuzzy/substring) — completer being prefix-only would suggest a strictly narrower set than what executes.
@@ -256,6 +251,7 @@ The swarm flagged `/model` as the weakest candidate:
 **Decision gate**: pick one before writing Task 5.
 
 ### Option 5a — Ship with three fixes
+
 - Match segments independently: `p.id.startsWith(partial) || m.id.contains(partial) || m.name.contains(partial) || ref.contains(partial)`.
 - `partial.length >= 1` before populating — `/model ` empty partial returns nothing (avoid flood).
 - Cap results at 20 for headroom over `maxVisibleDropdownItems`.
@@ -284,6 +280,7 @@ List<SlashArgCandidate> _modelArgCandidates(List<String> prior, String partial) 
 ```
 
 **Tests (5a)**
+
 1. `/model ` empty partial → empty list (min-chars gate).
 2. `/model son` → finds `anthropic/claude-sonnet-*` via model-segment match.
 3. `/model ant` → provider prefix match.
@@ -291,6 +288,7 @@ List<SlashArgCandidate> _modelArgCandidates(List<String> prior, String partial) 
 5. Result cap at 20 (stub a 100-model catalog).
 
 ### Option 5b — Defer
+
 Leave `/model` free-form. Users type IDs; the existing `/models` panel remains the discovery surface. Revisit in a follow-up PR.
 
 **Recommendation:** 5a if the fixes land under an hour; otherwise 5b.
@@ -310,9 +308,11 @@ List<SlashArgCandidate> _skillArgCandidates(List<String> prior, String partial) 
       .toList();
 }
 ```
-*(Adapt to the actual `SkillRegistry` API at implementation time — verify `.all`, `.meta` accessors.)*
+
+_(Adapt to the actual `SkillRegistry` API at implementation time — verify `.all`, `.meta` accessors.)_
 
 **Tests**
+
 1. `/skills ` with 3 registered skills → 3 candidates.
 2. `/skills code` → narrowed by prefix.
 3. Empty registry → empty list.
@@ -322,6 +322,7 @@ List<SlashArgCandidate> _skillArgCandidates(List<String> prior, String partial) 
 ## Task 6: Integration test (keystroke narrative)
 
 **Files**
+
 - Add: `cli/test/ui/slash_autocomplete_integration_test.dart`
 
 Drive `SlashAutocomplete` against a minimal registry plus real completers (via `attachArgCompleter`):
@@ -341,24 +342,26 @@ One focused test per transition. Also assert: Escape dismisses from both modes; 
 
 ## Files touched summary
 
-| File | Change |
-|---|---|
-| `cli/lib/src/commands/slash_commands.dart` | Add `SlashArgCandidate`, `SlashArgCompleter`, `completeArg`, `attachArgCompleter`, `findByName` |
-| `cli/lib/src/ui/slash_autocomplete.dart` | Dual-mode `update()`, splice-aware `accept()`, whitespace guards |
-| `cli/lib/src/app.dart` | 3-4 small candidate-producer methods + `attachArgCompleter` calls in `_initCommands` |
-| `cli/lib/glue.dart` | Export new types from `slash_commands.dart` |
-| `cli/test/slash_commands_test.dart` | Registry + attach tests |
-| `cli/test/slash_autocomplete_test.dart` | Activation, splice, mode transitions, whitespace, aliases |
-| `cli/test/app_arg_completers_test.dart` | New — per-command completer behavior |
-| `cli/test/ui/slash_autocomplete_integration_test.dart` | New — keystroke-narrative integration |
+| File                                                   | Change                                                                                          |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `cli/lib/src/commands/slash_commands.dart`             | Add `SlashArgCandidate`, `SlashArgCompleter`, `completeArg`, `attachArgCompleter`, `findByName` |
+| `cli/lib/src/ui/slash_autocomplete.dart`               | Dual-mode `update()`, splice-aware `accept()`, whitespace guards                                |
+| `cli/lib/src/app.dart`                                 | 3-4 small candidate-producer methods + `attachArgCompleter` calls in `_initCommands`            |
+| `cli/lib/glue.dart`                                    | Export new types from `slash_commands.dart`                                                     |
+| `cli/test/slash_commands_test.dart`                    | Registry + attach tests                                                                         |
+| `cli/test/slash_autocomplete_test.dart`                | Activation, splice, mode transitions, whitespace, aliases                                       |
+| `cli/test/app_arg_completers_test.dart`                | New — per-command completer behavior                                                            |
+| `cli/test/ui/slash_autocomplete_integration_test.dart` | New — keystroke-narrative integration                                                           |
 
 **NOT touched** (deliberately, vs v1):
+
 - `cli/lib/src/commands/builtin_commands.dart` — no new callback parameters.
 - `cli/lib/src/app/command_helpers.dart` — no new `_Impl` functions.
 
 ## Verification
 
 After each task:
+
 ```sh
 dart format --set-exit-if-changed .
 dart analyze --fatal-infos
@@ -367,11 +370,13 @@ dart test test/slash_commands_test.dart test/slash_autocomplete_test.dart \
 ```
 
 After final task:
+
 ```sh
 dart test            # docker_executor_test pre-existing failure OK
 ```
 
 Manual smoke (`dart run bin/glue.dart`):
+
 - `/open ` → dropdown lists 7 targets.
 - `/open s` + Tab → buffer becomes `/open session`.
 - `/provider ` → 4 subcommands; accept `add` → trailing space + provider list.

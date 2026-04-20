@@ -34,6 +34,7 @@ Users want to see the reasoning trace for three reasons: debugging prompts, trus
 ## File Structure
 
 **Modify:**
+
 - `cli/lib/src/agent/agent_core.dart` — add `ThinkingDelta` to `LlmChunk`, add `AgentThinkingDelta` to `AgentEvent`, route in `run()` switch.
 - `cli/lib/src/agent/agent_runner.dart` — noop-handle `AgentThinkingDelta` (headless discards).
 - `cli/lib/src/llm/anthropic_client.dart` — parse `content_block_start` with `type: thinking` and `content_block_delta` with `delta.type: thinking_delta`.
@@ -48,6 +49,7 @@ Users want to see the reasoning trace for three reasons: debugging prompts, trus
 - `cli/lib/src/config/glue_config.dart` — add `showReasoning` bool (default `true`), resolve from CLI arg → env `GLUE_SHOW_REASONING` → config file.
 
 **Create tests:**
+
 - `cli/test/llm/anthropic_client_test.dart` — add thinking-delta case (modify existing file).
 - `cli/test/llm/openai_client_test.dart` — add reasoning case (modify existing file).
 - `cli/test/llm/ollama_client_test.dart` — add thinking case (modify existing file).
@@ -98,6 +100,7 @@ Field is `message.thinking`. Hook is `ollama_client.dart:134-140`.
 ### Task 1: Add `ThinkingDelta` to `LlmChunk`
 
 **Files:**
+
 - Modify: `cli/lib/src/agent/agent_core.dart:60-95`
 
 - [ ] **Step 1: Write the failing test**
@@ -148,6 +151,7 @@ git commit -m "feat(agent): add ThinkingDelta LlmChunk variant"
 ### Task 2: Route `ThinkingDelta` → `AgentThinkingDelta`
 
 **Files:**
+
 - Modify: `cli/lib/src/agent/agent_core.dart:139-174` (AgentEvent union)
 - Modify: `cli/lib/src/agent/agent_core.dart:235-254` (run() switch)
 - Modify: `cli/lib/src/agent/agent_runner.dart:42-65` (headless switch)
@@ -229,6 +233,7 @@ git commit -m "feat(agent): forward ThinkingDelta as AgentThinkingDelta event"
 ### Task 3: Anthropic parser — emit `ThinkingDelta`
 
 **Files:**
+
 - Modify: `cli/lib/src/llm/anthropic_client.dart:115-124`
 - Modify: `cli/test/llm/anthropic_client_test.dart`
 
@@ -291,6 +296,7 @@ git commit -m "feat(llm/anthropic): emit ThinkingDelta for extended-thinking blo
 ### Task 4: OpenAI parser — emit `ThinkingDelta`
 
 **Files:**
+
 - Modify: `cli/lib/src/llm/openai_client.dart:128-153`
 - Modify: `cli/test/llm/openai_client_test.dart`
 
@@ -357,6 +363,7 @@ git commit -m "feat(llm/openai): emit ThinkingDelta for reasoning deltas"
 ### Task 5: Ollama parser — emit `ThinkingDelta`
 
 **Files:**
+
 - Modify: `cli/lib/src/llm/ollama_client.dart:134-140`
 - Modify: `cli/test/llm/ollama_client_test.dart`
 
@@ -410,6 +417,7 @@ git commit -m "feat(llm/ollama): emit ThinkingDelta for message.thinking"
 ### Task 6: `renderThinking` on BlockRenderer
 
 **Files:**
+
 - Modify: `cli/lib/src/rendering/block_renderer.dart`
 - Modify: `cli/test/block_renderer_test.dart`
 
@@ -467,6 +475,7 @@ git commit -m "feat(rendering): add renderThinking for reasoning traces"
 ### Task 7: Conversation entry kind + App buffer
 
 **Files:**
+
 - Modify: `cli/lib/src/app/models.dart` (or the file that defines `_EntryKind` — search for `enum _EntryKind`)
 - Modify: `cli/lib/src/app.dart` (add `_streamingThinking` field)
 
@@ -514,6 +523,7 @@ git commit -m "refactor(app): add thinking entry kind and streaming buffer"
 ### Task 8: Handle `AgentThinkingDelta` in orchestration
 
 **Files:**
+
 - Modify: `cli/lib/src/app/agent_orchestration.dart:56-193`
 
 - [ ] **Step 1: Add case in `_handleAgentEventImpl` switch**
@@ -541,6 +551,7 @@ void _flushThinking(App app) {
 ```
 
 Call `_flushThinking(app)` at the top of:
+
 - `case AgentTextDelta` (before buffering text — thinking has ended, assistant has started)
 - `case AgentToolCallPending` (alongside the existing assistant-text flush)
 - `case AgentDone` (in case thinking was the last thing streamed)
@@ -557,6 +568,7 @@ git commit -m "feat(app): flush thinking buffer on transitions, respect toggle"
 ### Task 9: Render streaming + finalized thinking blocks
 
 **Files:**
+
 - Modify: `cli/lib/src/app/render_pipeline.dart:49-86`
 
 - [ ] **Step 1: Render finalized blocks**
@@ -579,7 +591,7 @@ if (app._streamingThinking.isNotEmpty) {
 }
 ```
 
-Rationale for ordering: thinking appears *before* streaming assistant text in the output buffer so that when both are active (rare — thinking has usually finished before text arrives, but Anthropic interleaves text and thinking in edge cases), the user sees the reasoning "above" the conclusion.
+Rationale for ordering: thinking appears _before_ streaming assistant text in the output buffer so that when both are active (rare — thinking has usually finished before text arrives, but Anthropic interleaves text and thinking in edge cases), the user sees the reasoning "above" the conclusion.
 
 - [ ] **Step 3: Commit**
 
@@ -593,6 +605,7 @@ git commit -m "feat(app): render streaming and finalized thinking blocks"
 ### Task 10: Config + runtime toggle
 
 **Files:**
+
 - Modify: `cli/lib/src/config/glue_config.dart:61-530`
 - Modify: `cli/lib/src/app/terminal_event_router.dart`
 
@@ -733,19 +746,19 @@ cd cli && dart run bin/glue.dart --model ollama/deepseek-r1:8b
 
 ## Files Summary
 
-| Concern | File | Nature |
-|---|---|---|
-| Chunk union | `cli/lib/src/agent/agent_core.dart` | add `ThinkingDelta` |
-| Event union | `cli/lib/src/agent/agent_core.dart` | add `AgentThinkingDelta` |
-| Chunk→Event | `cli/lib/src/agent/agent_core.dart` run() | new switch case |
-| Headless | `cli/lib/src/agent/agent_runner.dart` | noop case |
-| Anthropic parser | `cli/lib/src/llm/anthropic_client.dart` | handle `thinking_delta` |
-| OpenAI parser | `cli/lib/src/llm/openai_client.dart` | handle `reasoning`/`reasoning_content` |
-| Ollama parser | `cli/lib/src/llm/ollama_client.dart` | handle `message.thinking` |
-| Entry kind | `cli/lib/src/app/models.dart` | `_EntryKind.thinking` |
-| App buffer | `cli/lib/src/app.dart` | `_streamingThinking` |
-| Orchestration | `cli/lib/src/app/agent_orchestration.dart` | handle event + flush |
-| Render pipeline | `cli/lib/src/app/render_pipeline.dart` | emit thinking lines |
-| Block renderer | `cli/lib/src/rendering/block_renderer.dart` | `renderThinking` |
-| Keybinding | `cli/lib/src/app/terminal_event_router.dart` | Ctrl+T toggle |
-| Config | `cli/lib/src/config/glue_config.dart` | `showReasoning` |
+| Concern          | File                                         | Nature                                 |
+| ---------------- | -------------------------------------------- | -------------------------------------- |
+| Chunk union      | `cli/lib/src/agent/agent_core.dart`          | add `ThinkingDelta`                    |
+| Event union      | `cli/lib/src/agent/agent_core.dart`          | add `AgentThinkingDelta`               |
+| Chunk→Event      | `cli/lib/src/agent/agent_core.dart` run()    | new switch case                        |
+| Headless         | `cli/lib/src/agent/agent_runner.dart`        | noop case                              |
+| Anthropic parser | `cli/lib/src/llm/anthropic_client.dart`      | handle `thinking_delta`                |
+| OpenAI parser    | `cli/lib/src/llm/openai_client.dart`         | handle `reasoning`/`reasoning_content` |
+| Ollama parser    | `cli/lib/src/llm/ollama_client.dart`         | handle `message.thinking`              |
+| Entry kind       | `cli/lib/src/app/models.dart`                | `_EntryKind.thinking`                  |
+| App buffer       | `cli/lib/src/app.dart`                       | `_streamingThinking`                   |
+| Orchestration    | `cli/lib/src/app/agent_orchestration.dart`   | handle event + flush                   |
+| Render pipeline  | `cli/lib/src/app/render_pipeline.dart`       | emit thinking lines                    |
+| Block renderer   | `cli/lib/src/rendering/block_renderer.dart`  | `renderThinking`                       |
+| Keybinding       | `cli/lib/src/app/terminal_event_router.dart` | Ctrl+T toggle                          |
+| Config           | `cli/lib/src/config/glue_config.dart`        | `showReasoning`                        |

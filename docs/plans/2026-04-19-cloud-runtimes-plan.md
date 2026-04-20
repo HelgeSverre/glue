@@ -39,17 +39,17 @@ path (`/workspace`) are decided; remaining design decisions listed under
 
 ## Scope decisions (2026-04-19 brainstorming)
 
-| Question | Decision |
-| --- | --- |
-| Research scope | Breadth-first across 6 providers |
-| Implementation scope | Top 3 only |
-| Top-3 selection criterion | Blend of popularity and capability/coverage |
-| Credentials (V1) | Env vars only (`E2B_API_KEY`, `DAYTONA_API_KEY`, etc.). Defer integration with task-22's `CredentialStore` to a follow-up. |
-| Workspace sync model | **Option D — git-first bootstrap + per-provider persistence opt-in** (decided 2026-04-19; see §"Workspace sync" below). Aligns with VibeKit's `.withGithub({ token, repository })` + `branch` model. |
-| Universal workspace path | **`/workspace`** across all runtimes — Docker, host, cloud. Landed in Docker 2026-04-19. Matches VibeKit / E2B / Daytona / Sprites defaults. |
-| Top-3 providers | **Undecided** — candidate shortlist proposed |
-| Browser endpoint ownership | **Undecided** |
-| Per-session vs global runtime selection | **Undecided** |
+| Question                                | Decision                                                                                                                                                                                             |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Research scope                          | Breadth-first across 6 providers                                                                                                                                                                     |
+| Implementation scope                    | Top 3 only                                                                                                                                                                                           |
+| Top-3 selection criterion               | Blend of popularity and capability/coverage                                                                                                                                                          |
+| Credentials (V1)                        | Env vars only (`E2B_API_KEY`, `DAYTONA_API_KEY`, etc.). Defer integration with task-22's `CredentialStore` to a follow-up.                                                                           |
+| Workspace sync model                    | **Option D — git-first bootstrap + per-provider persistence opt-in** (decided 2026-04-19; see §"Workspace sync" below). Aligns with VibeKit's `.withGithub({ token, repository })` + `branch` model. |
+| Universal workspace path                | **`/workspace`** across all runtimes — Docker, host, cloud. Landed in Docker 2026-04-19. Matches VibeKit / E2B / Daytona / Sprites defaults.                                                         |
+| Top-3 providers                         | **Undecided** — candidate shortlist proposed                                                                                                                                                         |
+| Browser endpoint ownership              | **Undecided**                                                                                                                                                                                        |
+| Per-session vs global runtime selection | **Undecided**                                                                                                                                                                                        |
 
 ---
 
@@ -334,35 +334,35 @@ mechanism is active.
 
 #### Bootstrap (once per new session):
 
-| Step | E2B | Daytona | Modal | Sprites | hopx | Northflank |
-| --- | --- | --- | --- | --- | --- | --- |
-| Create | `Sandbox.create(template)` | `sandbox.create(snapshot)` | `Sandbox.create(image, app)` | `sprite create <name>` | `sandbox.create()` | `POST /services/sandboxes` |
-| Git clone | `commands.run("git clone …")` | `fs.git.clone(…)` native | `sb.exec("git","clone",…)` | `sprite exec -- git clone …` | `sandbox.run("git clone …")` | `POST /exec` |
+| Step      | E2B                           | Daytona                    | Modal                        | Sprites                      | hopx                         | Northflank                 |
+| --------- | ----------------------------- | -------------------------- | ---------------------------- | ---------------------------- | ---------------------------- | -------------------------- |
+| Create    | `Sandbox.create(template)`    | `sandbox.create(snapshot)` | `Sandbox.create(image, app)` | `sprite create <name>`       | `sandbox.create()`           | `POST /services/sandboxes` |
+| Git clone | `commands.run("git clone …")` | `fs.git.clone(…)` native   | `sb.exec("git","clone",…)`   | `sprite exec -- git clone …` | `sandbox.run("git clone …")` | `POST /exec`               |
 
 Glue picks `/workspace` as the universal path convention.
 
 #### In-session operations:
 
-| Op | E2B | Daytona | Modal | Sprites | hopx | Northflank |
-| --- | --- | --- | --- | --- | --- | --- |
-| Read | `files.read(p)` | `fs.read_file(p)` | `sb.open(p).read()` | `exec -- cat p` | `fs.read_file(p)` | transfer-file API |
-| Write | `files.write(p, bytes)` | `fs.upload_file(…)` | `sb.open(p,'w').write(…)` | piped stdin via exec | `fs.write_file(…)` | transfer-file API |
-| Run | `commands.run(cmd, on_stdout)` | `process.exec(cmd)` PTY | `sb.exec(cmd)` streams | `exec -- cmd` | `sandbox.run(cmd)` | `POST /exec` stream |
-| Background | `run(…, background=True)` + `connect(pid)` | PTY session | detached exec | service mgr | async mode | long-lived exec |
+| Op         | E2B                                        | Daytona                 | Modal                     | Sprites              | hopx               | Northflank          |
+| ---------- | ------------------------------------------ | ----------------------- | ------------------------- | -------------------- | ------------------ | ------------------- |
+| Read       | `files.read(p)`                            | `fs.read_file(p)`       | `sb.open(p).read()`       | `exec -- cat p`      | `fs.read_file(p)`  | transfer-file API   |
+| Write      | `files.write(p, bytes)`                    | `fs.upload_file(…)`     | `sb.open(p,'w').write(…)` | piped stdin via exec | `fs.write_file(…)` | transfer-file API   |
+| Run        | `commands.run(cmd, on_stdout)`             | `process.exec(cmd)` PTY | `sb.exec(cmd)` streams    | `exec -- cmd`        | `sandbox.run(cmd)` | `POST /exec` stream |
+| Background | `run(…, background=True)` + `connect(pid)` | PTY session             | detached exec             | service mgr          | async mode         | long-lived exec     |
 
 **Outlier:** Sprites has no first-class FS API; reads/writes must pipe
 through `exec` + `cat`/`tar`. Workable but slower for many small ops.
 
 #### Persistence opt-in:
 
-| Provider | Primitive | Resume cost | Gotcha |
-| --- | --- | --- | --- |
-| E2B | `pause()`/`resume(id)` | ~1s | 14d retention; multi-resume FS bug #884 |
-| Daytona | Persistent FS by default; 7–30d auto-archive | 0s when warm | 15-min auto-stop inflates idle cost |
-| Sprites | Always persistent; 30s auto-sleep | 1–2s wake | Indefinite retention until destroy |
-| hopx | Snapshot fork/clone | ~100ms | Small ecosystem |
-| Modal | `modal.Volume` at `/workspace` | seconds | Memory snapshots alpha, GPU-incompatible |
-| Northflank | Persistent volumes | seconds | Service-oriented ceremony |
+| Provider   | Primitive                                    | Resume cost  | Gotcha                                   |
+| ---------- | -------------------------------------------- | ------------ | ---------------------------------------- |
+| E2B        | `pause()`/`resume(id)`                       | ~1s          | 14d retention; multi-resume FS bug #884  |
+| Daytona    | Persistent FS by default; 7–30d auto-archive | 0s when warm | 15-min auto-stop inflates idle cost      |
+| Sprites    | Always persistent; 30s auto-sleep            | 1–2s wake    | Indefinite retention until destroy       |
+| hopx       | Snapshot fork/clone                          | ~100ms       | Small ecosystem                          |
+| Modal      | `modal.Volume` at `/workspace`               | seconds      | Memory snapshots alpha, GPU-incompatible |
+| Northflank | Persistent volumes                           | seconds      | Service-oriented ceremony                |
 
 Glue stores `sessionId → sandboxId` mapping. On session resume, if the
 adapter declares the `persistent` capability, skip bootstrap and wake.
@@ -380,14 +380,14 @@ Glue applies the patch locally or surfaces it as a session summary.
 
 ## Dart implementation cost
 
-| Provider | Transport | Dart effort |
-| --- | --- | --- |
-| E2B | REST (control) + gRPC (envd) | **High** — gRPC client or Node sidecar |
-| Daytona | REST | **Low** |
-| Sprites | REST | **Low** (FS via exec-only) |
-| hopx | REST | **Low** |
-| Northflank | REST | **Low–Medium** (service ceremony) |
-| Modal | gRPC only | **Very high** — skip V1 |
+| Provider   | Transport                    | Dart effort                            |
+| ---------- | ---------------------------- | -------------------------------------- |
+| E2B        | REST (control) + gRPC (envd) | **High** — gRPC client or Node sidecar |
+| Daytona    | REST                         | **Low**                                |
+| Sprites    | REST                         | **Low** (FS via exec-only)             |
+| hopx       | REST                         | **Low**                                |
+| Northflank | REST                         | **Low–Medium** (service ceremony)      |
+| Modal      | gRPC only                    | **Very high** — skip V1                |
 
 ## Candidate top-3 (not yet confirmed)
 
@@ -418,16 +418,16 @@ Blended popularity + capability + Dart-fit:
 Working glossary. Align with the vocabulary in
 `docs/plans/2026-04-19-runtime-boundary-plan.md` where it exists.
 
-| Term | Meaning |
-| --- | --- |
-| **Runtime** | The place where work executes: host, Docker, or a remote cloud provider. |
-| **Adapter** | A Dart class implementing the Runtime contract for one provider (e.g. `E2BAdapter`, `DaytonaAdapter`). |
-| **Session** | A Glue session maps 1:1 to one sandbox instance (`sessionId → sandboxId`). |
-| **Sandbox** | An individual, isolated unit of compute created by a runtime. |
-| **Bootstrap** | Getting workspace state into a fresh sandbox (git-clone or tarball). |
-| **Workspace path** | Universal `/workspace` convention across providers. |
-| **Persistent resume** | Skipping bootstrap because an existing sandbox already holds our state. |
-| **Capability** | A declarative feature flag per adapter: `command_streaming`, `background_jobs`, `browser_cdp`, `gpu`, `persistent`, `snapshots`, etc. Matches the existing `runtime-capabilities.yaml` vocabulary. |
+| Term                  | Meaning                                                                                                                                                                                            |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Runtime**           | The place where work executes: host, Docker, or a remote cloud provider.                                                                                                                           |
+| **Adapter**           | A Dart class implementing the Runtime contract for one provider (e.g. `E2BAdapter`, `DaytonaAdapter`).                                                                                             |
+| **Session**           | A Glue session maps 1:1 to one sandbox instance (`sessionId → sandboxId`).                                                                                                                         |
+| **Sandbox**           | An individual, isolated unit of compute created by a runtime.                                                                                                                                      |
+| **Bootstrap**         | Getting workspace state into a fresh sandbox (git-clone or tarball).                                                                                                                               |
+| **Workspace path**    | Universal `/workspace` convention across providers.                                                                                                                                                |
+| **Persistent resume** | Skipping bootstrap because an existing sandbox already holds our state.                                                                                                                            |
+| **Capability**        | A declarative feature flag per adapter: `command_streaming`, `background_jobs`, `browser_cdp`, `gpu`, `persistent`, `snapshots`, etc. Matches the existing `runtime-capabilities.yaml` vocabulary. |
 
 ---
 
@@ -500,9 +500,9 @@ Triggers for revisiting:
 2. Confirm or revise the top-3.
 3. Resolve the 7 remaining open questions above (workspace sync and
    universal path are already decided).
-5. Draft the `ExecutionRuntime` interface, informed by actual adapter
+4. Draft the `ExecutionRuntime` interface, informed by actual adapter
    needs rather than speculation.
-6. Create a backlog parent task and kick off the `writing-plans` skill
+5. Create a backlog parent task and kick off the `writing-plans` skill
    using this document as input.
 
 ---

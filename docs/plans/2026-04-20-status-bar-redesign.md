@@ -14,6 +14,7 @@
 ```
 
 Segments (right side, left-to-right):
+
 1. Model ID
 2. Approval mode label
 3. Shortened cwd
@@ -30,6 +31,7 @@ Segments (right side, left-to-right):
 ```
 
 Segments (right side, left-to-right):
+
 1. Scroll offset (conditional, always first when present)
 2. Approval mode label
 3. Shortened cwd
@@ -114,6 +116,7 @@ final statusRight = ' ${rightSegs.join(sep)} ';
 ```
 
 Key points:
+
 - `scrollSeg` moves to **first** position (was last, and conditional).
 - `modelSeg` wraps `app._modelId` in `boldYellow` open/close. `visibleLength` in `paintStatus` already strips ANSI before measuring, so the padding math stays correct.
 - `modeLabel` and `shortCwd` stay but reorder: mode before pwd.
@@ -123,11 +126,11 @@ Key points:
 
 ## Files Summary
 
-| File | Lines changed | Nature |
-|---|---|---|
-| `cli/lib/src/terminal/terminal.dart` | ~2 | Add `AnsiStyle.statusBar` and `AnsiStyle.boldYellow` |
-| `cli/lib/src/terminal/layout.dart` | ~1 | Replace inline literal with `AnsiStyle.statusBar` |
-| `cli/lib/src/app/render_pipeline.dart` | ~8 | Reorder segments, wrap model in `boldYellow` |
+| File                                   | Lines changed | Nature                                               |
+| -------------------------------------- | ------------- | ---------------------------------------------------- |
+| `cli/lib/src/terminal/terminal.dart`   | ~2            | Add `AnsiStyle.statusBar` and `AnsiStyle.boldYellow` |
+| `cli/lib/src/terminal/layout.dart`     | ~1            | Replace inline literal with `AnsiStyle.statusBar`    |
+| `cli/lib/src/app/render_pipeline.dart` | ~8            | Reorder segments, wrap model in `boldYellow`         |
 
 No new tests required — this is pure rendering/cosmetic with no logic branches. The existing render pipeline tests (if any) continue to pass; the status bar content is not currently covered by unit tests.
 

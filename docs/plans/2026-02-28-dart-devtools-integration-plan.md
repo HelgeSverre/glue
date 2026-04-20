@@ -15,6 +15,7 @@
 ### Task 1: Create the GlueDev instrumentation module
 
 **Files:**
+
 - Create: `cli/lib/src/dev/devtools.dart`
 - Test: `cli/test/dev/devtools_test.dart`
 
@@ -260,6 +261,7 @@ git commit -m "feat: add GlueDev instrumentation module (dart:developer)"
 ### Task 2: Add barrel export for GlueDev
 
 **Files:**
+
 - Modify: `cli/lib/glue.dart`
 
 **Step 1: Add the export**
@@ -287,6 +289,7 @@ git commit -m "feat: export GlueDev from barrel"
 ### Task 3: Instrument LLM clients with Timeline and logging
 
 **Files:**
+
 - Modify: `cli/lib/src/llm/anthropic_client.dart`
 - Modify: `cli/lib/src/llm/openai_client.dart`
 - Test: `cd cli && dart test test/llm/anthropic_client_test.dart test/llm/openai_client_test.dart`
@@ -300,6 +303,7 @@ import '../dev/devtools.dart';
 ```
 
 Replace the `stream()` method body to add timeline and TTFB tracking. The key changes:
+
 - Start a `TimelineTask` before the HTTP request
 - Track TTFB (time to first TextDelta)
 - Finish the task with timing data at the end
@@ -494,6 +498,7 @@ git commit -m "feat: instrument LLM clients with Timeline and logging"
 ### Task 4: Instrument AgentCore with Timeline and agent step events
 
 **Files:**
+
 - Modify: `cli/lib/src/agent/agent_core.dart`
 - Test: `cd cli && dart test test/agent_core_test.dart`
 
@@ -625,6 +630,7 @@ git commit -m "feat: instrument AgentCore ReAct loop with Timeline and Flow"
 ### Task 5: Instrument tool execution with timing
 
 **Files:**
+
 - Modify: `cli/lib/src/app.dart` (the `_executeAndCompleteTool` method)
 - Test: `cd cli && dart test`
 
@@ -681,6 +687,7 @@ git commit -m "feat: instrument tool execution with Timeline and timing"
 ### Task 6: Instrument render loop with frame budget monitoring
 
 **Files:**
+
 - Modify: `cli/lib/src/app.dart` (the `_doRender` method)
 
 **Step 1: Add frame timing to `_doRender()`**
@@ -717,6 +724,7 @@ git commit -m "feat: add render frame budget monitoring"
 ### Task 7: Instrument shell jobs and subagent spawning
 
 **Files:**
+
 - Modify: `cli/lib/src/shell/shell_job_manager.dart`
 - Modify: `cli/lib/src/agent/agent_manager.dart`
 - Test: `cd cli && dart test test/shell/shell_job_manager_test.dart test/agent/agent_manager_test.dart`
@@ -787,6 +795,7 @@ git commit -m "feat: instrument shell jobs and subagent spawning"
 ### Task 8: Register service extensions at startup
 
 **Files:**
+
 - Modify: `cli/bin/glue.dart`
 - Modify: `cli/lib/src/app.dart` (add state provider method)
 
@@ -852,6 +861,7 @@ git commit -m "feat: register DevTools service extensions at startup"
 ### Task 9: Add justfile recipes for DevTools workflows
 
 **Files:**
+
 - Modify: `cli/justfile`
 
 **Step 1: Add dev recipes**

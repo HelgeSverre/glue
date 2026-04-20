@@ -12,23 +12,23 @@
 
 ## File Structure
 
-| File | Responsibility | Action |
-|------|---------------|--------|
-| `cli/lib/src/config/interaction_mode.dart` | `InteractionMode` enum, `ApprovalMode` enum, `ToolGroup` enum, mode→group matrix | Create |
-| `cli/lib/src/config/permission_mode.dart` | Old `PermissionMode` enum | Delete |
-| `cli/lib/src/agent/tools.dart` | Add `ToolGroup get group` to `Tool` base class | Modify |
-| `cli/lib/src/app/agent_orchestration.dart` | Replace `_syncToolFilterImpl` with group-based + path-based filtering | Modify |
-| `cli/lib/src/orchestrator/permission_gate.dart` | Rewrite to use `InteractionMode` + `ApprovalMode` | Modify |
-| `cli/lib/src/app.dart` | Replace `_permissionMode` field with `_interactionMode` + `_approvalMode` | Modify |
-| `cli/lib/src/app/terminal_event_router.dart` | Shift+Tab cycles `InteractionMode` | Modify |
-| `cli/lib/src/app/render_pipeline.dart` | Status bar shows mode + approval | Modify |
-| `cli/lib/src/commands/builtin_commands.dart` | Add `/code`, `/architect`, `/ask`, `/approve` commands | Modify |
-| `cli/lib/src/app/command_helpers.dart` | Update `/info` output | Modify |
-| `cli/lib/src/config/glue_config.dart` | Parse `interaction_mode` + `approval_mode` from config | Modify |
-| `cli/test/config/interaction_mode_test.dart` | Test new enums and mode→group matrix | Create |
-| `cli/test/config/permission_mode_test.dart` | Old test | Delete |
-| `cli/test/agent/tool_filter_test.dart` | Update for group-based filtering | Modify |
-| `cli/test/orchestrator/permission_gate_test.dart` | Rewrite for new types | Modify |
+| File                                              | Responsibility                                                                   | Action |
+| ------------------------------------------------- | -------------------------------------------------------------------------------- | ------ |
+| `cli/lib/src/config/interaction_mode.dart`        | `InteractionMode` enum, `ApprovalMode` enum, `ToolGroup` enum, mode→group matrix | Create |
+| `cli/lib/src/config/permission_mode.dart`         | Old `PermissionMode` enum                                                        | Delete |
+| `cli/lib/src/agent/tools.dart`                    | Add `ToolGroup get group` to `Tool` base class                                   | Modify |
+| `cli/lib/src/app/agent_orchestration.dart`        | Replace `_syncToolFilterImpl` with group-based + path-based filtering            | Modify |
+| `cli/lib/src/orchestrator/permission_gate.dart`   | Rewrite to use `InteractionMode` + `ApprovalMode`                                | Modify |
+| `cli/lib/src/app.dart`                            | Replace `_permissionMode` field with `_interactionMode` + `_approvalMode`        | Modify |
+| `cli/lib/src/app/terminal_event_router.dart`      | Shift+Tab cycles `InteractionMode`                                               | Modify |
+| `cli/lib/src/app/render_pipeline.dart`            | Status bar shows mode + approval                                                 | Modify |
+| `cli/lib/src/commands/builtin_commands.dart`      | Add `/code`, `/architect`, `/ask`, `/approve` commands                           | Modify |
+| `cli/lib/src/app/command_helpers.dart`            | Update `/info` output                                                            | Modify |
+| `cli/lib/src/config/glue_config.dart`             | Parse `interaction_mode` + `approval_mode` from config                           | Modify |
+| `cli/test/config/interaction_mode_test.dart`      | Test new enums and mode→group matrix                                             | Create |
+| `cli/test/config/permission_mode_test.dart`       | Old test                                                                         | Delete |
+| `cli/test/agent/tool_filter_test.dart`            | Update for group-based filtering                                                 | Modify |
+| `cli/test/orchestrator/permission_gate_test.dart` | Rewrite for new types                                                            | Modify |
 
 ---
 
@@ -37,6 +37,7 @@
 ### Task 1: Create InteractionMode, ApprovalMode, and ToolGroup
 
 **Files:**
+
 - Create: `cli/lib/src/config/interaction_mode.dart`
 - Test: `cli/test/config/interaction_mode_test.dart`
 
@@ -215,6 +216,7 @@ git commit -m "feat: add InteractionMode, ApprovalMode, and ToolGroup enums"
 ### Task 2: Add ToolGroup to Tool base class
 
 **Files:**
+
 - Modify: `cli/lib/src/agent/tools.dart`
 - Modify: `cli/test/agent/tool_trust_test.dart`
 
@@ -272,11 +274,13 @@ Expected: FAIL — `Tool` has no `group` getter
 In `cli/lib/src/agent/tools.dart`:
 
 Add import at top:
+
 ```dart
 import 'package:glue/src/config/interaction_mode.dart';
 ```
 
 Add to `Tool` abstract class (after `isMutating`):
+
 ```dart
   /// The tool group for mode-based filtering. Defaults to [ToolGroup.read].
   ToolGroup get group => switch (trust) {
@@ -287,6 +291,7 @@ Add to `Tool` abstract class (after `isMutating`):
 ```
 
 Add to `ForwardingTool`:
+
 ```dart
   @override
   ToolGroup get group => inner.group;
@@ -314,9 +319,11 @@ git commit -m "feat: add ToolGroup to Tool base class derived from ToolTrust"
 ### Task 3: Tag non-builtin tools with correct groups
 
 **Files:**
+
 - Check: `cli/lib/src/core/service_locator.dart` for the full tool list
 
 The tools registered in `service_locator.dart`:
+
 - `read_file` → safe → `ToolGroup.read` (automatic)
 - `write_file` → fileEdit → `ToolGroup.edit` (automatic)
 - `edit_file` → fileEdit → `ToolGroup.edit` (automatic)
@@ -332,6 +339,7 @@ The tools registered in `service_locator.dart`:
 - [ ] **Step 1: Override `group` on WebSearchTool and WebBrowserTool**
 
 Find these tool classes and add:
+
 ```dart
 @override
 ToolGroup get group => ToolGroup.mcp;
@@ -356,6 +364,7 @@ git commit -m "feat: tag web tools with ToolGroup.mcp"
 ### Task 4: Rewrite PermissionGate
 
 **Files:**
+
 - Modify: `cli/lib/src/orchestrator/permission_gate.dart`
 - Modify: `cli/test/orchestrator/permission_gate_test.dart`
 
@@ -615,6 +624,7 @@ git commit -m "feat: rewrite PermissionGate for InteractionMode + ApprovalMode"
 ### Task 5: Update tool filter in agent_orchestration.dart
 
 **Files:**
+
 - Modify: `cli/lib/src/app/agent_orchestration.dart`
 
 - [ ] **Step 1: Replace `_syncToolFilterImpl`**
@@ -678,6 +688,7 @@ git commit -m "feat: tool filter uses InteractionMode group-based filtering"
 ### Task 6: Replace PermissionMode in App class
 
 **Files:**
+
 - Modify: `cli/lib/src/app.dart`
 - Modify: `cli/lib/src/app/terminal_event_router.dart`
 - Modify: `cli/lib/src/app/render_pipeline.dart`
@@ -688,22 +699,27 @@ git commit -m "feat: tool filter uses InteractionMode group-based filtering"
 - [ ] **Step 1: In `app.dart`, replace the field**
 
 Change:
+
 ```dart
 PermissionMode _permissionMode;
 ```
+
 To:
+
 ```dart
 InteractionMode _interactionMode;
 ApprovalMode _approvalMode;
 ```
 
 Update constructor default:
+
 ```dart
 _interactionMode = config?.interactionMode ?? InteractionMode.code,
 _approvalMode = config?.approvalMode ?? ApprovalMode.confirm {
 ```
 
 Update `_permissionGate` getter:
+
 ```dart
 PermissionGate get _permissionGate => PermissionGate(
       interactionMode: _interactionMode,
@@ -719,6 +735,7 @@ Update import: replace `permission_mode.dart` with `interaction_mode.dart`.
 - [ ] **Step 2: In `terminal_event_router.dart`, update Shift+Tab**
 
 Change:
+
 ```dart
 if (event case KeyEvent(key: Key.shiftTab)) {
   app._permissionMode = app._permissionMode.next;
@@ -727,7 +744,9 @@ if (event case KeyEvent(key: Key.shiftTab)) {
   return;
 }
 ```
+
 To:
+
 ```dart
 if (event case KeyEvent(key: Key.shiftTab)) {
   app._interactionMode = app._interactionMode.next;
@@ -740,10 +759,13 @@ if (event case KeyEvent(key: Key.shiftTab)) {
 - [ ] **Step 3: In `render_pipeline.dart`, update status bar**
 
 Change:
+
 ```dart
 final permLabel = '[${app._permissionMode.label}]';
 ```
+
 To:
+
 ```dart
 final modeLabel = app._approvalMode == ApprovalMode.auto
     ? '[${app._interactionMode.label}·auto]'
@@ -755,10 +777,13 @@ And replace `permLabel` with `modeLabel` where it's used in `rightSegs`.
 - [ ] **Step 4: In `command_helpers.dart`, update `/info` output**
 
 Change:
+
 ```dart
 buf.writeln('  Permissions:  ${app._permissionMode.label} (Shift+Tab to cycle)');
 ```
+
 To:
+
 ```dart
 buf.writeln('  Mode:         ${app._interactionMode.label} (Shift+Tab to cycle)');
 buf.writeln('  Approval:     ${app._approvalMode.label}');
@@ -776,12 +801,14 @@ rm cli/test/config/permission_mode_test.dart
 In `cli/lib/src/config/glue_config.dart`:
 
 Replace `PermissionMode permissionMode` field with:
+
 ```dart
 final InteractionMode interactionMode;
 final ApprovalMode approvalMode;
 ```
 
 Update constructor defaults:
+
 ```dart
 this.interactionMode = InteractionMode.code,
 this.approvalMode = ApprovalMode.confirm,
@@ -820,6 +847,7 @@ git commit -m "feat: replace PermissionMode with InteractionMode + ApprovalMode"
 ### Task 7: Add mode-switching slash commands
 
 **Files:**
+
 - Modify: `cli/lib/src/commands/builtin_commands.dart`
 - Modify: `cli/lib/src/app.dart` (add callbacks)
 
@@ -904,6 +932,7 @@ git commit -m "feat: add /code, /architect, /ask, /approve slash commands"
 ### Task 8: Delete the old permission_mode_approval_test.dart
 
 **Files:**
+
 - Check: `cli/test/permission_mode_approval_test.dart`
 
 - [ ] **Step 1: Read the file to understand what it tests**

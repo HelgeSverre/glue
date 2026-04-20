@@ -5,6 +5,7 @@
 **Goal:** Make every overlay in the Glue CLI reflow its content on terminal resize, and scale up usefully on small terminals — by replacing "format once at open-time" with a per-render `String Function(int contentWidth)` contract.
 
 **Architecture:**
+
 - `SelectOption` and `PanelModal` gain `.responsive(...)` constructors that take a width-aware builder instead of a static string. Existing static constructors keep working (backward compatible). `SelectPanel.render` / `PanelModal.render` call the builder with the current content width every frame; panels already re-render on `ResizeEvent`.
 - `PanelFluid.resolve` gets a small-terminal fallback: when the available dimension is near the min floor, the panel fills nearly the full dimension (minus margin) instead of an awkward 40-col box on a 45-col terminal.
 - A reusable `ResponsiveTable<T>` helper wraps `TableFormatter.format` as a per-width builder, so the half-dozen picker sites stop duplicating the "build rows, format table, splice into SelectOption.label" boilerplate.
@@ -13,6 +14,7 @@
 **Tech Stack:** Dart 3, `package:test`, existing `TableFormatter` + `ansi_utils` helpers. No new deps.
 
 **Non-goals for this plan:**
+
 - Markdown/block-renderer resize (`BlockRenderer`, `MarkdownRenderer`) — the survey flagged them as architectural fragility but not user-visible breakage. Out of scope; note in future follow-up.
 - Autocomplete overlay micro-tweaks (`slash_autocomplete.dart` `.padRight(16)` etc.) — keep for a separate small follow-up; they already re-render per width, just with suboptimal padding constants.
 - Docked panels (`skills_docked_panel.dart`, `api_key_prompt_panel.dart`, `device_code_panel.dart`) — already responsive, confirmed by survey.
@@ -47,6 +49,7 @@
 **Why first:** one-line, unblocks perceived "cramped" layout on small windows; no callers change.
 
 **Files:**
+
 - Modify: `cli/lib/src/ui/panel_modal.dart:25-33`
 - Test: `cli/test/ui/panel_modal_test.dart`
 
@@ -152,6 +155,7 @@ When available dimension is within margin of the min floor, fill
 ## Task 2: SelectOption.responsive + SelectPanel renders via builder
 
 **Files:**
+
 - Modify: `cli/lib/src/ui/select_panel.dart:10-20, 226-227`
 - Test: `cli/test/ui/select_panel_test.dart`
 
@@ -281,6 +285,7 @@ invoked per render. Static string constructor unchanged."
 ## Task 3: SelectPanel.headerBuilder
 
 **Files:**
+
 - Modify: `cli/lib/src/ui/select_panel.dart`
 - Test: `cli/test/ui/select_panel_test.dart`
 
@@ -319,19 +324,23 @@ Expected: FAIL — parameter doesn't exist.
 In `cli/lib/src/ui/select_panel.dart`:
 
 Add field:
+
 ```dart
 final List<String> Function(int contentWidth)? headerBuilder;
 ```
 
 Add to constructor:
+
 ```dart
 this.headerBuilder,
 ```
 
 Replace `headerLines` reads in `render()` and `_contentAtRow()` with:
+
 ```dart
 final effectiveHeader = headerBuilder?.call(contentW) ?? headerLines;
 ```
+
 …and pass `effectiveHeader` where `headerLines` was used. Update `_contentAtRow` to take `effectiveHeader` instead of reading `this.headerLines`.
 
 - [ ] **Step 4: Run test**
@@ -354,6 +363,7 @@ git commit -m "feat(ui): SelectPanel.headerBuilder for responsive headers"
 ## Task 4: PanelModal.responsive (linesBuilder)
 
 **Files:**
+
 - Modify: `cli/lib/src/ui/panel_modal.dart:146-200`
 - Test: `cli/test/ui/panel_modal_test.dart`
 
@@ -391,16 +401,19 @@ Expected: FAIL — constructor doesn't exist.
 In `cli/lib/src/ui/panel_modal.dart`:
 
 Change the field:
+
 ```dart
 final List<String> Function(int contentWidth) linesBuilder;
 ```
 
 Replace existing `lines` field. Add a `lines` getter for back-compat:
+
 ```dart
 List<String> get lines => linesBuilder(80);
 ```
 
 Default constructor now wraps the static list:
+
 ```dart
 PanelModal({
   required this.title,
@@ -411,6 +424,7 @@ PanelModal({
 ```
 
 Add:
+
 ```dart
 PanelModal.responsive({
   required this.title,
@@ -420,6 +434,7 @@ PanelModal.responsive({
 ```
 
 In `render()` replace `final visibleLines = lines.sublist(...)` with:
+
 ```dart
 final allLines = linesBuilder(contentW);
 final visibleLines = allLines.sublist(
@@ -427,6 +442,7 @@ final visibleLines = allLines.sublist(
   min(_scrollOffset + visibleContentH, allLines.length),
 );
 ```
+
 Update every other `lines.length` reference in `render()` and `handleEvent()` to use the cached `_lastLines` populated at the start of `render()`. For `handleEvent` (which doesn't have a width), use `_lastLines.length`; if never rendered, fall back to `linesBuilder(80).length`.
 
 - [ ] **Step 4: Run test**
@@ -449,6 +465,7 @@ git commit -m "feat(ui): PanelModal.responsive for per-render content"
 ## Task 5: ResponsiveTable helper
 
 **Files:**
+
 - Create: `cli/lib/src/ui/responsive_table.dart`
 - Test: `cli/test/ui/responsive_table_test.dart`
 
@@ -577,6 +594,7 @@ git commit -m "feat(ui): ResponsiveTable — width-aware table renderer"
 ## Task 6: Migrate openModel picker
 
 **Files:**
+
 - Modify: `cli/lib/src/ui/panel_controller.dart:292-362`
 - Modify: `cli/lib/src/ui/model_panel_formatter.dart`
 - Test: `cli/test/ui/model_panel_formatter_test.dart`, `cli/test/ui/panel_controller_test.dart`
@@ -680,6 +698,7 @@ ModelPanelBuilder buildModelPanel(
 ```
 
 Add the import at the top of `model_panel_formatter.dart`:
+
 ```dart
 import 'package:glue/src/ui/responsive_table.dart';
 ```
@@ -751,6 +770,7 @@ git commit -m "refactor(ui): model picker reflows on resize via ResponsiveTable"
 ## Task 7: Migrate openResume
 
 **Files:**
+
 - Modify: `cli/lib/src/ui/panel_controller.dart:127-215`
 
 - [ ] **Step 1: Replace the body of openResume**
@@ -830,6 +850,7 @@ git commit -m "refactor(ui): openResume reflows on resize"
 ## Task 8: Migrate openHistory
 
 **Files:**
+
 - Modify: `cli/lib/src/ui/panel_controller.dart:217-290`
 
 - [ ] **Step 1: Apply same pattern**
@@ -856,6 +877,7 @@ git commit -m "refactor(ui): openHistory reflows on resize"
 ## Task 9: Migrate /provider list + /provider add pickers
 
 **Files:**
+
 - Modify: `cli/lib/src/ui/panel_controller.dart:437-468` (`/provider add` picker) and `:537-587` (`openProviderPanel`)
 
 - [ ] **Step 1: Replace hardcoded `.padRight(...)` label with a ResponsiveTable**
@@ -900,6 +922,7 @@ git commit -m "refactor(ui): /provider list + /provider add reflow on resize"
 ## Task 10: Migrate openHelp
 
 **Files:**
+
 - Modify: `cli/lib/src/ui/panel_controller.dart:73-125`
 
 - [ ] **Step 1: Convert lines[] to linesBuilder**
@@ -964,6 +987,7 @@ git commit -m "refactor(ui): help panel reflows on resize"
 ## Task 11: Delete the old `formatModelPanelLines` + unused helpers
 
 **Files:**
+
 - Modify: `cli/lib/src/ui/model_panel_formatter.dart`, `cli/lib/src/ui/panel_controller.dart`
 
 - [ ] **Step 1: Verify nothing still calls formatModelPanelLines**
@@ -974,7 +998,7 @@ cd cli && rg 'formatModelPanelLines' --type dart
 
 Expected: zero matches in `lib/` after Task 6.
 
-- [ ] **Step 2: Verify _contentWidthFor has no callers**
+- [ ] **Step 2: Verify \_contentWidthFor has no callers**
 
 ```sh
 cd cli && rg '_contentWidthFor' --type dart

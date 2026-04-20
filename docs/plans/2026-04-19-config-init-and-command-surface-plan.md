@@ -208,17 +208,21 @@ The plan should capture the current known YAML keys so the follow-up doc rewrite
 ### Nested keys currently parsed
 
 #### `catalog`
+
 - `refresh`
 - `remote_url`
 
 #### `bash`
+
 - `max_lines`
 
 #### `shell`
+
 - `executable`
 - `mode`
 
 #### `docker`
+
 - `enabled`
 - `image`
 - `shell`
@@ -226,6 +230,7 @@ The plan should capture the current known YAML keys so the follow-up doc rewrite
 - `mounts`
 
 #### `web.fetch`
+
 - `jina_api_key`
 - `allow_jina_fallback`
 - `timeout_seconds`
@@ -233,6 +238,7 @@ The plan should capture the current known YAML keys so the follow-up doc rewrite
 - `max_tokens`
 
 #### `web.search`
+
 - `provider`
 - `brave_api_key`
 - `tavily_api_key`
@@ -242,6 +248,7 @@ The plan should capture the current known YAML keys so the follow-up doc rewrite
 - `max_results`
 
 #### `web.pdf`
+
 - `mistral_api_key`
 - `openai_api_key`
 - `ocr_provider`
@@ -250,6 +257,7 @@ The plan should capture the current known YAML keys so the follow-up doc rewrite
 - `enable_ocr_fallback`
 
 #### `web.browser`
+
 - `backend`
 - `headed`
 - `docker.image`
@@ -265,6 +273,7 @@ The plan should capture the current known YAML keys so the follow-up doc rewrite
 - compatibility fallback: `hyperbrowser_api_key`
 
 #### `skills`
+
 - `paths`
 
 ### Environment variables currently relevant

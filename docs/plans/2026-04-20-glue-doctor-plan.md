@@ -22,6 +22,7 @@ The command should be safe, local-only, and read-mostly. It should not mutate us
 Top-level CLI commands are handled in `bin/glue.dart` via `GlueCommandRunner extends CompletionCommandRunner<int>`.
 
 Current patterns:
+
 - flags such as `--where` are handled directly in `runCommand`
 - subcommands currently only include `completions`
 - interactive TUI startup goes through `_runApp`
@@ -29,6 +30,7 @@ Current patterns:
 This makes `glue doctor` best implemented as a new top-level `Command<int>` subcommand rather than a TUI slash command.
 
 Relevant files:
+
 - `bin/glue.dart`
 
 ### Filesystem/path model
@@ -36,6 +38,7 @@ Relevant files:
 All Glue paths are centralized in `Environment`.
 
 Relevant paths:
+
 - `configYamlPath` → `~/.glue/config.yaml`
 - `configPath` → `~/.glue/preferences.json`
 - `credentialsPath` → `~/.glue/credentials.json`
@@ -47,12 +50,14 @@ Relevant paths:
 - `plansDir`
 
 Relevant files:
+
 - `lib/src/core/environment.dart`
 - `lib/src/core/where_report.dart`
 
 ### Config loading and validation
 
 `GlueConfig.load()`:
+
 - reads YAML from `config.yaml`
 - merges bundled + cached + local model catalogs
 - constructs `CredentialStore`
@@ -61,15 +66,18 @@ Relevant files:
 - rejects legacy v1 config format with a migration hint
 
 `GlueConfig.validate()`:
+
 - validates the resolved active provider and adapter health
 - reports missing credentials or unknown adapters as `ConfigError`
 
 Caveat:
+
 - `_loadOptionalYaml()` swallows catalog parse errors and returns `null`
 - good for normal startup, bad for diagnostics
 - `doctor` should use stricter parsing for `models.yaml` and cached catalog files to expose those suppressed errors
 
 Relevant files:
+
 - `lib/src/config/glue_config.dart`
 - `lib/src/catalog/catalog_parser.dart`
 - `lib/src/catalog/catalog_loader.dart`
@@ -79,10 +87,12 @@ Relevant files:
 `ConfigStore` reads `preferences.json` and intentionally keeps last-known-good cache on parse error.
 
 Caveat:
+
 - that means normal app flow may tolerate bad JSON silently
 - `doctor` should parse the file directly and report JSON syntax/shape issues explicitly
 
 Relevant files:
+
 - `lib/src/storage/config_store.dart`
 
 ### Credentials JSON
@@ -91,12 +101,14 @@ Relevant files:
 This is correct for resilience during normal app use, but `doctor` should surface corruption directly.
 
 Relevant behaviors:
+
 - expected top-level shape is roughly:
   - `version`
   - `providers: { <providerId>: { <field>: <string> } }`
 - writes are atomic and may leave `.tmp` only on interrupted failure
 
 Relevant files:
+
 - `lib/src/credentials/credential_store.dart`
 - `test/credentials/credential_store_test.dart`
 
@@ -105,6 +117,7 @@ Relevant files:
 Session storage is under `~/.glue/sessions/<id>/`.
 
 Per-session files:
+
 - `meta.json`
 - `conversation.jsonl`
 
@@ -112,6 +125,7 @@ Per-session files:
 That is fine for UX, but insufficient for diagnostics.
 
 Doctor needs stricter checks such as:
+
 - session dir exists but `meta.json` missing
 - `meta.json` invalid JSON
 - `meta.json` wrong shape or required fields missing
@@ -121,6 +135,7 @@ Doctor needs stricter checks such as:
 - possibly mismatched or suspicious event structures
 
 Relevant files:
+
 - `lib/src/storage/session_store.dart`
 - `lib/src/session/session_manager.dart`
 - `test/storage/session_resume_test.dart`
@@ -129,6 +144,7 @@ Relevant files:
 ### Service startup caveat
 
 `ServiceLocator.create()` calls:
+
 - `GlueConfig.load()`
 - `config.validate()`
 - `environment.ensureDirectories()`
@@ -136,6 +152,7 @@ Relevant files:
 This means `doctor` should not go through `ServiceLocator`, because doctor must inspect broken setups without failing early or mutating directories.
 
 Relevant file:
+
 - `lib/src/core/service_locator.dart`
 
 ---
@@ -151,6 +168,7 @@ glue doctor
 ```
 
 Optional future flags, not required in v1:
+
 - `glue doctor --json`
 - `glue doctor --strict`
 - `glue doctor --sessions <limit>`
@@ -161,6 +179,7 @@ Optional future flags, not required in v1:
 Human-readable summary with severity levels.
 
 Suggested sections:
+
 1. Environment
 2. Core files
 3. Config validation
@@ -168,6 +187,7 @@ Suggested sections:
 5. Summary
 
 Suggested status levels:
+
 - `OK`
 - `WARN`
 - `ERROR`
@@ -209,6 +229,7 @@ Summary
 ### Exit codes
 
 Recommended:
+
 - `0` = no errors (warnings allowed)
 - `1` = one or more errors found
 - `2` = command usage / internal doctor failure
@@ -222,6 +243,7 @@ Create a dedicated diagnostic subsystem rather than trying to reuse app startup 
 ### New module
 
 Suggested files:
+
 - `lib/src/doctor/doctor.dart`
 - `lib/src/doctor/doctor_check.dart`
 - `lib/src/doctor/doctor_report.dart`
@@ -229,6 +251,7 @@ Suggested files:
 - `lib/src/doctor/file_diagnostics.dart`
 
 Minimal alternative if you want to stay very small initially:
+
 - `lib/src/doctor/doctor.dart`
 - `lib/src/doctor/doctor_renderer.dart`
 
@@ -260,6 +283,7 @@ DoctorReport runDoctor(Environment env)
 ```
 
 This should:
+
 1. inspect filesystem presence
 2. parse files directly with strict readers
 3. run config-level semantic validation where possible
@@ -283,6 +307,7 @@ This keeps CLI wiring simple and testable.
 ### 1. Environment/path checks
 
 Checks:
+
 - report `GLUE_HOME`
 - report whether glue dir exists
 - report existence of:
@@ -297,6 +322,7 @@ Checks:
   - plans/
 
 Severity guidance:
+
 - missing `logs/`, `cache/`, `plans/`, `skills/` → `WARN` or `OK` depending on intent
 - missing `sessions/` when no sessions yet → `WARN` at most
 - missing `config.yaml` should probably be `WARN`, not `ERROR`
@@ -304,6 +330,7 @@ Severity guidance:
 ### 2. `config.yaml` checks
 
 Checks:
+
 - file exists or not
 - YAML parse success/failure
 - legacy v1 shape detection
@@ -312,6 +339,7 @@ Checks:
 - `config.validate()` success/failure
 
 Important nuance:
+
 - if `config.yaml` is missing, `GlueConfig.load()` can still succeed via defaults/env
 - doctor should distinguish:
   - file absence
@@ -322,6 +350,7 @@ Important nuance:
 ### 3. `preferences.json` checks
 
 Checks:
+
 - file exists or not
 - valid JSON object or not
 - optional spot-check for known fields such as `trusted_tools` being a list of strings
@@ -331,6 +360,7 @@ Because `ConfigStore` is intentionally forgiving, doctor should use direct `json
 ### 4. `credentials.json` checks
 
 Checks:
+
 - file exists or not
 - valid JSON object or not
 - expected top-level `providers` map shape
@@ -345,6 +375,7 @@ Malformed credentials file should be `ERROR`.
 ### 5. `models.yaml` and cached catalog checks
 
 Checks:
+
 - local override file `~/.glue/models.yaml` parses via `parseCatalogYaml`
 - cached remote catalog in `~/.glue/cache/models.yaml` parses via `parseCatalogYaml`
 - if parse fails, report exact exception message
@@ -356,6 +387,7 @@ This fills a current observability gap because `GlueConfig.load()` suppresses th
 For each directory under `sessions/`:
 
 Checks:
+
 - `meta.json` exists
 - `meta.json` parses as JSON object
 - required fields present for `SessionMeta.fromJson`:
@@ -370,6 +402,7 @@ Checks:
 - detect orphaned `.tmp` files
 
 Potential extra checks:
+
 - session dir name vs meta.id mismatch → `WARN`
 - malformed timestamps → `ERROR`
 
@@ -391,6 +424,7 @@ Aggregate counts by severity and return process exit code accordingly.
 5. Return exit code `0` or `1`
 
 Tests:
+
 - command invocation returns expected exit code for empty temp environment
 - output contains `Glue Doctor`
 
@@ -401,6 +435,7 @@ Tests:
 3. Render report sections deterministically
 
 Tests:
+
 - report counts ok/warn/error correctly
 - path presence and absence produce expected findings
 
@@ -416,6 +451,7 @@ Tests:
 3. Then separately run `GlueConfig.load()` and `config.validate()` to report semantic issues
 
 Tests:
+
 - malformed YAML in config.yaml becomes `ERROR`
 - legacy config format becomes `ERROR` with migration hint
 - malformed preferences.json becomes `ERROR`
@@ -430,6 +466,7 @@ Tests:
 4. Report missing files and orphaned tmp files
 
 Tests:
+
 - missing meta.json
 - bad meta.json JSON
 - `SessionMeta.fromJson` failure
@@ -450,6 +487,7 @@ Tests:
 ### Do not reuse forgiving readers for diagnostics
 
 Avoid relying only on:
+
 - `ConfigStore.load()`
 - `CredentialStore._readRaw()` behavior
 - `SessionStore.listSessions()`
@@ -461,6 +499,7 @@ Doctor should instead parse files directly and explicitly.
 ### Keep doctor pure and side-effect free
 
 Do not call:
+
 - `ServiceLocator.create()`
 - `environment.ensureDirectories()`
 
@@ -469,6 +508,7 @@ Doctor should inspect, not repair or initialize.
 ### Keep rendering separate from diagnosis
 
 A structured report object will make:
+
 - unit testing easier
 - future `--json` support trivial
 - slash command integration possible later if desired

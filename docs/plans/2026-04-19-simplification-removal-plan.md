@@ -380,9 +380,9 @@ revisiting after the interaction-mode and observability cleanup.
 
 10. **Prefer one autocomplete stack**
 
-   Slash autocomplete, `@file` hints, and shell completion all compete in the
-   terminal event path. Keep all three if useful, but define one shared overlay
-   interface and one shared navigation/accept/cancel behavior.
+Slash autocomplete, `@file` hints, and shell completion all compete in the
+terminal event path. Keep all three if useful, but define one shared overlay
+interface and one shared navigation/accept/cancel behavior.
 
 ## Success Criteria
 

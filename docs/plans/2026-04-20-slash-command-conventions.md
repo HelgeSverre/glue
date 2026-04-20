@@ -18,24 +18,24 @@ Concretely, produce:
 
 Registered commands live in `cli/lib/src/commands/builtin_commands.dart:28-161`. All 16:
 
-| Command | Aliases | No-args behavior | With-args behavior | Shape |
-|---|---|---|---|---|
-| `/help` | — | Opens help panel | n/a | simple-panel |
-| `/clear` | — | Clears conversation | n/a | simple-action |
-| `/exit` | `quit`, `q` | Exits | n/a | simple-action |
-| `/model` | — | Opens model panel | Switch by query | **panel-or-query** |
-| `/models` | — | Opens model panel | Same | simple-panel |
-| `/info` | `status` | Shows session info inline | n/a | simple-info |
-| `/session` | — | **Shows session info inline** | `copy` → copy ID (only known subcommand) | **subcommand** |
-| `/tools` | — | Lists tools inline | n/a | simple-info |
-| `/history` | — | Opens history panel | Fork by query | **panel-or-query** |
-| `/resume` | — | Opens resume panel | Resume by query | **panel-or-query** |
-| `/debug` | — | Toggles debug | n/a | simple-toggle |
-| `/skills` | — | Opens skills panel | Activate by name | **panel-or-query** |
-| `/approve` | — | Toggles approval | n/a | simple-toggle |
-| `/provider` | — | Opens provider panel | `list\|add\|remove\|test [id]` | **subcommand** |
-| `/paths` | `where` | Shows paths inline | n/a | simple-info |
-| `/open` | — | Prints usage text | `<target>` → opens folder | **target-arg** |
+| Command     | Aliases     | No-args behavior              | With-args behavior                       | Shape              |
+| ----------- | ----------- | ----------------------------- | ---------------------------------------- | ------------------ |
+| `/help`     | —           | Opens help panel              | n/a                                      | simple-panel       |
+| `/clear`    | —           | Clears conversation           | n/a                                      | simple-action      |
+| `/exit`     | `quit`, `q` | Exits                         | n/a                                      | simple-action      |
+| `/model`    | —           | Opens model panel             | Switch by query                          | **panel-or-query** |
+| `/models`   | —           | Opens model panel             | Same                                     | simple-panel       |
+| `/info`     | `status`    | Shows session info inline     | n/a                                      | simple-info        |
+| `/session`  | —           | **Shows session info inline** | `copy` → copy ID (only known subcommand) | **subcommand**     |
+| `/tools`    | —           | Lists tools inline            | n/a                                      | simple-info        |
+| `/history`  | —           | Opens history panel           | Fork by query                            | **panel-or-query** |
+| `/resume`   | —           | Opens resume panel            | Resume by query                          | **panel-or-query** |
+| `/debug`    | —           | Toggles debug                 | n/a                                      | simple-toggle      |
+| `/skills`   | —           | Opens skills panel            | Activate by name                         | **panel-or-query** |
+| `/approve`  | —           | Toggles approval              | n/a                                      | simple-toggle      |
+| `/provider` | —           | Opens provider panel          | `list\|add\|remove\|test [id]`           | **subcommand**     |
+| `/paths`    | `where`     | Shows paths inline            | n/a                                      | simple-info        |
+| `/open`     | —           | Prints usage text             | `<target>` → opens folder                | **target-arg**     |
 
 ### Shapes currently in use
 
@@ -92,9 +92,10 @@ Rationale: 6 of 8 surveyed agents use flat verbs for these. Users coming from Cl
 
 ### Rule B — `/session` is the inspection/admin namespace for the **current** session
 
-Everything under `/session <sub>` acts on the session the user is *in right now*. It never picks a different session (that's `/resume`).
+Everything under `/session <sub>` acts on the session the user is _in right now_. It never picks a different session (that's `/resume`).
 
 Subcommands:
+
 - `/session` bare → inline info (ID, model, token usage). Matches Copilot CLI exactly.
 - `/session info` → explicit form of bare.
 - `/session copy` → copy current session ID to clipboard. (Already exists; stays.)
@@ -112,6 +113,7 @@ Subcommands:
 - **With query** performs the dominant action: switch model, fork history, activate skill, provider subcommand.
 
 Small cleanups under this rule:
+
 - `/models` → hidden alias of `/model` (two visible commands for the same panel is noise).
 - `/skills` stays plural as canonical — we're a catalog, not a single-skill tool. Singular `/skill` optional as hidden alias. (Revises open question 5 — see below.)
 - `/provider` bare already opens panel. Keep as-is.
@@ -133,7 +135,7 @@ One canonical name per concept. Aliases never diverge semantically.
 - `/continue` → `/resume` (industry convention; add as hidden alias to ease migration from Claude Code / OpenCode users).
 - `/sessions` (plural) → `/resume` (plural-as-picker convention from OpenCode/Droid; add as hidden alias).
 
-### What this *doesn't* do
+### What this _doesn't_ do
 
 - Does not force everything into `/session <sub>`. The original plan did; the external evidence says that's wrong.
 - Does not invent `/<noun> list` as a required form. Catalog commands stay bare-opens-panel.
@@ -143,34 +145,34 @@ One canonical name per concept. Aliases never diverge semantically.
 
 Each existing command, and what it becomes under the revised grammar:
 
-| Today | Tomorrow | Change |
-|---|---|---|
-| `/help` | `/help` | unchanged (leaf) |
-| `/clear` | `/clear` | **bugfix**: actually wipe conversation history (today it doesn't). No semantic rename |
-| `/exit` (+ `quit`, `q`) | same | unchanged (leaf) |
-| `/info` (+ `status`) | **hidden alias of `/session`** | deduplicate — today both call same impl |
-| `/tools` | same | unchanged (leaf) |
-| `/debug` | same | unchanged (leaf, toggle) |
-| `/approve` | same | unchanged (leaf, toggle) |
-| `/paths` (+ `where`) | same | unchanged (leaf) |
-| `/open` | same | unchanged (target-arg). Keep classification as target-arg, not leaf |
-| `/model` | `/model` — bare opens panel; `/model <ref>` = switch | unchanged |
-| `/models` | **hidden alias** of `/model` | deduplicate. Website docs updated in same PR |
-| `/history` | `/history` — bare opens panel; `/history <query>` = fork | unchanged |
-| `/skills` | `/skills` — bare opens panel; `/skills <name>` = activate | **unchanged**. `/skill` alias dropped (reserves future `/skill <sub>` namespace) |
-| `/provider` | `/provider` — routed via `SlashSubcommandRouter`; subs: `list`, `add`, `remove`/`rm`, `test` | routing consolidated; behavior unchanged |
-| `/resume` | **unchanged** — bare opens session browser; `/resume <query>` = jump. Hidden alias `/continue` | Kept as top-level verb (industry convention). `/sessions` alias dropped (collides with `/open sessions`) |
-| `/session` | `/session` — routed via `SlashSubcommandRouter`; bare → inline info; subs: `info` (explicit alias), `copy`; reserve `rename`, `delete`, `export` for later | Contract formalized; matches actual code output |
+| Today                   | Tomorrow                                                                                                                                                   | Change                                                                                                   |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `/help`                 | `/help`                                                                                                                                                    | unchanged (leaf)                                                                                         |
+| `/clear`                | `/clear`                                                                                                                                                   | **bugfix**: actually wipe conversation history (today it doesn't). No semantic rename                    |
+| `/exit` (+ `quit`, `q`) | same                                                                                                                                                       | unchanged (leaf)                                                                                         |
+| `/info` (+ `status`)    | **hidden alias of `/session`**                                                                                                                             | deduplicate — today both call same impl                                                                  |
+| `/tools`                | same                                                                                                                                                       | unchanged (leaf)                                                                                         |
+| `/debug`                | same                                                                                                                                                       | unchanged (leaf, toggle)                                                                                 |
+| `/approve`              | same                                                                                                                                                       | unchanged (leaf, toggle)                                                                                 |
+| `/paths` (+ `where`)    | same                                                                                                                                                       | unchanged (leaf)                                                                                         |
+| `/open`                 | same                                                                                                                                                       | unchanged (target-arg). Keep classification as target-arg, not leaf                                      |
+| `/model`                | `/model` — bare opens panel; `/model <ref>` = switch                                                                                                       | unchanged                                                                                                |
+| `/models`               | **hidden alias** of `/model`                                                                                                                               | deduplicate. Website docs updated in same PR                                                             |
+| `/history`              | `/history` — bare opens panel; `/history <query>` = fork                                                                                                   | unchanged                                                                                                |
+| `/skills`               | `/skills` — bare opens panel; `/skills <name>` = activate                                                                                                  | **unchanged**. `/skill` alias dropped (reserves future `/skill <sub>` namespace)                         |
+| `/provider`             | `/provider` — routed via `SlashSubcommandRouter`; subs: `list`, `add`, `remove`/`rm`, `test`                                                               | routing consolidated; behavior unchanged                                                                 |
+| `/resume`               | **unchanged** — bare opens session browser; `/resume <query>` = jump. Hidden alias `/continue`                                                             | Kept as top-level verb (industry convention). `/sessions` alias dropped (collides with `/open sessions`) |
+| `/session`              | `/session` — routed via `SlashSubcommandRouter`; bare → inline info; subs: `info` (explicit alias), `copy`; reserve `rename`, `delete`, `export` for later | Contract formalized; matches actual code output                                                          |
 
 **New commands to consider adding (Rule A):**
 
-| New | Purpose | Status |
-|---|---|---|
-| `/new` | Start fresh session (preserves scrollback; `/clear` resets terminal) | Add in Phase 2. 5/8 agents have this |
-| `/fork` | Clone current session to a new thread | Add in Phase 3 if session model supports it |
-| `/compact` | Summarize context to save tokens | Add in Phase 3 if runtime supports it |
-| `/rename <name>` | Rename current session | Defer |
-| `/export <path>` | Export transcript | Defer |
+| New              | Purpose                                                              | Status                                      |
+| ---------------- | -------------------------------------------------------------------- | ------------------------------------------- |
+| `/new`           | Start fresh session (preserves scrollback; `/clear` resets terminal) | Add in Phase 2. 5/8 agents have this        |
+| `/fork`          | Clone current session to a new thread                                | Add in Phase 3 if session model supports it |
+| `/compact`       | Summarize context to save tokens                                     | Add in Phase 3 if runtime supports it       |
+| `/rename <name>` | Rename current session                                               | Defer                                       |
+| `/export <path>` | Export transcript                                                    | Defer                                       |
 
 **New hidden aliases:**
 
@@ -180,6 +182,7 @@ Each existing command, and what it becomes under the revised grammar:
 - `/skill` → `/skills` (singular).
 
 **Net effect by command count (after Phase 2):**
+
 - Visible commands: 16 → 14 (`/models` hidden, `/info` folded into `/session`).
 - Hidden aliases: 5 → 7 (adds `/continue`, `/models`; `/info` and `/status` now resolve to `/session`).
 - `/session` has a formalized contract matching actual code output.
@@ -202,29 +205,30 @@ Surveyed Claude Code, Amp, OpenCode, Codex CLI, Copilot CLI, Droid, Gemini CLI, 
 - **Amp (Sourcegraph)** — TUI slash set minimal (`/help`, `/new`). Thread ops live in command palette (Ctrl+O). Real session API is CLI noun-first: `amp threads new|list|continue|fork|share|compact`. Canonical noun is "thread" ("git branches for AI conversations").
 - **OpenCode** — verb-first with aliases, one plural-noun exception. `/new` (= `/clear`), `/sessions` (= `/resume`/`/continue`), `/compact`, `/share`, `/unshare`, `/export`, `/redo`, `/undo`, `/exit`.
 - **OpenAI Codex CLI** — fully verb-first, flat. `/new`, `/clear`, `/resume`, `/fork`, `/copy`, `/status`, `/review`, `/init`, `/model`, `/quit`. Clean split: `/new` = fresh conversation, `/clear` = fresh + clears terminal, `/fork` = clone current.
-- **GitHub Copilot CLI** — mixed. Verbs for actions (`/clear`, `/new`, `/resume`, `/rename`, `/undo`); noun `/session` for *current-session info*; `/chronicle <sub>` is the lone noun-first-with-subs family (analytics).
+- **GitHub Copilot CLI** — mixed. Verbs for actions (`/clear`, `/new`, `/resume`, `/rename`, `/undo`); noun `/session` for _current-session info_; `/chronicle <sub>` is the lone noun-first-with-subs family (analytics).
 - **Factory Droid** — `/sessions` opens a browser UI; actions happen inside the UI, not slash subcommands. Same pattern for `/commands`, `/droids`, `/mcp`, `/settings`.
 - **Gemini CLI** — the only pure noun-first-with-subcommands session family: `/chat save|list|resume|delete|share <tag>`. Still ships `/resume` as top-level alias — implicitly admitting the noun form is verbose.
 - **Aider** — verb-first, no session concept. `/clear`, `/reset`, `/save`, `/load`.
 
 ### Comparison
 
-| Tool | New | Resume/Browse | Fork | Most-recent | Style | Picker? |
-|---|---|---|---|---|---|---|
-| Claude Code | `/clear` | `/resume` | `/branch` | `claude -c` | verb-first flat | yes |
-| Amp | `/new` + palette | `amp threads list/continue` | `amp threads fork` | `amp threads continue` | noun-first (CLI only) | palette |
-| OpenCode | `/new` | `/sessions` | — | `--continue` | verb-first + plural alias | yes |
-| Codex | `/new` | `/resume` | `/fork` | `codex resume --last` | verb-first flat | yes |
-| Copilot | `/new` | `/resume` | — | `--continue` | verb-first + `/session` info | yes |
-| Droid | — | `/sessions` | — | — | noun-first browser | yes |
-| Gemini | UI | `/resume` or `/chat resume <tag>` | — | `gemini --resume` | noun-first subs | yes |
-| Aider | `/clear` / `/reset` | `/load` | — | — | verb-first flat | no |
+| Tool        | New                 | Resume/Browse                     | Fork               | Most-recent            | Style                        | Picker? |
+| ----------- | ------------------- | --------------------------------- | ------------------ | ---------------------- | ---------------------------- | ------- |
+| Claude Code | `/clear`            | `/resume`                         | `/branch`          | `claude -c`            | verb-first flat              | yes     |
+| Amp         | `/new` + palette    | `amp threads list/continue`       | `amp threads fork` | `amp threads continue` | noun-first (CLI only)        | palette |
+| OpenCode    | `/new`              | `/sessions`                       | —                  | `--continue`           | verb-first + plural alias    | yes     |
+| Codex       | `/new`              | `/resume`                         | `/fork`            | `codex resume --last`  | verb-first flat              | yes     |
+| Copilot     | `/new`              | `/resume`                         | —                  | `--continue`           | verb-first + `/session` info | yes     |
+| Droid       | —                   | `/sessions`                       | —                  | —                      | noun-first browser           | yes     |
+| Gemini      | UI                  | `/resume` or `/chat resume <tag>` | —                  | `gemini --resume`      | noun-first subs              | yes     |
+| Aider       | `/clear` / `/reset` | `/load`                           | —                  | —                      | verb-first flat              | no      |
 
 ### Dominant conventions
 
 **Verb-first flat wins for hot-path session actions.** 6 of 8 tools expose `/new`, `/resume`, `/clear`, `/fork` as independent verbs, not as subcommands of a noun. Codex and Claude Code — the two most polished — are purely verb-first.
 
 **Shared vocabulary across tools:**
+
 - `/new` (5/8) — fresh session
 - `/clear` (5/8) — wipe history
 - `/resume` (5/8) — picker + jump, often aliased `/continue`
@@ -238,12 +242,12 @@ Surveyed Claude Code, Amp, OpenCode, Codex CLI, Copilot CLI, Droid, Gemini CLI, 
 
 ### Outliers
 
-- **Gemini's `/chat save|list|resume|...`** exists because its model is *manual tagged checkpoints*, not auto-saved sessions. Subcommands disambiguate save-vs-load against a user-supplied tag. They still ship top-level `/resume` as escape hatch.
+- **Gemini's `/chat save|list|resume|...`** exists because its model is _manual tagged checkpoints_, not auto-saved sessions. Subcommands disambiguate save-vs-load against a user-supplied tag. They still ship top-level `/resume` as escape hatch.
 - **Amp's noun-first** is CLI-level, not slash-level. Slash stays minimal.
 - **Copilot's `/chronicle <sub>`** is a specialized analytics domain, not session management.
 - **Droid's `/sessions`** opens a full UI; actions live inside the UI, avoiding the noun-vs-verb question.
 
-The pattern: noun-first-with-subcommands only appears when (a) the domain has many equal-weight operations on the same noun (Gemini's tagged checkpoints, Amp's shell-level thread ops) or (b) the noun opens a full UI (Droid). For the *common* interactive actions (resume, fork, new, clear), every tool picks verbs.
+The pattern: noun-first-with-subcommands only appears when (a) the domain has many equal-weight operations on the same noun (Gemini's tagged checkpoints, Amp's shell-level thread ops) or (b) the noun opens a full UI (Droid). For the _common_ interactive actions (resume, fork, new, clear), every tool picks verbs.
 
 ### What this means for Glue
 
@@ -252,7 +256,7 @@ The grammar in section 3 was wrong in its bones. "Everything is a noun; bare nou
 The dominant convention — and the one Glue should adopt — is:
 
 - **Verbs for state transitions** (`/new`, `/resume`, `/fork`, `/compact`, `/clear`, `/rename`, `/export`).
-- **One noun namespace (`/session`) for inspection + admin of the current session** (info, copy, delete, stats). Everything under `/session <sub>` is about *the current one*, not about picking a different one.
+- **One noun namespace (`/session`) for inspection + admin of the current session** (info, copy, delete, stats). Everything under `/session <sub>` is about _the current one_, not about picking a different one.
 - **`/resume` stays verb-first** and is the canonical session-switching surface. Does picker bare; accepts query inline.
 - **CLI flags for most-recent:** `glue -c` / `glue --continue` for most-recent, `glue --resume` for picker.
 
@@ -289,6 +293,7 @@ Section 3 is rewritten below to reflect this.
 ## 7. Migration phases (final, post-review)
 
 ### Phase 1 — Grammar lock-in (this plan)
+
 Done. External research + adversarial review integrated. Open questions 2 and 6 closed.
 
 ### Phase 2 — Bugfix + `/session` router
@@ -305,6 +310,7 @@ Narrow, low-risk scope. Nothing about new sessions. Nothing about `/new`.
 8. **Website docs update** in the same PR: `website/docs/using-glue/interactive-mode.md:13` — `/models` no longer first-class; `/info` no longer listed separately.
 
 Files touched:
+
 - `cli/lib/src/commands/slash_commands.dart` — add `SlashSubcommandRouter`.
 - `cli/lib/src/commands/builtin_commands.dart` — re-register `/session`, `/provider`, add aliases, drop `/info`.
 - `cli/lib/src/app/command_helpers.dart` — fix `/clear`; `_sessionActionImpl` and `_runProviderCommandImpl` become thin wrappers over the router (or router construction moves into these impls).
@@ -346,6 +352,7 @@ Tiny: add `abbr: 'c'` to `--continue` in `bin/glue.dart:48`. Confirm `--resume <
 ### Per phase
 
 **Phase 2 (bugfix + router):**
+
 - `/clear` actually wipes `agent._conversation` and resets `agent.tokenCount`. Verified by a test that sends a message, runs `/clear`, then checks `agent._conversation.isEmpty` and `tokenCount == 0`.
 - `SlashSubcommandRouter` has tests covering: dispatch, alias resolution, default handler, unknown-sub usage string, completer candidates.
 - `/session` and `/provider` use the router. Removing `_sessionActionImpl`'s hand-rolled switch doesn't change observable behavior.
@@ -356,14 +363,17 @@ Tiny: add `abbr: 'c'` to `--continue` in `bin/glue.dart:48`. Confirm `--resume <
 - No callback added to `BuiltinCommands.create`.
 
 **Phase 2.5 gate:**
+
 - `SessionManager.startNewSession()` exists and has tests covering: agent cancellation before new session starts, observability flush, store close, panel stack reset, state reset.
 - No data loss on `/new` — old session still findable via `/resume` with its previous ID.
 
 **Phase 3 (new verbs):**
+
 - `/new` registered via `_initCommands` closure (not via `BuiltinCommands.create` callback). Help text frames intent, not implementation.
 - `/fork` optional; only ships if the replay plumbing is already present.
 
 **Phase 5 (CLI):**
+
 - `glue -c` works as shorthand for `glue --continue`.
 
 ### Cross-cutting
@@ -393,7 +403,7 @@ String _clearConversationImpl(App app) {
 
 It clears UI state and the terminal, but **never calls `app.agent.clearConversation()`** and never resets `agent.tokenCount`. The next user message goes to the LLM with the full prior conversation attached. Users think history is wiped; it isn't.
 
-This invalidates the original Phase 2 framing. The plan said "`/clear` — wipe conversation history in *this* session (current behavior)." The current behavior isn't what the description says.
+This invalidates the original Phase 2 framing. The plan said "`/clear` — wipe conversation history in _this_ session (current behavior)." The current behavior isn't what the description says.
 
 **Decision: Phase 2 starts by fixing `/clear` — one-line bug fix. Only after that is it safe to introduce `/new` with a meaningful contrast.**
 
@@ -419,19 +429,21 @@ Three of the four proposed hidden aliases collide with real behavior or shipped 
 - **`/sessions`** → collides with `/open sessions` (`cli/lib/src/commands/arg_completers.dart:18` — `'sessions'` is a valid `/open` target meaning "open the sessions folder"). Users will type `/sessions` expecting the folder. Dropping.
 - **`/skill`** (singular) → shadows the plausible future `/skill <name> [info|reload|deactivate]` namespace. Parallel to the plan's own `/session <sub>` design. Don't burn the name. Dropping.
 - **`/continue`** → genuine muscle memory from Claude Code / OpenCode, no collision. **Keep**.
-- **`/models`** → plural duplicate of `/model`. But it's currently *visible* and documented at `website/docs/using-glue/interactive-mode.md:13`. Demoting is fine but requires a same-PR docs update. **Keep as hidden alias, docs update in same PR.**
+- **`/models`** → plural duplicate of `/model`. But it's currently _visible_ and documented at `website/docs/using-glue/interactive-mode.md:13`. Demoting is fine but requires a same-PR docs update. **Keep as hidden alias, docs update in same PR.**
 
 **Decision: only `/continue` and `/models` become hidden aliases. Drop `/sessions` and `/skill`.**
 
 ### Fix: the `/info` vs `/session` duplication is real
 
 Both commands call the same code path today:
+
 - `/info` → `sessionInfo()` → `_buildSessionInfoImpl(app)` (`builtin_commands.dart:79`).
 - `/session` bare → `_sessionActionImpl(app, [])` → `_buildSessionInfoImpl(app)` (`command_helpers.dart:102`).
 
 Identical output. The plan claimed a "global dashboard vs session-specific" split that doesn't exist in code.
 
 Two options:
+
 1. **Make `/info` a hidden alias of `/session`** — simplest; removes duplication entirely.
 2. **Build a real global dashboard** for `/info` (add paths, active providers, active skills, debug/approval state, recent sessions) — larger scope, but justifies keeping both.
 
@@ -448,6 +460,7 @@ The plan's acceptance criterion claimed `/session` shows "ID, model, approval, p
 ### Add: `SlashSubcommandRouter` before `/session` grows more subcommands
 
 Today `_sessionActionImpl` (lines 82-106) and `_runProviderCommandImpl` (lines 285-323) are two hand-rolled switch statements. They disagree on:
+
 - Default subcommand (`/session` → info; `/provider` → list).
 - Error message format (`Unknown subcommand "..."` vs `Usage: /provider [...]`).
 - Aliases (`/provider remove` = `/provider rm`; `/session` has no alias support).
@@ -526,6 +539,7 @@ This plan supersedes `plan_session_resume_consolidation.md` (research file, move
 2. **Adversarial review** uncovered a shipped bug (`/clear` doesn't actually clear), a shipped-vocabulary collision (`/sessions` conflicts with `/open sessions`), a future-namespace collision (`/skill` would shadow per-skill admin), a false contract claim (the `/session` output doesn't match what the plan's acceptance criteria said), and a phasing error (`/new` isn't trivial — `SessionManager` is single-session).
 
 **Net decisions after both rounds:**
+
 - Keep `/resume` as top-level verb (don't fold).
 - Formalize `/session` as inspection-only for the current session.
 - Fix `/clear` bug in Phase 2.

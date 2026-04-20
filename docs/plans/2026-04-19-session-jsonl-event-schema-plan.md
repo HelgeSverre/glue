@@ -259,7 +259,7 @@ Represent redaction:
 {
   "type": "tool_call.started",
   "redactions": [
-    {"path":"data.arguments.env.OPENAI_API_KEY","reason":"secret"}
+    { "path": "data.arguments.env.OPENAI_API_KEY", "reason": "secret" }
   ],
   "data": {
     "arguments": {

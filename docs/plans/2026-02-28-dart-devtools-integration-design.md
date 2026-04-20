@@ -17,6 +17,7 @@ A single module centralizing all `dart:developer` instrumentation. Business logi
 Wraps `dart:developer log()` with predefined categories. Each category maps to a filterable name in DevTools Logging view.
 
 Categories:
+
 - `llm.request` — HTTP request start/end, model, token counts
 - `llm.stream` — Per-chunk streaming events (opt-in, very noisy)
 - `tool.exec` — Tool invocation and result
@@ -34,6 +35,7 @@ Falls through to existing `DebugLogger` for file logging so both work simultaneo
 #### Timeline Helpers
 
 Thin wrappers around `Timeline` and `TimelineTask`:
+
 - `GlueDev.timeSync(name, fn, {args})` — synchronous span
 - `GlueDev.startAsync(name, {args})` — returns `TimelineTask` for async spans
 - Pre-defined `UserTag` constants for CPU profiler filtering: `tagRender`, `tagLlmStream`, `tagToolExec`, `tagAgentLoop`
@@ -42,59 +44,67 @@ Thin wrappers around `Timeline` and `TimelineTask`:
 
 Registered once at startup via `GlueDev.init(app)`. Each returns a JSON snapshot of internal state, queryable from DevTools or any VM service client.
 
-| Extension | Returns |
-|-----------|---------|
-| `ext.glue.getAgentState` | `{mode, iteration, pendingTools, tokenCount, model}` |
-| `ext.glue.getConversation` | Conversation history (truncated to last N messages) |
-| `ext.glue.getConfig` | Resolved config values |
-| `ext.glue.getSessionInfo` | `{sessionId, messageCount, startTime}` |
-| `ext.glue.getToolHistory` | Last N tool calls with name, args summary, duration, result size |
+| Extension                  | Returns                                                          |
+| -------------------------- | ---------------------------------------------------------------- |
+| `ext.glue.getAgentState`   | `{mode, iteration, pendingTools, tokenCount, model}`             |
+| `ext.glue.getConversation` | Conversation history (truncated to last N messages)              |
+| `ext.glue.getConfig`       | Resolved config values                                           |
+| `ext.glue.getSessionInfo`  | `{sessionId, messageCount, startTime}`                           |
+| `ext.glue.getToolHistory`  | Last N tool calls with name, args summary, duration, result size |
 
 #### Event Posting
 
 Pushes structured events via `postEvent()` for the custom DevTools extension to consume. No-op if nobody is listening.
 
-| Event Kind | Data |
-|------------|------|
-| `glue.agentStep` | `{iteration, toolsChosen, tokenDelta, loopReason}` |
-| `glue.toolExec` | `{tool, argsSummary, durationMs, resultSizeBytes}` |
-| `glue.llmRequest` | `{provider, model, ttfbMs, streamDurationMs, inputTokens, outputTokens}` |
-| `glue.renderMetrics` | `{frameMs, blockCount, lineCount, overBudget}` |
+| Event Kind           | Data                                                                     |
+| -------------------- | ------------------------------------------------------------------------ |
+| `glue.agentStep`     | `{iteration, toolsChosen, tokenDelta, loopReason}`                       |
+| `glue.toolExec`      | `{tool, argsSummary, durationMs, resultSizeBytes}`                       |
+| `glue.llmRequest`    | `{provider, model, ttfbMs, streamDurationMs, inputTokens, outputTokens}` |
+| `glue.renderMetrics` | `{frameMs, blockCount, lineCount, overBudget}`                           |
 
 ### Instrumentation Points in Existing Files
 
 Each change is 2-5 lines (import + method call at entry/exit boundaries):
 
 #### `bin/glue.dart`
+
 - After `App.create()`, before `app.run()`: call `GlueDev.init(app)` to register service extensions and start the root timeline span.
 
 #### `app.dart`
+
 - `_startAgent()`: `Timeline.startSync('AgentReactLoop')` at method entry. Emit `GlueDev.log('agent.loop', 'started')`.
 - `_handleAgentEvent()`: `GlueDev.log('agent.event', event.runtimeType.toString())` at top of the switch. For `AgentDone`: `Timeline.finishSync()`.
 - `_doRender()`: Wrap body in `Timeline.timeSync('RenderFrame', () { ... })`. Measure wall time with `Stopwatch`. If > 16ms, `GlueDev.log('render.slow', ...)` at WARNING level. Post `glue.renderMetrics` event.
 - `_executeAndCompleteTool()`: `Timeline.timeSync('ToolExec:${call.name}', () { ... })`. Post `glue.toolExec` event with duration.
 
 #### `agent_core.dart`
+
 - `run()`: Create `TimelineTask()..start('ReActLoop')` before the `while(true)`. Call `task.finish()` after loop exits.
 - Inside the while loop: after each `llm.stream()` completes, post `glue.agentStep` with iteration count, tools chosen, and token delta.
 - LLM streaming: create a `Flow.begin()` when entering `await for`, `Flow.end()` when the stream completes. This connects the LLM request to the tool execution visually in Timeline.
 
 #### `anthropic_client.dart` / `openai_client.dart`
+
 - `stream()`: Create `TimelineTask()..start('LlmStream:$model')` before the HTTP request. Record TTFB timestamp when first `TextDelta` is yielded. Call `task.finish(arguments: {ttfbMs, totalMs, tokens})` at end. Post `glue.llmRequest` event.
 
 #### `tools.dart`
+
 - Each `Tool.execute()`: Wrap body in `Timeline.timeSync('Tool:$name', () => ...)`. Log via `GlueDev.log('tool.exec', '$name completed in ${ms}ms')`. Post `glue.toolExec` event.
 - `BashTool.execute()` specifically: additional `GlueDev.log('tool.bash', 'command: $command')` and process lifecycle logging.
 
 #### `shell_job_manager.dart`
+
 - `start()`: `GlueDev.log('shell.job', 'started: $command')` after process start.
 - On job exit/error: `GlueDev.log('shell.job', 'exited: $id code=$exitCode')`.
 
 #### `agent_manager.dart`
+
 - `spawnSubagent()`: Wrap in `Timeline.timeSync('Subagent:depth$depth', () => ...)`. Log spawn and completion. Post `glue.agentStep` with subagent context.
 - `spawnParallel()`: Timeline span covering the `Future.wait()`.
 
 #### `debug_logger.dart`
+
 - No changes. Continues to work as-is. `GlueDev.log()` calls it internally as a fallback.
 
 ### Justfile Recipes
@@ -188,6 +198,7 @@ postEvent('glue.*', data)        ──► serviceManager.onExtensionEvent.liste
 Shows each ReAct iteration as a node in a tree. Data source: `glue.agentStep` events.
 
 Each node displays:
+
 - Iteration number
 - Tools chosen (or "final response")
 - Token delta for that iteration
@@ -198,6 +209,7 @@ Interactive: click a node to query `ext.glue.getConversation` and show the relev
 #### Panel 2: LLM Metrics Dashboard
 
 Charts built from `glue.llmRequest` events:
+
 - TTFB (time to first byte) per request — line chart over time
 - Tokens/second streaming throughput — bar chart
 - Input vs output token ratio — stacked bar
@@ -207,6 +219,7 @@ Charts built from `glue.llmRequest` events:
 #### Panel 3: Tool Execution Timeline
 
 Gantt-style chart from `glue.toolExec` events:
+
 - Each tool call as a horizontal bar, length = duration
 - Color-coded by tool type (Bash=red, ReadFile=blue, Grep=green, etc.)
 - Sortable by duration to find bottlenecks
@@ -215,6 +228,7 @@ Gantt-style chart from `glue.toolExec` events:
 #### Panel 4: State Inspector
 
 Live query interface for all `ext.glue.*` service extensions:
+
 - Buttons to query each extension
 - JSON tree view of results
 - Auto-refresh toggle (poll every 2s)
@@ -233,6 +247,7 @@ dart run devtools_extensions validate --package=../cli
 ```
 
 Add justfile recipe:
+
 ```just
 # Build the DevTools extension
 build-devtools:
@@ -242,6 +257,7 @@ build-devtools:
 ### Development Workflow for the Extension
 
 Use simulated DevTools environment for fast iteration:
+
 ```bash
 cd glue_devtools_extension
 flutter run -d chrome --dart-define=use_simulated_environment=true
@@ -260,16 +276,21 @@ flutter run -d chrome --dart-define=use_simulated_environment=true
 ## The 5 Interesting Things
 
 ### 1. LLM Request Flow Tracing
+
 In `anthropic_client.dart`, create `Flow.begin()` when HTTP request starts, `Flow.step()` on first `TextDelta` (TTFB marker), `Flow.end()` on `message_stop`. In DevTools Timeline, connected arrows show the full streaming lifecycle. Add `arguments: {model, inputTokens, ttfbMs}` for hover-to-inspect.
 
 ### 2. Agent Decision Tree Visualization
+
 The custom extension's star feature. Each ReAct iteration posts `glue.agentStep` with `{iteration, toolsChosen, tokenDelta}`. The extension renders an expandable tree where each node shows what the agent decided and why. Click to drill into the full conversation at that point via `ext.glue.getConversation`.
 
 ### 3. Render Frame Budget Monitor
+
 `_doRender()` measures wall time. Frames > 16ms log at WARNING level to `render.slow`. Timeline shows each frame as a bar — visually obvious when frames exceed budget. The custom extension's metrics panel tracks frame time distribution over the session.
 
 ### 4. Tool Cost Tracker
+
 Every `Tool.execute()` posts `glue.toolExec` with timing. The custom extension aggregates into a dashboard: "Bash avg 2.3s, ReadFile avg 12ms, Grep avg 340ms, 73% of wall time spent in tools". Identifies which tools are bottlenecks during agent loops.
 
 ### 5. Interactive State Inspector
+
 Service extensions (`ext.glue.getAgentState`, etc.) let you query live state without print statements or restarts. Works from DevTools UI, the custom extension's inspector panel, or even `curl` against the VM service WebSocket. Invaluable for debugging stuck agents or unexpected behavior mid-session.

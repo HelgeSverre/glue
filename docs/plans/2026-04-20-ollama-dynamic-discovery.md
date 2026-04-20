@@ -7,7 +7,7 @@ Date: 2026-04-20
 ## Goal
 
 When Glue talks to Ollama, the `/model` picker should reflect the user's
-*actual* installed models — merged with our curated catalog — instead of
+_actual_ installed models — merged with our curated catalog — instead of
 showing only curated rows that may or may not be pulled locally.
 
 Concretely:
@@ -138,15 +138,22 @@ the merge lands. No spinner unless the wait actually exceeds 300 ms.
 The existing `ModelPanelBuilder` already has a `marker` column for "current
 model". Reuse the notes column for availability badges; don't add a new column.
 
-| Availability | Rendered |
-|---|---|
-| `installed` | normal |
-| `notInstalled` | notes prefixed with `[pull]` dimmed; on enter, show a hint to run `ollama pull …` |
-| `installedButUncatalogued` | notes prefixed with `[local]` dimmed |
-| `unknown` / non-Ollama | normal |
+| Availability               | Rendered                                                                                      |
+| -------------------------- | --------------------------------------------------------------------------------------------- |
+| `installed`                | normal                                                                                        |
+| `notInstalled`             | notes prefixed with `[pull]` dimmed; on enter, a ConfirmModal offers to pull via Ollama's API |
+| `installedButUncatalogued` | notes prefixed with `[local]` dimmed                                                          |
+| `unknown` / non-Ollama     | normal                                                                                        |
 
-No new keybindings. No pull-triggering from inside the picker — keep the TUI
-shell-free; tell the user the exact `ollama pull` command instead.
+No new keybindings.
+
+**Revision (2026-04-20 — Phase 4 shipped):** the original "no pull-triggering
+from inside the picker" stance was reversed per user request. Selecting a
+`notInstalled` row (or typing an uninstalled Ollama id via `/model`) opens
+a `ConfirmModal` ("Pull 'tag' from Ollama?") that streams `POST /api/pull`
+progress as system messages and only flips the active model after a
+`{"status":"success"}` frame. See `cli/lib/src/app/ollama_pull_flow.dart`
+and `cli/lib/src/providers/ollama_discovery.dart::pullModel`.
 
 ## Files to Create / Modify
 
@@ -168,7 +175,7 @@ shell-free; tell the user the exact `ollama pull` command instead.
   (the existing synthetic-ModelDef fallback in `glue_config.dart` handles them).
 
 No schema change to `docs/reference/models.yaml` or `ModelDef`. The catalog
-remains the source of truth for *what we recommend*; discovery is a view layer.
+remains the source of truth for _what we recommend_; discovery is a view layer.
 
 ## Verification
 
@@ -206,7 +213,7 @@ Recommended order of shipping, small to large:
 ## Risks
 
 - **False positives on "installed".** `ollama list` reports what's on disk,
-  not what's *loadable right now* (model might be corrupt). Acceptable —
+  not what's _loadable right now_ (model might be corrupt). Acceptable —
   the user finds out on first inference attempt, same as today.
 - **Latency spike** on slow disks when Ollama is starting up. Mitigated by
   the 2 s hard timeout and fail-soft merge.
