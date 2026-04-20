@@ -1,10 +1,10 @@
 name: glue
 description: The coding agent that holds it all together.
 version: 0.1.1
-homepage: https://github.com/HelgeSverre/glue
+homepage: https://www.getglue.dev/
 repository: https://github.com/HelgeSverre/glue
 issue_tracker: https://github.com/HelgeSverre/glue/issues
-topics: [cli, ai, llm, agent, terminal]
+topics: [ cli, ai, llm, agent, terminal ]
 
 executables:
   glue: glue
