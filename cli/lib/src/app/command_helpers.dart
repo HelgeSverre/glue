@@ -363,6 +363,39 @@ const _openTargets = <String>[
   'cache',
 ];
 
+String _configActionImpl(App app, List<String> args) {
+  final subcommand = args.isEmpty ? '' : args.first.toLowerCase();
+  switch (subcommand) {
+    case '':
+      return _openConfigInEditorImpl(app);
+    case 'init':
+      return _initLocalConfigImpl(app);
+    default:
+      return 'Unknown subcommand "$subcommand". Try: /config init';
+  }
+}
+
+String _openConfigInEditorImpl(App app) {
+  final editor = app._environment.vars['EDITOR']?.trim();
+  if (editor == null || editor.isEmpty) {
+    return r'EDITOR is not set. Set $EDITOR to use /config.';
+  }
+
+  final path = app._environment.configYamlPath;
+  Directory(app._environment.glueDir).createSync(recursive: true);
+  final file = File(path);
+  if (!file.existsSync()) {
+    file.createSync(recursive: true);
+  }
+
+  unawaited(Process.start(editor, [path], runInShell: true));
+  return 'Opening $path in $editor';
+}
+
+String _initLocalConfigImpl(App app) {
+  return initLocalConfig(app._cwd);
+}
+
 String _openGlueTargetImpl(App app, List<String> args) {
   if (args.isEmpty) {
     return 'Usage: /open <target>\n'

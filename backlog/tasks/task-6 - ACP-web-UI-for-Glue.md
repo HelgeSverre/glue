@@ -4,13 +4,13 @@ title: ACP web UI for Glue
 status: To Do
 assignee: []
 created_date: '2026-04-18 23:57'
-updated_date: '2026-04-19 04:02'
+updated_date: '2026-04-20 00:05'
 labels:
   - feature
   - acp
   - webui
   - parent
-milestone: FUTURE
+milestone: m-3
 dependencies: []
 references:
   - 'https://agentclientprotocol.com/'

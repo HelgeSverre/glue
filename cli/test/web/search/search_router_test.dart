@@ -106,5 +106,24 @@ void main() {
         throwsA(isA<StateError>()),
       );
     });
+
+    test('uses unconfigured free fallback provider when available', () async {
+      const fallbackResponse = WebSearchResponse(
+        provider: 'duckduckgo',
+        query: 'test',
+        results: [],
+      );
+      final router = SearchRouter([
+        _MockProvider(name: 'brave', isConfigured: false),
+        _MockProvider(
+          name: 'duckduckgo',
+          isConfigured: false,
+          response: fallbackResponse,
+        ),
+      ]);
+
+      final result = await router.search('test');
+      expect(result.provider, 'duckduckgo');
+    });
   });
 }

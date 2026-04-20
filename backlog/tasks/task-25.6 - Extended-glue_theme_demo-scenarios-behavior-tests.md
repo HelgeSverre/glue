@@ -4,10 +4,11 @@ title: Extended glue_theme_demo scenarios + behavior tests
 status: To Do
 assignee: []
 created_date: '2026-04-19 00:42'
-updated_date: '2026-04-19 04:02'
+updated_date: '2026-04-20 00:05'
 labels:
   - tui-contract-2026-04
   - testing
+milestone: m-1
 dependencies:
   - TASK-25.1
   - TASK-25.2

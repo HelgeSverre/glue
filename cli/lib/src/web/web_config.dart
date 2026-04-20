@@ -23,7 +23,7 @@ class WebFetchConfig {
 ///
 /// Uses `Type` suffix to avoid colliding with the runtime
 /// `WebSearchProvider` interface.
-enum WebSearchProviderType { brave, tavily, firecrawl }
+enum WebSearchProviderType { brave, tavily, firecrawl, duckduckgo }
 
 class WebSearchConfig {
   final WebSearchProviderType? provider;

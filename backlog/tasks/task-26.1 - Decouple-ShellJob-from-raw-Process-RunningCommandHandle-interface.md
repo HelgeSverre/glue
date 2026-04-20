@@ -4,10 +4,11 @@ title: Decouple ShellJob from raw Process (RunningCommandHandle interface)
 status: To Do
 assignee: []
 created_date: '2026-04-19 00:42'
-updated_date: '2026-04-19 04:02'
+updated_date: '2026-04-20 00:05'
 labels:
   - runtime-boundary-2026-04
   - refactor
+milestone: m-2
 dependencies: []
 references:
   - cli/lib/src/shell/shell_job_manager.dart

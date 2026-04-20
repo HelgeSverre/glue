@@ -4,11 +4,12 @@ title: 'Friendlier Ollama errors: daemon-down + model-missing handling'
 status: To Do
 assignee: []
 created_date: '2026-04-19 03:49'
-updated_date: '2026-04-19 04:02'
+updated_date: '2026-04-20 00:05'
 labels:
   - providers
   - ux
   - ollama
+milestone: m-0
 dependencies: []
 references:
   - cli/lib/src/llm/ollama_client.dart

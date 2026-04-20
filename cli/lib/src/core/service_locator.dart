@@ -29,9 +29,11 @@ import 'package:glue/src/web/browser/providers/anchor_provider.dart';
 import 'package:glue/src/web/browser/providers/browserbase_provider.dart';
 import 'package:glue/src/web/browser/providers/browserless_provider.dart';
 import 'package:glue/src/web/browser/providers/docker_browser_provider.dart';
+import 'package:glue/src/web/browser/providers/hyperbrowser_provider.dart';
 import 'package:glue/src/web/browser/providers/local_provider.dart';
 import 'package:glue/src/web/browser/providers/steel_provider.dart';
 import 'package:glue/src/web/search/providers/brave_provider.dart';
+import 'package:glue/src/web/search/providers/duckduckgo_provider.dart';
 import 'package:glue/src/web/search/providers/firecrawl_provider.dart';
 import 'package:glue/src/web/search/providers/tavily_provider.dart';
 import 'package:glue/src/web/search/search_router.dart';
@@ -103,6 +105,7 @@ class ServiceLocator {
             baseUrl: config.webConfig.search.firecrawlBaseUrl ??
                 'https://api.firecrawl.dev',
           ),
+          DuckDuckGoSearchProvider(),
         ]);
 
     BrowserManager? browserManager;
@@ -127,6 +130,9 @@ class ServiceLocator {
               ),
             BrowserBackend.anchor => AnchorProvider(
                 apiKey: config.webConfig.browser.anchorApiKey,
+              ),
+            BrowserBackend.hyperbrowser => HyperbrowserProvider(
+                apiKey: config.webConfig.browser.hyperbrowserApiKey,
               ),
           },
         );

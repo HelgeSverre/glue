@@ -22,6 +22,7 @@ class BuiltinCommands {
     required String Function(List<String> args) runProviderCommand,
     required String Function() pathsReport,
     required String Function(List<String> args) openGlueTarget,
+    required String Function(List<String> args) configAction,
   }) {
     final commands = SlashCommandRegistry();
 
@@ -151,6 +152,12 @@ class BuiltinCommands {
           'Show Glue data paths (config, sessions, logs, skills, plans, cache)',
       hiddenAliases: ['where'],
       execute: (_) => pathsReport(),
+    ));
+
+    commands.register(SlashCommand(
+      name: 'config',
+      description: 'Open config.yaml in \$EDITOR, or /config init in cwd',
+      execute: configAction,
     ));
 
     commands.register(SlashCommand(

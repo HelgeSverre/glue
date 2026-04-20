@@ -14,6 +14,7 @@ void main() {
       String Function(String query)? resumeSessionByQuery,
       String Function()? pathsReport,
       String Function(List<String> args)? openGlueTarget,
+      String Function(List<String> args)? configAction,
       String Function(List<String> args)? sessionAction,
     }) {
       return BuiltinCommands.create(
@@ -36,6 +37,7 @@ void main() {
         runProviderCommand: (_) => '',
         pathsReport: pathsReport ?? () => '',
         openGlueTarget: openGlueTarget ?? (_) => '',
+        configAction: configAction ?? (_) => '',
       );
     }
 
@@ -199,7 +201,36 @@ void main() {
       expect(received, isEmpty);
     });
 
-    test('/session without args delegates to sessionAction with empty list', () {
+    test('/config without args delegates with empty args', () {
+      List<String>? received;
+      final registry = createRegistry(
+        configAction: (args) {
+          received = args;
+          return 'Opening ~/.glue/config.yaml in editor';
+        },
+      );
+
+      final result = registry.execute('/config');
+      expect(result, 'Opening ~/.glue/config.yaml in editor');
+      expect(received, isEmpty);
+    });
+
+    test('/config init forwards init subcommand', () {
+      List<String>? received;
+      final registry = createRegistry(
+        configAction: (args) {
+          received = args;
+          return 'Created ./config.yaml';
+        },
+      );
+
+      final result = registry.execute('/config init');
+      expect(result, 'Created ./config.yaml');
+      expect(received, ['init']);
+    });
+
+    test('/session without args delegates to sessionAction with empty list',
+        () {
       List<String>? received;
       final registry = createRegistry(
         sessionAction: (args) {

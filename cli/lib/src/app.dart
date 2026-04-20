@@ -13,6 +13,7 @@ import 'package:glue/src/agent/agent_manager.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/commands/arg_completers.dart' as arg_completers;
 import 'package:glue/src/commands/builtin_commands.dart';
+import 'package:glue/src/commands/config_command.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/config/constants.dart';
@@ -439,6 +440,7 @@ class App {
       runProviderCommand: _runProviderCommand,
       pathsReport: _buildPathsReport,
       openGlueTarget: _openGlueTarget,
+      configAction: _configAction,
     );
 
     // Argument autocomplete — attached here (not plumbed through
@@ -451,6 +453,8 @@ class App {
   }
 
   String _buildPathsReport() => buildWhereReport(_environment);
+
+  String _configAction(List<String> args) => _configActionImpl(this, args);
 
   String _openGlueTarget(List<String> args) => _openGlueTargetImpl(this, args);
 

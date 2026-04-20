@@ -110,6 +110,24 @@ anthropic:
       expect(config.webConfig.browser.anchorApiKey, 'anchor-key');
       expect(config.webConfig.browser.isConfigured, isTrue);
     });
+
+    test('loads Hyperbrowser browser backend from environment', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      final config = GlueConfig.load(
+        environment: _envWith(
+          home: home,
+          vars: {
+            'GLUE_BROWSER_BACKEND': 'hyperbrowser',
+            'HYPERBROWSER_API_KEY': 'hb-key',
+          },
+        ),
+      );
+
+      expect(config.webConfig.browser.backend, BrowserBackend.hyperbrowser);
+      expect(config.webConfig.browser.hyperbrowserApiKey, 'hb-key');
+      expect(config.webConfig.browser.isConfigured, isTrue);
+    });
   });
 
   group('GlueConfig.validate', () {

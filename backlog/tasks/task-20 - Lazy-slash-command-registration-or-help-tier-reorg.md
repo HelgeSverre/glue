@@ -4,11 +4,12 @@ title: Lazy slash command registration (or /help tier reorg)
 status: To Do
 assignee: []
 created_date: '2026-04-19 00:34'
-updated_date: '2026-04-19 04:02'
+updated_date: '2026-04-20 00:05'
 labels:
   - simplification-2026-04
   - cli
   - perf
+milestone: m-4
 dependencies: []
 references:
   - cli/lib/src/commands/builtin_commands.dart
@@ -46,3 +47,9 @@ The slash command registry is eager and visible in hot-path discovery. Rare comm
 - [ ] #5 No user-visible regression
 - [ ] #6 `dart test` green
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+**2026-04-20 sweep:** Likely superseded by TASK-33 (slash command grammar lock-in). Moved to Deferred milestone pending TASK-33 outcome — if TASK-33 lands a `/help` reorg, this task is closeable; otherwise it can be revived as a remaining concrete change.
+<!-- SECTION:NOTES:END -->

@@ -38,8 +38,9 @@ class WebSearchTool extends Tool {
           name: 'provider',
           type: 'string',
           description:
-              'Search provider to use: "brave", "tavily", or "firecrawl". '
-              'Defaults to auto-detect from configured API keys.',
+              'Search provider to use: "brave", "tavily", "firecrawl", or '
+              '"duckduckgo". Defaults to auto-detect from configured providers '
+              'with DuckDuckGo as a free fallback.',
           required: false,
         ),
       ];

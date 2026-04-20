@@ -446,6 +446,7 @@ class GlueConfig {
     final browserbaseSection = browserSection?['browserbase'] as Map?;
     final browserlessSection = browserSection?['browserless'] as Map?;
     final anchorSection = browserSection?['anchor'] as Map?;
+    final hyperbrowserSection = browserSection?['hyperbrowser'] as Map?;
 
     final browserBackendStr =
         env['GLUE_BROWSER_BACKEND'] ?? browserSection?['backend'] as String?;
@@ -474,6 +475,9 @@ class GlueConfig {
       anchorApiKey: env['ANCHOR_API_KEY'] ??
           anchorSection?['api_key'] as String? ??
           browserSection?['anchor_api_key'] as String?,
+      hyperbrowserApiKey: env['HYPERBROWSER_API_KEY'] ??
+          hyperbrowserSection?['api_key'] as String? ??
+          browserSection?['hyperbrowser_api_key'] as String?,
     );
 
     final webConfig = WebConfig(

@@ -4,11 +4,12 @@ title: Model/provider/credential redesign (parent)
 status: In Progress
 assignee: []
 created_date: '2026-04-19 00:34'
-updated_date: '2026-04-19 04:02'
+updated_date: '2026-04-20 00:05'
 labels:
   - model-provider-2026-04
   - parent
   - config
+milestone: m-0
 dependencies: []
 documentation:
   - cli/docs/plans/2026-04-19-model-provider-config-redesign.md

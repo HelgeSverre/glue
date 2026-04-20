@@ -9,6 +9,21 @@ Monorepo with three components:
 - `website/` — Unified marketing + docs site (VitePress), served at getglue.dev
 - `docs/` — Canonical reference material (models.yaml, plans, design docs)
 
+## CLI Command Surface Conventions
+
+When adding user-facing commands, prefer these surfaces consistently:
+
+- **Top-level CLI subcommands** (`glue <noun> <verb>`) for non-interactive, scriptable, setup, diagnostic, and filesystem-oriented workflows.
+  - Examples: `glue completions install`, proposed `glue config init`, proposed `glue doctor`
+- **Slash commands** (`/command`) for interactive TUI actions inside a running Glue session.
+  - Examples: `/model`, `/resume`, `/provider`, `/config`
+
+Naming guidance:
+- Prefer **noun namespaces** for extensible CLI areas: `glue config init`, `glue config show`, `glue doctor`
+- Avoid adding one-off top-level verbs when the feature naturally belongs under an existing noun namespace.
+- Keep interactive slash command behavior and non-interactive CLI behavior aligned where practical, but do not force them to share the same exact grammar if that harms UX.
+- If introducing a new command family, document the reasoning in `docs/plans/` first when the surface area is non-trivial.
+
 ## Common Commands
 
 All commands assume working directory is `cli/` unless noted.

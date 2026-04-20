@@ -3,12 +3,19 @@ import 'package:glue/src/web/search/provider.dart';
 
 class SearchRouter {
   final List<WebSearchProvider> providers;
+  final Set<String> _freeFallbackProviders;
 
-  SearchRouter(this.providers);
+  SearchRouter(
+    this.providers, {
+    Set<String> freeFallbackProviders = const {'duckduckgo'},
+  }) : _freeFallbackProviders = freeFallbackProviders;
 
   WebSearchProvider? get defaultProvider {
     for (final p in providers) {
       if (p.isConfigured) return p;
+    }
+    for (final p in providers) {
+      if (_freeFallbackProviders.contains(p.name)) return p;
     }
     return null;
   }
@@ -30,7 +37,12 @@ class SearchRouter {
     }
 
     final configured = providers.where((p) => p.isConfigured).toList();
-    if (configured.isEmpty) {
+    final fallbackProviders = providers
+        .where(
+            (p) => !p.isConfigured && _freeFallbackProviders.contains(p.name))
+        .toList();
+    final available = [...configured, ...fallbackProviders];
+    if (available.isEmpty) {
       throw StateError(
         'No search provider configured. Set one of: '
         'BRAVE_API_KEY, TAVILY_API_KEY, or FIRECRAWL_API_KEY',
@@ -38,7 +50,7 @@ class SearchRouter {
     }
 
     Exception? lastError;
-    for (final provider in configured) {
+    for (final provider in available) {
       try {
         return await provider.search(query, maxResults: maxResults);
       } catch (e) {

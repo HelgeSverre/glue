@@ -4,10 +4,11 @@ title: TranscriptModel + scroll anchor (resize-safe)
 status: To Do
 assignee: []
 created_date: '2026-04-19 00:42'
-updated_date: '2026-04-19 04:02'
+updated_date: '2026-04-20 00:05'
 labels:
   - tui-contract-2026-04
   - refactor
+milestone: m-1
 dependencies: []
 references:
   - cli/lib/src/app/render_pipeline.dart
@@ -55,3 +56,9 @@ Introduce a `TranscriptModel` abstraction between `_blocks` and rendered lines. 
 - [ ] #7 Input cursor remains visible after resize
 - [ ] #8 Tests cover resize behavior in both anchored and FollowTail modes
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+**2026-04-20 sweep:** Partial progress landed in Unreleased. CHANGELOG records: *"Resize preserves scroll position. UserResize no longer snaps the transcript back to the tail; the render pipeline clamps any out-of-range offset after the viewport changes."* and *"Ctrl+End jumps to the bottom and resumes follow-tail. Plain End stays reserved for the line editor."* — covers AC #2, AC #3, and (via Ctrl+End) AC #4. TranscriptModel abstraction and PageUp/PageDown half-viewport scrolling (AC #1, #5) and `up N` indicator (AC #6) still pending. Note: `End` was repurposed to line-editor cursor-to-EOL, so AC #4 should be re-checked — Ctrl+End is the new jump-to-bottom binding.
+<!-- SECTION:NOTES:END -->

@@ -83,5 +83,11 @@ void main() {
       final inputSchema = schema['input_schema'] as Map<String, dynamic>;
       expect(inputSchema['properties'], contains('query'));
     });
+
+    test('provider description includes duckduckgo', () {
+      final providerParameter =
+          tool.parameters.firstWhere((p) => p.name == 'provider');
+      expect(providerParameter.description, contains('duckduckgo'));
+    });
   });
 }

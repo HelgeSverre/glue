@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:glue/src/web/browser/providers/anchor_provider.dart';
+import 'package:glue/src/web/browser/providers/hyperbrowser_provider.dart';
 import 'package:glue/src/web/browser/providers/steel_provider.dart';
 import 'package:glue/src/web/browser/providers/browserbase_provider.dart';
 import 'package:glue/src/web/browser/providers/browserless_provider.dart';
@@ -165,6 +166,56 @@ void main() {
       await endpoint.close();
 
       expect(client.requests.map((r) => r.method), ['POST', 'DELETE']);
+    });
+  });
+
+  group('HyperbrowserProvider', () {
+    test('has correct name', () {
+      final provider = HyperbrowserProvider(apiKey: 'key');
+      expect(provider.name, 'hyperbrowser');
+    });
+
+    test('is configured with API key', () {
+      expect(HyperbrowserProvider(apiKey: 'key').isConfigured, isTrue);
+      expect(HyperbrowserProvider(apiKey: null).isConfigured, isFalse);
+      expect(HyperbrowserProvider(apiKey: '').isConfigured, isFalse);
+    });
+
+    test('provisions CDP endpoint and closes session', () async {
+      final client = _FakeHttpClient((request, body) {
+        if (request.method == 'POST') {
+          expect(request.url.toString(),
+              'https://api.hyperbrowser.ai/api/session');
+          expect(request.headers['x-api-key'], 'test-key');
+          expect(request.headers['Content-Type'], 'application/json');
+          expect(body, '{}');
+          return http.Response(
+            jsonEncode({
+              'id': 'session-abc',
+              'wsEndpoint': 'wss://hyperbrowser.example/cdp',
+              'liveUrl': 'https://hyperbrowser.example/live/session-abc',
+            }),
+            200,
+          );
+        }
+
+        expect(request.method, 'PUT');
+        expect(request.url.toString(),
+            'https://api.hyperbrowser.ai/api/session/session-abc/stop');
+        expect(request.headers['x-api-key'], 'test-key');
+        return http.Response('{}', 200);
+      });
+
+      final provider = HyperbrowserProvider(apiKey: 'test-key', client: client);
+      final endpoint = await provider.provision();
+
+      expect(endpoint.cdpWsUrl, 'wss://hyperbrowser.example/cdp');
+      expect(endpoint.backendName, 'hyperbrowser');
+      expect(endpoint.viewUrl, 'https://hyperbrowser.example/live/session-abc');
+
+      await endpoint.close();
+
+      expect(client.requests.map((r) => r.method), ['POST', 'PUT']);
     });
   });
 }

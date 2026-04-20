@@ -4,11 +4,12 @@ title: Session replay UI for JSONL logs
 status: To Do
 assignee: []
 created_date: '2026-04-19 05:00'
-updated_date: '2026-04-19 04:02'
+updated_date: '2026-04-20 00:05'
 labels:
   - sessions
   - ui
   - roadmap-later
+milestone: m-3
 dependencies:
   - TASK-25
   - TASK-18

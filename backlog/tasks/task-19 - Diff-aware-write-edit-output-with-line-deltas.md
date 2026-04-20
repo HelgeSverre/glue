@@ -4,11 +4,12 @@ title: Diff-aware write/edit output with line deltas
 status: To Do
 assignee: []
 created_date: '2026-04-19 00:34'
-updated_date: '2026-04-19 04:02'
+updated_date: '2026-04-20 00:05'
 labels:
   - simplification-2026-04
   - tools
   - ux
+milestone: m-0
 dependencies:
   - TASK-18
 references:

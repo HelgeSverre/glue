@@ -4,11 +4,15 @@ title: BlockRenderer / MarkdownRenderer responsive to resize
 status: To Do
 assignee: []
 created_date: '2026-04-19 20:39'
+updated_date: '2026-04-20 00:09'
 labels:
   - tui
   - rendering
   - followup
+milestone: m-1
 dependencies: []
+documentation:
+  - docs/plans/2026-04-19-responsive-panels.md
 priority: low
 ---
 

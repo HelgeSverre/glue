@@ -6,6 +6,23 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Added
 
+- **Hyperbrowser backend for `web_browser`** — new `hyperbrowser` browser
+  backend provisions Hyperbrowser cloud sessions
+  (`POST /api/session`), connects over the returned `wsEndpoint` CDP
+  WebSocket URL, surfaces the live view URL in browser tool output, and
+  stops the remote session on disposal (`PUT /api/session/{id}/stop`).
+  Configured with `web.browser.backend: hyperbrowser` plus
+  `HYPERBROWSER_API_KEY` or `web.browser.hyperbrowser.api_key`. Includes
+  docs/config examples and an opt-in live smoke test:
+  `dart test --run-skipped -t hyperbrowser test/integration/hyperbrowser_e2e_test.dart`.
+- **Anchor Browser backend for `web_browser`** — new `anchor` browser
+  backend provisions Anchor Browser cloud sessions, connects over the
+  returned CDP WebSocket URL, includes the live view URL in browser tool
+  output, and stops the remote session on disposal. Configured with
+  `web.browser.backend: anchor` plus `ANCHOR_API_KEY` or
+  `web.browser.anchor.api_key`. Includes docs/config examples and an
+  opt-in live smoke test:
+  `dart test --run-skipped -t anchor_browser test/integration/anchor_browser_e2e_test.dart`.
 - **`ModelDef.apiId`** — optional field in `docs/reference/models.yaml`
   decoupling the stable catalog key from the mutable upstream identifier.
   Defaults to the YAML key when omitted (zero churn for simple entries).

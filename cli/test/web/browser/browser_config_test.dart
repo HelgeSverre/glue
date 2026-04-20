@@ -70,6 +70,17 @@ void main() {
       expect(configured.isConfigured, isTrue);
     });
 
+    test('hyperbrowser requires API key', () {
+      const config = BrowserConfig(backend: BrowserBackend.hyperbrowser);
+      expect(config.isConfigured, isFalse);
+
+      const configured = BrowserConfig(
+        backend: BrowserBackend.hyperbrowser,
+        hyperbrowserApiKey: 'key',
+      );
+      expect(configured.isConfigured, isTrue);
+    });
+
     test('empty string key is treated as not configured', () {
       const config = BrowserConfig(
         backend: BrowserBackend.steel,

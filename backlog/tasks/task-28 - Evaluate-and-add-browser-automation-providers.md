@@ -4,11 +4,12 @@ title: Evaluate and add browser-automation providers
 status: To Do
 assignee: []
 created_date: '2026-04-19 05:30'
-updated_date: '2026-04-19 04:02'
+updated_date: '2026-04-20 00:05'
 labels:
   - web
   - browser
   - provider
+milestone: m-0
 dependencies: []
 documentation:
   - website/docs/advanced/browser-automation.md
@@ -20,106 +21,109 @@ ordinal: 30000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Glue ships with five browser backends today: `local`, `docker`, `browserbase`,
-`browserless`, and `steel`. All implement `BrowserEndpointProvider`
+Glue ships with **seven** browser backends today: `local`, `docker`,
+`browserbase`, `browserless`, `steel`, `anchor`, and `hyperbrowser`. All
+implement `BrowserEndpointProvider`
 (`cli/lib/src/web/browser/browser_endpoint.dart`) and plug in via
 `BrowserManager`.
 
-This task enumerates additional providers worth adding and implements
-adapters for the ones we keep. We cover the full usefulness spectrum — from
-first-party platform browsers to residential-proxy + anti-bot products —
-since Glue's browser tool is the generic substrate and users pick the
-backend that fits their workload.
+This task enumerates additional providers, evaluates them, and ships
+adapters for the ones we keep. Scope was trimmed after research (see
+Notes) — the remaining v1 work is **two** providers (Cloudflare + Bright
+Data), not the full original list.
 
-## Candidates
+## Scope — accept (still pending)
 
-Ranked by expected payoff for Glue users.
+Ship adapters for both, behind `<FeatureStatus status="experimental" />`.
 
-### Likely yes — standard cloud browsers
+| Provider | Category | Why | Adapter complexity |
+| -------- | -------- | --- | ------------------ |
+| **Cloudflare Browser Rendering** (aka "Browser Run") | First-party platform browser | Cheapest backend in class (~$0.09/browser-hour), free tier on Workers Free (10 min/day). CDP endpoint shipped 2026-04-10. Auth is a single API token; no POST-to-create — the WS URL itself provisions the session. Simpler than every other cloud provider we have. | **TRIVIAL** — synthesize a `wss://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/browser-rendering/devtools/browser?keep_alive=600000` URL with `Authorization: Bearer <token>` on the upgrade. No session DELETE; closing the WS ends the session. |
+| **Bright Data Scraping Browser** | Unblocking / residential-proxy | Reference product for residential-IP + anti-bot automation. Fulfills the "scraping unblocker" category of Glue's browser story. | **TRIVIAL** — fixed `wss://brd-customer-<ID>-zone-<ZONE>:<PASSWORD>@brd.superproxy.io:9222` URL with HTTP Basic in userinfo. No API calls, no teardown. Even thinner than Anchor. |
 
-| Provider | Hosted by | Why add it | Notes |
-| -------- | --------- | ---------- | ----- |
-| **Cloudflare Browser Rendering** | Cloudflare | First-party platform browser on a network many users already deploy to. Simple REST + WS surface. Good first add — smallest new surface area. | Region coverage = CF edge. |
-| **Hyperbrowser** | hyperbrowser.ai | Agent-focused entrant with a clean session API; positioning close to Steel and Browserbase. | Check pricing + SLA before promoting beyond `experimental`. |
-| **Anchor Browser** | anchorbrowser.io | Agent-focused; built for LLM agents. Persistent sessions. | Newer company — evaluate reliability. |
-| **Scrapybara** | scrapybara.com | Agent-first browser + full desktop sandbox on the same API. Interesting bridge to the planned cloud-runtime work. | Overlaps with TASK-26 (runtime boundary) — coordinate. |
+## Shipped in this task
 
-### Likely yes — scraping / unblocking
+- **Hyperbrowser** — shipped 2026-04-20 (this session). Original verdict
+  was Defer ("duplicates Browserbase / Steel / Anchor, no sharp
+  daylight"), but the adapter proved trivial against the settled
+  `BrowserEndpointProvider` pattern, and giving users one more
+  agent-focused cloud option has low downside. Registered as
+  `BrowserBackend.hyperbrowser` with config field
+  `hyperbrowser_api_key` and env var `HYPERBROWSER_API_KEY`. Experimental
+  status. Uses `POST /api/session` / `PUT /api/session/{id}/stop` with
+  `x-api-key` auth.
 
-Backends whose value prop is residential IPs, fingerprint spoofing, and/or
-CAPTCHA handling. Users in scraping, market-research, price-monitoring, and
-data-collection workflows expect these.
+## Scope — defer, with reasons
 
-| Provider | Hosted by | Why add it | Notes |
-| -------- | --------- | ---------- | ----- |
-| **Bright Data Scraping Browser** | Bright Data | The reference product for residential-proxy + anti-bot automation. Widely used. | Has a CDP endpoint, so the adapter is basically an auth + WS wrapper. |
-| **Zyte API / Smart Browser** | Zyte | Long-standing scraping infra (Scrapy authors). Strong documentation, stable API. | Check CDP compatibility vs. their HTTP API. |
-| **Apify Scraping Browser** | Apify | Popular for data extraction; generous free tier; large actor ecosystem. | Straightforward WS adapter. |
-| **Oxylabs Web Unblocker / Scraper API** | Oxylabs | Residential + datacenter proxy networks. Competes with Bright Data. | Evaluate which of their products actually expose a CDP endpoint vs. only HTTP. |
+Captured here so the decision doc (AC #1) is satisfied inline.
 
-### Engine / local option
+| Provider | Verdict | Reason |
+| -------- | ------- | ------ |
+| **Scrapybara** | Defer | Its unique value (full desktop sandbox alongside the browser) overlaps with the planned cloud-runtime workstream (TASK-26). Surface it there as a runtime, not as a parallel browser backend — don't double-ship the concept. |
+| **Zyte API / Smart Browser** | Defer (hard) | No CDP endpoint. The product is a REST `actions[]` API, not a `wss://`. Adding it would be an adapter-shape rewrite, and it duplicates Bright Data's scraping role anyway. |
+| **Apify Scraping Browser** | Defer (hard) | Wrong shape. Apify is an Actor platform, not a CDP endpoint — their own docs recommend bringing a Bright Data CDP URL *into* an Actor. Not a `BrowserEndpointProvider` fit. |
+| **Oxylabs Unblocking Browser** | Hold | The only other provider on the list that ships a real residential-proxy + CDP browser. Legitimate slot-2 redundancy vs. Bright Data if we ever want it, but defer for now — one unblocking backend covers the user story. |
+| **Playwright local** (`local-playwright`) | Defer | No maintained Playwright binding on pub.dev. Playwright's Firefox/WebKit use the Playwright protocol, not CDP — so "add Playwright for multi-engine coverage" is structurally incompatible with Glue's CDP-only `BrowserEndpoint` contract. Getting there needs a protocol abstraction layer (multi-week refactor), not an adapter. Track multi-engine as a separate concern, preferably via WebDriver BiDi when that lands. |
+| **e2b browser**, **Modal + headless Chrome** | Defer | Belong in the cloud-runtime workstream (TASK-26), surfaced via the runtime API, not as browser backends. |
 
-| Item | Why | Notes |
-| ---- | --- | ----- |
-| **Playwright-based local provider** | Puppeteer is Chromium-only; Playwright covers Chromium + Firefox + WebKit. Lets us test Glue against all three engines locally. | Adds a Dart dep (`playwright_dart` or a CDP-direct variant). Ship as `local-playwright`; eventually consider replacing `local`. |
+## Work, per accepted provider
 
-### Probably through the runtime API, not as a browser backend
-
-| Provider | Why | Notes |
-| -------- | --- | ----- |
-| **e2b browser (via e2b sandbox)** | Aligns with TASK-26 cloud-runtime plans; single credential for compute + browser. | Treat e2b as a runtime; surface the browser via the runtime API. |
-| **Modal + headless Chrome** | Users already on Modal avoid a second account. | Same: probably surfaces through the runtime API, not the browser provider registry. |
-
-## Work, per provider we keep
-
-For each accepted provider:
-
-1. **Adapter.** Implement `XxxProvider implements BrowserEndpointProvider`
-   under `cli/lib/src/web/browser/providers/<name>_provider.dart`. Mirror
-   the shape of existing ones (`browserbase_provider.dart` is a good
-   template).
-2. **Config.** Extend `BrowserConfig` with per-provider fields. Update
-   `docs/reference/config-yaml.md` — the canonical source the website's
-   config-examples generator reads.
-3. **Registration.** Register in `BrowserManager.pickProvider`.
-4. **Tests.** Cover `isConfigured`, URL/WS building, and one happy-path
-   provisioning test. Skip live network calls — mock the HTTP client.
-5. **Docs.** Update `website/docs/advanced/browser-automation.md` with a
-   row in the backends table and a config snippet.
-6. **Status label.** Add the provider to `website/data/feature-status.yaml`.
-7. **Credentials.** Document the required env-var name in the
-   Configuration page under Credentials.
-
-## Acceptance Criteria
-<!-- AC:BEGIN -->
-- [ ] #1 Decision doc committed: for each candidate, "accept / defer" with
-      one reason.
-- [ ] #2 At least one standard cloud browser shipped behind
-      `<FeatureStatus status="experimental" />` (Cloudflare Browser
-      Rendering recommended first — small API surface).
-- [ ] #3 At least one unblocking/scraping provider shipped (Bright Data
-      is the reference product here).
-- [ ] #4 Playwright local provider evaluated. If accepted, shipped as
-      `local-playwright`; if deferred, rationale recorded.
-- [ ] #5 Backends table on `/docs/advanced/browser-automation` lists every
-      shipped provider with honest status labels.
-- [ ] #6 `feature-status.yaml` + consistency checker pass.
-- [ ] #7 Per-provider credentials documented in the Configuration page.
-<!-- AC:END -->
-
-
+1. **Adapter.** `CloudflareProvider` and `BrightDataProvider` under
+   `cli/lib/src/web/browser/providers/`. `hyperbrowser_provider.dart` is
+   the closest template (auth → build endpoint → return). Bright Data is
+   even simpler — no HTTP client needed.
+2. **Config.** Extend `BrowserConfig` with:
+   - Cloudflare: `cloudflare_account_id`, `cloudflare_api_token`,
+     optional `cloudflare_keep_alive_ms` (default 600000).
+   - Bright Data: `brightdata_customer_id`, `brightdata_zone`,
+     `brightdata_zone_password`.
+   Update `docs/reference/config-yaml.md`.
+3. **Registration.** Wire into the switch in
+   `cli/lib/src/core/service_locator.dart`.
+4. **Tests.** `isConfigured`, URL construction, one mocked happy-path
+   provisioning test. No live network.
+5. **Docs.** Add rows to the backends table in
+   `website/docs/advanced/browser-automation.md`. For Bright Data,
+   **explicitly document** the two gotchas:
+   - Per-GB billing — unpredictable cost on media-heavy pages (~30× swing
+     between a 500 KB and 3 MB page for identical work).
+   - One `page.goto()` per session — subsequent navigations require a
+     fresh WS connection.
+6. **Status label.** Add both to `website/data/feature-status.yaml` as
+   `experimental`.
+7. **Credentials.** Document required env vars in the Configuration page
+   under Credentials.
 
 ## Notes
 
-- Keep `BrowserEndpointProvider` minimal. If a provider needs a bespoke
-  session lifecycle (snapshots, retries, branched sessions), consider
-  whether that should be a separate capability rather than pushing it into
-  every adapter.
-- Coordinate with TASK-26 (runtime boundary). Runtimes that naturally host
-  a browser (e2b, Modal, Scrapybara's desktop) should surface the browser
-  via the runtime API — not as a parallel browser backend registration.
-- Unblocking-class providers (Bright Data, Oxylabs, Zyte) typically charge
-  per GB or per session and route through residential IP pools. The
-  adapter is thin; the real work is documenting setup and pricing so users
-  aren't surprised by their first invoice.
+- **Research date: 2026-04-20.** Scope was trimmed from ~10 candidates to
+  2 after evaluating CDP-endpoint availability, adapter complexity,
+  pricing, and overlap with existing providers. Full per-provider
+  verdicts are in "Scope — defer" above. Hyperbrowser was
+  reclassified from defer to ship during the same session.
+- Cloudflare's CDP endpoint is ~10 days old as of this writing
+  (announced 2026-04-10). The underlying Browser Rendering platform has
+  been GA since mid-2025, but monitor for rough edges on the CDP path
+  specifically.
+- Keep `BrowserEndpointProvider` minimal. If a provider ever needs a
+  bespoke session lifecycle (snapshots, retries, branched sessions),
+  consider whether that's a separate capability rather than pushing it
+  into every adapter.
+- Coordinate with TASK-26 (runtime boundary). Runtimes that naturally
+  host a browser (e2b, Modal, Scrapybara's desktop) should surface the
+  browser via the runtime API — not as a parallel browser backend.
+- If residential-proxy redundancy becomes a requirement, Oxylabs is the
+  cleanest second-source option (CDP-native, similar shape to Bright
+  Data). File a follow-up task then — don't add it speculatively.
 <!-- SECTION:DESCRIPTION:END -->
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [x] #1 Decision doc committed: accept/defer recorded for every candidate in the Scope-Defer section (inline in description).
+- [ ] #2 Cloudflare Browser Rendering provider shipped behind experimental status.
+- [ ] #3 Bright Data Scraping Browser provider shipped behind experimental status, with per-GB cost and single-navigation caveats documented.
+- [x] #4 Playwright local decision (defer) recorded in description — closed.
+- [ ] #5 Backends table on /docs/advanced/browser-automation lists both new providers with honest status labels.
+- [ ] #6 feature-status.yaml + consistency checker pass.
+- [ ] #7 Per-provider credentials documented in the Configuration page (cloudflare_account_id + cloudflare_api_token; brightdata_customer_id + brightdata_zone + brightdata_zone_password).
+<!-- AC:END -->

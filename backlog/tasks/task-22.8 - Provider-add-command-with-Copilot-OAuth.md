@@ -4,7 +4,7 @@ title: /provider add command with Copilot OAuth
 status: In Review
 assignee: []
 created_date: '2026-04-19 12:00'
-updated_date: '2026-04-19 20:38'
+updated_date: '2026-04-20 00:09'
 labels:
   - model-provider-2026-04
   - commands
@@ -13,6 +13,8 @@ labels:
 dependencies:
   - TASK-22.3
   - TASK-22.4
+documentation:
+  - docs/plans/2026-04-19-responsive-panels.md
 parent_task_id: TASK-22
 priority: high
 ordinal: 18000

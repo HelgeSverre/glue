@@ -4,11 +4,12 @@ title: Model picker + /provider + /models commands
 status: To Do
 assignee: []
 created_date: '2026-04-19 00:36'
-updated_date: '2026-04-19 04:02'
+updated_date: '2026-04-20 00:05'
 labels:
   - model-provider-2026-04
   - ui
   - commands
+milestone: m-0
 dependencies:
   - TASK-22.1
   - TASK-22.3

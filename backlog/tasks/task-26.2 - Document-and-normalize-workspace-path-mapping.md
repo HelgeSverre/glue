@@ -4,10 +4,11 @@ title: Document and normalize workspace path mapping
 status: To Do
 assignee: []
 created_date: '2026-04-19 00:42'
-updated_date: '2026-04-19 04:02'
+updated_date: '2026-04-20 00:05'
 labels:
   - runtime-boundary-2026-04
   - docs
+milestone: m-2
 dependencies: []
 references:
   - cli/lib/src/shell/docker_config.dart

@@ -4,10 +4,11 @@ title: Spinner state machine (mode-to-spinner mapping)
 status: To Do
 assignee: []
 created_date: '2026-04-19 00:42'
-updated_date: '2026-04-19 04:02'
+updated_date: '2026-04-20 00:05'
 labels:
   - tui-contract-2026-04
   - state-machine
+milestone: m-1
 dependencies: []
 documentation:
   - cli/docs/plans/2026-04-19-tui-behavior-contract-plan.md
@@ -51,3 +52,9 @@ Spinner today animates but the mapping between app mode and spinner state is imp
 - [ ] #6 Background jobs show job state, not model spinner
 - [ ] #7 Tests verify each transition and timer lifecycle
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+**2026-04-20 sweep:** Stuck-spinner-on-cancel bugs fixed in Unreleased. CHANGELOG: *"Spinner no longer stuck after cancel. _cancelAgentImpl now stops the spinner before flipping mode; _cancelBashImpl mirrors the pattern defensively."* That partially addresses AC #5 (timer stops cleanly when returning to idle) for the cancel path specifically, but the broader explicit state machine + mode→spinner mapping (AC #1, #4, #6) is still outstanding. Treat current fix as defensive plumbing; the architectural refactor remains.
+<!-- SECTION:NOTES:END -->

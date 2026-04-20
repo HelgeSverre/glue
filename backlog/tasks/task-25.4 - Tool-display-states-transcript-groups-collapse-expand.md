@@ -4,10 +4,11 @@ title: Tool display states + transcript groups (collapse/expand)
 status: To Do
 assignee: []
 created_date: '2026-04-19 00:42'
-updated_date: '2026-04-19 04:02'
+updated_date: '2026-04-20 00:05'
 labels:
   - tui-contract-2026-04
   - rendering
+milestone: m-1
 dependencies: []
 documentation:
   - cli/docs/plans/2026-04-19-tui-behavior-contract-plan.md
@@ -70,3 +71,9 @@ Normalize tool rendering around canonical states and make long transcript blocks
 - [ ] #6 Tool state names align with SE event schema (task-24.1)
 - [ ] #7 Tests cover each state transition + collapse/expand
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+**2026-04-20 sweep:** Canonical state vocabulary advanced in Unreleased. CHANGELOG: *"ToolCallPhase.cancelled — distinct from denied (never ran) and error (ran but failed). Agent cancel now marks every in-flight tool — including ones awaiting approval — as cancelled instead of overloading error."* and *"Tool phase no longer stuck on awaiting approval after cancel."* That formalizes three of the seven canonical states in this task (`cancelled`, `denied`, `error/failed`) and the `awaitingApproval → cancelled` transition. Compact/expanded rendering, transcript groups, and collapse/expand UX (AC #2, #3, #4, #5) still pending.
+<!-- SECTION:NOTES:END -->

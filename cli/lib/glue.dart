@@ -131,6 +131,7 @@ export 'src/core/environment.dart' show Environment;
 export 'src/core/path_opener.dart' show openInFileManager;
 export 'src/core/service_locator.dart' show ServiceLocator, AppServices;
 export 'src/core/where_report.dart' show buildWhereReport;
+export 'src/commands/config_command.dart' show initLocalConfig;
 export 'src/orchestrator/permission_gate.dart'
     show PermissionGate, PermissionDecision;
 export 'src/session/session_manager.dart'

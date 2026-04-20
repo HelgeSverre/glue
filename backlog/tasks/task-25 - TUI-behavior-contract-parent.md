@@ -4,11 +4,12 @@ title: TUI behavior contract (parent)
 status: To Do
 assignee: []
 created_date: '2026-04-19 00:34'
-updated_date: '2026-04-19 04:02'
+updated_date: '2026-04-20 00:05'
 labels:
   - tui-contract-2026-04
   - parent
   - tui
+milestone: m-1
 dependencies: []
 references:
   - cli/lib/src/terminal/terminal.dart
