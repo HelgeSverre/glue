@@ -369,9 +369,9 @@ String _configActionImpl(App app, List<String> args) {
     case '':
       return _openConfigInEditorImpl(app);
     case 'init':
-      return _initLocalConfigImpl(app);
+      return _initUserConfigImpl(app, args.skip(1).toList());
     default:
-      return 'Unknown subcommand "$subcommand". Try: /config init';
+      return 'Unknown subcommand "$subcommand". Try: /config or /config init';
   }
 }
 
@@ -382,18 +382,30 @@ String _openConfigInEditorImpl(App app) {
   }
 
   final path = app._environment.configYamlPath;
-  Directory(app._environment.glueDir).createSync(recursive: true);
   final file = File(path);
   if (!file.existsSync()) {
-    file.createSync(recursive: true);
+    try {
+      initUserConfig(app._environment);
+    } on FileSystemException catch (e) {
+      return 'Failed to write config: ${e.message}';
+    }
   }
 
   unawaited(Process.start(editor, [path], runInShell: true));
   return 'Opening $path in $editor';
 }
 
-String _initLocalConfigImpl(App app) {
-  return initLocalConfig(app._cwd);
+String _initUserConfigImpl(App app, List<String> args) {
+  final force = args.contains('--force');
+  final unknown = args.where((arg) => arg != '--force').toList();
+  if (unknown.isNotEmpty) {
+    return 'Usage: /config init [--force]';
+  }
+  try {
+    return initUserConfig(app._environment, force: force).message;
+  } on FileSystemException catch (e) {
+    return 'Failed to write config: ${e.message}';
+  }
 }
 
 String _openGlueTargetImpl(App app, List<String> args) {

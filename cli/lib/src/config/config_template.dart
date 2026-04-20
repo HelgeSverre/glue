@@ -1,36 +1,41 @@
-<!-- Generated from docs/reference/config-yaml.md. Do not edit by hand. -->
-<!-- Re-run: `just site-generate` (or `dart run tool/generate_site_reference.dart` in cli/) -->
+String buildConfigTemplate() {
+  return r'''# Glue config.yaml
+#
+# Path:
+#   ~/.glue/config.yaml
+#   or $GLUE_HOME/config.yaml when GLUE_HOME is set.
+#
+# Credentials do not need to live here. Prefer environment variables or
+# ~/.glue/credentials.json for API keys.
 
-# Config examples
-
-Extracted from the `~/.glue/config.yaml` reference. Keep editing
-the source file, not this one.
-
-## Example 1
-
-```yaml
 # Primary model for agent conversations. CLI --model and GLUE_MODEL override it.
 # active_model: anthropic/claude-sonnet-4.6
 
 # Cheap/fast model for session titles and other background tasks.
+# When omitted, Glue uses the catalog default small model.
 # small_model: anthropic/claude-haiku-4.5
 
-# Named model shortcuts.
+# Named model shortcuts for /model and future profile-aware workflows.
 # profiles:
 #   fast: anthropic/claude-haiku-4.5
 #   reasoning: openai/gpt-5.4
 
+# Model catalog refresh behavior.
 # catalog:
 #   refresh: manual              # never | manual | daily | startup
 #   remote_url: https://example.com/models.yaml
 
+# Tool-output display defaults.
 # bash:
 #   max_lines: 200
 
+# Shell execution. GLUE_SHELL and GLUE_SHELL_MODE override these.
 # shell:
 #   executable: zsh
 #   mode: non_interactive        # non_interactive | interactive | login
 
+# Docker command execution. Env overrides include GLUE_DOCKER_ENABLED,
+# GLUE_DOCKER_IMAGE, GLUE_DOCKER_SHELL, and GLUE_DOCKER_MOUNTS.
 # docker:
 #   enabled: false
 #   image: ubuntu:24.04
@@ -40,6 +45,7 @@ the source file, not this one.
 #     - /absolute/path
 #     - /absolute/path:ro
 
+# Web tools.
 # web:
 #   fetch:
 #     jina_api_key: your-jina-key
@@ -84,25 +90,19 @@ the source file, not this one.
 #     hyperbrowser:
 #       api_key: your-hyperbrowser-key
 
+# Debug logging. GLUE_DEBUG=1 overrides this.
 # debug: false
 
+# Tool approval mode. GLUE_APPROVAL_MODE overrides this.
 # approval_mode: confirm         # confirm | auto
 
+# Disable background session-title generation when set to false.
+# GLUE_TITLE_GENERATION_ENABLED overrides this.
 # title_generation_enabled: true
 
+# Extra skill search paths. GLUE_SKILLS_PATHS is prepended.
 # skills:
 #   paths:
 #     - /opt/glue-skills
-```
-
-## Example 2
-
-```yaml
-web:
-  browser:
-    anchor:
-      api_key: your-anchor-key
-    hyperbrowser:
-      api_key: your-hyperbrowser-key
-```
-
+''';
+}

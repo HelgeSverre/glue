@@ -52,6 +52,7 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
           negatable: false,
           help: 'Enable debug mode (verbose logging).');
     addCommand(CompletionsCommand());
+    addCommand(ConfigCommand());
   }
 
   @override
@@ -152,6 +153,57 @@ class CompletionsCommand extends Command<int> {
 
   @override
   String get description => 'Manage shell completions for glue.';
+}
+
+class ConfigCommand extends Command<int> {
+  ConfigCommand() {
+    addSubcommand(ConfigInitCommand());
+  }
+
+  @override
+  String get name => 'config';
+
+  @override
+  String get description => 'Manage user configuration.';
+}
+
+class ConfigInitCommand extends Command<int> {
+  ConfigInitCommand() {
+    argParser.addFlag(
+      'force',
+      negatable: false,
+      help: 'Overwrite an existing config.yaml.',
+    );
+  }
+
+  @override
+  String get name => 'init';
+
+  @override
+  String get description => 'Create an annotated config.yaml template.';
+
+  @override
+  Future<int> run() async {
+    final ConfigInitResult result;
+    try {
+      result = initUserConfig(
+        Environment.detect(),
+        force: argResults!.flag('force'),
+      );
+    } on FileSystemException catch (e) {
+      stderr.writeln('Failed to write config: ${e.message}');
+      if (e.path != null) {
+        stderr.writeln(e.path);
+      }
+      return 1;
+    }
+    if (result.status == ConfigInitStatus.exists) {
+      stderr.writeln(result.message);
+      return 1;
+    }
+    stdout.writeln(result.message);
+    return 0;
+  }
 }
 
 enum CompletionShell {

@@ -53,6 +53,14 @@ active_model: anthropic/claude-sonnet-4.6
 That's enough to start. Credentials come from the environment in this
 example (`ANTHROPIC_API_KEY`).
 
+Create an annotated starter file with:
+
+```sh
+glue config init
+```
+
+Use `glue config init --force` to replace an existing starter file.
+
 A fuller example with shell, Docker, and web tools:
 
 ```yaml
@@ -78,7 +86,7 @@ web:
   search:
     provider: brave
   browser:
-    backend: local       # local | docker | steel | browserbase | browserless | anchor
+    backend: local       # local | docker | steel | browserbase | browserless | anchor | hyperbrowser
 
 skills:
   paths:

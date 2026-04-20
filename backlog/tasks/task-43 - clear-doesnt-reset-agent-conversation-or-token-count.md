@@ -4,6 +4,7 @@ title: /clear doesn't reset agent conversation or token count
 status: To Do
 assignee: []
 created_date: '2026-04-20 00:09'
+updated_date: '2026-04-20 00:32'
 labels:
   - bug
   - commands
@@ -14,6 +15,7 @@ references:
   - cli/lib/src/app/command_helpers.dart
   - cli/lib/src/agent/agent_core.dart
 priority: medium
+ordinal: 42000
 ---
 
 ## Description

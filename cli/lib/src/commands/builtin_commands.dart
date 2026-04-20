@@ -156,7 +156,8 @@ class BuiltinCommands {
 
     commands.register(SlashCommand(
       name: 'config',
-      description: 'Open config.yaml in \$EDITOR, or /config init in cwd',
+      description:
+          'Open config.yaml in \$EDITOR, or initialize it with /config init',
       execute: configAction,
     ));
 

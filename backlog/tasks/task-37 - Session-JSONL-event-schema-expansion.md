@@ -4,6 +4,7 @@ title: Session JSONL event schema expansion
 status: To Do
 assignee: []
 created_date: '2026-04-20 00:08'
+updated_date: '2026-04-20 00:32'
 labels:
   - sessions
   - observability
@@ -19,6 +20,7 @@ documentation:
   - docs/plans/2026-04-19-session-jsonl-event-schema-plan.md
   - docs/reference/session-storage.md
 priority: medium
+ordinal: 38000
 ---
 
 ## Description

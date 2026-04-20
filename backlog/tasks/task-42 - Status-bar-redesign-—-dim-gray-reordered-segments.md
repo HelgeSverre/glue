@@ -4,6 +4,7 @@ title: Status bar redesign — dim gray + reordered segments
 status: To Do
 assignee: []
 created_date: '2026-04-20 00:09'
+updated_date: '2026-04-20 00:32'
 labels:
   - tui
   - ui
@@ -13,6 +14,7 @@ dependencies: []
 documentation:
   - docs/plans/2026-05-status-bar-redesign.md
 priority: low
+ordinal: 41000
 ---
 
 ## Description

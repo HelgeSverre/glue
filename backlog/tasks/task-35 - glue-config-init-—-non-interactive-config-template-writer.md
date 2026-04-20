@@ -1,9 +1,10 @@
 ---
 id: TASK-35
 title: glue config init — non-interactive config template writer
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-04-20 00:08'
+updated_date: '2026-04-20 02:38'
 labels:
   - cli
   - config
@@ -18,6 +19,7 @@ references:
 documentation:
   - docs/plans/2026-04-19-config-init-and-command-surface-plan.md
 priority: medium
+ordinal: 36000
 ---
 
 ## Description
@@ -43,10 +45,20 @@ Add a top-level `glue config init` subcommand that writes a fully annotated `~/.
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 `glue config init` registered as a top-level subcommand under the `config` noun namespace.
-- [ ] #2 Writes a fully annotated `~/.glue/config.yaml` template with every documented section commented out and explained.
-- [ ] #3 `--force` overwrites an existing file; without it, the command refuses and prints the existing path.
-- [ ] #4 `docs/reference/config-yaml.md` rewritten to match the actual v2 schema produced by the template writer (one source of truth).
-- [ ] #5 `/config` slash command remains and is narrowed to: open the file in `$EDITOR`. Optionally delegates to the same template writer when no file exists.
-- [ ] #6 Tests cover: clean creation, `--force` overwrite, refusal without `--force`, template parses cleanly via `GlueConfig.load`.
+- [x] #1 `glue config init` registered as a top-level subcommand under the `config` noun namespace.
+- [x] #2 Writes a fully annotated `~/.glue/config.yaml` template with every documented section commented out and explained.
+- [x] #3 `--force` overwrites an existing file; without it, the command refuses and prints the existing path.
+- [x] #4 `docs/reference/config-yaml.md` rewritten to match the actual v2 schema produced by the template writer (one source of truth).
+- [x] #5 `/config` slash command remains and is narrowed to: open the file in `$EDITOR`. Optionally delegates to the same template writer when no file exists.
+- [x] #6 Tests cover: clean creation, `--force` overwrite, refusal without `--force`, template parses cleanly via `GlueConfig.load`.
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Implemented in `cli/lib/src/commands/config_command.dart` and
+`cli/lib/src/config/config_template.dart`, with CLI wiring in
+`cli/bin/glue.dart`. `/config init` now writes the resolved
+`Environment.configYamlPath`, and `docs/reference/config-yaml.md` documents the
+v2 shape plus compatibility fallbacks.
+<!-- SECTION:NOTES:END -->

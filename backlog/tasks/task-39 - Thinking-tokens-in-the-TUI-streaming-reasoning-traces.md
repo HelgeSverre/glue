@@ -4,6 +4,7 @@ title: Thinking tokens in the TUI (streaming reasoning traces)
 status: To Do
 assignee: []
 created_date: '2026-04-20 00:08'
+updated_date: '2026-04-20 00:32'
 labels:
   - llm
   - tui
@@ -20,6 +21,7 @@ references:
 documentation:
   - docs/plans/2026-04-19-thinking-tokens-tui.md
 priority: medium
+ordinal: 39000
 ---
 
 ## Description

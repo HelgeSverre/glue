@@ -23,7 +23,7 @@ automatically. Browser backends swap with one config line.
 | --- | --- | --- |
 | [`web_search`](#search) | Query Brave, Tavily, or Firecrawl. Provider auto-detected from env. | <FeatureStatus status="shipping" /> |
 | [`web_fetch`](#fetch) | HTML → cleaned markdown, PDF → text. OCR and Jina fallbacks. | <FeatureStatus status="shipping" /> |
-| [`web_browser`](#browser) | Drive a real Chrome over CDP. Six actions, five backends. | <FeatureStatus status="experimental" /> |
+| [`web_browser`](#browser) | Drive a real Chrome over CDP. Six actions, seven backends. | <FeatureStatus status="experimental" /> |
 
 ## Search
 
@@ -71,7 +71,6 @@ web:
   fetch:
     jina_api_key: ${JINA_API_KEY}       # optional, for hostile pages
   pdf:
-    enabled: true
     ocr_provider: mistral               # mistral | openai
     mistral_api_key: ${MISTRAL_API_KEY}
 ```
@@ -103,7 +102,7 @@ and read the result without reopening the tab.
 
 ### Backends
 
-All six implement the same `BrowserEndpointProvider` interface, so swapping
+All seven implement the same `BrowserEndpointProvider` interface, so swapping
 is a one-line config change rather than a code change.
 
 | Backend | Runs on | Best for | Status |
@@ -114,15 +113,17 @@ is a one-line config change rather than a code change.
 | `browserless` | Cloud or self-hosted — [browserless.io](https://browserless.io) | Scale and self-hosting. | <FeatureStatus status="experimental" /> |
 | `steel` | Cloud — [steel.dev](https://steel.dev) | Agent-focused cloud sessions. | <FeatureStatus status="experimental" /> |
 | `anchor` | Cloud — [anchorbrowser.io](https://anchorbrowser.io) | Agentic browser sessions with live view. | <FeatureStatus status="experimental" /> |
+| `hyperbrowser` | Cloud — [hyperbrowser.ai](https://hyperbrowser.ai) | Agent-focused cloud sessions with fast launches. | <FeatureStatus status="experimental" /> |
 
 <ConfigSnippet title="~/.glue/config.yaml — switch browser backends">
 
 ```yaml
 web:
   browser:
-    backend: docker        # local | docker | browserbase | browserless | steel | anchor
-    docker_image: browserless/chrome:latest
-    docker_port: 3000
+    backend: docker        # local | docker | browserbase | browserless | steel | anchor | hyperbrowser
+    docker:
+      image: browserless/chrome:latest
+      port: 3000
 ```
 
 </ConfigSnippet>
@@ -149,6 +150,7 @@ Nothing auto-reads project-local config.
 | Browserless browser | `BROWSERLESS_API_KEY` |
 | Steel browser | `STEEL_API_KEY` |
 | Anchor browser | `ANCHOR_API_KEY` |
+| Hyperbrowser browser | `HYPERBROWSER_API_KEY` |
 
 ## Pairing with runtimes
 

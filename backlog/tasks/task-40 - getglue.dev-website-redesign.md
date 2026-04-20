@@ -1,9 +1,10 @@
 ---
 id: TASK-40
 title: getglue.dev website redesign
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-04-20 00:08'
+updated_date: '2026-04-20 00:32'
 labels:
   - website
   - marketing
@@ -16,6 +17,7 @@ documentation:
   - docs/plans/2026-04-19-website-redesign-plan.md
   - docs/plans/2026-04-19-docs-site-source-of-truth-plan.md
 priority: low
+ordinal: 34000
 ---
 
 ## Description

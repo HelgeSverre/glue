@@ -4,6 +4,7 @@ title: Slash command argument autocomplete (post-space filtering)
 status: To Do
 assignee: []
 created_date: '2026-04-20 00:08'
+updated_date: '2026-04-20 00:32'
 labels:
   - cli
   - ux
@@ -17,6 +18,7 @@ references:
 documentation:
   - docs/plans/2026-04-19-slash-arg-autocomplete.md
 priority: medium
+ordinal: 43000
 ---
 
 ## Description

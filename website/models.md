@@ -45,12 +45,9 @@ Any endpoint that speaks the OpenAI wire format can be added with
 OpenRouter — each listed separately in the catalog because their base URLs
 and auth differ, not because the wire format does.
 
-<ConfigSnippet title="~/.glue/config.yaml — OpenAI-compatible provider">
+<ConfigSnippet title="~/.glue/models.yaml — OpenAI-compatible provider">
 
 ```yaml
-provider: local-vllm
-model: local-vllm/llama-3-70b
-
 providers:
   local-vllm:
     adapter: openai
@@ -66,8 +63,7 @@ providers:
 <ConfigSnippet title="~/.glue/config.yaml — quickest path to a running agent">
 
 ```yaml
-provider: anthropic
-model: anthropic/claude-sonnet-4.6
+active_model: anthropic/claude-sonnet-4.6
 ```
 
 </ConfigSnippet>

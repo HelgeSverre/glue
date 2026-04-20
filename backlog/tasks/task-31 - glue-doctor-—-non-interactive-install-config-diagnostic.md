@@ -4,7 +4,7 @@ title: glue doctor — non-interactive install/config diagnostic
 status: To Do
 assignee: []
 created_date: '2026-04-20 00:00'
-updated_date: '2026-04-20 00:05'
+updated_date: '2026-04-20 00:32'
 labels:
   - cli
   - diagnostics
@@ -21,6 +21,7 @@ references:
 documentation:
   - docs/plans/2026-04-20-glue-doctor-plan.md
 priority: medium
+ordinal: 32000
 ---
 
 ## Description

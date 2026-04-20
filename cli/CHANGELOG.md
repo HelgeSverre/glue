@@ -6,6 +6,11 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Added
 
+- **`glue config init`** — non-interactive config initializer that writes an
+  annotated v2 `config.yaml` template to the resolved Glue home
+  (`~/.glue/config.yaml` or `$GLUE_HOME/config.yaml`). Supports
+  `--force` overwrite/reset behavior, and `/config init` now delegates to the
+  same real config writer instead of creating an empty `./config.yaml`.
 - **Hyperbrowser backend for `web_browser`** — new `hyperbrowser` browser
   backend provisions Hyperbrowser cloud sessions
   (`POST /api/session`), connects over the returned `wsEndpoint` CDP

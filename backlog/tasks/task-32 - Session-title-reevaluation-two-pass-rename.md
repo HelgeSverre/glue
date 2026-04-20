@@ -4,7 +4,7 @@ title: 'Session title reevaluation: two-pass + /rename'
 status: To Do
 assignee: []
 created_date: '2026-04-20 00:00'
-updated_date: '2026-04-20 00:05'
+updated_date: '2026-04-20 00:32'
 labels:
   - session
   - llm
@@ -20,6 +20,7 @@ references:
 documentation:
   - docs/plans/2026-04-20-session-title-reevaluation-plan.md
 priority: medium
+ordinal: 33000
 ---
 
 ## Description

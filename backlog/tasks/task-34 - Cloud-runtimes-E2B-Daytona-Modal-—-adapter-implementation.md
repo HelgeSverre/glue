@@ -4,6 +4,7 @@ title: Cloud runtimes (E2B / Daytona / Modal) — adapter implementation
 status: To Do
 assignee: []
 created_date: '2026-04-20 00:08'
+updated_date: '2026-04-20 00:32'
 labels:
   - runtime
   - cloud
@@ -17,6 +18,7 @@ documentation:
   - docs/plans/2026-04-19-cloud-runtimes-plan.md
   - docs/plans/2026-04-19-runtime-boundary-plan.md
 priority: low
+ordinal: 35000
 ---
 
 ## Description

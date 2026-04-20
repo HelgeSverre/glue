@@ -4,7 +4,7 @@ title: 'Slash command grammar: lock in conventions across all commands'
 status: To Do
 assignee: []
 created_date: '2026-04-20 00:00'
-updated_date: '2026-04-20 00:05'
+updated_date: '2026-04-20 00:32'
 labels:
   - cli
   - ux
@@ -18,6 +18,7 @@ references:
 documentation:
   - docs/plans/2026-04-20-slash-command-conventions.md
 priority: medium
+ordinal: 34000
 ---
 
 ## Description

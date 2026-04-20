@@ -4,6 +4,7 @@ title: Docs site source-of-truth sync (CLI ↔ website ↔ devdocs)
 status: To Do
 assignee: []
 created_date: '2026-04-20 00:08'
+updated_date: '2026-04-20 00:32'
 labels:
   - docs
   - website
@@ -18,6 +19,7 @@ documentation:
   - docs/plans/2026-04-19-docs-site-source-of-truth-plan.md
   - docs/plans/2026-04-19-website-redesign-plan.md
 priority: low
+ordinal: 37000
 ---
 
 ## Description

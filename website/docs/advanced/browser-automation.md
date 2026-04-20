@@ -49,8 +49,9 @@ web:
 web:
   browser:
     backend: docker
-    docker_image: browserless/chrome:latest
-    docker_port: 3000
+    docker:
+      image: browserless/chrome:latest
+      port: 3000
 ```
 
 The container is ephemeral: one per session, torn down when the session
@@ -62,8 +63,9 @@ closes. No state leaks into your host.
 web:
   browser:
     backend: browserbase
-    browserbase_api_key: your-key
-    browserbase_project_id: your-project
+    browserbase:
+      api_key: your-key
+      project_id: your-project
 ```
 
 ### `browserless` — cloud or self-hosted
@@ -72,11 +74,12 @@ web:
 web:
   browser:
     backend: browserless
-    browserless_api_key: your-key
-    browserless_base_url: https://chrome.browserless.io
+    browserless:
+      api_key: your-key
+      base_url: https://chrome.browserless.io
 ```
 
-Point `browserless_base_url` at your own deployment to self-host.
+Point `browserless.base_url` at your own deployment to self-host.
 
 ### `steel` — cloud via Steel
 
@@ -84,7 +87,8 @@ Point `browserless_base_url` at your own deployment to self-host.
 web:
   browser:
     backend: steel
-    steel_api_key: your-key
+    steel:
+      api_key: your-key
 ```
 
 ### `anchor` — cloud via Anchor Browser
@@ -93,7 +97,8 @@ web:
 web:
   browser:
     backend: anchor
-    anchor_api_key: your-key
+    anchor:
+      api_key: your-key
 ```
 
 ### `hyperbrowser` — cloud via Hyperbrowser
@@ -102,7 +107,8 @@ web:
 web:
   browser:
     backend: hyperbrowser
-    hyperbrowser_api_key: your-key
+    hyperbrowser:
+      api_key: your-key
 ```
 
 ::: info Credentials

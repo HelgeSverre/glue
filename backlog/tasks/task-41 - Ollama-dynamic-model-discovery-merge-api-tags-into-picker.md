@@ -4,6 +4,7 @@ title: Ollama dynamic model discovery (merge /api/tags into picker)
 status: To Do
 assignee: []
 created_date: '2026-04-20 00:09'
+updated_date: '2026-04-20 00:32'
 labels:
   - providers
   - ollama
@@ -20,6 +21,7 @@ references:
 documentation:
   - docs/plans/2026-04-20-ollama-dynamic-discovery.md
 priority: medium
+ordinal: 40000
 ---
 
 ## Description
