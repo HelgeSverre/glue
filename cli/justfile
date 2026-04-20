@@ -24,6 +24,10 @@ test *args:
 e2e:
     dart test --run-skipped -t e2e
 
+# Run network-backed integration tests (e.g. live DuckDuckGo search)
+integration *args:
+    dart test --run-skipped -t integration {{args}}
+
 # Static analysis
 analyze:
     dart analyze --fatal-infos
