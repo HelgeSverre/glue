@@ -1,29 +1,29 @@
 <script setup lang="ts">
-import { ref, useSlots } from 'vue'
+import { ref, useSlots } from "vue";
 
 defineProps<{
-  title?: string
-}>()
+  title?: string;
+}>();
 
-const slots = useSlots()
-const copied = ref(false)
+const slots = useSlots();
+const copied = ref(false);
 
 function slotText(): string {
-  const nodes = slots.default?.() ?? []
+  const nodes = slots.default?.() ?? [];
   const walk = (n: any): string => {
-    if (typeof n === 'string') return n
-    if (Array.isArray(n)) return n.map(walk).join('')
-    if (n?.children) return walk(n.children)
-    return ''
-  }
-  return walk(nodes).trim()
+    if (typeof n === "string") return n;
+    if (Array.isArray(n)) return n.map(walk).join("");
+    if (n?.children) return walk(n.children);
+    return "";
+  };
+  return walk(nodes).trim();
 }
 
 async function copy() {
   try {
-    await navigator.clipboard.writeText(slotText())
-    copied.value = true
-    setTimeout(() => (copied.value = false), 1200)
+    await navigator.clipboard.writeText(slotText());
+    copied.value = true;
+    setTimeout(() => (copied.value = false), 1200);
   } catch {
     /* clipboard blocked — ignore */
   }
@@ -34,8 +34,13 @@ async function copy() {
   <div class="cs-wrap">
     <div class="cs-head">
       <span v-if="title" class="cs-title">{{ title }}</span>
-      <button class="cs-copy" type="button" @click="copy" :aria-label="copied ? 'Copied' : 'Copy snippet'">
-        {{ copied ? 'copied' : 'copy' }}
+      <button
+        class="cs-copy"
+        type="button"
+        @click="copy"
+        :aria-label="copied ? 'Copied' : 'Copy snippet'"
+      >
+        {{ copied ? "copied" : "copy" }}
       </button>
     </div>
     <div class="cs-body">
@@ -82,7 +87,7 @@ async function copy() {
   color: var(--glue-accent);
 }
 
-.cs-body :deep(div[class*='language-']) {
+.cs-body :deep(div[class*="language-"]) {
   margin: 0;
   border: none;
   border-radius: 0;

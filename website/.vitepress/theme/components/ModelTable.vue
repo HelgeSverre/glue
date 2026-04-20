@@ -1,38 +1,42 @@
 <script setup lang="ts">
 interface Model {
-  id: string
-  provider: string
-  capabilities?: string[]
-  recommended?: boolean
-  notes?: string
+  id: string;
+  provider: string;
+  capabilities?: string[];
+  recommended?: boolean;
+  notes?: string;
 }
 
 defineProps<{
-  models: Model[]
-  caption?: string
-}>()
+  models: Model[];
+  caption?: string;
+}>();
 
 const CAP_ICONS: Record<string, string> = {
-  chat: '💬',
-  tools: '🔧',
-  vision: '👁',
-  files: '📎',
-  json: '{}',
-  reasoning: '🧠',
-  coding: '⌨',
-  local: '🖥',
-  browser: '🌐',
-}
+  chat: "💬",
+  tools: "🔧",
+  vision: "👁",
+  files: "📎",
+  json: "{}",
+  reasoning: "🧠",
+  coding: "⌨",
+  local: "🖥",
+  browser: "🌐",
+};
 
 function capIcon(cap: string) {
-  return CAP_ICONS[cap] ?? cap
+  return CAP_ICONS[cap] ?? cap;
 }
 </script>
 
 <template>
   <div class="mt-wrap">
     <table class="mt-table">
-      <caption v-if="caption" class="mt-caption">{{ caption }}</caption>
+      <caption v-if="caption" class="mt-caption">
+        {{
+          caption
+        }}
+      </caption>
       <thead>
         <tr>
           <th scope="col">Model</th>
@@ -42,18 +46,29 @@ function capIcon(cap: string) {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="m in models" :key="`${m.provider}/${m.id}`" :class="{ 'mt-recommended': m.recommended }">
+        <tr
+          v-for="m in models"
+          :key="`${m.provider}/${m.id}`"
+          :class="{ 'mt-recommended': m.recommended }"
+        >
           <td class="mt-id">
             <code>{{ m.provider }}/{{ m.id }}</code>
-            <span v-if="m.recommended" class="mt-badge" title="Recommended">★</span>
+            <span v-if="m.recommended" class="mt-badge" title="Recommended"
+              >★</span
+            >
           </td>
           <td>{{ m.provider }}</td>
           <td class="mt-caps">
-            <span v-for="c in m.capabilities ?? []" :key="c" class="mt-cap" :title="c">
+            <span
+              v-for="c in m.capabilities ?? []"
+              :key="c"
+              class="mt-cap"
+              :title="c"
+            >
               {{ capIcon(c) }}
             </span>
           </td>
-          <td class="mt-notes">{{ m.notes ?? '' }}</td>
+          <td class="mt-notes">{{ m.notes ?? "" }}</td>
         </tr>
       </tbody>
     </table>

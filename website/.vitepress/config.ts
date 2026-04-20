@@ -1,16 +1,15 @@
-import { defineConfig, type DefaultTheme } from 'vitepress'
-import fs from 'node:fs'
-import { fileURLToPath } from 'node:url'
-import path from 'node:path'
+import { defineConfig, type DefaultTheme } from "vitepress";
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 
-const vitepressDir = path.dirname(fileURLToPath(import.meta.url))
-const repoRoot = path.resolve(vitepressDir, '..', '..')
+const vitepressDir = path.dirname(fileURLToPath(import.meta.url));
 
 // ── API reference sidebar (auto-generated) ───────────────────────────────
-const apiSidebarPath = path.join(vitepressDir, 'sidebar.json')
+const apiSidebarPath = path.join(vitepressDir, "sidebar.json");
 const apiSidebar = fs.existsSync(apiSidebarPath)
-  ? JSON.parse(fs.readFileSync(apiSidebarPath, 'utf-8'))
-  : []
+  ? JSON.parse(fs.readFileSync(apiSidebarPath, "utf-8"))
+  : [];
 
 // ── Changelog version sidebar (built from generated/cli-changelog.md) ────
 // Reads the snapshot under website/generated/ (synced from cli/CHANGELOG.md
@@ -21,62 +20,70 @@ const apiSidebar = fs.existsSync(apiSidebarPath)
 // materialized at the bottom of this section, after its helpers exist.
 
 function buildChangelogSidebar(): DefaultTheme.SidebarItem[] {
-  const changelogPath = path.join(vitepressDir, '..', 'generated', 'cli-changelog.md')
-  if (!fs.existsSync(changelogPath)) return []
-  const text = fs.readFileSync(changelogPath, 'utf-8')
+  const changelogPath = path.join(
+    vitepressDir,
+    "..",
+    "generated",
+    "cli-changelog.md",
+  );
+  if (!fs.existsSync(changelogPath)) return [];
+  const text = fs.readFileSync(changelogPath, "utf-8");
 
   // Two-pass parse: collect (level, text) heading pairs, then group H3 under
   // each H2 version. Anchor slugs mirror VitePress' slugify; duplicates within
   // the same page get -1, -2, … suffixes to match VitePress' output.
-  interface Heading { level: 2 | 3; text: string }
-  const headings: Heading[] = []
-  for (const raw of text.split('\n')) {
-    const m = /^(##+)\s+(.+?)\s*$/.exec(raw)
-    if (!m) continue
-    const level = m[1].length
-    if (level !== 2 && level !== 3) continue
-    headings.push({ level: level as 2 | 3, text: m[2] })
+  interface Heading {
+    level: 2 | 3;
+    text: string;
   }
 
-  const slugSeen = new Map<string, number>()
+  const headings: Heading[] = [];
+  for (const raw of text.split("\n")) {
+    const m = /^(##+)\s+(.+?)\s*$/.exec(raw);
+    if (!m) continue;
+    const level = m[1].length;
+    if (level !== 2 && level !== 3) continue;
+    headings.push({ level: level as 2 | 3, text: m[2] });
+  }
+
+  const slugSeen = new Map<string, number>();
   const anchorFor = (text: string) => {
-    const base = slugify(text)
-    const n = slugSeen.get(base) ?? 0
-    slugSeen.set(base, n + 1)
-    return n === 0 ? base : `${base}-${n}`
-  }
+    const base = slugify(text);
+    const n = slugSeen.get(base) ?? 0;
+    slugSeen.set(base, n + 1);
+    return n === 0 ? base : `${base}-${n}`;
+  };
 
-  const versions: DefaultTheme.SidebarItem[] = []
-  let currentVersion: DefaultTheme.SidebarItem | null = null
+  const versions: DefaultTheme.SidebarItem[] = [];
+  let currentVersion: DefaultTheme.SidebarItem | null = null;
   for (const h of headings) {
     if (h.level === 2) {
-      if (!/^\[/.test(h.text)) continue
-      const slug = anchorFor(h.text)
+      if (!/^\[/.test(h.text)) continue;
+      const slug = anchorFor(h.text);
       currentVersion = {
         text: prettifyVersionLabel(h.text),
         link: `/changelog#${slug}`,
         collapsed: false,
         items: [],
-      }
-      versions.push(currentVersion)
+      };
+      versions.push(currentVersion);
     } else if (h.level === 3 && currentVersion) {
-      const slug = anchorFor(h.text)
-      ;(currentVersion.items as DefaultTheme.SidebarItem[]).push({
+      const slug = anchorFor(h.text);
+      (currentVersion.items as DefaultTheme.SidebarItem[]).push({
         text: h.text,
         link: `/changelog#${slug}`,
-      })
+      });
     }
   }
 
   // Prune empty items arrays so VitePress doesn't render an empty caret.
   for (const v of versions) {
     if (Array.isArray(v.items) && v.items.length === 0) {
-      delete (v as { items?: unknown }).items
+      delete (v as { items?: unknown }).items;
     }
   }
 
-  return versions
-
+  return versions;
 }
 
 // Sidebar display label for a changelog H2 heading.
@@ -86,10 +93,10 @@ function buildChangelogSidebar(): DefaultTheme.SidebarItem[] {
 // The underlying H2 text is kept intact so the anchor slug below still
 // matches the hash VitePress emits for the rendered heading.
 function prettifyVersionLabel(raw: string): string {
-  const m = /^\[(.+?)\]/.exec(raw)
-  if (!m) return raw
-  const name = m[1]
-  return /^\d/.test(name) ? `v${name}` : name
+  const m = /^\[(.+?)]/.exec(raw);
+  if (!m) return raw;
+  const name = m[1];
+  return /^\d/.test(name) ? `v${name}` : name;
 }
 
 // Mirrors VitePress' internal slugify so sidebar hash links match the IDs
@@ -97,186 +104,235 @@ function prettifyVersionLabel(raw: string): string {
 // node_modules/vitepress/dist/node/chunk-*.js (rControl / rSpecial / rCombining).
 // Keep this in sync with VitePress on upgrades — em-dash and a few other chars
 // are deliberately NOT treated as separators and must survive slugging.
-const rControl = /[\u0000-\u001f]/g
-const rSpecial = /[\s~`!@#$%^&*()\-_+=[\]{}|\\;:"'“”‘’<>,.?/]+/g
-const rCombining = /[\u0300-\u036F]/g
+const rControl = /[\u0000-\u001f]/g;
+const rSpecial = /[\s~`!@#$%^&*()\-_+=[\]{}|\\;:"'“”‘’<>,.?/]+/g;
+const rCombining = /[\u0300-\u036F]/g;
+
 function slugify(input: string): string {
   return input
-    .normalize('NFKD')
-    .replace(rCombining, '')
-    .replace(rControl, '')
-    .replace(rSpecial, '-')
-    .replace(/-{2,}/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/^(\d)/, '_$1')
-    .toLowerCase()
+    .normalize("NFKD")
+    .replace(rCombining, "")
+    .replace(rControl, "")
+    .replace(rSpecial, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/^(\d)/, "_$1")
+    .toLowerCase();
 }
 
-const changelogSidebar = buildChangelogSidebar()
+const changelogSidebar = buildChangelogSidebar();
 
 // ── Site-wide default OG/Twitter meta. Per-page title/description override
 // via the transformPageData hook below; per-page og:image is derived from
 // `public/og/<slug>.png` (generated by `just website::og`).
 const ogDefaults = {
-  siteName: 'Glue',
-  image: 'https://getglue.dev/og/index.png',
-  twitterSite: '@helgesverre',
-}
+  siteName: "Glue",
+  image: "https://getglue.dev/og/index.png",
+  twitterSite: "@helgesverre",
+};
 
 // Map a relativePath (with `.md` stripped) to the slug used by the OG
 // generator: "index" → "index", "why" → "why", "docs/advanced/x" →
 // "docs--advanced--x". Keep in sync with scripts/og/generate.mjs::slugFor.
 function ogSlugFor(relativePath: string): string {
-  const noExt = relativePath.replace(/\.md$/, '')
-  if (noExt === 'index') return 'index'
-  const withoutIndex = noExt.replace(/\/index$/, '')
-  return withoutIndex.replace(/\//g, '--')
+  const noExt = relativePath.replace(/\.md$/, "");
+  if (noExt === "index") return "index";
+  const withoutIndex = noExt.replace(/\/index$/, "");
+  return withoutIndex.replace(/\//g, "--");
 }
 
 export default defineConfig({
-  title: 'Glue',
-  titleTemplate: ':title · Glue',
-  description: 'A small terminal coding agent. Edits files, runs shell, drives a browser when the task calls for it. Runs on your host or in a Docker sandbox.',
+  title: "Glue",
+  titleTemplate: ":title · Glue",
+  description:
+    "A small terminal coding agent. Edits files, runs shell, drives a browser when the task calls for it. Runs on your host or in a Docker sandbox.",
   cleanUrls: true,
   lastUpdated: false,
-  appearance: 'force-dark',
+  appearance: "force-dark",
 
   head: [
-    ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
-    ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
-    ['link', { href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap', rel: 'stylesheet' }],
-    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/brand/symbol-yellow.svg' }],
-    ['meta', { name: 'theme-color', content: '#0A0A0B' }],
+    ["link", { rel: "preconnect", href: "https://fonts.googleapis.com" }],
+    [
+      "link",
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossorigin: "" },
+    ],
+    [
+      "link",
+      {
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap",
+        rel: "stylesheet",
+      },
+    ],
+    [
+      "link",
+      { rel: "icon", type: "image/svg+xml", href: "/brand/symbol-yellow.svg" },
+    ],
+    ["meta", { name: "theme-color", content: "#0A0A0B" }],
 
     // OpenGraph / Twitter defaults. transformPageData below fills in the
     // per-page title, description, url, and image.
-    ['meta', { property: 'og:type', content: 'website' }],
-    ['meta', { property: 'og:site_name', content: ogDefaults.siteName }],
-    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
-    ['meta', { name: 'twitter:site', content: ogDefaults.twitterSite }],
+    ["meta", { property: "og:type", content: "website" }],
+    ["meta", { property: "og:site_name", content: ogDefaults.siteName }],
+    ["meta", { name: "twitter:card", content: "summary_large_image" }],
+    ["meta", { name: "twitter:site", content: ogDefaults.twitterSite }],
   ],
 
   // Populate og:title / og:description / og:url / og:image / twitter:* per
   // page. Per-page images live at public/og/<slug>.png and are produced by
   // `just website::og` (see scripts/og/generate.mjs).
   transformPageData(pageData) {
-    const head = pageData.frontmatter.head ?? []
+    const head = pageData.frontmatter.head ?? [];
     const title = pageData.title
       ? `${pageData.title} · Glue`
-      : 'Glue · A small terminal coding agent'
-    const description = (pageData.description as string | undefined)
-      ?? pageData.frontmatter.description
-      ?? 'A small terminal coding agent. Edits files, runs shell, drives a browser when the task calls for it. Runs on your host or in a Docker sandbox.'
+      : "Glue · A small terminal coding agent";
+    const description =
+      (pageData.description as string | undefined) ??
+      pageData.frontmatter.description ??
+      "A small terminal coding agent. Edits files, runs shell, drives a browser when the task calls for it. Runs on your host or in a Docker sandbox.";
 
-    const slug = ogSlugFor(pageData.relativePath)
-    const ogImage = `https://getglue.dev/og/${slug}.png`
+    const slug = ogSlugFor(pageData.relativePath);
+    const ogImage = `https://getglue.dev/og/${slug}.png`;
 
-    head.push(['meta', { property: 'og:title', content: title }])
-    head.push(['meta', { property: 'og:description', content: description }])
-    head.push(['meta', { property: 'og:image', content: ogImage }])
-    head.push(['meta', { name: 'twitter:title', content: title }])
-    head.push(['meta', { name: 'twitter:description', content: description }])
-    head.push(['meta', { name: 'twitter:image', content: ogImage }])
+    head.push(["meta", { property: "og:title", content: title }]);
+    head.push(["meta", { property: "og:description", content: description }]);
+    head.push(["meta", { property: "og:image", content: ogImage }]);
+    head.push(["meta", { name: "twitter:title", content: title }]);
+    head.push(["meta", { name: "twitter:description", content: description }]);
+    head.push(["meta", { name: "twitter:image", content: ogImage }]);
 
-    const routePath = pageData.relativePath.replace(/\.md$/, '').replace(/\/index$/, '/')
-    head.push(['meta', { property: 'og:url', content: `https://getglue.dev/${routePath}` }])
+    const routePath = pageData.relativePath
+      .replace(/\.md$/, "")
+      .replace(/\/index$/, "/");
+    head.push([
+      "meta",
+      { property: "og:url", content: `https://getglue.dev/${routePath}` },
+    ]);
 
-    pageData.frontmatter.head = head
+    pageData.frontmatter.head = head;
   },
 
   themeConfig: {
-    siteTitle: 'Glue',
-    logo: { src: '/brand/symbol-yellow.svg', alt: 'Glue' },
+    siteTitle: "Glue",
+    logo: { src: "/brand/symbol-yellow.svg", alt: "Glue" },
 
     nav: [
-      { text: 'Docs',     link: '/docs/getting-started/installation', activeMatch: '^/docs/' },
-      { text: 'Features', link: '/features' },
-      { text: 'Why',      link: '/why' },
       {
-        text: 'Concepts',
+        text: "Docs",
+        link: "/docs/getting-started/installation",
+        activeMatch: "^/docs/",
+      },
+      { text: "Features", link: "/features" },
+      { text: "Why", link: "/why" },
+      {
+        text: "Concepts",
         items: [
-          { text: 'Runtimes',  link: '/runtimes'  },
-          { text: 'Models',    link: '/models'    },
-          { text: 'Web Tools', link: '/web'       },
-          { text: 'Sessions',  link: '/sessions'  },
+          { text: "Runtimes", link: "/runtimes" },
+          { text: "Models", link: "/models" },
+          { text: "Web Tools", link: "/web" },
+          { text: "Sessions", link: "/sessions" },
         ],
       },
       {
-        text: 'Meta',
+        text: "Meta",
         items: [
-          { text: 'Roadmap',       link: '/roadmap' },
-          { text: 'API Reference', link: '/api/',   activeMatch: '^/api/' },
-          { text: 'Brand',         link: '/brand' },
+          { text: "Roadmap", link: "/roadmap" },
+          { text: "API Reference", link: "/api/", activeMatch: "^/api/" },
+          { text: "Brand", link: "/brand" },
+          { text: "Badges", link: "/badges" },
         ],
       },
-      { text: 'Changelog', link: '/changelog', activeMatch: '^/changelog' },
+      { text: "Changelog", link: "/changelog", activeMatch: "^/changelog" },
     ],
 
     sidebar: {
-      '/docs/': [
+      "/docs/": [
         {
-          text: 'Getting Started',
+          text: "Getting Started",
           items: [
-            { text: 'Installation', link: '/docs/getting-started/installation' },
-            { text: 'Quick Start', link: '/docs/getting-started/quick-start' },
-            { text: 'Configuration', link: '/docs/getting-started/configuration' },
+            {
+              text: "Installation",
+              link: "/docs/getting-started/installation",
+            },
+            { text: "Quick Start", link: "/docs/getting-started/quick-start" },
+            {
+              text: "Configuration",
+              link: "/docs/getting-started/configuration",
+            },
           ],
         },
         {
-          text: 'Using Glue',
+          text: "Using Glue",
           items: [
-            { text: 'Interactive Mode', link: '/docs/using-glue/interactive-mode' },
-            { text: 'Models & Providers', link: '/docs/using-glue/models-and-providers' },
-            { text: 'Tools', link: '/docs/using-glue/tools' },
-            { text: 'Tool Approval', link: '/docs/using-glue/tool-approval' },
-            { text: 'Sessions', link: '/docs/using-glue/sessions' },
-            { text: 'File References', link: '/docs/using-glue/file-references' },
-            { text: 'Bash Mode', link: '/docs/using-glue/bash-mode' },
-            { text: 'Worktrees', link: '/docs/using-glue/worktrees' },
-            { text: 'Docker Sandbox', link: '/docs/using-glue/docker-sandbox' },
+            {
+              text: "Interactive Mode",
+              link: "/docs/using-glue/interactive-mode",
+            },
+            {
+              text: "Models & Providers",
+              link: "/docs/using-glue/models-and-providers",
+            },
+            { text: "Tools", link: "/docs/using-glue/tools" },
+            { text: "Tool Approval", link: "/docs/using-glue/tool-approval" },
+            { text: "Sessions", link: "/docs/using-glue/sessions" },
+            {
+              text: "File References",
+              link: "/docs/using-glue/file-references",
+            },
+            { text: "Bash Mode", link: "/docs/using-glue/bash-mode" },
+            { text: "Worktrees", link: "/docs/using-glue/worktrees" },
+            { text: "Docker Sandbox", link: "/docs/using-glue/docker-sandbox" },
           ],
         },
         {
-          text: 'Advanced',
+          text: "Advanced",
           items: [
-            { text: 'Runtimes', link: '/docs/advanced/runtimes' },
-            { text: 'Browser Automation', link: '/docs/advanced/browser-automation' },
-            { text: 'Web Tools', link: '/docs/advanced/web-tools' },
-            { text: 'Skills', link: '/docs/advanced/skills' },
-            { text: 'Subagents', link: '/docs/advanced/subagents' },
-            { text: 'Project Context', link: '/docs/advanced/project-context' },
-            { text: 'Observability', link: '/docs/advanced/observability' },
-            { text: 'Shell Completions', link: '/docs/advanced/shell-completions' },
-            { text: 'Troubleshooting', link: '/docs/advanced/troubleshooting' },
+            { text: "Runtimes", link: "/docs/advanced/runtimes" },
+            {
+              text: "Browser Automation",
+              link: "/docs/advanced/browser-automation",
+            },
+            { text: "Web Tools", link: "/docs/advanced/web-tools" },
+            { text: "Skills", link: "/docs/advanced/skills" },
+            { text: "Subagents", link: "/docs/advanced/subagents" },
+            { text: "Project Context", link: "/docs/advanced/project-context" },
+            { text: "Observability", link: "/docs/advanced/observability" },
+            {
+              text: "Shell Completions",
+              link: "/docs/advanced/shell-completions",
+            },
+            { text: "Troubleshooting", link: "/docs/advanced/troubleshooting" },
           ],
         },
         {
-          text: 'Contributing',
+          text: "Contributing",
           collapsed: true,
           items: [
-            { text: 'Development Setup', link: '/docs/contributing/development-setup' },
-            { text: 'Architecture', link: '/docs/contributing/architecture' },
-            { text: 'Testing', link: '/docs/contributing/testing' },
+            {
+              text: "Development Setup",
+              link: "/docs/contributing/development-setup",
+            },
+            { text: "Architecture", link: "/docs/contributing/architecture" },
+            { text: "Testing", link: "/docs/contributing/testing" },
           ],
         },
       ],
-      '/api/': apiSidebar,
-      '/changelog': changelogSidebar,
+      "/api/": apiSidebar,
+      "/changelog": changelogSidebar,
     },
 
     outline: [2, 3],
 
     search: {
-      provider: 'local',
+      provider: "local",
     },
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/helgesverre/glue' },
+      { icon: "github", link: "https://github.com/helgesverre/glue" },
     ],
 
     footer: {
-      message: 'Released under the MIT License.',
+      message: "Released under the MIT License.",
       copyright: `© ${new Date().getFullYear()} Glue`,
     },
   },
-})
+});

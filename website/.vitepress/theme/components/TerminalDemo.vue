@@ -1,13 +1,13 @@
 <script setup lang="ts">
 interface Step {
-  kind: 'prompt' | 'assistant' | 'tool' | 'output' | 'note'
-  text: string
+  kind: "prompt" | "assistant" | "tool" | "output" | "note";
+  text: string;
 }
 
 defineProps<{
-  steps: Step[]
-  title?: string
-}>()
+  steps: Step[];
+  title?: string;
+}>();
 </script>
 
 <template>
@@ -28,12 +28,18 @@ defineProps<{
 <script lang="ts">
 function gutter(kind: string) {
   switch (kind) {
-    case 'prompt': return '› '
-    case 'assistant': return '· '
-    case 'tool': return '⏵ '
-    case 'output': return '  '
-    case 'note': return '# '
-    default: return '  '
+    case "prompt":
+      return "› ";
+    case "assistant":
+      return "· ";
+    case "tool":
+      return "⏵ ";
+    case "output":
+      return "  ";
+    case "note":
+      return "# ";
+    default:
+      return "  ";
   }
 }
 </script>
@@ -92,15 +98,30 @@ function gutter(kind: string) {
   user-select: none;
 }
 
-.td-prompt { color: var(--glue-accent); }
-.td-prompt .td-gutter { color: var(--glue-accent); }
+.td-prompt {
+  color: var(--glue-accent);
+}
+.td-prompt .td-gutter {
+  color: var(--glue-accent);
+}
 
-.td-assistant { color: var(--glue-term-fg); }
+.td-assistant {
+  color: var(--glue-term-fg);
+}
 
-.td-tool { color: var(--glue-info); }
-.td-tool .td-gutter { color: var(--glue-info); }
+.td-tool {
+  color: var(--glue-info);
+}
+.td-tool .td-gutter {
+  color: var(--glue-info);
+}
 
-.td-output { color: var(--glue-term-dim); }
+.td-output {
+  color: var(--glue-term-dim);
+}
 
-.td-note { color: var(--glue-term-dim); font-style: italic; }
+.td-note {
+  color: var(--glue-term-dim);
+  font-style: italic;
+}
 </style>

@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref } from "vue";
 
-const command = 'curl -fsSL https://getglue.dev/install.sh | sh'
-const copied = ref(false)
+const command = "curl -fsSL https://getglue.dev/install.sh | sh";
+const copied = ref(false);
 
 async function copy() {
   try {
-    await navigator.clipboard.writeText(command)
-    copied.value = true
-    setTimeout(() => (copied.value = false), 1200)
+    await navigator.clipboard.writeText(command);
+    copied.value = true;
+    setTimeout(() => (copied.value = false), 1200);
   } catch {
     /* clipboard blocked — ignore */
   }
@@ -18,8 +18,13 @@ async function copy() {
 <template>
   <div class="is-wrap">
     <pre class="is-code"><code>{{ command }}</code></pre>
-    <button class="is-copy" type="button" @click="copy" :aria-label="copied ? 'Copied' : 'Copy install command'">
-      {{ copied ? 'copied' : 'copy' }}
+    <button
+      class="is-copy"
+      type="button"
+      @click="copy"
+      :aria-label="copied ? 'Copied' : 'Copy install command'"
+    >
+      {{ copied ? "copied" : "copy" }}
     </button>
   </div>
 </template>

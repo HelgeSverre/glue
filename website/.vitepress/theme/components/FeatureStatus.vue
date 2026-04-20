@@ -1,8 +1,8 @@
 <script setup lang="ts">
 defineProps<{
-  status: 'shipping' | 'experimental' | 'planned'
-  label?: string
-}>()
+  status: "shipping" | "experimental" | "planned";
+  label?: string;
+}>();
 </script>
 
 <template>
@@ -38,17 +38,21 @@ defineProps<{
   background: currentColor;
 }
 
-.fs-pill[data-status='shipping'] {
+.fs-pill[data-status="shipping"] {
   color: var(--glue-success);
-  border-color: color-mix(in srgb, var(--glue-success) 35%, var(--vp-c-divider));
+  border-color: color-mix(
+    in srgb,
+    var(--glue-success) 35%,
+    var(--vp-c-divider)
+  );
 }
 
-.fs-pill[data-status='experimental'] {
+.fs-pill[data-status="experimental"] {
   color: var(--glue-accent);
   border-color: color-mix(in srgb, var(--glue-accent) 40%, var(--vp-c-divider));
 }
 
-.fs-pill[data-status='planned'] {
+.fs-pill[data-status="planned"] {
   color: var(--vp-c-text-3);
 }
 </style>

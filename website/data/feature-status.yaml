@@ -17,46 +17,49 @@ updated_at: 2026-04-19
 
 features:
   # Core agent
-  agent-loop:              { status: shipping,     name: "Agent loop" }
-  file-editing:            { status: shipping,     name: "File editing" }
-  command-execution:       { status: shipping,     name: "Command execution" }
+  agent-loop: { status: shipping, name: "Agent loop" }
+  file-editing: { status: shipping, name: "File editing" }
+  command-execution: { status: shipping, name: "Command execution" }
 
   # Runtimes
-  runtime-host:            { status: shipping,     name: "Host runtime" }
-  runtime-docker:          { status: shipping,     name: "Docker runtime" }
-  runtime-docker-polish:   { status: experimental, name: "Docker sandbox polish" }
-  runtime-cloud:           { status: planned,      name: "Cloud runtimes" }
+  runtime-host: { status: shipping, name: "Host runtime" }
+  runtime-docker: { status: shipping, name: "Docker runtime" }
+  runtime-docker-polish: { status: experimental, name: "Docker sandbox polish" }
+  runtime-cloud: { status: planned, name: "Cloud runtimes" }
 
   # Models / providers
-  model-catalog-curated:   { status: shipping,     name: "Curated model catalog" }
-  provider-adapter:        { status: planned,      name: "Provider adapter contract" }
-  model-catalog-remote:    { status: planned,      name: "Remote model catalog refresh" }
+  model-catalog-curated: { status: shipping, name: "Curated model catalog" }
+  provider-adapter: { status: planned, name: "Provider adapter contract" }
+  model-catalog-remote:
+    { status: planned, name: "Remote model catalog refresh" }
 
   # Sessions
-  sessions-jsonl:          { status: shipping,     name: "JSONL session logs" }
-  sessions-resume:         { status: shipping,     name: "Session resume" }
-  sessions-event-schema:   { status: planned,      name: "Expanded session event schema" }
-  sessions-replay-ui:      { status: planned,      name: "Session replay UI" }
-  sessions-prune:          { status: planned,      name: "Session auto-prune" }
+  sessions-jsonl: { status: shipping, name: "JSONL session logs" }
+  sessions-resume: { status: shipping, name: "Session resume" }
+  sessions-event-schema:
+    { status: planned, name: "Expanded session event schema" }
+  sessions-replay-ui: { status: planned, name: "Session replay UI" }
+  sessions-prune: { status: planned, name: "Session auto-prune" }
 
   # Web
-  web-fetch:               { status: shipping,     name: "Web fetch" }
-  web-search:              { status: shipping,     name: "Web search" }
-  web-pdf:                 { status: shipping,     name: "PDF extraction" }
-  web-browser-automation:  { status: experimental, name: "Browser automation" }
-  web-extraction-flows:    { status: experimental, name: "Web extraction flows" }
+  web-fetch: { status: shipping, name: "Web fetch" }
+  web-search: { status: shipping, name: "Web search" }
+  web-pdf: { status: shipping, name: "PDF extraction" }
+  web-browser-automation: { status: experimental, name: "Browser automation" }
+  web-extraction-flows: { status: experimental, name: "Web extraction flows" }
 
   # Agents
-  subagents:               { status: shipping,     name: "Subagents" }
-  skills:                  { status: shipping,     name: "Skills" }
-  mcp-integration:         { status: shipping,     name: "MCP integration" }
+  subagents: { status: shipping, name: "Subagents" }
+  skills: { status: shipping, name: "Skills" }
+  mcp-integration: { status: shipping, name: "MCP integration" }
 
   # Platform / contracts
-  tui-behavior-contract:   { status: planned,      name: "TUI behavior contract" }
-  runtime-boundary:        { status: planned,      name: "Runtime boundary plan" }
-  credential-keychain:     { status: planned,      name: "OS keychain credentials" }
+  tui-behavior-contract: { status: planned, name: "TUI behavior contract" }
+  runtime-boundary: { status: planned, name: "Runtime boundary plan" }
+  credential-keychain: { status: planned, name: "OS keychain credentials" }
 
   # Removed (must NOT appear as shipping anywhere)
-  interaction-modes:       { status: removed,      name: "Interaction modes (code/architect/ask)" }
-  plan-mode-ui:            { status: removed,      name: "Plan-mode UI" }
-  observability-otel:      { status: removed,      name: "OTEL/Langfuse observability" }
+  interaction-modes:
+    { status: removed, name: "Interaction modes (code/architect/ask)" }
+  plan-mode-ui: { status: removed, name: "Plan-mode UI" }
+  observability-otel: { status: removed, name: "OTEL/Langfuse observability" }

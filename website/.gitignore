@@ -8,3 +8,4 @@ api/
 
 # Generated OpenGraph images (rebuilt by `just website::og`)
 public/og/
+public/badges/*

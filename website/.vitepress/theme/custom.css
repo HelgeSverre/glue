@@ -2,19 +2,19 @@
 
 :root {
   /* Accent (used sparingly — focus states, shipping pill, brand marks). */
-  --glue-accent: #FACC15;
+  --glue-accent: #facc15;
   --glue-accent-soft: rgba(250, 204, 21, 0.12);
 
   /* Semantic. */
-  --glue-success: #22C55E;
-  --glue-warning: #EAB308;
-  --glue-error:   #EF4444;
-  --glue-info:    #3B82F6;
+  --glue-success: #22c55e;
+  --glue-warning: #eab308;
+  --glue-error: #ef4444;
+  --glue-info: #3b82f6;
 
   /* Terminal block. */
-  --glue-term-bg: #0F0F10;
-  --glue-term-fg: #E6E6E6;
-  --glue-term-dim: #7A7A7A;
+  --glue-term-bg: #0f0f10;
+  --glue-term-fg: #e6e6e6;
+  --glue-term-dim: #7a7a7a;
 
   /* VitePress brand hooks — accent only where the default theme
      demands a brand color (focused links, selection highlight). */
@@ -23,22 +23,23 @@
   --vp-c-brand-3: var(--glue-accent);
   --vp-c-brand-soft: var(--glue-accent-soft);
 
-  --vp-font-family-base: 'Inter', system-ui, -apple-system, Segoe UI, sans-serif;
-  --vp-font-family-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  --vp-font-family-base:
+    "Inter", system-ui, -apple-system, Segoe UI, sans-serif;
+  --vp-font-family-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
 }
 
 /* Light defaults keep VitePress' neutrals. Dark reset below. */
 .dark {
-  --vp-c-bg:       #0A0A0B;
-  --vp-c-bg-alt:   #111113;
-  --vp-c-bg-soft:  #16171A;
-  --vp-c-bg-elv:   #16171A;
-  --vp-c-text-1:   #E6E6E6;
-  --vp-c-text-2:   #A0A3A8;
-  --vp-c-text-3:   #6B6F76;
-  --vp-c-divider:  #222326;
-  --vp-c-gutter:   #0A0A0B;
-  --vp-sidebar-bg-color: #0A0A0B;
+  --vp-c-bg: #0a0a0b;
+  --vp-c-bg-alt: #111113;
+  --vp-c-bg-soft: #16171a;
+  --vp-c-bg-elv: #16171a;
+  --vp-c-text-1: #e6e6e6;
+  --vp-c-text-2: #a0a3a8;
+  --vp-c-text-3: #6b6f76;
+  --vp-c-divider: #222326;
+  --vp-c-gutter: #0a0a0b;
+  --vp-sidebar-bg-color: #0a0a0b;
 }
 
 /* Typography — no uppercase treatments, no letter-spacing theatrics. */
@@ -62,7 +63,7 @@
 }
 
 /* Code blocks: quiet 1px border, no heavy framing. */
-.vp-doc div[class*='language-'] {
+.vp-doc div[class*="language-"] {
   border: 1px solid var(--vp-c-divider);
   border-radius: 6px;
 }
@@ -70,7 +71,7 @@
 /* Brand button — flat accent, no uppercase. */
 .VPButton.brand {
   background-color: var(--glue-accent);
-  color: #0A0A0B;
+  color: #0a0a0b;
   border-color: var(--glue-accent);
   font-weight: 600;
 }
@@ -78,7 +79,7 @@
 .VPButton.brand:hover {
   background-color: #fde047;
   border-color: #fde047;
-  color: #0A0A0B;
+  color: #0a0a0b;
 }
 
 .VPButton.alt {

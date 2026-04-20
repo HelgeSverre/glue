@@ -8,26 +8,97 @@
     "tokensStart": 14820
   },
   "events": [
-    { "kind": "user",        "text": "add retry handling to the http client, then check if any recent issues mention it",                "delay": 760 },
-    { "kind": "assistant",   "text": "Reading the current client.",                                                                        "delay": 420 },
+    {
+      "kind": "user",
+      "text": "add retry handling to the http client, then check if any recent issues mention it",
+      "delay": 760
+    },
+    {
+      "kind": "assistant",
+      "text": "Reading the current client.",
+      "delay": 420
+    },
 
-    { "kind": "tool_call",   "name": "read", "args": { "path": "cli/lib/src/llm/http_client.dart" },                 "phase": "running",  "delay": 320 },
-    { "kind": "tool_result", "ok": true, "text": "187 lines · no retry logic on transient errors",                                          "delay": 340 },
+    {
+      "kind": "tool_call",
+      "name": "read",
+      "args": { "path": "cli/lib/src/llm/http_client.dart" },
+      "phase": "running",
+      "delay": 320
+    },
+    {
+      "kind": "tool_result",
+      "ok": true,
+      "text": "187 lines · no retry logic on transient errors",
+      "delay": 340
+    },
 
-    { "kind": "tool_call",   "name": "edit", "args": { "path": "cli/lib/src/llm/http_client.dart" },                 "phase": "running",  "delay": 320 },
-    { "kind": "tool_result", "ok": true, "text": "+14 −2 · exponential backoff, cap 5, jitter",                                             "delay": 320 },
+    {
+      "kind": "tool_call",
+      "name": "edit",
+      "args": { "path": "cli/lib/src/llm/http_client.dart" },
+      "phase": "running",
+      "delay": 320
+    },
+    {
+      "kind": "tool_result",
+      "ok": true,
+      "text": "+14 −2 · exponential backoff, cap 5, jitter",
+      "delay": 320
+    },
 
-    { "kind": "assistant",   "text": "Running the llm tests.",                                                                              "delay": 520 },
-    { "kind": "tool_call",   "name": "bash", "args": { "cmd": "dart test test/llm/" },                               "phase": "running",  "delay": 320 },
-    { "kind": "tool_result", "ok": true, "text": "✓ 23 tests passed",                                                                       "delay": 300 },
+    { "kind": "assistant", "text": "Running the llm tests.", "delay": 520 },
+    {
+      "kind": "tool_call",
+      "name": "bash",
+      "args": { "cmd": "dart test test/llm/" },
+      "phase": "running",
+      "delay": 320
+    },
+    {
+      "kind": "tool_result",
+      "ok": true,
+      "text": "✓ 23 tests passed",
+      "delay": 300
+    },
 
-    { "kind": "user",        "text": "now see if anyone has reported something similar",                                                   "delay": 760 },
-    { "kind": "tool_call",   "name": "web_search", "args": { "q": "glue cli ECONNRESET retry site:github.com" },     "phase": "running",  "delay": 320 },
-    { "kind": "tool_result", "ok": true, "text": "3 results · top: issue #412 \"retry loop hangs on 429\"",                                "delay": 340 },
+    {
+      "kind": "user",
+      "text": "now see if anyone has reported something similar",
+      "delay": 760
+    },
+    {
+      "kind": "tool_call",
+      "name": "web_search",
+      "args": { "q": "glue cli ECONNRESET retry site:github.com" },
+      "phase": "running",
+      "delay": 320
+    },
+    {
+      "kind": "tool_result",
+      "ok": true,
+      "text": "3 results · top: issue #412 \"retry loop hangs on 429\"",
+      "delay": 340
+    },
 
-    { "kind": "tool_call",   "name": "web_fetch", "args": { "url": "https://github.com/helgesverre/glue/issues/412" }, "phase": "running", "delay": 320 },
-    { "kind": "tool_result", "ok": true, "text": "fetched 2.4 KB markdown · last comment 3d ago",                                           "delay": 320 },
+    {
+      "kind": "tool_call",
+      "name": "web_fetch",
+      "args": { "url": "https://github.com/helgesverre/glue/issues/412" },
+      "phase": "running",
+      "delay": 320
+    },
+    {
+      "kind": "tool_result",
+      "ok": true,
+      "text": "fetched 2.4 KB markdown · last comment 3d ago",
+      "delay": 320
+    },
 
-    { "kind": "assistant",   "text": "The 429 case is open. My patch handles ECONNRESET — I'll leave #412 for a follow-up.",                "delay": 560 }
+    {
+      "kind": "assistant",
+      "text": "The 429 case is open. My patch handles ECONNRESET — I'll leave #412 for a follow-up.",
+      "delay": 560
+    }
   ]
 }
