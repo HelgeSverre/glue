@@ -12,12 +12,16 @@ const apiSidebar = fs.existsSync(apiSidebarPath)
   ? JSON.parse(fs.readFileSync(apiSidebarPath, 'utf-8'))
   : []
 
-// ── Changelog version sidebar (built from cli/CHANGELOG.md) ──────────────
+// ── Changelog version sidebar (built from generated/cli-changelog.md) ────
+// Reads the snapshot under website/generated/ (synced from cli/CHANGELOG.md
+// by `just website::generate-reference`). The snapshot lives inside the
+// Vercel project root so the sidebar builds on Vercel; the canonical source
+// `../cli/CHANGELOG.md` is outside the project root and unreadable there.
 // `slugify` and `prettifyVersionLabel` are defined below; the sidebar is
 // materialized at the bottom of this section, after its helpers exist.
 
 function buildChangelogSidebar(): DefaultTheme.SidebarItem[] {
-  const changelogPath = path.join(repoRoot, 'cli', 'CHANGELOG.md')
+  const changelogPath = path.join(vitepressDir, '..', 'generated', 'cli-changelog.md')
   if (!fs.existsSync(changelogPath)) return []
   const text = fs.readFileSync(changelogPath, 'utf-8')
 

@@ -11,4 +11,4 @@ The canonical changelog lives in the CLI package —
 and is rendered below. Entries under **Unreleased** are shipping on the
 `main` branch and not yet tagged.
 
-<!--@include: ../cli/CHANGELOG.md{3,}-->
+<!--@include: ./generated/cli-changelog.md{3,}-->

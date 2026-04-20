@@ -18,11 +18,13 @@ generate: deps-if-needed
     cd ../cli && dart run tool/gen_models.dart
     cd ../cli && dart run tool/generate_website_api.dart
     cd ../cli && dart run tool/generate_site_reference.dart
+    cp ../cli/CHANGELOG.md generated/cli-changelog.md
     npm run og
 
-# Regenerate site reference files only (models, runtime matrix, config, sessions)
+# Regenerate site reference files only (models, runtime matrix, config, sessions, CLI changelog)
 generate-reference:
     cd ../cli && dart run tool/generate_site_reference.dart
+    cp ../cli/CHANGELOG.md generated/cli-changelog.md
 
 # Generate per-page OpenGraph images (public/og/*.png)
 og: deps-if-needed

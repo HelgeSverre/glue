@@ -86,11 +86,11 @@ jobs:
     name: Publish GitHub release
     runs-on: ubuntu-latest
     needs: build
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
 
     steps:
-      - name: Checkout (for release notes template)
-        uses: actions/checkout@v6
-
       - name: Download all artifacts
         if: ${{ !env.ACT }}
         uses: actions/download-artifact@v8
@@ -106,15 +106,25 @@ jobs:
           echo "--- Combined SHA256SUMS ---"
           cat SHA256SUMS
 
-      - name: Create release with binaries
+      - name: Create or update release with binaries
         if: ${{ !env.ACT }}
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
-          generate_release_notes: true
-          fail_on_unmatched_files: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          assets=(release-assets/glue-* release-assets/SHA256SUMS)
+          create_args=(--verify-tag --generate-notes --title "$tag")
+          edit_args=(--verify-tag --title "$tag")
+
           # Treat tags with a `-` suffix (e.g. v0.1.0-rc.1) as prereleases.
-          prerelease: ${{ contains(github.event.inputs.tag || github.ref_name, '-') }}
-          files: |
-            release-assets/glue-*
-            release-assets/SHA256SUMS
+          if [[ "$tag" == *-* ]]; then
+            create_args+=(--prerelease --latest=false)
+            edit_args+=(--prerelease)
+          fi
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release edit "$tag" "${edit_args[@]}"
+            gh release upload "$tag" "${assets[@]}" --clobber
+          else
+            gh release create "$tag" "${assets[@]}" "${create_args[@]}"
+          fi
