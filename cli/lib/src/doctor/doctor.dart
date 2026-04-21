@@ -9,6 +9,7 @@ import 'package:glue/src/commands/config_command.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/observability/observability_config.dart';
+import 'package:glue/src/terminal/styled.dart';
 
 enum DoctorSeverity {
   ok,
@@ -38,12 +39,16 @@ class DoctorReport {
 
   int get okCount =>
       findings.where((f) => f.severity == DoctorSeverity.ok).length;
+
   int get infoCount =>
       findings.where((f) => f.severity == DoctorSeverity.info).length;
+
   int get warningCount =>
       findings.where((f) => f.severity == DoctorSeverity.warning).length;
+
   int get errorCount =>
       findings.where((f) => f.severity == DoctorSeverity.error).length;
+
   bool get hasErrors => errorCount > 0;
 }
 
@@ -110,29 +115,20 @@ DoctorReport runDoctor(Environment environment) {
   return DoctorReport(findings);
 }
 
-/// ANSI sequences used for doctor output. Kept local (rather than pulling the
-/// full `Styled` helper) so this module has no dependency on TUI theming.
-const String _brandDot = '\x1b[38;2;250;204;21m●\x1b[0m';
-const String _bold = '\x1b[1m';
-const String _reset = '\x1b[22m';
-const String _green = '\x1b[32m';
-const String _yellow = '\x1b[33m';
-const String _red = '\x1b[31m';
-const String _gray = '\x1b[90m';
-const String _fgReset = '\x1b[39m';
-
 String _marker(DoctorSeverity severity) {
   return switch (severity) {
-    DoctorSeverity.ok => '$_green✓$_fgReset',
-    DoctorSeverity.info => '$_gray·$_fgReset',
-    DoctorSeverity.warning => '$_yellow!$_fgReset',
-    DoctorSeverity.error => '$_red✗$_fgReset',
+    DoctorSeverity.ok => '✓'.styled.green.toString(),
+    DoctorSeverity.info => '·'.styled.gray.toString(),
+    DoctorSeverity.warning => '!'.styled.yellow.toString(),
+    DoctorSeverity.error => '✗'.styled.red.toString(),
   };
 }
 
 String renderDoctorReport(DoctorReport report, {bool verbose = false}) {
   final buf = StringBuffer();
-  buf.writeln('$_brandDot ${_bold}Glue Doctor$_reset');
+  buf.writeln(
+    '${'●'.styled.rgb(250, 204, 21)} ${'Glue Doctor'.styled.bold}',
+  );
   buf.writeln();
 
   final visible = verbose
@@ -146,32 +142,31 @@ String renderDoctorReport(DoctorReport report, {bool verbose = false}) {
     if (finding.section != currentSection) {
       if (currentSection != null) buf.writeln();
       currentSection = finding.section;
-      buf.writeln('$_bold${finding.section}$_reset');
+      buf.writeln(finding.section.styled.bold.toString());
     }
-    final suffix =
-        finding.path == null ? '' : '  $_gray${finding.path}$_fgReset';
+    final suffix = finding.path == null ? '' : '  ${finding.path!.styled.gray}';
     buf.writeln('  ${_marker(finding.severity)} ${finding.message}$suffix');
   }
 
   final hiddenInfo = report.infoCount - (verbose ? report.infoCount : 0);
 
   buf.writeln();
-  buf.writeln('${_bold}Summary$_reset');
+  buf.writeln('Summary'.styled.bold.toString());
   if (report.hasErrors || report.warningCount > 0) {
     buf.writeln(
-      '  $_green${report.okCount} ok$_fgReset  '
-      '$_yellow${report.warningCount} warn$_fgReset  '
-      '$_red${report.errorCount} error$_fgReset',
+      '  ${'${report.okCount} ok'.styled.green}  '
+      '${'${report.warningCount} warn'.styled.yellow}  '
+      '${'${report.errorCount} error'.styled.red}',
     );
   } else {
     buf.writeln(
-      '  $_green✓ All checks passed$_fgReset  '
-      '$_gray(${report.okCount} ok)$_fgReset',
+      '  ${'✓ All checks passed'.styled.green}  '
+      '${'(${report.okCount} ok)'.styled.gray}',
     );
   }
   if (hiddenInfo > 0) {
     buf.writeln(
-      '  $_gray$hiddenInfo info hidden — rerun with --verbose to show$_fgReset',
+      '  ${'$hiddenInfo info hidden — rerun with --verbose to show'.styled.gray}',
     );
   }
   return buf.toString();
