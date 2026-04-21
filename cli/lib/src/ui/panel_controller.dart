@@ -8,6 +8,7 @@ import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/core/clipboard.dart' as shared_clipboard;
+import 'package:glue/src/mcp/mcp_server_manager.dart';
 import 'package:glue/src/providers/auth_flow.dart';
 import 'package:glue/src/providers/ollama_discovery.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
@@ -706,6 +707,162 @@ class PanelController {
 
   Future<bool> _copyToClipboard(String text) =>
       shared_clipboard.copyToClipboard(text);
+
+  // ---------------------------------------------------------------------------
+  // MCP panel
+  // ---------------------------------------------------------------------------
+
+  /// Open the MCP server management panel.
+  ///
+  /// Shows all configured servers with their status and tool count.
+  /// Selecting a server opens an action submenu (Connect / Disconnect).
+  Future<void> openMcpPanel({
+    required McpServerManager mcpManager,
+    required void Function(String message) addSystemMessage,
+  }) async {
+    final states = mcpManager.servers.values.toList();
+    if (states.isEmpty) {
+      addSystemMessage(
+        'No MCP servers configured. '
+        'Add servers to .glue/mcp.json or ~/.glue/mcp.json.',
+      );
+      _render();
+      return;
+    }
+
+    final table = ResponsiveTable<McpServerState>(
+      columns: const [
+        TableColumn(key: 'name', header: 'SERVER', maxWidth: 20),
+        TableColumn(key: 'transport', header: 'TRANSPORT', maxWidth: 10),
+        TableColumn(
+            key: 'tools',
+            header: 'TOOLS',
+            align: TableAlign.right,
+            maxWidth: 6),
+        TableColumn(key: 'status', header: 'STATUS', maxWidth: 14),
+        TableColumn(key: 'source', header: 'SOURCE', maxWidth: 10),
+      ],
+      rows: states,
+      includeHeaderInWidth: true,
+      getValues: (s) => {
+        'name': s.config.name,
+        'transport': s.config.transportLabel,
+        'tools': s.tools.length.toString(),
+        'status': _dimText(_mcpStatusLabel(s.status)),
+        'source': _dimText(s.config.source.name),
+      },
+    );
+
+    final options = <SelectOption<McpServerState>>[];
+    for (var i = 0; i < states.length; i++) {
+      final state = states[i];
+      options.add(
+        SelectOption.responsive(
+          value: state,
+          build: (w) => table.renderRow(i, w),
+          searchText:
+              '${state.config.id} ${state.config.name} ${_mcpStatusLabel(state.status)}',
+        ),
+      );
+    }
+
+    final panel = SelectPanel<McpServerState>(
+      title: 'MCP Servers',
+      options: options,
+      headerBuilder: table.renderHeader,
+      searchHint: 'filter servers',
+      barrier: BarrierStyle.dim,
+      width: PanelFluid(0.85, 40),
+      height: PanelFluid(0.7, 10),
+    );
+    _panelStack.add(panel);
+    _render();
+
+    unawaited(panel.selection.then((state) {
+      if (state == null) {
+        _panelStack.remove(panel);
+        _render();
+        return;
+      }
+      _openMcpActionPanel(
+        mcpManager: mcpManager,
+        parentPanel: panel,
+        state: state,
+        addSystemMessage: addSystemMessage,
+      );
+    }));
+  }
+
+  void _openMcpActionPanel({
+    required McpServerManager mcpManager,
+    required SelectPanel<McpServerState> parentPanel,
+    required McpServerState state,
+    required void Function(String message) addSystemMessage,
+  }) {
+    final connected = state.status == McpServerStatus.ready;
+    final actions = connected ? ['Disconnect', 'Refresh tools'] : ['Connect'];
+    final actionPanel = PanelModal(
+      title: state.config.name,
+      lines: actions,
+      barrier: BarrierStyle.dim,
+      height: PanelFixed(actions.length + 2),
+      width: PanelFixed(32),
+      selectable: true,
+    );
+    _panelStack.add(actionPanel);
+    _render();
+
+    actionPanel.selection.then((idx) async {
+      _panelStack.remove(actionPanel);
+      _panelStack.remove(parentPanel);
+      if (idx == null) {
+        _render();
+        return;
+      }
+      final action = actions[idx];
+      switch (action) {
+        case 'Connect':
+          try {
+            await mcpManager.connect(state.config.id);
+            addSystemMessage(
+              'Connected to ${state.config.name} '
+              '(${state.tools.length} tools).',
+            );
+          } catch (e) {
+            addSystemMessage(
+              'Failed to connect to ${state.config.name}: $e',
+            );
+          }
+          _render();
+        case 'Disconnect':
+          await mcpManager.disconnect(state.config.id);
+          addSystemMessage('Disconnected from ${state.config.name}.');
+          _render();
+        case 'Refresh tools':
+          try {
+            await mcpManager.connect(state.config.id);
+            addSystemMessage(
+              'Refreshed ${state.config.name} (${state.tools.length} tools).',
+            );
+          } catch (e) {
+            addSystemMessage('Refresh failed: $e');
+          }
+          _render();
+      }
+    });
+  }
+
+  String _mcpStatusLabel(McpServerStatus status) => switch (status) {
+        McpServerStatus.disconnected => 'disconnected',
+        McpServerStatus.connecting => 'connecting…',
+        McpServerStatus.initializing => 'initializing…',
+        McpServerStatus.ready => 'ready',
+        McpServerStatus.error => 'error',
+        McpServerStatus.shuttingDown => 'stopping…',
+      };
+
+  /// Apply dim ANSI styling to a string for use in table cells.
+  static String _dimText(String text) => text.styled.dim.toString();
 }
 
 /// Build the lines shown in the `/help` panel at a given content width.

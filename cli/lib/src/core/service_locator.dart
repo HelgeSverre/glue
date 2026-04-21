@@ -6,6 +6,7 @@ import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/input/text_area_editor.dart';
 import 'package:glue/src/llm/llm_factory.dart';
+import 'package:glue/src/mcp/mcp_server_manager.dart';
 import 'package:glue/src/observability/debug_controller.dart';
 import 'package:glue/src/observability/file_sink.dart';
 import 'package:glue/src/observability/http_trace_sink.dart';
@@ -211,6 +212,12 @@ class ServiceLocator {
     tools['spawn_subagent'] = SpawnSubagentTool(manager);
     tools['spawn_parallel_subagents'] = SpawnParallelSubagentsTool(manager);
 
+    // Wire up MCP servers. Connects auto-connect servers and registers their
+    // tools into the agent's tools map.
+    final mcpManager = McpServerManager(agentTools: tools);
+    mcpManager.loadConfig(config.mcpConfig);
+    await mcpManager.connectAll();
+
     return AppServices(
       environment: resolvedEnv,
       config: config,
@@ -227,6 +234,7 @@ class ServiceLocator {
       obs: obs,
       debugController: debugController,
       skillRuntime: skillRuntime,
+      mcpManager: mcpManager,
     );
   }
 }
@@ -251,6 +259,7 @@ class AppServices {
   final Observability obs;
   final DebugController debugController;
   final SkillRuntime skillRuntime;
+  final McpServerManager mcpManager;
 
   const AppServices({
     required this.environment,
@@ -269,5 +278,6 @@ class AppServices {
     required this.obs,
     required this.debugController,
     required this.skillRuntime,
+    required this.mcpManager,
   });
 }
