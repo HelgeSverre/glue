@@ -279,8 +279,10 @@ class AgentCore {
               case UsageInfo(:final inputTokens, :final totalTokens):
                 tokenCount += totalTokens;
                 // Calibrate the token estimator with actual provider counts.
-                contextManager?.estimator
-                    .calibrate(contextManager!.lastRawEstimate, inputTokens);
+                final cm = contextManager;
+                if (cm != null) {
+                  cm.estimator.calibrate(cm.lastRawEstimate, inputTokens);
+                }
             }
           }
         } catch (e) {

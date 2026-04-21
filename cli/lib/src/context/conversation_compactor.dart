@@ -27,6 +27,8 @@ class ConversationCompactor {
   /// Returns [conversation] unchanged when it is already short enough.
   Future<List<Message>> compact(List<Message> conversation) async {
     final turnBoundaries = _findUserTurnBoundaries(conversation);
+    // Need at least keepRecentTurns + 1 boundaries: one to compact and
+    // keepRecentTurns to keep verbatim.
     if (turnBoundaries.length <= keepRecentTurns + 1) return conversation;
 
     final compactUpTo = turnBoundaries[turnBoundaries.length - keepRecentTurns];

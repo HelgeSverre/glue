@@ -72,6 +72,6 @@ class SlidingWindowTrimmer {
       }
     }
 
-    return [...messages.sublist(0, start), ...messages.sublist(end)];
+    return messages.sublist(0, start)..addAll(messages.sublist(end));
   }
 }

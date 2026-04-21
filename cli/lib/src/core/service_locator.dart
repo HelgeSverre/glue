@@ -222,8 +222,14 @@ class ServiceLocator {
           systemPrompt:
               'You are a helpful assistant that summarizes conversations.',
         );
-      } catch (_) {
-        // Small model unavailable — Tier 2 compaction disabled.
+      } catch (e) {
+        // Small model may be misconfigured or its provider unavailable.
+        // Tier 2 compaction is disabled; Tier 1 and 3 still apply.
+        final span = obs.startSpan(
+          'context.small_model_unavailable',
+          attributes: {'error': '$e'},
+        );
+        obs.endSpan(span);
       }
     }
 

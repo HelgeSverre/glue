@@ -142,8 +142,9 @@ class ContextManager {
           'context.compacted_tokens': newEstimate,
           'context.strategy': 'summarization',
         });
-      } catch (_) {
-        // Compaction failed — fall through to Tier 3.
+      } catch (e) {
+        // Compaction failed — emit a span and fall through to Tier 3.
+        _emitSpan('context.compact_failed', {'context.error': e.toString()});
       }
     }
 
