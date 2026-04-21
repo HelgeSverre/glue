@@ -20,11 +20,15 @@ generate: deps-if-needed
     cd ../cli && dart run tool/generate_site_reference.dart
     cp ../cli/CHANGELOG.md generated/cli-changelog.md
     npm run og
+    npx prettier --write ./generated/*.md
+
 
 # Regenerate site reference files only (models, runtime matrix, config, sessions, CLI changelog)
 generate-reference:
     cd ../cli && dart run tool/generate_site_reference.dart
     cp ../cli/CHANGELOG.md generated/cli-changelog.md
+    npx prettier --write ./generated/*.md
+
 
 # Generate per-page OpenGraph images (public/og/*.png)
 og: deps-if-needed

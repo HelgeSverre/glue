@@ -36,7 +36,13 @@
     "provider": "anthropic",
     "name": "Claude Haiku 4.5",
     "recommended": true,
-    "capabilities": ["chat", "tools", "vision", "json", "coding"],
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "json",
+      "coding"
+    ],
     "notes": "Good small_model candidate for titles, summaries, and quick checks."
   },
   {
@@ -76,7 +82,13 @@
     "provider": "openai",
     "name": "GPT-5.4 Mini",
     "recommended": true,
-    "capabilities": ["chat", "tools", "vision", "json", "coding"],
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "json",
+      "coding"
+    ],
     "notes": "Default small_model candidate."
   },
   {
@@ -100,7 +112,14 @@
     "provider": "gemini",
     "name": "Gemini Flash Latest",
     "recommended": true,
-    "capabilities": ["chat", "tools", "vision", "files", "json", "coding"],
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "files",
+      "json",
+      "coding"
+    ],
     "notes": "Fast model for summarization, extraction, and browser-heavy work."
   },
   {
@@ -108,7 +127,12 @@
     "provider": "mistral",
     "name": "Devstral Latest",
     "recommended": true,
-    "capabilities": ["chat", "tools", "json", "coding"],
+    "capabilities": [
+      "chat",
+      "tools",
+      "json",
+      "coding"
+    ],
     "notes": "Mistral's agentic coding model. Strong tool use."
   },
   {
@@ -116,7 +140,13 @@
     "provider": "mistral",
     "name": "Mistral Large Latest",
     "recommended": true,
-    "capabilities": ["chat", "tools", "vision", "json", "coding"],
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "json",
+      "coding"
+    ],
     "notes": "Flagship multimodal general-purpose model."
   },
   {
@@ -124,7 +154,12 @@
     "provider": "mistral",
     "name": "Mistral Medium Latest",
     "recommended": true,
-    "capabilities": ["chat", "tools", "vision", "json"],
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "json"
+    ],
     "notes": "Balanced cost/quality option."
   },
   {
@@ -132,7 +167,13 @@
     "provider": "mistral",
     "name": "Mistral Small Latest",
     "recommended": true,
-    "capabilities": ["chat", "tools", "vision", "json", "reasoning"],
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "json",
+      "reasoning"
+    ],
     "notes": "Fast with reasoning toggle; good for quick tasks."
   },
   {
@@ -140,7 +181,13 @@
     "provider": "groq",
     "name": "GPT-OSS 120B",
     "recommended": true,
-    "capabilities": ["chat", "tools", "json", "reasoning", "coding"],
+    "capabilities": [
+      "chat",
+      "tools",
+      "json",
+      "reasoning",
+      "coding"
+    ],
     "notes": "Groq's flagship reasoning + coding model. 120B weights at Groq speed."
   },
   {
@@ -148,7 +195,12 @@
     "provider": "groq",
     "name": "GPT-OSS 20B",
     "recommended": true,
-    "capabilities": ["chat", "tools", "json", "coding"],
+    "capabilities": [
+      "chat",
+      "tools",
+      "json",
+      "coding"
+    ],
     "notes": "Coding-optimized, faster/cheaper than 120B."
   },
   {
@@ -156,7 +208,11 @@
     "provider": "groq",
     "name": "Llama 3.3 70B Versatile",
     "recommended": true,
-    "capabilities": ["chat", "tools", "json"],
+    "capabilities": [
+      "chat",
+      "tools",
+      "json"
+    ],
     "notes": "General-purpose alternative. No reasoning mode."
   },
   {
@@ -164,7 +220,13 @@
     "provider": "ollama",
     "name": "Qwen3 Coder 30B (MoE)",
     "recommended": true,
-    "capabilities": ["chat", "tools", "json", "coding", "local"],
+    "capabilities": [
+      "chat",
+      "tools",
+      "json",
+      "coding",
+      "local"
+    ],
     "notes": "Consensus local coding agent. 30B/3.3B MoE. ~20 GB VRAM at Q4_K_M."
   },
   {
@@ -188,7 +250,14 @@
     "provider": "ollama",
     "name": "Gemma 4 26B",
     "recommended": true,
-    "capabilities": ["chat", "tools", "vision", "json", "coding", "local"],
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "json",
+      "coding",
+      "local"
+    ],
     "notes": "Google's latest with native function-calling. Multimodal, 256K context. ~18 GB at Q4_K_M."
   },
   {
@@ -196,7 +265,13 @@
     "provider": "ollama",
     "name": "Devstral Small 2 24B",
     "recommended": true,
-    "capabilities": ["chat", "tools", "json", "coding", "local"],
+    "capabilities": [
+      "chat",
+      "tools",
+      "json",
+      "coding",
+      "local"
+    ],
     "notes": "Mistral's agentic coding model (Dec 2025). 68% SWE-bench. ~14 GB at Q4_K_M."
   },
   {
@@ -204,7 +279,13 @@
     "provider": "ollama",
     "name": "Qwen2.5 Coder 32B",
     "recommended": true,
-    "capabilities": ["chat", "tools", "json", "coding", "local"],
+    "capabilities": [
+      "chat",
+      "tools",
+      "json",
+      "coding",
+      "local"
+    ],
     "notes": "Aider-verified 73.7% (GPT-4o class). Safe fallback."
   },
   {
@@ -212,7 +293,12 @@
     "provider": "ollama",
     "name": "Qwen3 8B",
     "recommended": true,
-    "capabilities": ["chat", "tools", "json", "local"],
+    "capabilities": [
+      "chat",
+      "tools",
+      "json",
+      "local"
+    ],
     "notes": "Low-end floor for tool use. ~5 GB at Q4_K_M. Fits a 16 GB laptop."
   },
   {
@@ -220,7 +306,13 @@
     "provider": "copilot",
     "name": "Claude Sonnet 4.6 (via Copilot)",
     "recommended": true,
-    "capabilities": ["chat", "tools", "vision", "json", "coding"],
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "json",
+      "coding"
+    ],
     "notes": "Uses your GitHub Copilot subscription."
   },
   {
@@ -228,7 +320,12 @@
     "provider": "copilot",
     "name": "GPT-4.1 (via Copilot)",
     "recommended": true,
-    "capabilities": ["chat", "tools", "json", "coding"],
+    "capabilities": [
+      "chat",
+      "tools",
+      "json",
+      "coding"
+    ],
     "notes": "Uses your GitHub Copilot subscription."
   },
   {
@@ -252,7 +349,13 @@
     "provider": "openrouter",
     "name": "GPT-5.4 Mini via OpenRouter",
     "recommended": true,
-    "capabilities": ["chat", "tools", "vision", "json", "coding"],
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "json",
+      "coding"
+    ],
     "notes": "Small-model fallback through a router."
   },
   {
@@ -260,7 +363,14 @@
     "provider": "openrouter",
     "name": "Gemini Flash Latest via OpenRouter",
     "recommended": true,
-    "capabilities": ["chat", "tools", "vision", "files", "json", "browser"],
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "files",
+      "json",
+      "browser"
+    ],
     "notes": "Good for research and extraction workflows."
   }
 ]
