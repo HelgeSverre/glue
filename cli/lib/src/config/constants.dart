@@ -27,7 +27,7 @@ class AppConstants {
   static const int maxVisibleDropdownItems = 8;
   static const int atFileHintCacheTtlSeconds = 2;
   static const int atFileHintMaxTreeEntries = 2000;
-  static const int atFileHintMaxTreeDepth = 3;
+  static const int atFileHintMaxTreeDepth = 4;
 
   // Agent configuration
   static const int maxSubagentDepth = 2;
