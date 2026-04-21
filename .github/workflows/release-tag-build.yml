@@ -47,7 +47,15 @@ jobs:
         run: dart pub get
 
       - name: Build executable
-        run: dart compile exe bin/glue.dart -o "${{ matrix.asset }}"
+        run: |
+          BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          GIT_SHA="$(git rev-parse --short "$GITHUB_SHA")"
+          BUILT_BY="${GITHUB_ACTOR:-github-actions[bot]}@${RUNNER_OS:-unknown}"
+          dart compile exe bin/glue.dart -o "${{ matrix.asset }}" \
+            --define=GLUE_BUILD_TIME="$BUILD_TIME" \
+            --define=GLUE_GIT_SHA="$GIT_SHA" \
+            --define=GLUE_GIT_DIRTY= \
+            --define=GLUE_BUILT_BY="$BUILT_BY"
 
       - name: Compute SHA-256 checksum
         run: |
