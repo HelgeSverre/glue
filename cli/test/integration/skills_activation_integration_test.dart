@@ -1,13 +1,12 @@
 import 'dart:io';
 
-import 'package:path/path.dart' as p;
-import 'package:test/test.dart';
-
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/tools.dart' show Tool;
 import 'package:glue/src/skills/skill_activation.dart';
 import 'package:glue/src/skills/skill_runtime.dart';
 import 'package:glue/src/skills/skill_tool.dart';
+import 'package:path/path.dart' as p;
+import 'package:test/test.dart';
 
 class _NoopLlm extends LlmClient {
   @override

@@ -1,12 +1,14 @@
-import 'package:test/test.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/llm/tool_schema.dart';
+import 'package:test/test.dart';
 
 class _ArrayParamTool extends Tool {
   @override
   String get name => 'array_param_tool';
+
   @override
   String get description => 'Tool with an array-typed parameter.';
+
   @override
   List<ToolParameter> get parameters => const [
         ToolParameter(
@@ -16,6 +18,7 @@ class _ArrayParamTool extends Tool {
           items: {'type': 'string'},
         ),
       ];
+
   @override
   Future<ToolResult> execute(Map<String, dynamic> args) async =>
       ToolResult(content: '');

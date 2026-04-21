@@ -7,6 +7,7 @@ import 'package:test/test.dart';
 
 class _FakeClient extends http.BaseClient {
   _FakeClient(this.handler);
+
   final Future<http.StreamedResponse> Function(http.BaseRequest) handler;
 
   @override

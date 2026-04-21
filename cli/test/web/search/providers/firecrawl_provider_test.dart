@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:test/test.dart';
 import 'package:glue/src/web/search/providers/firecrawl_provider.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('FirecrawlSearchProvider', () {

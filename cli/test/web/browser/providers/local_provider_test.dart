@@ -1,6 +1,6 @@
-import 'package:test/test.dart';
-import 'package:glue/src/web/browser/providers/local_provider.dart';
 import 'package:glue/src/web/browser/browser_config.dart';
+import 'package:glue/src/web/browser/providers/local_provider.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('LocalProvider', () {

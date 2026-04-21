@@ -1,5 +1,5 @@
-import 'package:test/test.dart';
 import 'package:glue/src/web/search/providers/duckduckgo_provider.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('DuckDuckGoSearchProvider', () {

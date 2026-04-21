@@ -28,6 +28,7 @@ class _CapturedRequest {
 
 class _CapturingClient implements http.Client {
   _CapturingClient(this.captured);
+
   final _CapturedRequest captured;
 
   @override

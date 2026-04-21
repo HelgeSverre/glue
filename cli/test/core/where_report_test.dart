@@ -1,7 +1,6 @@
-import 'package:test/test.dart';
-
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/core/where_report.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('buildWhereReport', () {

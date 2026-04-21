@@ -1,7 +1,7 @@
-import 'package:test/test.dart';
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/llm/title_generator.dart';
+import 'package:test/test.dart';
 
 class _FakeLlmClient implements LlmClient {
   final List<LlmChunk> chunks;

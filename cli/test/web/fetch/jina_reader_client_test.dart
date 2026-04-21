@@ -1,5 +1,5 @@
-import 'package:test/test.dart';
 import 'package:glue/src/web/fetch/jina_reader_client.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('JinaReaderClient', () {

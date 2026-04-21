@@ -1,9 +1,8 @@
 import 'dart:io';
 
+import 'package:glue/src/ui/at_file_hint.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
-
-import 'package:glue/src/ui/at_file_hint.dart';
 
 void main() {
   late Directory tmpDir;

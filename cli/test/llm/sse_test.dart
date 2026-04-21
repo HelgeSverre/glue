@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:test/test.dart';
+
 import 'package:glue/src/llm/sse.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('SseDecoder', () {

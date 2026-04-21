@@ -1,5 +1,5 @@
-import 'package:test/test.dart';
 import 'package:glue/src/web/search/models.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('WebSearchResult', () {

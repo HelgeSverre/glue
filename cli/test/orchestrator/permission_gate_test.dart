@@ -12,13 +12,17 @@ class _StubTool extends Tool {
 
   @override
   String get name => _name;
+
   @override
   String get description => 'stub';
+
   @override
   List<ToolParameter> get parameters => const [];
+
   @override
   Future<ToolResult> execute(Map<String, dynamic> args) async =>
       ToolResult(content: 'ok');
+
   @override
   ToolTrust get trust => _trust;
 }

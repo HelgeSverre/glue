@@ -17,11 +17,13 @@ import 'package:test/test.dart';
 
 class _Handler {
   _Handler(this.fn);
+
   final Future<http.StreamedResponse> Function(http.BaseRequest) fn;
 }
 
 class _RoutedHttp extends http.BaseClient {
   _RoutedHttp(this.route);
+
   final _Handler Function(http.BaseRequest) route;
 
   @override

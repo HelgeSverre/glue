@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
-import 'package:test/test.dart';
 import 'package:glue/src/web/fetch/pdf_text_extractor.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('PdfTextExtractor', () {

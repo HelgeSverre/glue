@@ -3,12 +3,12 @@ library;
 
 import 'dart:io';
 
-import 'package:http/http.dart' as http;
-import 'package:test/test.dart';
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/agent_runner.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/llm/ollama_client.dart';
+import 'package:http/http.dart' as http;
+import 'package:test/test.dart';
 
 const _model = 'qwen3:1.7b';
 const _ollamaUrl = 'http://localhost:11434';

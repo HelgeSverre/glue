@@ -1,12 +1,14 @@
 import 'dart:async';
-import 'package:test/test.dart';
+
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/agent_runner.dart';
 import 'package:glue/src/agent/tools.dart';
+import 'package:test/test.dart';
 
 /// Minimal LLM that returns text only (no tool calls).
 class _TextOnlyLlm implements LlmClient {
   final String response;
+
   _TextOnlyLlm(this.response);
 
   @override

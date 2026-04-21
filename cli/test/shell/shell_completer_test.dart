@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:test/test.dart';
 import 'package:glue/src/shell/shell_completer.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('ShellType', () {

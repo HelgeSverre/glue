@@ -8,20 +8,26 @@ import 'package:test/test.dart';
 
 class _RecordingSink extends ObservabilitySink {
   final List<ObservabilitySpan> spans = [];
+
   @override
   void onSpan(ObservabilitySpan span) => spans.add(span);
+
   @override
   Future<void> flush() async {}
+
   @override
   Future<void> close() async {}
 }
 
 class _FakeClient extends http.BaseClient {
   _FakeClient(this._handler);
+
   final Future<http.StreamedResponse> Function(http.BaseRequest) _handler;
+
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) =>
       _handler(request);
+
   @override
   void close() {}
 }

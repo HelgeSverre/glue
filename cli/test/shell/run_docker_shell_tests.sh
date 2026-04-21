@@ -6,13 +6,13 @@
 # Exit code 0 = all pass, 1 = at least one failure.
 
 set -euo pipefail
-cd "$(dirname "$0")/../.."  # cd to cli/
+cd "$(dirname "$0")/../.." # cd to cli/
 
 IMAGE="glue-shell-test"
 SHELLS=("/bin/bash" "/usr/bin/fish" "/usr/bin/zsh" "/bin/sh" "")
 
 echo "=== Building Docker image ==="
-docker build -q -t "$IMAGE" -f test/shell/Dockerfile.shell-test . > /dev/null
+docker build -q -t "$IMAGE" -f test/shell/Dockerfile.shell-test . >/dev/null
 
 failures=0
 for shell in "${SHELLS[@]}"; do
@@ -28,7 +28,7 @@ for shell in "${SHELLS[@]}"; do
 done
 
 echo ""
-docker rmi "$IMAGE" > /dev/null 2>&1 || true
+docker rmi "$IMAGE" >/dev/null 2>&1 || true
 
 if [ $failures -gt 0 ]; then
   echo "=== $failures shell environment(s) FAILED ==="

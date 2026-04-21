@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
-import 'package:test/test.dart';
 import 'package:glue/src/web/browser/providers/anchor_provider.dart';
-import 'package:glue/src/web/browser/providers/hyperbrowser_provider.dart';
-import 'package:glue/src/web/browser/providers/steel_provider.dart';
 import 'package:glue/src/web/browser/providers/browserbase_provider.dart';
 import 'package:glue/src/web/browser/providers/browserless_provider.dart';
+import 'package:glue/src/web/browser/providers/hyperbrowser_provider.dart';
+import 'package:glue/src/web/browser/providers/steel_provider.dart';
+import 'package:http/http.dart' as http;
+import 'package:test/test.dart';
 
 class _CapturedRequest {
   _CapturedRequest(this.method, this.url, this.headers, this.body);

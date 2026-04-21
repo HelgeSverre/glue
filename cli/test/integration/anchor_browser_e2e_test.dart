@@ -3,12 +3,11 @@ library;
 
 import 'dart:io';
 
-import 'package:test/test.dart';
-import 'package:yaml/yaml.dart';
-
 import 'package:glue/src/tools/web_browser_tool.dart';
 import 'package:glue/src/web/browser/browser_manager.dart';
 import 'package:glue/src/web/browser/providers/anchor_provider.dart';
+import 'package:test/test.dart';
+import 'package:yaml/yaml.dart';
 
 String? _anchorApiKey() {
   final envKey = Platform.environment['ANCHOR_API_KEY'];

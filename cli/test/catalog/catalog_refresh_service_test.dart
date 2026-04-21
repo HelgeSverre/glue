@@ -11,6 +11,7 @@ import 'package:test/test.dart';
 
 class _StubFetcher implements RemoteCatalogFetcher {
   _StubFetcher(this._fn);
+
   final Future<FetchResult> Function(Uri) _fn;
 
   @override

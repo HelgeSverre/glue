@@ -1,5 +1,5 @@
-import 'package:test/test.dart';
 import 'package:glue/src/web/browser/providers/docker_browser_provider.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('DockerBrowserProvider', () {

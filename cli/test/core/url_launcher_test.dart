@@ -9,6 +9,7 @@ import 'package:test/test.dart';
 
 class _Call {
   _Call(this.exe, this.args);
+
   final String exe;
   final List<String> args;
 }

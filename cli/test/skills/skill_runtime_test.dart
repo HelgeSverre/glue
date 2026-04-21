@@ -1,9 +1,8 @@
 import 'dart:io';
 
+import 'package:glue/src/skills/skill_runtime.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
-
-import 'package:glue/src/skills/skill_runtime.dart';
 
 void main() {
   group('SkillRuntime', () {

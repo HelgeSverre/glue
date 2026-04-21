@@ -1,5 +1,5 @@
-import 'package:test/test.dart';
 import 'package:glue/src/web/fetch/html_to_markdown.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('HtmlToMarkdown', () {

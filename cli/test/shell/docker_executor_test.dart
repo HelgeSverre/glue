@@ -1,7 +1,8 @@
 import 'dart:io';
-import 'package:test/test.dart';
-import 'package:glue/src/shell/docker_executor.dart';
+
 import 'package:glue/src/shell/docker_config.dart';
+import 'package:glue/src/shell/docker_executor.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('DockerExecutor', () {

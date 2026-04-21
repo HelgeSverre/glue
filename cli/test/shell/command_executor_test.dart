@@ -1,5 +1,5 @@
-import 'package:test/test.dart';
 import 'package:glue/src/shell/command_executor.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('CaptureResult', () {

@@ -1,5 +1,5 @@
-import 'package:test/test.dart';
 import 'package:glue/src/skills/skill_parser.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('SkillMeta', () {

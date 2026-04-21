@@ -1,6 +1,6 @@
-import 'package:test/test.dart';
 import 'package:glue/src/web/fetch/web_fetch_client.dart';
 import 'package:glue/src/web/web_config.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('WebFetchClient', () {

@@ -1,7 +1,8 @@
 import 'dart:async';
-import 'package:test/test.dart';
+
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/llm/openai_client.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('OpenAiClient.parseStream', () {

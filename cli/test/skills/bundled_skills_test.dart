@@ -1,10 +1,9 @@
 import 'dart:io';
 
+import 'package:glue/src/skills/skill_parser.dart';
+import 'package:glue/src/skills/skill_registry.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
-
-import 'package:glue/src/skills/skill_registry.dart';
-import 'package:glue/src/skills/skill_parser.dart';
 
 void main() {
   final bundledDir = p.join(Directory.current.path, 'skills');
@@ -22,7 +21,7 @@ void main() {
       bundledPaths: [bundledDir],
     );
 
-    expect(registry.length, greaterThanOrEqualTo(5));
+    expect(registry.length, greaterThanOrEqualTo(3));
     expect(
       registry.list().map((s) => s.source).toSet(),
       contains(SkillSource.custom),

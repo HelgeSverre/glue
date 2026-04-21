@@ -1,11 +1,10 @@
-import 'package:test/test.dart';
-
 import 'package:glue/src/catalog/model_catalog.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
+import 'package:glue/src/terminal/terminal.dart';
 import 'package:glue/src/ui/panel_controller.dart';
 import 'package:glue/src/ui/panel_modal.dart';
 import 'package:glue/src/ui/select_panel.dart';
-import 'package:glue/src/terminal/terminal.dart';
+import 'package:test/test.dart';
 
 import '../_helpers/test_config.dart';
 

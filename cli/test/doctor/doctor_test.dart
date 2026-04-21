@@ -1,8 +1,7 @@
 import 'dart:io';
 
-import 'package:test/test.dart';
-
 import 'package:glue/glue.dart';
+import 'package:test/test.dart';
 
 Directory _scratch() =>
     Directory.systemTemp.createTempSync('glue_doctor_test_');

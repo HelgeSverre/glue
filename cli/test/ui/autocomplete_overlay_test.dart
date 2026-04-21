@@ -1,14 +1,13 @@
 import 'dart:io';
 
-import 'package:path/path.dart' as p;
-import 'package:test/test.dart';
-
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/shell/shell_completer.dart';
 import 'package:glue/src/ui/at_file_hint.dart';
 import 'package:glue/src/ui/autocomplete_overlay.dart';
 import 'package:glue/src/ui/shell_autocomplete.dart';
 import 'package:glue/src/ui/slash_autocomplete.dart';
+import 'package:path/path.dart' as p;
+import 'package:test/test.dart';
 
 class _FakeShellCompleter extends ShellCompleter {
   List<ShellCandidate> next = [];

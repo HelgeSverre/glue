@@ -1,12 +1,13 @@
-import 'package:test/test.dart';
 import 'package:glue/src/tools/web_search_tool.dart';
-import 'package:glue/src/web/search/search_router.dart';
 import 'package:glue/src/web/search/models.dart';
 import 'package:glue/src/web/search/provider.dart';
+import 'package:glue/src/web/search/search_router.dart';
+import 'package:test/test.dart';
 
 class _MockProvider implements WebSearchProvider {
   @override
   String get name => 'mock';
+
   @override
   bool get isConfigured => true;
 

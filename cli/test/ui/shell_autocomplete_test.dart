@@ -1,6 +1,6 @@
-import 'package:test/test.dart';
 import 'package:glue/src/shell/shell_completer.dart';
 import 'package:glue/src/ui/shell_autocomplete.dart';
+import 'package:test/test.dart';
 
 /// A mock ShellCompleter that returns predetermined results.
 class _MockCompleter extends ShellCompleter {

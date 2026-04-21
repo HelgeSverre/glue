@@ -1,11 +1,12 @@
-import 'package:test/test.dart';
 import 'package:glue/src/tools/web_browser_tool.dart';
-import 'package:glue/src/web/browser/browser_manager.dart';
 import 'package:glue/src/web/browser/browser_endpoint.dart';
+import 'package:glue/src/web/browser/browser_manager.dart';
+import 'package:test/test.dart';
 
 class _MockProvider implements BrowserEndpointProvider {
   @override
   String get name => 'mock';
+
   @override
   bool get isConfigured => true;
 

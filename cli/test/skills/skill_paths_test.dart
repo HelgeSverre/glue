@@ -1,9 +1,8 @@
 import 'dart:io';
 
+import 'package:glue/src/skills/skill_paths.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
-
-import 'package:glue/src/skills/skill_paths.dart';
 
 void main() {
   group('discoverBundledSkillPaths', () {

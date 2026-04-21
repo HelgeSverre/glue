@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:test/test.dart';
 import 'package:glue/src/web/fetch/ocr_client.dart';
 import 'package:glue/src/web/web_config.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('OcrClient', () {

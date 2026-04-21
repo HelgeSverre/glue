@@ -7,8 +7,10 @@ import 'package:test/test.dart';
 class _TextTool extends Tool {
   @override
   String get name => 'text_tool';
+
   @override
   String get description => 'Returns text';
+
   @override
   List<ToolParameter> get parameters => const [];
 
@@ -21,8 +23,10 @@ class _TextTool extends Tool {
 class _ImageTool extends Tool {
   @override
   String get name => 'image_tool';
+
   @override
   String get description => 'Returns an image';
+
   @override
   List<ToolParameter> get parameters => const [];
 
