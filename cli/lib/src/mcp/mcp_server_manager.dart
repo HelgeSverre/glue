@@ -2,6 +2,7 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/mcp/mcp_client.dart';
@@ -226,12 +227,13 @@ class McpServerManager {
     final auth = config.auth;
     if (auth is McpTokenAuth) {
       String? token;
-      if (auth.envVar != null) {
-        token = const String.fromEnvironment('') != ''
-            ? null
-            : null; // resolved later
+      // Resolve token from environment variable first.
+      final envVar = auth.envVar;
+      if (envVar != null && envVar.isNotEmpty) {
+        token = Platform.environment[envVar];
       }
-      if (token == null && auth.storedKey != null) {
+      // Fall back to stored key.
+      if ((token == null || token.isEmpty) && auth.storedKey != null) {
         token = auth.storedKey;
       }
       if (token != null && token.isNotEmpty) {

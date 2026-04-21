@@ -748,8 +748,8 @@ class PanelController {
         'name': s.config.name,
         'transport': s.config.transportLabel,
         'tools': s.tools.length.toString(),
-        'status': _mcpStatusLabel(s.status).styled.dim.toString(),
-        'source': s.config.source.name.styled.dim.toString(),
+        'status': _dimText(_mcpStatusLabel(s.status)),
+        'source': _dimText(s.config.source.name),
       },
     );
 
@@ -860,6 +860,9 @@ class PanelController {
         McpServerStatus.error => 'error',
         McpServerStatus.shuttingDown => 'stopping…',
       };
+
+  /// Apply dim ANSI styling to a string for use in table cells.
+  static String _dimText(String text) => text.styled.dim.toString();
 }
 
 /// Build the lines shown in the `/help` panel at a given content width.
