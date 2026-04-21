@@ -23,6 +23,7 @@ class BuiltinCommands {
     required String Function() pathsReport,
     required String Function(List<String> args) openGlueTarget,
     required String Function(List<String> args) configAction,
+    required String Function(List<String> args) runMcpCommand,
   }) {
     final commands = SlashCommandRegistry();
 
@@ -166,6 +167,12 @@ class BuiltinCommands {
       description: 'Open a Glue directory in your file manager '
           '(home, session, sessions, logs, skills, plans, cache)',
       execute: openGlueTarget,
+    ));
+
+    commands.register(SlashCommand(
+      name: 'mcp',
+      description: 'Manage MCP servers (list, connect, disconnect)',
+      execute: runMcpCommand,
     ));
 
     return commands;

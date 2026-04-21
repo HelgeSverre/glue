@@ -108,6 +108,7 @@ void main() {
         pathsReport: pathsReport ?? () => '',
         openGlueTarget: openGlueTarget ?? (_) => '',
         configAction: configAction ?? (_) => '',
+        runMcpCommand: (_) => '',
       );
     }
 

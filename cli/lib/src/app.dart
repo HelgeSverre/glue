@@ -25,6 +25,7 @@ import 'package:glue/src/core/clipboard.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/core/path_opener.dart';
 import 'package:glue/src/core/where_report.dart';
+import 'package:glue/src/mcp/mcp_server_manager.dart';
 import 'package:glue/src/providers/ollama_discovery.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
 import 'package:glue/src/ui/model_panel_formatter.dart'
@@ -181,6 +182,7 @@ class App {
   late final SkillRuntime _skillRuntime;
   ApprovalMode _approvalMode;
   final Set<String> _earlyApprovedIds = {};
+  final McpServerManager? _mcpManager;
 
   App({
     required this.terminal,
@@ -205,6 +207,7 @@ class App {
     DebugController? debugController,
     SkillRuntime? skillRuntime,
     Environment? environment,
+    McpServerManager? mcpManager,
   })  : _modelId = modelId,
         _environment = environment ?? Environment.detect(),
         _manager = manager,
@@ -221,7 +224,8 @@ class App {
         _resumeSessionId = resumeSessionId,
         _obs = obs,
         _debugController = debugController,
-        _approvalMode = config?.approvalMode ?? ApprovalMode.confirm {
+        _approvalMode = config?.approvalMode ?? ApprovalMode.confirm,
+        _mcpManager = mcpManager {
     _cwd = _environment.cwd;
     _sessionManager = SessionManager(
       environment: _environment,
@@ -289,6 +293,7 @@ class App {
       debugController: services.debugController,
       skillRuntime: services.skillRuntime,
       environment: services.environment,
+      mcpManager: services.mcpManager,
     );
   }
 
@@ -452,6 +457,7 @@ class App {
       pathsReport: _buildPathsReport,
       openGlueTarget: _openGlueTarget,
       configAction: _configAction,
+      runMcpCommand: _runMcpCommand,
     );
 
     // Argument autocomplete — attached here (not plumbed through
@@ -516,6 +522,8 @@ class App {
 
   String _runProviderCommand(List<String> args) =>
       _runProviderCommandImpl(this, args);
+
+  String _runMcpCommand(List<String> args) => _runMcpCommandImpl(this, args);
 
   String _toggleApproval() {
     _approvalMode = _approvalMode.toggle;

@@ -499,3 +499,82 @@ String _applyModelSwitch(App app, CatalogRow row) {
   app._sessionManager.updateSessionModel(modelRef: ref.toString());
   return 'Switched to ${row.model.name}';
 }
+
+String _runMcpCommandImpl(App app, List<String> args) {
+  final mcpManager = app._mcpManager;
+
+  if (args.isEmpty) {
+    if (mcpManager == null || mcpManager.servers.isEmpty) {
+      return 'No MCP servers configured. '
+          'Add servers to .glue/mcp.json or ~/.glue/mcp.json.\n'
+          'Usage: /mcp [list|connect <id>|disconnect <id>]';
+    }
+    unawaited(
+      app._panels.openMcpPanel(
+        mcpManager: mcpManager,
+        addSystemMessage: app._addSystemMessage,
+      ),
+    );
+    return '';
+  }
+
+  final sub = args.first.toLowerCase();
+  switch (sub) {
+    case 'list':
+      if (mcpManager == null || mcpManager.servers.isEmpty) {
+        return 'No MCP servers configured.';
+      }
+      final buf = StringBuffer('MCP servers:\n');
+      for (final state in mcpManager.servers.values) {
+        final tools =
+            state.tools.isNotEmpty ? '  (${state.tools.length} tools)' : '';
+        buf.writeln(
+            '  ${state.config.id}  [${_mcpStatusText(state.status)}]$tools');
+      }
+      return buf.toString().trimRight();
+
+    case 'connect':
+      if (mcpManager == null) return 'MCP not available.';
+      if (args.length < 2) return 'Usage: /mcp connect <server-id>';
+      final id = args[1];
+      unawaited(
+        mcpManager.connect(id).then((_) {
+          final state = mcpManager.servers[id];
+          app._addSystemMessage(
+            'Connected to ${state?.config.name ?? id} '
+            '(${state?.tools.length ?? 0} tools).',
+          );
+          app._render();
+        }).catchError((Object e) {
+          app._addSystemMessage('Failed to connect to $id: $e');
+          app._render();
+        }),
+      );
+      return 'Connecting to $id…';
+
+    case 'disconnect':
+      if (mcpManager == null) return 'MCP not available.';
+      if (args.length < 2) return 'Usage: /mcp disconnect <server-id>';
+      final id = args[1];
+      unawaited(
+        mcpManager.disconnect(id).then((_) {
+          app._addSystemMessage('Disconnected from $id.');
+          app._render();
+        }),
+      );
+      return 'Disconnecting from $id…';
+
+    default:
+      return 'Unknown /mcp subcommand "$sub". '
+          'Usage: /mcp [list|connect <id>|disconnect <id>]';
+  }
+}
+
+String _mcpStatusText(McpServerStatus status) => switch (status) {
+      McpServerStatus.disconnected => 'disconnected',
+      McpServerStatus.connecting => 'connecting',
+      McpServerStatus.initializing => 'initializing',
+      McpServerStatus.ready => 'ready',
+      McpServerStatus.error => 'error',
+      McpServerStatus.shuttingDown => 'stopping',
+    };

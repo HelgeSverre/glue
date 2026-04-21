@@ -19,6 +19,7 @@ import 'package:glue/src/providers/ollama_adapter.dart';
 import 'package:glue/src/providers/openai_compatible_adapter.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
 import 'package:glue/src/providers/resolved.dart';
+import 'package:glue/src/mcp/mcp_config.dart';
 import 'package:glue/src/shell/docker_config.dart';
 import 'package:glue/src/shell/shell_config.dart';
 import 'package:glue/src/web/browser/browser_config.dart';
@@ -78,9 +79,11 @@ class GlueConfig {
     this.skillPaths = const [],
     this.approvalMode = ApprovalMode.confirm,
     this.titleGenerationEnabled = true,
+    McpConfig? mcpConfig,
   })  : shellConfig = shellConfig ?? const ShellConfig(),
         dockerConfig = dockerConfig ?? const DockerConfig(),
-        webConfig = webConfig ?? const WebConfig();
+        webConfig = webConfig ?? const WebConfig(),
+        mcpConfig = mcpConfig ?? const McpConfig();
 
   /// Primary model used for agent conversations.
   final ModelRef activeModel;
@@ -114,6 +117,9 @@ class GlueConfig {
   final ObservabilityConfig observability;
   final List<String> skillPaths;
   final ApprovalMode approvalMode;
+
+  /// MCP server configurations loaded from mcp.json and config.yaml.
+  final McpConfig mcpConfig;
 
   /// When `false`, session title generation is skipped entirely. No LLM
   /// client is created and the session title remains `null`.
@@ -211,6 +217,7 @@ class GlueConfig {
       skillPaths: skillPaths,
       approvalMode: approvalMode,
       titleGenerationEnabled: titleGenerationEnabled,
+      mcpConfig: mcpConfig,
     );
   }
 
@@ -540,6 +547,17 @@ class GlueConfig {
       skillPaths.addAll(fileSkillPaths.cast<String>());
     }
 
+    // MCP config: merge from mcp.json files + inline config.yaml `mcp:` section.
+    final mcpSection = fileConfig?['mcp'] as Map?;
+    final mcpInline =
+        mcpSection != null ? Map<String, dynamic>.from(mcpSection) : null;
+    final mcpConfig = McpConfig.load(
+      glueDir: environment?.glueDir ?? p.join(home, '.glue'),
+      cwd: environment?.cwd,
+      inlineSection: mcpInline,
+      env: Map<String, String>.from(env),
+    );
+
     return GlueConfig(
       activeModel: activeModel,
       smallModel: smallModel,
@@ -556,6 +574,7 @@ class GlueConfig {
       skillPaths: skillPaths,
       approvalMode: approvalMode,
       titleGenerationEnabled: titleGenerationEnabled,
+      mcpConfig: mcpConfig,
     );
   }
 }
