@@ -347,18 +347,23 @@ class App {
 
     if (_resumeSessionId != null) {
       final sessions = _sessionManager.listSessions();
-      final match = sessions.where((s) => s.id == _resumeSessionId).toList();
-      if (match.isNotEmpty) {
-        final result = _resumeSession(match.first);
-        if (result.isNotEmpty) {
-          _blocks.add(_ConversationEntry.system(result));
-        }
+      if (_resumeSessionId!.isEmpty) {
+        _openResumePanel();
         _render();
       } else {
-        _blocks.add(_ConversationEntry.system(
-          'Session $_resumeSessionId not found.',
-        ));
-        _render();
+        final match = sessions.where((s) => s.id == _resumeSessionId).toList();
+        if (match.isNotEmpty) {
+          final result = _resumeSession(match.first);
+          if (result.isNotEmpty) {
+            _blocks.add(_ConversationEntry.system(result));
+          }
+          _render();
+        } else {
+          _blocks.add(_ConversationEntry.system(
+            'Session $_resumeSessionId not found.',
+          ));
+          _render();
+        }
       }
     } else if (_startupContinue) {
       final sessions = _sessionManager.listSessions();

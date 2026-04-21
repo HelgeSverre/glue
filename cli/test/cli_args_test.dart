@@ -10,7 +10,8 @@ ArgParser _buildArgParser() {
     ..addFlag('print', abbr: 'p', negatable: false)
     ..addFlag('json', negatable: false)
     ..addOption('model', abbr: 'm')
-    ..addOption('resume', abbr: 'r')
+    ..addFlag('resume', abbr: 'r', negatable: false)
+    ..addOption('resume-id')
     ..addFlag('continue', negatable: false)
     ..addFlag('debug', abbr: 'd', negatable: false);
 }
@@ -23,19 +24,24 @@ void main() {
   });
 
   group('--resume / -r', () {
-    test('accepts a session ID value', () {
-      final result = parser.parse(['--resume', '1772331272529-72']);
-      expect(result.option('resume'), '1772331272529-72');
+    test('bare --resume sets the startup resume-panel flag', () {
+      final result = parser.parse(['--resume']);
+      expect(result.flag('resume'), isTrue);
     });
 
-    test('short form -r accepts a session ID', () {
-      final result = parser.parse(['-r', '1772331272529-72']);
-      expect(result.option('resume'), '1772331272529-72');
+    test('bare -r sets the startup resume-panel flag', () {
+      final result = parser.parse(['-r']);
+      expect(result.flag('resume'), isTrue);
     });
 
-    test('resume is null when not provided', () {
+    test('resume flag is false when not provided', () {
       final result = parser.parse([]);
-      expect(result.option('resume'), isNull);
+      expect(result.flag('resume'), isFalse);
+    });
+
+    test('--resume-id accepts a session ID value', () {
+      final result = parser.parse(['--resume-id', '1772331272529-72']);
+      expect(result.option('resume-id'), '1772331272529-72');
     });
   });
 
@@ -113,9 +119,14 @@ void main() {
       expect(result.rest, ['review this code']);
     });
 
-    test('-r session-id -p with prompt', () {
-      final result = parser.parse(['-r', 'sess-123', '-p', 'continue work']);
-      expect(result.option('resume'), 'sess-123');
+    test('--resume-id session-id -p with prompt', () {
+      final result = parser.parse([
+        '--resume-id',
+        'sess-123',
+        '-p',
+        'continue work',
+      ]);
+      expect(result.option('resume-id'), 'sess-123');
       expect(result.flag('print'), isTrue);
       expect(result.rest, ['continue work']);
     });

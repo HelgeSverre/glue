@@ -3,6 +3,11 @@ part of 'package:glue/src/app.dart';
 Future<void> _runPrintModeImpl(App app) async {
   // Optionally resume a previous session into the agent conversation.
   if (app._resumeSessionId != null) {
+    if (app._resumeSessionId!.isEmpty) {
+      stderr.writeln(
+          'Error: --print does not support bare --resume; pass a session ID.');
+      return;
+    }
     final sessions = app._sessionManager.listSessions();
     final match = sessions.where((s) => s.id == app._resumeSessionId).toList();
     if (match.isEmpty) {

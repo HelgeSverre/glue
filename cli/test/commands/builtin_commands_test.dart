@@ -1,7 +1,77 @@
+import 'dart:io';
+
+import 'package:glue/glue.dart';
 import 'package:test/test.dart';
 
-import 'package:glue/src/commands/builtin_commands.dart';
-import 'package:glue/src/commands/slash_commands.dart';
+class _NoopTerminal extends Terminal {
+  @override
+  Stream<TerminalEvent> get events => const Stream.empty();
+
+  @override
+  int get columns => 120;
+
+  @override
+  int get rows => 40;
+
+  @override
+  void clearScreen() {}
+
+  @override
+  void clearLine() {}
+
+  @override
+  void disableAltScreen() {}
+
+  @override
+  void disableMouse() {}
+
+  @override
+  void disableRawMode() {}
+
+  @override
+  void enableAltScreen() {}
+
+  @override
+  void enableMouse() {}
+
+  @override
+  void enableRawMode() {}
+
+  @override
+  void hideCursor() {}
+
+  @override
+  bool get isRaw => false;
+
+  @override
+  void moveTo(int row, int col) {}
+
+  @override
+  void resetScrollRegion() {}
+
+  @override
+  void restoreCursor() {}
+
+  @override
+  void saveCursor() {}
+
+  @override
+  void setScrollRegion(int top, int bottom) {}
+
+  @override
+  void showCursor() {}
+
+  @override
+  void write(String text) {}
+
+  @override
+  void writeStyled(String text, {AnsiStyle? style}) {}
+}
+
+class _NoopLlm implements LlmClient {
+  @override
+  Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {}
+}
 
 void main() {
   group('BuiltinCommands', () {
@@ -255,6 +325,56 @@ void main() {
 
       registry.execute('/session copy');
       expect(received, ['copy']);
+    });
+  });
+
+  group('App startup resume behavior', () {
+    late Directory tempDir;
+    late Environment environment;
+
+    setUp(() {
+      tempDir = Directory.systemTemp.createTempSync('app_resume_startup_test_');
+      environment = Environment.test(home: tempDir.path, cwd: tempDir.path);
+      environment.ensureDirectories();
+    });
+
+    tearDown(() {
+      tempDir.deleteSync(recursive: true);
+    });
+
+    test('bare --resume opens the resume panel on startup', () async {
+      final meta = SessionMeta(
+        id: 'resume-target',
+        cwd: environment.cwd,
+        modelRef: 'anthropic/claude-sonnet-4.6',
+        startTime: DateTime.now(),
+        title: 'Saved work',
+      );
+      SessionStore(sessionDir: environment.sessionDir(meta.id), meta: meta);
+
+      final app = App(
+        terminal: _NoopTerminal(),
+        layout: Layout(_NoopTerminal()),
+        editor: TextAreaEditor(),
+        agent: AgentCore(llm: _NoopLlm(), tools: const {}),
+        modelId: 'anthropic/claude-sonnet-4.6',
+        startupPrompt: null,
+        resumeSessionId: '',
+        environment: environment,
+      );
+
+      final runFuture = app.run();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      app.requestExit();
+      await runFuture;
+
+      expect(app.editor.text, isEmpty,
+          reason:
+              'opening the resume panel should not inject conversation text');
+      expect(
+        SessionStore.listSessions(environment.sessionsDir).map((s) => s.id),
+        contains('resume-target'),
+      );
     });
   });
 }

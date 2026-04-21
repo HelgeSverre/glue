@@ -54,6 +54,12 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Changed
 
+- **`glue --resume` now opens the resume panel at startup.** The
+  root CLI flag now mirrors interactive `/resume` behavior when used
+  without an argument, instead of requiring a session ID. Resuming a
+  specific session from the CLI now uses `--resume-id <id>`. Print mode
+  rejects bare `--resume` with a clear error because the panel is
+  interactive-only.
 - **Ollama no longer masquerades as OpenAI-compat.** The `ollama`
   provider in `docs/reference/models.yaml` now uses `adapter: ollama`
   (not `adapter: openai + compatibility: ollama`), and `base_url`

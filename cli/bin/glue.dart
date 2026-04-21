@@ -53,7 +53,13 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
           negatable: false,
           help: 'Output session conversation as JSON (implies --print).')
       ..addOption('model', abbr: 'm', help: 'LLM model to use.')
-      ..addOption('resume', abbr: 'r', help: 'Resume a session by ID.')
+      ..addFlag(
+        'resume',
+        abbr: 'r',
+        negatable: false,
+        help: 'Open the resume panel on startup.',
+      )
+      ..addOption('resume-id', help: 'Resume a session by ID.')
       ..addFlag('continue',
           negatable: false, help: 'Resume most recent session.')
       ..addFlag('debug',
@@ -131,8 +137,16 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
     final model = topLevelResults.option('model');
     final jsonMode = topLevelResults.flag('json');
     final printMode = topLevelResults.flag('print') || jsonMode;
-    final resumeSessionId = topLevelResults.option('resume');
+    final resumeSessionId = topLevelResults.option('resume-id');
+    final openResumePanel = topLevelResults.flag('resume');
     final debug = topLevelResults.flag('debug');
+
+    if (openResumePanel && resumeSessionId != null) {
+      throw UsageException(
+        'Use either --resume to open the resume panel or --resume-id <id> to resume a specific session.',
+        usage,
+      );
+    }
 
     if (debug && !jsonMode) {
       stderr.writeln(
@@ -149,7 +163,7 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
       prompt: prompt,
       printMode: printMode,
       jsonMode: jsonMode,
-      resumeSessionId: resumeSessionId,
+      resumeSessionId: openResumePanel ? '' : resumeSessionId,
       startupContinue: topLevelResults.flag('continue'),
       debug: debug,
     );
