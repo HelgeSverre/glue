@@ -347,7 +347,7 @@ class App {
 
     if (_resumeSessionId != null) {
       final sessions = _sessionManager.listSessions();
-      if (_resumeSessionId!.isEmpty) {
+      if (_resumeSessionId.isEmpty) {
         _openResumePanel();
         _render();
       } else {
