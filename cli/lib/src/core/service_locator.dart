@@ -3,6 +3,9 @@ import 'package:glue/src/agent/agent_manager.dart';
 import 'package:glue/src/agent/prompts.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/config/glue_config.dart';
+import 'package:glue/src/context/context_budget.dart';
+import 'package:glue/src/context/context_manager.dart';
+import 'package:glue/src/context/conversation_compactor.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/input/text_area_editor.dart';
 import 'package:glue/src/llm/llm_factory.dart';
@@ -200,6 +203,41 @@ class ServiceLocator {
       tools: tools,
       modelId: config.activeModel.modelId,
       obs: obs,
+    );
+
+    // Wire up context-window management.
+    final resolvedModel = config.resolveModel(config.activeModel);
+    final contextBudget = ContextBudget.fromModelDef(
+      resolvedModel.def,
+      config: config.contextConfig,
+    );
+
+    // Build a small-model client for summarization compaction, if configured.
+    LlmClient? smallModelClient;
+    final smallModelRef = config.smallModel;
+    if (smallModelRef != null) {
+      try {
+        smallModelClient = llmFactory.createFor(
+          smallModelRef,
+          systemPrompt:
+              'You are a helpful assistant that summarizes conversations.',
+        );
+      } catch (_) {
+        // Small model unavailable — Tier 2 compaction disabled.
+      }
+    }
+
+    agent.contextManager = ContextManager.fromBudget(
+      contextBudget,
+      compactor: smallModelClient != null
+          ? ConversationCompactor(
+              summaryClient: smallModelClient,
+              keepRecentTurns: config.contextConfig.keepRecentTurns,
+            )
+          : null,
+      obs: obs,
+      autoCompact: config.contextConfig.autoCompact,
+      systemPrompt: systemPrompt,
     );
     final manager = AgentManager(
       tools: tools,

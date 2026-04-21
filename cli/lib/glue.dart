@@ -187,3 +187,13 @@ export 'src/shell/shell_job_manager.dart'
         JobStarted,
         JobExited,
         JobError;
+export 'src/context/context_config.dart' show ContextConfig;
+export 'src/context/context_budget.dart'
+    show ContextBudget, defaultContextWindow;
+export 'src/context/context_estimator.dart' show ContextEstimator;
+export 'src/context/tool_result_trimmer.dart' show ToolResultTrimmer;
+export 'src/context/sliding_window_trimmer.dart' show SlidingWindowTrimmer;
+export 'src/context/conversation_compactor.dart' show ConversationCompactor;
+export 'src/context/overflow_handler.dart'
+    show ContextOverflowException, OverflowClassifier;
+export 'src/context/context_manager.dart' show ContextManager, CompactionResult;

@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
+import 'package:glue/src/context/context_manager.dart';
+import 'package:glue/src/context/overflow_handler.dart';
 import 'package:glue/src/observability/observability.dart';
 import 'package:glue/src/observability/redaction.dart';
 
@@ -196,6 +198,13 @@ class AgentCore {
   final List<Message> _conversation = [];
   int tokenCount = 0;
 
+  /// Optional context-window manager.
+  ///
+  /// When set, [prepareForLlm] is called before each [LlmClient.stream] call
+  /// to trim or compact the conversation. The original [_conversation] list
+  /// is never mutated — only the view sent to the provider is affected.
+  ContextManager? contextManager;
+
   /// Optional observability sink. When non-null, tool invocations emit
   /// `tool.<name>` spans and fatal agent errors emit `agent.error` spans.
   final Observability? _obs;
@@ -235,32 +244,68 @@ class AgentCore {
   Stream<AgentEvent> run(String userMessage) async* {
     _conversation.add(Message.user(userMessage));
 
+    // At most one overflow retry per top-level user turn.
+    var overflowRetried = false;
+
     try {
       while (true) {
         final assistantText = StringBuffer();
         final toolCalls = <ToolCall>[];
         final toolFutures = <Future<ToolResult>>[];
 
-        await for (final chunk in llm.stream(
-          _conversation,
-          tools: allowedTools,
-        )) {
-          switch (chunk) {
-            case TextDelta(:final text):
-              assistantText.write(text);
-              yield AgentTextDelta(text);
-            case ToolCallStart(:final id, :final name):
-              yield AgentToolCallPending(id: id, name: name);
-            case ToolCallComplete(:final toolCall):
-              toolCalls.add(toolCall);
-              final completer = Completer<ToolResult>();
-              _pendingToolResults[toolCall.id] = completer;
-              toolFutures.add(completer.future);
-              yield AgentToolCall(toolCall);
-            case UsageInfo(:final totalTokens):
-              tokenCount += totalTokens;
+        // Prepare a context-managed view of the conversation.
+        final prepared = contextManager != null
+            ? await contextManager!.prepareForLlm(_conversation)
+            : _conversation;
+
+        var overflowOnThisIteration = false;
+        try {
+          await for (final chunk in llm.stream(
+            prepared,
+            tools: allowedTools,
+          )) {
+            switch (chunk) {
+              case TextDelta(:final text):
+                assistantText.write(text);
+                yield AgentTextDelta(text);
+              case ToolCallStart(:final id, :final name):
+                yield AgentToolCallPending(id: id, name: name);
+              case ToolCallComplete(:final toolCall):
+                toolCalls.add(toolCall);
+                final completer = Completer<ToolResult>();
+                _pendingToolResults[toolCall.id] = completer;
+                toolFutures.add(completer.future);
+                yield AgentToolCall(toolCall);
+              case UsageInfo(:final inputTokens, :final totalTokens):
+                tokenCount += totalTokens;
+                // Calibrate the token estimator with actual provider counts.
+                contextManager?.estimator
+                    .calibrate(contextManager!.lastRawEstimate, inputTokens);
+            }
           }
+        } catch (e) {
+          // Detect context overflow and retry once with emergency trim.
+          if (!overflowRetried && contextManager != null) {
+            final overflow = OverflowClassifier.classify(e);
+            if (overflow != null) {
+              overflowRetried = true;
+              overflowOnThisIteration = true;
+              contextManager!.requestEmergencyTrim(_conversation);
+              // Clear any partial pending-tool state from the aborted stream.
+              for (final c in _pendingToolResults.values) {
+                if (!c.isCompleted) {
+                  c.completeError(StateError('context overflow — retrying'));
+                }
+              }
+              _pendingToolResults.clear();
+            }
+          }
+          if (!overflowOnThisIteration) rethrow;
         }
+
+        if (overflowOnThisIteration) continue;
+        // Reset the retry guard after a successful LLM call.
+        overflowRetried = false;
 
         _conversation.add(Message.assistant(
           text: assistantText.toString(),

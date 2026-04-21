@@ -454,6 +454,35 @@ class App {
       configAction: _configAction,
     );
 
+    _commands.register(SlashCommand(
+      name: 'compact',
+      description: 'Summarize older conversation to free context space',
+      execute: (_) {
+        final cm = agent.contextManager;
+        if (cm == null) return 'Context manager not available.';
+        unawaited(
+          cm.forceCompact(agent.conversation.toList()).then((result) {
+            if (result.removedTokens > 0) {
+              _addSystemMessage(
+                'Compacted: freed ~${result.removedTokens} tokens '
+                '(summary ~${result.summaryTokens} tokens).',
+              );
+            } else {
+              _addSystemMessage(
+                'Compact complete — conversation already fits in context '
+                '(~${result.summaryTokens} tokens).',
+              );
+            }
+            _render();
+          }).catchError((Object e) {
+            _addSystemMessage('Compaction failed: $e');
+            _render();
+          }),
+        );
+        return 'Compacting conversation…';
+      },
+    ));
+
     // Argument autocomplete — attached here (not plumbed through
     // BuiltinCommands.create) so closures can read live app state.
     _commands.attachArgCompleter('open', _openArgCandidates);
