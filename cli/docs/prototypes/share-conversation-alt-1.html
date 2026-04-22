@@ -1,0 +1,985 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Glue /share</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap"
+            rel="stylesheet"
+        />
+        <style>
+            :root {
+                /* Core Brand Colors */
+                --surface: #0a0a0b;
+                --surface-muted: rgba(255, 255, 255, 0.03);
+                --surface-soft: rgba(255, 255, 255, 0.05);
+                --divider: #222326;
+                --divider-soft: rgba(255, 255, 255, 0.08);
+
+                /* Typography Colors */
+                --text: #e6e6e6;
+                --secondary: #a2a2a2;
+                --muted: #737373;
+
+                /* Semantic/ANSI Tokens */
+                --accent: #facc15;
+                --accent-soft: rgba(250, 204, 21, 0.12);
+                --success: #22c55e;
+                --warning: #eab308;
+                --error: #ef4444;
+                --info: #3b82f6;
+
+                /* Fonts */
+                --mono:
+                    "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+                --sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+                --radius: 6px; /* Sharper terminal feel */
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+            html {
+                color-scheme: dark;
+            }
+            body {
+                margin: 0;
+                background: var(--surface);
+                color: var(--text);
+                font: 13px/1.55 var(--sans);
+                text-rendering: optimizeLegibility;
+                -webkit-font-smoothing: antialiased;
+            }
+
+            a {
+                color: inherit;
+                text-decoration: none;
+                transition: color 0.15s;
+            }
+            a:hover {
+                color: var(--accent);
+            }
+            code,
+            pre {
+                font-family: var(--mono);
+                font-size: 12px;
+            }
+
+            code {
+                color: var(--text);
+                background: var(--surface-soft);
+                border: 1px solid var(--divider-soft);
+                border-radius: 4px;
+                padding: 0.1rem 0.3rem;
+            }
+
+            pre {
+                margin: 0;
+                padding: 12px 14px;
+                overflow: auto;
+                background: #000000;
+                border: 1px solid var(--divider);
+                border-radius: var(--radius);
+            }
+
+            pre code {
+                padding: 0;
+                border: 0;
+                background: transparent;
+                color: inherit;
+                font-size: 12px;
+            }
+
+            .page {
+                width: min(940px, calc(100vw - 28px));
+                margin: 0 auto;
+            }
+
+            .topbar {
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                background: rgba(10, 10, 11, 0.85);
+                backdrop-filter: blur(12px);
+                border-bottom: 1px solid var(--divider);
+            }
+
+            .topbar-inner {
+                width: min(940px, calc(100vw - 28px));
+                margin: 0 auto;
+                min-height: 52px;
+                display: grid;
+                grid-template-columns: 1fr auto;
+                gap: 14px;
+                align-items: center;
+            }
+
+            .brand {
+                min-width: 0;
+                display: flex;
+                align-items: baseline;
+                gap: 8px;
+                white-space: nowrap;
+            }
+
+            .brand-dot {
+                color: var(--accent);
+                font-size: 14px;
+            }
+            .brand-name {
+                font-weight: 500;
+                font-size: 14px;
+            }
+            .brand-meta {
+                color: var(--muted);
+                overflow: hidden;
+                text-overflow: ellipsis;
+                font-family: var(--mono);
+                font-size: 12px;
+            }
+
+            .actions {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+            }
+
+            .actions input,
+            .actions button {
+                height: 30px;
+                border: 1px solid var(--divider);
+                border-radius: var(--radius);
+                background: var(--surface);
+                color: var(--text);
+                font: inherit;
+                font-size: 12px;
+            }
+
+            .actions input {
+                width: 200px;
+                padding: 0 10px;
+                outline: none;
+                font-family: var(--sans);
+            }
+
+            .actions input:focus,
+            .actions button:focus-visible {
+                border-color: var(--muted);
+            }
+
+            .actions button {
+                cursor: pointer;
+                padding: 0 12px;
+                color: var(--secondary);
+                font-weight: 500;
+                transition:
+                    background 0.15s,
+                    color 0.15s;
+            }
+
+            .actions button:hover {
+                color: var(--text);
+                background: var(--surface-soft);
+            }
+
+            .summary {
+                padding: 24px 0 20px;
+                border-bottom: 1px solid var(--divider);
+            }
+
+            .summary h1 {
+                margin: 0 0 8px;
+                font-size: 18px;
+                line-height: 1.2;
+                font-weight: 600;
+            }
+
+            .summary p {
+                max-width: 72ch;
+                margin: 0;
+                color: var(--secondary);
+            }
+
+            .facts {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 12px;
+                margin-top: 16px;
+            }
+
+            .fact {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                min-height: 26px;
+                font-family: var(--mono);
+                font-size: 12px;
+            }
+
+            .fact span {
+                color: var(--muted);
+            }
+
+            .layout {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) 200px;
+                gap: 24px;
+                padding: 24px 0 48px;
+                align-items: start;
+            }
+
+            .transcript {
+                min-width: 0;
+            }
+
+            .outline {
+                position: sticky;
+                top: 76px;
+            }
+
+            .outline h2 {
+                margin: 0 0 12px;
+                color: var(--muted);
+                font-size: 12px;
+                font-weight: 500;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+
+            .outline nav {
+                display: grid;
+                gap: 8px;
+            }
+
+            .outline a {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                color: var(--secondary);
+                font-family: var(--mono);
+                font-size: 12px;
+            }
+
+            .outline a:hover {
+                color: var(--text);
+            }
+
+            .entry {
+                --tone: var(--divider);
+                position: relative;
+                padding: 0 0 0 16px;
+                margin: 0 0 16px;
+                border-left: 1px solid var(--divider);
+            }
+
+            .entry::before {
+                content: "";
+                position: absolute;
+                top: 12px;
+                left: -4px;
+                width: 7px;
+                height: 7px;
+                border-radius: 50%;
+                background: var(--tone);
+                box-shadow: 0 0 0 4px var(--surface);
+            }
+
+            /* Semantic Dot Tones based on Glue Theme */
+            .entry.user {
+                --tone: var(--text);
+            }
+            .entry.assistant {
+                --tone: var(--accent);
+            }
+            .entry.tool-call {
+                --tone: var(--muted);
+            }
+            .entry.tool-result {
+                --tone: var(--success);
+            }
+            .entry.subagent {
+                --tone: var(--accent);
+            }
+            .entry.error {
+                --tone: var(--error);
+            }
+
+            .entry-card {
+                border: 1px solid var(--divider);
+                border-radius: var(--radius);
+                background: var(--surface);
+                overflow: clip;
+            }
+
+            .entry-header {
+                min-height: 36px;
+                display: grid;
+                grid-template-columns: auto auto minmax(0, 1fr);
+                gap: 12px;
+                align-items: center;
+                padding: 8px 12px;
+                background: var(--surface-muted);
+                border-bottom: 1px solid var(--divider);
+            }
+
+            .entry-index {
+                color: var(--muted);
+                font-family: var(--mono);
+                font-size: 12px;
+            }
+
+            .entry-role {
+                font-weight: 500;
+                color: var(--text);
+                font-size: 13px;
+            }
+
+            .entry-title {
+                min-width: 0;
+                color: var(--muted);
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                text-align: right;
+                font-family: var(--mono);
+                font-size: 12px;
+            }
+
+            .entry-body {
+                padding: 14px;
+            }
+
+            .entry-body > :first-child {
+                margin-top: 0;
+            }
+            .entry-body > :last-child {
+                margin-bottom: 0;
+            }
+
+            .entry-body p,
+            .entry-body ul,
+            .entry-body ol,
+            .entry-body blockquote,
+            .entry-body pre,
+            .entry-body details {
+                margin: 0 0 12px;
+            }
+
+            .entry-body ul,
+            .entry-body ol {
+                padding-left: 24px;
+            }
+            .entry-body li + li {
+                margin-top: 4px;
+            }
+
+            .pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                height: 24px;
+                padding: 0 8px;
+                margin-bottom: 12px;
+                border: 1px solid var(--divider);
+                border-radius: var(--radius);
+                color: var(--text);
+                background: var(--surface-muted);
+                font-family: var(--mono);
+                font-size: 11px;
+            }
+
+            .pill::before {
+                content: "●";
+                color: var(--accent);
+                font-size: 10px;
+            }
+
+            details {
+                border: 1px solid var(--divider);
+                border-radius: var(--radius);
+            }
+
+            summary {
+                cursor: pointer;
+                padding: 8px 12px;
+                color: var(--text);
+                font-weight: 500;
+                font-family: var(--mono);
+                font-size: 12px;
+                background: var(--surface-muted);
+                user-select: none;
+            }
+
+            details[open] summary {
+                border-bottom: 1px solid var(--divider);
+            }
+
+            details > div {
+                padding: 12px;
+            }
+
+            blockquote {
+                padding: 0 0 0 14px;
+                border-left: 2px solid var(--divider);
+                color: var(--secondary);
+                margin-left: 0;
+            }
+
+            .children {
+                margin-top: 12px;
+                padding-left: 16px;
+                border-left: 1px solid var(--divider);
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .subagent-card {
+                margin: 0 0 12px;
+                padding: 10px 12px;
+                border: 1px solid var(--divider);
+                border-radius: var(--radius);
+                background: var(--surface-muted);
+            }
+
+            .subagent-card h3 {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin: 0 0 4px;
+                font-size: 13px;
+                font-weight: 500;
+                font-family: var(--mono);
+            }
+
+            .subagent-card h3::before {
+                content: "●";
+                color: var(--accent);
+                font-size: 10px;
+            }
+
+            .subagent-card p {
+                margin: 0;
+                color: var(--secondary);
+            }
+
+            .footer-note {
+                color: var(--muted);
+                font-family: var(--mono);
+                font-size: 12px;
+                margin: 24px 0 0;
+                padding-top: 16px;
+                border-top: 1px solid var(--divider);
+            }
+
+            .hidden-by-search {
+                display: none;
+            }
+            .tools-collapsed .entry.tool-call,
+            .tools-collapsed .entry.tool-result {
+                display: none;
+            }
+
+            @media (max-width: 820px) {
+                .topbar-inner {
+                    grid-template-columns: 1fr;
+                    padding: 12px 0;
+                }
+                .brand {
+                    white-space: normal;
+                }
+                .actions {
+                    width: 100%;
+                }
+                .actions input {
+                    flex: 1;
+                    width: auto;
+                }
+                .layout {
+                    grid-template-columns: 1fr;
+                }
+                .outline {
+                    display: none;
+                } /* Kept hidden on mobile for minimalism */
+            }
+
+            @media (max-width: 560px) {
+                .actions button {
+                    display: none;
+                }
+                .summary h1 {
+                    font-size: 16px;
+                }
+                .entry-header {
+                    grid-template-columns: auto minmax(0, 1fr);
+                }
+                .entry-title {
+                    grid-column: 1 / -1;
+                    text-align: left;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <header class="topbar">
+            <div class="topbar-inner">
+                <div class="brand" aria-label="Glue share export">
+                    <span class="brand-dot">●</span>
+                    <span class="brand-name">Glue</span>
+                    <span class="brand-meta"
+                        >1713840978123-a7 · claude-sonnet-4.6</span
+                    >
+                </div>
+                <div class="actions">
+                    <input
+                        id="search"
+                        type="search"
+                        placeholder="Search transcript..."
+                        autocomplete="off"
+                    />
+                    <button id="expand" type="button">Expand</button>
+                    <button id="collapse-tools" type="button">
+                        Hide tools
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="page">
+            <div class="layout">
+                <main id="transcript" class="transcript">
+                    <article
+                        class="entry user"
+                        id="entry-1"
+                        data-search="you plan a share command exports session conversation log html markdown copilot"
+                    >
+                        <div class="entry-card">
+                            <div class="entry-header">
+                                <a class="entry-index" href="#entry-1">#1</a>
+                                <div class="entry-role">You</div>
+                                <div class="entry-title">
+                                    Plan a /share command
+                                </div>
+                            </div>
+                            <div class="entry-body">
+                                <p>
+                                    Let's spec out and plan a
+                                    <code>/share</code> command that exports the
+                                    session conversation log as HTML or
+                                    Markdown, similar to Copilot's share
+                                    command.
+                                </p>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article
+                        class="entry assistant"
+                        id="entry-2"
+                        data-search="glue high level plan normalize render markdown html visible conversation content tool calls subagents"
+                    >
+                        <div class="entry-card">
+                            <div class="entry-header">
+                                <a class="entry-index" href="#entry-2">#2</a>
+                                <div class="entry-role">Glue</div>
+                                <div class="entry-title">High-level plan</div>
+                            </div>
+                            <div class="entry-body">
+                                <div class="pill">
+                                    markdown rendered as HTML
+                                </div>
+                                <p>Here's a first-pass plan:</p>
+                                <ul>
+                                    <li>
+                                        Normalize session events into a share
+                                        transcript.
+                                    </li>
+                                    <li>
+                                        Render Markdown and HTML from that
+                                        transcript.
+                                    </li>
+                                    <li>
+                                        Keep the output focused on visible
+                                        conversation content.
+                                    </li>
+                                    <li>
+                                        Support tool calls and results, plus
+                                        nested subagent events.
+                                    </li>
+                                </ul>
+                                <pre><code>enum ShareFormat { markdown, html, both }</code></pre>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article
+                        class="entry tool-call"
+                        id="entry-3"
+                        data-search="tool call read_file session_store dart arguments"
+                    >
+                        <div class="entry-card">
+                            <div class="entry-header">
+                                <a class="entry-index" href="#entry-3">#3</a>
+                                <div class="entry-role">Tool call</div>
+                                <div class="entry-title">read_file</div>
+                            </div>
+                            <div class="entry-body">
+                                <div class="pill">read_file</div>
+                                <details open>
+                                    <summary>Arguments</summary>
+                                    <div>
+                                        <pre><code>{
+  "path": "lib/src/storage/session_store.dart"
+}</code></pre>
+                                    </div>
+                                </details>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article
+                        class="entry tool-result"
+                        id="entry-4"
+                        data-search="tool result conversation events user_message assistant_message tool_call tool_result title_generated title_reevaluated"
+                    >
+                        <div class="entry-card">
+                            <div class="entry-header">
+                                <a class="entry-index" href="#entry-4">#4</a>
+                                <div class="entry-role">Tool result</div>
+                                <div class="entry-title">
+                                    session events found
+                                </div>
+                            </div>
+                            <div class="entry-body">
+                                <details open>
+                                    <summary>Result</summary>
+                                    <div>
+                                        <pre><code>Conversation events currently include:
+- user_message
+- assistant_message
+- tool_call
+- tool_result
+- title_generated
+- title_reevaluated</code></pre>
+                                    </div>
+                                </details>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article
+                        class="entry subagent"
+                        id="entry-5"
+                        data-search="subagent group renderer research docs html templating packages markdown rendering options"
+                    >
+                        <div class="entry-card">
+                            <div class="entry-header">
+                                <a class="entry-index" href="#entry-5">#5</a>
+                                <div class="entry-role">Subagent group</div>
+                                <div class="entry-title">renderer research</div>
+                            </div>
+                            <div class="entry-body">
+                                <div class="subagent-card">
+                                    <h3>docs-research</h3>
+                                    <p>
+                                        Investigating HTML templating packages
+                                        and markdown rendering options.
+                                    </p>
+                                </div>
+
+                                <div class="children">
+                                    <article
+                                        class="entry subagent"
+                                        id="entry-6"
+                                        data-search="subagent docs research status mustache_template markdown package"
+                                    >
+                                        <div class="entry-card">
+                                            <div class="entry-header">
+                                                <a
+                                                    class="entry-index"
+                                                    href="#entry-6"
+                                                    >#6</a
+                                                >
+                                                <div class="entry-role">
+                                                    Subagent
+                                                </div>
+                                                <div class="entry-title">
+                                                    docs-research → status
+                                                </div>
+                                            </div>
+                                            <div class="entry-body">
+                                                <p>Found viable options:</p>
+                                                <ul>
+                                                    <li>
+                                                        <code
+                                                            >mustache_template</code
+                                                        >
+                                                        for editable templates
+                                                        and partials
+                                                    </li>
+                                                    <li>
+                                                        <code>markdown</code>
+                                                        for assistant-message
+                                                        HTML rendering
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </article>
+
+                                    <article
+                                        class="entry tool-call"
+                                        id="entry-7"
+                                        data-search="tool call web_fetch mustache_template pub dev"
+                                    >
+                                        <div class="entry-card">
+                                            <div class="entry-header">
+                                                <a
+                                                    class="entry-index"
+                                                    href="#entry-7"
+                                                    >#7</a
+                                                >
+                                                <div class="entry-role">
+                                                    Tool call
+                                                </div>
+                                                <div class="entry-title">
+                                                    web_fetch
+                                                </div>
+                                            </div>
+                                            <div class="entry-body">
+                                                <details>
+                                                    <summary>Arguments</summary>
+                                                    <div>
+                                                        <pre><code>{
+  "url": "https://pub.dev/packages/mustache_template",
+  "max_tokens": 1800
+}</code></pre>
+                                                    </div>
+                                                </details>
+                                            </div>
+                                        </div>
+                                    </article>
+
+                                    <article
+                                        class="entry tool-result"
+                                        id="entry-8"
+                                        data-search="tool result mustache_template summary partials escaping templates outside dart code"
+                                    >
+                                        <div class="entry-card">
+                                            <div class="entry-header">
+                                                <a
+                                                    class="entry-index"
+                                                    href="#entry-8"
+                                                    >#8</a
+                                                >
+                                                <div class="entry-role">
+                                                    Tool result
+                                                </div>
+                                                <div class="entry-title">
+                                                    mustache_template summary
+                                                </div>
+                                            </div>
+                                            <div class="entry-body">
+                                                <p>
+                                                    Supports Mustache templates,
+                                                    partials, HTML escaping by
+                                                    default, and keeps template
+                                                    files easy to edit outside
+                                                    Dart code.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </article>
+
+                                    <article
+                                        class="entry subagent"
+                                        id="entry-9"
+                                        data-search="nested subagent group security follow up html safety review markdown html sanitize"
+                                    >
+                                        <div class="entry-card">
+                                            <div class="entry-header">
+                                                <a
+                                                    class="entry-index"
+                                                    href="#entry-9"
+                                                    >#9</a
+                                                >
+                                                <div class="entry-role">
+                                                    Nested subagent group
+                                                </div>
+                                                <div class="entry-title">
+                                                    security follow-up
+                                                </div>
+                                            </div>
+                                            <div class="entry-body">
+                                                <div class="subagent-card">
+                                                    <h3>html-safety-review</h3>
+                                                    <p>
+                                                        Follow-up nested
+                                                        subagent checking
+                                                        markdown-to-HTML safety
+                                                        tradeoffs.
+                                                    </p>
+                                                </div>
+
+                                                <div class="children">
+                                                    <article
+                                                        class="entry subagent"
+                                                        id="entry-10"
+                                                        data-search="html safety review note markdown package renders html does not sanitize output spec shipping"
+                                                    >
+                                                        <div class="entry-card">
+                                                            <div
+                                                                class="entry-header"
+                                                            >
+                                                                <a
+                                                                    class="entry-index"
+                                                                    href="#entry-10"
+                                                                    >#10</a
+                                                                >
+                                                                <div
+                                                                    class="entry-role"
+                                                                >
+                                                                    Subagent
+                                                                </div>
+                                                                <div
+                                                                    class="entry-title"
+                                                                >
+                                                                    html-safety-review
+                                                                    → note
+                                                                </div>
+                                                            </div>
+                                                            <div
+                                                                class="entry-body"
+                                                            >
+                                                                <p>
+                                                                    The
+                                                                    <code
+                                                                        >markdown</code
+                                                                    >
+                                                                    package
+                                                                    renders
+                                                                    Markdown to
+                                                                    HTML but
+                                                                    does not
+                                                                    sanitize
+                                                                    output. We
+                                                                    should
+                                                                    answer that
+                                                                    explicitly
+                                                                    in the spec
+                                                                    before
+                                                                    shipping.
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </article>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </article>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article
+                        class="entry assistant"
+                        id="entry-11"
+                        data-search="glue open questions template files package tiny internal renderer raw html persisted schema subagent events"
+                    >
+                        <div class="entry-card">
+                            <div class="entry-header">
+                                <a class="entry-index" href="#entry-11">#11</a>
+                                <div class="entry-role">Glue</div>
+                                <div class="entry-title">Open questions</div>
+                            </div>
+                            <div class="entry-body">
+                                <ol>
+                                    <li>Where should template files live?</li>
+                                    <li>
+                                        Should we add a template package now or
+                                        keep a tiny internal renderer first?
+                                    </li>
+                                    <li>
+                                        How should assistant raw HTML be
+                                        handled?
+                                    </li>
+                                    <li>
+                                        What exact persisted schema should
+                                        subagent events use?
+                                    </li>
+                                </ol>
+                                <blockquote>
+                                    This prototype is intentionally
+                                    self-contained so it can evolve
+                                    independently before the Dart implementation
+                                    lands.
+                                </blockquote>
+                            </div>
+                        </div>
+                    </article>
+
+                    <p class="footer-note">
+                        Prototype only. Final implementation should load
+                        templates from files instead of building giant inline
+                        HTML strings in Dart.
+                    </p>
+                </main>
+
+                <aside class="outline" aria-label="Transcript outline">
+                    <h2>Outline</h2>
+                    <nav>
+                        <a href="#entry-1">#1 You</a>
+                        <a href="#entry-2">#2 Glue</a>
+                        <a href="#entry-3">#3 Tool call</a>
+                        <a href="#entry-4">#4 Tool result</a>
+                        <a href="#entry-5">#5 Subagent group</a>
+                        <a href="#entry-6">#6 Subagent message</a>
+                        <a href="#entry-9">#9 Nested subagent</a>
+                        <a href="#entry-11">#11 Open questions</a>
+                    </nav>
+                </aside>
+            </div>
+        </div>
+
+        <script>
+            const transcript = document.querySelector("#transcript");
+            const search = document.querySelector("#search");
+            const expand = document.querySelector("#expand");
+            const collapseTools = document.querySelector("#collapse-tools");
+
+            search.addEventListener("input", () => {
+                const query = search.value.trim().toLowerCase();
+                document.querySelectorAll(".entry").forEach((entry) => {
+                    const haystack =
+                        `${entry.dataset.search || ""} ${entry.textContent}`.toLowerCase();
+                    entry.classList.toggle(
+                        "hidden-by-search",
+                        query.length > 0 && !haystack.includes(query),
+                    );
+                });
+            });
+
+            expand.addEventListener("click", () => {
+                const details = [...document.querySelectorAll("details")];
+                const shouldOpen = details.some((node) => !node.open);
+                details.forEach((node) => {
+                    node.open = shouldOpen;
+                });
+                expand.textContent = shouldOpen ? "Collapse" : "Expand";
+            });
+
+            collapseTools.addEventListener("click", () => {
+                transcript.classList.toggle("tools-collapsed");
+                collapseTools.textContent = transcript.classList.contains(
+                    "tools-collapsed",
+                )
+                    ? "Show tools"
+                    : "Hide tools";
+            });
+        </script>
+    </body>
+</html>

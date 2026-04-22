@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Glue /share prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0A0A0B;
+      --surface: #0A0A0B;
+      --surface-muted: rgba(255, 255, 255, 0.03);
+      --surface-raised: rgba(255, 255, 255, 0.045);
+      --border: #222326;
+      --border-soft: rgba(255, 255, 255, 0.075);
+      --text: #E6E6E6;
+      --muted: #888888;
+      --muted-2: #666666;
+      --glue: #FACC15;
+      --glue-soft: rgba(250, 204, 21, 0.12);
+      --success: #22C55E;
+      --info: #3B82F6;
+      --warning: #EAB308;
+      --danger: #EF4444;
+      --code-bg: rgba(255, 255, 255, 0.04);
+      --radius: 7px;
+      --sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.55 var(--sans);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: underline;
+      text-decoration-color: var(--border);
+      text-underline-offset: 4px;
+    }
+
+    a:hover { text-decoration-color: var(--glue); }
+
+    code, pre {
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+
+    code {
+      color: var(--text);
+      background: var(--code-bg);
+      border-radius: 4px;
+      padding: 0.14em 0.34em;
+    }
+
+    pre {
+      margin: 0;
+      padding: 14px;
+      overflow: auto;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    pre code {
+      padding: 0;
+      background: transparent;
+      border-radius: 0;
+      color: inherit;
+    }
+
+    .sticky {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(10, 10, 11, 0.86);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sticky-inner,
+    .container {
+      width: min(1000px, calc(100vw - 32px));
+      margin: 0 auto;
+    }
+
+    .sticky-inner {
+      min-height: 54px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 11px 0;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .dot {
+      color: var(--glue);
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 13px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+
+    .meta code { color: var(--text); }
+
+    .toolbar {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar input,
+    .toolbar button {
+      height: 30px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      border-radius: var(--radius);
+      padding: 6px 12px;
+      font: inherit;
+      font-size: 13px;
+    }
+
+    .toolbar input {
+      width: 190px;
+      outline: none;
+    }
+
+    .toolbar input:focus,
+    .toolbar button:focus-visible {
+      border-color: var(--muted);
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.035);
+    }
+
+    .toolbar button {
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .toolbar button:hover {
+      background: var(--surface-muted);
+      border-color: #303136;
+    }
+
+    .container {
+      padding: 32px 0 64px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 220px;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .hero {
+      grid-column: 1 / -1;
+      display: grid;
+      gap: 8px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.3;
+      font-weight: 500;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 72ch;
+    }
+
+    .hero-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      margin-top: 12px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    .hero-item {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 140px;
+    }
+
+    .hero-item .k {
+      color: var(--muted-2);
+      font-size: 12px;
+    }
+
+    .hero-item code,
+    .hero-item span:not(.k) {
+      color: var(--text);
+    }
+
+    .main {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .sidebar-card {
+      position: sticky;
+      top: 74px;
+      color: var(--muted);
+    }
+
+    .sidebar-card h2 {
+      margin: 0 0 12px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+    }
+
+    .toc {
+      display: grid;
+      gap: 8px;
+      padding-left: 12px;
+      border-left: 1px solid var(--border);
+    }
+
+    .toc a {
+      color: var(--muted);
+      text-decoration: none;
+      font: 12px/1.4 var(--mono);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .toc a:hover { color: var(--text); }
+
+    .entry {
+      --tone: var(--border);
+      position: relative;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .entry::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 2px;
+      background: var(--tone);
+      opacity: 0.95;
+    }
+
+    .entry.user { --tone: var(--info); }
+    .entry.assistant { --tone: var(--glue); }
+    .entry.tool-call { --tone: var(--muted-2); }
+    .entry.tool-result { --tone: var(--success); }
+    .entry.subagent { --tone: var(--warning); }
+    .entry.error { --tone: var(--danger); }
+
+    .entry-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 38px;
+      padding: 9px 14px 9px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-muted);
+      font-family: var(--mono);
+    }
+
+    .entry-index {
+      color: var(--muted);
+      font-size: 12px;
+      text-decoration: none;
+      min-width: 28px;
+    }
+
+    .entry-role {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 500;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .entry-title {
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-left: auto;
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .entry-body {
+      padding: 15px 16px 16px;
+    }
+
+    .entry-body > :first-child { margin-top: 0; }
+    .entry-body > :last-child { margin-bottom: 0; }
+
+    .entry-body p,
+    .entry-body ul,
+    .entry-body ol,
+    .entry-body pre,
+    .entry-body blockquote,
+    .entry-body details {
+      margin: 0 0 14px;
+    }
+
+    .entry-body ul,
+    .entry-body ol { padding-left: 20px; }
+    .entry-body li + li { margin-top: 3px; }
+
+    .entry-body blockquote {
+      margin-left: 0;
+      padding-left: 14px;
+      border-left: 2px solid var(--border);
+      color: var(--muted);
+    }
+
+    .label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface-muted);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 4px 8px;
+      color: var(--text);
+      font: 12px/1.3 var(--mono);
+      margin-bottom: 12px;
+    }
+
+    details {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-top: 12px;
+      background: transparent;
+    }
+
+    summary {
+      cursor: pointer;
+      padding: 9px 14px;
+      color: var(--text);
+      font: 13px/1.4 var(--mono);
+      user-select: none;
+    }
+
+    details > div {
+      border-top: 1px solid var(--border);
+      margin-top: 2px;
+      padding: 12px 14px 14px;
+    }
+
+    .children {
+      margin-top: 14px;
+      padding-left: 14px;
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .subagent-card {
+      padding: 0 0 8px;
+    }
+
+    .subagent-card h3 {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin: 0 0 4px;
+      font: 500 13px/1.4 var(--mono);
+    }
+
+    .subagent-card h3::before {
+      content: "●";
+      color: var(--glue);
+      font-size: 9px;
+    }
+
+    .subagent-card p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .role-glue { color: var(--glue); }
+    .role-user { color: var(--text); }
+    .role-tool { color: var(--muted); }
+    .role-subagent { color: var(--muted); }
+
+    .footer-note {
+      color: var(--muted);
+      font-size: 12px;
+      margin: 2px 0 0;
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+    }
+
+    .hidden-by-search { display: none; }
+    .tools-collapsed .entry.tool-call,
+    .tools-collapsed .entry.tool-result { display: none; }
+
+    @media (max-width: 920px) {
+      .container {
+        grid-template-columns: 1fr;
+        gap: 18px;
+      }
+
+      .sidebar-card {
+        position: static;
+        display: none;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .sticky-inner {
+        align-items: stretch;
+      }
+
+      .brand,
+      .meta,
+      .toolbar {
+        width: 100%;
+      }
+
+      .toolbar {
+        margin-left: 0;
+      }
+
+      .toolbar input {
+        width: auto;
+        flex: 1;
+      }
+
+      .container {
+        width: min(100% - 24px, 1000px);
+        padding-top: 24px;
+      }
+
+      .hero-grid {
+        gap: 12px;
+      }
+
+      .hero-item {
+        min-width: calc(50% - 8px);
+      }
+    }
+
+    @media (max-width: 520px) {
+      .toolbar button {
+        padding-inline: 9px;
+      }
+
+      .toolbar button:nth-of-type(2) {
+        display: none;
+      }
+
+      .entry-header {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 4px 10px;
+      }
+
+      .entry-title {
+        grid-column: 1 / -1;
+        margin-left: 0;
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="sticky">
+    <div class="sticky-inner">
+      <div class="brand"><span class="dot">●</span> Glue</div>
+      <div class="meta">
+        <span>Session <code>1713840978123-a7</code></span>
+        <span>Model <code>claude-sonnet-4.6</code></span>
+      </div>
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="Search transcript" autocomplete="off" />
+        <button id="expand" type="button">Expand all</button>
+        <button id="collapse-tools" type="button">Hide tools</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <section class="hero">
+      <h1>Share conversation history</h1>
+      <p>Self-contained HTML prototype for Glue's future <code>/share</code> export. Includes user messages, assistant Markdown, tool activity, and nested subagent work.</p>
+      <div class="hero-grid" aria-label="Export metadata">
+        <div class="hero-item"><span class="k">Directory</span><code>/Users/helge/code/glue/cli</code></div>
+        <div class="hero-item"><span class="k">Exported</span><code>2026-04-22 04:20 UTC</code></div>
+        <div class="hero-item"><span class="k">Formats</span><code>HTML, Markdown</code></div>
+      </div>
+    </section>
+
+    <main id="transcript" class="main">
+      <article class="entry user" id="entry-1" data-search="user plan a share command exports session conversation log html markdown copilot">
+        <div class="entry-header">
+          <a class="entry-index" href="#entry-1">#1</a>
+          <div class="entry-role role-user">User</div>
+          <div class="entry-title">Plan a /share command</div>
+        </div>
+        <div class="entry-body">
+          <p>Let's spec out and plan a <code>/share</code> command that exports the session conversation log as HTML or Markdown, similar to Copilot's share command.</p>
+        </div>
+      </article>
+
+      <article class="entry assistant" id="entry-2" data-search="glue high level plan normalize render markdown html visible conversation content tool calls subagents">
+        <div class="entry-header">
+          <a class="entry-index" href="#entry-2">#2</a>
+          <div class="entry-role role-glue"><span class="dot">●</span> Glue</div>
+          <div class="entry-title">High-level plan</div>
+        </div>
+        <div class="entry-body">
+          <div class="label">Markdown rendered as HTML</div>
+          <p>Here's a first-pass plan:</p>
+          <ul>
+            <li>Normalize session events into a share transcript.</li>
+            <li>Render Markdown and HTML from that transcript.</li>
+            <li>Keep the output focused on visible conversation content.</li>
+            <li>Support tool calls and results, plus nested subagent events.</li>
+          </ul>
+          <pre><code>enum ShareFormat { markdown, html, both }</code></pre>
+        </div>
+      </article>
+
+      <article class="entry tool-call" id="entry-3" data-search="tool call read_file session_store dart arguments">
+        <div class="entry-header">
+          <a class="entry-index" href="#entry-3">#3</a>
+          <div class="entry-role role-tool">Tool call</div>
+          <div class="entry-title">read_file</div>
+        </div>
+        <div class="entry-body">
+          <details open>
+            <summary>Arguments</summary>
+            <div><pre><code>{
+  "path": "lib/src/storage/session_store.dart"
+}</code></pre></div>
+          </details>
+        </div>
+      </article>
+
+      <article class="entry tool-result" id="entry-4" data-search="tool result conversation events user_message assistant_message tool_call tool_result title_generated title_reevaluated">
+        <div class="entry-header">
+          <a class="entry-index" href="#entry-4">#4</a>
+          <div class="entry-role role-tool">Tool result</div>
+          <div class="entry-title">session events found</div>
+        </div>
+        <div class="entry-body">
+          <details open>
+            <summary>Result</summary>
+            <div><pre><code>Conversation events currently include:
+- user_message
+- assistant_message
+- tool_call
+- tool_result
+- title_generated
+- title_reevaluated</code></pre></div>
+          </details>
+        </div>
+      </article>
+
+      <article class="entry subagent" id="entry-5" data-search="subagent group renderer research docs html templating packages markdown rendering options">
+        <div class="entry-header">
+          <a class="entry-index" href="#entry-5">#5</a>
+          <div class="entry-role role-subagent">Subagent group</div>
+          <div class="entry-title">renderer research</div>
+        </div>
+        <div class="entry-body">
+          <div class="subagent-card">
+            <h3>docs-research</h3>
+            <p>Investigating HTML templating packages and markdown rendering options.</p>
+          </div>
+
+          <div class="children">
+            <article class="entry subagent" id="entry-6" data-search="subagent docs research status mustache_template markdown package">
+              <div class="entry-header">
+                <a class="entry-index" href="#entry-6">#6</a>
+                <div class="entry-role role-subagent">Subagent</div>
+                <div class="entry-title">docs-research → status</div>
+              </div>
+              <div class="entry-body">
+                <p>Found viable options:</p>
+                <ul>
+                  <li><code>mustache_template</code> for editable templates and partials</li>
+                  <li><code>markdown</code> for assistant-message HTML rendering</li>
+                </ul>
+              </div>
+            </article>
+
+            <article class="entry tool-call" id="entry-7" data-search="tool call web_fetch mustache_template pub dev">
+              <div class="entry-header">
+                <a class="entry-index" href="#entry-7">#7</a>
+                <div class="entry-role role-tool">Tool call</div>
+                <div class="entry-title">web_fetch</div>
+              </div>
+              <div class="entry-body">
+                <details>
+                  <summary>Arguments</summary>
+                  <div><pre><code>{
+  "url": "https://pub.dev/packages/mustache_template",
+  "max_tokens": 1800
+}</code></pre></div>
+                </details>
+              </div>
+            </article>
+
+            <article class="entry tool-result" id="entry-8" data-search="tool result mustache_template summary partials escaping templates outside dart code">
+              <div class="entry-header">
+                <a class="entry-index" href="#entry-8">#8</a>
+                <div class="entry-role role-tool">Tool result</div>
+                <div class="entry-title">mustache_template summary</div>
+              </div>
+              <div class="entry-body">
+                <p>Supports Mustache templates, partials, HTML escaping by default, and keeps template files easy to edit outside Dart code.</p>
+              </div>
+            </article>
+
+            <article class="entry subagent" id="entry-9" data-search="nested subagent group security follow up html safety review markdown html sanitize">
+              <div class="entry-header">
+                <a class="entry-index" href="#entry-9">#9</a>
+                <div class="entry-role role-subagent">Nested subagent group</div>
+                <div class="entry-title">security follow-up</div>
+              </div>
+              <div class="entry-body">
+                <div class="subagent-card">
+                  <h3>html-safety-review</h3>
+                  <p>Follow-up nested subagent checking markdown-to-HTML safety tradeoffs.</p>
+                </div>
+
+                <div class="children">
+                  <article class="entry subagent" id="entry-10" data-search="html safety review note markdown package renders html does not sanitize output spec shipping">
+                    <div class="entry-header">
+                      <a class="entry-index" href="#entry-10">#10</a>
+                      <div class="entry-role role-subagent">Subagent</div>
+                      <div class="entry-title">html-safety-review → note</div>
+                    </div>
+                    <div class="entry-body">
+                      <p>The <code>markdown</code> package renders Markdown to HTML but does not sanitize output. We should answer that explicitly in the spec before shipping.</p>
+                    </div>
+                  </article>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </article>
+
+      <article class="entry assistant" id="entry-11" data-search="glue open questions template files package tiny internal renderer raw html persisted schema subagent events">
+        <div class="entry-header">
+          <a class="entry-index" href="#entry-11">#11</a>
+          <div class="entry-role role-glue"><span class="dot">●</span> Glue</div>
+          <div class="entry-title">Open questions</div>
+        </div>
+        <div class="entry-body">
+          <ol>
+            <li>Where should template files live?</li>
+            <li>Should we add a template package now or keep a tiny internal renderer first?</li>
+            <li>How should assistant raw HTML be handled?</li>
+            <li>What exact persisted schema should subagent events use?</li>
+          </ol>
+          <blockquote>This prototype is intentionally self-contained so it can evolve independently before the Dart implementation lands.</blockquote>
+        </div>
+      </article>
+
+      <p class="footer-note">Prototype only. Final implementation should load templates from files instead of building giant inline HTML strings in Dart.</p>
+    </main>
+
+    <aside class="sidebar-card">
+      <h2>Transcript outline</h2>
+      <nav class="toc">
+        <a href="#entry-1">#1 User</a>
+        <a href="#entry-2">#2 Glue</a>
+        <a href="#entry-3">#3 Tool call</a>
+        <a href="#entry-4">#4 Tool result</a>
+        <a href="#entry-5">#5 Subagent group</a>
+        <a href="#entry-6">#6 Subagent message</a>
+        <a href="#entry-9">#9 Nested subagent</a>
+        <a href="#entry-11">#11 Open questions</a>
+      </nav>
+    </aside>
+  </div>
+
+  <script>
+    const transcript = document.querySelector('#transcript');
+    const search = document.querySelector('#search');
+    const expand = document.querySelector('#expand');
+    const collapseTools = document.querySelector('#collapse-tools');
+
+    search.addEventListener('input', () => {
+      const query = search.value.trim().toLowerCase();
+      document.querySelectorAll('.entry').forEach((entry) => {
+        const haystack = `${entry.dataset.search || ''} ${entry.textContent}`.toLowerCase();
+        entry.classList.toggle('hidden-by-search', query.length > 0 && !haystack.includes(query));
+      });
+    });
+
+    expand.addEventListener('click', () => {
+      const details = [...document.querySelectorAll('details')];
+      const shouldOpen = details.some((node) => !node.open);
+      details.forEach((node) => { node.open = shouldOpen; });
+      expand.textContent = shouldOpen ? 'Collapse all' : 'Expand all';
+    });
+
+    collapseTools.addEventListener('click', () => {
+      transcript.classList.toggle('tools-collapsed');
+      collapseTools.textContent = transcript.classList.contains('tools-collapsed') ? 'Show tools' : 'Hide tools';
+    });
+  </script>
+</body>
+</html>
