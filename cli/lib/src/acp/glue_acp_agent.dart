@@ -17,6 +17,17 @@ import 'package:glue/src/shell/executor_factory.dart';
 import 'package:glue/src/skills/skill_runtime.dart';
 import 'package:glue/src/skills/skill_tool.dart';
 
+const _toolStatusPending = 'pending';
+const _toolStatusInProgress = 'in_progress';
+const _toolStatusCompleted = 'completed';
+const _toolStatusFailed = 'failed';
+
+const _permissionOutcomeKey = 'outcome';
+const _permissionSelected = 'selected';
+const _permissionOptionIdKey = 'optionId';
+const _permissionAllowOnce = 'allow_once';
+const _permissionRejectOnce = 'reject_once';
+
 final class GlueAcpRuntime {
   final AgentSideConnection connection;
   final Map<String, Tool> tools;
@@ -219,7 +230,7 @@ final class GlueAcpAgent extends AgentHandler {
                 title: name,
                 toolCallId: id,
                 kind: _mapToolKind(name),
-                status: 'pending',
+                status: _toolStatusPending,
               ),
             );
 
@@ -228,7 +239,7 @@ final class GlueAcpAgent extends AgentHandler {
               request.sessionId,
               ToolCallDeltaSessionUpdate(
                 toolCallId: call.id,
-                status: 'in_progress',
+                status: _toolStatusInProgress,
                 title: call.name,
                 kind: _mapToolKind(call.name),
                 rawInput: call.arguments,
@@ -249,7 +260,8 @@ final class GlueAcpAgent extends AgentHandler {
               request.sessionId,
               ToolCallDeltaSessionUpdate(
                 toolCallId: call.id,
-                status: result.success ? 'completed' : 'failed',
+                status:
+                    result.success ? _toolStatusCompleted : _toolStatusFailed,
                 content: <Map<String, dynamic>>[
                   <String, dynamic>{
                     'type': 'text',
@@ -304,22 +316,22 @@ final class GlueAcpAgent extends AgentHandler {
       },
       options: const <Map<String, dynamic>>[
         <String, dynamic>{
-          'optionId': 'allow_once',
+          'optionId': _permissionAllowOnce,
           'name': 'Allow once',
-          'kind': 'allow_once',
+          'kind': _permissionAllowOnce,
         },
         <String, dynamic>{
-          'optionId': 'reject_once',
+          'optionId': _permissionRejectOnce,
           'name': 'Reject',
-          'kind': 'reject_once',
+          'kind': _permissionRejectOnce,
         },
       ],
       cancelToken: cancelToken,
     );
 
     final outcome = response.outcome;
-    return outcome['outcome'] == 'selected' &&
-        outcome['optionId'] == 'allow_once';
+    return outcome[_permissionOutcomeKey] == _permissionSelected &&
+        outcome[_permissionOptionIdKey] == _permissionAllowOnce;
   }
 
   bool _requiresApproval(String toolName) {
