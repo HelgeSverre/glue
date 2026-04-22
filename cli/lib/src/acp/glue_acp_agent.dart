@@ -362,7 +362,7 @@ final class GlueAcpAgent extends AgentHandler {
         case EmbeddedResource(:final resource):
           lines.add('[embedded_resource] ${jsonEncode(resource)}');
         default:
-          break;
+          lines.add('[unsupported_content:${block.runtimeType}]');
       }
     }
     return lines.join('\n');
