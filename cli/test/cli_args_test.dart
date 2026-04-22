@@ -2,46 +2,58 @@ import 'package:args/args.dart';
 import 'package:glue/glue.dart';
 import 'package:test/test.dart';
 
-// We test against the same arg parser configuration used in GlueCommandRunner.
-// Duplicated here to avoid importing the bin/ entry point which calls exit().
-ArgParser _buildArgParser() {
-  return ArgParser()
-    ..addFlag('version', abbr: 'v', negatable: false)
-    ..addFlag('print', abbr: 'p', negatable: false)
-    ..addFlag('json', negatable: false)
-    ..addOption('model', abbr: 'm')
-    ..addFlag('resume', abbr: 'r', negatable: false)
-    ..addOption('resume-id')
-    ..addFlag('continue', negatable: false)
-    ..addFlag('debug', abbr: 'd', negatable: false);
-}
+import 'bin/glue_cli_args.dart';
+
+// We test against the same arg parser shape used by GlueCommandRunner.
 
 void main() {
   late ArgParser parser;
 
   setUp(() {
-    parser = _buildArgParser();
+    parser = buildTestArgParser();
   });
 
   group('--resume / -r', () {
     test('bare --resume sets the startup resume-panel flag', () {
-      final result = parser.parse(['--resume']);
+      final result = parser.parse(normalizeCliArgs(['--resume']));
       expect(result.flag('resume'), isTrue);
+      expect(result.option('resume-id'), isNull);
     });
 
     test('bare -r sets the startup resume-panel flag', () {
-      final result = parser.parse(['-r']);
+      final result = parser.parse(normalizeCliArgs(['-r']));
       expect(result.flag('resume'), isTrue);
+      expect(result.option('resume-id'), isNull);
     });
 
     test('resume flag is false when not provided', () {
-      final result = parser.parse([]);
+      final result = parser.parse(normalizeCliArgs([]));
       expect(result.flag('resume'), isFalse);
+      expect(result.option('resume-id'), isNull);
     });
 
-    test('--resume-id accepts a session ID value', () {
-      final result = parser.parse(['--resume-id', '1772331272529-72']);
+    test('--resume=<id> is normalized to resume-id', () {
+      final result = parser.parse(normalizeCliArgs(['--resume=1772331272529-72']));
+      expect(result.flag('resume'), isFalse);
       expect(result.option('resume-id'), '1772331272529-72');
+    });
+
+    test('--resume <id> is normalized to resume-id', () {
+      final result = parser.parse(normalizeCliArgs(['--resume', 'sess-123']));
+      expect(result.flag('resume'), isFalse);
+      expect(result.option('resume-id'), 'sess-123');
+    });
+
+    test('-r <id> is normalized to resume-id', () {
+      final result = parser.parse(normalizeCliArgs(['-r', 'sess-123']));
+      expect(result.flag('resume'), isFalse);
+      expect(result.option('resume-id'), 'sess-123');
+    });
+
+    test('prompt token after --resume is consumed as resume value', () {
+      final result = parser.parse(normalizeCliArgs(['--resume', 'sess-123', 'continue', 'work']));
+      expect(result.option('resume-id'), 'sess-123');
+      expect(result.rest, ['continue', 'work']);
     });
   });
 
@@ -119,13 +131,13 @@ void main() {
       expect(result.rest, ['review this code']);
     });
 
-    test('--resume-id session-id -p with prompt', () {
-      final result = parser.parse([
-        '--resume-id',
+    test('--resume session-id -p with prompt', () {
+      final result = parser.parse(normalizeCliArgs([
+        '--resume',
         'sess-123',
         '-p',
         'continue work',
-      ]);
+      ]));
       expect(result.option('resume-id'), 'sess-123');
       expect(result.flag('print'), isTrue);
       expect(result.rest, ['continue work']);

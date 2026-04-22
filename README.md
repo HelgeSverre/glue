@@ -47,11 +47,12 @@ Other providers work out of the box: OpenAI, Mistral, GitHub Copilot (OAuth devi
 Non-interactive use:
 
 ```bash
-glue -p anthropic -m claude-sonnet-4-6   # choose provider and model
-glue --resume                            # session picker
-glue --continue                          # resume most recent session
-glue doctor                              # config and install health check
-glue completions install                 # shell completions (zsh/bash/fish/pwsh)
+glue -m claude-sonnet-4-6 -p "summarize this repo"   # choose model + print
+glue --resume                                        # open session picker
+glue --resume 1740654600000-abc "continue here"     # resume by ID and send a prompt
+glue --continue                                      # resume most recent session
+glue doctor                                          # config and install health check
+glue completions install                             # shell completions (zsh/bash/fish/pwsh)
 ```
 
 See [getglue.dev](https://getglue.dev) for the full feature tour, provider setup, and examples.

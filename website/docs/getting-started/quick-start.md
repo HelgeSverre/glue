@@ -51,14 +51,14 @@ Glue will analyze your project, propose changes, and ask for confirmation before
 
 Common flags to customize your session:
 
-| Flag                | Description                                 | Example                           |
-| ------------------- | ------------------------------------------- | --------------------------------- |
-| `glue "prompt"`     | Start with an initial prompt                | `glue "add auth endpoint"`        |
-| `--model`, `-m`     | Select a specific model                     | `glue -m gpt-5`                   |
-| `--resume`, `-r ID` | Resume a session by ID                      | `glue --resume 1740654600000-abc` |
-| `--continue`        | Resume the most recent session              | `glue --continue`                 |
-| `--print`, `-p`     | Print response and exit (no interactive UI) | `glue -p "summarise this repo"`   |
-| `--json`            | Print conversation as JSON (implies `-p`)   | `glue --json "list TODOs"`        |
+| Flag                | Description                                 | Example                                         |
+| ------------------- | ------------------------------------------- | ----------------------------------------------- |
+| `glue "prompt"`     | Start with an initial prompt                | `glue "add auth endpoint"`                      |
+| `--model`, `-m`     | Select a specific model                     | `glue -m gpt-5`                                 |
+| `--resume`, `-r`    | Open the picker, or resume by ID            | `glue --resume 1740654600000-abc`               |
+| `--continue`        | Resume the most recent session              | `glue --continue`                               |
+| `--print`, `-p`     | Print response and exit (no interactive UI) | `glue -p "summarise this repo"`                 |
+| `--json`            | Print conversation as JSON (implies `-p`)   | `glue --json "list TODOs"`                      |
 
 ### Examples
 
@@ -72,6 +72,12 @@ Pick up a specific previous session by ID:
 
 ```bash
 glue --resume 1740654600000-abc
+```
+
+Resume a session and send the next prompt immediately:
+
+```bash
+glue --resume 1740654600000-abc "continue fixing the auth flow"
 ```
 
 Or use the runtime `/resume` slash command to pick from a list once you're inside a session.

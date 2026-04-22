@@ -93,7 +93,6 @@ void main() {
         requestExit: () {},
         openModelPanel: () {},
         switchModelByQuery: (_) => '',
-        sessionInfo: () => '',
         sessionAction: sessionAction ?? (_) => '',
         listTools: () => '',
         openHistoryPanel: openHistoryPanel ?? () {},
@@ -108,6 +107,7 @@ void main() {
         pathsReport: pathsReport ?? () => '',
         openGlueTarget: openGlueTarget ?? (_) => '',
         configAction: configAction ?? (_) => '',
+        renameSession: (_) => '',
       );
     }
 
@@ -374,6 +374,41 @@ void main() {
       expect(
         SessionStore.listSessions(environment.sessionsDir).map((s) => s.id),
         contains('resume-target'),
+      );
+    });
+
+    test('resume with startup prompt submits the prompt after resuming', () async {
+      final meta = SessionMeta(
+        id: 'resume-target',
+        cwd: environment.cwd,
+        modelRef: 'anthropic/claude-sonnet-4.6',
+        startTime: DateTime.now(),
+        title: 'Saved work',
+      );
+      final store =
+          SessionStore(sessionDir: environment.sessionDir(meta.id), meta: meta);
+      store.logEvent('user_message', {'text': 'Earlier context'});
+      store.logEvent('assistant_message', {'text': 'Prior answer'});
+
+      final app = App(
+        terminal: _NoopTerminal(),
+        layout: Layout(_NoopTerminal()),
+        editor: TextAreaEditor(),
+        agent: AgentCore(llm: _NoopLlm(), tools: const {}),
+        modelId: 'anthropic/claude-sonnet-4.6',
+        startupPrompt: 'bar',
+        resumeSessionId: 'resume-target',
+        environment: environment,
+      );
+
+      final runFuture = app.run();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      app.requestExit();
+      await runFuture;
+
+      expect(
+        app.agent.conversation.map((m) => m.text),
+        contains('bar'),
       );
     });
   });
