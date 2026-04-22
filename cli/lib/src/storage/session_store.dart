@@ -3,6 +3,10 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 /// Metadata for a saved session, including model ref and timing.
+enum SessionTitleSource { auto, user }
+
+enum SessionTitleState { provisional, stable }
+
 class SessionMeta {
   static const int currentSchemaVersion = 3;
 
@@ -30,6 +34,12 @@ class SessionMeta {
 
   // Display & organization.
   String? title;
+  SessionTitleSource? titleSource;
+  SessionTitleState? titleState;
+  int titleGenerationCount;
+  DateTime? titleGeneratedAt;
+  DateTime? titleLastEvaluatedAt;
+  DateTime? titleRenamedAt;
   final List<String> tags;
 
   // PR lifecycle.
@@ -58,6 +68,12 @@ class SessionMeta {
     this.repoRemote,
     this.headSha,
     this.title,
+    this.titleSource,
+    this.titleState,
+    this.titleGenerationCount = 0,
+    this.titleGeneratedAt,
+    this.titleLastEvaluatedAt,
+    this.titleRenamedAt,
     this.tags = const [],
     this.prUrl,
     this.prStatus,
@@ -81,6 +97,17 @@ class SessionMeta {
         if (repoRemote != null) 'repo_remote': repoRemote,
         if (headSha != null) 'head_sha': headSha,
         if (title != null) 'title': title,
+        if (titleSource != null) 'title_source': titleSource!.name,
+        if (titleState != null) 'title_state': titleState!.name,
+        if (titleGenerationCount > 0)
+          'title_generation_count': titleGenerationCount,
+        if (titleGeneratedAt != null)
+          'title_generated_at': titleGeneratedAt!.toUtc().toIso8601String(),
+        if (titleLastEvaluatedAt != null)
+          'title_last_evaluated_at':
+              titleLastEvaluatedAt!.toUtc().toIso8601String(),
+        if (titleRenamedAt != null)
+          'title_renamed_at': titleRenamedAt!.toUtc().toIso8601String(),
         if (tags.isNotEmpty) 'tags': tags,
         if (prUrl != null) 'pr_url': prUrl,
         if (prStatus != null) 'pr_status': prStatus,
@@ -102,6 +129,9 @@ class SessionMeta {
           ? legacyModel
           : '$legacyProvider/$legacyModel';
     }
+    final title = json['title'] as String?;
+    final titleSource = _parseTitleSource(json['title_source'] as String?);
+    final titleState = _parseTitleState(json['title_state'] as String?);
     return SessionMeta(
       schemaVersion: schema,
       id: json['id'] as String,
@@ -118,7 +148,22 @@ class SessionMeta {
       baseBranch: json['base_branch'] as String?,
       repoRemote: json['repo_remote'] as String?,
       headSha: json['head_sha'] as String?,
-      title: json['title'] as String?,
+      title: title,
+      titleSource:
+          titleSource ?? (title != null ? SessionTitleSource.auto : null),
+      titleState:
+          titleState ?? (title != null ? SessionTitleState.stable : null),
+      titleGenerationCount:
+          json['title_generation_count'] as int? ?? (title != null ? 1 : 0),
+      titleGeneratedAt: json['title_generated_at'] != null
+          ? DateTime.parse(json['title_generated_at'] as String)
+          : null,
+      titleLastEvaluatedAt: json['title_last_evaluated_at'] != null
+          ? DateTime.parse(json['title_last_evaluated_at'] as String)
+          : null,
+      titleRenamedAt: json['title_renamed_at'] != null
+          ? DateTime.parse(json['title_renamed_at'] as String)
+          : null,
       tags:
           (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList() ??
               const [],
@@ -128,6 +173,22 @@ class SessionMeta {
       cost: (json['cost'] as num?)?.toDouble(),
       summary: json['summary'] as String?,
     );
+  }
+
+  static SessionTitleSource? _parseTitleSource(String? value) {
+    return switch (value) {
+      'auto' => SessionTitleSource.auto,
+      'user' => SessionTitleSource.user,
+      _ => null,
+    };
+  }
+
+  static SessionTitleState? _parseTitleState(String? value) {
+    return switch (value) {
+      'provisional' => SessionTitleState.provisional,
+      'stable' => SessionTitleState.stable,
+      _ => null,
+    };
   }
 }
 
@@ -149,8 +210,24 @@ class SessionStore {
     _atomicWrite(file, encoder.convert(meta.toJson()));
   }
 
-  void setTitle(String title) {
+  void setTitle(
+    String title, {
+    SessionTitleSource? source,
+    SessionTitleState? state,
+    int? generationCount,
+    DateTime? generatedAt,
+    DateTime? lastEvaluatedAt,
+    DateTime? renamedAt,
+  }) {
     meta.title = title;
+    meta.titleSource = source ?? meta.titleSource;
+    meta.titleState = state ?? meta.titleState;
+    if (generationCount != null) {
+      meta.titleGenerationCount = generationCount;
+    }
+    meta.titleGeneratedAt = generatedAt ?? meta.titleGeneratedAt;
+    meta.titleLastEvaluatedAt = lastEvaluatedAt ?? meta.titleLastEvaluatedAt;
+    meta.titleRenamedAt = renamedAt ?? meta.titleRenamedAt;
     _writeMeta();
   }
 

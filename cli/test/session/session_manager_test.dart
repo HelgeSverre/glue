@@ -148,7 +148,7 @@ void main() {
     expect(metaJson['model_ref'], 'openai/gpt-4.1');
   });
 
-  test('generateTitle sets title and logs title_generated event', () async {
+  test('generateTitle sets provisional auto title and logs event', () async {
     final manager = SessionManager(environment: environment);
     final store = manager.ensureSessionStore(
       cwd: environment.cwd,
@@ -161,8 +161,51 @@ void main() {
     );
 
     expect(store.meta.title, 'Fix flaky docker test');
+    expect(store.meta.titleSource, SessionTitleSource.auto);
+    expect(store.meta.titleState, SessionTitleState.provisional);
+    expect(store.meta.titleGenerationCount, 1);
     final events = SessionStore.loadConversation(store.sessionDir);
     expect(events.last['type'], 'title_generated');
     expect(events.last['title'], 'Fix flaky docker test');
+  });
+
+  test('renameTitle marks title as user-owned and stable', () async {
+    final manager = SessionManager(environment: environment);
+    final store = manager.ensureSessionStore(
+      cwd: environment.cwd,
+      modelRef: 'anthropic/claude-sonnet-4.6',
+    );
+
+    await manager.renameTitle('Manual title');
+
+    expect(store.meta.title, 'Manual title');
+    expect(store.meta.titleSource, SessionTitleSource.user);
+    expect(store.meta.titleState, SessionTitleState.stable);
+    expect(store.meta.titleRenamedAt, isNotNull);
+  });
+
+  test('reevaluateTitle promotes provisional auto title to stable', () async {
+    final manager = SessionManager(environment: environment);
+    final store = manager.ensureSessionStore(
+      cwd: environment.cwd,
+      modelRef: 'anthropic/claude-sonnet-4.6',
+    );
+    await manager.generateTitle(
+      userMessage: 'help debug this',
+      generate: (_) async => 'Help debug this',
+    );
+
+    await manager.reevaluateTitle(
+      context: const TitleContext(
+        firstUserMessage: 'help debug this',
+        latestAssistantMessage: 'The Docker resume tests are flaky in CI.',
+        toolNames: ['read_file'],
+      ),
+      generate: (_) async => 'Docker resume test flakiness',
+    );
+
+    expect(store.meta.title, 'Docker resume test flakiness');
+    expect(store.meta.titleState, SessionTitleState.stable);
+    expect(store.meta.titleGenerationCount, 2);
   });
 }

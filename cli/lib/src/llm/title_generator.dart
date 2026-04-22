@@ -1,4 +1,5 @@
 import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/session/session_manager.dart';
 
 /// Generates short session titles using an [LlmClient].
 class TitleGenerator {
@@ -9,9 +10,10 @@ class TitleGenerator {
 
   static const systemPrompt =
       'Generate a short title (max 7 words, Sentence case) for this coding '
-      'session. Respond with ONLY the title, nothing else. Do not assume '
-      'intent beyond what is stated. Omit words like "question" or "request". '
-      'Use software engineering terms when helpful.';
+      'session. Prefer the concrete task that emerged from the conversation. '
+      'Respond with ONLY the title, nothing else. Do not assume intent beyond '
+      'what is stated. Omit generic words like "question", "request", or '
+      '"help". Use software engineering terms when helpful.';
 
   final LlmClient _llm;
 
@@ -36,6 +38,44 @@ class TitleGenerator {
       }
 
       return sanitize(buffer.toString());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<String?> generateFromContext(TitleContext context) async {
+    try {
+      final buffer = StringBuffer();
+      if (context.cwdBasename case final cwd? when cwd.isNotEmpty) {
+        buffer.writeln('<cwd>$cwd</cwd>');
+      }
+      if (context.firstUserMessage case final text? when text.isNotEmpty) {
+        buffer.writeln('<first_user>${_truncate(text, 300)}</first_user>');
+      }
+      if (context.latestUserMessage case final text? when text.isNotEmpty) {
+        buffer.writeln('<latest_user>${_truncate(text, 300)}</latest_user>');
+      }
+      if (context.firstAssistantMessage case final text? when text.isNotEmpty) {
+        buffer.writeln(
+            '<first_assistant>${_truncate(text, 300)}</first_assistant>');
+      }
+      if (context.latestAssistantMessage case final text?
+          when text.isNotEmpty) {
+        buffer.writeln(
+            '<latest_assistant>${_truncate(text, 300)}</latest_assistant>');
+      }
+      if (context.toolNames.isNotEmpty) {
+        buffer.writeln('<tools>${context.toolNames.join(', ')}</tools>');
+      }
+
+      final stream = _llm.stream([Message.user(buffer.toString().trim())]);
+      final response = StringBuffer();
+      await for (final chunk in stream) {
+        if (chunk case TextDelta(:final text)) {
+          response.write(text);
+        }
+      }
+      return sanitize(response.toString());
     } catch (_) {
       return null;
     }

@@ -60,6 +60,8 @@ String _statusModelLabel(App app) => formatStatusModelLabel(
     );
 
 String _buildSessionInfoImpl(App app) {
+  final store = app._sessionManager.currentStore;
+  final meta = store?.meta;
   final shortCwd = app._shortenPath(app._cwd);
   final trustedList = app._autoApprovedTools.toList()..sort();
   final displayModel = formatInfoModelLabel(
@@ -67,10 +69,18 @@ String _buildSessionInfoImpl(App app) {
     app._config?.catalogData,
     app._modelId,
   );
+  final startedAt = meta?.startTime;
+  final startedLabel = startedAt == null
+      ? '(not started)'
+      : '${startedAt.toLocal().toIso8601String().substring(0, 19)} '
+          '(${_timeAgoImpl(startedAt)})';
   final buf = StringBuffer();
   buf.writeln('Session Info');
+  buf.writeln('  Session ID:   ${meta?.id ?? "(none)"}');
+  buf.writeln('  Title:        ${meta?.title ?? "(untitled)"}');
   buf.writeln('  Model:        $displayModel');
   buf.writeln('  Directory:    $shortCwd');
+  buf.writeln('  Started:      $startedLabel');
   buf.writeln('  Tokens used:  ${app.agent.tokenCount}');
   buf.writeln('  Messages:     ${app.agent.conversation.length}');
   buf.writeln('  Tools:        ${app.agent.tools.length} registered');
@@ -105,6 +115,19 @@ String _sessionActionImpl(App app, List<String> args) {
     default:
       return 'Unknown subcommand "$subcommand". Try: /session copy';
   }
+}
+
+String _renameSessionImpl(App app, String title) {
+  final normalized = TitleGenerator.sanitize(title)?.trim();
+  if (normalized == null || normalized.isEmpty) {
+    return 'Usage: /rename <new title>';
+  }
+  app._ensureSessionStore();
+  app._titleInitialRequested = true;
+  app._titleReevaluationRequested = true;
+  app._titleManuallyOverridden = true;
+  unawaited(app._sessionManager.renameTitle(normalized));
+  return 'Renamed session to "$normalized".';
 }
 
 String _buildToolsOutputImpl(App app) {

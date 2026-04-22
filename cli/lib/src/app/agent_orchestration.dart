@@ -180,6 +180,7 @@ void _handleAgentEventImpl(App app, AgentEvent event) {
         app._blocks.add(_ConversationEntry.assistant(app._streamingText));
         app._streamingText = '';
       }
+      _reevaluateTitleImpl(app);
       app._stopSpinner();
       app._mode = AppMode.idle;
       app._render();

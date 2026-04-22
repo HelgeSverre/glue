@@ -3,7 +3,7 @@
 /// Two audiences:
 /// - **Status bar** (every render, must be compact): shows
 ///   `<provider> · <apiId>` — the wire address the provider actually sees.
-/// - **`/info` command** (occasional, can be verbose): adds the display
+/// - **`/session` output** (occasional, can be verbose): adds the display
 ///   name when the model is catalogued.
 ///
 /// Both fall back gracefully for uncatalogued refs (passthrough) and for
@@ -26,7 +26,7 @@ String formatStatusModelLabel(
   return '${ref.providerId} · $apiId';
 }
 
-/// Multi-line label for `/info`: display name + wire address, or the ref
+/// Multi-line label for `/session`: display name + wire address, or the ref
 /// alone when the model isn't catalogued.
 String formatInfoModelLabel(
   ModelRef? ref,
