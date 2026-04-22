@@ -10,10 +10,33 @@ import 'package:path/path.dart' as p;
 
 const appDescription = 'The coding agent that holds it all together.';
 
+List<String> normalizeCliArgs(List<String> args) {
+  final normalized = <String>[];
+  for (var i = 0; i < args.length; i++) {
+    final arg = args[i];
+    if (arg.startsWith('--resume=')) {
+      normalized.add('--resume-id=${arg.substring('--resume='.length)}');
+      continue;
+    }
+    if (arg == '--resume' || arg == '-r') {
+      final next = i + 1 < args.length ? args[i + 1] : null;
+      if (next != null && !_looksLikeOption(next)) {
+        normalized.add('--resume-id=$next');
+        i++;
+        continue;
+      }
+    }
+    normalized.add(arg);
+  }
+  return normalized;
+}
+
+bool _looksLikeOption(String arg) => arg.startsWith('-');
+
 void main(List<String> args) async {
   final runner = GlueCommandRunner();
   try {
-    final exitCode = await runner.run(args) ?? 0;
+    final exitCode = await runner.run(normalizeCliArgs(args)) ?? 0;
     exit(exitCode);
   } on UsageException catch (e) {
     stderr.writeln('Error: ${e.message}');
@@ -57,9 +80,10 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
         'resume',
         abbr: 'r',
         negatable: false,
-        help: 'Open the resume panel on startup.',
+        help: 'Resume a session by ID/query, or open the resume panel when '
+            'omitted.',
       )
-      ..addOption('resume-id', help: 'Resume a session by ID.')
+      ..addOption('resume-id', hide: true)
       ..addFlag('continue',
           negatable: false, help: 'Resume most recent session.')
       ..addFlag('debug',
@@ -140,13 +164,6 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
     final resumeSessionId = topLevelResults.option('resume-id');
     final openResumePanel = topLevelResults.flag('resume');
     final debug = topLevelResults.flag('debug');
-
-    if (openResumePanel && resumeSessionId != null) {
-      throw UsageException(
-        'Use either --resume to open the resume panel or --resume-id <id> to resume a specific session.',
-        usage,
-      );
-    }
 
     if (debug && !jsonMode) {
       stderr.writeln(

@@ -162,7 +162,9 @@ class App {
   late final AtFileHint _atHint;
   late final ShellAutocomplete _shellComplete;
   late final SessionManager _sessionManager;
-  bool _titleGenerated = false;
+  bool _titleInitialRequested = false;
+  bool _titleReevaluationRequested = false;
+  bool _titleManuallyOverridden = false;
   bool _bashMode = false;
   Process? _bashRunProcess;
   DateTime? _lastCtrlC;
@@ -377,7 +379,9 @@ class App {
         _blocks.add(_ConversationEntry.system('No sessions to continue.'));
         _render();
       }
-    } else if (_startupPrompt case final prompt? when prompt.isNotEmpty) {
+    }
+
+    if (_startupPrompt case final prompt? when prompt.isNotEmpty) {
       _events.add(UserSubmit(prompt));
     }
 
@@ -437,7 +441,6 @@ class App {
       requestExit: requestExit,
       openModelPanel: _openModelPanel,
       switchModelByQuery: _switchModelByQuery,
-      sessionInfo: _buildSessionInfo,
       sessionAction: _sessionAction,
       listTools: _buildToolsOutput,
       openHistoryPanel: _openHistoryPanel,
@@ -452,6 +455,7 @@ class App {
       pathsReport: _buildPathsReport,
       openGlueTarget: _openGlueTarget,
       configAction: _configAction,
+      renameSession: _renameSession,
     );
 
     // Argument autocomplete — attached here (not plumbed through
@@ -531,10 +535,6 @@ class App {
     return _switchModelByQueryImpl(this, query);
   }
 
-  String _buildSessionInfo() {
-    return _buildSessionInfoImpl(this);
-  }
-
   String _sessionAction(List<String> args) {
     return _sessionActionImpl(this, args);
   }
@@ -547,6 +547,10 @@ class App {
 
   String _buildToolsOutput() {
     return _buildToolsOutputImpl(this);
+  }
+
+  String _renameSession(String title) {
+    return _renameSessionImpl(this, title);
   }
 
   String _toggleDebugMode() {

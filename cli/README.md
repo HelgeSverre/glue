@@ -30,8 +30,10 @@ dart run bin/glue.dart
 
 ```bash
 glue                                    # start a new session
-glue -p anthropic -m claude-sonnet-4-6  # choose provider & model
+glue -m claude-sonnet-4-6               # choose model
 glue --resume                           # open session picker
+glue --resume 1740654600000-abc         # resume a specific session
+glue --resume 1740654600000-abc "pick up from here"  # resume + send prompt
 glue --continue                         # resume most recent session
 glue completions install                # install shell completions for current shell
 glue --help                             # show all options
@@ -39,15 +41,15 @@ glue --help                             # show all options
 
 ### CLI flags
 
-| Flag         | Short | Description                                               |
-|--------------|-------|-----------------------------------------------------------|
-| `--help`     | `-h`  | Show usage information                                    |
-| `--version`  | `-v`  | Print version                                             |
-| `--provider` | `-p`  | LLM provider (`anthropic`, `openai`, `mistral`, `ollama`) |
-| `--model`    | `-m`  | LLM model to use                                          |
-| `--debug`    | `-d`  | Enable debug mode (verbose logging)                       |
-| `--resume`   |       | Start with session picker open                            |
-| `--continue` |       | Resume most recent session                                |
+| Flag         | Short | Description                                                        |
+|--------------|-------|--------------------------------------------------------------------|
+| `--help`     | `-h`  | Show usage information                                             |
+| `--version`  | `-v`  | Print version                                                      |
+| `--print`    | `-p`  | Print response to stdout without interactive mode                  |
+| `--model`    | `-m`  | LLM model to use                                                   |
+| `--debug`    | `-d`  | Enable debug mode (verbose logging)                                |
+| `--resume`   | `-r`  | Open session picker, or resume a session when given an ID / query |
+| `--continue` |       | Resume most recent session                                         |
 
 ### Shell completions
 

@@ -61,7 +61,10 @@ left off — the `meta.json` and `conversation.jsonl` are replayed back into the
 context window before the next prompt.
 
 ```sh
+glue --resume
+
 glue --resume <session-id>
+glue --resume <session-id> "continue from here"
 ```
 
 ## Replay UI
