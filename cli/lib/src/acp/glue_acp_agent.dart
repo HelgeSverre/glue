@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:acp/acp.dart';
 import 'package:acp/transport.dart';
@@ -109,7 +110,7 @@ final class GlueAcpAgent extends AgentHandler {
   final Map<String, Tool> _tools;
   final String _modelId;
   final Map<String, AcpSession> _sessions = <String, AcpSession>{};
-  int _sessionCounter = 0;
+  final Random _random = Random.secure();
 
   GlueAcpAgent({
     required AgentSideConnection connection,
@@ -158,7 +159,9 @@ final class GlueAcpAgent extends AgentHandler {
     NewSessionRequest request, {
     required AcpCancellationToken cancelToken,
   }) async {
-    final sessionId = 'glue-session-${++_sessionCounter}';
+    final sessionId = 'glue-session-'
+        '${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}-'
+        '${_random.nextInt(1 << 32).toRadixString(36)}';
     final systemPrompt = Prompts.build(
       cwd: request.cwd,
       skills: _skillRuntime.list(),
@@ -185,7 +188,10 @@ final class GlueAcpAgent extends AgentHandler {
   }) async {
     final session = _sessions[request.sessionId];
     if (session == null) {
-      throw RpcErrorException.invalidParams('Unknown session: ${request.sessionId}');
+      throw RpcErrorException.invalidParams(
+        'Unknown session: ${request.sessionId}. '
+        'Use session/list to discover active sessions.',
+      );
     }
 
     final promptText = _promptToText(request.prompt);
@@ -262,7 +268,9 @@ final class GlueAcpAgent extends AgentHandler {
           case AgentDone():
             break;
           case AgentError(:final error):
-            throw RpcErrorException.internalError('Glue agent error: $error');
+            throw RpcErrorException.internalError(
+              'Glue agent error (${error.runtimeType}): $error',
+            );
         }
       }
     } on CanceledException {
