@@ -8,7 +8,6 @@ class BuiltinCommands {
     required void Function() requestExit,
     required void Function() openModelPanel,
     required String Function(String query) switchModelByQuery,
-    required String Function() sessionInfo,
     required String Function(List<String> args) sessionAction,
     required String Function() listTools,
     required void Function() openHistoryPanel,
@@ -23,6 +22,7 @@ class BuiltinCommands {
     required String Function() pathsReport,
     required String Function(List<String> args) openGlueTarget,
     required String Function(List<String> args) configAction,
+    required String Function(String title) renameSession,
   }) {
     final commands = SlashCommandRegistry();
 
@@ -71,13 +71,6 @@ class BuiltinCommands {
         openModelPanel();
         return '';
       },
-    ));
-
-    commands.register(SlashCommand(
-      name: 'info',
-      description: 'Show session info',
-      hiddenAliases: ['status'],
-      execute: (_) => sessionInfo(),
     ));
 
     commands.register(SlashCommand(
@@ -166,6 +159,12 @@ class BuiltinCommands {
       description: 'Open a Glue directory in your file manager '
           '(home, session, sessions, logs, skills, plans, cache)',
       execute: openGlueTarget,
+    ));
+
+    commands.register(SlashCommand(
+      name: 'rename',
+      description: 'Rename the current session',
+      execute: (args) => renameSession(args.join(' ')),
     ));
 
     return commands;

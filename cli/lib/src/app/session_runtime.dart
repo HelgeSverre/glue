@@ -125,7 +125,11 @@ String _resumeSessionImpl(App app, SessionMeta session) {
   app._streamingText = '';
   app._subagentGroups.clear();
   app._outputLineGroups.clear();
-  app._titleGenerated = session.title != null;
+  app._titleInitialRequested = session.title != null;
+  app._titleReevaluationRequested =
+      session.titleState == SessionTitleState.stable ||
+          (session.titleGenerationCount >= 2);
+  app._titleManuallyOverridden = session.titleSource == SessionTitleSource.user;
 
   app._blocks.add(_ConversationEntry.system(
     'Resuming session ${session.id} '
@@ -140,10 +144,11 @@ String _resumeSessionImpl(App app, SessionMeta session) {
 
   // Backfill title for resumed sessions that lack one.
   final firstUserMessage = result.replay.firstUserMessage;
-  if (!app._titleGenerated &&
+  if (!app._titleInitialRequested &&
+      !app._titleManuallyOverridden &&
       firstUserMessage != null &&
       firstUserMessage.isNotEmpty) {
-    app._titleGenerated = true;
+    app._titleInitialRequested = true;
     app._generateTitle(firstUserMessage);
   }
 
@@ -158,6 +163,68 @@ void _generateTitleImpl(App app, String userMessage) {
   unawaited(app._sessionManager.generateTitle(
     userMessage: userMessage,
     generate: generator.generate,
+  ));
+}
+
+void _reevaluateTitleImpl(App app) {
+  if (app._titleReevaluationRequested || app._titleManuallyOverridden) return;
+  final store = app._sessionManager.currentStore;
+  final meta = store?.meta;
+  if (meta == null ||
+      meta.titleSource != SessionTitleSource.auto ||
+      meta.titleState != SessionTitleState.provisional ||
+      meta.titleGenerationCount >= 2) {
+    return;
+  }
+
+  String? firstUserMessage;
+  String? latestUserMessage;
+  String? firstAssistantMessage;
+  String? latestAssistantMessage;
+  final toolNames = <String>[];
+  for (final message in app.agent.conversation) {
+    switch (message.role) {
+      case Role.user:
+        final text = message.text;
+        if (text == null || text.isEmpty) continue;
+        firstUserMessage ??= text;
+        latestUserMessage = text;
+      case Role.assistant:
+        final text = message.text;
+        if (text != null && text.isNotEmpty) {
+          firstAssistantMessage ??= text;
+          latestAssistantMessage = text;
+        }
+        for (final toolCall in message.toolCalls) {
+          toolNames.add(toolCall.name);
+        }
+      case Role.toolResult:
+        break;
+    }
+  }
+
+  final hasEnoughContext = (firstAssistantMessage != null &&
+          firstAssistantMessage.trim().length >= 40) ||
+      toolNames.isNotEmpty ||
+      firstUserMessage != null &&
+          latestUserMessage != null &&
+          firstUserMessage != latestUserMessage;
+  if (!hasEnoughContext) return;
+
+  final llmClient = app._createTitleLlmClient();
+  if (llmClient == null) return;
+  app._titleReevaluationRequested = true;
+  final generator = TitleGenerator(llmClient: llmClient);
+  unawaited(app._sessionManager.reevaluateTitle(
+    context: TitleContext(
+      firstUserMessage: firstUserMessage,
+      latestUserMessage: latestUserMessage,
+      firstAssistantMessage: firstAssistantMessage,
+      latestAssistantMessage: latestAssistantMessage,
+      toolNames: toolNames,
+      cwdBasename: app._cwd.split(Platform.pathSeparator).last,
+    ),
+    generate: generator.generateFromContext,
   ));
 }
 

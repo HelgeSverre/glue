@@ -751,7 +751,7 @@ List<String> buildHelpLines(List<SlashCommand> commands, int contentWidth) {
   lines.add('');
   for (final b in const [
     ('Shift+Tab', 'Cycle tool approval mode'),
-    ('/info', 'View current mode'),
+    ('/session', 'View current session info'),
   ]) {
     lines.add('  ${b.$1.padRight(keyColWidth)}${b.$2}');
   }

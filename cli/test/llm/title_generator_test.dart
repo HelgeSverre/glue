@@ -1,6 +1,7 @@
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/llm/title_generator.dart';
+import 'package:glue/src/session/session_manager.dart';
 import 'package:test/test.dart';
 
 class _FakeLlmClient implements LlmClient {
@@ -59,6 +60,29 @@ void main() {
       final generator = TitleGenerator(llmClient: llm);
 
       expect(await generator.generate('test'), isNull);
+    });
+  });
+
+  group('TitleGenerator.generateFromContext', () {
+    test('returns title from compact context payload', () async {
+      final llm = _FakeLlmClient(chunks: [
+        TextDelta('Docker resume flakiness'),
+      ]);
+      final generator = TitleGenerator(llmClient: llm);
+
+      final title = await generator.generateFromContext(const TitleContext(
+        firstUserMessage: 'help debug this',
+        latestUserMessage: 'it fails in docker only',
+        firstAssistantMessage: 'I found a flaky resume test.',
+        latestAssistantMessage: 'The failing area is Docker resume handling.',
+        toolNames: ['read_file', 'run_shell_command'],
+        cwdBasename: 'glue',
+      ));
+
+      expect(title, 'Docker resume flakiness');
+      expect(llm.lastMessages, isNotNull);
+      expect(llm.lastMessages!.single.text, contains('<first_user>'));
+      expect(llm.lastMessages!.single.text, contains('<tools>'));
     });
   });
 

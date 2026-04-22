@@ -45,12 +45,20 @@ class SessionReplay {
   final int userCount;
   final int assistantCount;
   final String? firstUserMessage;
+  final String? latestUserMessage;
+  final String? firstAssistantMessage;
+  final String? latestAssistantMessage;
+  final List<String> toolNames;
 
   const SessionReplay({
     required this.entries,
     required this.userCount,
     required this.assistantCount,
     this.firstUserMessage,
+    this.latestUserMessage,
+    this.firstAssistantMessage,
+    this.latestAssistantMessage,
+    this.toolNames = const [],
   });
 }
 
@@ -79,6 +87,24 @@ class SessionForkResult {
 }
 
 /// Handles session lifecycle operations independent of UI rendering.
+class TitleContext {
+  final String? firstUserMessage;
+  final String? latestUserMessage;
+  final String? firstAssistantMessage;
+  final String? latestAssistantMessage;
+  final List<String> toolNames;
+  final String? cwdBasename;
+
+  const TitleContext({
+    this.firstUserMessage,
+    this.latestUserMessage,
+    this.firstAssistantMessage,
+    this.latestAssistantMessage,
+    this.toolNames = const [],
+    this.cwdBasename,
+  });
+}
+
 class SessionManager {
   final Environment environment;
   SessionStore? _store;
@@ -145,10 +171,86 @@ class SessionManager {
   }) async {
     final store = _store;
     if (store == null) return;
+    final meta = store.meta;
+    if (meta.titleSource == SessionTitleSource.user) return;
     final title = await generate(userMessage);
     if (title != null) {
-      store.setTitle(title);
+      final now = DateTime.now().toUtc();
+      store.setTitle(
+        title,
+        source: SessionTitleSource.auto,
+        state: SessionTitleState.provisional,
+        generationCount: 1,
+        generatedAt: now,
+        lastEvaluatedAt: now,
+        renamedAt: null,
+      );
       store.logEvent('title_generated', {'title': title});
+    }
+  }
+
+  Future<void> renameTitle(String title) async {
+    final store = _store;
+    if (store == null) return;
+    final now = DateTime.now().toUtc();
+    store.setTitle(
+      title,
+      source: SessionTitleSource.user,
+      state: SessionTitleState.stable,
+      generatedAt: store.meta.titleGeneratedAt ?? now,
+      lastEvaluatedAt: now,
+      renamedAt: now,
+    );
+  }
+
+  Future<void> reevaluateTitle({
+    required TitleContext context,
+    required Future<String?> Function(TitleContext context) generate,
+  }) async {
+    final store = _store;
+    if (store == null) return;
+    final meta = store.meta;
+    if (meta.titleSource != SessionTitleSource.auto ||
+        meta.titleState != SessionTitleState.provisional ||
+        meta.titleGenerationCount >= 2) {
+      return;
+    }
+
+    final now = DateTime.now().toUtc();
+    final currentTitle = meta.title;
+    final proposed = await generate(context);
+    final shouldReplace = _shouldReplaceTitle(
+      currentTitle: currentTitle,
+      proposedTitle: proposed,
+    );
+
+    if (currentTitle != null) {
+      store.setTitle(
+        shouldReplace ? proposed! : currentTitle,
+        source: SessionTitleSource.auto,
+        state: SessionTitleState.stable,
+        generationCount: meta.titleGenerationCount + 1,
+        generatedAt: meta.titleGeneratedAt ?? now,
+        lastEvaluatedAt: now,
+      );
+    } else if (proposed != null) {
+      store.setTitle(
+        proposed,
+        source: SessionTitleSource.auto,
+        state: SessionTitleState.stable,
+        generationCount: meta.titleGenerationCount + 1,
+        generatedAt: meta.titleGeneratedAt ?? now,
+        lastEvaluatedAt: now,
+      );
+    } else {
+      meta.titleState = SessionTitleState.stable;
+      meta.titleGenerationCount = meta.titleGenerationCount + 1;
+      meta.titleLastEvaluatedAt = now;
+      store.updateMeta();
+    }
+
+    if (shouldReplace && proposed != null) {
+      store.logEvent('title_reevaluated', {'title': proposed});
     }
   }
 
@@ -240,6 +342,10 @@ class SessionManager {
     var userCount = 0;
     var assistantCount = 0;
     String? firstUserMessage;
+    String? latestUserMessage;
+    String? firstAssistantMessage;
+    String? latestAssistantMessage;
+    final toolNames = <String>[];
 
     String? pendingAssistantText;
     var pendingToolCalls = <ToolCall>[];
@@ -270,6 +376,7 @@ class SessionManager {
           flushPending();
           if (text.isEmpty) continue;
           firstUserMessage ??= text;
+          latestUserMessage = text;
           agent.addMessage(Message.user(text));
           entries.add(SessionReplayEntry.user(text));
           userCount++;
@@ -277,6 +384,8 @@ class SessionManager {
         case 'assistant_message':
           flushPending();
           if (text.isEmpty) continue;
+          firstAssistantMessage ??= text;
+          latestAssistantMessage = text;
           pendingAssistantText = text;
 
         case 'tool_call':
@@ -286,6 +395,7 @@ class SessionManager {
           final args = event['arguments'] as Map<String, dynamic>? ?? {};
           if (name.isNotEmpty) {
             pendingToolCalls.add(ToolCall(id: id, name: name, arguments: args));
+            toolNames.add(name);
             entries.add(SessionReplayEntry.toolCall(name, args));
           }
 
@@ -310,7 +420,47 @@ class SessionManager {
       userCount: userCount,
       assistantCount: assistantCount,
       firstUserMessage: firstUserMessage,
+      latestUserMessage: latestUserMessage,
+      firstAssistantMessage: firstAssistantMessage,
+      latestAssistantMessage: latestAssistantMessage,
+      toolNames: toolNames,
     );
+  }
+
+  bool _shouldReplaceTitle({
+    required String? currentTitle,
+    required String? proposedTitle,
+  }) {
+    final current = _normalizeTitle(currentTitle);
+    final proposed = _normalizeTitle(proposedTitle);
+    if (current == null || proposed == null) return false;
+    if (current == proposed) return false;
+    if (proposed.length < current.length && _looksGeneric(current)) {
+      return false;
+    }
+    if (_looksGeneric(current) && !_looksGeneric(proposed)) {
+      return true;
+    }
+    return proposed.length > current.length;
+  }
+
+  String? _normalizeTitle(String? title) {
+    final sanitized = title?.trim().toLowerCase();
+    if (sanitized == null || sanitized.isEmpty) return null;
+    return sanitized
+        .replaceAll(RegExp(r'^[^a-z0-9]+|[^a-z0-9]+$'), '')
+        .replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  bool _looksGeneric(String title) {
+    const generic = {
+      'investigate issue',
+      'help debug this',
+      'fix problem',
+      'check code',
+      'session question',
+    };
+    return generic.contains(_normalizeTitle(title));
   }
 
   String _newSessionId() {
