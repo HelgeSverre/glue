@@ -86,6 +86,7 @@ void main() {
       String Function(List<String> args)? openGlueTarget,
       String Function(List<String> args)? configAction,
       String Function(List<String> args)? sessionAction,
+      String Function(List<String> args)? shareAction,
     }) {
       return BuiltinCommands.create(
         openHelpPanel: () {},
@@ -94,6 +95,7 @@ void main() {
         openModelPanel: () {},
         switchModelByQuery: (_) => '',
         sessionAction: sessionAction ?? (_) => '',
+        shareAction: shareAction ?? (_) => '',
         listTools: () => '',
         openHistoryPanel: openHistoryPanel ?? () {},
         historyActionByQuery: historyActionByQuery ?? (_) => '',
@@ -326,6 +328,48 @@ void main() {
       registry.execute('/session copy');
       expect(received, ['copy']);
     });
+
+    test('/share without args delegates with empty args', () {
+      List<String>? received;
+      final registry = createRegistry(
+        shareAction: (args) {
+          received = args;
+          return 'shared';
+        },
+      );
+
+      final result = registry.execute('/share');
+      expect(result, 'shared');
+      expect(received, isEmpty);
+    });
+
+    test('/share html delegates with [html]', () {
+      List<String>? received;
+      final registry = createRegistry(
+        shareAction: (args) {
+          received = args;
+          return 'shared html';
+        },
+      );
+
+      final result = registry.execute('/share html');
+      expect(result, 'shared html');
+      expect(received, ['html']);
+    });
+
+    test('/share gist delegates with [gist]', () {
+      List<String>? received;
+      final registry = createRegistry(
+        shareAction: (args) {
+          received = args;
+          return 'shared gist';
+        },
+      );
+
+      final result = registry.execute('/share gist');
+      expect(result, 'shared gist');
+      expect(received, ['gist']);
+    });
   });
 
   group('App startup resume behavior', () {
@@ -377,7 +421,8 @@ void main() {
       );
     });
 
-    test('resume with startup prompt submits the prompt after resuming', () async {
+    test('resume with startup prompt submits the prompt after resuming',
+        () async {
       final meta = SessionMeta(
         id: 'resume-target',
         cwd: environment.cwd,

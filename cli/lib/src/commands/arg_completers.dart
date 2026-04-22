@@ -109,12 +109,29 @@ const Map<String, String> sessionSubcommands = {
   'copy': 'Copy session ID to clipboard',
 };
 
+const Map<String, String> shareFormats = {
+  'html': 'Export HTML only',
+  'md': 'Export Markdown only',
+  'gist': 'Export Markdown and publish a gist with gh',
+};
+
 List<SlashArgCandidate> sessionArgCandidates(
   List<String> prior,
   String partial,
 ) {
   if (prior.isNotEmpty) return const [];
   return sessionSubcommands.entries
+      .where((e) => e.key.startsWith(partial))
+      .map((e) => SlashArgCandidate(value: e.key, description: e.value))
+      .toList();
+}
+
+List<SlashArgCandidate> shareArgCandidates(
+  List<String> prior,
+  String partial,
+) {
+  if (prior.isNotEmpty) return const [];
+  return shareFormats.entries
       .where((e) => e.key.startsWith(partial))
       .map((e) => SlashArgCandidate(value: e.key, description: e.value))
       .toList();

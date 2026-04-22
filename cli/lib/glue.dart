@@ -95,6 +95,8 @@ export 'src/agent/prompts.dart' show Prompts;
 export 'src/rendering/ansi_utils.dart'
     show
         osc8Link,
+        osc8FileLink,
+        linkifyUrls,
         stripAnsi,
         visibleLength,
         ansiTruncate,

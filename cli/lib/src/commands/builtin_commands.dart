@@ -9,6 +9,7 @@ class BuiltinCommands {
     required void Function() openModelPanel,
     required String Function(String query) switchModelByQuery,
     required String Function(List<String> args) sessionAction,
+    required String Function(List<String> args) shareAction,
     required String Function() listTools,
     required void Function() openHistoryPanel,
     required String Function(String query) historyActionByQuery,
@@ -83,6 +84,12 @@ class BuiltinCommands {
       name: 'tools',
       description: 'List available tools',
       execute: (_) => listTools(),
+    ));
+
+    commands.register(SlashCommand(
+      name: 'share',
+      description: 'Export the current session as html, markdown, or gist',
+      execute: shareAction,
     ));
 
     commands.register(SlashCommand(

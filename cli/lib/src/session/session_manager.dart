@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/core/environment.dart';
+import 'package:glue/src/session/session_event_normalizer.dart';
 import 'package:glue/src/storage/session_store.dart';
 
 enum SessionReplayKind { user, assistant, toolCall, toolResult }
@@ -157,6 +158,15 @@ class SessionManager {
 
   void logEvent(String type, Map<String, dynamic> data) {
     _store?.logEvent(type, data);
+
+    // Track message counts
+    if (type == 'user_message' || type == 'assistant_message') {
+      final store = _store;
+      if (store != null) {
+        store.meta.messageCount = (store.meta.messageCount ?? 0) + 1;
+        store.updateMeta();
+      }
+    }
   }
 
   Future<void> closeCurrent() async {
@@ -272,6 +282,14 @@ class SessionManager {
     }
 
     final replay = _replayEventsIntoAgent(events, agent);
+
+    // Update message count in metadata
+    final currentStore = _store;
+    if (currentStore != null) {
+      currentStore.meta.messageCount = replay.userCount + replay.assistantCount;
+      currentStore.updateMeta();
+    }
+
     return SessionResumeResult(
       message:
           'Restored ${replay.userCount} user + ${replay.assistantCount} assistant messages.',
@@ -368,49 +386,38 @@ class SessionManager {
       pendingToolResults = [];
     }
 
-    for (final event in events) {
-      final type = event['type'] as String?;
-      final text = event['text'] as String? ?? '';
-      switch (type) {
-        case 'user_message':
+    for (final event in normalizeSessionEvents(events)) {
+      switch (event.kind) {
+        case NormalizedSessionEventKind.user:
           flushPending();
-          if (text.isEmpty) continue;
-          firstUserMessage ??= text;
-          latestUserMessage = text;
-          agent.addMessage(Message.user(text));
-          entries.add(SessionReplayEntry.user(text));
+          firstUserMessage ??= event.visibleText;
+          latestUserMessage = event.visibleText;
+          agent.addMessage(Message.user(event.text));
+          entries.add(SessionReplayEntry.user(event.visibleText));
           userCount++;
 
-        case 'assistant_message':
+        case NormalizedSessionEventKind.assistant:
           flushPending();
-          if (text.isEmpty) continue;
-          firstAssistantMessage ??= text;
-          latestAssistantMessage = text;
-          pendingAssistantText = text;
+          firstAssistantMessage ??= event.visibleText;
+          latestAssistantMessage = event.visibleText;
+          pendingAssistantText = event.text;
 
-        case 'tool_call':
-          final name = event['name'] as String? ?? '';
-          final id =
-              event['id'] as String? ?? 'replay_${pendingToolCalls.length}';
-          final args = event['arguments'] as Map<String, dynamic>? ?? {};
-          if (name.isNotEmpty) {
-            pendingToolCalls.add(ToolCall(id: id, name: name, arguments: args));
-            toolNames.add(name);
-            entries.add(SessionReplayEntry.toolCall(name, args));
-          }
+        case NormalizedSessionEventKind.toolCall:
+          final name = event.toolName!;
+          final id = event.toolCallId ?? 'replay_${pendingToolCalls.length}';
+          final args = event.toolArguments ?? const <String, dynamic>{};
+          pendingToolCalls.add(ToolCall(id: id, name: name, arguments: args));
+          toolNames.add(name);
+          entries.add(SessionReplayEntry.toolCall(name, args));
 
-        case 'tool_result':
-          final callId = event['call_id'] as String?;
-          final content = event['content'] as String? ?? '';
+        case NormalizedSessionEventKind.toolResult:
+          final callId = event.toolCallId;
           if (callId != null) {
             pendingToolResults.add(
-              Message.toolResult(callId: callId, content: content),
+              Message.toolResult(callId: callId, content: event.text),
             );
-            entries.add(SessionReplayEntry.toolResult(content));
           }
-
-        default:
-          break;
+          entries.add(SessionReplayEntry.toolResult(event.visibleText));
       }
     }
     flushPending();

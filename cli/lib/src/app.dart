@@ -24,6 +24,7 @@ import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/core/clipboard.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/core/path_opener.dart';
+import 'package:glue/src/core/url_launcher.dart';
 import 'package:glue/src/core/where_report.dart';
 import 'package:glue/src/providers/ollama_discovery.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
@@ -43,6 +44,8 @@ import 'package:glue/src/shell/shell_config.dart';
 import 'package:glue/src/shell/shell_job_manager.dart';
 import 'package:glue/src/shell/shell_completer.dart';
 import 'package:glue/src/session/session_manager.dart';
+import 'package:glue/src/share/gist_publisher.dart';
+import 'package:glue/src/share/session_share_exporter.dart';
 import 'package:glue/src/storage/config_store.dart';
 import 'package:glue/src/storage/session_store.dart';
 import 'package:glue/src/skills/skill_registry.dart';
@@ -162,6 +165,8 @@ class App {
   late final AtFileHint _atHint;
   late final ShellAutocomplete _shellComplete;
   late final SessionManager _sessionManager;
+  late final SessionShareExporter _shareExporter;
+  late final SessionGistPublisher _gistPublisher;
   bool _titleInitialRequested = false;
   bool _titleReevaluationRequested = false;
   bool _titleManuallyOverridden = false;
@@ -229,6 +234,8 @@ class App {
       environment: _environment,
       sessionStore: sessionStore,
     );
+    _shareExporter = SessionShareExporter();
+    _gistPublisher = SessionGistPublisher();
     _panels = PanelController(
       panelStack: _panelStack,
       render: _render,
@@ -442,6 +449,7 @@ class App {
       openModelPanel: _openModelPanel,
       switchModelByQuery: _switchModelByQuery,
       sessionAction: _sessionAction,
+      shareAction: _shareAction,
       listTools: _buildToolsOutput,
       openHistoryPanel: _openHistoryPanel,
       historyActionByQuery: _historyFromCommand,
@@ -465,6 +473,7 @@ class App {
     _commands.attachArgCompleter('model', _modelArgCandidates);
     _commands.attachArgCompleter('skills', _skillsArgCandidates);
     _commands.attachArgCompleter('session', _sessionArgCandidates);
+    _commands.attachArgCompleter('share', _shareArgCandidates);
   }
 
   String _buildPathsReport() => buildWhereReport(_environment);
@@ -518,6 +527,12 @@ class App {
     return arg_completers.skillCandidates(_skillRuntime.list(), partial);
   }
 
+  List<SlashArgCandidate> _shareArgCandidates(
+    List<String> prior,
+    String partial,
+  ) =>
+      arg_completers.shareArgCandidates(prior, partial);
+
   String _runProviderCommand(List<String> args) =>
       _runProviderCommandImpl(this, args);
 
@@ -537,6 +552,10 @@ class App {
 
   String _sessionAction(List<String> args) {
     return _sessionActionImpl(this, args);
+  }
+
+  String _shareAction(List<String> args) {
+    return _shareActionImpl(this, args);
   }
 
   List<SlashArgCandidate> _sessionArgCandidates(
