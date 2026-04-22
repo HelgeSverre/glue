@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Glue</title>
+  <style>
+    :root {
+      --bg: #0d0d0f;
+      --fg: #e8e8ea;
+      --dim: #8b8f98;
+      --line: #1f2024;
+      --panel: #121316;
+      --accent: #facc15;
+      --blue: #3b82f6;
+      --green: #22c55e;
+      --red: #ef4444;
+      --cyan: #22d3ee;
+      --purple: #a78bfa;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--fg);
+    }
+
+    body {
+      font: 13px/1.65 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    code, pre {
+      font: inherit;
+    }
+
+    .page {
+      min-height: 100vh;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: rgba(13, 13, 15, 0.96);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .topbar-inner,
+    .screen {
+      width: min(1200px, calc(100vw - 24px));
+      margin: 0 auto;
+    }
+
+    .topbar-inner {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 10px 0;
+      white-space: nowrap;
+      overflow: auto hidden;
+      scrollbar-width: none;
+    }
+
+    .topbar-inner::-webkit-scrollbar { display: none; }
+
+    .brand {
+      color: var(--accent);
+      font-weight: 700;
+      line-height: 1.15;
+    }
+
+    .top-meta {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .top-meta-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: rgba(232, 232, 234, 0.7);
+      min-width: 0;
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .top-meta-icon {
+      color: rgba(232, 232, 234, 0.7);
+      width: 14px;
+      height: 14px;
+      flex: 0 0 14px;
+    }
+
+    .top-meta code {
+      color: rgba(232, 232, 234, 0.7);
+    }
+
+    .screen {
+      padding: 18px 0 28px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 220px;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .terminal {
+      background: transparent;
+      border: 1px solid var(--line);
+      min-height: 80vh;
+    }
+
+    .transcript {
+      padding: 14px 0 18px;
+    }
+
+    .intro {
+      padding: 0 18px 12px;
+      color: var(--dim);
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 10px;
+    }
+
+    .intro .title {
+      color: var(--fg);
+      margin-bottom: 2px;
+    }
+
+    .entry {
+      padding: 0 18px;
+      margin: 0 0 10px;
+    }
+
+    .entry-anchor {
+      color: #5f636b;
+      display: inline-block;
+      width: 44px;
+      vertical-align: top;
+    }
+
+    .entry-main {
+      display: inline-block;
+      width: calc(100% - 48px);
+      vertical-align: top;
+    }
+
+    .head {
+      font-weight: 700;
+    }
+
+    .user .head { color: var(--blue); }
+    .assistant .head { color: var(--accent); }
+    .tool-call .head { color: var(--accent); }
+    .tool-result .head { color: var(--green); }
+    .error .head { color: var(--red); }
+    .subagent .head { color: var(--purple); }
+    .system .head,
+    .system .body { color: var(--dim); }
+
+    .body {
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--fg);
+      margin-left: 3ch;
+    }
+
+    .body p,
+    .body ul,
+    .body ol,
+    .body pre,
+    .body blockquote {
+      margin: 0 0 10px;
+    }
+
+    .body ul,
+    .body ol {
+      padding-left: 2ch;
+    }
+
+    .body code {
+      color: var(--fg);
+      background: var(--panel);
+      padding: 0 0.25em;
+    }
+
+    .block {
+      margin-top: 6px;
+      margin-left: 3ch;
+      padding: 8px 10px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      overflow: auto;
+    }
+
+    .args,
+    .result {
+      color: var(--dim);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .phase {
+      margin-left: 1ch;
+      color: var(--dim);
+      font-weight: 400;
+    }
+
+    .phase.running { color: var(--cyan); }
+    .phase.error,
+    .phase.denied { color: var(--red); }
+
+    .subtree {
+      margin-left: 2ch;
+      padding-left: 2ch;
+      border-left: 1px solid #24262b;
+      margin-top: 6px;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 46px;
+      border-left: 1px solid var(--line);
+      padding-left: 14px;
+      color: var(--dim);
+    }
+
+    .sidebar-title {
+      color: var(--fg);
+      margin-bottom: 10px;
+    }
+
+    .sidebar a {
+      display: block;
+      padding: 2px 0;
+      color: var(--dim);
+    }
+
+    .sidebar a:hover {
+      color: var(--fg);
+    }
+
+    .sidebar .nested {
+      padding-left: 2ch;
+    }
+
+    @media (max-width: 900px) {
+      .screen {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+        border-left: 0;
+        border-top: 1px solid var(--line);
+        padding: 12px 0 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">◆ Glue</div>
+        <div class="top-meta">
+          <div class="top-meta-item">
+            <svg class="top-meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M10 3L8 21"></path>
+              <path d="M16 3l-2 18"></path>
+              <path d="M4 9h16"></path>
+              <path d="M3 15h16"></path>
+            </svg>
+            <code>1713840978123-a7</code>
+          </div>
+          <div class="top-meta-item">
+            <svg class="top-meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 3l7 4v10l-7 4-7-4V7l7-4z"></path>
+              <path d="M12 12l7-4"></path>
+              <path d="M12 12V21"></path>
+              <path d="M12 12L5 8"></path>
+            </svg>
+            <code>anthropic/claude-sonnet-4.6</code>
+          </div>
+          <div class="top-meta-item">
+            <svg class="top-meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 7h5l2 2h11v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"></path>
+            </svg>
+            <code>/Users/helge/code/glue/cli</code>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen">
+      <main class="terminal">
+        <div class="transcript">
+          <div class="intro">
+            <div class="title">/share conversation transcript prototype</div>
+            <div>Compact fullscreen terminal-style export. No window chrome, no rounded cards, no per-entry border status treatment.</div>
+          </div>
+
+          <section class="entry user" id="entry-1">
+            <a class="entry-anchor" href="#entry-1">#1</a>
+            <div class="entry-main">
+              <div class="head">❯ You</div>
+              <div class="body">lets create the plan/spec file, figure out testcases to add to testsuite, we can expand it with richer events later when we have them, we should however support subagent nested events and show that visually out of the gate</div>
+            </div>
+          </section>
+
+          <section class="entry assistant" id="entry-2">
+            <a class="entry-anchor" href="#entry-2">#2</a>
+            <div class="entry-main">
+              <div class="head">◆ Glue</div>
+              <div class="body"><p>Plan:</p><ul><li>write the spec doc</li><li>list concrete tests to add</li><li>capture open questions</li><li>prototype the HTML before implementation</li></ul></div>
+            </div>
+          </section>
+
+          <section class="entry tool-call" id="entry-3">
+            <a class="entry-anchor" href="#entry-3">#3</a>
+            <div class="entry-main">
+              <div class="head">▶ Tool: read_file <span class="phase running">(running…)</span></div>
+              <pre class="block args">path: docs/prototypes/share-conversation.html</pre>
+            </div>
+          </section>
+
+          <section class="entry tool-result" id="entry-4">
+            <a class="entry-anchor" href="#entry-4">#4</a>
+            <div class="entry-main">
+              <div class="head">✓ Tool result</div>
+              <pre class="block result">Replaced prototype with a compact terminal-style layout and removed card/border-status styling.</pre>
+            </div>
+          </section>
+
+          <section class="entry subagent" id="entry-5">
+            <a class="entry-anchor" href="#entry-5">#5</a>
+            <div class="entry-main">
+              <div class="head">◈ Subagent: docs-research</div>
+              <div class="body">Investigating template packages and markdown rendering options.</div>
+              <div class="subtree">
+                <section class="entry subagent" id="entry-6">
+                  <a class="entry-anchor" href="#entry-6">#6</a>
+                  <div class="entry-main">
+                    <div class="head">◈ docs-research</div>
+                    <div class="body">Recommendation: use <code>mustache_template</code> for editable templates and partials.</div>
+                  </div>
+                </section>
+
+                <section class="entry tool-call" id="entry-7">
+                  <a class="entry-anchor" href="#entry-7">#7</a>
+                  <div class="entry-main">
+                    <div class="head">▶ Tool: web_fetch</div>
+                    <pre class="block args">url: https://pub.dev/packages/markdown, max_tokens: 1800</pre>
+                  </div>
+                </section>
+
+                <section class="entry tool-result" id="entry-8">
+                  <a class="entry-anchor" href="#entry-8">#8</a>
+                  <div class="entry-main">
+                    <div class="head">✓ Tool result</div>
+                    <pre class="block result">markdown 7.3.1 — parse Markdown into HTML. Note: no built-in HTML sanitization.</pre>
+                  </div>
+                </section>
+
+                <section class="entry subagent" id="entry-9">
+                  <a class="entry-anchor" href="#entry-9">#9</a>
+                  <div class="entry-main">
+                    <div class="head">◈ Subagent: html-safety-review</div>
+                    <div class="body">Nested follow-up on assistant markdown rendering.</div>
+                    <div class="subtree">
+                      <section class="entry subagent" id="entry-10">
+                        <a class="entry-anchor" href="#entry-10">#10</a>
+                        <div class="entry-main">
+                          <div class="head">◈ html-safety-review</div>
+                          <div class="body">Open question: should raw HTML in assistant content be escaped before markdown-to-HTML rendering?</div>
+                        </div>
+                      </section>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </section>
+
+          <section class="entry assistant" id="entry-11">
+            <a class="entry-anchor" href="#entry-11">#11</a>
+            <div class="entry-main">
+              <div class="head">◆ Glue</div>
+              <div class="body"><p>Open questions:</p><ol><li>Where should template files live?</li><li>Should gist publish markdown only?</li><li>What exact subagent event schema should be persisted?</li></ol></div>
+            </div>
+          </section>
+
+          <section class="entry system" id="entry-12">
+            <a class="entry-anchor" href="#entry-12">#12</a>
+            <div class="entry-main">
+              <div class="head">share notes</div>
+              <div class="body">Prototype only. Final implementation should use external template files, not giant inline HTML strings in Dart.</div>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <aside class="sidebar">
+        <div class="sidebar-title">outline</div>
+        <a href="#entry-1">#1 You</a>
+        <a href="#entry-2">#2 Glue</a>
+        <a href="#entry-3">#3 Tool call</a>
+        <a href="#entry-4">#4 Tool result</a>
+        <a href="#entry-5">#5 Subagent</a>
+        <a class="nested" href="#entry-6">#6 nested message</a>
+        <a class="nested" href="#entry-9">#9 nested subagent</a>
+        <a href="#entry-11">#11 Open questions</a>
+      </aside>
+    </div>
+  </div>
+</body>
+</html>
