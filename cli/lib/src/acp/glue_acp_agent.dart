@@ -28,6 +28,39 @@ const _permissionOptionIdKey = 'optionId';
 const _permissionAllowOnce = 'allow_once';
 const _permissionRejectOnce = 'reject_once';
 
+bool glueAcpRequiresApproval(String toolName) {
+  return switch (toolName) {
+    'write_file' || 'edit_file' || 'bash' => true,
+    _ => false,
+  };
+}
+
+bool glueAcpIsAllowedPermissionOutcome(Map<String, dynamic> outcome) {
+  final permissionOutcome = outcome[_permissionOutcomeKey];
+  final optionId = outcome[_permissionOptionIdKey];
+  return permissionOutcome is String &&
+      optionId is String &&
+      permissionOutcome == _permissionSelected &&
+      optionId == _permissionAllowOnce;
+}
+
+String glueAcpPromptToText(List<ContentBlock> prompt) {
+  final lines = <String>[];
+  for (final block in prompt) {
+    switch (block) {
+      case TextContent(:final text):
+        lines.add(text);
+      case ResourceLink(:final name, :final uri):
+        lines.add('[resource] $name ($uri)');
+      case EmbeddedResource(:final resource):
+        lines.add('[embedded_resource] ${jsonEncode(resource)}');
+      default:
+        lines.add('[unsupported_content:${block.runtimeType}]');
+    }
+  }
+  return lines.join('\n');
+}
+
 final class GlueAcpRuntime {
   final AgentSideConnection connection;
   final Map<String, Tool> tools;
@@ -205,7 +238,7 @@ final class GlueAcpAgent extends AgentHandler {
       );
     }
 
-    final promptText = _promptToText(request.prompt);
+    final promptText = glueAcpPromptToText(request.prompt);
     if (promptText.trim().isEmpty) {
       return const PromptResponse(stopReason: StopReason.endTurn);
     }
@@ -305,7 +338,7 @@ final class GlueAcpAgent extends AgentHandler {
     ToolCall call, {
     required AcpCancellationToken cancelToken,
   }) async {
-    if (!_requiresApproval(call.name)) return true;
+    if (!glueAcpRequiresApproval(call.name)) return true;
 
     final response = await _connection.sendRequestPermission(
       sessionId: sessionId,
@@ -329,16 +362,7 @@ final class GlueAcpAgent extends AgentHandler {
       cancelToken: cancelToken,
     );
 
-    final outcome = response.outcome;
-    return outcome[_permissionOutcomeKey] == _permissionSelected &&
-        outcome[_permissionOptionIdKey] == _permissionAllowOnce;
-  }
-
-  bool _requiresApproval(String toolName) {
-    return switch (toolName) {
-      'write_file' || 'edit_file' || 'bash' => true,
-      _ => false,
-    };
+    return glueAcpIsAllowedPermissionOutcome(response.outcome);
   }
 
   String _mapToolKind(String toolName) {
@@ -351,20 +375,4 @@ final class GlueAcpAgent extends AgentHandler {
     };
   }
 
-  String _promptToText(List<ContentBlock> prompt) {
-    final lines = <String>[];
-    for (final block in prompt) {
-      switch (block) {
-        case TextContent(:final text):
-          lines.add(text);
-        case ResourceLink(:final name, :final uri):
-          lines.add('[resource] $name ($uri)');
-        case EmbeddedResource(:final resource):
-          lines.add('[embedded_resource] ${jsonEncode(resource)}');
-        default:
-          lines.add('[unsupported_content:${block.runtimeType}]');
-      }
-    }
-    return lines.join('\n');
-  }
 }
