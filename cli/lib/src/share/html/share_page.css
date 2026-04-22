@@ -1,0 +1,265 @@
+:root {
+  --bg: #0d0d0f;
+  --fg: #e8e8ea;
+  --dim: #8b8f98;
+  --line: #1f2024;
+  --panel: #121316;
+  --accent: #facc15;
+  --blue: #3b82f6;
+  --green: #22c55e;
+  --red: #ef4444;
+  --cyan: #22d3ee;
+  --purple: #a78bfa;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+body {
+  font: 13px/1.65 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+code, pre {
+  font: inherit;
+}
+
+.share-page {
+  min-height: 100vh;
+}
+
+.share-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: rgba(13, 13, 15, 0.96);
+  border-bottom: 1px solid var(--line);
+}
+
+.share-header-inner,
+.share-layout {
+  width: min(1200px, calc(100vw - 24px));
+  margin: 0 auto;
+}
+
+.share-header-inner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 0;
+  white-space: nowrap;
+  overflow: auto hidden;
+  scrollbar-width: none;
+}
+
+.share-header-inner::-webkit-scrollbar { display: none; }
+
+.share-brand {
+  color: var(--accent);
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.share-meta {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.share-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(232, 232, 234, 0.7);
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.share-meta-label {
+  color: var(--dim);
+}
+
+.share-meta-icon {
+  color: rgba(232, 232, 234, 0.7);
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+}
+
+.share-meta code,
+.share-meta time {
+  color: rgba(232, 232, 234, 0.7);
+}
+
+.share-layout {
+  padding: 18px 0 28px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 18px;
+  align-items: start;
+}
+
+.share-shell {
+  background: transparent;
+  border: 1px solid var(--line);
+  min-height: 80vh;
+}
+
+.share-transcript {
+  padding: 14px 0 18px;
+}
+
+.share-intro {
+  padding: 0 18px 12px;
+  color: var(--dim);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 10px;
+}
+
+.share-intro-title {
+  color: var(--fg);
+  margin-bottom: 2px;
+}
+
+.share-entry {
+  padding: 0 18px;
+  margin: 0 0 10px;
+}
+
+.share-entry-anchor {
+  color: #5f636b;
+  display: inline-block;
+  width: 44px;
+  vertical-align: top;
+}
+
+.share-entry-content {
+  display: inline-block;
+  width: calc(100% - 48px);
+  vertical-align: top;
+}
+
+.share-entry-label {
+  font-weight: 700;
+}
+
+.share-entry-user .share-entry-label { color: var(--blue); }
+.share-entry-assistant .share-entry-label { color: var(--accent); }
+.share-entry-tool-call .share-entry-label { color: var(--accent); }
+.share-entry-tool-result .share-entry-label { color: var(--green); }
+.share-entry-error .share-entry-label { color: var(--red); }
+.share-entry-subagent-group .share-entry-label,
+.share-entry-subagent-message .share-entry-label { color: var(--purple); }
+.share-entry-system .share-entry-label,
+.share-entry-system .share-entry-body { color: var(--dim); }
+
+.share-entry-body {
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--fg);
+  margin-left: 3ch;
+}
+
+.share-entry-body p,
+.share-entry-body ul,
+.share-entry-body ol,
+.share-entry-body pre,
+.share-entry-body blockquote {
+  margin: 0 0 10px;
+}
+
+.share-entry-body ul,
+.share-entry-body ol {
+  padding-left: 2ch;
+}
+
+.share-entry-body code {
+  color: var(--fg);
+  background: var(--panel);
+  padding: 0 0.25em;
+}
+
+.share-pre {
+  margin-top: 6px;
+  margin-left: 3ch;
+  padding: 8px 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  overflow: auto;
+}
+
+.share-tool-args,
+.share-tool-result {
+  color: var(--dim);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.share-tool-phase {
+  margin-left: 1ch;
+  color: var(--dim);
+  font-weight: 400;
+}
+
+.share-tool-phase.running { color: var(--cyan); }
+.share-tool-phase.error,
+.share-tool-phase.denied { color: var(--red); }
+
+.share-children {
+  margin-left: 2ch;
+  padding-left: 2ch;
+  border-left: 1px solid #24262b;
+  margin-top: 6px;
+}
+
+.share-outline {
+  position: sticky;
+  top: 46px;
+  border-left: 1px solid var(--line);
+  padding-left: 14px;
+  color: var(--dim);
+}
+
+.share-outline-title {
+  color: var(--fg);
+  margin-bottom: 10px;
+}
+
+.share-outline a {
+  display: block;
+  padding: 2px 0;
+  color: var(--dim);
+}
+
+.share-outline a:hover {
+  color: var(--fg);
+}
+
+.share-outline .is-nested {
+  padding-left: 2ch;
+}
+
+@media (max-width: 900px) {
+  .share-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .share-outline {
+    position: static;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    padding: 12px 0 0;
+  }
+}

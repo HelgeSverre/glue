@@ -74,6 +74,7 @@ String _buildSessionInfoImpl(App app) {
       ? '(not started)'
       : '${startedAt.toLocal().toIso8601String().substring(0, 19)} '
           '(${_timeAgoImpl(startedAt)})';
+
   final buf = StringBuffer();
   buf.writeln('Session Info');
   buf.writeln('  Title:        ${meta?.title ?? "(untitled)"}');
@@ -128,6 +129,99 @@ String _renameSessionImpl(App app, String title) {
   app._titleManuallyOverridden = true;
   unawaited(app._sessionManager.renameTitle(normalized));
   return 'Renamed session to "$normalized".';
+}
+
+String _shareActionImpl(App app, List<String> args) {
+  if (app._mode != AppMode.idle) {
+    return 'Wait for the current turn to finish before sharing.';
+  }
+
+  final store = app._sessionManager.currentStore;
+  if (store == null) {
+    return 'No active session yet — nothing to share.';
+  }
+
+  final normalized = args
+      .map((e) => e.trim().toLowerCase())
+      .where((e) => e.isNotEmpty)
+      .toList();
+  if (normalized.length > 1) {
+    return 'Usage: /share [html|md|gist]';
+  }
+  final format = normalized.isEmpty ? 'html' : normalized.first;
+  if (!{'html', 'md', 'markdown', 'gist'}.contains(format)) {
+    return 'Usage: /share [html|md|gist]';
+  }
+
+  final outputDir = app._cwd;
+  final publishGist = format == 'gist';
+  final shareFormat = switch (format) {
+    'html' => ShareFormat.html,
+    'gist' => ShareFormat.markdown,
+    'md' || 'markdown' => ShareFormat.markdown,
+    _ => ShareFormat.html,
+  };
+  unawaited(() async {
+    try {
+      final result = await app._shareExporter.export(
+        store: store,
+        outputDir: outputDir,
+        format: shareFormat,
+      );
+      if (publishGist) {
+        final markdownPath = result.markdownPath!;
+        try {
+          final gist = await app._gistPublisher.publish(
+            filePath: markdownPath,
+            description: _shareGistDescription(store.meta),
+          );
+          final opened = await openInBrowser(gist.url);
+          app._addSystemMessage(
+            'Exported markdown transcript to $markdownPath\nPublished gist: ${gist.url}${opened ? '\nOpened gist in browser.' : '\nCould not open gist in browser automatically.'}',
+          );
+        } on GistPublishError catch (e) {
+          app._addSystemMessage(
+            'Exported markdown transcript to $markdownPath\nGist publish failed: ${e.message}',
+          );
+        }
+        app._render();
+        return;
+      }
+      final openedHtml = result.htmlPath != null
+          ? await openLocalFileInBrowser(result.htmlPath!)
+          : null;
+      final message = switch (format) {
+        'html' => 'Exported HTML transcript to ${result.htmlPath!}',
+        'md' ||
+        'markdown' =>
+          'Exported markdown transcript to ${result.markdownPath!}',
+        _ => 'Exported HTML transcript to ${result.htmlPath!}',
+      };
+      final openNote = openedHtml == null
+          ? ''
+          : openedHtml
+              ? '\nOpened HTML transcript in browser.'
+              : '\nCould not open HTML transcript automatically.';
+      app._addSystemMessage('$message$openNote');
+      app._render();
+    } on StateError catch (e) {
+      app._addSystemMessage(e.message.toString());
+      app._render();
+    } catch (e) {
+      app._addSystemMessage('Share failed: $e');
+      app._render();
+    }
+  }());
+
+  return '';
+}
+
+String _shareGistDescription(SessionMeta meta) {
+  final title = (meta.title ?? '').trim();
+  if (title.isNotEmpty) {
+    return 'Glue session: $title (${meta.id})';
+  }
+  return 'Glue session ${meta.id}';
 }
 
 String _buildToolsOutputImpl(App app) {

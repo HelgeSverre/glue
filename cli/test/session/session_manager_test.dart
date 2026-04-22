@@ -81,6 +81,41 @@ void main() {
     expect(manager.currentSessionId, 'resume-1');
   });
 
+  test('resumeSession reuses summary-first tool result text for replay UI', () {
+    final manager = SessionManager(environment: environment);
+    final meta = SessionMeta(
+      id: 'resume-summary',
+      cwd: environment.cwd,
+      modelRef: 'anthropic/claude-sonnet-4.6',
+      startTime: DateTime.now(),
+    );
+    final store =
+        SessionStore(sessionDir: environment.sessionDir(meta.id), meta: meta);
+    store.logEvent('assistant_message', {'text': 'checking'});
+    store.logEvent('tool_call', {
+      'id': 'c1',
+      'name': 'bash',
+      'arguments': {'command': 'git status'},
+    });
+    store.logEvent('tool_result', {
+      'call_id': 'c1',
+      'summary': 'clean worktree',
+      'content': 'On branch main\nnothing to commit, working tree clean',
+    });
+
+    final result = manager.resumeSession(session: meta, agent: agent);
+
+    final toolResultEntry = result.replay.entries.singleWhere(
+      (entry) => entry.kind == SessionReplayKind.toolResult,
+    );
+    expect(toolResultEntry.text, 'clean worktree');
+    expect(agent.conversation.last.role, Role.toolResult);
+    expect(
+      agent.conversation.last.text,
+      'On branch main\nnothing to commit, working tree clean',
+    );
+  });
+
   test('resumeSession on empty conversation does not create extra session', () {
     final manager = SessionManager(environment: environment);
     final meta = SessionMeta(

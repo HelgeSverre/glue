@@ -6,7 +6,7 @@ Add a `/share` slash command that exports the current session's visible conversa
 
 - HTML
 - Markdown
-- optional GitHub gist later via `gh`
+- optional GitHub gist via `gh`
 
 The export is for sharing the readable conversation transcript, not for dumping all session metadata or observability logs. It should include:
 
@@ -22,10 +22,9 @@ It should exclude internal-only bookkeeping such as title generation events, obs
 
 ### v1
 
-- `/share` defaults to exporting both HTML and Markdown
+- `/share` defaults to exporting HTML
 - `/share html`
 - `/share md`
-- `/share both`
 - current active session only
 - only available when the app is idle
 - self-contained HTML output file
@@ -34,7 +33,6 @@ It should exclude internal-only bookkeeping such as title generation events, obs
 
 ### v1.1 or later
 
-- `/share gist`
 - export a saved session by id/query instead of only the current session
 - richer event families once Glue persists more structured events
 - search/filter/collapse polish in the HTML export
@@ -55,6 +53,8 @@ Current non-share-worthy persisted events include:
 - `title_reevaluated`
 
 Current in-memory UI events also include subagent updates, but those are not yet represented in the persisted conversation log in a share-friendly structure. For `/share`, we should add a normalized transcript layer that can support both current events and richer subagent events.
+
+Implementation note: until Glue persists subagent events in `conversation.jsonl`, nested subagent export support should remain explicit at the normalized-entry layer rather than pretending raw subagent rows already exist.
 
 ## Transcript model for sharing
 
@@ -417,10 +417,9 @@ Test cases:
 
 1. writes markdown file for current session
 2. writes html file for current session
-3. writes both files when requested
-4. uses expected file naming
-5. fails cleanly when no active session exists
-6. fails cleanly when conversation is empty
+3. uses expected file naming
+4. fails cleanly when no active session exists
+5. fails cleanly when conversation is empty
 
 ### Slash command tests
 
@@ -431,12 +430,11 @@ Extend command tests, likely in:
 
 Test cases:
 
-1. `/share` defaults to both
+1. `/share` defaults to html
 2. `/share html` selects html only
 3. `/share md` selects markdown only
-4. `/share both` exports both
-5. invalid subcommand returns helpful usage text
-6. busy app state returns the idle-only error
+4. invalid subcommand returns helpful usage text
+5. busy app state returns the idle-only error
 
 ### Gist tests later
 
@@ -483,7 +481,7 @@ Test cases:
    Recommendation: yes, use simple `<a id="entry-n"></a>` anchors for parity with HTML.
 
 7. **Should `/share gist` publish HTML, Markdown, or both?**
-   Recommendation: Markdown only by default, with HTML optional later.
+   Current implementation: Markdown only, with HTML optional later if it proves worthwhile.
 
 ## Proposed implementation order
 

@@ -183,4 +183,27 @@ void main() {
       expect(skillCandidates(const [], 'code'), isEmpty);
     });
   });
+
+  group('shareArgCandidates', () {
+    test('empty partial returns all share formats', () {
+      final candidates = shareArgCandidates(const [], '');
+      expect(
+        candidates.map((c) => c.value).toList(),
+        ['html', 'md', 'gist'],
+      );
+    });
+
+    test('prefix narrows to matching formats', () {
+      expect(shareArgCandidates(const [], 'h').map((c) => c.value).toList(),
+          ['html']);
+      expect(shareArgCandidates(const [], 'm').map((c) => c.value).toList(),
+          ['md']);
+      expect(shareArgCandidates(const [], 'g').map((c) => c.value).toList(),
+          ['gist']);
+    });
+
+    test('non-empty priorArgs returns empty', () {
+      expect(shareArgCandidates(['html'], ''), isEmpty);
+    });
+  });
 }

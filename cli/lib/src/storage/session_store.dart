@@ -49,6 +49,7 @@ class SessionMeta {
   // Metrics.
   int? tokenCount;
   double? cost;
+  int? messageCount;
 
   // Summary.
   String? summary;
@@ -79,6 +80,7 @@ class SessionMeta {
     this.prStatus,
     this.tokenCount,
     this.cost,
+    this.messageCount,
     this.summary,
   });
 
@@ -113,6 +115,7 @@ class SessionMeta {
         if (prStatus != null) 'pr_status': prStatus,
         if (tokenCount != null) 'token_count': tokenCount,
         if (cost != null) 'cost': cost,
+        if (messageCount != null) 'message_count': messageCount,
         if (summary != null) 'summary': summary,
       };
 
@@ -171,6 +174,7 @@ class SessionMeta {
       prStatus: json['pr_status'] as String?,
       tokenCount: json['token_count'] as int?,
       cost: (json['cost'] as num?)?.toDouble(),
+      messageCount: json['message_count'] as int?,
       summary: json['summary'] as String?,
     );
   }
