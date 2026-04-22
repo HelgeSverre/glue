@@ -76,8 +76,8 @@ String _buildSessionInfoImpl(App app) {
           '(${_timeAgoImpl(startedAt)})';
   final buf = StringBuffer();
   buf.writeln('Session Info');
-  buf.writeln('  Session ID:   ${meta?.id ?? "(none)"}');
   buf.writeln('  Title:        ${meta?.title ?? "(untitled)"}');
+  buf.writeln('  Session ID:   ${meta?.id ?? "(none)"}');
   buf.writeln('  Model:        $displayModel');
   buf.writeln('  Directory:    $shortCwd');
   buf.writeln('  Started:      $startedLabel');
