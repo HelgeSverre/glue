@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:acp/acp.dart';
 import 'package:acp/transport.dart';
@@ -32,7 +33,9 @@ final class GlueAcpRuntime {
     for (final tool in tools.values) {
       try {
         await tool.dispose();
-      } catch (_) {}
+      } catch (e) {
+        stderr.writeln('ACP tool disposal failed: $e');
+      }
     }
   }
 }
@@ -84,11 +87,10 @@ final class GlueAcpRuntimeFactory {
     };
 
     final transport = StdioTransport()..start();
-    late final AgentSideConnection connection;
-    connection = AgentSideConnection(
+    final connection = AgentSideConnection(
       transport,
-      handlerFactory: (_) => GlueAcpAgent(
-        connection: connection,
+      handlerFactory: (conn) => GlueAcpAgent(
+        connection: conn,
         llmFactory: llmFactory,
         skillRuntime: skillRuntime,
         tools: tools,
@@ -335,8 +337,12 @@ final class GlueAcpAgent extends AgentHandler {
       switch (block) {
         case TextContent(:final text):
           lines.add(text);
+        case ResourceLink(:final name, :final uri):
+          lines.add('[resource] $name ($uri)');
+        case EmbeddedResource(:final resource):
+          lines.add('[embedded_resource] ${jsonEncode(resource)}');
         default:
-          lines.add(jsonEncode(block.toJson()));
+          break;
       }
     }
     return lines.join('\n');
