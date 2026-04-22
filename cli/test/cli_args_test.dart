@@ -13,7 +13,8 @@ ArgParser _buildArgParser() {
     ..addFlag('resume', abbr: 'r', negatable: false)
     ..addOption('resume-id')
     ..addFlag('continue', negatable: false)
-    ..addFlag('debug', abbr: 'd', negatable: false);
+    ..addFlag('debug', abbr: 'd', negatable: false)
+    ..addFlag('acp', negatable: false);
 }
 
 void main() {
@@ -96,6 +97,18 @@ void main() {
     test('json is false by default', () {
       final result = parser.parse([]);
       expect(result.flag('json'), isFalse);
+    });
+  });
+
+  group('--acp', () {
+    test('sets acp flag', () {
+      final result = parser.parse(['--acp']);
+      expect(result.flag('acp'), isTrue);
+    });
+
+    test('acp is false by default', () {
+      final result = parser.parse([]);
+      expect(result.flag('acp'), isFalse);
     });
   });
 

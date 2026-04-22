@@ -63,9 +63,14 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
       ..addFlag('continue',
           negatable: false, help: 'Resume most recent session.')
       ..addFlag('debug',
-          abbr: 'd',
-          negatable: false,
-          help: 'Enable debug mode (verbose logging).');
+           abbr: 'd',
+           negatable: false,
+           help: 'Enable debug mode (verbose logging).')
+      ..addFlag(
+        'acp',
+        negatable: false,
+        help: 'Run Glue as an ACP agent over stdio (for editor integration).',
+      );
     addCommand(CompletionsCommand());
     addCommand(ConfigCommand());
     addCommand(DoctorCommand());
@@ -140,6 +145,23 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
     final resumeSessionId = topLevelResults.option('resume-id');
     final openResumePanel = topLevelResults.flag('resume');
     final debug = topLevelResults.flag('debug');
+    final acpMode = topLevelResults.flag('acp');
+
+    if (acpMode) {
+      if (printMode ||
+          openResumePanel ||
+          resumeSessionId != null ||
+          topLevelResults.flag('continue') ||
+          topLevelResults.rest.isNotEmpty) {
+        throw UsageException(
+          '--acp cannot be combined with interactive/print session flags or prompt arguments.',
+          usage,
+        );
+      }
+
+      await runAcpServer(model: model);
+      return;
+    }
 
     if (openResumePanel && resumeSessionId != null) {
       throw UsageException(

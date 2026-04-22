@@ -148,6 +148,7 @@ export 'src/doctor/doctor.dart'
         DoctorSeverity,
         renderDoctorReport,
         runDoctor;
+export 'src/acp/glue_acp_agent.dart' show runAcpServer;
 export 'src/orchestrator/permission_gate.dart'
     show PermissionGate, PermissionDecision;
 export 'src/session/session_manager.dart'
