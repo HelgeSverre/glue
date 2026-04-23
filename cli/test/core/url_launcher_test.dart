@@ -132,4 +132,49 @@ void main() {
       });
     });
   });
+
+  group('openLocalFileInBrowser', () {
+    test('returns true when the runner exits 0 for an html file', () async {
+      final calls = <_Call>[];
+      final file = File('${Directory.systemTemp.path}/glue-open-test.html')
+        ..writeAsStringSync('<!doctype html>');
+      addTearDown(() {
+        if (file.existsSync()) file.deleteSync();
+      });
+
+      final ok = await openLocalFileInBrowser(
+        file.path,
+        runner: (exe, args) async {
+          calls.add(_Call(exe, args));
+          return ProcessResult(0, 0, '', '');
+        },
+      );
+
+      expect(ok, isTrue);
+      expect(calls, hasLength(1));
+      if (Platform.isWindows) {
+        expect(calls.single.args.last, file.absolute.uri.toString());
+      } else {
+        expect(calls.single.args.last, file.absolute.path);
+      }
+    });
+
+    test('returns false when the file does not exist', () async {
+      final ok = await openLocalFileInBrowser(
+        '/tmp/missing-share.html',
+        fileExists: (_) => false,
+        runner: (_, __) async => ProcessResult(0, 0, '', ''),
+      );
+      expect(ok, isFalse);
+    });
+
+    test('returns false for non-html files', () async {
+      final ok = await openLocalFileInBrowser(
+        '/tmp/share.md',
+        fileExists: (_) => true,
+        runner: (_, __) async => ProcessResult(0, 0, '', ''),
+      );
+      expect(ok, isFalse);
+    });
+  });
 }

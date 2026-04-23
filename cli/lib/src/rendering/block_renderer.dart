@@ -55,16 +55,25 @@ class BlockRenderer {
   BlockRenderer(this.width);
 
   /// Wrap a file path in an OSC 8 file:// hyperlink.
-  String _linkPath(String path) {
-    final uri = 'file://$path';
-    return osc8Link(uri, path);
+  String _linkPath(String path, [String? text]) {
+    return osc8FileLink(path, text ?? path);
+  }
+
+  String _linkValue(String key, String raw, String display) {
+    if (key == 'path') return _linkPath(raw, display);
+    if (key == 'url') return osc8Link(raw, display);
+    return display;
   }
 
   /// Render a user message block.
   String renderUser(String text) {
     final header = ' ${'❯ You'.styled.bold.blue}';
-    final body =
-        wrapIndented(text, _inner, firstPrefix: '   ', nextPrefix: '   ');
+    final body = wrapIndented(
+      linkifyUrls(text),
+      _inner,
+      firstPrefix: '   ',
+      nextPrefix: '   ',
+    );
     return '$header\n$body';
   }
 
@@ -84,10 +93,8 @@ class BlockRenderer {
     final argsStr = args.entries.map((e) {
       final val = '${e.value}';
       final display = ansiTruncate(val, _inner - 6);
-      if (e.key == 'path') {
-        return '${e.key}: ${_linkPath(display)}';
-      }
-      return '${e.key}: $display';
+      final rendered = _linkValue(e.key, val, display);
+      return '${e.key}: $rendered';
     }).join(', ');
     return '$header\n    ${argsStr.styled.gray}';
   }
@@ -115,9 +122,11 @@ class BlockRenderer {
     };
     final header = ' \x1b[1m\x1b[33m▶ Tool: ${state.name}\x1b[0m$suffix';
     if (state.args == null || state.args!.isEmpty) return header;
-    final argsStr = state.args!.entries
-        .map((e) => '${e.key}: ${ansiTruncate('${e.value}', _inner - 6)}')
-        .join(', ');
+    final argsStr = state.args!.entries.map((e) {
+      final raw = '${e.value}';
+      final display = ansiTruncate(raw, _inner - 6);
+      return '${e.key}: ${_linkValue(e.key, raw, display)}';
+    }).join(', ');
     return '$header\n    \x1b[90m$argsStr\x1b[0m';
   }
 
@@ -134,9 +143,9 @@ class BlockRenderer {
       if (m != null) {
         final path = m.group(1)!;
         final rest = l.substring(m.start + path.length);
-        return '${_linkPath(path)}$rest';
+        return linkifyUrls('${_linkPath(path)}$rest');
       }
-      return l;
+      return linkifyUrls(l);
     });
     final indented = linked.map((l) => '    ${l.styled.gray}').join('\n');
     return '$header\n$indented';
@@ -145,8 +154,8 @@ class BlockRenderer {
   /// Render an error block.
   String renderError(String message) {
     final header = ' ${'✗ Error'.styled.bold.red}';
-    final body =
-        wrapIndented(message, _inner, firstPrefix: '    ', nextPrefix: '    ');
+    final body = wrapIndented(linkifyUrls(message), _inner,
+        firstPrefix: '    ', nextPrefix: '    ');
     // Apply red styling to each line
     final colored =
         body.split('\n').map((l) => l.styled.red.toString()).join('\n');
@@ -155,13 +164,13 @@ class BlockRenderer {
 
   /// Render a subagent activity entry (indented + dimmed to show hierarchy).
   String renderSubagent(String text) {
-    final lines = text.split('\n');
+    final lines = linkifyUrls(text).split('\n');
     return lines.map((l) => '      ${l.styled.dim.cyan}').join('\n');
   }
 
   /// Render a system message block.
   String renderSystem(String text) {
-    return ' ${text.styled.gray}';
+    return ' ${linkifyUrls(text).styled.gray}';
   }
 
   String renderBash(String command, String output, {int maxLines = 50}) {

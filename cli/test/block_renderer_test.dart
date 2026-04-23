@@ -1,8 +1,12 @@
+import 'dart:io';
+
 import 'package:glue/glue.dart';
 import 'package:test/test.dart';
 
 /// Strip ANSI escape sequences for measuring visible width.
-String stripAnsi(String s) => s.replaceAll(RegExp(r'\x1b\[[0-9;]*m'), '');
+String stripAnsi(String s) => s
+    .replaceAll(RegExp(r'\x1b\][^\x07]*\x07'), '')
+    .replaceAll(RegExp(r'\x1b\[[0-9;]*m'), '');
 
 void main() {
   late BlockRenderer renderer;
@@ -157,6 +161,12 @@ void main() {
       final output = renderer.renderSystem('');
       expect(output, equals(' \x1b[90m\x1b[39m'));
     });
+
+    test('wraps bare URLs in OSC 8 hyperlinks', () {
+      final output = renderer.renderSystem('See https://example.com/docs.');
+      expect(output, contains('\x1b]8;;https://example.com/docs\x07'));
+      expect(output, contains('https://example.com/docs'));
+    });
   });
 
   group('word wrapping', () {
@@ -223,7 +233,15 @@ void main() {
     test('tool call with relative path arg wraps in OSC 8 link', () {
       final result =
           renderer.renderToolCall('read_file', {'path': 'lib/foo.dart'});
-      expect(result, contains('\x1b]8;;file://lib/foo.dart\x07'));
+      expect(result, contains(osc8FileLink('lib/foo.dart')));
+    });
+
+    test('tool call with url arg wraps in OSC 8 link', () {
+      final result = renderer.renderToolCall(
+        'web_fetch',
+        {'url': 'https://example.com/docs'},
+      );
+      expect(result, contains('\x1b]8;;https://example.com/docs\x07'));
     });
 
     test('tool call without path arg renders normally', () {
@@ -242,19 +260,28 @@ void main() {
     test('grep-style file:line output gets file path linked', () {
       final result =
           renderer.renderToolResult('src/main.dart:42:  print("hello");');
-      expect(result, contains('\x1b]8;;file://src/main.dart\x07'));
+      expect(
+        result,
+        contains('\x1b]8;;${File('src/main.dart').absolute.uri}\x07'),
+      );
       expect(result, contains('src/main.dart'));
     });
 
     test('multiple grep lines each get linked', () {
       final result = renderer.renderToolResult('a.dart:1: foo\nb.dart:2: bar');
-      expect(result, contains('\x1b]8;;file://a.dart\x07'));
-      expect(result, contains('\x1b]8;;file://b.dart\x07'));
+      expect(result, contains('\x1b]8;;${File('a.dart').absolute.uri}\x07'));
+      expect(result, contains('\x1b]8;;${File('b.dart').absolute.uri}\x07'));
     });
 
     test('non-grep lines are not linked', () {
       final result = renderer.renderToolResult('No matches found.');
       expect(result, isNot(contains('\x1b]8;;file://')));
+    });
+
+    test('bare URLs in tool results are linked', () {
+      final result = renderer
+          .renderToolResult('Published gist: https://gist.github.com/x/y');
+      expect(result, contains('\x1b]8;;https://gist.github.com/x/y\x07'));
     });
   });
 
