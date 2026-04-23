@@ -21,6 +21,7 @@ typedef ProcessRunner = Future<ProcessResult> Function(
   String executable,
   List<String> arguments,
 );
+typedef FileExistsCheck = bool Function(String path);
 
 /// Open [url] in the default browser. Returns false (never throws) when:
 ///   - [url] isn't http/https or contains shell metacharacters
@@ -33,6 +34,33 @@ Future<bool> openInBrowser(
   if (!_isSafeHttpUrl(url)) return false;
   final run = runner ?? Process.run;
   final (exe, args) = _commandFor(url);
+  try {
+    final result = await run(exe, args);
+    return result.exitCode == 0;
+  } on ProcessException {
+    return false;
+  }
+}
+
+/// Open a local HTML file in the user's default browser.
+///
+/// Returns false (never throws) when:
+///   - [path] is empty, unsafe, missing, or not an .html/.htm file
+///   - the launched command exits non-zero
+///   - the launcher itself throws (`ProcessException`, etc.)
+Future<bool> openLocalFileInBrowser(
+  String path, {
+  ProcessRunner? runner,
+  FileExistsCheck? fileExists,
+}) async {
+  if (!_isSafeLocalPath(path)) return false;
+  final resolvedPath = File(path).absolute.path;
+  if (!_isHtmlPath(resolvedPath)) return false;
+  final exists = fileExists ?? (p) => File(p).existsSync();
+  if (!exists(resolvedPath)) return false;
+
+  final run = runner ?? Process.run;
+  final (exe, args) = _commandForLocalFile(resolvedPath);
   try {
     final result = await run(exe, args);
     return result.exitCode == 0;
@@ -57,10 +85,36 @@ bool _isSafeHttpUrl(String url) {
   return true;
 }
 
+bool _isSafeLocalPath(String path) {
+  if (path.isEmpty) return false;
+  const blocked = {'&', '|', '^', '<', '>', '"', '`', r'$'};
+  for (final codeUnit in path.codeUnits) {
+    if (codeUnit < 0x20) return false;
+    if (blocked.contains(String.fromCharCode(codeUnit))) return false;
+  }
+  return true;
+}
+
+bool _isHtmlPath(String path) {
+  final lower = path.toLowerCase();
+  return lower.endsWith('.html') || lower.endsWith('.htm');
+}
+
 (String, List<String>) _commandFor(String url) {
   if (Platform.isMacOS) return ('open', [url]);
   if (Platform.isWindows) {
     return ('rundll32', ['url.dll,FileProtocolHandler', url]);
   }
   return ('xdg-open', [url]);
+}
+
+(String, List<String>) _commandForLocalFile(String path) {
+  if (Platform.isMacOS) return ('open', [path]);
+  if (Platform.isWindows) {
+    return (
+      'rundll32',
+      ['url.dll,FileProtocolHandler', File(path).absolute.uri.toString()]
+    );
+  }
+  return ('xdg-open', [path]);
 }

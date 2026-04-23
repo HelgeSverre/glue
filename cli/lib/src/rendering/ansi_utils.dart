@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math';
 
 /// Wrap [text] in an OSC 8 terminal hyperlink pointing to [url].
@@ -15,6 +16,39 @@ String osc8Link(String url, [String? text]) {
   final display = text ?? url;
   if (url.isEmpty) return display;
   return '\x1b]8;;$url\x07$display\x1b]8;;\x07';
+}
+
+/// Wrap [path] in an OSC 8 file hyperlink using an absolute file URI while
+/// preserving [text] (or the original path) as the visible label.
+String osc8FileLink(String path, [String? text]) {
+  if (path.isEmpty) return text ?? path;
+  final absoluteUri = File(path).absolute.uri.toString();
+  return osc8Link(absoluteUri, text ?? path);
+}
+
+// Bare URL detector used by terminal renderers outside the markdown pipeline.
+//
+// ')' is excluded to avoid swallowing trailing parens in prose like
+// "(see https://example.com)". The lookbehinds avoid re-wrapping URLs already
+// embedded in OSC 8 hyperlinks.
+final _bareUrlPattern = RegExp(
+  r'(?<!\x1b\]8;;)(?<!\x07)https?://[^\s<>\[\])`\x07\x1b' "'" r'"]+',
+);
+
+/// Convert bare http/https URLs in [text] into OSC 8 hyperlinks.
+String linkifyUrls(String text) {
+  return text.replaceAllMapped(
+    _bareUrlPattern,
+    (m) {
+      var url = m.group(0)!;
+      var suffix = '';
+      while (url.isNotEmpty && '.,;:!?)'.contains(url[url.length - 1])) {
+        suffix = url[url.length - 1] + suffix;
+        url = url.substring(0, url.length - 1);
+      }
+      return '${osc8Link(url)}$suffix';
+    },
+  );
 }
 
 // Precompiled patterns for ANSI escape sequence matching.

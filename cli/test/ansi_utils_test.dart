@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:glue/glue.dart';
 import 'package:test/test.dart';
 
@@ -152,6 +154,20 @@ void main() {
     test('strips OSC with complex URL', () {
       const linked = '\x1b]8;;file:///tmp/foo.dart\x07foo.dart\x1b]8;;\x07';
       expect(stripAnsi(linked), equals('foo.dart'));
+    });
+  });
+
+  group('link helpers', () {
+    test('osc8FileLink uses an absolute file URI', () {
+      final linked = osc8FileLink('lib/foo.dart');
+      expect(linked, contains(File('lib/foo.dart').absolute.uri.toString()));
+      expect(stripAnsi(linked), equals('lib/foo.dart'));
+    });
+
+    test('linkifyUrls wraps bare URLs and preserves trailing punctuation', () {
+      final linked = linkifyUrls('See https://example.com/docs.');
+      expect(linked, contains('\x1b]8;;https://example.com/docs\x07'));
+      expect(stripAnsi(linked), equals('See https://example.com/docs.'));
     });
   });
 
