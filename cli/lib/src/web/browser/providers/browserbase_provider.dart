@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'package:glue/src/web/browser/browser_endpoint.dart';
+import 'package:glue/src/utils.dart';
 
 /// Browserbase cloud browser provider.
 class BrowserbaseProvider implements BrowserEndpointProvider {
@@ -44,7 +45,7 @@ class BrowserbaseProvider implements BrowserEndpointProvider {
           },
           body: jsonEncode({'projectId': projectId}),
         )
-        .timeout(const Duration(seconds: 30));
+        .timeout(30.seconds);
 
     if (response.statusCode != 200 && response.statusCode != 201) {
       throw StateError(

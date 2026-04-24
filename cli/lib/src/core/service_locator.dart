@@ -45,6 +45,7 @@ import 'package:glue/src/web/search/providers/firecrawl_provider.dart';
 import 'package:glue/src/web/search/providers/tavily_provider.dart';
 import 'package:glue/src/web/search/search_router.dart';
 import 'package:http/http.dart' as http;
+import 'package:glue/src/utils.dart';
 
 class ServiceLocator {
   static Future<AppServices> create({
@@ -88,7 +89,7 @@ class ServiceLocator {
     obs.addSink(FileSink(logsDir: resolvedEnv.logsDir));
     if (config.observability.otel.isConfigured) {
       obs.addSink(OtlpHttpTraceSink(config: config.observability.otel));
-      obs.startAutoFlush(const Duration(seconds: 5));
+      obs.startAutoFlush(5.seconds);
     }
     if (debugController.enabled) {
       obs.addSink(HttpTraceSink(logsDir: resolvedEnv.logsDir));

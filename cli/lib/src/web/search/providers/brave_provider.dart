@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:glue/src/web/search/models.dart';
 import 'package:glue/src/web/search/provider.dart';
+import 'package:glue/src/utils.dart';
 
 class BraveSearchProvider implements WebSearchProvider {
   final String? apiKey;
@@ -42,7 +43,7 @@ class BraveSearchProvider implements WebSearchProvider {
       'Accept': 'application/json',
       'Accept-Encoding': 'gzip',
       'X-Subscription-Token': apiKey!,
-    }).timeout(Duration(seconds: timeoutSeconds));
+    }).timeout(timeoutSeconds.seconds);
 
     if (response.statusCode != 200) {
       throw HttpException(

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
+import 'package:glue/src/utils.dart';
 
 /// Result of PDF text extraction.
 class PdfExtractionResult {
@@ -76,7 +77,7 @@ class PdfTextExtractor {
       final results = await Future.wait([
         process.exitCode,
         process.stderr.transform(const SystemEncoding().decoder).join(),
-      ]).timeout(Duration(seconds: timeoutSeconds));
+      ]).timeout(timeoutSeconds.seconds);
 
       final exitCode = results[0] as int;
       final stderr = results[1] as String;

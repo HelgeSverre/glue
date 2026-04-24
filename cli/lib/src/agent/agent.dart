@@ -5,6 +5,7 @@ import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/observability/observability.dart';
 import 'package:glue/src/observability/redaction.dart';
+import 'package:glue/src/utils.dart';
 
 // ---------------------------------------------------------------------------
 // Message types for the conversation history
@@ -286,7 +287,7 @@ class Agent {
             'llm.tools.count': allowedTools.length,
             'input.value': redactBody(
               _conversationSummary(_conversation),
-              maxBytes: 65536,
+              maxBytes: 64.kilobytes,
             ),
           },
         );
@@ -348,7 +349,7 @@ class Agent {
               'llm.tool_call_count': toolCalls.length,
               'output.value': redactBody(
                 assistantText.toString(),
-                maxBytes: 65536,
+                maxBytes: 64.kilobytes,
               ),
             });
           }
@@ -549,8 +550,8 @@ class Agent {
           'tool_call.id': call.id,
           'tool.name': call.name,
           'tool.input_size': encodedArgs.length,
-          'tool.input': redactBody(encodedArgs, maxBytes: 65536),
-          'input.value': redactBody(encodedArgs, maxBytes: 65536),
+          'tool.input': redactBody(encodedArgs, maxBytes: 64.kilobytes),
+          'input.value': redactBody(encodedArgs, maxBytes: 64.kilobytes),
         },
       );
     }
@@ -563,8 +564,8 @@ class Agent {
         _obs!.endSpan(span, extra: {
           'tool.duration_ms': stopwatch.elapsedMilliseconds,
           'tool.success': true,
-          'tool.output': redactBody(result.content, maxBytes: 65536),
-          'output.value': redactBody(result.content, maxBytes: 65536),
+          'tool.output': redactBody(result.content, maxBytes: 64.kilobytes),
+          'output.value': redactBody(result.content, maxBytes: 64.kilobytes),
           if (result.summary != null) 'tool.summary': result.summary,
           if (result.metadata.isNotEmpty)
             'tool.metadata': jsonEncode(result.metadata),

@@ -10,6 +10,7 @@ import 'package:glue/src/runtime/transcript.dart';
 import 'package:glue/src/session/session_manager.dart';
 import 'package:glue/src/session/title_generator.dart';
 import 'package:glue/src/storage/session_store.dart';
+import 'package:glue/src/utils.dart';
 
 /// Feature-facing handle to the current session and all session-lifecycle
 /// behaviour: resume, fork, replay, title generation / reevaluation, and
@@ -120,7 +121,7 @@ class Session {
 
     _transcript.blocks.add(ConversationEntry.system(
       'Resuming session ${meta.id} '
-      '(${meta.modelRef}, ${_timeAgo(meta.startTime)})',
+      '(${meta.modelRef}, ${meta.startTime.timeAgo})',
     ));
 
     if (!result.hasConversation) {
@@ -304,13 +305,4 @@ class Session {
       }
     }
   }
-}
-
-String _timeAgo(DateTime time) {
-  final diff = DateTime.now().difference(time);
-  if (diff.inMinutes < 1) return 'just now';
-  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-  if (diff.inHours < 24) return '${diff.inHours}h ago';
-  if (diff.inDays < 7) return '${diff.inDays}d ago';
-  return time.toIso8601String().substring(0, 10);
 }

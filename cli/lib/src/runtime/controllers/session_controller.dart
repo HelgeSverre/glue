@@ -12,6 +12,7 @@ import 'package:glue/src/terminal/styled.dart';
 import 'package:glue/src/ui/components/panel.dart';
 import 'package:glue/src/ui/components/tables.dart';
 import 'package:glue/src/ui/services/panels.dart';
+import 'package:glue/src/utils.dart';
 
 /// A conversation-history entry eligible for fork/copy actions in the
 /// `/history` panel. Built by the app layer (which owns the rendered block
@@ -88,7 +89,7 @@ class SessionController implements SessionCommandController {
     final startedLabel = startedAt == null
         ? '(not started)'
         : '${startedAt.toLocal().toIso8601String().substring(0, 19)} '
-            '(${_timeAgo(startedAt)})';
+            '(${startedAt.timeAgo})';
 
     final buf = StringBuffer();
     buf.writeln('Session Info');
@@ -247,7 +248,7 @@ class SessionController implements SessionCommandController {
           'model': s.modelRef,
           'messages': s.messageCount.toString(),
           'dir': shortenPath(s.cwd).styled.dim.toString(),
-          'age': _timeAgo(s.startTime).styled.dim.toString(),
+          'age': s.startTime.timeAgo.styled.dim.toString(),
         };
       },
     );
@@ -402,12 +403,4 @@ class SessionController implements SessionCommandController {
     return arg_completers.sessionArgCandidates(prior, partial);
   }
 
-  String _timeAgo(DateTime time) {
-    final diff = DateTime.now().difference(time);
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return time.toIso8601String().substring(0, 10);
-  }
 }

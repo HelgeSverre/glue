@@ -23,6 +23,7 @@ import 'package:glue/src/shell/docker_config.dart';
 import 'package:glue/src/shell/shell_config.dart';
 import 'package:glue/src/web/browser/browser_config.dart';
 import 'package:glue/src/web/web_config.dart';
+import 'package:glue/src/utils.dart';
 
 /// Splits a path-list env var using platform-appropriate separators.
 /// Unix uses `:` (like `$PATH`), Windows uses `;`.
@@ -501,7 +502,7 @@ class GlueConfig {
             fileConfig?['debug'] as bool? ??
             false);
     final maxBodyBytes =
-        (observabilitySection?['max_body_bytes'] as int?) ?? 65536;
+        (observabilitySection?['max_body_bytes'] as int?) ?? 64.kilobytes;
     final redact = (observabilitySection?['redact'] as bool?) ?? true;
     final otelSection = observabilitySection?['otel'] as Map?;
     final otelEndpoint = otelSection?['endpoint'] as String? ??

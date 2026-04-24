@@ -5,6 +5,7 @@ import 'package:glue/src/observability/observability.dart';
 import 'package:glue/src/observability/redaction.dart';
 import 'package:glue/src/shell/command_executor.dart';
 import 'package:glue/src/shell/line_ring_buffer.dart';
+import 'package:glue/src/utils.dart';
 
 enum JobStatus {
   running,
@@ -96,7 +97,7 @@ class ShellJobManager {
       kind: 'shell.job',
       attributes: {
         'shell.job.id': id,
-        'process.command': redactBody(command, maxBytes: 8192),
+        'process.command': redactBody(command, maxBytes: 8.kilobytes),
         'process.background': true,
       },
     );
@@ -109,7 +110,7 @@ class ShellJobManager {
         command: command,
         startTime: DateTime.now(),
         process: process,
-        output: LineRingBuffer(maxLines: 2000, maxBytes: 256 * 1024),
+        output: LineRingBuffer(maxLines: 2000, maxBytes: 256.kilobytes),
         traceSpan: span,
       );
       _jobs[id] = job;
@@ -198,7 +199,7 @@ class ShellJobManager {
       j.process.kill(ProcessSignal.sigterm);
     }
     if (running.isNotEmpty) {
-      await Future.delayed(const Duration(milliseconds: 800));
+      await Future.delayed(800.milliseconds);
       for (final j in running) {
         try {
           j.process.kill(ProcessSignal.sigkill);

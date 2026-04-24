@@ -7,6 +7,7 @@ import 'package:glue/src/web/fetch/jina_reader_client.dart';
 import 'package:glue/src/web/fetch/ocr_client.dart';
 import 'package:glue/src/web/fetch/pdf_text_extractor.dart';
 import 'package:glue/src/web/fetch/truncation.dart';
+import 'package:glue/src/utils.dart';
 
 class WebFetchResult {
   final String url;
@@ -89,7 +90,7 @@ class WebFetchClient {
         'Accept': 'text/markdown, text/plain;q=0.9, '
             'text/html;q=0.8, application/pdf;q=0.7, */*;q=0.1',
         'User-Agent': 'Glue/0.1 (coding-agent)',
-      }).timeout(Duration(seconds: config.timeoutSeconds));
+      }).timeout(config.timeoutSeconds.seconds);
 
       if (response.statusCode != 200) {
         // Fall through to Jina.

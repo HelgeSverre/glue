@@ -8,6 +8,7 @@ import 'package:glue/src/web/browser/browser_manager.dart';
 import 'package:glue/src/web/fetch/html_extractor.dart';
 import 'package:glue/src/web/fetch/html_to_markdown.dart';
 import 'package:glue/src/web/fetch/truncation.dart';
+import 'package:glue/src/utils.dart';
 
 /// Tool for browser-based web interaction via Chrome DevTools Protocol.
 class WebBrowserTool extends Tool {
@@ -219,7 +220,7 @@ class WebBrowserTool extends Tool {
 
     final page = await _ensurePage();
     await page.click(selector);
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(500.milliseconds);
 
     final title = await page.title;
     return 'Clicked element: $selector\nCurrent page: $title';

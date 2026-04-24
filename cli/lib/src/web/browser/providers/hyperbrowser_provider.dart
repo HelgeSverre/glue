@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'package:glue/src/web/browser/browser_endpoint.dart';
+import 'package:glue/src/utils.dart';
 
 /// Hyperbrowser cloud browser provider.
 class HyperbrowserProvider implements BrowserEndpointProvider {
@@ -36,7 +37,7 @@ class HyperbrowserProvider implements BrowserEndpointProvider {
           },
           body: jsonEncode({}),
         )
-        .timeout(const Duration(seconds: 30));
+        .timeout(30.seconds);
 
     if (response.statusCode != 200 && response.statusCode != 201) {
       throw StateError(

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:glue/src/web/search/models.dart';
 import 'package:glue/src/web/search/provider.dart';
+import 'package:glue/src/utils.dart';
 
 class TavilySearchProvider implements WebSearchProvider {
   final String? apiKey;
@@ -46,7 +47,7 @@ class TavilySearchProvider implements WebSearchProvider {
             'include_answer': true,
           }),
         )
-        .timeout(Duration(seconds: timeoutSeconds));
+        .timeout(timeoutSeconds.seconds);
 
     if (response.statusCode != 200) {
       throw Exception(

@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 import 'package:glue/src/web/web_config.dart';
+import 'package:glue/src/utils.dart';
 
 /// Client for OCR-based PDF text extraction using LLM vision APIs.
 ///
@@ -62,7 +63,7 @@ class OcrClient {
 
     final response = await _client
         .post(uri, headers: headers, body: body)
-        .timeout(Duration(seconds: timeoutSeconds));
+        .timeout(timeoutSeconds.seconds);
 
     if (response.statusCode != 200) return null;
 
@@ -94,7 +95,7 @@ class OcrClient {
 
     final response = await _client
         .post(uri, headers: headers, body: body)
-        .timeout(Duration(seconds: timeoutSeconds));
+        .timeout(timeoutSeconds.seconds);
 
     if (response.statusCode != 200) return null;
 

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:glue/src/web/search/models.dart';
 import 'package:glue/src/web/search/provider.dart';
+import 'package:glue/src/utils.dart';
 
 class DuckDuckGoSearchProvider implements WebSearchProvider {
   final int timeoutSeconds;
@@ -34,7 +35,7 @@ class DuckDuckGoSearchProvider implements WebSearchProvider {
       headers: {
         'Accept': 'text/html,application/xhtml+xml',
       },
-    ).timeout(Duration(seconds: timeoutSeconds));
+    ).timeout(timeoutSeconds.seconds);
 
     if (response.statusCode != 200) {
       throw Exception(

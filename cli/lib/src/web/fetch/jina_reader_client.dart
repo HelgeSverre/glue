@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:http/http.dart' as http;
+import 'package:glue/src/utils.dart';
 
 class JinaReaderClient {
   final String baseUrl;
@@ -30,7 +31,7 @@ class JinaReaderClient {
     try {
       final response = await _client
           .get(buildReaderUrl(url), headers: headers)
-          .timeout(Duration(seconds: timeoutSeconds));
+          .timeout(timeoutSeconds.seconds);
 
       if (response.statusCode == 200) {
         return response.body;

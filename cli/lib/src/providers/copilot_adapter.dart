@@ -23,6 +23,7 @@ import 'package:glue/src/providers/copilot_token_manager.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
 import 'package:glue/src/providers/resolved.dart';
 import 'package:http/http.dart' as http;
+import 'package:glue/src/utils.dart';
 
 const String _deviceCodeUrl = 'https://github.com/login/device/code';
 const String _tokenUrl = 'https://github.com/login/oauth/access_token';
@@ -132,8 +133,8 @@ class CopilotAdapter extends ProviderAdapter {
       deviceCode: decoded['device_code'] as String,
       userCode: decoded['user_code'] as String,
       verificationUri: decoded['verification_uri'] as String,
-      interval: Duration(seconds: (decoded['interval'] as int?) ?? 5),
-      expiresIn: Duration(seconds: (decoded['expires_in'] as int?) ?? 900),
+      interval: ((decoded['interval'] as int?) ?? 5).seconds,
+      expiresIn: ((decoded['expires_in'] as int?) ?? 900).seconds,
     );
   }
 
@@ -201,7 +202,7 @@ class CopilotAdapter extends ProviderAdapter {
           case 'authorization_pending':
             continue;
           case 'slow_down':
-            interval += const Duration(seconds: 5);
+            interval += 5.seconds;
             continue;
           case 'access_denied':
             progress.add(

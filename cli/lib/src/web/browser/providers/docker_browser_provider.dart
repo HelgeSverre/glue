@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:glue/src/web/browser/browser_endpoint.dart';
+import 'package:glue/src/utils.dart';
 
 /// Docker-based browser provider.
 class DockerBrowserProvider implements BrowserEndpointProvider {
@@ -108,11 +109,11 @@ class DockerBrowserProvider implements BrowserEndpointProvider {
           final response = await client
               .getUrl(Uri.parse('http://localhost:$hostPort/json/version'))
               .then((req) => req.close())
-              .timeout(const Duration(seconds: 1));
+              .timeout(1.seconds);
           await response.drain<void>();
           if (response.statusCode == 200) return;
         } catch (_) {
-          await Future.delayed(const Duration(milliseconds: 500));
+          await Future.delayed(500.milliseconds);
         }
       }
       throw StateError('Browser container did not become ready in time');

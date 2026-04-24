@@ -8,6 +8,7 @@ import 'package:glue/src/runtime/transcript.dart';
 import 'package:glue/src/shell/command_executor.dart';
 import 'package:glue/src/shell/shell_job_manager.dart';
 import 'package:glue/src/ui/rendering/ansi_utils.dart';
+import 'package:glue/src/utils.dart';
 
 /// "Bash mode" — the state the editor enters when the user presses `!` at
 /// an empty prompt. Commands typed in this mode bypass the LLM entirely
@@ -65,7 +66,7 @@ class BashMode {
       'shell.command',
       kind: 'shell.command',
       attributes: {
-        'process.command': redactBody(command, maxBytes: 8192),
+        'process.command': redactBody(command, maxBytes: 8.kilobytes),
         'process.background': false,
       },
     );
