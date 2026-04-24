@@ -62,6 +62,7 @@ class Turn {
   ObservabilitySpan? _span;
   StreamSubscription<AgentEvent>? _sub;
   final Set<String> _earlyApprovedIds = {};
+  bool _isRunning = false;
 
   // ---------------------------------------------------------------------------
   // Public entry points
@@ -71,6 +72,7 @@ class Turn {
   /// returns immediately — the turn runs in the background until
   /// [AgentDone] / [AgentError] / [cancel].
   void run(String displayMessage, {String? expandedMessage}) {
+    _beginRun();
     transcript.blocks.add(
       ConversationEntry.user(displayMessage, expandedText: expandedMessage),
     );
@@ -88,11 +90,14 @@ class Turn {
         kind: 'agent',
         attributes: {
           'openinference.span.kind': 'AGENT',
+          'gen_ai.operation.name': 'invoke_agent',
+          'gen_ai.request.model': modelIdProvider(),
           'session.id': session.currentId ?? '',
           'llm.model_name': modelIdProvider(),
           'process.command': 'interactive',
           'user.message_length': displayMessage.length,
           'input.value': redactBody(effective),
+          'gen_ai.input.messages': redactBody(effective),
         },
       );
       if (_span != null) obs!.activeSpan = _span;
@@ -100,7 +105,12 @@ class Turn {
       _sub = agent.run(effective).listen(
         _handleAgentEvent,
         onError: (Object e) {
-          _endSpan(extra: {'error': e.toString()});
+          _endSpan(extra: {
+            'error': true,
+            'error.type': e.runtimeType.toString(),
+            'error.message': e.toString(),
+          });
+          _isRunning = false;
           transcript.blocks.add(ConversationEntry.error(e.toString()));
           renderer.stopSpinner();
           setMode(AppMode.idle);
@@ -108,6 +118,7 @@ class Turn {
         },
         onDone: () {
           _endSpan();
+          _isRunning = false;
           if (transcript.streamingText.isNotEmpty) {
             transcript.blocks
                 .add(ConversationEntry.assistant(transcript.streamingText));
@@ -138,6 +149,7 @@ class Turn {
     required String expandedPrompt,
     required bool jsonMode,
   }) async {
+    _beginRun();
     session.logEvent('user_message', {'text': expandedPrompt});
 
     Future<void> body() async {
@@ -148,11 +160,14 @@ class Turn {
         kind: 'agent',
         attributes: {
           'openinference.span.kind': 'AGENT',
+          'gen_ai.operation.name': 'invoke_agent',
+          'gen_ai.request.model': modelIdProvider(),
           'session.id': session.currentId ?? '',
           'llm.model_name': modelIdProvider(),
           'process.command': 'print',
           'user.message_length': expandedPrompt.length,
           'input.value': redactBody(expandedPrompt),
+          'gen_ai.input.messages': redactBody(expandedPrompt),
         },
       );
       if (_span != null) obs!.activeSpan = _span;
@@ -215,10 +230,12 @@ class Turn {
         if (_span != null && _span!.endTime == null) {
           obs!.endSpan(_span!, extra: {
             'output.value': redactBody(assistantText.toString()),
+            'gen_ai.output.messages': redactBody(assistantText.toString()),
             'output.length': assistantText.length,
           });
         }
         _span = null;
+        _isRunning = false;
       }
 
       final text = assistantText.toString();
@@ -252,7 +269,9 @@ class Turn {
   /// failure.
   void cancel() {
     _sub?.cancel();
+    _sub = null;
     _endSpan(extra: {'cancelled': true});
+    _isRunning = false;
     renderer.stopSpinner();
     setMode(AppMode.idle);
     if (transcript.streamingText.isNotEmpty) {
@@ -374,6 +393,11 @@ class Turn {
         render();
 
       case AgentError(:final error):
+        _endSpan(extra: {
+          'error': true,
+          'error.type': error.runtimeType.toString(),
+          'error.message': error.toString(),
+        });
         transcript.blocks.add(ConversationEntry.error(error.toString()));
         renderer.stopSpinner();
         setMode(AppMode.idle);
@@ -520,6 +544,13 @@ class Turn {
   // ---------------------------------------------------------------------------
   // Span lifecycle
   // ---------------------------------------------------------------------------
+
+  void _beginRun() {
+    if (_isRunning) {
+      throw StateError('Turn is already running.');
+    }
+    _isRunning = true;
+  }
 
   void _endSpan({Map<String, dynamic>? extra}) {
     final span = _span;

@@ -152,8 +152,7 @@ class CopilotProvider extends ProviderAdapter implements LlmClient {
         'Copilot-Integration-Id': 'vscode-chat',
         'Editor-Version': 'Glue/${AppConstants.version}',
       },
-      requestClientFactory:
-          _requestClientFactory ?? (() => _http),
+      requestClientFactory: _requestClientFactory ?? (() => _http),
     );
     yield* inner.stream(messages, tools: tools);
   }

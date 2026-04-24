@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart';
+import 'package:glue/src/observability/debug_controller.dart';
+import 'package:glue/src/observability/observability.dart';
 import 'package:test/test.dart';
 
 // ---------------------------------------------------------------------------
@@ -59,6 +61,19 @@ class ThrowingTool extends Tool {
       throw Exception('boom');
 }
 
+class _CollectingSink extends ObservabilitySink {
+  final spans = <ObservabilitySpan>[];
+
+  @override
+  void onSpan(ObservabilitySpan span) => spans.add(span);
+
+  @override
+  Future<void> flush() async {}
+
+  @override
+  Future<void> close() async {}
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -111,6 +126,32 @@ void main() {
     await agent.run('count').toList();
 
     expect(agent.tokenCount, 15);
+  });
+
+  test('emits GenAI semantic attributes for MLflow ingestion', () async {
+    final obs = Observability(debugController: DebugController(enabled: false));
+    final sink = _CollectingSink();
+    obs.addSink(sink);
+    final tracedAgent = Agent(
+      llm: mockLlm,
+      tools: {'test_tool': MockTool()},
+      modelId: 'openai/gpt-5',
+      obs: obs,
+    );
+    mockLlm.responses.add([
+      TextDelta('ok'),
+      UsageInfo(inputTokens: 3, outputTokens: 2),
+    ]);
+
+    await tracedAgent.run('hello').toList();
+
+    final llmSpan = sink.spans.singleWhere((s) => s.name == 'llm.stream');
+    expect(llmSpan.attributes['gen_ai.operation.name'], 'chat');
+    expect(llmSpan.attributes['gen_ai.request.model'], 'openai/gpt-5');
+    expect(llmSpan.attributes['gen_ai.provider.name'], 'openai');
+    expect(llmSpan.attributes['gen_ai.usage.input_tokens'], 3);
+    expect(llmSpan.attributes['gen_ai.usage.output_tokens'], 2);
+    expect(llmSpan.attributes['gen_ai.output.messages'], contains('ok'));
   });
 
   test('multiple UsageInfo chunks accumulate', () async {

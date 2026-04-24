@@ -156,7 +156,8 @@ observability:
       expect(
         report.findings.any((finding) =>
             finding.section == 'Observability' &&
-            finding.message == 'OTEL export: on (http://localhost:5000/v1/traces)'),
+            finding.message ==
+                'OTEL export: on (http://localhost:5000/v1/traces)'),
         isTrue,
       );
       expect(

@@ -133,12 +133,13 @@ class SessionManager {
     final existing = _store;
     if (existing != null) return existing;
 
+    final id = _newSessionId();
     final span = _startSpan('session.create', attributes: {
+      'session.id': id,
       'session.cwd': cwd,
       'llm.model_name': modelRef,
     });
     try {
-      final id = _newSessionId();
       final store = SessionStore(
         sessionDir: environment.sessionDir(id),
         meta: SessionMeta(
@@ -629,7 +630,12 @@ class SessionManager {
   }) {
     final obs = _obs;
     if (obs == null) return null;
-    return obs.startSpan(name, kind: 'session', attributes: attributes);
+    final merged = <String, dynamic>{...?attributes};
+    final sessionId = currentSessionId;
+    if (sessionId != null && sessionId.isNotEmpty) {
+      merged.putIfAbsent('session.id', () => sessionId);
+    }
+    return obs.startSpan(name, kind: 'session', attributes: merged);
   }
 
   void _endSpan(

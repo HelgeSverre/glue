@@ -216,12 +216,16 @@ class Agent {
         final assistantText = StringBuffer();
         final toolCalls = <ToolCall>[];
         final toolFutures = <Future<ToolResult>>[];
+        final providerName = _providerName(modelId);
         final iterationSpan = _obs?.startSpan(
           'agent.iteration',
           kind: 'agent',
           parent: _traceParent,
           attributes: {
             'openinference.span.kind': 'AGENT',
+            'gen_ai.operation.name': 'invoke_agent',
+            'gen_ai.request.model': modelId,
+            if (providerName != null) 'gen_ai.provider.name': providerName,
             'llm.message_count': _conversation.length,
             'llm.tool_count': allowedTools.length,
             'llm.model_name': modelId,
@@ -233,10 +237,17 @@ class Agent {
           parent: iterationSpan,
           attributes: {
             'openinference.span.kind': 'LLM',
+            'gen_ai.operation.name': 'chat',
+            'gen_ai.request.model': modelId,
+            if (providerName != null) 'gen_ai.provider.name': providerName,
             'llm.model_name': modelId,
             'llm.input_messages.count': _conversation.length,
             'llm.tools.count': allowedTools.length,
             'input.value': redactBody(
+              _conversationSummary(_conversation),
+              maxBytes: 64.kilobytes,
+            ),
+            'gen_ai.input.messages': redactBody(
               _conversationSummary(_conversation),
               maxBytes: 64.kilobytes,
             ),
@@ -295,10 +306,17 @@ class Agent {
               'llm.token_count.prompt': inputTokens,
               'llm.token_count.completion': outputTokens,
               'llm.token_count.total': inputTokens + outputTokens,
+              'gen_ai.usage.input_tokens': inputTokens,
+              'gen_ai.usage.output_tokens': outputTokens,
+              'gen_ai.response.model': modelId,
               'llm.output_messages.count': 1,
               'llm.output_text.length': assistantText.length,
               'llm.tool_call_count': toolCalls.length,
               'output.value': redactBody(
+                assistantText.toString(),
+                maxBytes: 64.kilobytes,
+              ),
+              'gen_ai.output.messages': redactBody(
                 assistantText.toString(),
                 maxBytes: 64.kilobytes,
               ),
@@ -498,6 +516,13 @@ class Agent {
         parent: _traceParent,
         attributes: {
           'openinference.span.kind': 'TOOL',
+          'gen_ai.operation.name': 'execute_tool',
+          'gen_ai.tool.name': call.name,
+          'gen_ai.tool.call.id': call.id,
+          'gen_ai.tool.call.arguments': redactBody(
+            encodedArgs,
+            maxBytes: 64.kilobytes,
+          ),
           'tool_call.id': call.id,
           'tool.name': call.name,
           'tool.input_size': encodedArgs.length,
@@ -517,6 +542,10 @@ class Agent {
           'tool.success': true,
           'tool.output': redactBody(result.content, maxBytes: 64.kilobytes),
           'output.value': redactBody(result.content, maxBytes: 64.kilobytes),
+          'gen_ai.tool.call.result': redactBody(
+            result.content,
+            maxBytes: 64.kilobytes,
+          ),
           if (result.summary != null) 'tool.summary': result.summary,
           if (result.metadata.isNotEmpty)
             'tool.metadata': jsonEncode(result.metadata),
@@ -542,6 +571,12 @@ class Agent {
       );
     }
   }
+}
+
+String? _providerName(String modelId) {
+  final idx = modelId.indexOf('/');
+  if (idx <= 0) return null;
+  return modelId.substring(0, idx);
 }
 
 String _conversationSummary(List<Message> messages) {

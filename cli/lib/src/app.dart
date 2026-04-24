@@ -4,43 +4,43 @@ import 'dart:io';
 import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/subagents.dart';
 import 'package:glue/src/catalog/model_display.dart';
+import 'package:glue/src/commands/slash_autocomplete.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/config/approval_mode.dart';
 import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/core/service_locator.dart';
+import 'package:glue/src/input/at_file_hint.dart';
 import 'package:glue/src/input/file_expander.dart';
 import 'package:glue/src/input/text_area_editor.dart';
 import 'package:glue/src/observability/debug_controller.dart';
 import 'package:glue/src/observability/observability.dart';
-import 'package:glue/src/runtime/permission_gate.dart';
-import 'package:glue/src/runtime/tool_permissions.dart';
 import 'package:glue/src/providers/llm_client_factory.dart';
-import 'package:glue/src/ui/rendering/ansi_utils.dart';
-import 'package:glue/src/ui/rendering/block_renderer.dart';
 import 'package:glue/src/runtime/app_events.dart';
 import 'package:glue/src/runtime/app_mode.dart';
 import 'package:glue/src/runtime/commands/command_host.dart';
-import 'package:glue/src/runtime/input_router.dart';
 import 'package:glue/src/runtime/commands/register_builtin_slash_commands.dart';
-import 'package:glue/src/runtime/renderer.dart';
-import 'package:glue/src/runtime/services/config.dart';
-import 'package:glue/src/runtime/services/session.dart';
-import 'package:glue/src/runtime/transcript.dart';
-import 'package:glue/src/runtime/turn.dart';
 import 'package:glue/src/runtime/controllers/chat_controller.dart';
-import 'package:glue/src/ui/services/confirmations.dart';
 import 'package:glue/src/runtime/controllers/model_controller.dart';
 import 'package:glue/src/runtime/controllers/provider_controller.dart';
 import 'package:glue/src/runtime/controllers/session_controller.dart';
 import 'package:glue/src/runtime/controllers/skills_controller.dart';
 import 'package:glue/src/runtime/controllers/system_controller.dart';
-import 'package:glue/src/share/share_controller.dart';
+import 'package:glue/src/runtime/input_router.dart';
+import 'package:glue/src/runtime/permission_gate.dart';
+import 'package:glue/src/runtime/renderer.dart';
+import 'package:glue/src/runtime/services/config.dart';
+import 'package:glue/src/runtime/services/session.dart';
+import 'package:glue/src/runtime/tool_permissions.dart';
+import 'package:glue/src/runtime/transcript.dart';
+import 'package:glue/src/runtime/turn.dart';
 import 'package:glue/src/session/session_manager.dart';
+import 'package:glue/src/share/share_controller.dart';
 import 'package:glue/src/shell/bash_mode.dart';
 import 'package:glue/src/shell/command_executor.dart';
 import 'package:glue/src/shell/host_executor.dart';
+import 'package:glue/src/shell/shell_autocomplete.dart';
 import 'package:glue/src/shell/shell_completer.dart';
 import 'package:glue/src/shell/shell_config.dart';
 import 'package:glue/src/shell/shell_job_manager.dart';
@@ -49,14 +49,14 @@ import 'package:glue/src/skills/skill_runtime.dart';
 import 'package:glue/src/storage/session_store.dart';
 import 'package:glue/src/terminal/layout.dart';
 import 'package:glue/src/terminal/terminal.dart';
-import 'package:glue/src/input/at_file_hint.dart';
 import 'package:glue/src/ui/components/dock.dart';
-import 'package:glue/src/ui/services/docks.dart';
 import 'package:glue/src/ui/components/modal.dart';
 import 'package:glue/src/ui/components/panel.dart';
+import 'package:glue/src/ui/rendering/ansi_utils.dart';
+import 'package:glue/src/ui/rendering/block_renderer.dart';
+import 'package:glue/src/ui/services/confirmations.dart';
+import 'package:glue/src/ui/services/docks.dart';
 import 'package:glue/src/ui/services/panels.dart';
-import 'package:glue/src/shell/shell_autocomplete.dart';
-import 'package:glue/src/commands/slash_autocomplete.dart';
 
 part 'app/controllers.dart';
 part 'app/paint.dart';
@@ -293,6 +293,7 @@ class App {
     ].join('\n\n');
   }
 
+  // TODO: put into a utils file.
   String _shortenPath(String path) {
     final home = _environment.home;
     if (home.isNotEmpty && path.startsWith(home)) {
@@ -433,48 +434,48 @@ class App {
   /// flush/close, session close) because those are app-lifetime concerns
   /// that wrap the turn.
   Future<void> _runPrintMode() async {
-    if (_resumeSessionId != null) {
-      if (_resumeSessionId.isEmpty) {
-        stderr.writeln(
-            'Error: --print does not support bare --resume; pass a session ID.');
-        return;
-      }
-      final sessions = _sessionManager.listSessions();
-      final match = sessions.where((s) => s.id == _resumeSessionId).toList();
-      if (match.isEmpty) {
-        stderr.writeln('Session $_resumeSessionId not found.');
-        return;
-      }
-      _sessionManager.resumeSession(session: match.first, agent: agent);
-    }
-
-    String? stdinContent;
-    if (!stdin.hasTerminal) {
-      try {
-        final buf = StringBuffer();
-        String? line;
-        while ((line = stdin.readLineSync()) != null) {
-          buf.writeln(line);
-        }
-        final content = buf.toString().trimRight();
-        if (content.isNotEmpty) stdinContent = content;
-      } catch (_) {
-        // Ignore stdin read errors.
-      }
-    }
-
-    final prompt = _startupPrompt;
-    if ((prompt == null || prompt.isEmpty) && stdinContent == null) {
-      stderr.writeln('Error: --print requires a prompt.');
-      return;
-    }
-
-    final fullPrompt =
-        App.buildPrintPrompt(prompt: prompt, stdinContent: stdinContent);
-    final expanded = expandFileRefs(fullPrompt);
-
-    final turn = _makeTurn();
     try {
+      if (_resumeSessionId != null) {
+        if (_resumeSessionId.isEmpty) {
+          stderr.writeln(
+              'Error: --print does not support bare --resume; pass a session ID.');
+          return;
+        }
+        final sessions = _sessionManager.listSessions();
+        final match = sessions.where((s) => s.id == _resumeSessionId).toList();
+        if (match.isEmpty) {
+          stderr.writeln('Session $_resumeSessionId not found.');
+          return;
+        }
+        _sessionManager.resumeSession(session: match.first, agent: agent);
+      }
+
+      String? stdinContent;
+      if (!stdin.hasTerminal) {
+        try {
+          final buf = StringBuffer();
+          String? line;
+          while ((line = stdin.readLineSync()) != null) {
+            buf.writeln(line);
+          }
+          final content = buf.toString().trimRight();
+          if (content.isNotEmpty) stdinContent = content;
+        } catch (_) {
+          // Ignore stdin read errors.
+        }
+      }
+
+      final prompt = _startupPrompt;
+      if ((prompt == null || prompt.isEmpty) && stdinContent == null) {
+        stderr.writeln('Error: --print requires a prompt.');
+        return;
+      }
+
+      final fullPrompt =
+          App.buildPrintPrompt(prompt: prompt, stdinContent: stdinContent);
+      final expanded = expandFileRefs(fullPrompt);
+
+      final turn = _makeTurn();
       await turn.runPrint(expandedPrompt: expanded, jsonMode: _jsonMode);
     } finally {
       for (final tool in agent.tools.values) {
@@ -596,7 +597,10 @@ class App {
 
   void _startAgent(String displayMessage, {String? expandedMessage}) {
     _currentTurn = _makeTurn()
-      ..run(displayMessage, expandedMessage: expandedMessage);
+      ..run(
+        displayMessage,
+        expandedMessage: expandedMessage,
+      );
   }
 
   void _cancelAgent() => _currentTurn?.cancel();

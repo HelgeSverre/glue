@@ -42,7 +42,8 @@ void main() {
       expect(client, isA<OpenAiProvider>());
     });
 
-    test('returns OllamaProvider for ollama (native adapter, api_key: none)', () {
+    test('returns OllamaProvider for ollama (native adapter, api_key: none)',
+        () {
       final config = testConfig();
       final factory = LlmClientFactory(config);
       final client = factory.createFor(

@@ -120,6 +120,7 @@ commented out.
 #   otel:
 #     enabled: true
 #     endpoint: https://app.phoenix.arize.com/s/helge-sverre
+#     protocol: http/json         # http/json | http/protobuf
 #     headers:
 #       Authorization: Bearer <token>
 #     service_name: glue
@@ -188,6 +189,7 @@ commented out.
 | `observability.otel.enabled`         | boolean                       | `OTEL_SDK_DISABLED`                 |
 | `observability.otel.endpoint`        | string                        | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `PHOENIX_COLLECTOR_ENDPOINT` |
 | `observability.otel.headers`         | map                           | `OTEL_EXPORTER_OTLP_TRACES_HEADERS`, `OTEL_EXPORTER_OTLP_HEADERS`, `PHOENIX_API_KEY` |
+| `observability.otel.protocol`        | string                        | `OTEL_EXPORTER_OTLP_PROTOCOL`       |
 | `observability.otel.service_name`    | string                        | `OTEL_SERVICE_NAME`                 |
 | `observability.otel.resource_attributes` | map                       | `OTEL_RESOURCE_ATTRIBUTES`, `PHOENIX_PROJECT_NAME` |
 | `approval_mode`                      | string                        | `GLUE_APPROVAL_MODE`                |

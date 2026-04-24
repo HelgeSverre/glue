@@ -151,7 +151,9 @@ void main() {
       expect(builder.renderHeader(80), isNotEmpty);
     });
 
-    test('provider header appears on first item of each provider in filtered set', () {
+    test(
+        'provider header appears on first item of each provider in filtered set',
+        () {
       final entries = <CatalogRow>[
         (
           providerId: 'anthropic',

@@ -120,22 +120,32 @@ class Subagents {
       traceParent: span,
     );
 
+    Future<String> runSubagent() => agent.runHeadless(
+          task,
+          policy: ToolApprovalPolicy.allowlist,
+          allowedTools: allowedSubagentTools,
+          onEvent: (event) => _updateController.add(SubagentUpdate(
+            task: task,
+            index: index,
+            total: total,
+            event: event,
+          )),
+        );
+
     try {
-      final result = await agent.runHeadless(
-        task,
-        policy: ToolApprovalPolicy.allowlist,
-        allowedTools: allowedSubagentTools,
-        onEvent: (event) => _updateController.add(SubagentUpdate(
-          task: task,
-          index: index,
-          total: total,
-          event: event,
-        )),
-      );
+      final result = span != null
+          ? await obs!.runInSpan(span, runSubagent)
+          : await runSubagent();
       if (span != null) obs!.endSpan(span);
       return result;
     } catch (e) {
-      if (span != null) obs!.endSpan(span, extra: {'error': e.toString()});
+      if (span != null) {
+        obs!.endSpan(span, extra: {
+          'error': true,
+          'error.type': e.runtimeType.toString(),
+          'error.message': e.toString(),
+        });
+      }
       rethrow;
     }
   }

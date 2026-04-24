@@ -429,5 +429,4 @@ class ProviderController {
         return '${provider.name}: adapter "${provider.adapter}" failed validation.';
     }
   }
-
 }

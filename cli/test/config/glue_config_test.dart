@@ -162,7 +162,8 @@ anthropic:
       );
     });
 
-    test('loads OTEL config for MLflow-style ingestion from standard config', () {
+    test('loads OTEL config for MLflow-style ingestion from standard config',
+        () {
       final home = _scratch();
       addTearDown(() => home.deleteSync(recursive: true));
       Directory('${home.path}/.glue').createSync();
@@ -259,7 +260,8 @@ observability:
       );
     });
 
-    test('OTEL protocol defaults to protobuf and can be overridden from env', () {
+    test('OTEL protocol defaults to protobuf and can be overridden from env',
+        () {
       final home = _scratch();
       addTearDown(() => home.deleteSync(recursive: true));
 
