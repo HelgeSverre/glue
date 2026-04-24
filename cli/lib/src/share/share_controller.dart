@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'package:glue/src/runtime/transcript.dart';
 
-import 'package:glue/src/commands/arg_completers.dart' as arg_completers;
-import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/core/url_launcher.dart';
 import 'package:glue/src/runtime/commands/command_host.dart';
 import 'package:glue/src/share/gist_publisher.dart';
@@ -124,13 +122,5 @@ class ShareController implements ShareCommandController {
     final title = (meta.title ?? '').trim();
     if (title.isNotEmpty) return 'Glue session: $title (${meta.id})';
     return 'Glue session ${meta.id}';
-  }
-
-  @override
-  List<SlashArgCandidate> shareArgCandidates(
-    List<String> prior,
-    String partial,
-  ) {
-    return arg_completers.shareArgCandidates(prior, partial);
   }
 }

@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'package:glue/src/runtime/transcript.dart';
 
-import 'package:glue/src/commands/arg_completers.dart' as arg_completers;
-import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/runtime/commands/command_host.dart';
 import 'package:glue/src/skills/skill_runtime.dart';
 import 'package:glue/src/skills/skills_docked_panel.dart';
@@ -69,14 +67,5 @@ class SkillsController implements SkillsCommandController {
     if (normalized.isEmpty) return 'Usage: /skills [skill-name]';
     unawaited(activateSkill(normalized).then((_) => render()));
     return 'Activating skill "$normalized"...';
-  }
-
-  @override
-  List<SlashArgCandidate> skillsArgCandidates(
-    List<String> prior,
-    String partial,
-  ) {
-    if (prior.isNotEmpty) return const [];
-    return arg_completers.skillCandidates(skillRuntime.list(), partial);
   }
 }

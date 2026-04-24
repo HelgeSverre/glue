@@ -3,7 +3,8 @@ part of 'package:glue/src/app.dart';
 class _AppControllers implements SlashCommandContext {
   _AppControllers(App app)
       : _config = app._configService,
-        _session = app._sessionService {
+        _session = app._sessionService,
+        _skillRuntime = app._skillRuntime {
     system = SystemController(
       environment: app._environment,
       requestExit: app.requestExit,
@@ -79,6 +80,13 @@ class _AppControllers implements SlashCommandContext {
 
   final Config _config;
   final Session _session;
+  final SkillRuntime _skillRuntime;
+
+  @override
+  Config get config => _config;
+
+  @override
+  SkillRuntime get skillRuntime => _skillRuntime;
 
   @override
   late final SystemCommandController system;

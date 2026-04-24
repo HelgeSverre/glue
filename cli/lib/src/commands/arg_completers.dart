@@ -1,11 +1,14 @@
-/// Pure-function candidate producers for slash-command argument
-/// autocomplete. The App class wires these into
-/// [SlashCommandRegistry.attachArgCompleter] after pulling the required
-/// live state (catalog, skill list) out of its own fields.
+/// Pure-function candidate producers and closure factories for
+/// slash-command argument autocomplete.
 ///
-/// Keeping the logic here — as pure functions that take their inputs by
-/// parameter — means tests can exercise the same code path that runs in
-/// production without spinning up a full `App`.
+/// Low-level functions (e.g. [modelRefCandidates], [skillCandidates],
+/// [providerIdCandidates]) take their inputs by parameter so tests can
+/// exercise them without spinning up a full `App`.
+///
+/// Closure factories (e.g. [modelArgCompleter], [providerArgCompleter])
+/// bind the low-level functions to live state ([Config], [SkillRuntime])
+/// and return an [ArgCompleter] ready to hand to
+/// [SlashCommandRegistry.attachArgCompleter].
 library;
 
 import 'package:glue/src/catalog/model_catalog.dart';
@@ -70,7 +73,7 @@ const int defaultModelResultCap = 20;
 
 /// Searches the catalog by provider prefix, model id substring, model
 /// display-name substring, or full-ref substring. Callers should gate
-/// on non-empty [partial] (see `App._modelArgCandidates`).
+/// on non-empty [partial] (see [modelArgCompleter]).
 List<SlashArgCandidate> modelRefCandidates(
   Map<String, ProviderDef> providers,
   String partial, {

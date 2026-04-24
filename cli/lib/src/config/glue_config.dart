@@ -13,7 +13,7 @@ import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/credentials/credential_store.dart';
 import 'package:glue/src/observability/observability_config.dart';
-import 'package:glue/src/providers/anthropic_adapter.dart';
+import 'package:glue/src/providers/anthropic_provider.dart';
 import 'package:glue/src/providers/copilot_adapter.dart';
 import 'package:glue/src/providers/ollama_adapter.dart';
 import 'package:glue/src/providers/openai_compatible_adapter.dart';
@@ -269,7 +269,7 @@ class GlueConfig {
 
     final adapters = adaptersOverride ??
         AdapterRegistry([
-          AnthropicAdapter(),
+          AnthropicProvider(),
           OpenAiCompatibleAdapter(),
           OllamaAdapter(),
           CopilotAdapter(credentialStore: credentials),

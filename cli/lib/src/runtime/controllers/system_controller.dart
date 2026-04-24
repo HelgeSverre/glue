@@ -4,7 +4,6 @@ import 'dart:math' as math;
 
 import 'package:meta/meta.dart';
 
-import 'package:glue/src/commands/arg_completers.dart' as arg_completers;
 import 'package:glue/src/commands/config_command.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/core/environment.dart';
@@ -210,11 +209,5 @@ class SystemController implements SystemCommandController {
 
     unawaited(openInFileManager(path));
     return 'Opening $path';
-  }
-
-  @override
-  List<SlashArgCandidate> openArgCandidates(
-      List<String> prior, String partial) {
-    return arg_completers.openArgCandidates(prior, partial);
   }
 }

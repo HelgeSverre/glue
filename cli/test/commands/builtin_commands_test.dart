@@ -5,10 +5,13 @@ import 'package:test/test.dart';
 import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/app.dart';
-import 'package:glue/src/commands/builtin_commands.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/input/text_area_editor.dart';
+import 'package:glue/src/runtime/commands/command_host.dart';
+import 'package:glue/src/runtime/commands/register_builtin_slash_commands.dart';
+import 'package:glue/src/runtime/services/config.dart';
+import 'package:glue/src/skills/skill_runtime.dart';
 import 'package:glue/src/storage/session_store.dart';
 import 'package:glue/src/terminal/layout.dart';
 import 'package:glue/src/terminal/terminal.dart';
@@ -83,8 +86,206 @@ class _NoopLlm implements LlmClient {
   Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {}
 }
 
+class _TestCommandContext implements SlashCommandContext {
+  _TestCommandContext({
+    void Function()? openModelPanel,
+    void Function()? openHistoryPanel,
+    String Function(String query)? historyActionByQuery,
+    void Function()? openSkillsPanel,
+    String Function(String name)? activateSkillByName,
+    void Function()? openResumePanel,
+    String Function(String query)? resumeSessionByQuery,
+    String Function()? pathsReport,
+    String Function(List<String> args)? openGlueTarget,
+    String Function(List<String> args)? configAction,
+    String Function(List<String> args)? sessionAction,
+    String Function(List<String> args)? shareAction,
+    Config? config,
+    SkillRuntime? skillRuntime,
+  })  : _config = config ??
+            Config(
+              read: () => null,
+              write: (_) {},
+              environment: Environment.test(
+                home: Directory.systemTemp.path,
+                cwd: Directory.systemTemp.path,
+              ),
+            ),
+        _skillRuntime = skillRuntime ??
+            SkillRuntime(
+              cwd: Directory.systemTemp.path,
+              extraPathsProvider: () => const [],
+              bundledPathsProvider: () => const [],
+              environment: Environment.test(
+                home: Directory.systemTemp.path,
+                cwd: Directory.systemTemp.path,
+              ),
+            ),
+        _controller = _TestCommandController(
+          openModelPanel: openModelPanel,
+          openHistoryPanel: openHistoryPanel,
+          historyActionByQuery: historyActionByQuery,
+          openSkillsPanel: openSkillsPanel,
+          activateSkillByName: activateSkillByName,
+          openResumePanel: openResumePanel,
+          resumeSessionByQuery: resumeSessionByQuery,
+          pathsReport: pathsReport,
+          openGlueTarget: openGlueTarget,
+          configAction: configAction,
+          sessionAction: sessionAction,
+          shareAction: shareAction,
+        );
+
+  final _TestCommandController _controller;
+  final Config _config;
+  final SkillRuntime _skillRuntime;
+
+  @override
+  Config get config => _config;
+
+  @override
+  SkillRuntime get skillRuntime => _skillRuntime;
+
+  @override
+  SystemCommandController get system => _controller;
+
+  @override
+  ChatCommandController get chat => _controller;
+
+  @override
+  ModelCommandController get models => _controller;
+
+  @override
+  SessionCommandController get sessions => _controller;
+
+  @override
+  ShareCommandController get share => _controller;
+
+  @override
+  SkillsCommandController get skills => _controller;
+
+  @override
+  ProviderCommandController get providers => _controller;
+}
+
+class _TestCommandController
+    implements
+        SystemCommandController,
+        ChatCommandController,
+        ModelCommandController,
+        SessionCommandController,
+        ShareCommandController,
+        SkillsCommandController,
+        ProviderCommandController {
+  _TestCommandController({
+    void Function()? openModelPanel,
+    void Function()? openHistoryPanel,
+    String Function(String query)? historyActionByQuery,
+    void Function()? openSkillsPanel,
+    String Function(String name)? activateSkillByName,
+    void Function()? openResumePanel,
+    String Function(String query)? resumeSessionByQuery,
+    String Function()? pathsReport,
+    String Function(List<String> args)? openGlueTarget,
+    String Function(List<String> args)? configAction,
+    String Function(List<String> args)? sessionAction,
+    String Function(List<String> args)? shareAction,
+  })  : _openModelPanel = openModelPanel ?? (() {}),
+        _openHistoryPanel = openHistoryPanel ?? (() {}),
+        _historyActionByQuery = historyActionByQuery ?? ((_) => ''),
+        _openSkillsPanel = openSkillsPanel ?? (() {}),
+        _activateSkillByName = activateSkillByName ?? ((_) => ''),
+        _openResumePanel = openResumePanel ?? (() {}),
+        _resumeSessionByQuery = resumeSessionByQuery ?? ((_) => ''),
+        _pathsReport = pathsReport ?? (() => ''),
+        _openGlueTarget = openGlueTarget ?? ((_) => ''),
+        _configAction = configAction ?? ((_) => ''),
+        _sessionAction = sessionAction ?? ((_) => ''),
+        _shareAction = shareAction ?? ((_) => '');
+
+  final void Function() _openModelPanel;
+  final void Function() _openHistoryPanel;
+  final String Function(String query) _historyActionByQuery;
+  final void Function() _openSkillsPanel;
+  final String Function(String name) _activateSkillByName;
+  final void Function() _openResumePanel;
+  final String Function(String query) _resumeSessionByQuery;
+  final String Function() _pathsReport;
+  final String Function(List<String> args) _openGlueTarget;
+  final String Function(List<String> args) _configAction;
+  final String Function(List<String> args) _sessionAction;
+  final String Function(List<String> args) _shareAction;
+
+  @override
+  void openHelpPanel() {}
+
+  @override
+  String clearConversation() => '';
+
+  @override
+  void requestExit() {}
+
+  @override
+  void openModelPanel() => _openModelPanel();
+
+  @override
+  String switchModelByQuery(String query) => '';
+
+  @override
+  String sessionAction(List<String> args) => _sessionAction(args);
+
+  @override
+  String shareAction(List<String> args) => _shareAction(args);
+
+  @override
+  String listTools() => '';
+
+  @override
+  void openHistoryPanel() => _openHistoryPanel();
+
+  @override
+  String historyActionByQuery(String query) => _historyActionByQuery(query);
+
+  @override
+  void openResumePanel() => _openResumePanel();
+
+  @override
+  String resumeSessionByQuery(String query) => _resumeSessionByQuery(query);
+
+  @override
+  String toggleDebug() => '';
+
+  @override
+  void openSkillsPanel() => _openSkillsPanel();
+
+  @override
+  String activateSkillByName(String skillName) =>
+      _activateSkillByName(skillName);
+
+  @override
+  String toggleApproval() => '';
+
+  @override
+  String runProviderCommand(List<String> args) => '';
+
+  @override
+  String pathsReport() => _pathsReport();
+
+  @override
+  String openGlueTarget(List<String> args) => _openGlueTarget(args);
+
+  @override
+  String configAction(List<String> args) => _configAction(args);
+
+  @override
+  String renameSession(String title) => '';
+
+  @override
+  void copyLastResponse() {}
+}
+
 void main() {
-  group('BuiltinCommands', () {
+  group('buildBuiltinSlashCommands', () {
     SlashCommandRegistry createRegistry({
       void Function()? openModelPanel,
       void Function()? openHistoryPanel,
@@ -99,29 +300,20 @@ void main() {
       String Function(List<String> args)? sessionAction,
       String Function(List<String> args)? shareAction,
     }) {
-      return BuiltinCommands.create(
-        openHelpPanel: () {},
-        clearConversation: () => '',
-        requestExit: () {},
+      return buildBuiltinSlashCommands(_TestCommandContext(
         openModelPanel: openModelPanel ?? () {},
-        switchModelByQuery: (_) => '',
         sessionAction: sessionAction ?? (_) => '',
         shareAction: shareAction ?? (_) => '',
-        listTools: () => '',
         openHistoryPanel: openHistoryPanel ?? () {},
         historyActionByQuery: historyActionByQuery ?? (_) => '',
         openResumePanel: openResumePanel ?? () {},
         resumeSessionByQuery: resumeSessionByQuery ?? (_) => '',
-        toggleDebug: () => '',
         openSkillsPanel: openSkillsPanel ?? () {},
         activateSkillByName: activateSkillByName ?? (_) => '',
-        toggleApproval: () => '',
-        runProviderCommand: (_) => '',
         pathsReport: pathsReport ?? () => '',
         openGlueTarget: openGlueTarget ?? (_) => '',
         configAction: configAction ?? (_) => '',
-        renameSession: (_) => '',
-      );
+      ));
     }
 
     test('/copy command is registered', () {

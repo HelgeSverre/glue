@@ -1,18 +1,35 @@
+/// Anthropic provider: adapter + streaming Messages API client in one class.
+library;
+
 import 'dart:async';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 
 import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/llm/message_mapper.dart';
 import 'package:glue/src/llm/sse.dart';
 import 'package:glue/src/llm/tool_schema.dart';
+import 'package:glue/src/providers/provider_adapter.dart';
+import 'package:glue/src/providers/resolved.dart';
+import 'package:http/http.dart' as http;
 
-/// LLM client for the Anthropic Messages API with streaming.
+/// Adapter that talks to the Anthropic Messages API with streaming.
 ///
 /// {@category LLM Providers}
-class AnthropicClient implements LlmClient {
-  final http.Client Function() _requestClientFactory;
+class AnthropicProvider extends ProviderAdapter implements LlmClient {
+  AnthropicProvider({
+    this.apiKey = '',
+    this.model = '',
+    this.systemPrompt = '',
+    String baseUrl = _defaultBaseUrl,
+    http.Client Function()? requestClientFactory,
+  })  : _baseUri = Uri.parse(baseUrl),
+        _requestClientFactory = requestClientFactory;
+
+  /// Outer HTTP factory — preserved so `createClient()` can hand it to each
+  /// per-request instance it spawns. `stream()` falls back to a default when
+  /// null.
+  final http.Client Function()? _requestClientFactory;
   final String apiKey;
   final String model;
   final String systemPrompt;
@@ -21,20 +38,41 @@ class AnthropicClient implements LlmClient {
   static const _apiVersion = '2023-06-01';
   static const _defaultBaseUrl = 'https://api.anthropic.com';
 
-  AnthropicClient({
-    required this.apiKey,
-    required this.model,
-    required this.systemPrompt,
-    String baseUrl = _defaultBaseUrl,
-    http.Client Function()? requestClientFactory,
-  })  : _requestClientFactory = requestClientFactory ?? http.Client.new,
-        _baseUri = Uri.parse(baseUrl);
+  // ---------- ProviderAdapter ----------
+
+  @override
+  String get adapterId => 'anthropic';
+
+  @override
+  ProviderHealth validate(ResolvedProvider provider) {
+    final apiKey = provider.apiKey;
+    return (apiKey != null && apiKey.isNotEmpty)
+        ? ProviderHealth.ok
+        : ProviderHealth.missingCredential;
+  }
+
+  @override
+  LlmClient createClient({
+    required ResolvedProvider provider,
+    required ResolvedModel model,
+    required String systemPrompt,
+  }) {
+    return AnthropicProvider(
+      apiKey: provider.apiKey ?? '',
+      model: model.apiId,
+      systemPrompt: systemPrompt,
+      baseUrl: provider.baseUrl ?? _defaultBaseUrl,
+      requestClientFactory: _requestClientFactory,
+    );
+  }
+
+  // ---------- LlmClient ----------
 
   @override
   Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
     // Per-request client: closing it aborts the TCP connection when the
     // stream subscription is cancelled, saving output tokens.
-    final requestClient = _requestClientFactory();
+    final requestClient = (_requestClientFactory ?? http.Client.new)();
     try {
       const mapper = AnthropicMessageMapper();
       final mapped = mapper.mapMessages(messages, systemPrompt: systemPrompt);

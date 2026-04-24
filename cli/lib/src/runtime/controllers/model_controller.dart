@@ -6,8 +6,6 @@ import 'package:glue/src/catalog/model_catalog.dart';
 import 'package:glue/src/catalog/model_panel_formatter.dart';
 import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/catalog/model_resolver.dart';
-import 'package:glue/src/commands/arg_completers.dart' as arg_completers;
-import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/providers/llm_client_factory.dart';
 import 'package:glue/src/providers/ollama_discovery.dart';
@@ -177,20 +175,6 @@ class ModelController implements ModelCommandController {
             'Use `<provider>/<id>` (e.g. `ollama/gemma4:latest`) or one of: '
             '$hint …';
     }
-  }
-
-  @override
-  List<SlashArgCandidate> modelArgCandidates(
-    List<String> prior,
-    String partial,
-  ) {
-    if (prior.isNotEmpty) return const [];
-    final cfg = config.current;
-    if (cfg == null) return const [];
-    return arg_completers.modelRefCandidates(
-      cfg.catalogData.providers,
-      partial,
-    );
   }
 
   String switchToRow(CatalogRow row) {

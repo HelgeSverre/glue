@@ -4,8 +4,6 @@ import 'package:glue/src/runtime/transcript.dart';
 import 'package:meta/meta.dart';
 
 import 'package:glue/src/catalog/model_catalog.dart';
-import 'package:glue/src/commands/arg_completers.dart' as arg_completers;
-import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/runtime/services/config.dart';
 import 'package:glue/src/providers/api_key_prompt_panel.dart';
@@ -434,22 +432,4 @@ class ProviderController implements ProviderCommandController {
     }
   }
 
-  @override
-  List<SlashArgCandidate> providerArgCandidates(
-    List<String> prior,
-    String partial,
-  ) {
-    if (prior.isEmpty) {
-      return arg_completers.providerSubcommandCandidates(partial);
-    }
-    if (prior.length == 1 && {'add', 'remove', 'test'}.contains(prior.first)) {
-      final cfg = config.current;
-      if (cfg == null) return const [];
-      return arg_completers.providerIdCandidates(
-        cfg.catalogData.providers,
-        partial,
-      );
-    }
-    return const [];
-  }
 }

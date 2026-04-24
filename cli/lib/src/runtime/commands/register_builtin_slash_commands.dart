@@ -1,3 +1,4 @@
+import 'package:glue/src/commands/arg_completers.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/runtime/commands/command_host.dart';
 import 'package:glue/src/runtime/commands/command_module.dart';
@@ -115,7 +116,7 @@ class _ModelCommandModule implements SlashCommandModule {
     SlashCommandRegistry registry,
     SlashCommandContext context,
   ) {
-    registry.attachArgCompleter('model', context.models.modelArgCandidates);
+    registry.attachArgCompleter('model', modelArgCompleter(context.config));
   }
 }
 
@@ -166,10 +167,7 @@ class _SessionCommandModule implements SlashCommandModule {
     SlashCommandRegistry registry,
     SlashCommandContext context,
   ) {
-    registry.attachArgCompleter(
-      'session',
-      context.sessions.sessionArgCandidates,
-    );
+    registry.attachArgCompleter('session', sessionArgCompleter());
   }
 }
 
@@ -196,7 +194,10 @@ class _SkillsCommandModule implements SlashCommandModule {
     SlashCommandRegistry registry,
     SlashCommandContext context,
   ) {
-    registry.attachArgCompleter('skills', context.skills.skillsArgCandidates);
+    registry.attachArgCompleter(
+      'skills',
+      skillsArgCompleter(context.skillRuntime),
+    );
   }
 }
 
@@ -219,7 +220,7 @@ class _ProviderCommandModule implements SlashCommandModule {
   ) {
     registry.attachArgCompleter(
       'provider',
-      context.providers.providerArgCandidates,
+      providerArgCompleter(context.config),
     );
   }
 }
@@ -257,6 +258,6 @@ class _SystemCommandModule implements SlashCommandModule {
     SlashCommandRegistry registry,
     SlashCommandContext context,
   ) {
-    registry.attachArgCompleter('open', context.system.openArgCandidates);
+    registry.attachArgCompleter('open', openArgCompleter());
   }
 }

@@ -1,8 +1,6 @@
 import 'dart:async';
 
 import 'package:glue/src/agent/agent.dart';
-import 'package:glue/src/commands/arg_completers.dart' as arg_completers;
-import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/core/clipboard.dart';
 import 'package:glue/src/runtime/commands/command_host.dart';
 import 'package:glue/src/runtime/services/session.dart';
@@ -409,13 +407,5 @@ class SessionController implements SessionCommandController {
     session.ensureStore();
     unawaited(session.rename(normalized));
     return 'Renamed session to "$normalized".';
-  }
-
-  @override
-  List<SlashArgCandidate> sessionArgCandidates(
-    List<String> prior,
-    String partial,
-  ) {
-    return arg_completers.sessionArgCandidates(prior, partial);
   }
 }

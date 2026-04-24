@@ -1,3 +1,4 @@
+import 'package:glue/src/commands/arg_completers.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/runtime/commands/command_host.dart';
 import 'package:glue/src/runtime/commands/command_module.dart';
@@ -21,6 +22,6 @@ class ShareCommandModule implements SlashCommandModule {
     SlashCommandRegistry registry,
     SlashCommandContext context,
   ) {
-    registry.attachArgCompleter('share', context.share.shareArgCandidates);
+    registry.attachArgCompleter('share', shareArgCompleter());
   }
 }

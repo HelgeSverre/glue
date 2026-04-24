@@ -11,7 +11,7 @@ import 'package:glue/src/observability/http_trace_sink.dart';
 import 'package:glue/src/observability/logging_http_client.dart';
 import 'package:glue/src/observability/observability.dart';
 import 'package:glue/src/observability/otlp_http_trace_sink.dart';
-import 'package:glue/src/providers/anthropic_adapter.dart';
+import 'package:glue/src/providers/anthropic_provider.dart';
 import 'package:glue/src/providers/ollama_adapter.dart';
 import 'package:glue/src/providers/copilot_adapter.dart';
 import 'package:glue/src/providers/llm_client_factory.dart';
@@ -111,7 +111,7 @@ class ServiceLocator {
     // observability. GlueConfig.load constructed plain adapters before obs
     // existed; we swap them here now that we can wrap.
     config.adapters = AdapterRegistry([
-      AnthropicAdapter(requestClientFactory: () => mkHttp('llm.anthropic')),
+      AnthropicProvider(requestClientFactory: () => mkHttp('llm.anthropic')),
       OpenAiCompatibleAdapter(requestClientFactory: () => mkHttp('llm.openai')),
       OllamaAdapter(requestClientFactory: () => mkHttp('llm.ollama')),
       CopilotAdapter(

@@ -1,12 +1,80 @@
 import 'dart:async';
 
 import 'package:glue/src/agent/agent.dart';
-import 'package:glue/src/llm/anthropic_client.dart';
+import 'package:glue/src/catalog/model_catalog.dart';
+import 'package:glue/src/llm/llm.dart';
+import 'package:glue/src/providers/anthropic_provider.dart';
+import 'package:glue/src/providers/provider_adapter.dart';
+import 'package:glue/src/providers/resolved.dart';
 import 'package:test/test.dart';
 
-// A mock HTTP client is complex; test the SSE parsing logic directly.
 void main() {
-  group('AnthropicClient.parseStream', () {
+  group('AnthropicProvider (adapter role)', () {
+    test('adapterId is "anthropic"', () {
+      expect(AnthropicProvider().adapterId, 'anthropic');
+    });
+
+    test('createClient returns AnthropicProvider with the resolved apiKey', () {
+      final adapter = AnthropicProvider();
+      const provider = ProviderDef(
+        id: 'anthropic',
+        name: 'Anthropic',
+        adapter: 'anthropic',
+        auth: AuthSpec(kind: AuthKind.apiKey, envVar: 'ANTHROPIC_API_KEY'),
+        models: {},
+      );
+      const model = ModelDef(id: 'claude-sonnet-4.6', name: 'Claude Sonnet');
+      final client = adapter.createClient(
+        provider: const ResolvedProvider(def: provider, apiKey: 'sk-test'),
+        model: const ResolvedModel(def: model, provider: provider),
+        systemPrompt: 'you are a helpful assistant',
+      );
+      expect(client, isA<AnthropicProvider>());
+      expect((client as AnthropicProvider).apiKey, 'sk-test');
+      expect(client.model, 'claude-sonnet-4.6');
+      expect(client.systemPrompt, 'you are a helpful assistant');
+    });
+
+    test('validate returns missingCredential when apiKey is null', () {
+      final adapter = AnthropicProvider();
+      const provider = ProviderDef(
+        id: 'anthropic',
+        name: 'Anthropic',
+        adapter: 'anthropic',
+        auth: AuthSpec(kind: AuthKind.apiKey, envVar: 'ANTHROPIC_API_KEY'),
+        models: {},
+      );
+      expect(
+        adapter.validate(const ResolvedProvider(def: provider, apiKey: null)),
+        ProviderHealth.missingCredential,
+      );
+      expect(
+        adapter.validate(const ResolvedProvider(def: provider, apiKey: 'sk')),
+        ProviderHealth.ok,
+      );
+    });
+
+    test('createClient honors custom base URL from ProviderDef', () {
+      final adapter = AnthropicProvider();
+      const provider = ProviderDef(
+        id: 'anthropic-proxy',
+        name: 'Proxy',
+        adapter: 'anthropic',
+        baseUrl: 'https://proxy.example.com',
+        auth: AuthSpec(kind: AuthKind.none),
+        models: {},
+      );
+      const model = ModelDef(id: 'claude', name: 'Claude');
+      final client = adapter.createClient(
+        provider: const ResolvedProvider(def: provider, apiKey: 'sk'),
+        model: const ResolvedModel(def: model, provider: provider),
+        systemPrompt: '',
+      );
+      expect(client, isA<AnthropicProvider>());
+    });
+  });
+
+  group('AnthropicProvider.parseStreamEvents (client role)', () {
     test('parses text deltas from SSE events', () async {
       final events = [
         _sseData({
@@ -39,7 +107,7 @@ void main() {
         }),
         _sseData({'type': 'message_stop'}),
       ];
-      final chunks = await AnthropicClient.parseStreamEvents(
+      final chunks = await AnthropicProvider.parseStreamEvents(
         Stream.fromIterable(events),
       ).toList();
 
@@ -90,7 +158,7 @@ void main() {
         _sseData({'type': 'message_stop'}),
       ];
 
-      final chunks = await AnthropicClient.parseStreamEvents(
+      final chunks = await AnthropicProvider.parseStreamEvents(
         Stream.fromIterable(events),
       ).toList();
 
@@ -135,7 +203,7 @@ void main() {
         _sseData({'type': 'message_stop'}),
       ];
 
-      final chunks = await AnthropicClient.parseStreamEvents(
+      final chunks = await AnthropicProvider.parseStreamEvents(
         Stream.fromIterable(events),
       ).toList();
 
