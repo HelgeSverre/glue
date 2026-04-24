@@ -45,8 +45,11 @@ linter:
     # Collection best practices
     prefer_collection_literals: true
     prefer_for_elements_to_map_fromIterable: true
+  
 
 analyzer:
+  exclude:
+    - lib/src/generated/**
   language:
     strict-casts: true
     strict-raw-types: true
