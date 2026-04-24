@@ -26,7 +26,7 @@ enum _Mode { name, arg }
 /// - **Name mode**: buffer is `/prefix` with no space — filters registry by
 ///   command name / alias.
 /// - **Arg mode**: buffer is `/<knownCmd> <partial>` and the resolved
-///   command has a [SlashArgCompleter] attached — filters that command's
+///   command has an [ArgCompleter] attached — filters that command's
 ///   argument candidates.
 ///
 /// The overlay itself only renders — the owning widget (App) intercepts

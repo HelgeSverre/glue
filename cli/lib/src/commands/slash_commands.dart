@@ -20,7 +20,7 @@ class SlashArgCandidate {
 /// [priorArgs] holds the complete arg tokens typed before the one being
 /// completed. [partial] is the lowercased partial text of the token under
 /// the cursor (empty string when the buffer ends with a space).
-typedef SlashArgCompleter = List<SlashArgCandidate> Function(
+typedef ArgCompleter = List<SlashArgCandidate> Function(
   List<String> priorArgs,
   String partial,
 );
@@ -36,7 +36,7 @@ class SlashCommand {
   /// Optional arg-completer attached after registration via
   /// [SlashCommandRegistry.attachArgCompleter]. `null` means the command
   /// does not participate in argument autocomplete.
-  SlashArgCompleter? completeArg;
+  ArgCompleter? completeArg;
 
   SlashCommand({
     required this.name,
@@ -91,7 +91,7 @@ class SlashCommandRegistry {
   /// Attach an argument completer to a previously-registered command.
   /// Resolves by primary name or any alias/hidden alias.
   /// Throws [StateError] if no command matches.
-  void attachArgCompleter(String name, SlashArgCompleter completer) {
+  void attachArgCompleter(String name, ArgCompleter completer) {
     final command = findByName(name);
     if (command == null) {
       throw StateError('No slash command registered for "$name"');
