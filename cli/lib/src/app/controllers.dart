@@ -25,6 +25,7 @@ class _AppControllers implements SlashCommandContext {
       tools: () => app.agent.tools.values,
       getApprovalMode: () => app._approvalMode,
       setApprovalMode: (mode) => app._approvalMode = mode,
+      transcript: app._transcript,
     );
     models = ModelController(
       config: _config,

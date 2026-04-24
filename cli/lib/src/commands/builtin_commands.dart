@@ -167,6 +167,9 @@ class _LegacyChatCommands implements ChatCommandController {
 
   @override
   String toggleApproval() => _toggleApproval();
+
+  @override
+  void copyLastResponse() {}
 }
 
 class _LegacyModelCommands implements ModelCommandController {

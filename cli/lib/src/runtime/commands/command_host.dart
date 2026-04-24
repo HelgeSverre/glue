@@ -14,6 +14,7 @@ abstract interface class ChatCommandController {
   String clearConversation();
   String listTools();
   String toggleApproval();
+  void copyLastResponse();
 }
 
 abstract interface class ModelCommandController {

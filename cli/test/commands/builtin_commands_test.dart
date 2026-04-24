@@ -124,6 +124,12 @@ void main() {
       );
     }
 
+    test('/copy command is registered', () {
+      final registry = createRegistry();
+      expect(registry.findByName('copy'), isNotNull);
+      expect(registry.findByName('copy')!.name, 'copy');
+    });
+
     test('/models is an alias for /model and opens picker', () {
       var opened = 0;
       final registry = createRegistry(openModelPanel: () => opened++);

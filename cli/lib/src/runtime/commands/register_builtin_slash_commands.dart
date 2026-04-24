@@ -62,6 +62,15 @@ class _CoreCommandModule implements SlashCommandModule {
     ));
 
     registry.register(SlashCommand(
+      name: 'copy',
+      description: 'Copy last response to clipboard',
+      execute: (_) {
+        context.chat.copyLastResponse();
+        return '';
+      },
+    ));
+
+    registry.register(SlashCommand(
       name: 'debug',
       description: 'Toggle debug mode (verbose logging)',
       execute: (_) => context.system.toggleDebug(),
@@ -88,7 +97,8 @@ class _ModelCommandModule implements SlashCommandModule {
   void register(SlashCommandRegistry registry, SlashCommandContext context) {
     registry.register(SlashCommand(
       name: 'model',
-      description: 'Switch model (no args = picker, with arg = switch directly)',
+      description:
+          'Switch model (no args = picker, with arg = switch directly)',
       aliases: ['models'],
       execute: (args) {
         if (args.isEmpty) {
