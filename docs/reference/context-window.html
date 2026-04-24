@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Context Window Management — Glue</title>
+<style>
+:root {
+  --bg: #0a0e1a;
+  --surface: #0f172a;
+  --surface-2: #1a2535;
+  --surface-3: #162032;
+  --border: #1e293b;
+  --border-light: #2d3f55;
+  --text: #e2e8f0;
+  --text-muted: #64748b;
+  --text-dim: #94a3b8;
+  --brand: #06b6d4;
+  --green: #22c55e;
+  --green-bg: rgba(34,197,94,0.07);
+  --amber: #f59e0b;
+  --amber-bg: rgba(245,158,11,0.07);
+  --red: #ef4444;
+  --red-bg: rgba(239,68,68,0.07);
+  --purple: #a855f7;
+  --purple-bg: rgba(168,85,247,0.08);
+  --blue: #3b82f6;
+  --blue-bg: rgba(59,130,246,0.08);
+  --font-mono: 'JetBrains Mono','Fira Code','Cascadia Code',Consolas,monospace;
+  --font-sans: -apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif;
+  --r: 6px;
+  --rl: 10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-sans);font-size:14px;line-height:1.6;min-height:100vh;}
+.container{max-width:1120px;margin:0 auto;padding:0 24px;}
+section{padding:48px 0;}
+section+section{border-top:1px solid var(--border);}
+a{color:var(--brand);text-decoration:none;}
+a:hover{text-decoration:underline;}
+code{font-family:var(--font-mono);background:var(--surface-2);padding:1px 5px;border-radius:3px;font-size:0.9em;}
+
+/* ── Header ── */
+header{padding:28px 0 24px;border-bottom:1px solid var(--border);}
+.logo{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+.logo-icon{width:28px;height:28px;background:var(--brand);border-radius:var(--r);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:var(--bg);font-family:var(--font-mono);}
+.logo-name{font-size:13px;font-weight:600;color:var(--text-muted);letter-spacing:0.08em;text-transform:uppercase;}
+h1{font-size:26px;font-weight:700;line-height:1.3;margin-bottom:8px;}
+.subtitle{font-size:14px;color:var(--text-dim);max-width:620px;line-height:1.65;}
+.section-label{font-size:11px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--brand);margin-bottom:6px;}
+h2{font-size:20px;font-weight:600;margin-bottom:6px;}
+h3{font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:10px;}
+
+/* ── Architecture ── */
+.arch{display:flex;flex-direction:column;align-items:center;max-width:640px;margin:28px auto 0;}
+.arch-box{background:var(--surface);border:1px solid var(--border-light);border-radius:var(--rl);padding:14px 22px;width:100%;text-align:center;}
+.arch-box.source{border-color:rgba(6,182,212,0.5);background:rgba(6,182,212,0.04);}
+.arch-box.dest{border-color:rgba(6,182,212,0.5);background:rgba(6,182,212,0.04);}
+.arch-box.t1{border-left:3px solid var(--green);}
+.arch-box.t2{border-left:3px solid var(--amber);}
+.arch-box.t3{border-left:3px solid var(--red);}
+.arch-box .blabel{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:2px;}
+.arch-box.t1 .blabel{color:var(--green);}
+.arch-box.t2 .blabel{color:var(--amber);}
+.arch-box.t3 .blabel{color:var(--red);}
+.arch-box.source .blabel, .arch-box.dest .blabel{color:var(--brand);}
+.arch-box .btitle{font-size:14px;font-weight:600;}
+.arch-box .bdesc{font-size:12px;color:var(--text-muted);margin-top:3px;}
+.arch-arrow{display:flex;flex-direction:column;align-items:center;padding:2px 0;}
+.arch-arrow .aline{width:2px;height:14px;background:var(--border-light);}
+.arch-arrow .ahead{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid var(--border-light);}
+.arch-arrow .alabel{font-size:11px;color:var(--text-muted);background:var(--bg);padding:2px 10px;font-family:var(--font-mono);border-radius:3px;}
+
+/* ── Tabs ── */
+.tab-nav{display:flex;gap:0;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:24px;}
+.tab-btn{padding:9px 16px;border:none;background:none;color:var(--text-muted);font-size:13px;font-family:var(--font-sans);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s,border-color .15s;white-space:nowrap;}
+.tab-btn:hover{color:var(--text-dim);}
+.tab-btn.active{color:var(--brand);border-bottom-color:var(--brand);}
+
+/* ── Scenario layout ── */
+.scenario-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap;}
+.scenario-info h3{font-size:17px;font-weight:700;color:var(--text);margin-bottom:4px;}
+.scenario-info .sdesc{font-size:13px;color:var(--text-muted);max-width:680px;line-height:1.6;}
+.tier-badges{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;padding-top:4px;}
+.tier-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;border:1px solid;letter-spacing:.02em;white-space:nowrap;}
+.tb-off{color:var(--text-muted);border-color:var(--border-light);background:var(--surface);}
+.tb-t1{color:var(--green);border-color:rgba(34,197,94,.3);background:var(--green-bg);}
+.tb-t2{color:var(--amber);border-color:rgba(245,158,11,.3);background:var(--amber-bg);}
+.tb-t3{color:var(--red);border-color:rgba(239,68,68,.3);background:var(--red-bg);}
+.tb-em{color:#ff8080;border-color:rgba(255,128,128,.4);background:rgba(255,128,128,.07);}
+
+/* ── Token bar ── */
+.tbar-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:16px 20px;margin-bottom:20px;}
+.tbar-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.tbar-label{font-size:12px;color:var(--text-muted);font-family:var(--font-mono);}
+.tbar-stat{font-size:12px;color:var(--text-dim);font-family:var(--font-mono);}
+.tbar-track{position:relative;height:12px;background:var(--surface-2);border-radius:6px;overflow:visible;margin-bottom:22px;}
+.tbar-fill{height:100%;border-radius:6px;transition:width .8s cubic-bezier(.4,0,.2,1),background-color .5s;position:relative;z-index:1;max-width:100%;}
+.tmarker{position:absolute;top:-4px;height:20px;width:2px;z-index:2;}
+.tmarker::before{content:'';display:block;width:2px;height:20px;}
+.tmarker .mlabel{position:absolute;top:23px;font-size:10px;font-family:var(--font-mono);white-space:nowrap;transform:translateX(-50%);letter-spacing:.02em;}
+.tmarker.compact{left:80%;}
+.tmarker.compact::before{background:var(--amber);opacity:.7;}
+.tmarker.compact .mlabel{color:var(--amber);}
+.tmarker.critical{left:95%;}
+.tmarker.critical::before{background:var(--red);opacity:.7;}
+.tmarker.critical .mlabel{color:var(--red);}
+
+/* ── Before/After ── */
+.ba{display:grid;grid-template-columns:1fr 40px 1fr;gap:12px;align-items:start;}
+@media(max-width:720px){.ba{grid-template-columns:1fr;}.ba-sep{display:none;}}
+.ba-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;}
+.ba-head{display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid var(--border);background:var(--surface-2);}
+.ba-title{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);}
+.ba-tok{font-size:11px;font-family:var(--font-mono);color:var(--text-muted);}
+.ba-body{padding:10px;display:flex;flex-direction:column;gap:7px;min-height:280px;}
+.ba-sep{display:flex;align-items:center;justify-content:center;padding-top:100px;color:var(--text-muted);}
+
+/* ── Messages ── */
+.msg{border-radius:var(--r);padding:9px 11px;font-size:12px;line-height:1.5;}
+.msg-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;}
+.msg-role{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;}
+.msg-tok{font-size:10px;font-family:var(--font-mono);opacity:.55;}
+.msg-body{font-size:12px;line-height:1.5;}
+
+.msg.user{background:var(--blue-bg);border-left:2px solid var(--blue);}
+.msg.user .msg-role{color:var(--blue);}
+.msg.asst{background:var(--surface-2);border-left:2px solid #2d3f55;}
+.msg.asst .msg-role{color:var(--text-dim);}
+.msg.tool{background:rgba(245,158,11,.04);border-left:2px solid rgba(245,158,11,.4);}
+.msg.tool .msg-role{color:var(--amber);}
+.msg.tool .msg-body{font-family:var(--font-mono);font-size:11px;white-space:pre;overflow:hidden;text-overflow:ellipsis;}
+.msg.tool.trimmed{background:rgba(239,68,68,.04);border-left-color:rgba(239,68,68,.4);opacity:.7;}
+.msg.tool.trimmed .msg-role{color:var(--red);}
+.msg.tool.trimmed .msg-body{color:var(--red);font-style:italic;}
+.msg.summary{background:var(--purple-bg);border-left:2px solid rgba(168,85,247,.45);}
+.msg.summary .msg-role{color:var(--purple);}
+.sbadge{display:inline-block;font-size:9px;font-weight:700;background:rgba(168,85,247,.2);color:var(--purple);border-radius:3px;padding:1px 5px;margin-left:6px;letter-spacing:.04em;vertical-align:middle;}
+.msg.sys-trim{background:rgba(239,68,68,.05);border:1px dashed rgba(239,68,68,.3);text-align:center;color:var(--red);font-size:11px;font-style:italic;padding:8px 12px;}
+.msg.overflow{background:var(--red-bg);border-left:2px solid var(--red);}
+.msg.overflow .msg-role{color:var(--red);}
+.msg.overflow .msg-body{font-family:var(--font-mono);font-size:11px;}
+.msg.retry{background:var(--green-bg);border-left:2px solid var(--green);}
+.msg.retry .msg-role{color:var(--green);}
+.msg.retry .msg-body{font-family:var(--font-mono);font-size:11px;}
+.ellipsis{text-align:center;padding:5px 8px;color:var(--text-muted);font-size:11px;font-style:italic;}
+
+/* ── Explanation ── */
+.expl{margin-top:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:16px 20px;}
+.expl h4{font-size:13px;font-weight:600;margin-bottom:7px;color:var(--text);}
+.expl p{font-size:13px;color:var(--text-dim);line-height:1.65;}
+.code-ref{margin-top:12px;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);font-family:var(--font-mono);font-size:11px;color:var(--brand);}
+.code-ref .fref{color:var(--text-muted);font-size:10px;display:block;margin-bottom:3px;}
+
+/* ── Config ── */
+.cfg-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:24px;}
+@media(max-width:720px){.cfg-grid{grid-template-columns:1fr;}}
+.code-block{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:16px;font-family:var(--font-mono);font-size:12px;line-height:1.8;color:var(--text-dim);white-space:pre;}
+.code-block .ck{color:#7dd3fc;}
+.code-block .cv{color:#86efac;}
+.code-block .cc{color:var(--text-muted);}
+.cfg-tbl{width:100%;border-collapse:collapse;}
+.cfg-tbl th,.cfg-tbl td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;}
+.cfg-tbl th{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);background:var(--surface-2);}
+.cfg-tbl td:first-child{font-family:var(--font-mono);color:#7dd3fc;font-size:11px;}
+.cfg-tbl td:nth-child(2){font-family:var(--font-mono);color:#86efac;}
+.cfg-tbl td:nth-child(3){color:var(--text-dim);}
+.budget-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;font-family:var(--font-mono);font-size:12px;margin-top:14px;}
+.budget-item{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;}
+.budget-item .bk{color:var(--text-muted);font-size:11px;display:block;margin-bottom:2px;}
+.budget-item .bv{font-size:14px;font-weight:600;}
+.budget-item.hi .bv{color:var(--brand);}
+.budget-item.warn .bv{color:var(--amber);}
+.budget-item.crit .bv{color:var(--red);}
+
+/* ── Footer ── */
+footer{border-top:1px solid var(--border);padding:20px 0;text-align:center;color:var(--text-muted);font-size:12px;}
+</style>
+</head>
+<body>
+
+<header>
+<div class="container">
+  <div class="logo">
+    <div class="logo-icon">G</div>
+    <span class="logo-name">Glue Reference</span>
+  </div>
+  <h1>Context Window Management</h1>
+  <p class="subtitle">A three-tier automatic system that fits conversations into the LLM's context budget before each call. The original conversation is never mutated — only the view sent to the provider is affected.</p>
+</div>
+</header>
+
+<section id="arch">
+<div class="container">
+  <div class="section-label">Pipeline</div>
+  <h2>Three-Tier Reduction Strategy</h2>
+  <p style="color:var(--text-dim);font-size:13px;max-width:620px;">Before every LLM call, <code>ContextManager.prepareForLlm()</code> applies up to three tiers in order of increasing aggressiveness and cost.</p>
+
+  <div class="arch">
+    <div class="arch-box source">
+      <div class="blabel">Input</div>
+      <div class="btitle">_conversation (full history)</div>
+      <div class="bdesc">Never mutated. All turns since the session started.</div>
+    </div>
+    <div class="arch-arrow">
+      <div class="aline"></div>
+      <div class="alabel">prepareForLlm()</div>
+      <div class="aline"></div>
+      <div class="ahead"></div>
+    </div>
+    <div class="arch-box t1">
+      <div class="blabel">Tier 1 · Always</div>
+      <div class="btitle">Tool Result Trimmer</div>
+      <div class="bdesc">Replaces tool results &gt;200 tokens from turns older than <code>toolResultTrimAfter</code> (default 3) with compact placeholders. Zero LLM cost.</div>
+    </div>
+    <div class="arch-arrow">
+      <div class="aline"></div>
+      <div class="alabel" style="color:var(--amber);">estimated &gt; 80% of inputBudget?</div>
+      <div class="aline"></div>
+      <div class="ahead"></div>
+    </div>
+    <div class="arch-box t2">
+      <div class="blabel">Tier 2 · When &gt; 80%</div>
+      <div class="btitle">Conversation Compactor</div>
+      <div class="bdesc">Calls a small model to summarize all but the last <code>keepRecentTurns</code> (default 4) user turns. Inserts a synthetic summary message.</div>
+    </div>
+    <div class="arch-arrow">
+      <div class="aline"></div>
+      <div class="alabel" style="color:var(--red);">still &gt; 95% after compaction?</div>
+      <div class="aline"></div>
+      <div class="ahead"></div>
+    </div>
+    <div class="arch-box t3">
+      <div class="blabel">Tier 3 · When &gt; 95%</div>
+      <div class="btitle">Sliding Window Trimmer</div>
+      <div class="bdesc">Drops oldest complete turns until the estimate drops back to the 80% target. Prepends a "[N messages removed]" marker. Zero LLM cost.</div>
+    </div>
+    <div class="arch-arrow">
+      <div class="aline"></div>
+      <div class="aline" style="height:8px;"></div>
+      <div class="ahead"></div>
+    </div>
+    <div class="arch-box dest">
+      <div class="blabel">Output</div>
+      <div class="btitle">Trimmed view sent to LLM</div>
+      <div class="bdesc">A new list is returned. The original <code>_conversation</code> is untouched.</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section id="scenarios">
+<div class="container">
+  <div class="section-label">Interactive Scenarios</div>
+  <h2>See it in action</h2>
+  <p style="color:var(--text-dim);font-size:13px;margin-bottom:24px;">Each tab shows the token budget pressure, which tiers fire, and the before/after message view sent to the LLM.</p>
+  <div class="tab-nav" id="tabNav"></div>
+  <div id="scenarioContent"></div>
+</div>
+</section>
+
+<section id="config">
+<div class="container">
+  <div class="section-label">Configuration</div>
+  <h2>context: settings in glue.yaml</h2>
+  <p style="color:var(--text-dim);font-size:13px;">All thresholds are user-configurable in <code>~/.glue/config.yaml</code>. Source: <code>cli/lib/src/context/context_config.dart</code></p>
+
+  <div class="cfg-grid">
+    <div>
+      <h3>YAML</h3>
+      <div class="code-block"><span class="cc"># ~/.glue/config.yaml</span>
+<span class="ck">context</span>:
+  <span class="ck">auto_compact</span>: <span class="cv">true</span>         <span class="cc"># enable Tier 2</span>
+  <span class="ck">compact_threshold</span>: <span class="cv">0.80</span>   <span class="cc"># fire Tier 2 at 80% of inputBudget</span>
+  <span class="ck">critical_threshold</span>: <span class="cv">0.95</span>  <span class="cc"># fire Tier 3 at 95%</span>
+  <span class="ck">keep_recent_turns</span>: <span class="cv">4</span>     <span class="cc"># always keep last 4 user turns verbatim</span>
+  <span class="ck">tool_result_trim_after</span>: <span class="cv">3</span> <span class="cc"># trim results older than 3 turns</span></div>
+    </div>
+    <div>
+      <h3>Options</h3>
+      <table class="cfg-tbl">
+        <thead><tr><th>Key</th><th>Default</th><th>Effect</th></tr></thead>
+        <tbody>
+          <tr><td>auto_compact</td><td>true</td><td>Enable Tier 2 summarization. Set to false to use Tier 1+3 only.</td></tr>
+          <tr><td>compact_threshold</td><td>0.80</td><td>Fraction of inputBudget that triggers Tier 2.</td></tr>
+          <tr><td>critical_threshold</td><td>0.95</td><td>Fraction that triggers Tier 3 after Tier 2 is insufficient.</td></tr>
+          <tr><td>keep_recent_turns</td><td>4</td><td>User turns always kept verbatim, never compacted.</td></tr>
+          <tr><td>tool_result_trim_after</td><td>3</td><td>Tool results older than N turns get truncated by Tier 1.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div style="margin-top:24px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:18px 22px;">
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:0;">Budget arithmetic for <strong style="color:var(--text-dim);">claude-sonnet-4-6</strong> (200K context window)</p>
+    <div class="budget-grid">
+      <div class="budget-item"><span class="bk">contextWindowTokens</span><span class="bv" style="color:var(--text-dim);">200,000</span></div>
+      <div class="budget-item"><span class="bk">reserved (output + tool schemas)</span><span class="bv" style="color:var(--text-dim);">9,216</span></div>
+      <div class="budget-item hi"><span class="bk">inputBudget</span><span class="bv">190,784</span></div>
+      <div class="budget-item warn"><span class="bk">compactAt (80%)</span><span class="bv">152,627</span></div>
+      <div class="budget-item crit"><span class="bk">criticalAt (95%)</span><span class="bv">181,245</span></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>Glue context window management &nbsp;·&nbsp; <code>cli/lib/src/context/</code> &nbsp;·&nbsp; branch: <code>copilot/add-context-window-management-system</code></p>
+  </div>
+</footer>
+
+<script>
+const INPUT_BUDGET = 190784;
+
+function tok(n){
+  if(n >= 1000) return (n/1000).toFixed(1)+'k';
+  return String(n);
+}
+
+const user = (c,t=80) => ({type:'user',content:c,tokens:t});
+const asst = (c,t=140) => ({type:'asst',content:c,tokens:t});
+const tool = (name,c,t=400) => ({type:'tool',name,content:c,tokens:t});
+const toolT = (name,t=400) => ({type:'tool',name,content:`[tool result trimmed — ~${tok(t)} tokens removed]`,tokens:14,trimmed:true,origTokens:t});
+const summ = (c,t=680) => ({type:'summary',content:c,tokens:t});
+const sysTrim = n => ({type:'sys-trim',content:`Earlier conversation was trimmed to fit context window. ${n} messages removed.`});
+const dot = lbl => ({type:'ellipsis',content:lbl});
+const errMsg = c => ({type:'overflow',name:'Provider Error',content:c,tokens:0});
+const retryMsg = c => ({type:'retry',name:'System',content:c,tokens:0});
+
+const SCENARIOS = [
+  {
+    id: 1,
+    title: 'Normal',
+    longTitle: 'Normal Conversation',
+    badge: '< 80% — No action taken',
+    tokens: 99200,
+    afterTokens: 99200,
+    tiers: [false,false,false,false],
+    desc: 'The conversation sits at 52% of the input budget. prepareForLlm() runs Tier 1 but finds no old large tool results to trim. The view returned to the LLM is identical to the stored conversation.',
+    before: [
+      user("Can you help me refactor the auth token handler in auth/handler.dart?", 160),
+      asst("Sure! Let me read the file first.", 35),
+      tool("read_file","class TokenHandler {\n  String? validateToken(String token) {\n    if (token.isEmpty) return null;\n    return _decode(token);\n  }\n  // ... 42 more lines",820),
+      asst("The handler has scattered concerns. I'd recommend extracting the decode logic into a dedicated TokenDecoder class. Want me to show you the refactored version?", 160),
+      user("Yes, and check if there are tests to update too.", 70),
+      asst("Here's the refactored TokenHandler with TokenDecoder extracted. I'll now check the test files.", 240),
+    ],
+    afterSame: true,
+    expl: 'At 52% of inputBudget (~99.2K of 190.8K tokens), the conversation is comfortably under the 80% compact threshold. The one tool result shown is from the current turn (turn 0), within the toolResultTrimAfter=3 recency window — so Tier 1 has nothing to trim. prepareForLlm() returns an identical copy of the conversation.',
+    codeRef: 'context_manager.dart · prepareForLlm() — Tier 1 runs but trim() is a no-op when all tool results are within the recency window.'
+  },
+  {
+    id: 2,
+    title: 'Tier 1',
+    longTitle: 'Tier 1: Tool Result Trimming',
+    badge: '65% — Tier 1 only',
+    tokens: 124000,
+    afterTokens: 122200,
+    tiers: [true,false,false,false],
+    desc: 'A large tool result from 5 turns ago is still in conversation history. Tier 1 always fires and replaces any tool result older than 3 turns that exceeds 200 tokens with a compact placeholder. Zero LLM cost.',
+    before: [
+      user("Read the full auth handler source file.", 75),
+      asst("Reading auth/handler.dart now.", 28),
+      tool("read_file","import 'dart:convert';\nimport 'package:crypto/crypto.dart';\n\nclass TokenHandler {\n  final String _secret;\n  final Duration _ttl;\n\n  TokenHandler({required String secret, Duration? ttl})\n    : _secret = secret,\n      _ttl = ttl ?? const Duration(hours: 24);\n\n  String? validateToken(String token) { ... }\n  String generateToken(Map claims) { ... }\n  bool _isExpired(Map claims) { ... }\n  // ... 140 more lines\n}",1800),
+      dot('— 6 turns of working conversation (turns 1–6) —'),
+      user("Alright, let's write the updated middleware now.", 65),
+      asst("On it. Here's the updated middleware with the new token validation inline:", 130),
+    ],
+    after: [
+      user("Read the full auth handler source file.", 75),
+      asst("Reading auth/handler.dart now.", 28),
+      toolT("read_file", 1800),
+      dot('— 6 turns of working conversation (turns 1–6) —'),
+      user("Alright, let's write the updated middleware now.", 65),
+      asst("On it. Here's the updated middleware with the new token validation inline:", 130),
+    ],
+    expl: "The read_file result from turn 0 is now 5 turns old — exceeding toolResultTrimAfter=3 — and estimated at ~1,800 tokens (well over the 200-token threshold). Tier 1 replaces it with a 14-token placeholder: \"[tool result trimmed — ~1.8k tokens removed]\". The original _conversation list is untouched. This saves ~1,786 tokens at zero cost.",
+    codeRef: 'tool_result_trimmer.dart · trim() — Replaces tool results > 200 tokens from turns older than toolResultTrimAfter.'
+  },
+  {
+    id: 3,
+    title: 'Tier 1+2',
+    longTitle: 'Tier 2: Conversation Compaction',
+    badge: '85% — Tier 1 + Tier 2',
+    tokens: 162000,
+    afterTokens: 57000,
+    tiers: [true,true,false,false],
+    desc: 'A long session has grown past the 80% compaction threshold. Tier 1 trims old tool results. Tier 2 then calls a small summarization model to synthesize all but the last 4 user turns into a structured context summary.',
+    before: [
+      dot('— Turns 0–4: Initial exploration, file reads, architecture discussion (~38K tokens) —'),
+      dot('— Turns 5–9: Refactoring, 4 large read_file results (~55K tokens) —'),
+      dot('— Turns 10–14: Test writing, several shell tool calls (~42K tokens) —'),
+      user("Can you check the middleware timeout handling?", 75),
+      asst("Looking at the implementation, the timeout is set in the constructor with no override path. I'd recommend making it configurable.", 180),
+      user("And what about the refresh token flow?", 60),
+      asst("The refresh flow POSTs to /auth/refresh with the rotation token. There's currently no expiry check before the POST — it relies on the server to reject expired tokens.", 190),
+      user("Let's add an expiry pre-check. Can you write that?", 70),
+      asst("Sure. Here's the updated refresh flow with a local expiry check before the POST:", 155),
+    ],
+    after: [
+      summ("Session context: Refactoring Glue's auth module. Completed: extracted TokenValidator interface, updated imports in 4 files (handler.dart, middleware.dart, session/store.dart, test/auth_test.dart). Decided on interface-based design to support multiple token formats. Currently implementing: refresh token expiry pre-check in the middleware before POST to /auth/refresh.", 640),
+      user("Can you check the middleware timeout handling?", 75),
+      asst("Looking at the implementation, the timeout is set in the constructor with no override path. I'd recommend making it configurable.", 180),
+      user("And what about the refresh token flow?", 60),
+      asst("The refresh flow POSTs to /auth/refresh with the rotation token. There's currently no expiry check before the POST — it relies on the server to reject expired tokens.", 190),
+      user("Let's add an expiry pre-check. Can you write that?", 70),
+      asst("Sure. Here's the updated refresh flow with a local expiry check before the POST:", 155),
+    ],
+    expl: "At 85% (~162K tokens), Tier 1 first trims stale tool results from turns 0–14. Then Tier 2 fires: ConversationCompactor calls a small model to summarize turns 0 through (end minus keepRecentTurns=4). The last 4 user turns are kept verbatim. A synthetic summary message replaces ~15 turns. Token count drops from ~162K to ~57K — a 65% reduction — in one LLM summarization call.",
+    codeRef: "conversation_compactor.dart · compact() — Summarizes all but the last keepRecentTurns user-turn boundaries into one synthetic message."
+  },
+  {
+    id: 4,
+    title: 'All Tiers',
+    longTitle: 'Tier 3: Sliding Window Trim',
+    badge: '97% — All Three Tiers',
+    tokens: 185000,
+    afterTokens: 42000,
+    tiers: [true,true,true,false],
+    desc: 'An extremely long session where even Tier 2 compaction is not enough. After Tier 1+2 run, the estimate is still above 95%. Tier 3 drops the oldest complete turns from the front until the 80% target is reached.',
+    before: [
+      dot('— Turns 0–8: Extensive exploration, 6 large file reads (~68K tokens) —'),
+      dot('— Turns 9–18: Multi-file refactor, diffs, shell test runs (~72K tokens) —'),
+      dot('— Turns 19–26: Architecture discussion, design decisions (~32K tokens) —'),
+      user("Can you run the full test suite and check for failures?", 80),
+      asst("Running tests... I see 3 failures in auth_test.dart. All related to null handling.", 160),
+      user("Fix those failures.", 42),
+      asst("Fixed. The issue was a missing null check in validateToken. All 47 tests now pass.", 120),
+    ],
+    after: [
+      sysTrim(12),
+      summ("Session context: Refactoring Glue's auth module across a large codebase. All structural changes complete: TokenValidator extracted, session storage updated, middleware rewritten. Most recent activity: ran full test suite, fixed 3 failures in auth_test.dart caused by missing null check in validateToken. All 47 tests now passing.", 560),
+      user("Fix those failures.", 42),
+      asst("Fixed. The issue was a missing null check in validateToken. All 47 tests now pass.", 120),
+    ],
+    expl: "At 97% (~185K tokens), all three tiers run. Tier 1 trims stale tool results. Tier 2 compacts the history, but the post-compaction estimate is still above 95% (budget is very constrained). Tier 3 then drops turns from the front of the compacted list, targeting the 80% compactAt level (~152.6K tokens). A system marker is prepended so the model knows earlier context was removed.",
+    codeRef: "sliding_window_trimmer.dart · trim() — Drops oldest complete user→assistant turn cycles until targetTokens (compactAt = 80%) is reached."
+  },
+  {
+    id: 5,
+    title: 'Overflow',
+    longTitle: 'Provider Overflow + Emergency Retry',
+    badge: '>100% — Emergency trim + retry',
+    tokens: 196000,
+    afterTokens: 114000,
+    tiers: [false,false,false,true],
+    desc: 'The LLM provider rejects the request mid-stream with a context length error. OverflowClassifier detects the provider-specific error pattern, triggers an emergency trim to 60% of budget, and retries the current turn once.',
+    before: [
+      dot('— Long conversation, estimator calibration slightly off (~196K real tokens) —'),
+      user("Summarize all the changes we made and write a commit message.", 90),
+      errMsg('anthropic error: {"type":"error","error":{"type":"invalid_request_error","message":"prompt is too long: your prompt is 197,432 tokens. The maximum allowed is 190,784 tokens."}}'),
+    ],
+    after: [
+      dot('— Emergency trim applied: Tier 1 + aggressive sliding window to 60% target (~114.5K) —'),
+      user("Summarize all the changes we made and write a commit message.", 90),
+      retryMsg("✓  Retry succeeded — context trimmed to ~114K tokens. Response continuing…"),
+      asst("Here's a summary and a suggested commit message:\n\nfeat(auth): refactor token handler with interface-based design\n\n- Extract TokenValidator interface and DefaultTokenValidator impl\n- Update middleware, session store, and 6 test files\n- Fix null handling in validateToken (closes #142)\n- All 47 tests passing", 280),
+    ],
+    expl: "The calibration EMA was slightly off, so the conversation exceeded the provider's real limit. OverflowClassifier.classify() matches the Anthropic 'invalid_request_error' + 'too long' pattern and returns a ContextOverflowException. requestEmergencyTrim() pre-computes an aggressive trim (Tier 1 + sliding window to 60% of inputBudget ≈ 114.5K). The overflowRetried flag prevents infinite retry loops — only one retry is ever attempted per user turn.",
+    codeRef: "overflow_handler.dart · OverflowClassifier.classify() + agent_core.dart · overflow catch block — one retry per user turn via overflowRetried flag."
+  },
+  {
+    id: 6,
+    title: '/compact',
+    longTitle: 'Manual /compact Command',
+    badge: '63% — User triggered',
+    tokens: 120000,
+    afterTokens: 38000,
+    tiers: [false,true,false,false],
+    desc: 'The user runs /compact in the Glue TUI at any context level. forceCompact() calls Tier 2 unconditionally — regardless of current usage — and caches the result for the next LLM call. Useful before starting a new task to free context headroom.',
+    before: [
+      dot('— 12 turns from the auth refactor session (~119K tokens) —'),
+      user("[User types: /compact]", 0),
+    ],
+    after: [
+      summ("Session context: Completed a full refactor of Glue's auth module. Key changes: extracted TokenValidator interface, rewrote middleware token validation, fixed null handling in validateToken, updated 6 test files. All 47 tests passing. Session ready for next task.", 520),
+      dot('— 0 recent turns (context fully reset for new task) —'),
+      retryMsg("✓  /compact complete — freed ~48,200 tokens (summary ~520 tokens). Context at 20% of budget."),
+    ],
+    expl: "The user typed /compact at 63% context usage. Even though this is well under the 80% auto-compact threshold, forceCompact() runs Tier 2 unconditionally by calling compactor.compact() directly. The resulting messages are stored in _forcedCompaction. The next prepareForLlm() call returns these pre-compacted messages and clears the field. Context drops from ~120K to ~38K tokens — clearing space for a new task.",
+    codeRef: "app.dart · /compact slash command + context_manager.dart · forceCompact() — stores result in _forcedCompaction, consumed on the next prepareForLlm() call."
+  }
+];
+
+function barColor(pct){
+  if(pct >= 95) return 'var(--red)';
+  if(pct >= 80) return 'var(--amber)';
+  return 'var(--green)';
+}
+
+function renderMsg(m){
+  if(m.type === 'ellipsis') return `<div class="ellipsis">${m.content}</div>`;
+  if(m.type === 'sys-trim') return `<div class="msg sys-trim">${m.content}</div>`;
+
+  const roleNames = {
+    user:'User', asst:'Assistant',
+    tool: m.trimmed ? 'Tool Result (trimmed)' : `Tool Result · ${m.name||''}`,
+    summary:'Context Summary',
+    overflow:'Provider Error',
+    retry:'System',
+  };
+  const badge = m.type==='summary' ? '<span class="sbadge">✦ Compacted</span>' : '';
+  const tokDisplay = m.tokens > 0 ? `<span class="msg-tok">${tok(m.tokens)} tok</span>` : '';
+  const cls = m.type + (m.trimmed ? ' trimmed' : '');
+  const escaped = (m.content||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return `<div class="msg ${cls}">
+    <div class="msg-head"><span class="msg-role">${roleNames[m.type]||m.type}${badge}</span>${tokDisplay}</div>
+    <div class="msg-body">${escaped}</div>
+  </div>`;
+}
+
+function renderScenario(s){
+  const pct = Math.min(105, (s.tokens / INPUT_BUDGET) * 100);
+  const apct = (s.afterTokens / INPUT_BUDGET) * 100;
+  const tierCls = ['tb-t1','tb-t2','tb-t3','tb-em'];
+  const tierNames = ['Tier 1: Tool Trim','Tier 2: Compaction','Tier 3: Sliding Window','Emergency Trim'];
+  const badgeHTML = s.tiers.map((on,i)=>`<span class="tier-badge ${on ? tierCls[i] : 'tb-off'}">${tierNames[i]}</span>`).join('');
+
+  const afterMsgs = s.afterSame ? s.before : s.after;
+
+  return `
+<div class="scenario-header">
+  <div class="scenario-info">
+    <h3>${s.longTitle}</h3>
+    <p class="sdesc">${s.desc}</p>
+  </div>
+  <div class="tier-badges">${badgeHTML}</div>
+</div>
+
+<div class="tbar-wrap">
+  <div class="tbar-head">
+    <span class="tbar-label">Context budget · claude-sonnet-4-6 (200K) · inputBudget = 190,784 tokens</span>
+    <span class="tbar-stat">${tok(s.tokens)} / ${tok(INPUT_BUDGET)} · <strong style="color:${barColor(pct)}">${pct > 100 ? '>100%' : pct.toFixed(1)+'%'}</strong></span>
+  </div>
+  <div class="tbar-track">
+    <div class="tbar-fill" id="barFill" style="width:${Math.min(100,pct)}%;background:${barColor(pct)};"></div>
+    <div class="tmarker compact"><span class="mlabel">compact (80%)</span></div>
+    <div class="tmarker critical"><span class="mlabel">critical (95%)</span></div>
+  </div>
+</div>
+
+<div class="ba">
+  <div class="ba-panel">
+    <div class="ba-head">
+      <span class="ba-title">Before · _conversation (stored)</span>
+      <span class="ba-tok">${tok(s.tokens)} tokens</span>
+    </div>
+    <div class="ba-body">${s.before.map(renderMsg).join('')}</div>
+  </div>
+  <div class="ba-sep">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </div>
+  <div class="ba-panel">
+    <div class="ba-head">
+      <span class="ba-title">After · Sent to LLM</span>
+      <span class="ba-tok">${s.afterSame ? 'unchanged' : tok(s.afterTokens)+' tokens'}</span>
+    </div>
+    <div class="ba-body">${afterMsgs.map(renderMsg).join('')}</div>
+  </div>
+</div>
+
+<div class="expl">
+  <h4>What happened</h4>
+  <p>${s.expl}</p>
+  <div class="code-ref"><span class="fref">Source reference</span>${s.codeRef.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+</div>`;
+}
+
+function animateBar(){
+  const fill = document.getElementById('barFill');
+  if(!fill) return;
+  const target = fill.style.width;
+  fill.style.transition = 'none';
+  fill.style.width = '0%';
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      fill.style.transition = 'width .8s cubic-bezier(.4,0,.2,1)';
+      fill.style.width = target;
+    });
+  });
+}
+
+const tabNav = document.getElementById('tabNav');
+const content = document.getElementById('scenarioContent');
+
+SCENARIOS.forEach((s,i)=>{
+  const btn = document.createElement('button');
+  btn.className = 'tab-btn' + (i===0?' active':'');
+  btn.textContent = `${s.id}. ${s.title}`;
+  btn.onclick = ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    content.innerHTML = renderScenario(s);
+    animateBar();
+  };
+  tabNav.appendChild(btn);
+});
+
+content.innerHTML = renderScenario(SCENARIOS[0]);
+setTimeout(animateBar, 80);
+</script>
+</body>
+</html>

@@ -105,15 +105,20 @@ class PanelController {
 
     final table = ResponsiveTable<SessionMeta>(
       columns: const [
-        TableColumn(key: 'fork', header: 'FORK', maxWidth: 4),
-        TableColumn(key: 'id', header: 'ID', maxWidth: 24),
-        TableColumn(key: 'model', header: 'MODEL', maxWidth: 22),
-        TableColumn(key: 'dir', header: 'DIRECTORY', maxWidth: 36),
+        TableColumn(key: 'fork', header: 'FORK', minWidth: 4),
+        TableColumn(key: 'id', header: 'ID', minWidth: 8),
+        TableColumn(key: 'model', header: 'MODEL', minWidth: 10),
+        TableColumn(
+            key: 'messages',
+            header: 'MSGS',
+            minWidth: 6,
+            align: TableAlign.right),
+        TableColumn(key: 'dir', header: 'DIRECTORY', minWidth: 15),
         TableColumn(
           key: 'age',
           header: 'AGE',
           align: TableAlign.right,
-          maxWidth: 10,
+          minWidth: 6,
         ),
       ],
       rows: sessions,
@@ -125,6 +130,7 @@ class PanelController {
           'fork': s.forkedFrom != null ? '[F]'.styled.cyan.toString() : '',
           'id': displayId.styled.cyan.toString(),
           'model': s.modelRef,
+          'messages': s.messageCount.toString(),
           'dir': shortenPath(s.cwd).styled.dim.toString(),
           'age': timeAgo(s.startTime).styled.dim.toString(),
         };
