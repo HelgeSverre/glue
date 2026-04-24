@@ -114,42 +114,59 @@ abstract class ObservabilitySink {
   Future<void> close();
 }
 
+/// A mutable holder for the current [ObservabilitySpan], installed in a
+/// [Zone] by [Observability.runInContext] so that concurrent agent turns
+/// can each keep their own active span across `await` boundaries without
+/// stepping on each other's state.
+class _SpanHolder {
+  ObservabilitySpan? span;
+}
+
 /// Central coordinator for tracing spans and routing them to registered sinks.
 class Observability {
-  static const _activeSpanZoneKey = #glue.observability.activeSpan;
+  static const _holderZoneKey = #glue.observability.span_holder;
 
   final DebugController _debugController;
   final List<ObservabilitySink> _sinks = [];
   Timer? _flushTimer;
   bool _isFlushing = false;
 
-  // Legacy mutable fallback. Will be removed once all callsites migrate to
-  // [runInSpan]. Readers should prefer [activeSpan] (which checks the zone
-  // first); writers are being migrated to [runInSpan].
-  ObservabilitySpan? _legacyActiveSpan;
+  /// Holder used when no zone-local context has been installed. Legacy
+  /// callers that write directly to [activeSpan] without entering
+  /// [runInContext] land here. When a zone context exists, it shadows this.
+  final _SpanHolder _globalHolder = _SpanHolder();
 
   Observability({required DebugController debugController})
       : _debugController = debugController;
 
+  _SpanHolder get _currentHolder =>
+      (Zone.current[_holderZoneKey] as _SpanHolder?) ?? _globalHolder;
+
   /// The span that should act as parent for any new span started right now.
   ///
-  /// Prefers the zone-local span installed by [runInSpan] over the legacy
-  /// mutable fallback, so concurrent turns can carry their own span context
-  /// across `await` boundaries without stepping on each other.
-  ObservabilitySpan? get activeSpan =>
-      (Zone.current[_activeSpanZoneKey] as ObservabilitySpan?) ??
-      _legacyActiveSpan;
+  /// Reads the zone-local holder installed by [runInContext] if one exists,
+  /// otherwise the global fallback. Setting this updates the current
+  /// holder, so the classic save/restore pattern inside [runInContext]
+  /// mutates per-turn state instead of a shared field.
+  ObservabilitySpan? get activeSpan => _currentHolder.span;
+  set activeSpan(ObservabilitySpan? span) => _currentHolder.span = span;
 
-  /// Legacy setter for callers that still write directly to [activeSpan].
-  /// New code should wrap work in [runInSpan] instead.
-  set activeSpan(ObservabilitySpan? span) => _legacyActiveSpan = span;
+  /// Runs [fn] inside a fresh observability context. Any mutations to
+  /// [activeSpan] inside [fn] (including across `await` boundaries and
+  /// transitive calls) stay scoped to this context, so concurrent turns or
+  /// subagents spawned in sibling contexts don't overwrite each other's
+  /// active span. No uncaught-error handler is installed — exceptions
+  /// thrown inside [fn] propagate to the caller.
+  R runInContext<R>(R Function() fn) =>
+      runZoned(fn, zoneValues: {_holderZoneKey: _SpanHolder()});
 
-  /// Runs [fn] with [span] as the current [activeSpan] for every call site
-  /// inside it, including across `await` boundaries and nested `runInSpan`
-  /// frames. No uncaught-error handler is installed — thrown exceptions
-  /// surface to the caller awaiting [fn].
-  R runInSpan<R>(ObservabilitySpan span, R Function() fn) =>
-      runZoned(fn, zoneValues: {_activeSpanZoneKey: span});
+  /// Convenience: [runInContext] that installs [span] as the initial
+  /// [activeSpan] for the new context. Equivalent to
+  /// `runInContext(() { activeSpan = span; return fn(); })`.
+  R runInSpan<R>(ObservabilitySpan span, R Function() fn) => runInContext(() {
+        activeSpan = span;
+        return fn();
+      });
 
   bool get debugEnabled => _debugController.enabled;
 

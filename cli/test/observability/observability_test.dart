@@ -256,14 +256,14 @@ void main() {
     });
   });
 
-  group('Observability.runInSpan', () {
+  group('Observability.runInContext', () {
     late Observability obs;
 
     setUp(() {
       obs = Observability(debugController: DebugController());
     });
 
-    test('installs the span as activeSpan inside the zone', () {
+    test('runInSpan installs the span as activeSpan inside the context', () {
       final span = obs.startSpan('turn');
       ObservabilitySpan? seen;
       obs.runInSpan(span, () {
@@ -298,7 +298,7 @@ void main() {
       expect(afterInner, same(outer));
     });
 
-    test('concurrent futures each see their own zone-local span', () async {
+    test('concurrent contexts each keep their own activeSpan', () async {
       final spanA = obs.startSpan('a');
       final spanB = obs.startSpan('b');
       ObservabilitySpan? seenA;
@@ -316,6 +316,45 @@ void main() {
 
       expect(seenA, same(spanA));
       expect(seenB, same(spanB));
+    });
+
+    test('save/restore pattern inside runInContext is per-context', () async {
+      // Two concurrent "agent turns" each do the save/restore dance that
+      // AgentCore uses during an LLM stream. Their mutations must not leak
+      // into each other.
+      final turnA = obs.startSpan('turnA');
+      final turnB = obs.startSpan('turnB');
+      final llmA = obs.startSpan('llmA');
+      final llmB = obs.startSpan('llmB');
+
+      ObservabilitySpan? midA;
+      ObservabilitySpan? midB;
+      ObservabilitySpan? endA;
+      ObservabilitySpan? endB;
+
+      Future<void> drive(ObservabilitySpan turn, ObservabilitySpan llm,
+          void Function(ObservabilitySpan?) recordMid,
+          void Function(ObservabilitySpan?) recordEnd) async {
+        return obs.runInContext(() async {
+          obs.activeSpan = turn;
+          final saved = obs.activeSpan;
+          obs.activeSpan = llm;
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+          recordMid(obs.activeSpan);
+          obs.activeSpan = saved;
+          recordEnd(obs.activeSpan);
+        });
+      }
+
+      await Future.wait([
+        drive(turnA, llmA, (s) => midA = s, (s) => endA = s),
+        drive(turnB, llmB, (s) => midB = s, (s) => endB = s),
+      ]);
+
+      expect(midA, same(llmA));
+      expect(midB, same(llmB));
+      expect(endA, same(turnA));
+      expect(endB, same(turnB));
     });
 
     test('exceptions thrown inside runInSpan propagate to the awaiter',
@@ -339,7 +378,7 @@ void main() {
       );
     });
 
-    test('startSpan inside runInSpan picks up the zone-local parent', () {
+    test('startSpan inside runInSpan picks up the context-local parent', () {
       final parent = obs.startSpan('parent');
       obs.runInSpan(parent, () {
         final child = obs.startSpan('child');
@@ -348,15 +387,25 @@ void main() {
       });
     });
 
-    test('zone-local span shadows legacy activeSpan writer', () {
-      final legacy = obs.startSpan('legacy');
-      final zoned = obs.startSpan('zoned');
-      obs.activeSpan = legacy;
-      obs.runInSpan(zoned, () {
-        expect(obs.activeSpan, same(zoned));
+    test('context shadows global activeSpan but global survives the call', () {
+      final global = obs.startSpan('global');
+      final scoped = obs.startSpan('scoped');
+      obs.activeSpan = global;
+      obs.runInSpan(scoped, () {
+        expect(obs.activeSpan, same(scoped));
       });
-      expect(obs.activeSpan, same(legacy));
+      expect(obs.activeSpan, same(global));
       obs.activeSpan = null;
+    });
+
+    test('runInContext without a span leaves activeSpan null until set', () {
+      obs.runInContext(() {
+        expect(obs.activeSpan, isNull);
+        final span = obs.startSpan('lazy');
+        obs.activeSpan = span;
+        expect(obs.activeSpan, same(span));
+      });
+      expect(obs.activeSpan, isNull);
     });
   });
 }
