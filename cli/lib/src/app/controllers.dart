@@ -44,20 +44,6 @@ class _AppControllers implements SlashCommandContext {
       panels: app._panels,
       transcript: app._transcript,
       render: app._render,
-      historyEntries: () {
-        final entries = <HistoryPanelEntry>[];
-        var userIndex = 0;
-        for (final block in app._transcript.blocks) {
-          if (block.kind == EntryKind.user) {
-            entries.add(HistoryPanelEntry(
-              userMessageIndex: userIndex,
-              text: block.text,
-            ));
-            userIndex++;
-          }
-        }
-        return entries;
-      },
       shortenPath: app._shortenPath,
       cwd: app._cwd,
       modelLabel: () => formatInfoModelLabel(

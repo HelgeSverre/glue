@@ -35,7 +35,6 @@ class SessionController implements SessionCommandController {
     required this.panels,
     required this.transcript,
     required this.render,
-    required this.historyEntries,
     required this.shortenPath,
     required this.cwd,
     required this.modelLabel,
@@ -48,12 +47,28 @@ class SessionController implements SessionCommandController {
   final Panels panels;
   final Transcript transcript;
   final void Function() render;
-  final List<HistoryPanelEntry> Function() historyEntries;
   final String Function(String path) shortenPath;
   final String cwd;
   final String Function() modelLabel;
   final String Function() approvalLabel;
   final List<String> Function() autoApprovedTools;
+
+  /// Build the list of user-message history entries from the transcript.
+  /// Used by `/history` and the fork-at-message flow.
+  List<HistoryPanelEntry> _historyEntries() {
+    final entries = <HistoryPanelEntry>[];
+    var userIndex = 0;
+    for (final block in transcript.blocks) {
+      if (block.kind == EntryKind.user) {
+        entries.add(HistoryPanelEntry(
+          userMessageIndex: userIndex,
+          text: block.text,
+        ));
+        userIndex++;
+      }
+    }
+    return entries;
+  }
 
   @override
   String sessionAction(List<String> args) {
@@ -109,7 +124,7 @@ class SessionController implements SessionCommandController {
 
   @override
   void openHistoryPanel() {
-    final entries = historyEntries();
+    final entries = _historyEntries();
     if (entries.isEmpty) {
       transcript.system('No conversation history.');
       render();
@@ -293,7 +308,7 @@ class SessionController implements SessionCommandController {
     final normalized = query.trim();
     if (normalized.isEmpty) return 'Usage: /history [index-or-query]';
 
-    final entries = historyEntries();
+    final entries = _historyEntries();
     if (entries.isEmpty) return 'No conversation history.';
 
     final numeric = int.tryParse(normalized);
