@@ -1,4 +1,4 @@
-import 'package:glue/src/app/model_display.dart';
+import 'package:glue/src/catalog/model_display.dart';
 import 'package:glue/src/catalog/model_catalog.dart';
 import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/catalog/models_generated.dart';

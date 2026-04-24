@@ -1,7 +1,7 @@
 import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/config/approval_mode.dart';
-import 'package:glue/src/orchestrator/permission_gate.dart';
+import 'package:glue/src/runtime/permission_gate.dart';
 import 'package:test/test.dart';
 
 class _StubTool extends Tool {

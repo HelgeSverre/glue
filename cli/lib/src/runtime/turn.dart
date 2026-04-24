@@ -7,7 +7,7 @@ import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/runtime/app_mode.dart';
 import 'package:glue/src/observability/observability.dart';
 import 'package:glue/src/observability/redaction.dart';
-import 'package:glue/src/orchestrator/permission_gate.dart';
+import 'package:glue/src/runtime/permission_gate.dart';
 import 'package:glue/src/runtime/renderer.dart';
 import 'package:glue/src/runtime/services/config.dart';
 import 'package:glue/src/runtime/services/session.dart';
