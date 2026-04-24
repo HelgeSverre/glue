@@ -599,7 +599,7 @@ Deliverables:
 - optional `--json` if cheap
 
 Likely files:
-- `cli/lib/src/commands/builtin_commands.dart`
+- `cli/lib/src/runtime/commands/register_builtin_slash_commands.dart`
 - `cli/lib/src/commands/slash_commands.dart`
 - app/controller wiring
 - report formatter file (new)
@@ -636,7 +636,7 @@ Leverages existing docked panel architecture.
 - session logging/storage files
 
 ### Command surface
-- `cli/lib/src/commands/builtin_commands.dart`
+- `cli/lib/src/runtime/commands/register_builtin_slash_commands.dart`
 - possibly command formatter/helper files
 
 ### TUI v2
