@@ -1,5 +1,7 @@
 import 'package:glue/src/terminal/styled.dart';
 
+// TODO: only used in the demo app.
+
 enum GlueThemeMode { minimal, highContrast }
 
 enum GlueTone { accent, info, success, warning, danger, muted }
