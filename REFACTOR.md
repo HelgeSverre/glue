@@ -179,21 +179,26 @@ Note on `rendering/`: moves wholesale into `ui/rendering/`. All three files (`an
 
 ## What's Next
 
-Groups A, B, and C1 are **complete** (see "What's Done" above). The remaining work is the rest of Group C (C2–C5) and Group D (App removal).
+Groups A, B, C, and a scoped D1 are **complete**. `App` is no longer a god-class; it's a composition root plus lifecycle + paint. What remains is polish.
 
-### Group C — Runtime decomposition (higher risk, bigger wins)
+### Group C — Runtime decomposition (all landed ✅)
 
-- ~~**C1. Extract `Turn`**~~ ✅ Landed. Observability moved to zone-scoped holder; `Turn` class owns per-turn span, subscription, and approval flow.
-- **C2. Extract `InputRouter`.** `runtime/input_router.dart`. Replaces `terminal_event_router.dart`. Central dispatcher with no business logic.
-- **C3. Extract `BashMode`.** `shell/bash_mode.dart`. Owns the four bash fields + `submit`/`cancel`/`runBlocking`/`startBackground`. Keeps its identity because the process lifecycle is independent of agent turns.
-- **C4. Collapse `session_runtime.dart` + `SessionTitleStateController` into the `session` service.** Print mode runner already absorbed into `Turn` (C1). Title state (three booleans) + generation + `/rename` → internal behavior of the `session` service. `SessionTitleStateController` class is deleted.
-- **C5. Fold subagent grouping into `Transcript`.** Move `_subagentGroups`/`_outputLineGroups` from `subagent_updates.dart` into `Transcript` as a method. No standalone coordinator class.
+- ~~**C1. Extract `Turn`**~~ ✅ Observability moved to zone-scoped holder; `Turn` owns per-turn span, subscription, and approval flow.
+- ~~**C2. Extract `InputRouter`**~~ ✅ `runtime/input_router.dart` is the traffic cop; `app/terminal_event_router.dart` deleted.
+- ~~**C3. Extract `BashMode`**~~ ✅ `shell/bash_mode.dart` owns the `!`-prompt lifecycle; `app/shell_runtime.dart` deleted.
+- ~~**C4. Session service absorbs title + resume + fork + replay**~~ ✅ `SessionTitleStateController` folded into `Session`'s private flags; `app/session_runtime.dart` deleted.
+- ~~**C5. Subagent grouping into Transcript**~~ ✅ `Transcript.handleSubagentUpdate`; `app/subagent_updates.dart` deleted.
 
 ### Group D — Removal
 
-- **D1. Delete `App` + `app/*` part files.** `AppShell` becomes the only composition root. `bin/glue.dart` targets it directly.
-- **D2. Drop `Default*` prefix on controllers** (if not already done in A4).
+- ~~**D1 (scoped)**~~ ✅ `AppShell` + `AppLaunchOptions` were thin wrappers and got merged into `App` directly; signal handling moved into `App.run()`. `AppMode` moved to `runtime/app_mode.dart`. `bin/glue.dart` targets `App.create()` directly. `app/*.dart` part files were kept — small (40–206 lines), cleanly scoped, and the cost of converting them to standalone files doesn't pay for itself now that the god-class is dissolved.
+- **D2. Drop `Default*` prefix on controllers** (already done in A4; just a lingering doc note).
 - **D3. Narrow `lib/glue.dart` public surface.** Remove exports that were only there for part-file coupling. Re-audit every export.
+
+Landed naming simplification alongside the above:
+
+- `AgentCore` → `Agent`. The ReAct loop + conversation state carries the name of what it is. Also absorbs `AgentRunner` as `Agent.runHeadless(msg, {policy, allowedTools, onEvent})`, deleting that class.
+- `AgentManager` → `Subagents`. Lowercase-plural service name fits the roster; `spawnSubagent()` → `spawn()` (context makes the noun redundant).
 
 ### Deferred (not now)
 
