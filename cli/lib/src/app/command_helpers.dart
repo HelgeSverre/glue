@@ -10,30 +10,6 @@ void _addSystemMessageImpl(App app, String message) {
   app._transcript.blocks.add(ConversationEntry.system(message));
 }
 
-String _timeAgoImpl(DateTime time) {
-  final diff = DateTime.now().difference(time);
-  if (diff.inMinutes < 1) return 'just now';
-  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-  if (diff.inHours < 24) return '${diff.inHours}h ago';
-  if (diff.inDays < 7) return '${diff.inDays}d ago';
-  return time.toIso8601String().substring(0, 10);
-}
-
-void _forkSessionImpl(App app, int userMessageIndex, String messageText) {
-  final result = app._sessionManager.forkSession(
-    userMessageIndex: userMessageIndex,
-    messageText: messageText,
-    agent: app.agent,
-  );
-  if (result == null) return;
-
-  app._transcript.blocks.clear();
-  app._transcript.blocks.add(ConversationEntry.system(result.message));
-  app._appendSessionReplayEntries(result.replay.entries);
-  app.editor.setText(result.draftText);
-  app._render();
-}
-
 Future<void> _activateSkillFromUiImpl(App app, String skillName) async {
   try {
     final activation = await activateSkillIntoConversation(
@@ -41,12 +17,12 @@ Future<void> _activateSkillFromUiImpl(App app, String skillName) async {
       skillName: skillName,
     );
 
-    app._ensureSessionStore();
-    app._sessionManager.logEvent('tool_call', {
+    app._sessionService.ensureStore();
+    app._sessionService.logEvent('tool_call', {
       'name': 'skill',
       'arguments': {'name': skillName},
     });
-    app._sessionManager.logEvent('tool_result', {
+    app._sessionService.logEvent('tool_result', {
       'name': 'skill',
       'content': activation.content,
     });

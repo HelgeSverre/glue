@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/subagents.dart';
 import 'package:glue/src/app/model_display.dart';
-import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/config/approval_mode.dart';
 import 'package:glue/src/config/constants.dart';
@@ -39,8 +38,6 @@ import 'package:glue/src/runtime/controllers/skills_controller.dart';
 import 'package:glue/src/runtime/controllers/system_controller.dart';
 import 'package:glue/src/share/share_controller.dart';
 import 'package:glue/src/session/session_manager.dart';
-import 'package:glue/src/session/session_title_state_controller.dart';
-import 'package:glue/src/session/title_generator.dart';
 import 'package:glue/src/shell/command_executor.dart';
 import 'package:glue/src/shell/host_executor.dart';
 import 'package:glue/src/shell/shell_completer.dart';
@@ -65,9 +62,7 @@ part 'app/command_helpers.dart';
 part 'app/command_host_adapter.dart';
 part 'app/event_router.dart';
 part 'app/events.dart';
-part 'app/models.dart';
 part 'app/render_pipeline.dart';
-part 'app/session_runtime.dart';
 part 'app/shell_runtime.dart';
 part 'app/terminal_event_router.dart';
 
@@ -144,7 +139,6 @@ class App {
   late final SessionManager _sessionManager;
   late final Config _configService;
   late final Session _sessionService;
-  final SessionTitleStateController _titleState = SessionTitleStateController();
   bool _bashMode = false;
   Process? _bashRunProcess;
   ObservabilitySpan? _bashSpan;
@@ -231,10 +225,13 @@ class App {
     );
     _sessionService = Session(
       manager: _sessionManager,
-      ensureStore: _ensureSessionStore,
-      resume: _resumeSession,
-      fork: _forkSession,
-      titleState: _titleState,
+      agent: agent,
+      transcript: _transcript,
+      config: _configService,
+      environment: _environment,
+      modelIdProvider: () => _modelId,
+      installDraft: editor.setText,
+      llmFactory: _llmFactory,
     );
     _initCommands();
     _autocomplete = SlashAutocomplete(_commands);
@@ -351,7 +348,7 @@ class App {
       } else {
         final match = sessions.where((s) => s.id == _resumeSessionId).toList();
         if (match.isNotEmpty) {
-          final result = _resumeSession(match.first);
+          final result = _sessionService.resume(match.first);
           if (result.isNotEmpty) {
             _transcript.blocks.add(ConversationEntry.system(result));
           }
@@ -366,7 +363,7 @@ class App {
     } else if (_startupContinue) {
       final sessions = _sessionManager.listSessions();
       if (sessions.isNotEmpty) {
-        final result = _resumeSession(sessions.first);
+        final result = _sessionService.resume(sessions.first);
         if (result.isNotEmpty) {
           _transcript.blocks.add(ConversationEntry.system(result));
         }
@@ -497,7 +494,7 @@ class App {
         setActiveModal: (modal) => _activeModal = modal,
         getActiveModal: () => _activeModal,
         render: _render,
-        onTurnComplete: () => _reevaluateTitleImpl(this),
+        onTurnComplete: _sessionService.onTurnComplete,
       );
 
   /// Cleanly shut down the application.
@@ -516,42 +513,10 @@ class App {
     _addSystemMessageImpl(this, message);
   }
 
-  String _resumeSession(SessionMeta session) {
-    return _resumeSessionImpl(this, session);
-  }
-
-  /// Fire-and-forget: generate a session title in the background.
-  void _generateTitle(String userMessage) {
-    _generateTitleImpl(this, userMessage);
-  }
-
-  LlmClient? _createTitleLlmClient() {
-    return _createTitleLlmClientImpl(this);
-  }
-
-  _TitleTarget _resolveTitleTarget(GlueConfig config) {
-    return _resolveTitleTargetImpl(config);
-  }
-
-  static String _timeAgo(DateTime time) {
-    return _timeAgoImpl(time);
-  }
-
-  void _ensureSessionStore() {
-    _ensureSessionStoreImpl(this);
-  }
-
-  void _appendSessionReplayEntries(List<SessionReplayEntry> entries) {
-    _appendSessionReplayEntriesImpl(this, entries);
-  }
-
   void _openResumePanel() {
     _commandContext.sessions.openResumePanel();
   }
 
-  void _forkSession(int userMessageIndex, String messageText) {
-    _forkSessionImpl(this, userMessageIndex, messageText);
-  }
 
   Future<void> _activateSkillFromUi(String skillName) async {
     await _activateSkillFromUiImpl(this, skillName);

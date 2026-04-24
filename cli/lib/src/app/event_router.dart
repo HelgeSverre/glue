@@ -13,12 +13,9 @@ void _handleAppEventImpl(App app, AppEvent event) {
         app._render();
       } else {
         final expanded = expandFileRefs(text);
-        app._ensureSessionStore();
-        app._sessionManager.logEvent('user_message', {'text': expanded});
-        if (app._titleState.shouldGenerateInitialTitle) {
-          app._titleState.markInitialRequested();
-          app._generateTitle(expanded);
-        }
+        app._sessionService.ensureStore();
+        app._sessionService.logEvent('user_message', {'text': expanded});
+        app._sessionService.maybeGenerateInitialTitle(expanded);
         app._startAgent(
           text,
           expandedMessage: expanded != text ? expanded : null,

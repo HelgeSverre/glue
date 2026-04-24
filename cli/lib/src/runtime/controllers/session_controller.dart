@@ -191,7 +191,7 @@ class SessionController implements SessionCommandController {
       }
       switch (idx) {
         case 0:
-          session.fork(entry.userMessageIndex, entry.text);
+          if (session.fork(entry.userMessageIndex, entry.text)) render();
         case 1:
           unawaited(() async {
             final copied = await copyToClipboard(entry.text);
@@ -301,7 +301,7 @@ class SessionController implements SessionCommandController {
         return 'History index out of range: $numeric (1-${entries.length}).';
       }
       final entry = entries[position];
-      session.fork(entry.userMessageIndex, entry.text);
+      if (session.fork(entry.userMessageIndex, entry.text)) render();
       return '';
     }
 
@@ -338,7 +338,7 @@ class SessionController implements SessionCommandController {
     }
 
     final entry = matches.first;
-    session.fork(entry.userMessageIndex, entry.text);
+    if (session.fork(entry.userMessageIndex, entry.text)) render();
     return '';
   }
 
@@ -390,7 +390,6 @@ class SessionController implements SessionCommandController {
       return 'Usage: /rename <new title>';
     }
     session.ensureStore();
-    session.titleState.markManualOverride();
     unawaited(session.rename(normalized));
     return 'Renamed session to "$normalized".';
   }
