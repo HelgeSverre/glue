@@ -56,6 +56,10 @@ class Session {
   /// Create the session store if not already created.
   void ensureStore() => _ensureStore();
 
+  /// Append an event to the current session's on-disk log.
+  void logEvent(String type, Map<String, dynamic> data) =>
+      manager.logEvent(type, data);
+
   /// Flush and close the current session's on-disk store.
   Future<void> closeCurrent() => manager.closeCurrent();
 }

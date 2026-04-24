@@ -1,10 +1,8 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/agent_manager.dart';
-import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/app/model_display.dart';
 import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/commands/slash_commands.dart';
@@ -31,6 +29,7 @@ import 'package:glue/src/runtime/renderer.dart';
 import 'package:glue/src/runtime/services/config.dart';
 import 'package:glue/src/runtime/services/session.dart';
 import 'package:glue/src/runtime/transcript.dart';
+import 'package:glue/src/runtime/turn.dart';
 import 'package:glue/src/runtime/controllers/chat_controller.dart';
 import 'package:glue/src/runtime/controllers/confirmation_host.dart';
 import 'package:glue/src/runtime/controllers/model_controller.dart';
@@ -62,7 +61,6 @@ import 'package:glue/src/ui/services/panels.dart';
 import 'package:glue/src/shell/shell_autocomplete.dart';
 import 'package:glue/src/commands/slash_autocomplete.dart';
 
-part 'app/agent_orchestration.dart';
 part 'app/command_helpers.dart';
 part 'app/command_host_adapter.dart';
 part 'app/event_router.dart';
@@ -121,7 +119,7 @@ class App {
   final Transcript _transcript = Transcript();
   final Renderer _renderer = Renderer();
 
-  StreamSubscription<AgentEvent>? _agentSub;
+  Turn? _currentTurn;
   StreamSubscription<SubagentUpdate>? _subagentSub;
   final _exitCompleter = Completer<void>();
 
@@ -159,11 +157,9 @@ class App {
   final bool _jsonMode;
   final String? _resumeSessionId;
   final Observability? _obs;
-  ObservabilitySpan? _turnSpan;
   final DebugController? _debugController;
   late final SkillRuntime _skillRuntime;
   ApprovalMode _approvalMode;
-  final Set<String> _earlyApprovedIds = {};
 
   App({
     required this.terminal,
@@ -403,7 +399,7 @@ class App {
       await _jobManager.shutdown();
       await termSub.cancel();
       await appSub.cancel();
-      await _agentSub?.cancel();
+      _currentTurn?.cancel();
       await _subagentSub?.cancel();
       await _events.close();
       terminal.disableMouse();
@@ -423,9 +419,85 @@ class App {
   }
 
   /// Non-interactive print mode: send prompt, stream response to stdout, exit.
+  ///
+  /// App prepares the prompt (optionally resuming a session and reading
+  /// stdin), then hands off to [Turn.runPrint] for the actual turn
+  /// lifecycle. App keeps ownership of the teardown (tool dispose, obs
+  /// flush/close, session close) because those are app-lifetime concerns
+  /// that wrap the turn.
   Future<void> _runPrintMode() async {
-    await _runPrintModeImpl(this);
+    if (_resumeSessionId != null) {
+      if (_resumeSessionId.isEmpty) {
+        stderr.writeln(
+            'Error: --print does not support bare --resume; pass a session ID.');
+        return;
+      }
+      final sessions = _sessionManager.listSessions();
+      final match = sessions.where((s) => s.id == _resumeSessionId).toList();
+      if (match.isEmpty) {
+        stderr.writeln('Session $_resumeSessionId not found.');
+        return;
+      }
+      _sessionManager.resumeSession(session: match.first, agent: agent);
+    }
+
+    String? stdinContent;
+    if (!stdin.hasTerminal) {
+      try {
+        final buf = StringBuffer();
+        String? line;
+        while ((line = stdin.readLineSync()) != null) {
+          buf.writeln(line);
+        }
+        final content = buf.toString().trimRight();
+        if (content.isNotEmpty) stdinContent = content;
+      } catch (_) {
+        // Ignore stdin read errors.
+      }
+    }
+
+    final prompt = _startupPrompt;
+    if ((prompt == null || prompt.isEmpty) && stdinContent == null) {
+      stderr.writeln('Error: --print requires a prompt.');
+      return;
+    }
+
+    final fullPrompt =
+        App.buildPrintPrompt(prompt: prompt, stdinContent: stdinContent);
+    final expanded = expandFileRefs(fullPrompt);
+
+    final turn = _makeTurn();
+    try {
+      await turn.runPrint(expandedPrompt: expanded, jsonMode: _jsonMode);
+    } finally {
+      for (final tool in agent.tools.values) {
+        try {
+          await tool.dispose();
+        } catch (_) {}
+      }
+      await _obs?.flush();
+      await _obs?.close();
+      await _sessionManager.closeCurrent();
+    }
   }
+
+  /// Construct a fresh [Turn] wired to App's current state. Interactive and
+  /// print paths share this factory so their wiring stays in sync.
+  Turn _makeTurn() => Turn(
+        agent: agent,
+        transcript: _transcript,
+        renderer: _renderer,
+        session: _sessionService,
+        config: _configService,
+        obs: _obs,
+        permissionGateFactory: () => _permissionGate,
+        modelIdProvider: () => _modelId,
+        setMode: (mode) => _mode = mode,
+        setActiveModal: (modal) => _activeModal = modal,
+        getActiveModal: () => _activeModal,
+        render: _render,
+        onTurnComplete: () => _reevaluateTitleImpl(this),
+      );
 
   /// Cleanly shut down the application.
   void shutdown() {
@@ -498,47 +570,12 @@ class App {
 
   // ── Agent interaction ──────────────────────────────────────────────────
 
-  void _endTurnSpan({Map<String, dynamic>? extra}) {
-    _endTurnSpanImpl(this, extra: extra);
-  }
-
   void _startAgent(String displayMessage, {String? expandedMessage}) {
-    _startAgentImpl(this, displayMessage, expandedMessage: expandedMessage);
+    _currentTurn = _makeTurn()
+      ..run(displayMessage, expandedMessage: expandedMessage);
   }
 
-  void _handleAgentEvent(AgentEvent event) {
-    _handleAgentEventImpl(this, event);
-  }
-
-  Future<void> _executeAndCompleteTool(ToolCall call) async {
-    await _executeAndCompleteToolImpl(this, call);
-  }
-
-  void _traceToolApproval(ToolCall call, String decision) {
-    _traceToolApprovalImpl(this, call, decision);
-  }
-
-  void _cancelAgent() {
-    _cancelAgentImpl(this);
-  }
-
-  // ── Permission mode ──────────────────────────────────────────────────
-
-  void _persistTrustedTool(String name) {
-    _persistTrustedToolImpl(this, name);
-  }
-
-  void _approveTool(ToolCall call) {
-    _approveToolImpl(this, call);
-  }
-
-  void _denyTool(ToolCall call) {
-    _denyToolImpl(this, call);
-  }
-
-  void _showToolConfirmModal(ToolCall call) {
-    _showToolConfirmModalImpl(this, call);
-  }
+  void _cancelAgent() => _currentTurn?.cancel();
 
   // ── Bash mode ─────────────────────────────────────────────────────────
 
@@ -569,8 +606,6 @@ class App {
   }
 
   // ── Rendering ──────────────────────────────────────────────────────────
-
-  void _startSpinner() => _renderer.startSpinner(_render);
 
   void _stopSpinner() => _renderer.stopSpinner();
 
