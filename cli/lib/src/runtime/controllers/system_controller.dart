@@ -10,7 +10,6 @@ import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/core/path_opener.dart';
 import 'package:glue/src/core/where_report.dart';
 import 'package:glue/src/observability/debug_controller.dart';
-import 'package:glue/src/runtime/commands/command_host.dart';
 import 'package:glue/src/terminal/styled.dart';
 import 'package:glue/src/ui/components/panel.dart';
 import 'package:glue/src/ui/services/panels.dart';
@@ -72,7 +71,7 @@ List<String> buildHelpLines(List<SlashCommand> commands, int contentWidth) {
   return lines;
 }
 
-class SystemController implements SystemCommandController {
+class SystemController {
   SystemController({
     required this.environment,
     required void Function() requestExit,
@@ -101,10 +100,8 @@ class SystemController implements SystemCommandController {
     'cache',
   ];
 
-  @override
   void requestExit() => _requestExit();
 
-  @override
   void openHelpPanel() {
     final slashCommands = commands();
     final panel = Panel.responsive(
@@ -117,7 +114,6 @@ class SystemController implements SystemCommandController {
     panel.result.then((_) => panels.remove(panel));
   }
 
-  @override
   String toggleDebug() {
     final controller = debugController;
     if (controller == null) return 'Debug mode: unavailable';
@@ -125,10 +121,8 @@ class SystemController implements SystemCommandController {
     return 'Debug mode: ${controller.enabled}';
   }
 
-  @override
   String pathsReport() => buildWhereReport(environment);
 
-  @override
   String configAction(List<String> args) {
     final subcommand = args.isEmpty ? '' : args.first.toLowerCase();
     switch (subcommand) {
@@ -174,7 +168,6 @@ class SystemController implements SystemCommandController {
     }
   }
 
-  @override
   String openGlueTarget(List<String> args) {
     if (args.isEmpty) {
       return 'Usage: /open <target>\nTargets: ${_openTargets.join(', ')}';

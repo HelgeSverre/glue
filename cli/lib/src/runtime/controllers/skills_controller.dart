@@ -1,12 +1,11 @@
 import 'dart:async';
 import 'package:glue/src/runtime/transcript.dart';
 
-import 'package:glue/src/runtime/commands/command_host.dart';
 import 'package:glue/src/skills/skill_runtime.dart';
 import 'package:glue/src/skills/skills_docked_panel.dart';
 import 'package:glue/src/ui/services/docks.dart';
 
-class SkillsController implements SkillsCommandController {
+class SkillsController {
   const SkillsController({
     required this.skillRuntime,
     required this.docks,
@@ -21,7 +20,6 @@ class SkillsController implements SkillsCommandController {
   final Transcript transcript;
   final Future<void> Function(String skillName) activateSkill;
 
-  @override
   void openSkillsPanel() {
     final registry = skillRuntime.refresh();
     if (registry.isEmpty) {
@@ -61,7 +59,6 @@ class SkillsController implements SkillsCommandController {
     return null;
   }
 
-  @override
   String activateSkillByName(String skillName) {
     final normalized = skillName.trim();
     if (normalized.isEmpty) return 'Usage: /skills [skill-name]';

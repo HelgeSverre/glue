@@ -4,12 +4,11 @@ import 'dart:io';
 import 'package:glue/src/agent/tools.dart' as tool_contract;
 import 'package:glue/src/config/approval_mode.dart';
 import 'package:glue/src/core/clipboard.dart';
-import 'package:glue/src/runtime/commands/command_host.dart';
 import 'package:glue/src/runtime/transcript.dart';
 import 'package:glue/src/terminal/layout.dart';
 import 'package:glue/src/terminal/terminal.dart';
 
-class ChatController implements ChatCommandController {
+class ChatController {
   const ChatController({
     required this.terminal,
     required this.layout,
@@ -30,7 +29,6 @@ class ChatController implements ChatCommandController {
   final void Function(ApprovalMode mode) setApprovalMode;
   final Transcript transcript;
 
-  @override
   String clearConversation() {
     clearConversationState();
     terminal.clearScreen();
@@ -38,7 +36,6 @@ class ChatController implements ChatCommandController {
     return 'Cleared.';
   }
 
-  @override
   String listTools() {
     final buf = StringBuffer('Available tools:\n');
     for (final tool in tools()) {
@@ -47,7 +44,6 @@ class ChatController implements ChatCommandController {
     return buf.toString();
   }
 
-  @override
   String toggleApproval() {
     final next = getApprovalMode().toggle;
     setApprovalMode(next);
@@ -55,7 +51,6 @@ class ChatController implements ChatCommandController {
     return 'Approval: ${next.label}';
   }
 
-  @override
   void copyLastResponse() {
     ConversationEntry? lastAssistant;
     for (final block in transcript.blocks.reversed) {

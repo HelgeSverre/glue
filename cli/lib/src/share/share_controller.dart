@@ -2,17 +2,15 @@ import 'dart:async';
 import 'package:glue/src/runtime/transcript.dart';
 
 import 'package:glue/src/core/url_launcher.dart';
-import 'package:glue/src/runtime/commands/command_host.dart';
 import 'package:glue/src/share/gist_publisher.dart';
 import 'package:glue/src/share/share_exporter.dart';
 import 'package:glue/src/storage/session_store.dart';
 
-/// Concrete implementation of [ShareCommandController] — handles `/share`.
-///
-/// Owns its own [ShareExporter] and [GistPublisher] by default; tests can
-/// inject fakes. Sits in `share/` so the whole export pipeline (controller,
-/// exporter, renderer, gist publisher, html assets) is one directory.
-class ShareController implements ShareCommandController {
+/// Handles `/share` — owns its own [ShareExporter] and [GistPublisher] by
+/// default; tests can inject fakes. Sits in `share/` so the whole export
+/// pipeline (controller, exporter, renderer, gist publisher, html assets)
+/// is one directory.
+class ShareController {
   ShareController({
     required this.canShare,
     required this.currentStore,
@@ -32,7 +30,6 @@ class ShareController implements ShareCommandController {
   final ShareExporter _exporter;
   final GistPublisher _gistPublisher;
 
-  @override
   String shareAction(List<String> args) {
     if (!canShare()) {
       return 'Wait for the current turn to finish before sharing.';

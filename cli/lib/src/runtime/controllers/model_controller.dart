@@ -9,7 +9,6 @@ import 'package:glue/src/catalog/model_resolver.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/providers/llm_client_factory.dart';
 import 'package:glue/src/providers/ollama_discovery.dart';
-import 'package:glue/src/runtime/commands/command_host.dart';
 import 'package:glue/src/ui/services/confirmations.dart';
 import 'package:glue/src/runtime/services/config.dart';
 import 'package:glue/src/runtime/services/session.dart';
@@ -18,7 +17,7 @@ import 'package:glue/src/ui/components/panel.dart';
 import 'package:glue/src/ui/rendering/ansi_utils.dart';
 import 'package:glue/src/ui/services/panels.dart';
 
-class ModelController implements ModelCommandController {
+class ModelController {
   const ModelController({
     required this.config,
     required this.getLlmFactory,
@@ -43,7 +42,6 @@ class ModelController implements ModelCommandController {
   final void Function() render;
   final void Function(String modelId) setModelId;
 
-  @override
   void openModelPanel() {
     final cfg = config.current;
     if (cfg == null) return;
@@ -132,7 +130,6 @@ class ModelController implements ModelCommandController {
     }));
   }
 
-  @override
   String switchModelByQuery(String query) {
     final cfg = config.current;
     if (cfg == null) return 'Config not ready.';

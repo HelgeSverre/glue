@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/core/clipboard.dart';
-import 'package:glue/src/runtime/commands/command_host.dart';
 import 'package:glue/src/runtime/services/session.dart';
 import 'package:glue/src/runtime/transcript.dart';
 import 'package:glue/src/session/title_generator.dart';
@@ -26,7 +25,7 @@ class HistoryPanelEntry {
   });
 }
 
-class SessionController implements SessionCommandController {
+class SessionController {
   const SessionController({
     required this.session,
     required this.agent,
@@ -68,7 +67,6 @@ class SessionController implements SessionCommandController {
     return entries;
   }
 
-  @override
   String sessionAction(List<String> args) {
     final subcommand = args.isEmpty ? '' : args.first.toLowerCase();
     switch (subcommand) {
@@ -120,7 +118,6 @@ class SessionController implements SessionCommandController {
     return buf.toString();
   }
 
-  @override
   void openHistoryPanel() {
     final entries = _historyEntries();
     if (entries.isEmpty) {
@@ -221,7 +218,6 @@ class SessionController implements SessionCommandController {
     });
   }
 
-  @override
   void openResumePanel() {
     final sessions = session.list();
     if (sessions.isEmpty) {
@@ -301,7 +297,6 @@ class SessionController implements SessionCommandController {
     });
   }
 
-  @override
   String historyActionByQuery(String query) {
     final normalized = query.trim();
     if (normalized.isEmpty) return 'Usage: /history [index-or-query]';
@@ -357,7 +352,6 @@ class SessionController implements SessionCommandController {
     return '';
   }
 
-  @override
   String resumeSessionByQuery(String query) {
     final normalized = query.trim();
     if (normalized.isEmpty) return 'Usage: /resume [session-id-or-query]';
@@ -398,7 +392,6 @@ class SessionController implements SessionCommandController {
     return session.resume(matches.first);
   }
 
-  @override
   String renameSession(String title) {
     final normalized = TitleGenerator.sanitize(title)?.trim();
     if (normalized == null || normalized.isEmpty) {

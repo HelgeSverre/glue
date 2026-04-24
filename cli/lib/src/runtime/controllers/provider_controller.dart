@@ -10,7 +10,6 @@ import 'package:glue/src/providers/api_key_prompt_panel.dart';
 import 'package:glue/src/providers/auth_flow.dart';
 import 'package:glue/src/providers/device_code_panel.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
-import 'package:glue/src/runtime/commands/command_host.dart';
 import 'package:glue/src/terminal/styled.dart';
 import 'package:glue/src/ui/components/panel.dart';
 import 'package:glue/src/ui/components/tables.dart';
@@ -44,7 +43,7 @@ List<ProviderAction> providerActionsFor({
   ];
 }
 
-class ProviderController implements ProviderCommandController {
+class ProviderController {
   const ProviderController({
     required this.config,
     required this.panels,
@@ -57,7 +56,6 @@ class ProviderController implements ProviderCommandController {
   final Transcript transcript;
   final void Function() render;
 
-  @override
   String runProviderCommand(List<String> args) {
     final cfg = config.current;
     if (cfg == null) return 'Config not ready.';

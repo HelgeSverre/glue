@@ -89,25 +89,25 @@ class _AppControllers implements SlashCommandContext {
   SkillRuntime get skillRuntime => _skillRuntime;
 
   @override
-  late final SystemCommandController system;
+  late final SystemController system;
 
   @override
-  late final ChatCommandController chat;
+  late final ChatController chat;
 
   @override
-  late final ModelCommandController models;
+  late final ModelController models;
 
   @override
-  late final SessionCommandController sessions;
+  late final SessionController sessions;
 
   @override
-  late final ShareCommandController share;
+  late final ShareController share;
 
   @override
-  late final SkillsCommandController skills;
+  late final SkillsController skills;
 
   @override
-  late final ProviderCommandController providers;
+  late final ProviderController providers;
 }
 
 class _AppConfirmations implements Confirmations {
