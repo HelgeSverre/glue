@@ -11,7 +11,7 @@ import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/providers/llm_client_factory.dart';
 import 'package:glue/src/providers/ollama_discovery.dart';
 import 'package:glue/src/runtime/commands/command_host.dart';
-import 'package:glue/src/runtime/controllers/confirmation_host.dart';
+import 'package:glue/src/ui/services/confirmations.dart';
 import 'package:glue/src/runtime/services/config.dart';
 import 'package:glue/src/runtime/services/session.dart';
 import 'package:glue/src/ui/components/modal.dart';
@@ -27,7 +27,7 @@ class ModelController implements ModelCommandController {
     required this.agent,
     required this.session,
     required this.panels,
-    required this.confirmationHost,
+    required this.confirmations,
     required this.addSystemMessage,
     required this.render,
     required this.setModelId,
@@ -39,7 +39,7 @@ class ModelController implements ModelCommandController {
   final Agent agent;
   final Session session;
   final Panels panels;
-  final ConfirmationHost confirmationHost;
+  final Confirmations confirmations;
   final void Function(String message) addSystemMessage;
   final void Function() render;
   final void Function(String modelId) setModelId;
@@ -231,7 +231,7 @@ class ModelController implements ModelCommandController {
       return;
     }
 
-    final approved = await confirmationHost.confirm(
+    final approved = await confirmations.confirm(
       title: "Pull '$tag' from Ollama?",
       bodyLines: const [
         'Model is not installed locally.',

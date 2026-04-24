@@ -33,7 +33,7 @@ class _AppCommandContext implements SlashCommandContext {
       agent: app.agent,
       session: _session,
       panels: app._panels,
-      confirmationHost: _AppConfirmationHost(app),
+      confirmations: _AppConfirmations(app),
       addSystemMessage: app._transcript.postNotice,
       render: app._render,
       setModelId: (modelId) => app._modelId = modelId,
@@ -115,8 +115,8 @@ class _AppCommandContext implements SlashCommandContext {
   late final ProviderCommandController providers;
 }
 
-class _AppConfirmationHost implements ConfirmationHost {
-  const _AppConfirmationHost(this.app);
+class _AppConfirmations implements Confirmations {
+  const _AppConfirmations(this.app);
 
   final App app;
 

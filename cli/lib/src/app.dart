@@ -30,7 +30,7 @@ import 'package:glue/src/runtime/services/session.dart';
 import 'package:glue/src/runtime/transcript.dart';
 import 'package:glue/src/runtime/turn.dart';
 import 'package:glue/src/runtime/controllers/chat_controller.dart';
-import 'package:glue/src/runtime/controllers/confirmation_host.dart';
+import 'package:glue/src/ui/services/confirmations.dart';
 import 'package:glue/src/runtime/controllers/model_controller.dart';
 import 'package:glue/src/runtime/controllers/provider_controller.dart';
 import 'package:glue/src/runtime/controllers/session_controller.dart';
