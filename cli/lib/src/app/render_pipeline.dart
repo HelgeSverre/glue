@@ -1,36 +1,18 @@
 part of 'package:glue/src/app.dart';
 
-void _renderImpl(App app) {
-  final now = DateTime.now();
-  if (now.difference(app._lastRender) < App._minRenderInterval) {
-    if (!app._renderScheduled) {
-      app._renderScheduled = true;
-      Future.delayed(App._minRenderInterval, () {
-        app._renderScheduled = false;
-        if (DateTime.now().difference(app._lastRender) >=
-            App._minRenderInterval) {
-          app._doRender();
-        }
-      });
-    }
-    return;
-  }
-  app._doRender();
-}
-
 void _doRenderImpl(App app) {
-  app._lastRender = DateTime.now();
+  app._renderer.markRendered();
 
   final panelActive = app._panelStack.isNotEmpty;
-  if (app._renderedPanelLastFrame && !panelActive) {
+  if (app._renderer.renderedPanelLastFrame && !panelActive) {
     app.terminal.resetScrollRegion();
     app.terminal.clearScreen();
     app.layout.apply();
   }
 
-  if (app._blocks.length > AppConstants.maxConversationBlocks) {
-    app._blocks.removeRange(
-        0, app._blocks.length - AppConstants.maxConversationBlocks);
+  if (app._transcript.blocks.length > AppConstants.maxConversationBlocks) {
+    app._transcript.blocks.removeRange(
+        0, app._transcript.blocks.length - AppConstants.maxConversationBlocks);
   }
   final dockInsets = app._dockManager.resolveInsets(
     terminalColumns: app.terminal.columns,
@@ -48,41 +30,41 @@ void _doRenderImpl(App app) {
 
   // 1. Build all output lines from blocks.
   final outputLines = <String>[];
-  app._outputLineGroups.clear();
-  for (final block in app._blocks) {
+  app._transcript.outputLineGroups.clear();
+  for (final block in app._transcript.blocks) {
     final text = switch (block.kind) {
-      _EntryKind.user => renderer.renderUser(block.text),
-      _EntryKind.assistant => renderer.renderAssistant(block.text),
-      _EntryKind.toolCall => renderer.renderToolCall(block.text, block.args),
-      _EntryKind.toolCallRef =>
-        renderer.renderToolCallRef(app._toolUi[block.text]?.toRenderState()),
-      _EntryKind.toolResult => renderer.renderToolResult(block.text),
-      _EntryKind.error => renderer.renderError(block.text),
-      _EntryKind.subagent => renderer.renderSubagent(block.text),
-      _EntryKind.subagentGroup => renderer.renderSubagent(block.group!.expanded
+      EntryKind.user => renderer.renderUser(block.text),
+      EntryKind.assistant => renderer.renderAssistant(block.text),
+      EntryKind.toolCall => renderer.renderToolCall(block.text, block.args),
+      EntryKind.toolCallRef => renderer.renderToolCallRef(
+          app._transcript.toolUi[block.text]?.toRenderState()),
+      EntryKind.toolResult => renderer.renderToolResult(block.text),
+      EntryKind.error => renderer.renderError(block.text),
+      EntryKind.subagent => renderer.renderSubagent(block.text),
+      EntryKind.subagentGroup => renderer.renderSubagent(block.group!.expanded
           ? '${block.group!.summary}\n${block.group!.entries.map((e) => e.render(expanded: true)).join('\n')}'
           : block.group!.summary),
-      _EntryKind.system => renderer.renderSystem(block.text),
-      _EntryKind.bash => renderer.renderBash(
+      EntryKind.system => renderer.renderSystem(block.text),
+      EntryKind.bash => renderer.renderBash(
           block.expandedText ?? 'shell',
           block.text,
           maxLines: app._config?.bashMaxLines ?? 50,
         ),
     };
     final lines = text.split('\n');
-    final group = block.kind == _EntryKind.subagentGroup ? block.group : null;
+    final group = block.kind == EntryKind.subagentGroup ? block.group : null;
     for (var j = 0; j < lines.length; j++) {
-      app._outputLineGroups.add(group);
+      app._transcript.outputLineGroups.add(group);
     }
-    app._outputLineGroups.add(null);
+    app._transcript.outputLineGroups.add(null);
     outputLines.addAll(lines);
     outputLines.add('');
   }
 
   // If streaming, add the partial text.
-  if (app._streamingText.isNotEmpty) {
-    outputLines
-        .addAll(renderer.renderAssistant(app._streamingText).split('\n'));
+  if (app._transcript.streamingText.isNotEmpty) {
+    outputLines.addAll(
+        renderer.renderAssistant(app._transcript.streamingText).split('\n'));
   }
 
   // Inline modal (if active) — appended to the output flow.
@@ -96,7 +78,7 @@ void _doRenderImpl(App app) {
 
   // Panel stack takes over the full viewport.
   if (panelActive) {
-    app._renderedPanelLastFrame = true;
+    app._renderer.renderedPanelLastFrame = true;
     var grid = outputLines;
     for (final panel in app._panelStack) {
       grid = panel.render(app.terminal.columns, app.terminal.rows, grid);
@@ -110,7 +92,7 @@ void _doRenderImpl(App app) {
     return;
   }
 
-  app._renderedPanelLastFrame = false;
+  app._renderer.renderedPanelLastFrame = false;
 
   // 2. Reserve overlay space for autocomplete (before computing viewport).
   final overlayHeight = app._shellComplete.active
@@ -124,10 +106,11 @@ void _doRenderImpl(App app) {
   final viewportHeight = app.layout.outputBottom - app.layout.outputTop + 1;
   final totalLines = outputLines.length;
   final maxScroll = (totalLines - viewportHeight).clamp(0, totalLines);
-  app._scrollOffset = app._scrollOffset.clamp(0, maxScroll);
+  app._transcript.scrollOffset =
+      app._transcript.scrollOffset.clamp(0, maxScroll);
 
-  final firstLine =
-      (totalLines - viewportHeight - app._scrollOffset).clamp(0, totalLines);
+  final firstLine = (totalLines - viewportHeight - app._transcript.scrollOffset)
+      .clamp(0, totalLines);
   final endLine = (firstLine + viewportHeight).clamp(0, totalLines);
   final visibleLines = firstLine < endLine
       ? outputLines.sublist(firstLine, endLine)
@@ -170,7 +153,7 @@ void _doRenderImpl(App app) {
   // 5. Status bar.
   final modeIndicator = switch (app._mode) {
     AppMode.idle => 'Ready',
-    AppMode.streaming => '${App._spinnerFrames[app._spinnerFrame]} Generating',
+    AppMode.streaming => '${app._renderer.spinnerFrame} Generating',
     AppMode.toolRunning => '⚙ Tool',
     AppMode.confirming => '? Approve',
     AppMode.bashRunning => '! Running',
@@ -180,7 +163,9 @@ void _doRenderImpl(App app) {
   final statusLeft = ' \x1b[1m$modeIndicator\x1b[22m ';
 
   const sep = ' · ';
-  final scrollSeg = app._scrollOffset > 0 ? '↑${app._scrollOffset}' : null;
+  final scrollSeg = app._transcript.scrollOffset > 0
+      ? '↑${app._transcript.scrollOffset}'
+      : null;
   final rightSegs = [
     _statusModelLabel(app),
     modeLabel,

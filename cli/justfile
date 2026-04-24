@@ -60,8 +60,21 @@ gen-check:
     dart run tool/gen_models.dart --check
     dart run tool/gen_version.dart --check
 
-# Analyze + test + codegen freshness
-check: gen-check analyze test
+# Enforce the ui/ layering boundary: primitives must not know about features.
+# Fails if lib/src/ui/** imports from any feature module.
+ui-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    leaks=$(grep -rE "package:glue/src/(catalog|providers|skills|session|commands|shell|agent|llm|storage|config)/" lib/src/ui/ 2>/dev/null || true)
+    if [ -n "$leaks" ]; then
+      echo "ui/ layering violation — ui/** must not import from feature modules:" >&2
+      echo "$leaks" >&2
+      exit 1
+    fi
+    echo "ui/ layering clean."
+
+# Analyze + test + codegen freshness + ui layering
+check: gen-check analyze ui-check test
 
 # Get dependencies
 deps:
@@ -104,16 +117,46 @@ diagrams format="svg":
       echo "plantuml not found. Install with: brew install plantuml" >&2
       exit 1
     fi
+    # ELK layout produces much denser, more readable class diagrams than the default
+    # dot layout. It needs elk-full.jar placed next to plantuml.jar — download once
+    # from http://beta.plantuml.net/elk-full.jar.
+    plantuml_libexec=$(dirname "$(readlink -f "$(command -v plantuml)" 2>/dev/null || greadlink -f "$(command -v plantuml)" 2>/dev/null || echo "")" 2>/dev/null || true)
+    if [ -z "$plantuml_libexec" ] || [ ! -f "$plantuml_libexec/plantuml.jar" ]; then
+      plantuml_libexec=$(brew --prefix plantuml 2>/dev/null)/libexec
+    fi
+    if [ -f "$plantuml_libexec/plantuml.jar" ] && [ ! -f "$plantuml_libexec/elk-full.jar" ]; then
+      echo "Note: ELK layout jar not found — falling back to dot layout."
+      echo "      Install once: curl -L -o '$plantuml_libexec/elk-full.jar' http://beta.plantuml.net/elk-full.jar"
+      LAYOUT=""
+    else
+      LAYOUT="!pragma layout elk"
+    fi
+    inject_header() {
+      local file=$1
+      local tmp=$(mktemp)
+      {
+        echo "@startuml"
+        echo "set namespaceSeparator ::"
+        [ -n "$LAYOUT" ] && echo "$LAYOUT"
+        echo "hide empty members"
+        echo "hide circle"
+        echo "skinparam classAttributeIconSize 0"
+        tail -n +3 "$file"
+      } > "$tmp"
+      mv "$tmp" "$file"
+    }
     mkdir -p diagrams
     subsystems=(agent app catalog commands config core credentials doctor input llm observability orchestrator providers rendering session share shell skills storage terminal tools ui web)
     echo "→ all (full project)"
     dart pub global run dcdg -b plantuml --exclude-private=all -o diagrams/_all.puml
+    inject_header diagrams/_all.puml
     plantuml -t{{format}} diagrams/_all.puml
     for sub in "${subsystems[@]}"; do
       dir="lib/src/$sub"
       [ -d "$dir" ] || continue
       echo "→ $sub"
       dart pub global run dcdg -b plantuml --exclude-private=all -s "$dir" -o "diagrams/$sub.puml"
+      inject_header "diagrams/$sub.puml"
       plantuml -t{{format}} "diagrams/$sub.puml"
     done
     echo ""

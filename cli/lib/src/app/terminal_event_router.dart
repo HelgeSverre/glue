@@ -48,7 +48,7 @@ void _handleTerminalEventImpl(App app, TerminalEvent event) {
       // Ctrl+End jumps to the bottom and resumes follow-tail. Plain End is
       // reserved for the line editor (jump cursor to end of line).
       if (event case KeyEvent(key: Key.end, ctrl: true)) {
-        app._scrollOffset = 0;
+        app._transcript.scrollOffset = 0;
         app._render();
         return;
       }
@@ -85,7 +85,8 @@ void _handleTerminalEventImpl(App app, TerminalEvent event) {
           commands: app._commands,
         );
         if (result.commandOutput != null && result.commandOutput!.isNotEmpty) {
-          app._blocks.add(_ConversationEntry.system(result.commandOutput!));
+          app._transcript.blocks
+              .add(ConversationEntry.system(result.commandOutput!));
         }
         switch (result.action) {
           case StreamingAction.render:
@@ -170,8 +171,8 @@ void _handleTerminalEventImpl(App app, TerminalEvent event) {
             app.requestExit();
           } else {
             app._lastCtrlC = now;
-            app._blocks
-                .add(_ConversationEntry.system('Press Ctrl+C again to exit.'));
+            app._transcript.blocks
+                .add(ConversationEntry.system('Press Ctrl+C again to exit.'));
             app._render();
           }
         case InputAction.changed:
@@ -211,13 +212,14 @@ void _handleTerminalEventImpl(App app, TerminalEvent event) {
         if (y >= app.layout.outputTop && y <= app.layout.outputBottom) {
           final viewportHeight =
               app.layout.outputBottom - app.layout.outputTop + 1;
-          final totalLines = app._outputLineGroups.length;
-          final firstLine = (totalLines - viewportHeight - app._scrollOffset)
-              .clamp(0, totalLines);
+          final totalLines = app._transcript.outputLineGroups.length;
+          final firstLine =
+              (totalLines - viewportHeight - app._transcript.scrollOffset)
+                  .clamp(0, totalLines);
           final outputLineIdx = firstLine + (y - app.layout.outputTop);
           if (outputLineIdx >= 0 &&
-              outputLineIdx < app._outputLineGroups.length) {
-            final group = app._outputLineGroups[outputLineIdx];
+              outputLineIdx < app._transcript.outputLineGroups.length) {
+            final group = app._transcript.outputLineGroups[outputLineIdx];
             if (group != null) {
               group.expanded = !group.expanded;
               app._render();

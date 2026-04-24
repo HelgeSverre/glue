@@ -15,12 +15,12 @@ void _startAgentImpl(
   String displayMessage, {
   String? expandedMessage,
 }) {
-  app._blocks.add(
-      _ConversationEntry.user(displayMessage, expandedText: expandedMessage));
+  app._transcript.blocks.add(
+      ConversationEntry.user(displayMessage, expandedText: expandedMessage));
   app._mode = AppMode.streaming;
   app._startSpinner();
-  app._streamingText = '';
-  app._subagentGroups.clear();
+  app._transcript.streamingText = '';
+  app._transcript.subagentGroups.clear();
   app._render();
 
   app._turnSpan = app._obs?.startSpan(
@@ -42,16 +42,17 @@ void _startAgentImpl(
     app._handleAgentEvent,
     onError: (Object e) {
       app._endTurnSpan(extra: {'error': e.toString()});
-      app._blocks.add(_ConversationEntry.error(e.toString()));
+      app._transcript.blocks.add(ConversationEntry.error(e.toString()));
       app._stopSpinner();
       app._mode = AppMode.idle;
       app._render();
     },
     onDone: () {
       app._endTurnSpan();
-      if (app._streamingText.isNotEmpty) {
-        app._blocks.add(_ConversationEntry.assistant(app._streamingText));
-        app._streamingText = '';
+      if (app._transcript.streamingText.isNotEmpty) {
+        app._transcript.blocks
+            .add(ConversationEntry.assistant(app._transcript.streamingText));
+        app._transcript.streamingText = '';
       }
       app._stopSpinner();
       app._mode = AppMode.idle;
@@ -63,24 +64,25 @@ void _startAgentImpl(
 void _handleAgentEventImpl(App app, AgentEvent event) {
   switch (event) {
     case AgentTextDelta(:final delta):
-      app._streamingText += delta;
+      app._transcript.streamingText += delta;
       app._render();
 
     case AgentToolCallPending(:final id, :final name):
-      // Flush any accumulated assistant text so the ordering in _blocks
+      // Flush any accumulated assistant text so the ordering in _transcript.blocks
       // matches the actual conversation flow.
-      if (app._streamingText.isNotEmpty) {
-        app._sessionManager
-            .logEvent('assistant_message', {'text': app._streamingText});
-        app._blocks.add(_ConversationEntry.assistant(app._streamingText));
-        app._streamingText = '';
+      if (app._transcript.streamingText.isNotEmpty) {
+        app._sessionManager.logEvent(
+            'assistant_message', {'text': app._transcript.streamingText});
+        app._transcript.blocks
+            .add(ConversationEntry.assistant(app._transcript.streamingText));
+        app._transcript.streamingText = '';
       }
-      app._toolUi[id] = _ToolCallUiState(id: id, name: name);
-      app._blocks.add(_ConversationEntry.toolCallRef(id));
+      app._transcript.toolUi[id] = ToolCallUiState(id: id, name: name);
+      app._transcript.blocks.add(ConversationEntry.toolCallRef(id));
 
       // Early confirmation — ask before arguments finish streaming.
       if (app._permissionGate.needsEarlyConfirmation(name)) {
-        app._toolUi[id]?.phase = _ToolPhase.awaitingApproval;
+        app._transcript.toolUi[id]?.phase = ToolPhase.awaitingApproval;
         app._stopSpinner();
         app._mode = AppMode.confirming;
         app._activeModal = ConfirmModal(
@@ -111,14 +113,14 @@ void _handleAgentEventImpl(App app, AgentEvent event) {
           switch (choiceIndex) {
             case 0: // Yes
               app._earlyApprovedIds.add(id);
-              app._toolUi[id]?.phase = _ToolPhase.preparing;
+              app._transcript.toolUi[id]?.phase = ToolPhase.preparing;
               app._mode = AppMode.streaming;
               app._startSpinner();
               app._render();
             case 2: // Always
               app._persistTrustedTool(name);
               app._earlyApprovedIds.add(id);
-              app._toolUi[id]?.phase = _ToolPhase.preparing;
+              app._transcript.toolUi[id]?.phase = ToolPhase.preparing;
               app._mode = AppMode.streaming;
               app._startSpinner();
               app._render();
@@ -133,21 +135,22 @@ void _handleAgentEventImpl(App app, AgentEvent event) {
       app._render();
 
     case AgentToolCall(:final call):
-      final uiState = app._toolUi[call.id];
+      final uiState = app._transcript.toolUi[call.id];
       if (uiState != null) {
         uiState.args = call.arguments;
       } else {
         // Ollama path — no prior pending event, create the ref now.
-        if (app._streamingText.isNotEmpty) {
-          app._blocks.add(_ConversationEntry.assistant(app._streamingText));
-          app._streamingText = '';
+        if (app._transcript.streamingText.isNotEmpty) {
+          app._transcript.blocks
+              .add(ConversationEntry.assistant(app._transcript.streamingText));
+          app._transcript.streamingText = '';
         }
-        app._toolUi[call.id] = _ToolCallUiState(
+        app._transcript.toolUi[call.id] = ToolCallUiState(
           id: call.id,
           name: call.name,
-          phase: _ToolPhase.preparing,
+          phase: ToolPhase.preparing,
         )..args = call.arguments;
-        app._blocks.add(_ConversationEntry.toolCallRef(call.id));
+        app._transcript.blocks.add(ConversationEntry.toolCallRef(call.id));
       }
 
       app._ensureSessionStore();
@@ -180,26 +183,27 @@ void _handleAgentEventImpl(App app, AgentEvent event) {
       }
 
     case AgentToolResult(:final result):
-      app._toolUi[result.callId]?.phase = _ToolPhase.done;
+      app._transcript.toolUi[result.callId]?.phase = ToolPhase.done;
       app._sessionManager.logEvent('tool_result', {
         'call_id': result.callId,
         'content': result.content,
         if (result.summary != null) 'summary': result.summary,
         if (result.metadata.isNotEmpty) 'metadata': result.metadata,
       });
-      app._blocks
-          .add(_ConversationEntry.toolResult(result.summary ?? result.content));
+      app._transcript.blocks
+          .add(ConversationEntry.toolResult(result.summary ?? result.content));
       app._mode = AppMode.streaming;
       app._startSpinner();
       app._render();
 
     case AgentDone():
-      if (app._streamingText.isNotEmpty) {
+      if (app._transcript.streamingText.isNotEmpty) {
         app._ensureSessionStore();
-        app._sessionManager
-            .logEvent('assistant_message', {'text': app._streamingText});
-        app._blocks.add(_ConversationEntry.assistant(app._streamingText));
-        app._streamingText = '';
+        app._sessionManager.logEvent(
+            'assistant_message', {'text': app._transcript.streamingText});
+        app._transcript.blocks
+            .add(ConversationEntry.assistant(app._transcript.streamingText));
+        app._transcript.streamingText = '';
       }
       _reevaluateTitleImpl(app);
       app._stopSpinner();
@@ -207,7 +211,7 @@ void _handleAgentEventImpl(App app, AgentEvent event) {
       app._render();
 
     case AgentError(:final error):
-      app._blocks.add(_ConversationEntry.error(error.toString()));
+      app._transcript.blocks.add(ConversationEntry.error(error.toString()));
       app._stopSpinner();
       app._mode = AppMode.idle;
       app._render();
@@ -234,20 +238,20 @@ void _cancelAgentImpl(App app) {
   // repainting the status bar even though nothing is happening.
   app._stopSpinner();
   app._mode = AppMode.idle;
-  if (app._streamingText.isNotEmpty) {
-    app._blocks.add(
-        _ConversationEntry.assistant('${app._streamingText}\n[cancelled]'));
-    app._streamingText = '';
+  if (app._transcript.streamingText.isNotEmpty) {
+    app._transcript.blocks.add(ConversationEntry.assistant(
+        '${app._transcript.streamingText}\n[cancelled]'));
+    app._transcript.streamingText = '';
   }
-  for (final state in app._toolUi.values) {
-    if (state.phase == _ToolPhase.preparing ||
-        state.phase == _ToolPhase.awaitingApproval ||
-        state.phase == _ToolPhase.running) {
+  for (final state in app._transcript.toolUi.values) {
+    if (state.phase == ToolPhase.preparing ||
+        state.phase == ToolPhase.awaitingApproval ||
+        state.phase == ToolPhase.running) {
       // The tool never completed cleanly — but it wasn't an intrinsic tool
       // error either. Use the dedicated cancelled phase so the transcript
       // doesn't misleadingly read as a failure. awaitingApproval covers the
       // case where the user cancelled while the approval modal was open.
-      state.phase = _ToolPhase.cancelled;
+      state.phase = ToolPhase.cancelled;
     }
   }
   app.agent.ensureToolResultsComplete();
@@ -269,7 +273,7 @@ void _persistTrustedToolImpl(App app, String name) {
 }
 
 void _approveToolImpl(App app, ToolCall call) {
-  app._toolUi[call.id]?.phase = _ToolPhase.running;
+  app._transcript.toolUi[call.id]?.phase = ToolPhase.running;
   app._stopSpinner();
   app._mode = AppMode.toolRunning;
   app._render();
@@ -277,7 +281,7 @@ void _approveToolImpl(App app, ToolCall call) {
 }
 
 void _denyToolImpl(App app, ToolCall call) {
-  app._toolUi[call.id]?.phase = _ToolPhase.denied;
+  app._transcript.toolUi[call.id]?.phase = ToolPhase.denied;
   app._mode = AppMode.streaming;
   app._startSpinner();
   app.agent.completeToolCall(ToolResult.denied(call.id));
@@ -285,7 +289,7 @@ void _denyToolImpl(App app, ToolCall call) {
 }
 
 void _showToolConfirmModalImpl(App app, ToolCall call) {
-  app._toolUi[call.id]?.phase = _ToolPhase.awaitingApproval;
+  app._transcript.toolUi[call.id]?.phase = ToolPhase.awaitingApproval;
   app._stopSpinner();
   app._mode = AppMode.confirming;
   final bodyLines =

@@ -48,9 +48,10 @@ Future<void> _runBlockingBashImpl(App app, String command) async {
     }
 
     final stripped = stripAnsi(output.toString().trimRight());
-    app._blocks.add(_ConversationEntry.bash(command, stripped));
+    app._transcript.blocks.add(ConversationEntry.bash(command, stripped));
     if (exitCode != 0) {
-      app._blocks.add(_ConversationEntry.system('Exit code: $exitCode'));
+      app._transcript.blocks
+          .add(ConversationEntry.system('Exit code: $exitCode'));
     }
     if (span != null && app._obs != null && span.endTime == null) {
       app._obs!.endSpan(span, extra: {
@@ -60,7 +61,7 @@ Future<void> _runBlockingBashImpl(App app, String command) async {
     }
   } catch (e) {
     app._bashRunProcess = null;
-    app._blocks.add(_ConversationEntry.error('Bash error: $e'));
+    app._transcript.blocks.add(ConversationEntry.error('Bash error: $e'));
     if (span != null && app._obs != null && span.endTime == null) {
       app._obs!.endSpan(span, extra: {
         'error': true,
@@ -89,7 +90,8 @@ void _cancelBashImpl(App app) {
   // Cheap insurance against future reorderings that begin with a spinner.
   app._stopSpinner();
   app._mode = AppMode.idle;
-  app._blocks.add(_ConversationEntry.system('[bash command cancelled]'));
+  app._transcript.blocks
+      .add(ConversationEntry.system('[bash command cancelled]'));
   app._render();
 }
 
@@ -98,7 +100,8 @@ void _startBackgroundJobImpl(App app, String command) {
     try {
       await app._jobManager.start(command);
     } catch (e) {
-      app._blocks.add(_ConversationEntry.error('Failed to start job: $e'));
+      app._transcript.blocks
+          .add(ConversationEntry.error('Failed to start job: $e'));
       app._render();
     }
   }());
@@ -107,18 +110,19 @@ void _startBackgroundJobImpl(App app, String command) {
 void _handleJobEventImpl(App app, JobEvent event) {
   switch (event) {
     case JobStarted(:final id, :final command):
-      app._blocks
-          .add(_ConversationEntry.system('↳ Started job #$id: $command'));
+      app._transcript.blocks
+          .add(ConversationEntry.system('↳ Started job #$id: $command'));
       app._render();
     case JobExited(:final id, :final exitCode):
       final job = app._jobManager.getJob(id);
       final cmd = job?.command ?? '?';
       final label = exitCode == 0 ? 'exited' : 'failed';
-      app._blocks.add(
-          _ConversationEntry.system('↳ Job #$id $label ($exitCode): $cmd'));
+      app._transcript.blocks
+          .add(ConversationEntry.system('↳ Job #$id $label ($exitCode): $cmd'));
       app._render();
     case JobError(:final id, :final error):
-      app._blocks.add(_ConversationEntry.system('↳ Job #$id error: $error'));
+      app._transcript.blocks
+          .add(ConversationEntry.system('↳ Job #$id error: $error'));
       app._render();
   }
 }

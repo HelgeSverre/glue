@@ -1,7 +1,7 @@
-import 'package:glue/src/rendering/ansi_utils.dart';
+import 'package:glue/src/ui/rendering/ansi_utils.dart';
 import 'package:glue/src/terminal/terminal.dart';
-import 'package:glue/src/ui/box.dart';
-import 'package:glue/src/ui/panel_modal.dart';
+import 'package:glue/src/ui/components/box.dart';
+import 'package:glue/src/ui/components/panel.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -207,11 +207,11 @@ void main() {
     });
   });
 
-  group('PanelModal', () {
-    late PanelModal panel;
+  group('Panel', () {
+    late Panel panel;
 
     setUp(() {
-      panel = PanelModal(
+      panel = Panel(
         title: 'TEST',
         lines: List.generate(30, (i) => 'Line $i'),
         barrier: BarrierStyle.dim,
@@ -255,7 +255,7 @@ void main() {
     });
 
     test('escape does not complete when not dismissable', () {
-      final locked = PanelModal(
+      final locked = Panel(
         title: 'LOCKED',
         lines: ['content'],
         barrier: BarrierStyle.dim,
@@ -271,7 +271,7 @@ void main() {
 
     test('triggers editor callback via e key', () async {
       var opened = 0;
-      final view = PanelModal(
+      final view = Panel(
         title: 'VIEW',
         lines: const ['one'],
         onOpenInEditor: () async {
@@ -286,7 +286,7 @@ void main() {
 
     test('triggers editor callback via Ctrl+E', () async {
       var opened = 0;
-      final view = PanelModal(
+      final view = Panel(
         title: 'VIEW',
         lines: const ['one'],
         onOpenInEditor: () async {
@@ -332,7 +332,7 @@ void main() {
 
     test('render with barrier none preserves ANSI background outside panel',
         () {
-      final noBarrier = PanelModal(
+      final noBarrier = Panel(
         title: 'TEST',
         lines: const ['x'],
         barrier: BarrierStyle.none,
@@ -346,11 +346,11 @@ void main() {
     });
   });
 
-  group('PanelModal selectable', () {
-    late PanelModal panel;
+  group('Panel selectable', () {
+    late Panel panel;
 
     setUp(() {
-      panel = PanelModal(
+      panel = Panel(
         title: 'SELECT',
         lines: List.generate(20, (i) => 'Item $i'),
         barrier: BarrierStyle.dim,
@@ -414,7 +414,7 @@ void main() {
     });
 
     test('non-selectable panel has no selection future', () async {
-      final plain = PanelModal(
+      final plain = Panel(
         title: 'PLAIN',
         lines: ['a', 'b'],
         barrier: BarrierStyle.dim,
@@ -423,7 +423,7 @@ void main() {
     });
 
     test('selectedIndex is -1 for non-selectable panel', () {
-      final plain = PanelModal(
+      final plain = Panel(
         title: 'PLAIN',
         lines: ['a', 'b'],
         barrier: BarrierStyle.dim,
@@ -432,10 +432,10 @@ void main() {
     });
   });
 
-  group('PanelModal.responsive', () {
+  group('Panel.responsive', () {
     test('linesBuilder is called per render with content width', () {
       final widths = <int>[];
-      final panel = PanelModal.responsive(
+      final panel = Panel.responsive(
         title: 'HELP',
         linesBuilder: (w) {
           widths.add(w);
@@ -452,7 +452,7 @@ void main() {
     });
 
     test('rendered output reflects builder result at current width', () {
-      final panel = PanelModal.responsive(
+      final panel = Panel.responsive(
         title: 'HELP',
         linesBuilder: (w) => ['WIDTH=$w'],
       );
@@ -461,8 +461,8 @@ void main() {
       expect(joined, contains('WIDTH='));
     });
 
-    test('static PanelModal still renders provided lines', () {
-      final panel = PanelModal(
+    test('static Panel still renders provided lines', () {
+      final panel = Panel(
         title: 'HELP',
         lines: const ['STATIC'],
       );
@@ -472,7 +472,7 @@ void main() {
     });
 
     test('handleEvent after render uses cached last lines for bounds', () {
-      final panel = PanelModal.responsive(
+      final panel = Panel.responsive(
         title: 'HELP',
         linesBuilder: (_) => List.generate(50, (i) => 'line$i'),
         selectable: true,
@@ -487,7 +487,7 @@ void main() {
     });
 
     test('selectable .responsive navigates correctly before first render', () {
-      final panel = PanelModal.responsive(
+      final panel = Panel.responsive(
         title: 'HELP',
         linesBuilder: (_) => List.generate(10, (i) => 'row$i'),
         selectable: true,

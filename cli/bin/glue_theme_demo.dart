@@ -2,17 +2,14 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:glue/src/rendering/ansi_utils.dart';
-import 'package:glue/src/rendering/block_renderer.dart';
-import 'package:glue/src/rendering/markdown_renderer.dart';
+import 'package:glue/src/ui/rendering/ansi_utils.dart';
+import 'package:glue/src/ui/rendering/block_renderer.dart';
+import 'package:glue/src/ui/rendering/markdown_renderer.dart';
 import 'package:glue/src/terminal/terminal.dart';
-import 'package:glue/src/ui/dock_manager.dart';
-import 'package:glue/src/ui/docked_panel.dart';
-import 'package:glue/src/ui/panel_modal.dart';
-import 'package:glue/src/ui/select_panel.dart';
-import 'package:glue/src/ui/table_formatter.dart';
-import 'package:glue/src/ui/theme_recipes.dart';
-import 'package:glue/src/ui/theme_tokens.dart';
+import 'package:glue/src/ui/components/dock.dart';
+import 'package:glue/src/ui/components/panel.dart';
+import 'package:glue/src/ui/components/tables.dart';
+import 'package:glue/src/ui/components/theme.dart';
 import 'package:path/path.dart' as p;
 
 Future<void> main() async {

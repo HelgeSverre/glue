@@ -2,7 +2,7 @@
 /// builder used by `_openProviderActionPanel`.
 library;
 
-import 'package:glue/src/ui/panel_controller.dart';
+import 'package:glue/src/runtime/controllers/provider_controller.dart';
 import 'package:test/test.dart';
 
 void main() {

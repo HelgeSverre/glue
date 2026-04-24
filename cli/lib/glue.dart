@@ -23,6 +23,8 @@
 library;
 
 export 'src/app.dart' show App, AppMode;
+export 'src/runtime/app_launch_options.dart' show AppLaunchOptions;
+export 'src/runtime/app_shell.dart' show AppShell;
 export 'src/terminal/terminal.dart'
     show
         Terminal,
@@ -88,11 +90,12 @@ export 'src/providers/compatibility_profile.dart' show CompatibilityProfile;
 export 'src/providers/anthropic_adapter.dart' show AnthropicAdapter;
 export 'src/providers/openai_compatible_adapter.dart'
     show OpenAiCompatibleAdapter;
-export 'src/llm/llm_factory.dart' show LlmClientFactory;
+export 'src/providers/llm_client_factory.dart' show LlmClientFactory;
 export 'src/agent/agent_runner.dart' show AgentRunner, ToolApprovalPolicy;
 export 'src/agent/agent_manager.dart' show AgentManager;
 export 'src/agent/prompts.dart' show Prompts;
-export 'src/rendering/ansi_utils.dart'
+export 'src/session/title_generator.dart' show TitleGenerator;
+export 'src/ui/rendering/ansi_utils.dart'
     show
         osc8Link,
         osc8FileLink,
@@ -103,8 +106,8 @@ export 'src/rendering/ansi_utils.dart'
         ansiWrap,
         wrapIndented,
         charWidth;
-export 'src/rendering/block_renderer.dart' show BlockRenderer;
-export 'src/rendering/markdown_renderer.dart' show MarkdownRenderer;
+export 'src/ui/rendering/block_renderer.dart' show BlockRenderer;
+export 'src/ui/rendering/markdown_renderer.dart' show MarkdownRenderer;
 export 'src/commands/slash_commands.dart'
     show
         SlashArgCandidate,
@@ -112,19 +115,24 @@ export 'src/commands/slash_commands.dart'
         SlashCommand,
         SlashCommandRegistry;
 export 'src/commands/builtin_commands.dart' show BuiltinCommands;
-export 'src/ui/modal.dart' show ConfirmModal, ModalChoice;
-export 'src/ui/box.dart' show Box;
-export 'src/ui/panel_modal.dart'
+export 'src/ui/components/box.dart' show Box;
+export 'src/ui/components/modal.dart' show ConfirmModal, ModalChoice;
+export 'src/ui/components/panel.dart'
     show
-        PanelModal,
+        AbstractPanel,
+        Panel,
+        SelectPanel,
+        SplitPanel,
         PanelStyle,
-        PanelOverlay,
         BarrierStyle,
         PanelSize,
         PanelFixed,
         PanelFluid;
-export 'src/ui/panel_controller.dart' show PanelController, HistoryPanelEntry;
-export 'src/ui/split_panel_modal.dart' show SplitPanelModal;
+export 'src/ui/services/panels.dart' show Panels;
+export 'src/ui/services/docks.dart' show Docks;
+export 'src/runtime/controllers/provider_controller.dart'
+    show ProviderAction, providerActionsFor;
+export 'src/runtime/controllers/session_controller.dart' show HistoryPanelEntry;
 export 'src/skills/skill_parser.dart'
     show SkillMeta, SkillSource, SkillParseError;
 export 'src/skills/skill_registry.dart' show SkillRegistry;
@@ -168,9 +176,8 @@ export 'src/observability/file_sink.dart' show FileSink;
 export 'src/observability/observability_config.dart' show ObservabilityConfig;
 export 'src/storage/config_store.dart' show ConfigStore;
 export 'src/input/file_expander.dart' show expandFileRefs, extractFileRefs;
-export 'src/ui/at_file_hint.dart' show AtFileHint;
-export 'src/ui/autocomplete_overlay.dart'
-    show AutocompleteOverlay, AcceptResult;
+export 'src/input/at_file_hint.dart' show AtFileHint;
+export 'src/ui/components/overlays.dart' show AutocompleteOverlay, AcceptResult;
 export 'src/shell/command_executor.dart'
     show CommandExecutor, CaptureResult, RunningCommand;
 export 'src/shell/docker_config.dart' show DockerConfig, MountEntry, MountMode;

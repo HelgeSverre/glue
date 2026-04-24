@@ -4,7 +4,7 @@ import 'package:glue/src/share/gist_publisher.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('SessionGistPublisher', () {
+  group('GistPublisher', () {
     late Directory tempDir;
     late String markdownPath;
 
@@ -20,7 +20,7 @@ void main() {
 
     test('publishes a gist after auth succeeds', () async {
       final calls = <List<String>>[];
-      final publisher = SessionGistPublisher(
+      final publisher = GistPublisher(
         runner: (executable, arguments) async {
           calls.add([executable, ...arguments]);
           if (arguments.first == 'auth') {
@@ -56,7 +56,7 @@ void main() {
     });
 
     test('fails with a clear message when gh is unavailable', () async {
-      final publisher = SessionGistPublisher(
+      final publisher = GistPublisher(
         runner: (_, __) async {
           throw const ProcessException('gh', []);
         },
@@ -78,7 +78,7 @@ void main() {
     });
 
     test('fails with auth guidance when gh auth status is non-zero', () async {
-      final publisher = SessionGistPublisher(
+      final publisher = GistPublisher(
         runner: (_, arguments) async {
           if (arguments.first == 'auth') {
             return ProcessResult(1, 1, '', 'not logged in');
@@ -103,7 +103,7 @@ void main() {
     });
 
     test('fails when gist creation returns a non-zero exit code', () async {
-      final publisher = SessionGistPublisher(
+      final publisher = GistPublisher(
         runner: (_, arguments) async {
           if (arguments.first == 'auth') {
             return ProcessResult(1, 0, '', '');

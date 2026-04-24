@@ -2,7 +2,7 @@ import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/input/streaming_input_handler.dart';
 import 'package:glue/src/input/text_area_editor.dart';
 import 'package:glue/src/terminal/terminal.dart';
-import 'package:glue/src/ui/slash_autocomplete.dart';
+import 'package:glue/src/commands/slash_autocomplete.dart';
 import 'package:test/test.dart';
 
 SlashCommandRegistry _makeRegistry() {

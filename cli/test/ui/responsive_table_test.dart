@@ -1,6 +1,5 @@
-import 'package:glue/src/rendering/ansi_utils.dart';
-import 'package:glue/src/ui/responsive_table.dart';
-import 'package:glue/src/ui/table_formatter.dart';
+import 'package:glue/src/ui/rendering/ansi_utils.dart';
+import 'package:glue/src/ui/components/tables.dart';
 import 'package:test/test.dart';
 
 void main() {

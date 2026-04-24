@@ -23,10 +23,10 @@ class GistPublishResult {
   });
 }
 
-class SessionGistPublisher {
+class GistPublisher {
   final GhRunner _runner;
 
-  SessionGistPublisher({GhRunner? runner}) : _runner = runner ?? Process.run;
+  GistPublisher({GhRunner? runner}) : _runner = runner ?? Process.run;
 
   Future<GistPublishResult> publish({
     required String filePath,

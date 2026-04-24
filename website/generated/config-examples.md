@@ -84,7 +84,18 @@ the source file, not this one.
 #     hyperbrowser:
 #       api_key: your-hyperbrowser-key
 
-# debug: false
+# observability:
+#   debug: false
+#   max_body_bytes: 65536
+#   redact: true
+#   otel:
+#     enabled: true
+#     endpoint: https://app.phoenix.arize.com/s/helge-sverre
+#     headers:
+#       Authorization: Bearer <token>
+#     service_name: glue
+#     resource_attributes:
+#       openinference.project.name: glue
 
 # approval_mode: confirm         # confirm | auto
 
@@ -105,3 +116,4 @@ web:
     hyperbrowser:
       api_key: your-hyperbrowser-key
 ```
+

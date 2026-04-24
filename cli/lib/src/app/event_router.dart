@@ -8,15 +8,15 @@ void _handleAppEventImpl(App app, AppEvent event) {
       } else if (text.startsWith('/')) {
         final result = app._commands.execute(text);
         if (result != null && result.isNotEmpty) {
-          app._blocks.add(_ConversationEntry.system(result));
+          app._transcript.blocks.add(ConversationEntry.system(result));
         }
         app._render();
       } else {
         final expanded = expandFileRefs(text);
         app._ensureSessionStore();
         app._sessionManager.logEvent('user_message', {'text': expanded});
-        if (!app._titleInitialRequested && !app._titleManuallyOverridden) {
-          app._titleInitialRequested = true;
+        if (app._titleState.shouldGenerateInitialTitle) {
+          app._titleState.markInitialRequested();
           app._generateTitle(expanded);
         }
         app._startAgent(
@@ -29,7 +29,8 @@ void _handleAppEventImpl(App app, AppEvent event) {
       app._cancelAgent();
 
     case UserScroll(:final delta):
-      app._scrollOffset = (app._scrollOffset + delta).clamp(0, 999999);
+      app._transcript.scrollOffset =
+          (app._transcript.scrollOffset + delta).clamp(0, 999999);
       app._render();
 
     case UserResize():

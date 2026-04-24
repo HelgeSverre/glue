@@ -1,6 +1,5 @@
 import 'package:glue/src/terminal/terminal.dart';
-import 'package:glue/src/ui/dock_manager.dart';
-import 'package:glue/src/ui/docked_panel.dart';
+import 'package:glue/src/ui/components/dock.dart';
 import 'package:test/test.dart';
 
 class _StubDockedPanel extends DockedPanel {

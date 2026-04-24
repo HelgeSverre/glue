@@ -1,4 +1,4 @@
-import 'package:glue/src/rendering/ansi_utils.dart';
+import 'package:glue/src/ui/rendering/ansi_utils.dart';
 import 'package:glue/src/terminal/terminal.dart';
 import 'package:glue/src/input/line_editor.dart' show InputAction;
 

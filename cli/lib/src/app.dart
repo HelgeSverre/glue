@@ -2,77 +2,75 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:glue/src/terminal/terminal.dart';
-import 'package:glue/src/terminal/layout.dart';
-import 'package:glue/src/input/line_editor.dart' show InputAction;
-import 'package:glue/src/input/text_area_editor.dart';
-import 'package:glue/src/input/streaming_input_handler.dart';
-import 'package:glue/src/input/file_expander.dart';
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/agent_manager.dart';
 import 'package:glue/src/agent/tools.dart';
-import 'package:glue/src/commands/arg_completers.dart' as arg_completers;
-import 'package:glue/src/commands/builtin_commands.dart';
-import 'package:glue/src/commands/config_command.dart';
-import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/app/model_display.dart';
-import 'package:glue/src/catalog/model_catalog.dart';
 import 'package:glue/src/catalog/model_ref.dart';
-import 'package:glue/src/catalog/model_resolver.dart';
+import 'package:glue/src/commands/slash_commands.dart';
+import 'package:glue/src/config/approval_mode.dart';
 import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/config/glue_config.dart';
-import 'package:glue/src/core/clipboard.dart';
 import 'package:glue/src/core/environment.dart';
-import 'package:glue/src/core/path_opener.dart';
-import 'package:glue/src/core/url_launcher.dart';
-import 'package:glue/src/core/where_report.dart';
-import 'package:glue/src/providers/ollama_discovery.dart';
-import 'package:glue/src/providers/provider_adapter.dart';
-import 'package:glue/src/ui/model_panel_formatter.dart'
-    show CatalogRow, ModelAvailability;
 import 'package:glue/src/core/service_locator.dart';
-import 'package:glue/src/config/approval_mode.dart';
-import 'package:glue/src/llm/llm_factory.dart';
-import 'package:glue/src/llm/title_generator.dart';
-import 'package:glue/src/orchestrator/permission_gate.dart';
-import 'package:glue/src/orchestrator/tool_permissions.dart';
-import 'package:glue/src/rendering/block_renderer.dart';
-import 'package:glue/src/rendering/ansi_utils.dart';
-import 'package:glue/src/shell/command_executor.dart';
-import 'package:glue/src/shell/host_executor.dart';
-import 'package:glue/src/shell/shell_config.dart';
-import 'package:glue/src/shell/shell_job_manager.dart';
-import 'package:glue/src/shell/shell_completer.dart';
-import 'package:glue/src/session/session_manager.dart';
-import 'package:glue/src/share/gist_publisher.dart';
-import 'package:glue/src/share/session_share_exporter.dart';
-import 'package:glue/src/storage/config_store.dart';
-import 'package:glue/src/storage/session_store.dart';
-import 'package:glue/src/skills/skill_registry.dart';
-import 'package:glue/src/skills/skill_activation.dart';
-import 'package:glue/src/skills/skill_runtime.dart';
-import 'package:glue/src/ui/modal.dart';
-import 'package:glue/src/ui/dock_manager.dart';
-import 'package:glue/src/ui/panel_modal.dart';
-import 'package:glue/src/ui/panel_controller.dart';
-import 'package:glue/src/ui/skills_docked_panel.dart';
-import 'package:glue/src/ui/at_file_hint.dart';
-import 'package:glue/src/ui/autocomplete_overlay.dart';
-import 'package:glue/src/ui/shell_autocomplete.dart';
-import 'package:glue/src/ui/slash_autocomplete.dart';
+import 'package:glue/src/input/file_expander.dart';
+import 'package:glue/src/input/line_editor.dart' show InputAction;
+import 'package:glue/src/input/streaming_input_handler.dart';
+import 'package:glue/src/input/text_area_editor.dart';
 import 'package:glue/src/observability/debug_controller.dart';
 import 'package:glue/src/observability/observability.dart';
 import 'package:glue/src/observability/redaction.dart';
+import 'package:glue/src/orchestrator/permission_gate.dart';
+import 'package:glue/src/orchestrator/tool_permissions.dart';
+import 'package:glue/src/providers/llm_client_factory.dart';
+import 'package:glue/src/ui/rendering/ansi_utils.dart';
+import 'package:glue/src/ui/rendering/block_renderer.dart';
+import 'package:glue/src/runtime/commands/command_host.dart';
+import 'package:glue/src/runtime/commands/register_builtin_slash_commands.dart';
+import 'package:glue/src/runtime/renderer.dart';
+import 'package:glue/src/runtime/services/config.dart';
+import 'package:glue/src/runtime/services/session.dart';
+import 'package:glue/src/runtime/transcript.dart';
+import 'package:glue/src/runtime/controllers/chat_controller.dart';
+import 'package:glue/src/runtime/controllers/confirmation_host.dart';
+import 'package:glue/src/runtime/controllers/model_controller.dart';
+import 'package:glue/src/runtime/controllers/provider_controller.dart';
+import 'package:glue/src/runtime/controllers/session_controller.dart';
+import 'package:glue/src/runtime/controllers/skills_controller.dart';
+import 'package:glue/src/runtime/controllers/system_controller.dart';
+import 'package:glue/src/share/share_controller.dart';
+import 'package:glue/src/session/session_manager.dart';
+import 'package:glue/src/session/session_title_state_controller.dart';
+import 'package:glue/src/session/title_generator.dart';
+import 'package:glue/src/shell/command_executor.dart';
+import 'package:glue/src/shell/host_executor.dart';
+import 'package:glue/src/shell/shell_completer.dart';
+import 'package:glue/src/shell/shell_config.dart';
+import 'package:glue/src/shell/shell_job_manager.dart';
+import 'package:glue/src/skills/skill_activation.dart';
+import 'package:glue/src/skills/skill_runtime.dart';
+import 'package:glue/src/storage/config_store.dart';
+import 'package:glue/src/storage/session_store.dart';
+import 'package:glue/src/terminal/layout.dart';
+import 'package:glue/src/terminal/terminal.dart';
+import 'package:glue/src/input/at_file_hint.dart';
+import 'package:glue/src/ui/components/overlays.dart';
+import 'package:glue/src/ui/components/dock.dart';
+import 'package:glue/src/ui/services/docks.dart';
+import 'package:glue/src/ui/components/modal.dart';
+import 'package:glue/src/ui/components/panel.dart';
+import 'package:glue/src/ui/services/panels.dart';
+import 'package:glue/src/shell/shell_autocomplete.dart';
+import 'package:glue/src/commands/slash_autocomplete.dart';
 
-part 'app/event_router.dart';
 part 'app/agent_orchestration.dart';
 part 'app/command_helpers.dart';
+part 'app/command_host_adapter.dart';
+part 'app/event_router.dart';
 part 'app/events.dart';
 part 'app/models.dart';
-part 'app/ollama_pull_flow.dart';
 part 'app/render_pipeline.dart';
 part 'app/session_runtime.dart';
-part 'app/spinner_runtime.dart';
 part 'app/shell_runtime.dart';
 part 'app/subagent_updates.dart';
 part 'app/terminal_event_router.dart';
@@ -121,38 +119,23 @@ class App {
   final _events = StreamController<AppEvent>.broadcast();
 
   AppMode _mode = AppMode.idle;
-  final List<_ConversationEntry> _blocks = [];
-  final Map<String, _ToolCallUiState> _toolUi = {};
-  int _scrollOffset = 0;
+  final Transcript _transcript = Transcript();
+  final Renderer _renderer = Renderer();
 
-  static const _spinnerFrames = [
-    '⠋',
-    '⠙',
-    '⠹',
-    '⠸',
-    '⠼',
-    '⠴',
-    '⠦',
-    '⠧',
-    '⠇',
-    '⠏'
-  ];
-  int _spinnerFrame = 0;
-  Timer? _spinnerTimer;
-  String _streamingText = '';
   StreamSubscription<AgentEvent>? _agentSub;
   StreamSubscription<SubagentUpdate>? _subagentSub;
   final _exitCompleter = Completer<void>();
 
   late final SlashCommandRegistry _commands;
+  late final _AppCommandContext _commandContext;
   String _modelId;
   final Environment _environment;
   late final String _cwd;
   ConfirmModal? _activeModal;
-  final List<PanelOverlay> _panelStack = [];
-  late final PanelController _panels;
+  final List<AbstractPanel> _panelStack = [];
+  late final Panels _panels;
   final DockManager _dockManager = DockManager();
-  bool _renderedPanelLastFrame = false;
+  late final Docks _docks;
   final Set<String> _autoApprovedTools = {
     ...ToolPermissions.defaultTrustedTools,
   };
@@ -166,18 +149,11 @@ class App {
   late final AtFileHint _atHint;
   late final ShellAutocomplete _shellComplete;
   late final SessionManager _sessionManager;
-  late final SessionShareExporter _shareExporter;
-  late final SessionGistPublisher _gistPublisher;
-  bool _titleInitialRequested = false;
-  bool _titleReevaluationRequested = false;
-  bool _titleManuallyOverridden = false;
+  final SessionTitleStateController _titleState = SessionTitleStateController();
   bool _bashMode = false;
   Process? _bashRunProcess;
   ObservabilitySpan? _bashSpan;
   DateTime? _lastCtrlC;
-
-  final Map<String, _SubagentGroup> _subagentGroups = {};
-  final List<_SubagentGroup?> _outputLineGroups = [];
 
   final bool _startupContinue;
   final String? _startupPrompt;
@@ -240,12 +216,11 @@ class App {
       sessionStore: sessionStore,
       observability: obs,
     );
-    _shareExporter = SessionShareExporter();
-    _gistPublisher = SessionGistPublisher();
-    _panels = PanelController(
-      panelStack: _panelStack,
+    _panels = Panels(
+      stack: _panelStack,
       render: _render,
     );
+    _docks = Docks(_dockManager);
     _skillRuntime = skillRuntime ??
         SkillRuntime(
           cwd: _cwd,
@@ -347,7 +322,7 @@ class App {
     terminal.clearScreen();
     layout.apply();
 
-    _blocks.add(_ConversationEntry.system(
+    _transcript.blocks.add(ConversationEntry.system(
       '\x1b[33m◆\x1b[0m Glue v${AppConstants.version} — $_modelId\n'
       'Working directory: ${_shortenPath(_cwd)}\n'
       'Type /help for commands.',
@@ -370,11 +345,11 @@ class App {
         if (match.isNotEmpty) {
           final result = _resumeSession(match.first);
           if (result.isNotEmpty) {
-            _blocks.add(_ConversationEntry.system(result));
+            _transcript.blocks.add(ConversationEntry.system(result));
           }
           _render();
         } else {
-          _blocks.add(_ConversationEntry.system(
+          _transcript.blocks.add(ConversationEntry.system(
             'Session $_resumeSessionId not found.',
           ));
           _render();
@@ -385,11 +360,12 @@ class App {
       if (sessions.isNotEmpty) {
         final result = _resumeSession(sessions.first);
         if (result.isNotEmpty) {
-          _blocks.add(_ConversationEntry.system(result));
+          _transcript.blocks.add(ConversationEntry.system(result));
         }
         _render();
       } else {
-        _blocks.add(_ConversationEntry.system('No sessions to continue.'));
+        _transcript.blocks
+            .add(ConversationEntry.system('No sessions to continue.'));
         _render();
       }
     }
@@ -448,138 +424,8 @@ class App {
   // ── Slash commands ──────────────────────────────────────────────────────
 
   void _initCommands() {
-    _commands = BuiltinCommands.create(
-      openHelpPanel: _openHelpPanel,
-      clearConversation: _clearConversation,
-      requestExit: requestExit,
-      openModelPanel: _openModelPanel,
-      switchModelByQuery: _switchModelByQuery,
-      sessionAction: _sessionAction,
-      shareAction: _shareAction,
-      listTools: _buildToolsOutput,
-      openHistoryPanel: _openHistoryPanel,
-      historyActionByQuery: _historyFromCommand,
-      openResumePanel: _openResumePanel,
-      resumeSessionByQuery: _resumeSessionFromCommand,
-      toggleDebug: _toggleDebugMode,
-      openSkillsPanel: _openSkillsPanel,
-      activateSkillByName: _activateSkillFromCommand,
-      toggleApproval: _toggleApproval,
-      runProviderCommand: _runProviderCommand,
-      pathsReport: _buildPathsReport,
-      openGlueTarget: _openGlueTarget,
-      configAction: _configAction,
-      renameSession: _renameSession,
-    );
-
-    // Argument autocomplete — attached here (not plumbed through
-    // BuiltinCommands.create) so closures can read live app state.
-    _commands.attachArgCompleter('open', _openArgCandidates);
-    _commands.attachArgCompleter('provider', _providerArgCandidates);
-    _commands.attachArgCompleter('model', _modelArgCandidates);
-    _commands.attachArgCompleter('skills', _skillsArgCandidates);
-    _commands.attachArgCompleter('session', _sessionArgCandidates);
-    _commands.attachArgCompleter('share', _shareArgCandidates);
-  }
-
-  String _buildPathsReport() => buildWhereReport(_environment);
-
-  String _configAction(List<String> args) => _configActionImpl(this, args);
-
-  String _openGlueTarget(List<String> args) => _openGlueTargetImpl(this, args);
-
-  List<SlashArgCandidate> _openArgCandidates(
-    List<String> prior,
-    String partial,
-  ) =>
-      arg_completers.openArgCandidates(prior, partial);
-
-  List<SlashArgCandidate> _providerArgCandidates(
-    List<String> prior,
-    String partial,
-  ) {
-    if (prior.isEmpty) {
-      return arg_completers.providerSubcommandCandidates(partial);
-    }
-    if (prior.length == 1 && {'add', 'remove', 'test'}.contains(prior.first)) {
-      final config = _config;
-      if (config == null) return const [];
-      return arg_completers.providerIdCandidates(
-        config.catalogData.providers,
-        partial,
-      );
-    }
-    return const [];
-  }
-
-  List<SlashArgCandidate> _modelArgCandidates(
-    List<String> prior,
-    String partial,
-  ) {
-    if (prior.isNotEmpty) return const [];
-    final config = _config;
-    if (config == null) return const [];
-    return arg_completers.modelRefCandidates(
-      config.catalogData.providers,
-      partial,
-    );
-  }
-
-  List<SlashArgCandidate> _skillsArgCandidates(
-    List<String> prior,
-    String partial,
-  ) {
-    if (prior.isNotEmpty) return const [];
-    return arg_completers.skillCandidates(_skillRuntime.list(), partial);
-  }
-
-  List<SlashArgCandidate> _shareArgCandidates(
-    List<String> prior,
-    String partial,
-  ) =>
-      arg_completers.shareArgCandidates(prior, partial);
-
-  String _runProviderCommand(List<String> args) =>
-      _runProviderCommandImpl(this, args);
-
-  String _toggleApproval() {
-    _approvalMode = _approvalMode.toggle;
-    _render();
-    return 'Approval: ${_approvalMode.label}';
-  }
-
-  String _clearConversation() {
-    return _clearConversationImpl(this);
-  }
-
-  String _switchModelByQuery(String query) {
-    return _switchModelByQueryImpl(this, query);
-  }
-
-  String _sessionAction(List<String> args) {
-    return _sessionActionImpl(this, args);
-  }
-
-  String _shareAction(List<String> args) {
-    return _shareActionImpl(this, args);
-  }
-
-  List<SlashArgCandidate> _sessionArgCandidates(
-    List<String> prior,
-    String partial,
-  ) =>
-      arg_completers.sessionArgCandidates(prior, partial);
-
-  String _buildToolsOutput() {
-    return _buildToolsOutputImpl(this);
-  }
-
-  String _renameSession(String title) {
-    return _renameSessionImpl(this, title);
-  }
-
-  String _toggleDebugMode() {
-    return _toggleDebugModeImpl(this);
+    _commandContext = _AppCommandContext(this);
+    _commands = buildBuiltinSlashCommands(_commandContext);
   }
 
   void _addSystemMessage(String message) {
@@ -615,133 +461,16 @@ class App {
     _appendSessionReplayEntriesImpl(this, entries);
   }
 
-  SkillRegistry _discoverSkills() {
-    return _skillRuntime.refresh();
-  }
-
-  void _openHelpPanel() {
-    _panels.openHelp(commands: _commands.commands);
-  }
-
   void _openResumePanel() {
-    _panels.openResume(
-      sessions: _sessionManager.listSessions(),
-      timeAgo: _timeAgo,
-      shortenPath: _shortenPath,
-      onResume: _resumeSession,
-      addSystemMessage: _addSystemMessage,
-    );
-  }
-
-  void _openHistoryPanel() {
-    final entries = <HistoryPanelEntry>[];
-    var userIndex = 0;
-    for (final block in _blocks) {
-      if (block.kind == _EntryKind.user) {
-        entries.add(HistoryPanelEntry(
-          userMessageIndex: userIndex,
-          text: block.text,
-        ));
-        userIndex++;
-      }
-    }
-
-    _panels.openHistory(
-      entries: entries,
-      onFork: _forkSession,
-      addSystemMessage: _addSystemMessage,
-    );
+    _commandContext.sessions.openResumePanel();
   }
 
   void _forkSession(int userMessageIndex, String messageText) {
     _forkSessionImpl(this, userMessageIndex, messageText);
   }
 
-  void _openModelPanel() {
-    final config = _config;
-    if (config == null) return;
-
-    // Attach Ollama discovery only when the provider is enabled in the
-    // catalog — keeps the picker honest without adding startup work.
-    final ollamaProvider = config.catalogData.providers['ollama'];
-    final discovery = (ollamaProvider != null && ollamaProvider.enabled)
-        ? OllamaDiscovery(
-            baseUrl: Uri.parse(
-              ollamaProvider.baseUrl ?? 'http://localhost:11434',
-            ),
-          )
-        : null;
-
-    unawaited(_panels.openModel(
-      config: config,
-      currentRef: config.activeModel,
-      onModelSelected: _switchToModelRow,
-      addSystemMessage: _addSystemMessage,
-      isSelectionEnabled: () => true,
-      ollamaDiscovery: discovery,
-    ));
-  }
-
-  void _openSkillsPanel() {
-    final registry = _discoverSkills();
-    if (registry.isEmpty) {
-      _addSystemMessage('No skills found.\n\n${skillDiscoveryHelpText()}');
-      _render();
-      return;
-    }
-
-    var panel = _findSkillsDockedPanel();
-    if (panel == null) {
-      panel = SkillsDockedPanel(skills: registry.list());
-      _dockManager.add(panel);
-    } else {
-      panel.updateSkills(registry.list());
-    }
-
-    if (panel.visible) {
-      panel.dismiss();
-      _render();
-      return;
-    }
-
-    panel.show();
-    unawaited(panel.selection.then((skillName) async {
-      if (skillName != null) {
-        await _activateSkillFromUi(skillName);
-      }
-      _render();
-    }));
-    _render();
-  }
-
-  SkillsDockedPanel? _findSkillsDockedPanel() {
-    for (final panel in _dockManager.panels) {
-      if (panel is SkillsDockedPanel) return panel;
-    }
-    return null;
-  }
-
   Future<void> _activateSkillFromUi(String skillName) async {
     await _activateSkillFromUiImpl(this, skillName);
-  }
-
-  String _activateSkillFromCommand(String skillName) {
-    final normalized = skillName.trim();
-    if (normalized.isEmpty) return 'Usage: /skills [skill-name]';
-    unawaited(_activateSkillFromUi(normalized).then((_) => _render()));
-    return 'Activating skill "$normalized"...';
-  }
-
-  String _resumeSessionFromCommand(String query) {
-    return _resumeSessionFromCommandImpl(this, query);
-  }
-
-  String _historyFromCommand(String query) {
-    return _historyFromCommandImpl(this, query);
-  }
-
-  String _switchToModelRow(CatalogRow row) {
-    return _switchToModelRowImpl(this, row);
   }
 
   // ── Terminal event handling ─────────────────────────────────────────────
@@ -830,21 +559,11 @@ class App {
 
   // ── Rendering ──────────────────────────────────────────────────────────
 
-  DateTime _lastRender = DateTime(0);
-  bool _renderScheduled = false;
-  static const _minRenderInterval = Duration(milliseconds: 16); // ~60fps
+  void _startSpinner() => _renderer.startSpinner(_render);
 
-  void _startSpinner() {
-    _startSpinnerImpl(this);
-  }
+  void _stopSpinner() => _renderer.stopSpinner();
 
-  void _stopSpinner() {
-    _stopSpinnerImpl(this);
-  }
-
-  void _render() {
-    _renderImpl(this);
-  }
+  void _render() => _renderer.schedule(_doRender);
 
   void _doRender() {
     _doRenderImpl(this);

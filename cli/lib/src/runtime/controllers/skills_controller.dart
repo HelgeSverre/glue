@@ -1,0 +1,81 @@
+import 'dart:async';
+
+import 'package:glue/src/commands/arg_completers.dart' as arg_completers;
+import 'package:glue/src/commands/slash_commands.dart';
+import 'package:glue/src/runtime/commands/command_host.dart';
+import 'package:glue/src/skills/skill_runtime.dart';
+import 'package:glue/src/skills/skills_docked_panel.dart';
+import 'package:glue/src/ui/services/docks.dart';
+
+class SkillsController implements SkillsCommandController {
+  const SkillsController({
+    required this.skillRuntime,
+    required this.docks,
+    required this.render,
+    required this.addSystemMessage,
+    required this.activateSkill,
+  });
+
+  final SkillRuntime skillRuntime;
+  final Docks docks;
+  final void Function() render;
+  final void Function(String message) addSystemMessage;
+  final Future<void> Function(String skillName) activateSkill;
+
+  @override
+  void openSkillsPanel() {
+    final registry = skillRuntime.refresh();
+    if (registry.isEmpty) {
+      addSystemMessage('No skills found.\n\n${skillDiscoveryHelpText()}');
+      render();
+      return;
+    }
+
+    var panel = _findSkillsDockedPanel();
+    if (panel == null) {
+      panel = SkillsDockedPanel(skills: registry.list());
+      docks.add(panel);
+    } else {
+      panel.updateSkills(registry.list());
+    }
+
+    if (panel.visible) {
+      panel.dismiss();
+      render();
+      return;
+    }
+
+    panel.show();
+    unawaited(panel.selection.then((skillName) async {
+      if (skillName != null) {
+        await activateSkill(skillName);
+      }
+      render();
+    }));
+    render();
+  }
+
+  SkillsDockedPanel? _findSkillsDockedPanel() {
+    for (final panel in docks.panels) {
+      if (panel is SkillsDockedPanel) return panel;
+    }
+    return null;
+  }
+
+  @override
+  String activateSkillByName(String skillName) {
+    final normalized = skillName.trim();
+    if (normalized.isEmpty) return 'Usage: /skills [skill-name]';
+    unawaited(activateSkill(normalized).then((_) => render()));
+    return 'Activating skill "$normalized"...';
+  }
+
+  @override
+  List<SlashArgCandidate> skillsArgCandidates(
+    List<String> prior,
+    String partial,
+  ) {
+    if (prior.isNotEmpty) return const [];
+    return arg_completers.skillCandidates(skillRuntime.list(), partial);
+  }
+}

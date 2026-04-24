@@ -175,7 +175,7 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
     final prompt =
         topLevelResults.rest.isNotEmpty ? topLevelResults.rest.join(' ') : null;
 
-    final app = await App.create(
+    final app = await AppShell.create(
       model: model,
       prompt: prompt,
       printMode: printMode,
@@ -184,15 +184,7 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
       startupContinue: topLevelResults.flag('continue'),
       debug: debug,
     );
-
-    final sigintSub =
-        ProcessSignal.sigint.watch().listen((_) => app.requestExit());
-
-    try {
-      await app.run();
-    } finally {
-      await sigintSub.cancel();
-    }
+    await app.run();
   }
 }
 

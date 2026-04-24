@@ -1,4 +1,4 @@
-import 'package:glue/src/rendering/ansi_utils.dart';
+import 'package:glue/src/ui/rendering/ansi_utils.dart';
 import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/terminal/terminal.dart';
 

@@ -157,18 +157,14 @@ Future<void> _runPrintModeImpl(App app) async {
 String _resumeSessionImpl(App app, SessionMeta session) {
   final result =
       app._sessionManager.resumeSession(session: session, agent: app.agent);
-  app._blocks.clear();
-  app._toolUi.clear();
-  app._streamingText = '';
-  app._subagentGroups.clear();
-  app._outputLineGroups.clear();
-  app._titleInitialRequested = session.title != null;
-  app._titleReevaluationRequested =
-      session.titleState == SessionTitleState.stable ||
-          (session.titleGenerationCount >= 2);
-  app._titleManuallyOverridden = session.titleSource == SessionTitleSource.user;
+  app._transcript.blocks.clear();
+  app._transcript.toolUi.clear();
+  app._transcript.streamingText = '';
+  app._transcript.subagentGroups.clear();
+  app._transcript.outputLineGroups.clear();
+  app._titleState.applyResumedSession(session);
 
-  app._blocks.add(_ConversationEntry.system(
+  app._transcript.blocks.add(ConversationEntry.system(
     'Resuming session ${session.id} '
     '(${session.modelRef}, ${App._timeAgo(session.startTime)})',
   ));
@@ -181,11 +177,10 @@ String _resumeSessionImpl(App app, SessionMeta session) {
 
   // Backfill title for resumed sessions that lack one.
   final firstUserMessage = result.replay.firstUserMessage;
-  if (!app._titleInitialRequested &&
-      !app._titleManuallyOverridden &&
+  if (app._titleState.shouldGenerateInitialTitle &&
       firstUserMessage != null &&
       firstUserMessage.isNotEmpty) {
-    app._titleInitialRequested = true;
+    app._titleState.markInitialRequested();
     app._generateTitle(firstUserMessage);
   }
 
@@ -204,7 +199,7 @@ void _generateTitleImpl(App app, String userMessage) {
 }
 
 void _reevaluateTitleImpl(App app) {
-  if (app._titleReevaluationRequested || app._titleManuallyOverridden) return;
+  if (app._titleState.blocksReevaluation) return;
   final store = app._sessionManager.currentStore;
   final meta = store?.meta;
   if (meta == null ||
@@ -250,7 +245,7 @@ void _reevaluateTitleImpl(App app) {
 
   final llmClient = app._createTitleLlmClient();
   if (llmClient == null) return;
-  app._titleReevaluationRequested = true;
+  app._titleState.markReevaluationRequested();
   final generator = TitleGenerator(llmClient: llmClient);
   unawaited(app._sessionManager.reevaluateTitle(
     context: TitleContext(
@@ -308,16 +303,16 @@ void _appendSessionReplayEntriesImpl(
   for (final entry in entries) {
     switch (entry.kind) {
       case SessionReplayKind.user:
-        app._blocks.add(_ConversationEntry.user(entry.text));
+        app._transcript.blocks.add(ConversationEntry.user(entry.text));
       case SessionReplayKind.assistant:
-        app._blocks.add(_ConversationEntry.assistant(entry.text));
+        app._transcript.blocks.add(ConversationEntry.assistant(entry.text));
       case SessionReplayKind.toolCall:
-        app._blocks.add(_ConversationEntry.toolCall(
+        app._transcript.blocks.add(ConversationEntry.toolCall(
           entry.toolName ?? entry.text,
           entry.toolArguments ?? const <String, dynamic>{},
         ));
       case SessionReplayKind.toolResult:
-        app._blocks.add(_ConversationEntry.toolResult(entry.text));
+        app._transcript.blocks.add(ConversationEntry.toolResult(entry.text));
     }
   }
 }

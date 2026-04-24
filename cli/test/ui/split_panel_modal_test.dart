@@ -1,15 +1,14 @@
-import 'package:glue/src/rendering/ansi_utils.dart';
+import 'package:glue/src/ui/rendering/ansi_utils.dart';
 import 'package:glue/src/terminal/terminal.dart';
-import 'package:glue/src/ui/panel_modal.dart';
-import 'package:glue/src/ui/split_panel_modal.dart';
+import 'package:glue/src/ui/components/panel.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('SplitPanelModal', () {
-    late SplitPanelModal panel;
+  group('SplitPanel', () {
+    late SplitPanel panel;
 
     setUp(() {
-      panel = SplitPanelModal(
+      panel = SplitPanel(
         title: 'TEST',
         leftItems: ['item-a', 'item-b', 'item-c'],
         buildRightLines: (idx, width) => ['Detail for item $idx'],
@@ -80,7 +79,7 @@ void main() {
     });
 
     test('selection highlight is not broken by ANSI resets in items', () {
-      final ansiPanel = SplitPanelModal(
+      final ansiPanel = SplitPanel(
         title: 'TEST',
         leftItems: [
           'skill-a  \x1b[32mproject\x1b[0m',
@@ -111,7 +110,7 @@ void main() {
     });
 
     test('barrier none keeps ANSI background on rows with overlay', () {
-      final ansiPanel = SplitPanelModal(
+      final ansiPanel = SplitPanel(
         title: 'TEST',
         leftItems: ['item-a', 'item-b'],
         buildRightLines: (idx, width) => ['Detail $idx'],

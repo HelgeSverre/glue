@@ -5,9 +5,9 @@ import 'package:glue/src/agent/agent_runner.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/config/glue_config.dart';
-import 'package:glue/src/llm/llm_factory.dart';
 import 'package:glue/src/observability/observability.dart';
 import 'package:glue/src/orchestrator/tool_permissions.dart';
+import 'package:glue/src/providers/llm_client_factory.dart';
 import 'package:glue/src/tools/subagent_tools.dart';
 
 /// An update from a running subagent, forwarded to the UI.

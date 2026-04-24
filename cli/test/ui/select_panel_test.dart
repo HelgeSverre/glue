@@ -1,7 +1,6 @@
-import 'package:glue/src/rendering/ansi_utils.dart';
+import 'package:glue/src/ui/rendering/ansi_utils.dart';
 import 'package:glue/src/terminal/terminal.dart';
-import 'package:glue/src/ui/panel_modal.dart';
-import 'package:glue/src/ui/select_panel.dart';
+import 'package:glue/src/ui/components/panel.dart';
 import 'package:test/test.dart';
 
 void main() {
