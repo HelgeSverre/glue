@@ -1,3 +1,28 @@
+enum OtelProtocol {
+  httpJson('http/json'),
+  httpProtobuf('http/protobuf');
+
+  const OtelProtocol(this.wireValue);
+
+  final String wireValue;
+
+  static OtelProtocol parse(String? raw) {
+    switch (raw?.trim().toLowerCase()) {
+      case 'http/protobuf':
+      case 'protobuf':
+        return OtelProtocol.httpProtobuf;
+      case 'http/json':
+      case 'json':
+        return OtelProtocol.httpJson;
+      case null:
+      case '':
+        return OtelProtocol.httpProtobuf;
+      default:
+        return OtelProtocol.httpProtobuf;
+    }
+  }
+}
+
 /// Standard OTLP tracing export configuration.
 class OtelConfig {
   final bool enabled;
@@ -6,6 +31,7 @@ class OtelConfig {
   final String serviceName;
   final Map<String, String> resourceAttributes;
   final int timeoutMilliseconds;
+  final OtelProtocol protocol;
 
   const OtelConfig({
     this.enabled = false,
@@ -14,6 +40,7 @@ class OtelConfig {
     this.serviceName = 'glue',
     this.resourceAttributes = const {},
     this.timeoutMilliseconds = 10000,
+    this.protocol = OtelProtocol.httpProtobuf,
   });
 
   bool get isConfigured =>

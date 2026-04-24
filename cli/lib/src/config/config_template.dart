@@ -1,3 +1,4 @@
+// TODO: outdated, should rebuild this automatically at runtime, with commetns, this should be deleted.
 String buildConfigTemplate() {
   return r'''# Glue config.yaml
 #
@@ -100,9 +101,10 @@ String buildConfigTemplate() {
 #   redact: true           # mask api keys/bearer tokens in logged bodies
 #   otel:
 #     enabled: false
-#     endpoint: https://app.phoenix.arize.com/s/your-org
+#     endpoint: https://collector.example.test
 #     headers:
 #       Authorization: Bearer your-token
+#       x-mlflow-experiment-id: "0"   # example for MLflow OTLP ingestion
 #     service_name: glue
 #     resource_attributes:
 #       openinference.project.name: glue

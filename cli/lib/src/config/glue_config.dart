@@ -523,6 +523,9 @@ class GlueConfig {
       'openinference.project.name',
       () => 'glue',
     );
+    final otelProtocol = OtelProtocol.parse(
+      otelSection?['protocol'] as String? ?? env['OTEL_EXPORTER_OTLP_PROTOCOL'],
+    );
     final otelConfig = OtelConfig(
       enabled: otelSection?['enabled'] as bool? ??
           _envBool(env['OTEL_SDK_DISABLED']) != true &&
@@ -536,6 +539,7 @@ class GlueConfig {
       resourceAttributes: otelResourceAttributes,
       timeoutMilliseconds:
           otelSection?['timeout_milliseconds'] as int? ?? 10000,
+      protocol: otelProtocol,
     );
     final observabilityConfig = ObservabilityConfig(
       debug: debug,

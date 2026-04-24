@@ -135,5 +135,36 @@ observability:
         isFalse,
       );
     });
+
+    test('reports configured OTEL export for MLflow-style ingestion', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      final env = Environment.test(home: home.path);
+      Directory(env.glueDir).createSync(recursive: true);
+      File(env.configYamlPath).writeAsStringSync('''
+active_model: ollama/qwen2.5-coder:32b
+observability:
+  otel:
+    enabled: true
+    endpoint: http://localhost:5000
+    headers:
+      x-mlflow-experiment-id: "123"
+''');
+
+      final report = runDoctor(env);
+
+      expect(
+        report.findings.any((finding) =>
+            finding.section == 'Observability' &&
+            finding.message == 'OTEL export: on (http://localhost:5000/v1/traces)'),
+        isTrue,
+      );
+      expect(
+        report.findings.any((finding) =>
+            finding.section == 'Observability' &&
+            finding.message == 'OTEL headers: x-mlflow-experiment-id'),
+        isTrue,
+      );
+    });
   });
 }

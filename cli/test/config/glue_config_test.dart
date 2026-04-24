@@ -162,6 +162,35 @@ anthropic:
       );
     });
 
+    test('loads OTEL config for MLflow-style ingestion from standard config', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      Directory('${home.path}/.glue').createSync();
+      File('${home.path}/.glue/config.yaml').writeAsStringSync('''
+observability:
+  otel:
+    enabled: true
+    endpoint: http://localhost:5000
+    headers:
+      x-mlflow-experiment-id: "456"
+    resource_attributes:
+      mlflow.experiment_id: "456"
+''');
+
+      final config = GlueConfig.load(environment: _envWith(home: home));
+
+      expect(config.observability.otel.isConfigured, isTrue);
+      expect(config.observability.otel.endpoint, 'http://localhost:5000');
+      expect(
+        config.observability.otel.headers['x-mlflow-experiment-id'],
+        '456',
+      );
+      expect(
+        config.observability.otel.resourceAttributes['mlflow.experiment_id'],
+        '456',
+      );
+    });
+
     test('YAML OTEL config wins over standard environment fallback', () {
       final home = _scratch();
       addTearDown(() => home.deleteSync(recursive: true));
@@ -228,6 +257,56 @@ observability:
         otel.resourceAttributes['openinference.project.name'],
         'env-project',
       );
+    });
+
+    test('OTEL protocol defaults to protobuf and can be overridden from env', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+
+      final defaultConfig = GlueConfig.load(
+        environment: _envWith(
+          home: home,
+          vars: {
+            'OTEL_EXPORTER_OTLP_ENDPOINT': 'https://collector.example.test',
+          },
+        ),
+      );
+      expect(defaultConfig.observability.otel.protocol.name, 'httpProtobuf');
+
+      final jsonConfig = GlueConfig.load(
+        environment: _envWith(
+          home: home,
+          vars: {
+            'OTEL_EXPORTER_OTLP_ENDPOINT': 'https://collector.example.test',
+            'OTEL_EXPORTER_OTLP_PROTOCOL': 'http/json',
+          },
+        ),
+      );
+      expect(jsonConfig.observability.otel.protocol.name, 'httpJson');
+    });
+
+    test('YAML OTEL protocol wins over environment', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      Directory('${home.path}/.glue').createSync();
+      File('${home.path}/.glue/config.yaml').writeAsStringSync('''
+observability:
+  otel:
+    enabled: true
+    endpoint: https://yaml.example.test
+    protocol: http/protobuf
+''');
+
+      final config = GlueConfig.load(
+        environment: _envWith(
+          home: home,
+          vars: {
+            'OTEL_EXPORTER_OTLP_PROTOCOL': 'http/json',
+          },
+        ),
+      );
+
+      expect(config.observability.otel.protocol.name, 'httpProtobuf');
     });
 
     test('OTEL_SDK_DISABLED disables exporter auto-enable from environment',

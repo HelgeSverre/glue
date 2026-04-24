@@ -1,3 +1,6 @@
+[//]: # (TODO: THIS FILE IS OUT OF DATE, RECREATE IT ONCE REFACTOR LANDS)
+
+
 <h1 align="center">Glue</h1>
 
 <p align="center"><strong>A small coding agent for the terminal.</strong></p>
@@ -141,6 +144,35 @@ mounted per-session (persisted in session state).
 
 Enable verbose debug logging with `--debug` / `-d`, `GLUE_DEBUG=1`, or the `/debug` slash command at runtime. Local span
 records are written to `~/.glue/logs/spans-YYYY-MM-DD.jsonl`.
+
+### OTEL tracing
+
+Glue can export its existing OpenTelemetry spans to any OTLP/HTTP-compatible
+backend.
+
+For MLflow, point OTEL at the tracking server and include the required
+`x-mlflow-experiment-id` header:
+
+```bash
+export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:5000/v1/traces
+export OTEL_EXPORTER_OTLP_TRACES_HEADERS=x-mlflow-experiment-id=0
+```
+
+or configure `~/.glue/config.yaml`:
+
+```yaml
+observability:
+  otel:
+    enabled: true
+    endpoint: http://localhost:5000
+    headers:
+      x-mlflow-experiment-id: "0"
+```
+
+The exporter also honors standard OTEL variables such as
+`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`,
+`OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_EXPORTER_OTLP_TRACES_HEADERS`,
+`OTEL_SERVICE_NAME`, and `OTEL_RESOURCE_ATTRIBUTES`.
 
 ## Justfile commands
 
