@@ -9,7 +9,7 @@
 /// prefers a curated, bundled catalog over live provider discovery.
 library;
 
-import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/catalog/model_catalog.dart';
 import 'package:glue/src/credentials/credential_store.dart';
 import 'package:glue/src/providers/auth_flow.dart';

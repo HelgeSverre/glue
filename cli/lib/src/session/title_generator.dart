@@ -1,4 +1,4 @@
-import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/session/session_manager.dart';
 
 /// Generates short session titles using an [LlmClient].

@@ -167,7 +167,7 @@ Note on `rendering/`: moves wholesale into `ui/rendering/`. All three files (`an
 
 ### Group C1 — `Turn` extraction (landed)
 
-- **Zone-scoped observability context.** `Observability.runInContext(fn)` installs a fresh `_SpanHolder` in `Zone.current`; `activeSpan` get/set reads/writes it. Legacy mutable-field pattern inside `AgentCore`'s streaming loop still works (operates on the per-context holder when wrapped). 10 new tests cover nesting, await propagation, concurrent isolation, exception propagation. The original zone-value-as-span approach was rejected because it can't survive `yield` in an `async*` generator.
+- **Zone-scoped observability context.** `Observability.runInContext(fn)` installs a fresh `_SpanHolder` in `Zone.current`; `activeSpan` get/set reads/writes it. Legacy mutable-field pattern inside `Agent`'s streaming loop still works (operates on the per-context holder when wrapped). 10 new tests cover nesting, await propagation, concurrent isolation, exception propagation. The original zone-value-as-span approach was rejected because it can't survive `yield` in an `async*` generator.
 - **`runtime/turn.dart`** — per-turn value with `run(displayMessage)` / `runPrint(expandedPrompt, jsonMode)` / `cancel()`. Owns span, stream subscription, early-approved IDs. Same class handles interactive and print mode. Subagent turns can use the same class (future).
 - **Trusted-tools moved onto `Config`.** `config.trustedTools` (Set<String>) + `config.trustTool(name)` replace the mutable `_autoApprovedTools` field on App. `PermissionGate` reads from the service.
 - **`Config` + `Session` services** now live on App (fields), not inside `_AppCommandContext`. `Turn` and command controllers share the same instances. `Session` gained a `logEvent(name, data)` facade.
@@ -203,7 +203,7 @@ Groups A, B, and C1 are **complete** (see "What's Done" above). The remaining wo
 
 ### Not building (investigation closed)
 
-- ~~**`llm` / `agent` service.**~~ Investigation during C1 planning found only 2 callsites outside the main agent loop (title generation via `_createTitleLlmClient`; subagent spawning via `AgentManager`). Both already well-factored through `LlmClientFactory`. A service facade would be pure ceremony. Revisit if a third kind of "ask the LLM directly" callsite appears.
+- ~~**`llm` / `agent` service.**~~ Investigation during C1 planning found only 2 callsites outside the main agent loop (title generation via `_createTitleLlmClient`; subagent spawning via `Subagents`). Both already well-factored through `LlmClientFactory`. A service facade would be pure ceremony. Revisit if a third kind of "ask the LLM directly" callsite appears.
 - ~~**`TurnRunner` / chat-turn unification.**~~ Obsoleted by C1 — interactive and print mode converged through the single `Turn.run` / `Turn.runPrint` API.
 
 ---
@@ -225,7 +225,7 @@ Things we've decided to stick with. Anyone touching the codebase should recognis
 
 ## Known Risks
 
-- ~~**Observability.activeSpan is mutable shared state.**~~ Addressed in C1: the active span now lives in a zone-scoped `_SpanHolder` via `Observability.runInContext`. Classic save/restore still works (and remains the pattern inside `AgentCore`'s streaming loop), but each `Turn` gets its own holder — concurrent subagents can't corrupt parent context.
+- ~~**Observability.activeSpan is mutable shared state.**~~ Addressed in C1: the active span now lives in a zone-scoped `_SpanHolder` via `Observability.runInContext`. Classic save/restore still works (and remains the pattern inside `Agent`'s streaming loop), but each `Turn` gets its own holder — concurrent subagents can't corrupt parent context.
 - **Streaming smoothness is a product requirement.** Any architectural move that adds generic pubsub or re-renders per event is a regression even if the code is "cleaner". Stream only at true async boundaries.
 - **Session persistence is format-locked** until the runtime reshuffle stabilises. Don't bundle schema changes into structural commits.
 

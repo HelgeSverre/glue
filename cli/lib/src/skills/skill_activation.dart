@@ -1,4 +1,4 @@
-import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/agent.dart';
 
 class SkillActivationError implements Exception {
   final String message;
@@ -23,7 +23,7 @@ class SkillActivationResult {
 /// Activates a skill through the `skill` tool and injects the resulting
 /// tool_call + tool_result messages into the agent conversation.
 Future<SkillActivationResult> activateSkillIntoConversation({
-  required AgentCore agent,
+  required Agent agent,
   required String skillName,
   String callIdPrefix = 'manual-skill',
 }) async {

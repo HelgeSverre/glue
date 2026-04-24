@@ -1,7 +1,6 @@
 import 'dart:async';
 
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/agent_runner.dart';
+import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/config/glue_config.dart';
@@ -32,15 +31,16 @@ class SubagentUpdate {
   });
 }
 
-/// Orchestrates subagent spawning using the manager pattern.
+/// Spawns headless [Agent]s for delegated tasks.
 ///
 /// {@category Agent}
 ///
-/// Creates independent [AgentCore] instances with their own conversation
-/// history but shared tool registry. Subagents run headlessly via
-/// [AgentRunner] with an allowlist-based approval policy (read-only
-/// tools by default).
-class AgentManager {
+/// Each spawned subagent is an independent [Agent] with its own
+/// conversation history but a shared tool registry. They run via
+/// [Agent.runHeadless] with an allowlist-based approval policy (read-only
+/// tools by default), and their events are broadcast on [updates] so the
+/// UI can render progress.
+class Subagents {
   final Map<String, Tool> tools;
   final LlmClientFactory llmFactory;
   final GlueConfig config;
@@ -53,7 +53,7 @@ class AgentManager {
   /// Stream of updates from running subagents.
   Stream<SubagentUpdate> get updates => _updateController.stream;
 
-  AgentManager({
+  Subagents({
     required this.tools,
     required this.llmFactory,
     required this.config,
@@ -68,7 +68,7 @@ class AgentManager {
   /// Optionally override [modelOverride] to switch model for this subagent.
   /// [currentDepth] tracks recursion to prevent infinite nesting.
   /// [index] and [total] are set when spawned as part of a parallel batch.
-  Future<String> spawnSubagent({
+  Future<String> spawn({
     required String task,
     ModelRef? modelOverride,
     int currentDepth = 0,
@@ -100,7 +100,6 @@ class AgentManager {
           name == 'spawn_subagent' || name == 'spawn_parallel_subagents');
     }
 
-    // Create a span for the subagent execution.
     final span = obs?.startSpan(
       'subagent',
       kind: 'subagent',
@@ -113,7 +112,7 @@ class AgentManager {
       },
     );
 
-    final core = AgentCore(
+    final agent = Agent(
       llm: llm,
       tools: subagentTools,
       modelId: ref.modelId,
@@ -121,20 +120,18 @@ class AgentManager {
       traceParent: span,
     );
 
-    final runner = AgentRunner(
-      core: core,
-      policy: ToolApprovalPolicy.allowlist,
-      allowedTools: allowedSubagentTools,
-      onEvent: (event) => _updateController.add(SubagentUpdate(
-        task: task,
-        index: index,
-        total: total,
-        event: event,
-      )),
-    );
-
     try {
-      final result = await runner.runToCompletion(task);
+      final result = await agent.runHeadless(
+        task,
+        policy: ToolApprovalPolicy.allowlist,
+        allowedTools: allowedSubagentTools,
+        onEvent: (event) => _updateController.add(SubagentUpdate(
+          task: task,
+          index: index,
+          total: total,
+          event: event,
+        )),
+      );
       if (span != null) obs!.endSpan(span);
       return result;
     } catch (e) {
@@ -157,7 +154,7 @@ class AgentManager {
   }) async {
     return Future.wait([
       for (var i = 0; i < tasks.length; i++)
-        spawnSubagent(
+        spawn(
           task: tasks[i],
           modelOverride: modelOverride,
           currentDepth: currentDepth,

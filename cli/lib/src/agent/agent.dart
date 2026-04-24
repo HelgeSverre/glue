@@ -176,20 +176,41 @@ class AgentError extends AgentEvent {
 }
 
 // ---------------------------------------------------------------------------
-// Agent core
+// Tool approval policy (used by headless execution)
 // ---------------------------------------------------------------------------
 
-/// The agent core manages the LLM ↔ tool execution loop.
+/// Policy for automatic tool approval in headless execution via
+/// [Agent.runHeadless].
 ///
-/// It runs independently from the UI, emitting [AgentEvent]s that the
-/// application subscribes to. The agentic loop:
+/// {@category Agent}
+enum ToolApprovalPolicy {
+  /// Automatically approve and execute all tool calls.
+  autoApproveAll,
+
+  /// Deny all tool calls.
+  denyAll,
+
+  /// Approve only tools in an allowlist.
+  allowlist,
+}
+
+// ---------------------------------------------------------------------------
+// Agent
+// ---------------------------------------------------------------------------
+
+/// The LLM ↔ tool ReAct loop together with the conversation state it
+/// operates on.
+///
+/// Emits [AgentEvent]s for an external driver to consume: interactive
+/// turns via `Turn`, headless completions via [runHeadless]. The agentic
+/// loop:
 ///
 /// 1. Send messages to the LLM.
 /// 2. Stream back text and/or tool calls.
 /// 3. If tool calls are present: wait for execution results, add them to
 ///    the conversation, and go to step 1.
 /// 4. If no tool calls: done.
-class AgentCore {
+class Agent {
   LlmClient llm;
   final Map<String, Tool> tools;
   final String modelId;
@@ -213,7 +234,7 @@ class AgentCore {
   /// Completers keyed by tool call ID for parallel tool execution.
   final Map<String, Completer<ToolResult>> _pendingToolResults = {};
 
-  AgentCore({
+  Agent({
     required this.llm,
     required this.tools,
     String? modelId,
@@ -412,6 +433,49 @@ class AgentCore {
     final completer = _pendingToolResults.remove(result.callId);
     if (completer == null || completer.isCompleted) return;
     completer.complete(result);
+  }
+
+  /// Drives [run] to completion without human interaction, auto-approving
+  /// tool calls per [policy], and returns the accumulated assistant text.
+  ///
+  /// Used by `Subagents` for delegated tasks where the parent agent has
+  /// already decided the work should proceed without further approval.
+  /// [onEvent] receives every [AgentEvent] as it's produced — typically
+  /// used to forward subagent activity to the parent UI.
+  Future<String> runHeadless(
+    String userMessage, {
+    ToolApprovalPolicy policy = ToolApprovalPolicy.autoApproveAll,
+    Set<String> allowedTools = const {},
+    void Function(AgentEvent)? onEvent,
+  }) async {
+    final buf = StringBuffer();
+
+    await for (final event in run(userMessage)) {
+      onEvent?.call(event);
+      switch (event) {
+        case AgentTextDelta(:final delta):
+          buf.write(delta);
+        case AgentToolCallPending():
+          break;
+        case AgentToolCall(:final call):
+          final approved = switch (policy) {
+            ToolApprovalPolicy.autoApproveAll => true,
+            ToolApprovalPolicy.denyAll => false,
+            ToolApprovalPolicy.allowlist => allowedTools.contains(call.name),
+          };
+          final result =
+              approved ? await executeTool(call) : ToolResult.denied(call.id);
+          completeToolCall(result);
+        case AgentToolResult():
+          break;
+        case AgentDone():
+          break;
+        case AgentError(:final error):
+          buf.write('\nError: $error');
+      }
+    }
+
+    return buf.toString();
   }
 
   /// Ensures the conversation history is structurally valid for the next

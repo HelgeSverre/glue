@@ -1,4 +1,4 @@
-import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/config/approval_mode.dart';
 import 'package:glue/src/orchestrator/permission_gate.dart';

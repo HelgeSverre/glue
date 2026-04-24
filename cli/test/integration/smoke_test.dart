@@ -1,6 +1,5 @@
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/agent_manager.dart';
-import 'package:glue/src/agent/agent_runner.dart';
+import 'package:glue/src/agent/agent.dart';
+import 'package:glue/src/agent/subagents.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/llm/llm_factory.dart';
@@ -46,23 +45,19 @@ class _MockFactory implements LlmClientFactory {
 
 void main() {
   group('End-to-end smoke', () {
-    test('AgentRunner completes a tool-using conversation', () async {
-      final core = AgentCore(
+    test('Agent.runHeadless completes a tool-using conversation', () async {
+      final agent = Agent(
         llm: _MockLlm(),
         tools: {'read_file': ReadFileTool()},
         modelId: 'test-model',
       );
-      final runner = AgentRunner(
-        core: core,
-        policy: ToolApprovalPolicy.autoApproveAll,
-      );
-      final result = await runner.runToCompletion('Please read pubspec.yaml');
+      final result = await agent.runHeadless('Please read pubspec.yaml');
       expect(result, contains('Done with the task'));
-      expect(core.tokenCount, greaterThan(0));
+      expect(agent.tokenCount, greaterThan(0));
     });
 
-    test('AgentManager spawns parallel subagents', () async {
-      final manager = AgentManager(
+    test('Subagents spawns parallel subagents', () async {
+      final manager = Subagents(
         tools: {'read_file': ReadFileTool()},
         llmFactory: _MockFactory(),
         config: testConfig(env: {'ANTHROPIC_API_KEY': 'sk-test'}),

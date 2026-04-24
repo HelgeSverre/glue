@@ -4,9 +4,9 @@
 /// The main entry point is [App], which wires together terminal I/O, the
 /// agent loop, and rendering. Key concepts:
 ///
-/// - **Agent loop**: [AgentCore] runs the LLM ↔ [Tool] ReAct loop, emitting
-///   `AgentEvent`s. [AgentRunner] drives it headlessly; [AgentManager]
-///   orchestrates subagent spawning.
+/// - **Agent loop**: [Agent] runs the LLM ↔ [Tool] ReAct loop, emitting
+///   `AgentEvent`s. `Agent.runHeadless` drives it to completion without
+///   human approval; [Subagents] spawns fresh [Agent]s for delegated tasks.
 /// - **LLM providers**: [LlmClient] is implemented by provider-specific
 ///   clients for Anthropic, OpenAI, and Ollama. Use [LlmClientFactory] to
 ///   create them from [GlueConfig].
@@ -39,9 +39,10 @@ export 'src/terminal/terminal.dart'
 export 'src/terminal/layout.dart' show Layout;
 export 'src/input/line_editor.dart' show LineEditor, InputAction;
 export 'src/input/text_area_editor.dart' show TextAreaEditor;
-export 'src/agent/agent_core.dart'
+export 'src/agent/agent.dart'
     show
-        AgentCore,
+        Agent,
+        ToolApprovalPolicy,
         LlmClient,
         LlmChunk,
         TextDelta,
@@ -91,8 +92,7 @@ export 'src/providers/anthropic_adapter.dart' show AnthropicAdapter;
 export 'src/providers/openai_compatible_adapter.dart'
     show OpenAiCompatibleAdapter;
 export 'src/providers/llm_client_factory.dart' show LlmClientFactory;
-export 'src/agent/agent_runner.dart' show AgentRunner, ToolApprovalPolicy;
-export 'src/agent/agent_manager.dart' show AgentManager;
+export 'src/agent/subagents.dart' show Subagents, SubagentUpdate;
 export 'src/agent/prompts.dart' show Prompts;
 export 'src/session/title_generator.dart' show TitleGenerator;
 export 'src/ui/rendering/ansi_utils.dart'

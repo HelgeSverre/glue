@@ -320,7 +320,7 @@ void main() {
 
     test('save/restore pattern inside runInContext is per-context', () async {
       // Two concurrent "agent turns" each do the save/restore dance that
-      // AgentCore uses during an LLM stream. Their mutations must not leak
+      // Agent uses during an LLM stream. Their mutations must not leak
       // into each other.
       final turnA = obs.startSpan('turnA');
       final turnB = obs.startSpan('turnB');

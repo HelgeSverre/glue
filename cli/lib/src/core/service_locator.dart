@@ -1,5 +1,5 @@
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/agent_manager.dart';
+import 'package:glue/src/agent/agent.dart';
+import 'package:glue/src/agent/subagents.dart';
 import 'package:glue/src/agent/prompts.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/config/glue_config.dart';
@@ -200,21 +200,22 @@ class ServiceLocator {
       'skill': SkillTool(skillRuntime),
     };
 
-    final agent = AgentCore(
+    final agent = Agent(
       llm: llm,
       tools: tools,
       modelId: config.activeModel.modelId,
       obs: obs,
     );
-    final manager = AgentManager(
+    final subagents = Subagents(
       tools: tools,
       llmFactory: llmFactory,
       config: config,
       systemPrompt: systemPrompt,
       obs: obs,
     );
-    tools['spawn_subagent'] = SpawnSubagentTool(manager);
-    tools['spawn_parallel_subagents'] = SpawnParallelSubagentsTool(manager);
+    tools['spawn_subagent'] = SpawnSubagentTool(subagents);
+    tools['spawn_parallel_subagents'] =
+        SpawnParallelSubagentsTool(subagents);
 
     return AppServices(
       environment: resolvedEnv,
@@ -223,7 +224,7 @@ class ServiceLocator {
       layout: layout,
       editor: editor,
       agent: agent,
-      manager: manager,
+      subagents: subagents,
       llmFactory: llmFactory,
       systemPrompt: systemPrompt,
       trustedTools: configStore.trustedTools.toSet(),
@@ -242,8 +243,8 @@ class AppServices {
   final Terminal terminal;
   final Layout layout;
   final TextAreaEditor editor;
-  final AgentCore agent;
-  final AgentManager manager;
+  final Agent agent;
+  final Subagents subagents;
   final LlmClientFactory llmFactory;
   final String systemPrompt;
   final Set<String> trustedTools;
@@ -264,7 +265,7 @@ class AppServices {
     required this.layout,
     required this.editor,
     required this.agent,
-    required this.manager,
+    required this.subagents,
     required this.llmFactory,
     required this.systemPrompt,
     required this.trustedTools,

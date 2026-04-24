@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/llm/message_mapper.dart';
 import 'package:glue/src/llm/sse.dart';

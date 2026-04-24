@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/commands/arg_completers.dart' as arg_completers;
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/core/clipboard.dart';
@@ -42,7 +42,7 @@ class SessionController implements SessionCommandController {
   });
 
   final Session session;
-  final AgentCore agent;
+  final Agent agent;
   final Panels panels;
   final void Function(String message) addSystemMessage;
   final void Function() render;

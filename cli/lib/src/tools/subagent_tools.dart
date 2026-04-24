@@ -1,14 +1,14 @@
 import 'dart:convert';
 
-import 'package:glue/src/agent/agent_manager.dart';
+import 'package:glue/src/agent/subagents.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/catalog/model_ref.dart';
 
 /// Tool that spawns a single subagent to perform a focused task.
 class SpawnSubagentTool extends Tool {
-  SpawnSubagentTool(this._manager, {int depth = 0}) : _depth = depth;
+  SpawnSubagentTool(this._subagents, {int depth = 0}) : _depth = depth;
 
-  final AgentManager _manager;
+  final Subagents _subagents;
   final int _depth;
 
   @override
@@ -42,7 +42,7 @@ class SpawnSubagentTool extends Tool {
     final override = args['model_ref'] as String?;
     final ref = override != null ? ModelRef.parse(override) : null;
 
-    final result = await _manager.spawnSubagent(
+    final result = await _subagents.spawn(
       task: task,
       modelOverride: ref,
       currentDepth: _depth,
@@ -61,9 +61,9 @@ class SpawnSubagentTool extends Tool {
 
 /// Tool that spawns multiple subagents in parallel.
 class SpawnParallelSubagentsTool extends Tool {
-  SpawnParallelSubagentsTool(this._manager, {int depth = 0}) : _depth = depth;
+  SpawnParallelSubagentsTool(this._subagents, {int depth = 0}) : _depth = depth;
 
-  final AgentManager _manager;
+  final Subagents _subagents;
   final int _depth;
 
   @override
@@ -97,7 +97,7 @@ class SpawnParallelSubagentsTool extends Tool {
     final override = args['model_ref'] as String?;
     final ref = override != null ? ModelRef.parse(override) : null;
 
-    final results = await _manager.spawnParallel(
+    final results = await _subagents.spawnParallel(
       tasks: tasks,
       modelOverride: ref,
       currentDepth: _depth,

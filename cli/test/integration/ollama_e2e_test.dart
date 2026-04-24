@@ -3,8 +3,7 @@ library;
 
 import 'dart:io';
 
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/agent_runner.dart';
+import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/llm/ollama_client.dart';
 import 'package:http/http.dart' as http;
@@ -57,22 +56,21 @@ void main() {
     available = await _ollamaAvailable();
   });
 
-  AgentCore makeAgent({Map<String, Tool>? tools}) {
+  Agent makeAgent({Map<String, Tool>? tools}) {
     final llm = OllamaClient(
       model: _model,
       systemPrompt: _systemPrompt(),
       baseUrl: _ollamaUrl,
     );
-    return AgentCore(
+    return Agent(
       llm: llm,
       tools: tools ?? {},
       modelId: _model,
     );
   }
 
-  AgentRunner makeRunner(AgentCore core) => AgentRunner(
-        core: core,
-        policy: ToolApprovalPolicy.autoApproveAll,
+  Future<String> runHeadless(Agent agent, String prompt) => agent.runHeadless(
+        prompt,
         onEvent: (e) {
           if (e is AgentToolCall) {
             // ignore: avoid_print
@@ -89,8 +87,8 @@ void main() {
       }
       await retryTest(() async {
         final agent = makeAgent();
-        final runner = makeRunner(agent);
-        final result = await runner.runToCompletion(
+        
+        final result = await runHeadless(agent, 
           'What is 2 + 2? Reply with just the number.',
         );
         expect(result, contains('4'));
@@ -106,8 +104,8 @@ void main() {
         final agent = makeAgent(tools: {
           'read_file': ReadFileTool(),
         });
-        final runner = makeRunner(agent);
-        final result = await runner.runToCompletion(
+        
+        final result = await runHeadless(agent, 
           'Use the read_file tool to read "pubspec.yaml" and tell me the package name.',
         );
         final toolResults =
@@ -126,8 +124,8 @@ void main() {
         final agent = makeAgent(tools: {
           'list_directory': ListDirectoryTool(),
         });
-        final runner = makeRunner(agent);
-        final result = await runner.runToCompletion(
+        
+        final result = await runHeadless(agent, 
           'Use the list_directory tool to list "." and tell me if pubspec.yaml exists.',
         );
         expect(
@@ -148,11 +146,11 @@ void main() {
         final agent = makeAgent(tools: {
           'grep': GrepTool(),
         });
-        final runner = makeRunner(agent);
-        final result = await runner.runToCompletion(
-          'Use the grep tool to search for "class AgentCore" in the "lib/" directory.',
+        
+        final result = await runHeadless(agent, 
+          'Use the grep tool to search for "class Agent" in the "lib/" directory.',
         );
-        expect(result.toLowerCase(), contains('agent_core'));
+        expect(result.toLowerCase(), contains('agent.dart'));
       });
     }, timeout: const Timeout(Duration(seconds: 120)));
   });

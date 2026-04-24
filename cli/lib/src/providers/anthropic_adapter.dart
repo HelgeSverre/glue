@@ -1,7 +1,7 @@
 /// Adapter that talks to the Anthropic Messages API via [AnthropicClient].
 library;
 
-import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/llm/anthropic_client.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
 import 'package:glue/src/providers/resolved.dart';

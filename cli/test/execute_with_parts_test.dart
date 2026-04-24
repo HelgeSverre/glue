@@ -1,4 +1,4 @@
-import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:test/test.dart';
@@ -96,9 +96,9 @@ void main() {
     });
   });
 
-  group('AgentCore.executeTool', () {
+  group('Agent.executeTool', () {
     test('text-only tool returns ToolResult without contentParts', () async {
-      final core = AgentCore(
+      final core = Agent(
         llm: _StubLlm(),
         tools: {'text_tool': _TextTool()},
       );
@@ -111,7 +111,7 @@ void main() {
     });
 
     test('image tool returns ToolResult with contentParts', () async {
-      final core = AgentCore(
+      final core = Agent(
         llm: _StubLlm(),
         tools: {'image_tool': _ImageTool()},
       );
@@ -125,7 +125,7 @@ void main() {
     });
 
     test('unknown tool returns error without contentParts', () async {
-      final core = AgentCore(
+      final core = Agent(
         llm: _StubLlm(),
         tools: {},
       );

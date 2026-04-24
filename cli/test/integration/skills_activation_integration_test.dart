@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart' show Tool;
 import 'package:glue/src/skills/skill_activation.dart';
 import 'package:glue/src/skills/skill_runtime.dart';
@@ -17,7 +17,7 @@ class _NoopLlm extends LlmClient {
 void main() {
   group('/skills activation integration', () {
     late Directory tempDir;
-    late AgentCore agent;
+    late Agent agent;
 
     setUp(() {
       tempDir = Directory.systemTemp.createTempSync('skills_activation_test_');
@@ -33,7 +33,7 @@ void main() {
         home: tempDir.path,
         extraPathsProvider: () => const [],
       );
-      agent = AgentCore(llm: _NoopLlm(), tools: {'skill': SkillTool(runtime)});
+      agent = Agent(llm: _NoopLlm(), tools: {'skill': SkillTool(runtime)});
     });
 
     tearDown(() {

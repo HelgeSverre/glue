@@ -6,7 +6,7 @@
 /// branching code here.
 library;
 
-import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/catalog/model_catalog.dart';
 import 'package:glue/src/llm/openai_client.dart';
 import 'package:glue/src/providers/compatibility_profile.dart';

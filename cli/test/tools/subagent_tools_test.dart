@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/agent_manager.dart';
+import 'package:glue/src/agent/agent.dart';
+import 'package:glue/src/agent/subagents.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/llm/llm_factory.dart';
@@ -29,10 +29,10 @@ class _EchoFactory implements LlmClientFactory {
 }
 
 void main() {
-  late AgentManager manager;
+  late Subagents manager;
 
   setUp(() {
-    manager = AgentManager(
+    manager = Subagents(
       tools: {},
       llmFactory: _EchoFactory(),
       config: testConfig(env: {'ANTHROPIC_API_KEY': 'sk-test'}),

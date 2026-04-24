@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/observability/observability.dart';
 import 'package:glue/src/observability/redaction.dart';
@@ -365,7 +365,7 @@ class SessionManager {
 
   SessionResumeResult resumeSession({
     required SessionMeta session,
-    required AgentCore agent,
+    required Agent agent,
   }) {
     final span = _startSpan('session.resume', attributes: {
       'session.id': session.id,
@@ -426,7 +426,7 @@ class SessionManager {
   SessionForkResult? forkSession({
     required int userMessageIndex,
     required String messageText,
-    required AgentCore agent,
+    required Agent agent,
   }) {
     final oldStore = _store;
     if (oldStore == null) return null;
@@ -502,7 +502,7 @@ class SessionManager {
 
   static SessionReplay _replayEventsIntoAgent(
     List<Map<String, dynamic>> events,
-    AgentCore agent,
+    Agent agent,
   ) {
     final entries = <SessionReplayEntry>[];
     var userCount = 0;

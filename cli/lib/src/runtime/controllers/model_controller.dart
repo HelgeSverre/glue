@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/catalog/model_catalog.dart';
 import 'package:glue/src/catalog/model_panel_formatter.dart';
 import 'package:glue/src/catalog/model_ref.dart';
@@ -36,7 +36,7 @@ class ModelController implements ModelCommandController {
   final Config config;
   final LlmClientFactory? Function() getLlmFactory;
   final String? Function() getSystemPrompt;
-  final AgentCore agent;
+  final Agent agent;
   final Session session;
   final Panels panels;
   final ConfirmationHost confirmationHost;

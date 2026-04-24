@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/agent_manager.dart';
+import 'package:glue/src/agent/agent.dart';
+import 'package:glue/src/agent/subagents.dart';
 import 'package:glue/src/app/model_display.dart';
 import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/commands/slash_commands.dart';
@@ -112,7 +112,7 @@ class App {
   final Terminal terminal;
   final Layout layout;
   final TextAreaEditor editor;
-  final AgentCore agent;
+  final Agent agent;
   final _events = StreamController<AppEvent>.broadcast();
 
   AppMode _mode = AppMode.idle;
@@ -133,7 +133,7 @@ class App {
   late final Panels _panels;
   final DockManager _dockManager = DockManager();
   late final Docks _docks;
-  final AgentManager? _manager;
+  final Subagents? _subagents;
   final LlmClientFactory? _llmFactory;
   GlueConfig? _config;
   final String? _systemPrompt;
@@ -167,7 +167,7 @@ class App {
     required this.editor,
     required this.agent,
     required String modelId,
-    AgentManager? manager,
+    Subagents? subagents,
     LlmClientFactory? llmFactory,
     GlueConfig? config,
     String? systemPrompt,
@@ -186,7 +186,7 @@ class App {
     Environment? environment,
   })  : _modelId = modelId,
         _environment = environment ?? Environment.detect(),
-        _manager = manager,
+        _subagents = subagents,
         _llmFactory = llmFactory,
         _config = config,
         _systemPrompt = systemPrompt,
@@ -269,7 +269,7 @@ class App {
       editor: services.editor,
       agent: services.agent,
       modelId: services.config.activeModel.modelId,
-      manager: services.manager,
+      subagents: services.subagents,
       llmFactory: services.llmFactory,
       config: services.config,
       systemPrompt: services.systemPrompt,
@@ -337,7 +337,7 @@ class App {
 
     final termSub = terminal.events.listen(_handleTerminalEvent);
     final appSub = _events.stream.listen(_handleAppEvent);
-    _subagentSub = _manager?.updates.listen(_handleSubagentUpdate);
+    _subagentSub = _subagents?.updates.listen(_handleSubagentUpdate);
     final jobSub = _jobManager.events.listen(_handleJobEvent);
 
     _render();

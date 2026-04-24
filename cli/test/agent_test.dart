@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:glue/glue.dart';
-import 'package:glue/src/agent/agent_core.dart'
+import 'package:glue/src/agent/agent.dart'
     show
         AgentEvent,
         AgentTextDelta,
@@ -72,12 +72,12 @@ class ThrowingTool extends Tool {
 
 void main() {
   late MockLlmClient mockLlm;
-  late AgentCore agent;
+  late Agent agent;
 
   setUp(() {
     mockLlm = MockLlmClient();
     final mockTool = MockTool();
-    agent = AgentCore(
+    agent = Agent(
       llm: mockLlm,
       tools: {mockTool.name: mockTool},
     );
@@ -195,7 +195,7 @@ void main() {
 
   test('executeTool with throwing tool returns error result', () async {
     final throwingTool = ThrowingTool();
-    final agentWithThrowing = AgentCore(
+    final agentWithThrowing = Agent(
       llm: mockLlm,
       tools: {throwingTool.name: throwingTool},
     );

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/app.dart' show AppMode;
 import 'package:glue/src/observability/observability.dart';
@@ -45,7 +45,7 @@ class Turn {
     required this.onTurnComplete,
   });
 
-  final AgentCore agent;
+  final Agent agent;
   final Transcript transcript;
   final Renderer renderer;
   final Session session;

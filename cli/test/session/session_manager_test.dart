@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/observability/debug_controller.dart';
@@ -34,7 +34,7 @@ class _RecordingSink extends ObservabilitySink {
 void main() {
   late Directory tempDir;
   late Environment environment;
-  late AgentCore agent;
+  late Agent agent;
   late Observability obs;
   late _RecordingSink sink;
 
@@ -42,7 +42,7 @@ void main() {
     tempDir = Directory.systemTemp.createTempSync('session_manager_test_');
     environment = Environment.test(home: tempDir.path, cwd: tempDir.path);
     environment.ensureDirectories();
-    agent = AgentCore(llm: _NoopLlm(), tools: const {});
+    agent = Agent(llm: _NoopLlm(), tools: const {});
     sink = _RecordingSink();
     obs = Observability(debugController: DebugController());
     obs.addSink(sink);

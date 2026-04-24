@@ -1,4 +1,4 @@
-import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:test/test.dart';
 
@@ -38,13 +38,13 @@ class _RecordingLlm implements LlmClient {
 }
 
 void main() {
-  group('AgentCore.toolFilter', () {
+  group('Agent.toolFilter', () {
     late _RecordingLlm llm;
-    late AgentCore agent;
+    late Agent agent;
 
     setUp(() {
       llm = _RecordingLlm();
-      agent = AgentCore(
+      agent = Agent(
         llm: llm,
         tools: {
           'read_file': _StubTool('read_file', ToolTrust.safe),

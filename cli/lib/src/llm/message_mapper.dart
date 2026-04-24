@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/content_part.dart';
 
 /// Result of mapping Glue messages to a provider-specific format.

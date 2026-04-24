@@ -1,5 +1,5 @@
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/agent_manager.dart';
+import 'package:glue/src/agent/agent.dart';
+import 'package:glue/src/agent/subagents.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/llm/llm_factory.dart';
@@ -26,11 +26,11 @@ class _EchoFactory implements LlmClientFactory {
 }
 
 void main() {
-  group('AgentManager', () {
-    late AgentManager manager;
+  group('Subagents', () {
+    late Subagents manager;
 
     setUp(() {
-      manager = AgentManager(
+      manager = Subagents(
         tools: {'read_file': ReadFileTool()},
         llmFactory: _EchoFactory(),
         config: testConfig(env: {'ANTHROPIC_API_KEY': 'sk-test'}),
@@ -39,7 +39,7 @@ void main() {
     });
 
     test('spawns a single subagent', () async {
-      final result = await manager.spawnSubagent(task: 'Do something');
+      final result = await manager.spawn(task: 'Do something');
       expect(result, contains('Processed:'));
       expect(result, contains('Do something'));
     });
@@ -56,7 +56,7 @@ void main() {
 
     test('enforces max depth', () async {
       expect(
-        () => manager.spawnSubagent(task: 'deep', currentDepth: 3),
+        () => manager.spawn(task: 'deep', currentDepth: 3),
         throwsA(isA<Exception>()),
       );
     });

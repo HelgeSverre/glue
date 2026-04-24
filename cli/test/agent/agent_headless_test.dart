@@ -1,7 +1,6 @@
 import 'dart:async';
 
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/agent_runner.dart';
+import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:test/test.dart';
 
@@ -44,45 +43,32 @@ class _ToolCallLlm implements LlmClient {
 }
 
 void main() {
-  group('AgentRunner', () {
+  group('Agent.runHeadless', () {
     test('runs text-only response to completion', () async {
-      final core = AgentCore(
+      final agent = Agent(
         llm: _TextOnlyLlm('Hello from the agent'),
         tools: {},
       );
-      final runner = AgentRunner(
-        core: core,
-        policy: ToolApprovalPolicy.autoApproveAll,
-      );
-      final result = await runner.runToCompletion('Hi');
+      final result = await agent.runHeadless('Hi');
       expect(result, contains('Hello'));
     });
 
     test('auto-approves tool calls in headless mode', () async {
-      final core = AgentCore(
+      final agent = Agent(
         llm: _ToolCallLlm(),
         tools: {'list_directory': ListDirectoryTool()},
       );
-      final runner = AgentRunner(
-        core: core,
-        policy: ToolApprovalPolicy.autoApproveAll,
-      );
-      final result = await runner.runToCompletion('List files');
+      final result = await agent.runHeadless('List files');
       expect(result, contains('Found the files'));
     });
 
     test('emits AgentToolCallPending before AgentToolCall', () async {
       final events = <AgentEvent>[];
-      final core = AgentCore(
+      final agent = Agent(
         llm: _ToolCallLlm(),
         tools: {'list_directory': ListDirectoryTool()},
       );
-      final runner = AgentRunner(
-        core: core,
-        policy: ToolApprovalPolicy.autoApproveAll,
-        onEvent: events.add,
-      );
-      await runner.runToCompletion('List files');
+      await agent.runHeadless('List files', onEvent: events.add);
 
       final pendingIdx = events.indexWhere((e) => e is AgentToolCallPending);
       final callIdx = events.indexWhere((e) => e is AgentToolCall);
@@ -95,23 +81,22 @@ void main() {
     });
 
     test('denies tool calls in denyAll mode', () async {
-      final core = AgentCore(
+      final agent = Agent(
         llm: _ToolCallLlm(),
         tools: {'list_directory': ListDirectoryTool()},
       );
-      final runner = AgentRunner(
-        core: core,
+      final result = await agent.runHeadless(
+        'List files',
         policy: ToolApprovalPolicy.denyAll,
       );
-      final result = await runner.runToCompletion('List files');
-      // After denial, the LLM gets another turn and responds
+      // After denial, the LLM gets another turn and responds.
       expect(result, contains('Found the files'));
     });
   });
 
-  group('AgentCore.ensureToolResultsComplete', () {
+  group('Agent.ensureToolResultsComplete', () {
     test('injects synthetic tool_result for unmatched tool_use', () {
-      final core = AgentCore(
+      final core = Agent(
         llm: _TextOnlyLlm('hi'),
         tools: {},
       );
@@ -134,7 +119,7 @@ void main() {
     });
 
     test('does not duplicate tool_result that already exists', () {
-      final core = AgentCore(
+      final core = Agent(
         llm: _TextOnlyLlm('hi'),
         tools: {},
       );
@@ -160,7 +145,7 @@ void main() {
     });
 
     test('repairs only missing results in multi-tool call', () {
-      final core = AgentCore(
+      final core = Agent(
         llm: _TextOnlyLlm('hi'),
         tools: {},
       );
@@ -191,7 +176,7 @@ void main() {
     });
 
     test('no-op when conversation has no tool calls', () {
-      final core = AgentCore(
+      final core = Agent(
         llm: _TextOnlyLlm('hi'),
         tools: {},
       );
@@ -204,7 +189,7 @@ void main() {
     });
 
     test('no-op on empty conversation', () {
-      final core = AgentCore(
+      final core = Agent(
         llm: _TextOnlyLlm('hi'),
         tools: {},
       );

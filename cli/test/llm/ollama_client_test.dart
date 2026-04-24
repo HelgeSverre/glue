@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/llm/ollama_client.dart';
 import 'package:test/test.dart';
 
