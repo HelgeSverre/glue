@@ -193,7 +193,31 @@ Note on `rendering/`: moves wholesale into `ui/rendering/`. All three files (`an
 - **`app/command_helpers.dart` unwound.** `_addSystemMessage` was a one-liner wrapper around `Transcript.postNotice` — 5 callsites switched to `transcript.postNotice` directly; the method is gone. `_statusModelLabel` was a one-call wrapper — inlined at its single site in `render_pipeline.dart`. `_activateSkillFromUi` was real skill-activation logic — moved onto `App` as a method. The part file is deleted.
 - **`ConfirmationHost` → `Confirmations`.** Moved from `runtime/controllers/` to `ui/services/` for naming parallelism with `Panels`/`Docks`. The interface stays because the `_AppConfirmations` impl integrates with `App._activeModal`.
 - **Tools service closed** as "not building". Single existing caller (skill activation) works fine without a service facade; no dynamic registration need.
-- Final `app/*.dart` list: `command_host_adapter.dart`, `event_router.dart`, `render_pipeline.dart`. All small, all tightly coupled to App by nature.
+
+### Rename + polish pass
+
+- **`app/command_host_adapter.dart` → `app/controllers.dart`.** Class `_AppCommandContext` → `_AppControllers`. The old name stacked three architecture words to say "where App builds its controllers."
+- **`app/render_pipeline.dart` → `app/paint.dart`.** Function `_doRenderImpl` → `_paint`. No pipeline exists; it's one paint function.
+- **`app/event_router.dart` deleted.** Folded into `App._handleAppEvent` as a method. 42 lines of 4-case switch didn't need its own file.
+- **`Transcript.postNotice` → `Transcript.system`.** Matches `EntryKind.system` exactly.
+- **Controllers take `Transcript` directly.** Five controllers (Model/Session/Share/Skills/Provider) dropped `addSystemMessage: void Function(String)` closures in favour of `transcript: Transcript`. ~40 internal call sites swapped to `transcript.system(...)`.
+- **SessionController inlined `historyEntries` closure.** Now that it has `Transcript`, it walks `transcript.blocks` itself.
+- **Pre-existing shell warning fixed.** `shell_job_manager.dart:155` unnecessary `!` operator removed. Analyzer is now at zero issues.
+
+### Test-suite reorganisation
+
+- 14 root-level `*_test.dart` files moved into module folders (`test/agent/`, `test/ui/rendering/`, `test/input/`, `test/terminal/`, `test/commands/`, `test/bin/`).
+- Orphaned `test/orchestrator/` retired; its one file moved to `test/runtime/`.
+- Duplicate `slash_autocomplete_test.dart` reconciled (root-level 329-line version kept; 71-line subset in `test/commands/` deleted).
+- `test/` now mirrors `lib/src/`. Test count: 1511 (was 1515 before the duplicate deletion).
+
+### Evaluated, not doing
+
+- **Delete `*CommandController` interfaces + `SlashCommandContext`.** Looked like ceremony. Investigation: 470-line `builtin_commands_test.dart` uses `BuiltinCommands.create(...)` closure path to unit-test slash dispatch without dragging in the full runtime. Rewriting to construct real controllers adds ~150 lines net. Interfaces are the "real polymorphism" case the naming rule whitelisted.
+- **Adapter self-registration (Option α).** Would replace the 10-line `AdapterRegistry([...])` construction in `service_locator.dart` with per-adapter `register(registry)` calls. After writing it out: same clarity, more surface area. Not a win.
+- **Merge adapter + client into one `Provider` class per vendor (Option β).** Would save ~150 LoC by collapsing `AnthropicAdapter` + `AnthropicClient` into `AnthropicProvider`, etc. Yellow-risk: `LlmClient` interface would move from `agent/` to `llm/interface.dart`; Copilot's OAuth complicates the merge. Deferred until we onboard 2+ new providers in a session, which would make the adapter boilerplate painful.
+
+Final `app/*.dart` list: `controllers.dart` (152 lines, 7-controller wiring) and `paint.dart` (210 lines, frame paint). Both tightly coupled to App by nature.
 
 ---
 
