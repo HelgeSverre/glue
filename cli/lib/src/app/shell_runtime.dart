@@ -16,6 +16,15 @@ void _handleBashSubmitImpl(App app, String text) {
 }
 
 Future<void> _runBlockingBashImpl(App app, String command) async {
+  final span = app._obs?.startSpan(
+    'shell.command',
+    kind: 'shell.command',
+    attributes: {
+      'process.command': redactBody(command, maxBytes: 8192),
+      'process.background': false,
+    },
+  );
+  app._bashSpan = span;
   try {
     final running = await app._executor.startStreaming(command);
     app._bashRunProcess = running.process;
@@ -43,15 +52,36 @@ Future<void> _runBlockingBashImpl(App app, String command) async {
     if (exitCode != 0) {
       app._blocks.add(_ConversationEntry.system('Exit code: $exitCode'));
     }
+    if (span != null && app._obs != null && span.endTime == null) {
+      app._obs!.endSpan(span, extra: {
+        'process.exit_code': exitCode,
+        'process.output_length': stripped.length,
+      });
+    }
   } catch (e) {
     app._bashRunProcess = null;
     app._blocks.add(_ConversationEntry.error('Bash error: $e'));
+    if (span != null && app._obs != null && span.endTime == null) {
+      app._obs!.endSpan(span, extra: {
+        'error': true,
+        'error.type': e.runtimeType.toString(),
+        'error.message': e.toString(),
+      });
+    }
   }
+  app._bashSpan = null;
   app._mode = AppMode.idle;
   app._render();
 }
 
 void _cancelBashImpl(App app) {
+  final span = app._bashSpan;
+  if (span != null && app._obs != null && span.endTime == null) {
+    app._obs!.endSpan(span, extra: {
+      'cancelled': true,
+    });
+  }
+  app._bashSpan = null;
   app._bashRunProcess?.kill(ProcessSignal.sigterm);
   app._bashRunProcess = null;
   // Mirror the agent-cancel contract: every transition back to idle also

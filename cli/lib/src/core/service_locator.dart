@@ -11,6 +11,7 @@ import 'package:glue/src/observability/file_sink.dart';
 import 'package:glue/src/observability/http_trace_sink.dart';
 import 'package:glue/src/observability/logging_http_client.dart';
 import 'package:glue/src/observability/observability.dart';
+import 'package:glue/src/observability/otlp_http_trace_sink.dart';
 import 'package:glue/src/providers/anthropic_adapter.dart';
 import 'package:glue/src/providers/ollama_adapter.dart';
 import 'package:glue/src/providers/copilot_adapter.dart';
@@ -85,6 +86,10 @@ class ServiceLocator {
         '${DateTime.now().microsecond.toRadixString(36)}';
 
     obs.addSink(FileSink(logsDir: resolvedEnv.logsDir));
+    if (config.observability.otel.isConfigured) {
+      obs.addSink(OtlpHttpTraceSink(config: config.observability.otel));
+      obs.startAutoFlush(const Duration(seconds: 5));
+    }
     if (debugController.enabled) {
       obs.addSink(HttpTraceSink(logsDir: resolvedEnv.logsDir));
     }
@@ -223,7 +228,7 @@ class ServiceLocator {
       systemPrompt: systemPrompt,
       trustedTools: configStore.trustedTools.toSet(),
       executor: executor,
-      jobManager: ShellJobManager(executor),
+      jobManager: ShellJobManager(executor, obs: obs),
       obs: obs,
       debugController: debugController,
       skillRuntime: skillRuntime,

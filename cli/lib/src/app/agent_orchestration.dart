@@ -25,8 +25,15 @@ void _startAgentImpl(
 
   app._turnSpan = app._obs?.startSpan(
     'agent.turn',
-    kind: 'internal',
-    attributes: {'user.message_length': displayMessage.length},
+    kind: 'agent',
+    attributes: {
+      'openinference.span.kind': 'AGENT',
+      'session.id': app._sessionManager.currentSessionId ?? '',
+      'llm.model_name': app._modelId,
+      'process.command': 'interactive',
+      'user.message_length': displayMessage.length,
+      'input.value': redactBody(expandedMessage ?? displayMessage),
+    },
   );
   if (app._turnSpan != null) app._obs!.activeSpan = app._turnSpan;
 
@@ -89,6 +96,18 @@ void _handleAgentEventImpl(App app, AgentEvent event) {
 
         app._activeModal!.result.then((choiceIndex) {
           app._activeModal = null;
+          final span = app._obs
+              ?.startSpan('tool.approval', kind: 'tool.approval', attributes: {
+            'openinference.span.kind': 'TOOL',
+            'tool_call.id': id,
+            'tool.name': name,
+            'tool.approval.stage': 'early',
+            'tool.approval.choice': choiceIndex,
+          });
+          if (span != null) {
+            span.setStatus('ok');
+            app._obs!.endSpan(span);
+          }
           switch (choiceIndex) {
             case 0: // Yes
               app._earlyApprovedIds.add(id);
@@ -151,8 +170,10 @@ void _handleAgentEventImpl(App app, AgentEvent event) {
       // Permission-based approval.
       switch (app._permissionGate.resolve(call)) {
         case PermissionDecision.allow:
+          app._traceToolApproval(call, 'allow');
           app._approveTool(call);
         case PermissionDecision.deny:
+          app._traceToolApproval(call, 'deny');
           app._denyTool(call);
         case PermissionDecision.ask:
           app._showToolConfirmModal(call);
@@ -285,12 +306,31 @@ void _showToolConfirmModalImpl(App app, ToolCall call) {
     app._activeModal = null;
     switch (choiceIndex) {
       case 0: // Yes
+        app._traceToolApproval(call, 'allow');
         app._approveTool(call);
       case 2: // Always
         app._persistTrustedTool(call.name);
+        app._traceToolApproval(call, 'always');
         app._approveTool(call);
       default: // No
+        app._traceToolApproval(call, 'deny');
         app._denyTool(call);
     }
   });
+}
+
+void _traceToolApprovalImpl(App app, ToolCall call, String decision) {
+  final span = app._obs?.startSpan(
+    'tool.approval',
+    kind: 'tool.approval',
+    attributes: {
+      'openinference.span.kind': 'TOOL',
+      'tool_call.id': call.id,
+      'tool.name': call.name,
+      'tool.approval.decision': decision,
+    },
+  );
+  if (span == null) return;
+  span.setStatus('ok');
+  app._obs!.endSpan(span);
 }

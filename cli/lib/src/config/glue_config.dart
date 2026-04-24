@@ -503,10 +503,44 @@ class GlueConfig {
     final maxBodyBytes =
         (observabilitySection?['max_body_bytes'] as int?) ?? 65536;
     final redact = (observabilitySection?['redact'] as bool?) ?? true;
+    final otelSection = observabilitySection?['otel'] as Map?;
+    final otelEndpoint = otelSection?['endpoint'] as String? ??
+        env['OTEL_EXPORTER_OTLP_TRACES_ENDPOINT'] ??
+        env['OTEL_EXPORTER_OTLP_ENDPOINT'] ??
+        env['PHOENIX_COLLECTOR_ENDPOINT'];
+    final otelHeaders = _resolveOtelHeaders(otelSection, env);
+    final otelResourceAttributes =
+        _resolveOtelResourceAttributes(otelSection, env);
+    final phoenixProject = env['PHOENIX_PROJECT_NAME'];
+    if (phoenixProject != null && phoenixProject.isNotEmpty) {
+      otelResourceAttributes.putIfAbsent(
+        'openinference.project.name',
+        () => phoenixProject,
+      );
+    }
+    otelResourceAttributes.putIfAbsent(
+      'openinference.project.name',
+      () => 'glue',
+    );
+    final otelConfig = OtelConfig(
+      enabled: otelSection?['enabled'] as bool? ??
+          _envBool(env['OTEL_SDK_DISABLED']) != true &&
+              otelEndpoint != null &&
+              otelEndpoint.isNotEmpty,
+      endpoint: otelEndpoint,
+      headers: otelHeaders,
+      serviceName: otelSection?['service_name'] as String? ??
+          env['OTEL_SERVICE_NAME'] ??
+          'glue',
+      resourceAttributes: otelResourceAttributes,
+      timeoutMilliseconds:
+          otelSection?['timeout_milliseconds'] as int? ?? 10000,
+    );
     final observabilityConfig = ObservabilityConfig(
       debug: debug,
       maxBodyBytes: maxBodyBytes,
       redact: redact,
+      otel: otelConfig,
     );
 
     // Approval mode.
@@ -602,6 +636,72 @@ ModelCatalog? _loadOptionalYaml(String path) {
   } on CatalogParseException {
     return null;
   }
+}
+
+Map<String, String> _resolveOtelHeaders(
+  Map<dynamic, dynamic>? otelSection,
+  Map<String, String> env,
+) {
+  final headers = <String, String>{};
+  final envHeaders = env['OTEL_EXPORTER_OTLP_TRACES_HEADERS'] ??
+      env['OTEL_EXPORTER_OTLP_HEADERS'];
+  if (envHeaders != null && envHeaders.isNotEmpty) {
+    headers.addAll(_parseOtelKeyValueList(envHeaders));
+  }
+
+  final yamlHeaders = otelSection?['headers'];
+  if (yamlHeaders is Map) {
+    for (final entry in yamlHeaders.entries) {
+      headers[entry.key.toString()] = entry.value.toString();
+    }
+  }
+
+  final phoenixKey = env['PHOENIX_API_KEY'];
+  if (phoenixKey != null && phoenixKey.isNotEmpty) {
+    headers.putIfAbsent('Authorization', () => 'Bearer $phoenixKey');
+  }
+  return headers;
+}
+
+Map<String, String> _resolveOtelResourceAttributes(
+  Map<dynamic, dynamic>? otelSection,
+  Map<String, String> env,
+) {
+  final attrs = <String, String>{};
+  final envAttrs = env['OTEL_RESOURCE_ATTRIBUTES'];
+  if (envAttrs != null && envAttrs.isNotEmpty) {
+    attrs.addAll(_parseOtelKeyValueList(envAttrs));
+  }
+
+  final yamlAttrs = otelSection?['resource_attributes'];
+  if (yamlAttrs is Map) {
+    for (final entry in yamlAttrs.entries) {
+      attrs[entry.key.toString()] = entry.value.toString();
+    }
+  }
+  return attrs;
+}
+
+Map<String, String> _parseOtelKeyValueList(String raw) {
+  final parsed = <String, String>{};
+  for (final part in raw.split(',')) {
+    final trimmed = part.trim();
+    if (trimmed.isEmpty) continue;
+    final idx = trimmed.indexOf('=');
+    if (idx <= 0) continue;
+    final key = Uri.decodeComponent(trimmed.substring(0, idx).trim());
+    final value = Uri.decodeComponent(trimmed.substring(idx + 1).trim());
+    parsed[key] = value;
+  }
+  return parsed;
+}
+
+bool? _envBool(String? value) {
+  if (value == null) return null;
+  final normalized = value.toLowerCase();
+  if (normalized == '1' || normalized == 'true') return true;
+  if (normalized == '0' || normalized == 'false') return false;
+  return null;
 }
 
 void _rejectLegacyConfig(Map<String, dynamic> fileConfig, String path) {

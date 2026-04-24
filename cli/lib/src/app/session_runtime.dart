@@ -47,6 +47,19 @@ Future<void> _runPrintModeImpl(App app) async {
 
   final assistantText = StringBuffer();
   final conversationLog = <Map<String, dynamic>>[];
+  final turnSpan = app._obs?.startSpan(
+    'agent.turn',
+    kind: 'agent',
+    attributes: {
+      'openinference.span.kind': 'AGENT',
+      'session.id': app._sessionManager.currentSessionId ?? '',
+      'llm.model_name': app._modelId,
+      'process.command': 'print',
+      'user.message_length': expanded.length,
+      'input.value': redactBody(expanded),
+    },
+  );
+  if (turnSpan != null) app._obs!.activeSpan = turnSpan;
 
   try {
     final stream = app.agent.run(expanded);
@@ -77,6 +90,13 @@ Future<void> _runPrintModeImpl(App app) async {
           break;
 
         case AgentError(:final error):
+          if (turnSpan != null && turnSpan.endTime == null) {
+            app._obs!.endSpan(turnSpan, extra: {
+              'error': true,
+              'error.type': error.runtimeType.toString(),
+              'error.message': error.toString(),
+            });
+          }
           stderr.writeln(error);
           return;
 
@@ -85,9 +105,26 @@ Future<void> _runPrintModeImpl(App app) async {
       }
     }
   } catch (e) {
+    if (turnSpan != null) {
+      app._obs!.endSpan(turnSpan, extra: {
+        'error': true,
+        'error.type': e.runtimeType.toString(),
+        'error.message': e.toString(),
+      });
+    }
     stderr.writeln('Error: $e');
     return;
   } finally {
+    if (turnSpan != null) {
+      final obs = app._obs!;
+      if (turnSpan.endTime == null) {
+        obs.endSpan(turnSpan, extra: {
+          'output.value': redactBody(assistantText.toString()),
+          'output.length': assistantText.length,
+        });
+      }
+      if (obs.activeSpan == turnSpan) obs.activeSpan = null;
+    }
     for (final tool in app.agent.tools.values) {
       try {
         await tool.dispose();
