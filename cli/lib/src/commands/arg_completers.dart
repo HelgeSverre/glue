@@ -10,7 +10,9 @@ library;
 
 import 'package:glue/src/catalog/model_catalog.dart';
 import 'package:glue/src/commands/slash_commands.dart';
+import 'package:glue/src/runtime/services/config.dart';
 import 'package:glue/src/skills/skill_parser.dart';
+import 'package:glue/src/skills/skill_runtime.dart';
 
 const Map<String, String> openTargets = {
   'home': r'$GLUE_HOME',
@@ -136,3 +138,42 @@ List<SlashArgCandidate> shareArgCandidates(
       .map((e) => SlashArgCandidate(value: e.key, description: e.value))
       .toList();
 }
+
+// -----------------------------------------------------------------------
+// Closure factories
+//
+// Each factory below returns an [ArgCompleter] bound to the live state
+// it needs (catalog snapshot, skill registry). Slash-command modules in
+// `runtime/commands/register_builtin_slash_commands.dart` call these in
+// `attachArgCompleters()` instead of each controller carrying a
+// forwarding method.
+// -----------------------------------------------------------------------
+
+ArgCompleter modelArgCompleter(Config config) => (prior, partial) {
+      if (prior.isNotEmpty) return const [];
+      final cfg = config.current;
+      if (cfg == null) return const [];
+      return modelRefCandidates(cfg.catalogData.providers, partial);
+    };
+
+ArgCompleter skillsArgCompleter(SkillRuntime skillRuntime) => (prior, partial) {
+      if (prior.isNotEmpty) return const [];
+      return skillCandidates(skillRuntime.list(), partial);
+    };
+
+ArgCompleter sessionArgCompleter() => sessionArgCandidates;
+
+ArgCompleter providerArgCompleter(Config config) => (prior, partial) {
+      if (prior.isEmpty) return providerSubcommandCandidates(partial);
+      if (prior.length == 1 &&
+          const {'add', 'remove', 'test'}.contains(prior.first)) {
+        final cfg = config.current;
+        if (cfg == null) return const [];
+        return providerIdCandidates(cfg.catalogData.providers, partial);
+      }
+      return const [];
+    };
+
+ArgCompleter openArgCompleter() => openArgCandidates;
+
+ArgCompleter shareArgCompleter() => shareArgCandidates;
