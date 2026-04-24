@@ -152,7 +152,7 @@ class ShellJobManager {
       return job;
     } catch (e, st) {
       if (span != null && _obs != null) {
-        _obs!.endSpan(span, extra: {
+        _obs.endSpan(span, extra: {
           'shell.job.status': JobStatus.failed.name,
           'error': true,
           'error.type': e.runtimeType.toString(),

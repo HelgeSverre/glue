@@ -1,7 +1,7 @@
 import 'package:args/args.dart';
 import 'package:test/test.dart';
 
-import 'bin/glue_cli_args.dart';
+import 'glue_cli_args.dart';
 
 import 'package:glue/src/app.dart';
 
