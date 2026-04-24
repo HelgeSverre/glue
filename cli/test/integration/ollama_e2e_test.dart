@@ -5,7 +5,7 @@ import 'dart:io';
 
 import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart';
-import 'package:glue/src/llm/ollama_client.dart';
+import 'package:glue/src/providers/ollama_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 
@@ -57,7 +57,7 @@ void main() {
   });
 
   Agent makeAgent({Map<String, Tool>? tools}) {
-    final llm = OllamaClient(
+    final llm = OllamaProvider(
       model: _model,
       systemPrompt: _systemPrompt(),
       baseUrl: _ollamaUrl,

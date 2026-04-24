@@ -16,7 +16,7 @@ import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/catalog/model_catalog.dart';
 import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/credentials/credential_store.dart';
-import 'package:glue/src/llm/openai_client.dart';
+import 'package:glue/src/providers/openai_provider.dart';
 import 'package:glue/src/providers/auth_flow.dart';
 import 'package:glue/src/providers/compatibility_profile.dart';
 import 'package:glue/src/providers/copilot_token_manager.dart';
@@ -266,7 +266,7 @@ class _CopilotClient implements LlmClient {
   @override
   Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
     final token = await freshCopilotToken(store, client: _http);
-    final inner = OpenAiClient(
+    final inner = OpenAiProvider(
       apiKey: token,
       model: model,
       systemPrompt: systemPrompt,

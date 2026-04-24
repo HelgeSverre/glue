@@ -1,23 +1,19 @@
-/// Tests for the native Ollama adapter.
+/// OllamaProvider tests.
 ///
-/// Covers the contract shift from "Ollama masquerades as OpenAI-compat"
-/// to "Ollama gets its own adapter with num_ctx injection":
-///   - createClient returns an OllamaClient pointed at `/api/chat`.
-///   - model.apiId (not the catalog key) goes on the wire.
-///   - contextWindow from ModelDef flows through as num_ctx.
-///   - legacy `/v1` baseUrl suffix is stripped so native paths resolve.
-///   - discoverModels hits /api/tags via OllamaDiscovery.
+/// Covers both adapter-role wiring (`/api/chat`, model.apiId on wire,
+/// num_ctx injection from ModelDef.contextWindow, `/v1` suffix stripping,
+/// discoverModels) and client-role NDJSON parsing.
 library;
 
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/catalog/model_catalog.dart';
 import 'package:glue/src/credentials/credential_store.dart';
-import 'package:glue/src/llm/ollama_client.dart';
-import 'package:glue/src/providers/ollama_adapter.dart';
 import 'package:glue/src/providers/ollama_discovery.dart';
+import 'package:glue/src/providers/ollama_provider.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
 import 'package:glue/src/providers/resolved.dart';
 import 'package:http/http.dart' as http;
@@ -72,20 +68,20 @@ ResolvedModel _model({
 }
 
 void main() {
-  group('OllamaAdapter.createClient', () {
-    test('returns an OllamaClient', () {
-      final adapter = OllamaAdapter();
+  group('OllamaProvider.createClient', () {
+    test('returns an OllamaProvider', () {
+      final adapter = OllamaProvider();
       final client = adapter.createClient(
         provider: _provider(),
         model: _model(),
         systemPrompt: 'you are glue',
       );
-      expect(client, isA<OllamaClient>());
+      expect(client, isA<OllamaProvider>());
     });
 
     test('propagates model.apiId on the wire, not the catalog key', () async {
       Map<String, Object?>? capturedBody;
-      final adapter = OllamaAdapter(
+      final adapter = OllamaProvider(
         requestClientFactory: () => _FakeHttp((req) async {
           capturedBody =
               jsonDecode((req as http.Request).body) as Map<String, Object?>;
@@ -114,7 +110,7 @@ void main() {
 
     test('injects options.num_ctx from ModelDef.contextWindow', () async {
       Map<String, Object?>? capturedBody;
-      final adapter = OllamaAdapter(
+      final adapter = OllamaProvider(
         requestClientFactory: () => _FakeHttp((req) async {
           capturedBody =
               jsonDecode((req as http.Request).body) as Map<String, Object?>;
@@ -145,7 +141,7 @@ void main() {
         'passes num_ctx through unclamped when ModelDef.contextWindow is '
         'below the ceiling', () async {
       Map<String, Object?>? capturedBody;
-      final adapter = OllamaAdapter(
+      final adapter = OllamaProvider(
         requestClientFactory: () => _FakeHttp((req) async {
           capturedBody =
               jsonDecode((req as http.Request).body) as Map<String, Object?>;
@@ -173,7 +169,7 @@ void main() {
         'omits options entirely when ModelDef.contextWindow is null '
         '(uncatalogued passthrough)', () async {
       Map<String, Object?>? capturedBody;
-      final adapter = OllamaAdapter(
+      final adapter = OllamaProvider(
         requestClientFactory: () => _FakeHttp((req) async {
           capturedBody =
               jsonDecode((req as http.Request).body) as Map<String, Object?>;
@@ -199,7 +195,7 @@ void main() {
     test('strips legacy /v1 suffix from baseUrl so /api/chat resolves',
         () async {
       Uri? capturedUrl;
-      final adapter = OllamaAdapter(
+      final adapter = OllamaProvider(
         requestClientFactory: () => _FakeHttp((req) async {
           capturedUrl = req.url;
           return http.StreamedResponse(
@@ -222,9 +218,9 @@ void main() {
     });
   });
 
-  group('OllamaAdapter health', () {
+  group('OllamaProvider health', () {
     test('validate always returns ok (no credentials required)', () {
-      expect(OllamaAdapter().validate(_provider()), ProviderHealth.ok);
+      expect(OllamaProvider().validate(_provider()), ProviderHealth.ok);
     });
 
     test('isConnected is always true', () {
@@ -232,15 +228,15 @@ void main() {
         path: '${Directory.systemTemp.path}/glue_adapter_test_creds.json',
         env: const {},
       );
-      expect(OllamaAdapter().isConnected(_provider().def, store), isTrue);
+      expect(OllamaProvider().isConnected(_provider().def, store), isTrue);
     });
   });
 
-  group('OllamaAdapter.discoverModels', () {
+  group('OllamaProvider.discoverModels', () {
     setUp(OllamaDiscovery.resetCacheForTesting);
 
     test('maps /api/tags into DiscoveredModel list', () async {
-      final adapter = OllamaAdapter(
+      final adapter = OllamaProvider(
         requestClientFactory: () => _FakeHttp((req) async {
           return http.StreamedResponse(
             Stream<List<int>>.value(utf8.encode(jsonEncode({
@@ -262,6 +258,159 @@ void main() {
       // an empty list (fail-soft), which is also a valid outcome.
       final out = await adapter.discoverModels(_provider());
       expect(out, isA<List<DiscoveredModel>>());
+    });
+  });
+
+  group('OllamaProvider.parseStreamEvents', () {
+    test('parses text deltas from streaming JSON', () async {
+      final events = [
+        {
+          'model': 'llama3.2',
+          'message': {'role': 'assistant', 'content': 'Hello '},
+          'done': false
+        },
+        {
+          'model': 'llama3.2',
+          'message': {'role': 'assistant', 'content': 'world'},
+          'done': false
+        },
+        {
+          'model': 'llama3.2',
+          'message': {'role': 'assistant', 'content': ''},
+          'done': true,
+          'prompt_eval_count': 26,
+          'eval_count': 10
+        },
+      ];
+
+      final chunks = await OllamaProvider.parseStreamEvents(
+        Stream.fromIterable(events),
+      ).toList();
+
+      final text = chunks.whereType<TextDelta>().map((d) => d.text).join();
+      expect(text, 'Hello world');
+
+      final usage = chunks.whereType<UsageInfo>().toList();
+      expect(usage, hasLength(1));
+      expect(usage.first.inputTokens, 26);
+      expect(usage.first.outputTokens, 10);
+    });
+
+    test('parses tool calls', () async {
+      final events = [
+        {
+          'model': 'llama3.2',
+          'message': {
+            'role': 'assistant',
+            'content': '',
+            'tool_calls': [
+              {
+                'function': {
+                  'name': 'read_file',
+                  'arguments': {'path': 'main.dart'},
+                }
+              }
+            ]
+          },
+          'done': false,
+        },
+        {
+          'model': 'llama3.2',
+          'message': {'role': 'assistant', 'content': ''},
+          'done': true,
+          'prompt_eval_count': 20,
+          'eval_count': 15
+        },
+      ];
+
+      final chunks = await OllamaProvider.parseStreamEvents(
+        Stream.fromIterable(events),
+      ).toList();
+
+      final starts = chunks.whereType<ToolCallStart>().toList();
+      expect(starts, hasLength(1));
+      expect(starts.first.name, 'read_file');
+
+      final toolCalls = chunks.whereType<ToolCallComplete>().toList();
+      expect(toolCalls, hasLength(1));
+      expect(toolCalls.first.toolCall.name, 'read_file');
+      expect(toolCalls.first.toolCall.arguments['path'], 'main.dart');
+
+      final startIdx = chunks.indexWhere((c) => c is ToolCallStart);
+      final deltaIdx = chunks.indexWhere((c) => c is ToolCallComplete);
+      expect(startIdx, lessThan(deltaIdx));
+    });
+
+    test('tool result uses tool name not call ID', () {
+      final msg = Message.toolResult(
+        callId: 'ollama_tc_1',
+        content: 'file contents',
+        toolName: 'read_file',
+      );
+      expect(msg.toolName, 'read_file');
+      expect(msg.toolCallId, 'ollama_tc_1');
+    });
+
+    // Parallel calls of the same tool in a single turn (e.g. two `read_file`s)
+    // are a common agent pattern. Ollama's /api/chat does NOT use
+    // `tool_call_id` — tool results are matched to tool calls by position
+    // and `tool_name`. This test locks in two guarantees that keep that
+    // matching safe:
+    //   1. Each streamed tool call gets a unique synthesised id (so
+    //      internal agent-core bookkeeping never conflates them).
+    //   2. Arguments flow through unaltered (so positional ordering of
+    //      outgoing tool results can be verified against inputs).
+    test(
+        'parallel calls of the same tool in one turn get distinct ids and '
+        'preserve arguments', () async {
+      final events = [
+        {
+          'model': 'qwen3-coder:30b',
+          'message': {
+            'role': 'assistant',
+            'content': '',
+            'tool_calls': [
+              {
+                'function': {
+                  'name': 'read_file',
+                  'arguments': {'path': 'a.dart'},
+                }
+              },
+              {
+                'function': {
+                  'name': 'read_file',
+                  'arguments': {'path': 'b.dart'},
+                }
+              },
+            ],
+          },
+          'done': false,
+        },
+        {
+          'model': 'qwen3-coder:30b',
+          'message': {'role': 'assistant', 'content': ''},
+          'done': true,
+          'prompt_eval_count': 40,
+          'eval_count': 12,
+        },
+      ];
+
+      final chunks = await OllamaProvider.parseStreamEvents(
+        Stream.fromIterable(events),
+      ).toList();
+
+      final starts = chunks.whereType<ToolCallStart>().toList();
+      expect(starts, hasLength(2));
+      expect(starts[0].name, 'read_file');
+      expect(starts[1].name, 'read_file');
+      // Distinct IDs — proves no collision in synthesised bookkeeping.
+      expect(starts[0].id, isNot(equals(starts[1].id)));
+
+      final completes = chunks.whereType<ToolCallComplete>().toList();
+      expect(completes, hasLength(2));
+      expect(completes[0].toolCall.arguments['path'], 'a.dart');
+      expect(completes[1].toolCall.arguments['path'], 'b.dart');
+      // Arguments did not cross-contaminate across the two calls.
     });
   });
 }

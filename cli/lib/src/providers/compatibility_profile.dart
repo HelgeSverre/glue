@@ -15,9 +15,9 @@ enum CompatibilityProfile {
 
   /// Parse the catalog's `compatibility:` string. Unknown / null → [openai].
   ///
-  /// Ollama is NOT in this list — it has its own adapter
-  /// (`OllamaAdapter` / `OllamaClient`) and doesn't ride the OpenAI-compat
-  /// path anymore. See `lib/src/providers/ollama_adapter.dart`.
+  /// Ollama is NOT in this list — it has its own provider (`OllamaProvider`)
+  /// and doesn't ride the OpenAI-compat path anymore. See
+  /// `lib/src/providers/ollama_provider.dart`.
   static CompatibilityProfile fromString(String? id) => switch (id) {
         'groq' => groq,
         'openrouter' => openrouter,

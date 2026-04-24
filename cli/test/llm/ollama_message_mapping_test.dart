@@ -2,12 +2,12 @@ import 'dart:convert';
 
 import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/content_part.dart';
-import 'package:glue/src/llm/ollama_client.dart';
+import 'package:glue/src/providers/ollama_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 
 /// Mock HTTP client that captures the request body and returns a valid
-/// Ollama NDJSON response so [OllamaClient.stream] completes normally.
+/// Ollama NDJSON response so [OllamaProvider.stream] completes normally.
 class _CapturingClient extends http.BaseClient {
   Map<String, dynamic>? capturedBody;
 
@@ -30,13 +30,13 @@ class _CapturingClient extends http.BaseClient {
 }
 
 void main() {
-  group('OllamaClient message mapping', () {
+  group('OllamaProvider message mapping', () {
     late _CapturingClient mockClient;
-    late OllamaClient client;
+    late OllamaProvider client;
 
     setUp(() {
       mockClient = _CapturingClient();
-      client = OllamaClient(
+      client = OllamaProvider(
         model: 'test',
         systemPrompt: '',
         requestClientFactory: () => mockClient,

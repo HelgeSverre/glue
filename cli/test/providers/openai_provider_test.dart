@@ -1,10 +1,9 @@
-/// Verifies that [OpenAiCompatibleAdapter] wires the correct compatibility
-/// profile, base URL, headers, and API key into [OpenAiClient] based on the
-/// [ProviderDef]'s `compatibility` field.
+/// OpenAiProvider tests — covers both adapter-role wiring (compat profile,
+/// base URL, headers, auth) and client-role parsing.
 ///
-/// We don't make real HTTP calls — a captured `http.Client` records the
-/// outgoing request and we assert on its headers/body. This is the golden
-/// request surface per compatibility profile.
+/// Adapter-role: a captured http.Client records outgoing requests so we can
+/// assert on the golden request surface per compatibility profile.
+/// Client-role: parseStreamEvents is fed synthetic chunks.
 library;
 
 import 'dart:async';
@@ -13,9 +12,8 @@ import 'dart:convert';
 import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/catalog/model_catalog.dart';
-import 'package:glue/src/llm/openai_client.dart';
 import 'package:glue/src/providers/compatibility_profile.dart';
-import 'package:glue/src/providers/openai_compatible_adapter.dart';
+import 'package:glue/src/providers/openai_provider.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
 import 'package:glue/src/providers/resolved.dart';
 import 'package:http/http.dart' as http;
@@ -50,16 +48,12 @@ class _CapturingClient implements http.Client {
 }
 
 Future<_CapturedRequest> _capture(
-  OpenAiClient client, {
+  OpenAiProvider client, {
   List<Message>? messages,
   List<Tool>? tools,
 }) async {
   final captured = _CapturedRequest();
-  // The client reads its factory on each call; we swap it in via reflection
-  // of sorts — we just build a new client sharing the same fields via the
-  // profile/baseUrl/apiKey we inject through the adapter path. So instead of
-  // mutating, rebuild:
-  final clone = OpenAiClient(
+  final clone = OpenAiProvider(
     apiKey: client.apiKey,
     model: client.model,
     systemPrompt: client.systemPrompt,
@@ -111,21 +105,21 @@ ResolvedModel _model(String id, {ProviderDef? provider}) => ResolvedModel(
     );
 
 void main() {
-  group('OpenAiCompatibleAdapter.adapterId', () {
+  group('OpenAiProvider.adapterId', () {
     test('is "openai"', () {
-      expect(OpenAiCompatibleAdapter().adapterId, 'openai');
+      expect(OpenAiProvider().adapterId, 'openai');
     });
   });
 
-  group('OpenAiCompatibleAdapter.createClient', () {
+  group('OpenAiProvider.createClient', () {
     test('vanilla openai: uses api.openai.com + Bearer + stream_options',
         () async {
-      final adapter = OpenAiCompatibleAdapter();
+      final adapter = OpenAiProvider();
       final client = adapter.createClient(
         provider: _resolved(id: 'openai', apiKey: 'sk-oa'),
         model: _model('gpt-5.4'),
         systemPrompt: '',
-      ) as OpenAiClient;
+      ) as OpenAiProvider;
       expect(client.profile, CompatibilityProfile.openai);
 
       final captured = await _capture(client);
@@ -138,7 +132,7 @@ void main() {
 
     test('groq profile: uses custom base URL and strips stream_options',
         () async {
-      final adapter = OpenAiCompatibleAdapter();
+      final adapter = OpenAiProvider();
       final client = adapter.createClient(
         provider: _resolved(
           id: 'groq',
@@ -148,7 +142,7 @@ void main() {
         ),
         model: _model('gpt-oss-120b'),
         systemPrompt: '',
-      ) as OpenAiClient;
+      ) as OpenAiProvider;
       expect(client.profile, CompatibilityProfile.groq);
 
       final captured = await _capture(client);
@@ -160,15 +154,9 @@ void main() {
       expect(body.containsKey('stream_options'), isFalse);
     });
 
-    // Ollama used to ride the OpenAI-compat adapter with
-    // `compatibility: 'ollama'`. It no longer does — see `OllamaAdapter`
-    // and `OllamaClient` — so there's nothing for this adapter to cover
-    // for Ollama here. Behaviour for the native path lives in
-    // `ollama_adapter_test.dart` and `ollama_client_test.dart`.
-
     test('openrouter profile: injects HTTP-Referer and X-Title headers',
         () async {
-      final adapter = OpenAiCompatibleAdapter();
+      final adapter = OpenAiProvider();
       final client = adapter.createClient(
         provider: _resolved(
           id: 'openrouter',
@@ -182,7 +170,7 @@ void main() {
         ),
         model: _model('anthropic/claude-sonnet-4.6'),
         systemPrompt: '',
-      ) as OpenAiClient;
+      ) as OpenAiProvider;
 
       final captured = await _capture(client);
       final req = captured.request!;
@@ -193,7 +181,7 @@ void main() {
     test(
         'validate: ok for AuthKind.none, missing when env-backed and no apiKey',
         () {
-      final adapter = OpenAiCompatibleAdapter();
+      final adapter = OpenAiProvider();
       expect(
         adapter.validate(_resolved(id: 'ollama', authKind: AuthKind.none)),
         ProviderHealth.ok,
@@ -206,6 +194,166 @@ void main() {
         adapter.validate(_resolved(id: 'openai', apiKey: 'sk-x')),
         ProviderHealth.ok,
       );
+    });
+  });
+
+  group('OpenAiProvider.parseStreamEvents', () {
+    test('parses text deltas', () async {
+      final events = [
+        {
+          'choices': [
+            {
+              'index': 0,
+              'delta': {'role': 'assistant', 'content': 'Hello '}
+            }
+          ]
+        },
+        {
+          'choices': [
+            {
+              'index': 0,
+              'delta': {'content': 'world'}
+            }
+          ]
+        },
+        {
+          'choices': [
+            {'index': 0, 'delta': {}, 'finish_reason': 'stop'}
+          ],
+          'usage': {'prompt_tokens': 10, 'completion_tokens': 5}
+        },
+      ];
+      final chunks = await OpenAiProvider.parseStreamEvents(
+        Stream.fromIterable(events),
+      ).toList();
+
+      final text = chunks.whereType<TextDelta>().map((d) => d.text).join();
+      expect(text, 'Hello world');
+    });
+
+    test('parses streaming tool calls', () async {
+      final events = [
+        {
+          'choices': [
+            {
+              'index': 0,
+              'delta': {
+                'role': 'assistant',
+                'tool_calls': [
+                  {
+                    'index': 0,
+                    'id': 'tc1',
+                    'type': 'function',
+                    'function': {'name': 'read_file', 'arguments': ''}
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          'choices': [
+            {
+              'index': 0,
+              'delta': {
+                'tool_calls': [
+                  {
+                    'index': 0,
+                    'function': {'arguments': '{"path":'}
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          'choices': [
+            {
+              'index': 0,
+              'delta': {
+                'tool_calls': [
+                  {
+                    'index': 0,
+                    'function': {'arguments': ' "main.dart"}'}
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          'choices': [
+            {'index': 0, 'delta': {}, 'finish_reason': 'tool_calls'}
+          ],
+          'usage': {'prompt_tokens': 10, 'completion_tokens': 15}
+        },
+      ];
+
+      final chunks = await OpenAiProvider.parseStreamEvents(
+        Stream.fromIterable(events),
+      ).toList();
+
+      final toolCalls = chunks.whereType<ToolCallComplete>().toList();
+      expect(toolCalls, hasLength(1));
+      expect(toolCalls.first.toolCall.name, 'read_file');
+      expect(toolCalls.first.toolCall.arguments['path'], 'main.dart');
+    });
+
+    test('emits ToolCallStart before ToolCallComplete', () async {
+      final events = [
+        {
+          'choices': [
+            {
+              'index': 0,
+              'delta': {
+                'role': 'assistant',
+                'tool_calls': [
+                  {
+                    'index': 0,
+                    'id': 'tc1',
+                    'type': 'function',
+                    'function': {'name': 'write_file', 'arguments': ''}
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          'choices': [
+            {
+              'index': 0,
+              'delta': {
+                'tool_calls': [
+                  {
+                    'index': 0,
+                    'function': {'arguments': '{"path": "a.txt"}'}
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          'choices': [
+            {'index': 0, 'delta': {}, 'finish_reason': 'tool_calls'}
+          ],
+          'usage': {'prompt_tokens': 10, 'completion_tokens': 10}
+        },
+      ];
+
+      final chunks = await OpenAiProvider.parseStreamEvents(
+        Stream.fromIterable(events),
+      ).toList();
+
+      final starts = chunks.whereType<ToolCallStart>().toList();
+      expect(starts, hasLength(1));
+      expect(starts.first.id, 'tc1');
+      expect(starts.first.name, 'write_file');
+
+      final startIdx = chunks.indexWhere((c) => c is ToolCallStart);
+      final deltaIdx = chunks.indexWhere((c) => c is ToolCallComplete);
+      expect(startIdx, lessThan(deltaIdx));
     });
   });
 }

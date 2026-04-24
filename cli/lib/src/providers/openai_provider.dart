@@ -1,23 +1,45 @@
+/// One provider for every OpenAI-shaped endpoint.
+///
+/// The `adapter: openai` catalog entry can point at the canonical OpenAI API,
+/// Groq, Ollama, OpenRouter, vLLM, or Mistral. Per-vendor quirks live in the
+/// [CompatibilityProfile] picked from [ProviderDef.compatibility] — not in
+/// branching code here.
+library;
+
 import 'dart:async';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 
 import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart';
+import 'package:glue/src/catalog/model_catalog.dart';
 import 'package:glue/src/llm/message_mapper.dart';
 import 'package:glue/src/llm/sse.dart';
 import 'package:glue/src/llm/tool_schema.dart';
 import 'package:glue/src/providers/compatibility_profile.dart';
+import 'package:glue/src/providers/provider_adapter.dart';
+import 'package:glue/src/providers/resolved.dart';
+import 'package:http/http.dart' as http;
 
-/// LLM client for OpenAI Chat Completions API with streaming.
+/// OpenAI-compatible adapter + streaming Chat Completions client in one class.
 ///
-/// Compatibility quirks of OpenAI-shaped endpoints (Groq, Ollama, OpenRouter,
-/// vLLM, Mistral) are handled by the injected [CompatibilityProfile] — this
-/// client stays protocol-shaped and does not branch on vendor id.
+/// Compatibility quirks of OpenAI-shaped endpoints (Groq, OpenRouter, vLLM,
+/// Mistral) are handled by the injected [CompatibilityProfile] — this
+/// class stays protocol-shaped and does not branch on vendor id.
 ///
 /// {@category LLM Providers}
-class OpenAiClient implements LlmClient {
-  final http.Client Function() _requestClientFactory;
+class OpenAiProvider extends ProviderAdapter implements LlmClient {
+  OpenAiProvider({
+    this.apiKey = '',
+    this.model = '',
+    this.systemPrompt = '',
+    this.baseUrl = _defaultBaseUrl,
+    this.profile = CompatibilityProfile.openai,
+    this.extraHeaders = const {},
+    http.Client Function()? requestClientFactory,
+  })  : _baseUri = Uri.parse(baseUrl),
+        _requestClientFactory = requestClientFactory;
+
+  final http.Client Function()? _requestClientFactory;
   final String apiKey;
   final String model;
   final String systemPrompt;
@@ -28,22 +50,44 @@ class OpenAiClient implements LlmClient {
 
   static const _defaultBaseUrl = 'https://api.openai.com';
 
-  OpenAiClient({
-    required this.apiKey,
-    required this.model,
-    required this.systemPrompt,
-    this.baseUrl = _defaultBaseUrl,
-    this.profile = CompatibilityProfile.openai,
-    this.extraHeaders = const {},
-    http.Client Function()? requestClientFactory,
-  })  : _requestClientFactory = requestClientFactory ?? http.Client.new,
-        _baseUri = Uri.parse(baseUrl);
+  // ---------- ProviderAdapter ----------
+
+  @override
+  String get adapterId => 'openai';
+
+  @override
+  ProviderHealth validate(ResolvedProvider provider) {
+    if (provider.def.auth.kind == AuthKind.none) return ProviderHealth.ok;
+    final apiKey = provider.apiKey;
+    return (apiKey != null && apiKey.isNotEmpty)
+        ? ProviderHealth.ok
+        : ProviderHealth.missingCredential;
+  }
+
+  @override
+  LlmClient createClient({
+    required ResolvedProvider provider,
+    required ResolvedModel model,
+    required String systemPrompt,
+  }) {
+    return OpenAiProvider(
+      apiKey: provider.apiKey ?? '',
+      model: model.apiId,
+      systemPrompt: systemPrompt,
+      baseUrl: provider.baseUrl ?? _defaultBaseUrl,
+      profile: CompatibilityProfile.fromString(provider.compatibility),
+      extraHeaders: provider.requestHeaders,
+      requestClientFactory: _requestClientFactory,
+    );
+  }
+
+  // ---------- LlmClient ----------
 
   @override
   Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
     // Per-request client: closing it aborts the TCP connection when the
     // stream subscription is cancelled, saving output tokens.
-    final requestClient = _requestClientFactory();
+    final requestClient = (_requestClientFactory ?? http.Client.new)();
     try {
       const mapper = OpenAiMessageMapper();
       final mapped = mapper.mapMessages(messages, systemPrompt: systemPrompt);

@@ -12,10 +12,10 @@ import 'package:glue/src/observability/logging_http_client.dart';
 import 'package:glue/src/observability/observability.dart';
 import 'package:glue/src/observability/otlp_http_trace_sink.dart';
 import 'package:glue/src/providers/anthropic_provider.dart';
-import 'package:glue/src/providers/ollama_adapter.dart';
+import 'package:glue/src/providers/ollama_provider.dart';
 import 'package:glue/src/providers/copilot_adapter.dart';
 import 'package:glue/src/providers/llm_client_factory.dart';
-import 'package:glue/src/providers/openai_compatible_adapter.dart';
+import 'package:glue/src/providers/openai_provider.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
 import 'package:glue/src/shell/command_executor.dart';
 import 'package:glue/src/shell/executor_factory.dart';
@@ -112,8 +112,8 @@ class ServiceLocator {
     // existed; we swap them here now that we can wrap.
     config.adapters = AdapterRegistry([
       AnthropicProvider(requestClientFactory: () => mkHttp('llm.anthropic')),
-      OpenAiCompatibleAdapter(requestClientFactory: () => mkHttp('llm.openai')),
-      OllamaAdapter(requestClientFactory: () => mkHttp('llm.ollama')),
+      OpenAiProvider(requestClientFactory: () => mkHttp('llm.openai')),
+      OllamaProvider(requestClientFactory: () => mkHttp('llm.ollama')),
       CopilotAdapter(
         credentialStore: config.credentials,
         client: mkHttp('llm.copilot.auth'),
