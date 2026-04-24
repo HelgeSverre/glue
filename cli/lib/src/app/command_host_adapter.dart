@@ -66,7 +66,7 @@ class _AppCommandContext implements SlashCommandContext {
         app._modelId,
       ),
       approvalLabel: () => app._approvalMode.label,
-      autoApprovedTools: () => app._autoApprovedTools.toList(),
+      autoApprovedTools: () => app._configService.trustedTools.toList(),
     );
     share = ShareController(
       canShare: () => app._mode == AppMode.idle,

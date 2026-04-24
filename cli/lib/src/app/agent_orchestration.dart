@@ -259,17 +259,7 @@ void _cancelAgentImpl(App app) {
 }
 
 void _persistTrustedToolImpl(App app, String name) {
-  app._autoApprovedTools.add(name);
-  try {
-    final store = ConfigStore(app._environment.configPath);
-    store.update((c) {
-      final tools = (c['trusted_tools'] as List?)?.cast<String>() ?? [];
-      if (!tools.contains(name)) {
-        tools.add(name);
-        c['trusted_tools'] = tools;
-      }
-    });
-  } catch (_) {}
+  app._configService.trustTool(name);
 }
 
 void _approveToolImpl(App app, ToolCall call) {

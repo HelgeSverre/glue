@@ -49,7 +49,6 @@ import 'package:glue/src/shell/shell_config.dart';
 import 'package:glue/src/shell/shell_job_manager.dart';
 import 'package:glue/src/skills/skill_activation.dart';
 import 'package:glue/src/skills/skill_runtime.dart';
-import 'package:glue/src/storage/config_store.dart';
 import 'package:glue/src/storage/session_store.dart';
 import 'package:glue/src/terminal/layout.dart';
 import 'package:glue/src/terminal/terminal.dart';
@@ -136,9 +135,6 @@ class App {
   late final Panels _panels;
   final DockManager _dockManager = DockManager();
   late final Docks _docks;
-  final Set<String> _autoApprovedTools = {
-    ...ToolPermissions.defaultTrustedTools,
-  };
   final AgentManager? _manager;
   final LlmClientFactory? _llmFactory;
   GlueConfig? _config;
@@ -229,12 +225,14 @@ class App {
           extraPathsProvider: () => _config?.skillPaths ?? const [],
           environment: _environment,
         );
-    if (extraTrustedTools != null) {
-      _autoApprovedTools.addAll(extraTrustedTools);
-    }
     _configService = Config(
       read: () => _config,
       write: (next) => _config = next,
+      environment: _environment,
+      initialTrustedTools: {
+        ...ToolPermissions.defaultTrustedTools,
+        ...?extraTrustedTools,
+      },
     );
     _sessionService = Session(
       manager: _sessionManager,
@@ -251,7 +249,7 @@ class App {
 
   PermissionGate get _permissionGate => PermissionGate(
         approvalMode: _approvalMode,
-        trustedTools: _autoApprovedTools,
+        trustedTools: _configService.trustedTools,
         tools: agent.tools,
         cwd: _cwd,
       );
