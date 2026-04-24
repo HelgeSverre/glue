@@ -2,17 +2,8 @@ part of 'package:glue/src/app.dart';
 
 class _AppCommandContext implements SlashCommandContext {
   _AppCommandContext(App app)
-      : _config = Config(
-          read: () => app._config,
-          write: (next) => app._config = next,
-        ),
-        _session = Session(
-          manager: app._sessionManager,
-          ensureStore: app._ensureSessionStore,
-          resume: app._resumeSession,
-          fork: app._forkSession,
-          titleState: app._titleState,
-        ) {
+      : _config = app._configService,
+        _session = app._sessionService {
     system = SystemController(
       environment: app._environment,
       requestExit: app.requestExit,

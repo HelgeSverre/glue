@@ -149,6 +149,8 @@ class App {
   late final AtFileHint _atHint;
   late final ShellAutocomplete _shellComplete;
   late final SessionManager _sessionManager;
+  late final Config _configService;
+  late final Session _sessionService;
   final SessionTitleStateController _titleState = SessionTitleStateController();
   bool _bashMode = false;
   Process? _bashRunProcess;
@@ -230,6 +232,17 @@ class App {
     if (extraTrustedTools != null) {
       _autoApprovedTools.addAll(extraTrustedTools);
     }
+    _configService = Config(
+      read: () => _config,
+      write: (next) => _config = next,
+    );
+    _sessionService = Session(
+      manager: _sessionManager,
+      ensureStore: _ensureSessionStore,
+      resume: _resumeSession,
+      fork: _forkSession,
+      titleState: _titleState,
+    );
     _initCommands();
     _autocomplete = SlashAutocomplete(_commands);
     _atHint = AtFileHint();
