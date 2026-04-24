@@ -24,11 +24,10 @@ The canonical set features compose to do anything useful. Each is narrow. Add me
 |---|---|---|
 | `panels` | ui | Push/remove modal overlays, route keys, render the stack |
 | `docks` | ui | Register/unregister docked panels with lifecycle tokens |
-| `confirmations` | ui | Ask the user yes/no with a blocking modal |
+| `confirmations` | ui | Ask the user yes/no with a blocking modal (`Confirmations` interface in `ui/services/confirmations.dart`) |
 | `transcript` | ui | Append a system notice to the rendered block list (UI-only, not LLM-visible) |
-| `tools` | agent | Invoke a tool through the normal dispatch pipeline — transcript records ToolCall + ToolResult as if the model emitted the call |
-| `config` | domain | Read/update `GlueConfig`; set active model; centralises what is today 3+ separate closures |
-| `session` | domain | Current session, list, resume, fork, rename. Facade over `SessionManager`; disk-level `storage/session_store.dart` stays underneath |
+| `config` | domain | Read/update `GlueConfig`; set active model; also owns the trusted-tools allow-list |
+| `session` | domain | Current session, list, resume, fork, rename, title generation. Facade over `SessionManager`; disk-level `storage/session_store.dart` stays underneath |
 
 Two layers' worth of services. Features pick what they need. Nothing feature-specific lives on any of them.
 
@@ -64,7 +63,7 @@ Settled conventions for the target shape:
 - **`Modal`** — a blocking yes/no confirm (`ConfirmModal`). Kept distinct from `Panel` because the interaction model differs.
 - **`DockedPanel`** — a side-docked panel (skills browser, etc.). Stays.
 - **Services** — plural lowercase nouns on controllers: `panels`, `docks`, `confirmations`, `config`, `session`, `transcript`, `tools`. No `Impl` suffix — concrete classes get functional names (`Panels`, `Docks`) when there's one production implementation; promote to an interface + multiple impls only when a real second impl appears.
-- **Controllers** — keep the `<Feature>Controller` pattern already established (`DefaultModelCommandController`, etc.). Drop the `Default*` prefix over time — it was a placeholder from the early cut. `ModelController`, `ProviderController`, etc.
+- **Controllers** — `<Feature>Controller` (no prefix). `ModelController`, `ProviderController`, etc. The `Default*` prefix used by the pre-refactor code has been dropped everywhere.
 - **Feature panels** — live in their feature module, not in `ui/`. Named after the feature they serve (`SkillsPanel`, `DeviceCodePanel`, `ApiKeyPromptPanel`, `ModelPickerRowBuilder`), not tagged with generic suffixes.
 - **Domain values** — pick the noun the domain uses, no architectural suffix. `Turn` (one user message → assistant response → maybe tools, ephemeral per cycle) is the canonical example: industry-standard in OpenAI Codex, pi-mono, Assistants API, and already load-bearing internally as the `agent.turn` observability span name. No `*Runner`, `*Manager`, `*Handler`, `*Coordinator` — the domain word is the name.
 
@@ -101,13 +100,24 @@ cli/lib/src/
 ├── shell/                        ← shell_autocomplete + executors
 ├── input/                        ← at_file_hint + editors
 │
-├── runtime/                      ← AppShell + controllers + command module glue
-│   ├── app_shell.dart
-│   ├── app_launch_options.dart
+├── runtime/                      ← App composition helpers + per-feature controllers
+│   ├── app_events.dart           (sealed AppEvent hierarchy)
+│   ├── app_mode.dart             (AppMode enum)
+│   ├── turn.dart                 (per-turn lifecycle + tool-approval flow)
+│   ├── input_router.dart         (central terminal-event dispatcher)
+│   ├── transcript.dart           (conversation UI state + subagent grouping)
+│   ├── renderer.dart             (60fps render scheduler + spinner)
+│   ├── permission_gate.dart      (tool-approval policy — was orchestrator/)
+│   ├── tool_permissions.dart     (safe-tool lists — was orchestrator/)
+│   ├── services/                 (config.dart, session.dart)
 │   ├── commands/                 (command_host, command_module, register_builtin_slash_commands)
-│   └── controllers/              (one file per controller, eventually)
+│   └── controllers/              (one file per controller)
 │
-└── app.dart + app/*.dart         ← transitional; shrinks as controllers absorb behavior
+├── utils.dart                    ← extension helpers (bytes, durations, timeAgo)
+│
+└── app.dart + app/*.dart         ← composition root plus 3 remaining part files
+                                    (command_host_adapter, event_router, render_pipeline).
+                                    app/ no longer holds any runtime logic.
 ```
 
 Note on `rendering/`: moves wholesale into `ui/rendering/`. All three files (`ansi_utils.dart`, `block_renderer.dart`, `markdown_renderer.dart`) are UI-layer — `ansi_utils` has 16 consumers but every one is ui/, terminal/, input/, or runtime/controllers/. Zero agent/llm/storage callers. Move is mechanical but touches many imports, so do it in the same commit as the ui/ restructure, not as a separate cosmetic pass.
@@ -175,6 +185,16 @@ Note on `rendering/`: moves wholesale into `ui/rendering/`. All three files (`an
 - **App shrank**: `_startAgent` is now `Turn(…)..run()`. `_cancelAgent` is `_currentTurn?.cancel()`. `_runPrintMode` preps the prompt + session resume, delegates to `Turn.runPrint`, then handles app-level teardown (tool dispose, obs flush/close, session close) in its `finally`. The 10 thin `_*Impl` delegate methods are gone.
 - 1515 tests passing (10 new Zone-based observability tests). Analyzer clean (4 pre-existing shell warnings).
 
+### Cleanup pass (post-C + D)
+
+- **`orchestrator/` folder retired.** Two files (`permission_gate.dart`, `tool_permissions.dart`) moved into `runtime/`. No "orchestration" was happening; they're runtime policy used by `Turn`/`Config`.
+- **`app/model_display.dart` → `catalog/model_display.dart`.** It was never a part file, just a formatter over `ModelRef`/`ModelCatalog` data. Belongs next to the catalog types.
+- **`extensions/units.dart` → `utils.dart`.** Single-file folder retired; file relocated to top level. Added `DateTime.timeAgo` extension, collapsing two duplicate `_timeAgo` copy-pastes. Wired up `N.seconds` / `N.milliseconds` / `N.kilobytes` replacements at ~20 sites across agent/, shell/, web/, providers/, config/.
+- **`app/command_helpers.dart` unwound.** `_addSystemMessage` was a one-liner wrapper around `Transcript.postNotice` — 5 callsites switched to `transcript.postNotice` directly; the method is gone. `_statusModelLabel` was a one-call wrapper — inlined at its single site in `render_pipeline.dart`. `_activateSkillFromUi` was real skill-activation logic — moved onto `App` as a method. The part file is deleted.
+- **`ConfirmationHost` → `Confirmations`.** Moved from `runtime/controllers/` to `ui/services/` for naming parallelism with `Panels`/`Docks`. The interface stays because the `_AppConfirmations` impl integrates with `App._activeModal`.
+- **Tools service closed** as "not building". Single existing caller (skill activation) works fine without a service facade; no dynamic registration need.
+- Final `app/*.dart` list: `command_host_adapter.dart`, `event_router.dart`, `render_pipeline.dart`. All small, all tightly coupled to App by nature.
+
 ---
 
 ## What's Next
@@ -189,11 +209,11 @@ Groups A, B, C, and a scoped D1 are **complete**. `App` is no longer a god-class
 - ~~**C4. Session service absorbs title + resume + fork + replay**~~ ✅ `SessionTitleStateController` folded into `Session`'s private flags; `app/session_runtime.dart` deleted.
 - ~~**C5. Subagent grouping into Transcript**~~ ✅ `Transcript.handleSubagentUpdate`; `app/subagent_updates.dart` deleted.
 
-### Group D — Removal
+### Group D — Removal (all landed ✅)
 
-- ~~**D1 (scoped)**~~ ✅ `AppShell` + `AppLaunchOptions` were thin wrappers and got merged into `App` directly; signal handling moved into `App.run()`. `AppMode` moved to `runtime/app_mode.dart`. `bin/glue.dart` targets `App.create()` directly. `app/*.dart` part files were kept — small (40–206 lines), cleanly scoped, and the cost of converting them to standalone files doesn't pay for itself now that the god-class is dissolved.
-- **D2. Drop `Default*` prefix on controllers** (already done in A4; just a lingering doc note).
-- **D3. Narrow `lib/glue.dart` public surface.** Remove exports that were only there for part-file coupling. Re-audit every export.
+- ~~**D1 (scoped)**~~ ✅ `AppShell` + `AppLaunchOptions` were thin wrappers and got merged into `App` directly; signal handling moved into `App.run()`. `AppMode` moved to `runtime/app_mode.dart`. `bin/glue.dart` targets `App.create()` directly. Three `app/*.dart` part files remain — they're the composition adapter, event-router, and paint pipeline; each is small and cleanly scoped, and unwinding them would push 20+ private fields through constructor injection for no observable benefit.
+- ~~**D2. `Default*` prefix**~~ ✅ Already done in A4.
+- ~~**D3. `lib/glue.dart` barrel**~~ ✅ Deleted entirely. Glue is a binary, not a library; the barrel was ceremony. `bin/glue.dart` and tests now import directly from `package:glue/src/...`, making dependencies visible in the import block.
 
 Landed naming simplification alongside the above:
 
@@ -210,6 +230,8 @@ Landed naming simplification alongside the above:
 
 - ~~**`llm` / `agent` service.**~~ Investigation during C1 planning found only 2 callsites outside the main agent loop (title generation via `_createTitleLlmClient`; subagent spawning via `Subagents`). Both already well-factored through `LlmClientFactory`. A service facade would be pure ceremony. Revisit if a third kind of "ask the LLM directly" callsite appears.
 - ~~**`TurnRunner` / chat-turn unification.**~~ Obsoleted by C1 — interactive and print mode converged through the single `Turn.run` / `Turn.runPrint` API.
+- ~~**`tools` service.**~~ Investigation found (a) tools are never dynamically registered — `service_locator.dart` builds the tool map once at init, no MCP, no plugin surface; subagents copy-filter the existing map; (b) only one current caller (`skills/skill_activation.dart`) invokes a tool and records it as a synthetic ToolCall/ToolResult pair, and it works fine without a service facade. Revisit if a second independent feature needs "invoke a tool and record it as if the model emitted the call".
+- ~~**`Panels`/`Docks`/`Confirmations` unification into one `ui` service.**~~ Considered; rejected. The three are semantically distinct (transient stack vs. persistent side panel vs. blocking yes/no) and no controller takes more than two at once. Forcing a facade would lose the distinction without eliminating the different interaction models. `Confirmations` did get renamed from `ConfirmationHost` and moved to `ui/services/` for naming parallelism with `Panels`/`Docks`.
 
 ---
 
