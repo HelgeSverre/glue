@@ -138,63 +138,63 @@ commented out.
 
 ## Supported Keys
 
-| Key                                  | Type                          | Environment override                |
-| ------------------------------------ | ----------------------------- | ----------------------------------- |
-| `active_model`                       | string                        | `GLUE_MODEL`, CLI `--model`         |
-| `small_model`                        | string                        | none                                |
-| `profiles`                           | map of `name: provider/model` | none                                |
-| `catalog.refresh`                    | string                        | none                                |
-| `catalog.remote_url`                 | string                        | none                                |
-| `bash.max_lines`                     | integer                       | none                                |
-| `shell.executable`                   | string                        | `GLUE_SHELL`, then `SHELL` fallback |
-| `shell.mode`                         | string                        | `GLUE_SHELL_MODE`                   |
-| `docker.enabled`                     | boolean                       | `GLUE_DOCKER_ENABLED=1`             |
-| `docker.image`                       | string                        | `GLUE_DOCKER_IMAGE`                 |
-| `docker.shell`                       | string                        | `GLUE_DOCKER_SHELL`                 |
-| `docker.fallback_to_host`            | boolean                       | none                                |
-| `docker.mounts`                      | list of strings               | `GLUE_DOCKER_MOUNTS`                |
-| `web.fetch.jina_api_key`             | string                        | `JINA_API_KEY`                      |
-| `web.fetch.allow_jina_fallback`      | boolean                       | none                                |
-| `web.fetch.timeout_seconds`          | integer                       | none                                |
-| `web.fetch.max_bytes`                | integer                       | none                                |
-| `web.fetch.max_tokens`               | integer                       | none                                |
-| `web.search.provider`                | string                        | `GLUE_SEARCH_PROVIDER`              |
-| `web.search.brave_api_key`           | string                        | `BRAVE_API_KEY`                     |
-| `web.search.tavily_api_key`          | string                        | `TAVILY_API_KEY`                    |
-| `web.search.firecrawl_api_key`       | string                        | `FIRECRAWL_API_KEY`                 |
-| `web.search.firecrawl_base_url`      | string                        | none                                |
-| `web.search.timeout_seconds`         | integer                       | none                                |
-| `web.search.max_results`             | integer                       | none                                |
-| `web.pdf.mistral_api_key`            | string                        | provider credentials/env fallback   |
-| `web.pdf.openai_api_key`             | string                        | provider credentials/env fallback   |
-| `web.pdf.ocr_provider`               | string                        | `GLUE_OCR_PROVIDER`                 |
-| `web.pdf.max_bytes`                  | integer                       | none                                |
-| `web.pdf.timeout_seconds`            | integer                       | none                                |
-| `web.pdf.enable_ocr_fallback`        | boolean                       | none                                |
-| `web.browser.backend`                | string                        | `GLUE_BROWSER_BACKEND`              |
-| `web.browser.headed`                 | boolean                       | none                                |
-| `web.browser.docker.image`           | string                        | none                                |
-| `web.browser.docker.port`            | integer                       | none                                |
-| `web.browser.steel.api_key`          | string                        | `STEEL_API_KEY`                     |
-| `web.browser.browserbase.api_key`    | string                        | `BROWSERBASE_API_KEY`               |
-| `web.browser.browserbase.project_id` | string                        | `BROWSERBASE_PROJECT_ID`            |
-| `web.browser.browserless.base_url`   | string                        | none                                |
-| `web.browser.browserless.api_key`    | string                        | `BROWSERLESS_API_KEY`               |
-| `web.browser.anchor.api_key`         | string                        | `ANCHOR_API_KEY`                    |
-| `web.browser.hyperbrowser.api_key`   | string                        | `HYPERBROWSER_API_KEY`              |
-| `debug`                              | boolean                       | `GLUE_DEBUG=1`                      |
-| `observability.debug`                | boolean                       | `GLUE_DEBUG=1`                      |
-| `observability.max_body_bytes`       | integer                       | none                                |
-| `observability.redact`               | boolean                       | none                                |
-| `observability.otel.enabled`         | boolean                       | `OTEL_SDK_DISABLED`                 |
-| `observability.otel.endpoint`        | string                        | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `PHOENIX_COLLECTOR_ENDPOINT` |
-| `observability.otel.headers`         | map                           | `OTEL_EXPORTER_OTLP_TRACES_HEADERS`, `OTEL_EXPORTER_OTLP_HEADERS`, `PHOENIX_API_KEY` |
-| `observability.otel.protocol`        | string                        | `OTEL_EXPORTER_OTLP_PROTOCOL`       |
-| `observability.otel.service_name`    | string                        | `OTEL_SERVICE_NAME`                 |
-| `observability.otel.resource_attributes` | map                       | `OTEL_RESOURCE_ATTRIBUTES`, `PHOENIX_PROJECT_NAME` |
-| `approval_mode`                      | string                        | `GLUE_APPROVAL_MODE`                |
-| `title_generation_enabled`           | boolean                       | `GLUE_TITLE_GENERATION_ENABLED`     |
-| `skills.paths`                       | list of strings               | `GLUE_SKILLS_PATHS`                 |
+| Key                                      | Type                          | Environment override                                                                              |
+| ---------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------- |
+| `active_model`                           | string                        | `GLUE_MODEL`, CLI `--model`                                                                       |
+| `small_model`                            | string                        | none                                                                                              |
+| `profiles`                               | map of `name: provider/model` | none                                                                                              |
+| `catalog.refresh`                        | string                        | none                                                                                              |
+| `catalog.remote_url`                     | string                        | none                                                                                              |
+| `bash.max_lines`                         | integer                       | none                                                                                              |
+| `shell.executable`                       | string                        | `GLUE_SHELL`, then `SHELL` fallback                                                               |
+| `shell.mode`                             | string                        | `GLUE_SHELL_MODE`                                                                                 |
+| `docker.enabled`                         | boolean                       | `GLUE_DOCKER_ENABLED=1`                                                                           |
+| `docker.image`                           | string                        | `GLUE_DOCKER_IMAGE`                                                                               |
+| `docker.shell`                           | string                        | `GLUE_DOCKER_SHELL`                                                                               |
+| `docker.fallback_to_host`                | boolean                       | none                                                                                              |
+| `docker.mounts`                          | list of strings               | `GLUE_DOCKER_MOUNTS`                                                                              |
+| `web.fetch.jina_api_key`                 | string                        | `JINA_API_KEY`                                                                                    |
+| `web.fetch.allow_jina_fallback`          | boolean                       | none                                                                                              |
+| `web.fetch.timeout_seconds`              | integer                       | none                                                                                              |
+| `web.fetch.max_bytes`                    | integer                       | none                                                                                              |
+| `web.fetch.max_tokens`                   | integer                       | none                                                                                              |
+| `web.search.provider`                    | string                        | `GLUE_SEARCH_PROVIDER`                                                                            |
+| `web.search.brave_api_key`               | string                        | `BRAVE_API_KEY`                                                                                   |
+| `web.search.tavily_api_key`              | string                        | `TAVILY_API_KEY`                                                                                  |
+| `web.search.firecrawl_api_key`           | string                        | `FIRECRAWL_API_KEY`                                                                               |
+| `web.search.firecrawl_base_url`          | string                        | none                                                                                              |
+| `web.search.timeout_seconds`             | integer                       | none                                                                                              |
+| `web.search.max_results`                 | integer                       | none                                                                                              |
+| `web.pdf.mistral_api_key`                | string                        | provider credentials/env fallback                                                                 |
+| `web.pdf.openai_api_key`                 | string                        | provider credentials/env fallback                                                                 |
+| `web.pdf.ocr_provider`                   | string                        | `GLUE_OCR_PROVIDER`                                                                               |
+| `web.pdf.max_bytes`                      | integer                       | none                                                                                              |
+| `web.pdf.timeout_seconds`                | integer                       | none                                                                                              |
+| `web.pdf.enable_ocr_fallback`            | boolean                       | none                                                                                              |
+| `web.browser.backend`                    | string                        | `GLUE_BROWSER_BACKEND`                                                                            |
+| `web.browser.headed`                     | boolean                       | none                                                                                              |
+| `web.browser.docker.image`               | string                        | none                                                                                              |
+| `web.browser.docker.port`                | integer                       | none                                                                                              |
+| `web.browser.steel.api_key`              | string                        | `STEEL_API_KEY`                                                                                   |
+| `web.browser.browserbase.api_key`        | string                        | `BROWSERBASE_API_KEY`                                                                             |
+| `web.browser.browserbase.project_id`     | string                        | `BROWSERBASE_PROJECT_ID`                                                                          |
+| `web.browser.browserless.base_url`       | string                        | none                                                                                              |
+| `web.browser.browserless.api_key`        | string                        | `BROWSERLESS_API_KEY`                                                                             |
+| `web.browser.anchor.api_key`             | string                        | `ANCHOR_API_KEY`                                                                                  |
+| `web.browser.hyperbrowser.api_key`       | string                        | `HYPERBROWSER_API_KEY`                                                                            |
+| `debug`                                  | boolean                       | `GLUE_DEBUG=1`                                                                                    |
+| `observability.debug`                    | boolean                       | `GLUE_DEBUG=1`                                                                                    |
+| `observability.max_body_bytes`           | integer                       | none                                                                                              |
+| `observability.redact`                   | boolean                       | none                                                                                              |
+| `observability.otel.enabled`             | boolean                       | `OTEL_SDK_DISABLED`                                                                               |
+| `observability.otel.endpoint`            | string                        | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `PHOENIX_COLLECTOR_ENDPOINT` |
+| `observability.otel.headers`             | map                           | `OTEL_EXPORTER_OTLP_TRACES_HEADERS`, `OTEL_EXPORTER_OTLP_HEADERS`, `PHOENIX_API_KEY`              |
+| `observability.otel.protocol`            | string                        | `OTEL_EXPORTER_OTLP_PROTOCOL`                                                                     |
+| `observability.otel.service_name`        | string                        | `OTEL_SERVICE_NAME`                                                                               |
+| `observability.otel.resource_attributes` | map                           | `OTEL_RESOURCE_ATTRIBUTES`, `PHOENIX_PROJECT_NAME`                                                |
+| `approval_mode`                          | string                        | `GLUE_APPROVAL_MODE`                                                                              |
+| `title_generation_enabled`               | boolean                       | `GLUE_TITLE_GENERATION_ENABLED`                                                                   |
+| `skills.paths`                           | list of strings               | `GLUE_SKILLS_PATHS`                                                                               |
 
 ## Compatibility Fallbacks
 

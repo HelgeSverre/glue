@@ -3,20 +3,24 @@
 ## Blocker
 
 ### Parallel subagents reuse the parent turn's Zone holder
+
 `Turn.run` installs one `runInContext` for the parent turn, but `Subagents.spawnParallel` starts sibling subagents inside that same Zone and `spawn` calls `agent.runHeadless` without creating a fresh observability context. `Agent.run` then mutates `obs.activeSpan` around each LLM stream, so parallel subagents can save/restore each other's `llm.stream` span and leave a stale active span in the parent holder. The tests prove isolation only when each concurrent task explicitly enters its own `runInSpan`/`runInContext` (`cli/test/observability/observability_test.dart:301`, `cli/test/observability/observability_test.dart:321`); the real subagent tests only assert returned text.  
 `cli/lib/src/agent/subagents.dart:124`
 
 ## Strong Concern
 
 ### Interactive `AgentError` ends the turn span as success
+
 `Agent.run` catches failures and yields `AgentError`; the interactive `Turn` handler appends the error and sets idle state, but does not end `agent.turn` with error metadata. The subscription `onDone` then calls `_endSpan()` with no error, while `runPrint` handles `AgentError` by marking the span as failed. That makes interactive failed turns look successful at the parent-span level. I found no test covering this event path; `AgentError` is only asserted indirectly by switch exhaustiveness.  
 `cli/lib/src/runtime/turn.dart:376`
 
 ### Print-mode teardown is skipped before the turn starts
+
 `_runPrintMode` has early returns for bare `--resume`, missing resume targets, and missing prompts before the `try/finally` that disposes tools, flushes/closes observability, and closes the session. Exceptions before `turn.runPrint` is entered, such as expansion failures, also bypass that cleanup. `App.run` has no outer print-mode lifecycle cleanup, so these failure modes leak app-level resources. Existing tests cover parser/prompt shaping, not teardown.  
 `cli/lib/src/app.dart:436`
 
 ### `Turn.run` has no live-run guard
+
 Calling `run()` twice on the same `Turn` appends a second user block, overwrites `_span` and `_sub`, and leaves the first subscription able to keep mutating the same `Transcript`/`Session`; `cancel()` can only see the latest subscription/span. `App` currently constructs a fresh `Turn` per submit, but `Turn` is now the lifecycle owner and its double-run behavior should be explicit. There is no direct `Turn` test for double-run or cancellation races.  
 `cli/lib/src/runtime/turn.dart:73`
 

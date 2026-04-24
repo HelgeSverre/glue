@@ -1,5 +1,4 @@
-[//]: # (TODO: THIS FILE IS OUT OF DATE, RECREATE IT ONCE REFACTOR LANDS)
-
+[//]: # "TODO: THIS FILE IS OUT OF DATE, RECREATE IT ONCE REFACTOR LANDS"
 
 <h1 align="center">Glue</h1>
 
@@ -44,15 +43,15 @@ glue --help                             # show all options
 
 ### CLI flags
 
-| Flag         | Short | Description                                                        |
-|--------------|-------|--------------------------------------------------------------------|
-| `--help`     | `-h`  | Show usage information                                             |
-| `--version`  | `-v`  | Print version                                                      |
-| `--print`    | `-p`  | Print response to stdout without interactive mode                  |
-| `--model`    | `-m`  | LLM model to use                                                   |
-| `--debug`    | `-d`  | Enable debug mode (verbose logging)                                |
+| Flag         | Short | Description                                                       |
+| ------------ | ----- | ----------------------------------------------------------------- |
+| `--help`     | `-h`  | Show usage information                                            |
+| `--version`  | `-v`  | Print version                                                     |
+| `--print`    | `-p`  | Print response to stdout without interactive mode                 |
+| `--model`    | `-m`  | LLM model to use                                                  |
+| `--debug`    | `-d`  | Enable debug mode (verbose logging)                               |
 | `--resume`   | `-r`  | Open session picker, or resume a session when given an ID / query |
-| `--continue` |       | Resume most recent session                                         |
+| `--continue` |       | Resume most recent session                                        |
 
 ### Shell completions
 
@@ -87,7 +86,7 @@ Environment variables: `GLUE_PROVIDER`, `GLUE_MODEL`, `GLUE_DEBUG`, `ANTHROPIC_A
 Default models per provider:
 
 | Provider  | Default model       |
-|-----------|---------------------|
+| --------- | ------------------- |
 | anthropic | `claude-sonnet-4-6` |
 | openai    | `gpt-4.1`           |
 | mistral   | `devstral-latest`   |
@@ -96,7 +95,7 @@ Default models per provider:
 Ollama hardware-tier suggestions:
 
 | Hardware                  | Suggested pull                          |
-|---------------------------|-----------------------------------------|
+| ------------------------- | --------------------------------------- |
 | 16 GB laptop / CPU-only   | `ollama pull qwen3:8b`                  |
 | 12–24 GB GPU (mainstream) | `ollama pull qwen3-coder:30b` (default) |
 | 32 GB dense-only GPU      | `ollama pull devstral-small-2:24b`      |
@@ -213,7 +212,7 @@ dart test --run-skipped -t e2e         # run e2e tests
 The agent has access to these tools:
 
 | Tool                       | Description                                                                            |
-|----------------------------|----------------------------------------------------------------------------------------|
+| -------------------------- | -------------------------------------------------------------------------------------- |
 | `read_file`                | Read file contents                                                                     |
 | `write_file`               | Create or overwrite a file                                                             |
 | `edit_file`                | Apply targeted find-and-replace edits                                                  |
@@ -263,7 +262,7 @@ merge into a single render cycle via Dart streams.
 ## Keyboard shortcuts
 
 | Shortcut              | Action                                   |
-|-----------------------|------------------------------------------|
+| --------------------- | ---------------------------------------- |
 | `Enter`               | Submit input                             |
 | `Ctrl+C`              | Cancel / double-tap to exit              |
 | `Ctrl+U`              | Clear line before cursor                 |

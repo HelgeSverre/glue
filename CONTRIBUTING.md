@@ -136,9 +136,9 @@ Keep pull requests focused, reviewable, and easy to validate.
 3. Update documentation for user-facing changes.
 4. Regenerate derived files when required.
 5. Write a clear PR description that explains:
-    - the problem
-    - the approach
-    - any tradeoffs or follow-up work
+   - the problem
+   - the approach
+   - any tradeoffs or follow-up work
 
 ## Code Style Notes
 
