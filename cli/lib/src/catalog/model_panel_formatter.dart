@@ -91,7 +91,7 @@ ModelPanelBuilder buildModelPanel(
       return {
         'provider': headers[i],
         'marker': isCurrent ? '\u25cf ' : '  ',
-        'name': row.model.name,
+        'name': row.model.apiId,
         'tag': _renderNotesWithAvailability(row),
       };
     },

@@ -150,6 +150,25 @@ void main() {
       );
       expect(builder.renderHeader(80), isNotEmpty);
     });
+
+    test('MODEL column shows apiId not display name', () {
+      const entry = (
+        providerId: 'ollama',
+        providerName: 'Ollama',
+        model: ModelDef(
+          id: 'gemma4:26b',
+          name: 'Gemma 4 26B',
+          apiId: 'gemma4:26b',
+        ),
+        availability: ModelAvailability.unknown,
+      );
+      final builder = buildModelPanel(
+        [entry],
+        currentRef: const ModelRef(providerId: 'x', modelId: 'y'),
+      );
+      final row = stripAnsi(builder.renderRow(0, 80));
+      expect(row, contains('gemma4:26b'));
+    });
   });
 
   group('flattenCatalog', () {

@@ -100,7 +100,7 @@ class ModelController implements ModelCommandController {
     for (var i = 0; i < entries.length; i++) {
       final entry = entries[i];
       final searchText = stripAnsi(
-        '${entry.providerName} ${entry.model.name} '
+        '${entry.providerName} ${entry.model.apiId} ${entry.model.name} '
         '${entry.model.notes ?? ''}',
       );
       options.add(
