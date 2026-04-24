@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:glue/src/agent/agent.dart';
+import 'package:glue/src/agent/subagents.dart';
 import 'package:glue/src/ui/rendering/block_renderer.dart';
 
 /// Visible category for a single entry in the conversation transcript.
@@ -197,5 +199,66 @@ class Transcript {
   /// Append a system-visible notice as a new block.
   void postNotice(String text) {
     blocks.add(ConversationEntry.system(text));
+  }
+
+  /// Fold a [SubagentUpdate] into the running transcript.
+  ///
+  /// Each unique `task:index` key opens a collapsible [SubagentGroup]
+  /// block on first update and appends entries as the subagent emits
+  /// tool calls, results, errors, or completion. `AgentTextDelta` and
+  /// `AgentToolCallPending` are intentionally ignored — subagents stream
+  /// through this channel only as discrete step markers, not word-by-word
+  /// assistant text.
+  ///
+  /// Returns `true` if the transcript was mutated (caller should
+  /// schedule a render), `false` if the event produced no change.
+  bool handleSubagentUpdate(SubagentUpdate update) {
+    final groupKey = '${update.task}:${update.index ?? 0}';
+    final group = subagentGroups.putIfAbsent(groupKey, () {
+      final g = SubagentGroup(
+        task: update.task,
+        index: update.index,
+        total: update.total,
+      );
+      blocks.add(ConversationEntry.subagentGroup(g));
+      return g;
+    });
+
+    final prefix =
+        update.index != null ? '↳ [${update.index! + 1}/${update.total}]' : '↳';
+
+    switch (update.event) {
+      case AgentToolCall(:final call):
+        group.currentTool = call.name;
+        final argsPreview = call.arguments.entries
+            .take(2)
+            .map((e) => '${e.key}: ${e.value}')
+            .join(', ');
+        group.entries
+            .add(SubagentEntry('$prefix ▶ ${call.name}  $argsPreview'));
+        return true;
+      case AgentToolResult(:final result):
+        final display = result.summary ??
+            (result.content.length > 80
+                ? '${result.content.substring(0, 80)}…'
+                : result.content);
+        group.entries.add(SubagentEntry(
+          '$prefix ✓ ${display.replaceAll('\n', ' ')}',
+          rawContent: result.summary != null || result.content.length > 80
+              ? result.content
+              : null,
+        ));
+        return true;
+      case AgentError(:final error):
+        group.entries.add(SubagentEntry('$prefix ✗ Error: $error'));
+        return true;
+      case AgentDone():
+        group.done = true;
+        group.currentTool = null;
+        return true;
+      case AgentToolCallPending():
+      case AgentTextDelta():
+        return false;
+    }
   }
 }

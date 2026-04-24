@@ -69,7 +69,6 @@ part 'app/models.dart';
 part 'app/render_pipeline.dart';
 part 'app/session_runtime.dart';
 part 'app/shell_runtime.dart';
-part 'app/subagent_updates.dart';
 part 'app/terminal_event_router.dart';
 
 // ---------------------------------------------------------------------------
@@ -337,7 +336,9 @@ class App {
 
     final termSub = terminal.events.listen(_handleTerminalEvent);
     final appSub = _events.stream.listen(_handleAppEvent);
-    _subagentSub = _subagents?.updates.listen(_handleSubagentUpdate);
+    _subagentSub = _subagents?.updates.listen((update) {
+      if (_transcript.handleSubagentUpdate(update)) _render();
+    });
     final jobSub = _jobManager.events.listen(_handleJobEvent);
 
     _render();
@@ -597,12 +598,6 @@ class App {
 
   void _handleJobEvent(JobEvent event) {
     _handleJobEventImpl(this, event);
-  }
-
-  // ── Subagent updates ──────────────────────────────────────────────────
-
-  void _handleSubagentUpdate(SubagentUpdate update) {
-    _handleSubagentUpdateImpl(this, update);
   }
 
   // ── Rendering ──────────────────────────────────────────────────────────
