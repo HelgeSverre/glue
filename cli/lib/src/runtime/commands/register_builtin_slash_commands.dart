@@ -88,22 +88,14 @@ class _ModelCommandModule implements SlashCommandModule {
   void register(SlashCommandRegistry registry, SlashCommandContext context) {
     registry.register(SlashCommand(
       name: 'model',
-      description: 'Switch model',
+      description: 'Switch model (no args = picker, with arg = switch directly)',
+      aliases: ['models'],
       execute: (args) {
         if (args.isEmpty) {
           context.models.openModelPanel();
           return '';
         }
         return context.models.switchModelByQuery(args.join(' '));
-      },
-    ));
-
-    registry.register(SlashCommand(
-      name: 'models',
-      description: 'Browse and switch models across all providers',
-      execute: (_) {
-        context.models.openModelPanel();
-        return '';
       },
     ));
   }

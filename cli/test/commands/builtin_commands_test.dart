@@ -86,6 +86,7 @@ class _NoopLlm implements LlmClient {
 void main() {
   group('BuiltinCommands', () {
     SlashCommandRegistry createRegistry({
+      void Function()? openModelPanel,
       void Function()? openHistoryPanel,
       String Function(String query)? historyActionByQuery,
       void Function()? openSkillsPanel,
@@ -102,7 +103,7 @@ void main() {
         openHelpPanel: () {},
         clearConversation: () => '',
         requestExit: () {},
-        openModelPanel: () {},
+        openModelPanel: openModelPanel ?? () {},
         switchModelByQuery: (_) => '',
         sessionAction: sessionAction ?? (_) => '',
         shareAction: shareAction ?? (_) => '',
@@ -122,6 +123,15 @@ void main() {
         renameSession: (_) => '',
       );
     }
+
+    test('/models is an alias for /model and opens picker', () {
+      var opened = 0;
+      final registry = createRegistry(openModelPanel: () => opened++);
+      registry.execute('/models');
+      expect(opened, 1);
+      // /models must not be a separate top-level command name
+      expect(registry.commands.where((c) => c.name == 'models'), isEmpty);
+    });
 
     test('/skills without args opens panel', () {
       var opened = 0;
