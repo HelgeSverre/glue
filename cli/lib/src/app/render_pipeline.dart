@@ -177,12 +177,12 @@ void _doRenderImpl(App app) {
   app.layout.paintStatus(statusLeft, statusRight);
 
   // 6. Input area — MUST be last so cursor lands here.
-  final prompt = switch ((app._mode, app._bashMode)) {
+  final prompt = switch ((app._mode, app._bash.active)) {
     (AppMode.idle, true) => '! ',
     (AppMode.idle, false) => '❯ ',
     _ => '  ',
   };
-  final promptStyle = switch ((app._mode, app._bashMode)) {
+  final promptStyle = switch ((app._mode, app._bash.active)) {
     (AppMode.idle, true) => AnsiStyle.red,
     (AppMode.idle, false) => AnsiStyle.yellow,
     _ => AnsiStyle.dim,

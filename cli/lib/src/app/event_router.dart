@@ -3,8 +3,8 @@ part of 'package:glue/src/app.dart';
 void _handleAppEventImpl(App app, AppEvent event) {
   switch (event) {
     case UserSubmit(:final text):
-      if (app._bashMode) {
-        app._handleBashSubmit(text);
+      if (app._bash.active) {
+        app._bash.submit(text);
       } else if (text.startsWith('/')) {
         final result = app._commands.execute(text);
         if (result != null && result.isNotEmpty) {

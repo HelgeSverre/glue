@@ -16,7 +16,6 @@ import 'package:glue/src/input/streaming_input_handler.dart';
 import 'package:glue/src/input/text_area_editor.dart';
 import 'package:glue/src/observability/debug_controller.dart';
 import 'package:glue/src/observability/observability.dart';
-import 'package:glue/src/observability/redaction.dart';
 import 'package:glue/src/orchestrator/permission_gate.dart';
 import 'package:glue/src/orchestrator/tool_permissions.dart';
 import 'package:glue/src/providers/llm_client_factory.dart';
@@ -38,6 +37,7 @@ import 'package:glue/src/runtime/controllers/skills_controller.dart';
 import 'package:glue/src/runtime/controllers/system_controller.dart';
 import 'package:glue/src/share/share_controller.dart';
 import 'package:glue/src/session/session_manager.dart';
+import 'package:glue/src/shell/bash_mode.dart';
 import 'package:glue/src/shell/command_executor.dart';
 import 'package:glue/src/shell/host_executor.dart';
 import 'package:glue/src/shell/shell_completer.dart';
@@ -63,7 +63,6 @@ part 'app/command_host_adapter.dart';
 part 'app/event_router.dart';
 part 'app/events.dart';
 part 'app/render_pipeline.dart';
-part 'app/shell_runtime.dart';
 part 'app/terminal_event_router.dart';
 
 // ---------------------------------------------------------------------------
@@ -139,9 +138,7 @@ class App {
   late final SessionManager _sessionManager;
   late final Config _configService;
   late final Session _sessionService;
-  bool _bashMode = false;
-  Process? _bashRunProcess;
-  ObservabilitySpan? _bashSpan;
+  late final BashMode _bash;
   DateTime? _lastCtrlC;
 
   final bool _startupContinue;
@@ -232,6 +229,15 @@ class App {
       modelIdProvider: () => _modelId,
       installDraft: editor.setText,
       llmFactory: _llmFactory,
+    );
+    _bash = BashMode(
+      transcript: _transcript,
+      executor: _executor,
+      jobs: _jobManager,
+      obs: _obs,
+      setMode: (mode) => _mode = mode,
+      stopSpinner: _stopSpinner,
+      render: _render,
     );
     _initCommands();
     _autocomplete = SlashAutocomplete(_commands);
@@ -336,7 +342,7 @@ class App {
     _subagentSub = _subagents?.updates.listen((update) {
       if (_transcript.handleSubagentUpdate(update)) _render();
     });
-    final jobSub = _jobManager.events.listen(_handleJobEvent);
+    final jobSub = _jobManager.events.listen(_bash.handleJobEvent);
 
     _render();
 
@@ -542,28 +548,6 @@ class App {
   }
 
   void _cancelAgent() => _currentTurn?.cancel();
-
-  // ── Bash mode ─────────────────────────────────────────────────────────
-
-  void _handleBashSubmit(String text) {
-    _handleBashSubmitImpl(this, text);
-  }
-
-  Future<void> _runBlockingBash(String command) async {
-    await _runBlockingBashImpl(this, command);
-  }
-
-  void _cancelBash() {
-    _cancelBashImpl(this);
-  }
-
-  void _startBackgroundJob(String command) {
-    _startBackgroundJobImpl(this, command);
-  }
-
-  void _handleJobEvent(JobEvent event) {
-    _handleJobEventImpl(this, event);
-  }
 
   // ── Rendering ──────────────────────────────────────────────────────────
 

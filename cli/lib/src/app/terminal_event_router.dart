@@ -55,19 +55,19 @@ void _handleTerminalEventImpl(App app, TerminalEvent event) {
 
       // Bash mode switching — before passing to editor.
       if (app._mode == AppMode.idle) {
-        if (!app._bashMode &&
+        if (!app._bash.active &&
             event is CharEvent &&
             event.char == '!' &&
             app.editor.cursor == 0) {
-          app._bashMode = true;
+          app._bash.active = true;
           app._render();
           return;
         }
-        if (app._bashMode &&
+        if (app._bash.active &&
             event is KeyEvent &&
             event.key == Key.backspace &&
             app.editor.cursor == 0) {
-          app._bashMode = false;
+          app._bash.active = false;
           app._shellComplete.dismiss();
           app._render();
           return;
@@ -96,7 +96,7 @@ void _handleTerminalEventImpl(App app, TerminalEvent event) {
           case StreamingAction.cancelAgent:
             app._cancelAgent();
           case StreamingAction.cancelBash:
-            app._cancelBash();
+            app._bash.cancel();
         }
         return;
       }
@@ -176,7 +176,7 @@ void _handleTerminalEventImpl(App app, TerminalEvent event) {
             app._render();
           }
         case InputAction.changed:
-          if (app._bashMode) {
+          if (app._bash.active) {
             app._shellComplete.dismiss();
           } else {
             app._autocomplete.update(app.editor.text, app.editor.cursor);
@@ -188,7 +188,7 @@ void _handleTerminalEventImpl(App app, TerminalEvent event) {
           }
           app._render();
         case InputAction.requestCompletion:
-          if (app._bashMode) {
+          if (app._bash.active) {
             app._shellComplete
                 .requestCompletions(app.editor.text, app.editor.cursor)
                 .then((_) => app._render());
