@@ -1,7 +1,8 @@
 import 'dart:io';
 
-import 'package:glue/glue.dart';
 import 'package:test/test.dart';
+
+import 'package:glue/src/agent/tools.dart';
 
 void main() {
   late Directory tmpDir;

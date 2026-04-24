@@ -1,6 +1,8 @@
-import 'package:glue/glue.dart';
 import 'package:glue/src/terminal/screen_buffer.dart';
 import 'package:test/test.dart';
+
+import 'package:glue/src/terminal/terminal.dart';
+import 'package:glue/src/ui/components/modal.dart';
 
 void main() {
   // ── Cell ──────────────────────────────────────────────────────────────

@@ -1,5 +1,8 @@
-import 'package:glue/glue.dart';
 import 'package:test/test.dart';
+
+import 'package:glue/src/input/line_editor.dart';
+import 'package:glue/src/input/text_area_editor.dart';
+import 'package:glue/src/terminal/terminal.dart';
 
 void main() {
   late TextAreaEditor editor;

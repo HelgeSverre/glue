@@ -11,7 +11,7 @@ const ModelCatalog bundledCatalog = ModelCatalog(
   defaults: DefaultsConfig(
     model: 'anthropic/claude-sonnet-4-6',
     smallModel: 'openai/gpt-5.4-mini',
-    localModel: 'ollama/qwen2.5-coder:32b',
+    localModel: 'ollama/gemma4:26b',
   ),
   capabilities: {
     'binary_tool_results': 'Accepts binary or multimodal tool-result payloads.',

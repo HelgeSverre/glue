@@ -1,5 +1,6 @@
-import 'package:glue/glue.dart';
 import 'package:test/test.dart';
+
+import 'package:glue/src/commands/slash_commands.dart';
 
 void main() {
   late SlashCommandRegistry registry;

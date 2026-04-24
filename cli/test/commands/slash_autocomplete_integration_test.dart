@@ -4,10 +4,11 @@
 /// transitions a user would experience typing a full command.
 library;
 
-import 'package:glue/glue.dart';
 import 'package:glue/src/commands/arg_completers.dart';
 import 'package:glue/src/commands/slash_autocomplete.dart';
 import 'package:test/test.dart';
+
+import 'package:glue/src/commands/slash_commands.dart';
 
 SlashAutocomplete _setup() {
   final registry = SlashCommandRegistry();

@@ -1,7 +1,9 @@
 import 'dart:io';
 
-import 'package:glue/glue.dart';
 import 'package:test/test.dart';
+
+import 'package:glue/src/agent/prompts.dart';
+import 'package:glue/src/skills/skill_parser.dart';
 
 SkillMeta _skill({
   required String name,

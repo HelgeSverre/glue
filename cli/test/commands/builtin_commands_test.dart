@@ -1,7 +1,17 @@
 import 'dart:io';
 
-import 'package:glue/glue.dart';
 import 'package:test/test.dart';
+
+import 'package:glue/src/agent/agent.dart';
+import 'package:glue/src/agent/tools.dart';
+import 'package:glue/src/app.dart';
+import 'package:glue/src/commands/builtin_commands.dart';
+import 'package:glue/src/commands/slash_commands.dart';
+import 'package:glue/src/core/environment.dart';
+import 'package:glue/src/input/text_area_editor.dart';
+import 'package:glue/src/storage/session_store.dart';
+import 'package:glue/src/terminal/layout.dart';
+import 'package:glue/src/terminal/terminal.dart';
 
 class _NoopTerminal extends Terminal {
   @override

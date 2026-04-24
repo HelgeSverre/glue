@@ -1,8 +1,9 @@
 import 'package:args/args.dart';
-import 'package:glue/glue.dart';
 import 'package:test/test.dart';
 
 import 'bin/glue_cli_args.dart';
+
+import 'package:glue/src/app.dart';
 
 // We test against the same arg parser shape used by GlueCommandRunner.
 

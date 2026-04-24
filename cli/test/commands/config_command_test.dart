@@ -1,7 +1,11 @@
 import 'dart:io';
 
-import 'package:glue/glue.dart';
 import 'package:test/test.dart';
+
+import 'package:glue/src/commands/config_command.dart';
+import 'package:glue/src/config/config_template.dart';
+import 'package:glue/src/config/glue_config.dart';
+import 'package:glue/src/core/environment.dart';
 
 void main() {
   group('initUserConfig', () {

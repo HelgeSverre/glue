@@ -1,7 +1,10 @@
 import 'dart:io';
 
-import 'package:glue/glue.dart';
 import 'package:test/test.dart';
+
+import 'package:glue/src/ui/rendering/ansi_utils.dart';
+import 'package:glue/src/ui/rendering/block_renderer.dart';
+import 'package:glue/src/ui/rendering/markdown_renderer.dart';
 
 void main() {
   // ── osc8Link ────────────────────────────────────────────────────────

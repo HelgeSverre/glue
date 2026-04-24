@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:glue/glue.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
+
+import 'package:glue/src/storage/session_store.dart';
 
 void main() {
   late Directory tmpDir;

@@ -5,7 +5,15 @@ import 'package:args/command_runner.dart';
 import 'package:cli_completion/cli_completion.dart';
 import 'package:cli_completion/installer.dart';
 import 'package:cli_completion/parser.dart';
-import 'package:glue/glue.dart';
+import 'package:glue/src/app.dart';
+import 'package:glue/src/catalog/model_ref.dart';
+import 'package:glue/src/commands/config_command.dart';
+import 'package:glue/src/config/build_info.dart';
+import 'package:glue/src/config/constants.dart';
+import 'package:glue/src/config/glue_config.dart';
+import 'package:glue/src/core/environment.dart';
+import 'package:glue/src/core/where_report.dart';
+import 'package:glue/src/doctor/doctor.dart';
 import 'package:path/path.dart' as p;
 
 const appDescription = 'The coding agent that holds it all together.';
