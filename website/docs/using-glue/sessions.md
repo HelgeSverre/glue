@@ -14,14 +14,14 @@ Sessions are stored in `~/.glue/sessions/{timestamp}-{id}/` with three files:
 
 ## Resuming a Session
 
-| Method                                      | Description                                  |
-| ------------------------------------------- | -------------------------------------------- |
-| `glue --resume`                             | Open the session picker at startup           |
-| `glue --resume <session-id>`                | Resume a specific session by its ID          |
+| Method                                    | Description                                  |
+| ----------------------------------------- | -------------------------------------------- |
+| `glue --resume`                           | Open the session picker at startup           |
+| `glue --resume <session-id>`              | Resume a specific session by its ID          |
 | `glue --resume <session-id> "new prompt"` | Resume a session and immediately send prompt |
-| `glue --continue`                           | Auto-resume the most recent session          |
-| `/resume`                                   | Open the session picker during a session     |
-| `/resume <id-or-query>`                     | Resume by ID or fuzzy query during a session |
+| `glue --continue`                         | Auto-resume the most recent session          |
+| `/resume`                                 | Open the session picker during a session     |
+| `/resume <id-or-query>`                   | Resume by ID or fuzzy query during a session |
 
 ::: tip
 Use `glue --continue` to pick up exactly where you left off. This is useful when you need to restart your terminal or switch machines.

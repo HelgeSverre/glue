@@ -117,4 +117,3 @@ web:
     hyperbrowser:
       api_key: your-hyperbrowser-key
 ```
-
