@@ -1,4 +1,4 @@
-import 'package:glue/src/app.dart' show AppMode;
+import 'package:glue/src/runtime/app_mode.dart';
 import 'package:glue/src/commands/slash_autocomplete.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/config/approval_mode.dart';

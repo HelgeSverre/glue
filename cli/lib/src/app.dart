@@ -20,6 +20,7 @@ import 'package:glue/src/providers/llm_client_factory.dart';
 import 'package:glue/src/ui/rendering/ansi_utils.dart';
 import 'package:glue/src/ui/rendering/block_renderer.dart';
 import 'package:glue/src/runtime/app_events.dart';
+import 'package:glue/src/runtime/app_mode.dart';
 import 'package:glue/src/runtime/commands/command_host.dart';
 import 'package:glue/src/runtime/input_router.dart';
 import 'package:glue/src/runtime/commands/register_builtin_slash_commands.dart';
@@ -61,30 +62,6 @@ part 'app/command_helpers.dart';
 part 'app/command_host_adapter.dart';
 part 'app/event_router.dart';
 part 'app/render_pipeline.dart';
-
-// ---------------------------------------------------------------------------
-// Application state
-// ---------------------------------------------------------------------------
-
-/// Top-level application mode.
-///
-/// {@category Core}
-enum AppMode {
-  /// Waiting for user input.
-  idle,
-
-  /// The LLM is streaming a response.
-  streaming,
-
-  /// A tool is currently executing.
-  toolRunning,
-
-  /// Waiting for user to approve a tool invocation.
-  confirming,
-
-  /// A bash command is currently executing.
-  bashRunning,
-}
 
 // ---------------------------------------------------------------------------
 // Main application controller
@@ -334,14 +311,26 @@ class App {
 
   /// Run the application event loop.
   ///
-  /// Enters raw / alt-screen mode and processes events until the user
-  /// requests an exit.
+  /// Watches for SIGINT (forwarding to [requestExit] so the user can
+  /// Ctrl+C out cleanly) and then enters raw / alt-screen mode. Processes
+  /// events until the user requests an exit. Print mode branches off
+  /// early — it doesn't need the interactive terminal setup at all.
   Future<void> run() async {
-    // Non-interactive print mode: stream response to stdout and exit.
-    if (_printMode) {
-      await _runPrintMode();
-      return;
+    final sigintSub =
+        ProcessSignal.sigint.watch().listen((_) => requestExit());
+    try {
+      // Non-interactive print mode: stream response to stdout and exit.
+      if (_printMode) {
+        await _runPrintMode();
+        return;
+      }
+      await _runInteractive();
+    } finally {
+      await sigintSub.cancel();
     }
+  }
+
+  Future<void> _runInteractive() async {
 
     terminal.enableRawMode();
     terminal.enableAltScreen();

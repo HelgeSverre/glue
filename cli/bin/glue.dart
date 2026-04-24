@@ -175,7 +175,7 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
     final prompt =
         topLevelResults.rest.isNotEmpty ? topLevelResults.rest.join(' ') : null;
 
-    final app = await AppShell.create(
+    final app = await App.create(
       model: model,
       prompt: prompt,
       printMode: printMode,

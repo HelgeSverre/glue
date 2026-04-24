@@ -4,7 +4,7 @@ import 'dart:io';
 
 import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart';
-import 'package:glue/src/app.dart' show AppMode;
+import 'package:glue/src/runtime/app_mode.dart';
 import 'package:glue/src/observability/observability.dart';
 import 'package:glue/src/observability/redaction.dart';
 import 'package:glue/src/orchestrator/permission_gate.dart';

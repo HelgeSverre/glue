@@ -22,9 +22,8 @@
 ///   pluggable [ObservabilitySink]s (OpenTelemetry, Langfuse, file).
 library;
 
-export 'src/app.dart' show App, AppMode;
-export 'src/runtime/app_launch_options.dart' show AppLaunchOptions;
-export 'src/runtime/app_shell.dart' show AppShell;
+export 'src/app.dart' show App;
+export 'src/runtime/app_mode.dart' show AppMode;
 export 'src/terminal/terminal.dart'
     show
         Terminal,
