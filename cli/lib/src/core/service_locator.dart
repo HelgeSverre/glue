@@ -215,8 +215,7 @@ class ServiceLocator {
       obs: obs,
     );
     tools['spawn_subagent'] = SpawnSubagentTool(subagents);
-    tools['spawn_parallel_subagents'] =
-        SpawnParallelSubagentsTool(subagents);
+    tools['spawn_parallel_subagents'] = SpawnParallelSubagentsTool(subagents);
 
     return AppServices(
       environment: resolvedEnv,

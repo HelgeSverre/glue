@@ -42,6 +42,24 @@ e2e:
 integration *args:
     dart test --run-skipped -t integration {{args}}
 
+# Generate HTML test coverage report and open it in the browser
+coverage:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! command -v genhtml >/dev/null 2>&1; then
+      echo "genhtml not found. Install with: brew install lcov" >&2
+      exit 1
+    fi
+    if ! dart pub global list 2>/dev/null | grep -q '^coverage '; then
+      echo "Activating coverage package..."
+      dart pub global activate coverage >/dev/null
+    fi
+    rm -rf coverage
+    dart pub global run coverage:test_with_coverage
+    genhtml coverage/lcov.info -o coverage/html --quiet
+    echo "Coverage report: coverage/html/index.html"
+    open coverage/html/index.html
+
 # Static analysis
 analyze:
     dart analyze --fatal-infos

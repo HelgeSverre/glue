@@ -332,7 +332,9 @@ void main() {
       ObservabilitySpan? endA;
       ObservabilitySpan? endB;
 
-      Future<void> drive(ObservabilitySpan turn, ObservabilitySpan llm,
+      Future<void> drive(
+          ObservabilitySpan turn,
+          ObservabilitySpan llm,
           void Function(ObservabilitySpan?) recordMid,
           void Function(ObservabilitySpan?) recordEnd) async {
         return obs.runInContext(() async {

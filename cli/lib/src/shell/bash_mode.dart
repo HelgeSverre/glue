@@ -96,8 +96,7 @@ class BashMode {
       final stripped = stripAnsi(output.toString().trimRight());
       transcript.blocks.add(ConversationEntry.bash(command, stripped));
       if (exitCode != 0) {
-        transcript.blocks
-            .add(ConversationEntry.system('Exit code: $exitCode'));
+        transcript.blocks.add(ConversationEntry.system('Exit code: $exitCode'));
       }
       if (span != null && obs != null && span.endTime == null) {
         obs!.endSpan(span, extra: {
@@ -135,8 +134,7 @@ class BashMode {
     _runProcess = null;
     stopSpinner();
     setMode(AppMode.idle);
-    transcript.blocks
-        .add(ConversationEntry.system('[bash command cancelled]'));
+    transcript.blocks.add(ConversationEntry.system('[bash command cancelled]'));
     render();
   }
 

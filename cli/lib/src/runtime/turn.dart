@@ -228,8 +228,8 @@ class Turn {
 
       if (jsonMode) {
         final sessionId = session.currentId;
-        conversationLog.insert(
-            0, {'type': 'user_message', 'text': expandedPrompt});
+        conversationLog
+            .insert(0, {'type': 'user_message', 'text': expandedPrompt});
         conversationLog.add({'type': 'assistant_message', 'text': text});
         final output = {
           'session_id': sessionId,

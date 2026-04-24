@@ -235,8 +235,8 @@ class InputRouter {
               requestExit();
             } else {
               _lastCtrlC = now;
-              transcript.blocks.add(
-                  ConversationEntry.system('Press Ctrl+C again to exit.'));
+              transcript.blocks
+                  .add(ConversationEntry.system('Press Ctrl+C again to exit.'));
               render();
             }
           case InputAction.changed:

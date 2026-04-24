@@ -402,5 +402,4 @@ class SessionController implements SessionCommandController {
   ) {
     return arg_completers.sessionArgCandidates(prior, partial);
   }
-
 }

@@ -58,9 +58,8 @@ import 'package:glue/src/ui/services/panels.dart';
 import 'package:glue/src/shell/shell_autocomplete.dart';
 import 'package:glue/src/commands/slash_autocomplete.dart';
 
-part 'app/command_host_adapter.dart';
-part 'app/event_router.dart';
-part 'app/render_pipeline.dart';
+part 'app/controllers.dart';
+part 'app/paint.dart';
 
 // ---------------------------------------------------------------------------
 // Main application controller
@@ -90,7 +89,7 @@ class App {
   final _exitCompleter = Completer<void>();
 
   late final SlashCommandRegistry _commands;
-  late final _AppCommandContext _commandContext;
+  late final _AppControllers _commandContext;
   String _modelId;
   final Environment _environment;
   late final String _cwd;
@@ -315,8 +314,7 @@ class App {
   /// events until the user requests an exit. Print mode branches off
   /// early — it doesn't need the interactive terminal setup at all.
   Future<void> run() async {
-    final sigintSub =
-        ProcessSignal.sigint.watch().listen((_) => requestExit());
+    final sigintSub = ProcessSignal.sigint.watch().listen((_) => requestExit());
     try {
       // Non-interactive print mode: stream response to stdout and exit.
       if (_printMode) {
@@ -330,7 +328,6 @@ class App {
   }
 
   Future<void> _runInteractive() async {
-
     terminal.enableRawMode();
     terminal.enableAltScreen();
     terminal.enableMouse();
@@ -517,7 +514,7 @@ class App {
   // ── Slash commands ──────────────────────────────────────────────────────
 
   void _initCommands() {
-    _commandContext = _AppCommandContext(this);
+    _commandContext = _AppControllers(this);
     _commands = buildBuiltinSlashCommands(_commandContext);
   }
 
@@ -544,19 +541,55 @@ class App {
 
       _transcript.blocks
           .add(ConversationEntry.toolCall('skill', {'name': skillName}));
-      _transcript.blocks
-          .add(ConversationEntry.toolResult(activation.content));
+      _transcript.blocks.add(ConversationEntry.toolResult(activation.content));
     } on SkillActivationError catch (e) {
-      _transcript.postNotice(e.message);
+      _transcript.system(e.message);
     } catch (e) {
-      _transcript.postNotice('Error activating skill "$skillName": $e');
+      _transcript.system('Error activating skill "$skillName": $e');
     }
   }
 
-  // ── App event handling ──────────────────────────────────────────────────
+  // ── User-event handling ────────────────────────────────────────────────
 
   void _handleAppEvent(AppEvent event) {
-    _handleAppEventImpl(this, event);
+    switch (event) {
+      case UserSubmit(:final text):
+        if (_bash.active) {
+          _bash.submit(text);
+        } else if (text.startsWith('/')) {
+          final result = _commands.execute(text);
+          if (result != null && result.isNotEmpty) {
+            _transcript.system(result);
+          }
+          _render();
+        } else {
+          final expanded = expandFileRefs(text);
+          _sessionService.ensureStore();
+          _sessionService.logEvent('user_message', {'text': expanded});
+          _sessionService.maybeGenerateInitialTitle(expanded);
+          _startAgent(
+            text,
+            expandedMessage: expanded != text ? expanded : null,
+          );
+        }
+
+      case UserCancel():
+        _cancelAgent();
+
+      case UserScroll(:final delta):
+        _transcript.scrollOffset =
+            (_transcript.scrollOffset + delta).clamp(0, 999999);
+        _render();
+
+      case UserResize():
+        layout.apply();
+        terminal.clearScreen();
+        // Preserve the user's scroll position across resize. The paint
+        // pass clamps out-of-range offsets, so we don't recompute here —
+        // worst case the user drifts by a few lines because wrapping
+        // changed, which is much less jarring than snapping to the tail.
+        _render();
+    }
   }
 
   // ── Agent interaction ──────────────────────────────────────────────────
@@ -575,6 +608,6 @@ class App {
   void _render() => _renderer.schedule(_doRender);
 
   void _doRender() {
-    _doRenderImpl(this);
+    _paint(this);
   }
 }

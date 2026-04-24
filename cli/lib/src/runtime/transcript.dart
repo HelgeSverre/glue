@@ -162,7 +162,7 @@ class ToolCallUiState {
 /// terminal. Owns the block list, per-tool UI state, scroll offset,
 /// in-progress streaming buffer, and subagent event grouping.
 ///
-/// Features mutate this through narrow methods (e.g. [postNotice]) or by
+/// Features mutate this through narrow methods (e.g. [system]) or by
 /// reaching for the appropriate collection directly. The app keeps exactly
 /// one [Transcript]; there is no interface (no second implementation needed,
 /// tests construct one directly).
@@ -197,7 +197,7 @@ class Transcript {
   }
 
   /// Append a system-visible notice as a new block.
-  void postNotice(String text) {
+  void system(String text) {
     blocks.add(ConversationEntry.system(text));
   }
 

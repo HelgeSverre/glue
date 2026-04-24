@@ -87,8 +87,9 @@ void main() {
       }
       await retryTest(() async {
         final agent = makeAgent();
-        
-        final result = await runHeadless(agent, 
+
+        final result = await runHeadless(
+          agent,
           'What is 2 + 2? Reply with just the number.',
         );
         expect(result, contains('4'));
@@ -104,8 +105,9 @@ void main() {
         final agent = makeAgent(tools: {
           'read_file': ReadFileTool(),
         });
-        
-        final result = await runHeadless(agent, 
+
+        final result = await runHeadless(
+          agent,
           'Use the read_file tool to read "pubspec.yaml" and tell me the package name.',
         );
         final toolResults =
@@ -124,8 +126,9 @@ void main() {
         final agent = makeAgent(tools: {
           'list_directory': ListDirectoryTool(),
         });
-        
-        final result = await runHeadless(agent, 
+
+        final result = await runHeadless(
+          agent,
           'Use the list_directory tool to list "." and tell me if pubspec.yaml exists.',
         );
         expect(
@@ -146,8 +149,9 @@ void main() {
         final agent = makeAgent(tools: {
           'grep': GrepTool(),
         });
-        
-        final result = await runHeadless(agent, 
+
+        final result = await runHeadless(
+          agent,
           'Use the grep tool to search for "class Agent" in the "lib/" directory.',
         );
         expect(result.toLowerCase(), contains('agent.dart'));

@@ -1,6 +1,6 @@
 part of 'package:glue/src/app.dart';
 
-void _doRenderImpl(App app) {
+void _paint(App app) {
   app._renderer.markRendered();
 
   final panelActive = app._panelStack.isNotEmpty;
