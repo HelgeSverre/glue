@@ -142,7 +142,7 @@ The Markdown export should be readable in raw form and easy to edit later.
 
 Suggested structure:
 
-```md
+````md
 # Glue Session
 
 > **Session ID:** `...`
@@ -155,6 +155,7 @@ Suggested structure:
 ---
 
 <a id="entry-1"></a>
+
 ## User
 
 ...
@@ -162,6 +163,7 @@ Suggested structure:
 ---
 
 <a id="entry-2"></a>
+
 ## Glue
 
 ...
@@ -169,6 +171,7 @@ Suggested structure:
 ---
 
 <a id="entry-3"></a>
+
 ## Tool: read_file
 
 ### Arguments
@@ -176,16 +179,19 @@ Suggested structure:
 ```json
 { ... }
 ```
+````
 
 ---
 
 <a id="entry-4"></a>
+
 ## Tool result
 
 ```text
 ...
 ```
-```
+
+````
 
 ### Markdown rendering rules
 
@@ -205,7 +211,7 @@ Suggested subagent markdown shape:
 
 ### Tool: web_search
 ...
-```
+````
 
 This keeps the transcript editable and structurally obvious.
 
@@ -454,7 +460,7 @@ Test cases:
 1. **Where should templates live?**
    - under `lib/src/share/templates/`
    - or under a top-level `templates/` directory
-   Recommendation: keep them under `lib/src/share/templates/` with small file-loader helpers.
+     Recommendation: keep them under `lib/src/share/templates/` with small file-loader helpers.
 
 2. **Do we want to add `mustache_template` as a dependency now, or start with file-based placeholders using a tiny internal renderer?**
    Recommendation: add `mustache_template` now to avoid inventing our own templating mini-language.
@@ -462,7 +468,7 @@ Test cases:
 3. **How should raw HTML embedded in assistant markdown be handled?**
    - allow as trusted content
    - or pre-escape to avoid risky exports
-   Recommendation: decide explicitly before shipping; safest default is to avoid passing raw HTML through unless needed.
+     Recommendation: decide explicitly before shipping; safest default is to avoid passing raw HTML through unless needed.
 
 4. **How should subagent events be persisted?**
    Current session logs do not appear to store share-friendly nested subagent entries yet. We need a concrete persisted event schema.
@@ -472,7 +478,7 @@ Test cases:
    - `subagent_tool_call`
    - `subagent_tool_result`
    - `subagent_finish`
-   with `subagent_id` and optional `parent_subagent_id`.
+     with `subagent_id` and optional `parent_subagent_id`.
 
 5. **Do we collapse long tool outputs in HTML by default?**
    Recommendation: yes, use `<details>` for tool output and maybe auto-collapse over a line threshold.

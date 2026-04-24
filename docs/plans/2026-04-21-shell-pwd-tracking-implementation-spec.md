@@ -595,6 +595,7 @@ Required change:
 ## C. Skills
 
 ### `cli/lib/src/skills/skill_runtime.dart`
+
 ### `cli/lib/src/skills/skill_registry.dart`
 
 Required change:
@@ -605,6 +606,7 @@ Required change:
 ## D. File references / autocomplete
 
 ### `cli/lib/src/ui/at_file_hint.dart`
+
 ### `cli/lib/src/input/file_expander.dart`
 
 Required change:
@@ -638,8 +640,11 @@ Required change:
 - strip wrapper artifacts from rendered output
 
 ### `cli/lib/src/shell/command_executor.dart`
+
 ### `cli/lib/src/shell/host_executor.dart`
+
 ### `cli/lib/src/shell/docker_executor.dart`
+
 ### `cli/lib/src/shell/executor_factory.dart`
 
 Required change:
@@ -654,8 +659,11 @@ This is one of the main risk areas.
 ## G. Session metadata / doctor / UI
 
 ### `cli/lib/src/storage/session_store.dart`
+
 ### `cli/lib/src/session/session_manager.dart`
+
 ### `cli/lib/src/ui/panel_controller.dart`
+
 ### `cli/lib/src/doctor/doctor.dart`
 
 Required change:

@@ -455,7 +455,7 @@ If we are unwilling to say that in the product, we probably should not ship it.
 Add at least:
 
 - `gemini` provider
-with adapter either:
+  with adapter either:
 - `gemini` if we implement a native Gemini adapter
 - or `openai` only if we were proxying through an OpenAI-compatible endpoint
   (which we are not)

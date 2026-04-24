@@ -450,10 +450,10 @@ Recommended behavior for v1:
 
 1. mark tool phase as cancelled
 2. call `agent.completeToolCall(ToolResult(
-     callId: ...,
-     success: false,
-     content: '[cancelled by user]',
-   ))`
+  callId: ...,
+  success: false,
+  content: '[cancelled by user]',
+))`
 3. cancel the whole agent turn via existing `_cancelAgent()` or a narrower path
 
 There are two plausible strategies.

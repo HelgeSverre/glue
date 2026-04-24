@@ -7,6 +7,7 @@ Follow-up to the structural refactor. Now that the runtime is clean, these three
 **Punch line.** Thin slash-command wrappers around `git` that render as collapsible transcript blocks. Skips the "one second, let me run bash for you" detour users hit ten times per session.
 
 **Scope.**
+
 - New `git` slash-command module alongside the existing builtins in `cli/lib/src/runtime/commands/register_builtin_slash_commands.dart`.
 - `/diff [pathspec]` → runs `git diff --color=always`, renders output as a bash-style transcript block.
 - `/status` → `git status --short`, with emoji/colour badges for staged / unstaged / untracked.
@@ -15,6 +16,7 @@ Follow-up to the structural refactor. Now that the runtime is clean, these three
 - Handles "not a git repo" gracefully with a single transcript notice.
 
 **Files touched.**
+
 - `cli/lib/src/runtime/commands/register_builtin_slash_commands.dart` — new `_GitCommandModule`.
 - New `cli/lib/src/commands/git_commands.dart` — thin shell-out helpers.
 - `cli/test/commands/` — add tests with a fake executor.
@@ -22,6 +24,7 @@ Follow-up to the structural refactor. Now that the runtime is clean, these three
 **Effort.** 1–2 days. No new architecture. Existing `CommandExecutor` does the work.
 
 **Why now.**
+
 - Felt every session. The agent already uses bash for git; surfacing it to the user via slash commands removes a common "ok run bash and show me" round-trip.
 - Minimal risk: the commands are CLI wrappers; git itself does all the work.
 - Natural pairing with the existing `/share`, `/session`, `/model` command family.
@@ -33,6 +36,7 @@ Follow-up to the structural refactor. Now that the runtime is clean, these three
 **Punch line.** When the user pastes an image (from system clipboard or via bracketed-paste binary), detect it and wrap it as a multimodal `ImagePart` in the next turn's user message.
 
 **Scope.**
+
 - Detect paste events that carry binary image data. Terminals deliver these via bracketed-paste sequences on most platforms, or the app can probe the system clipboard (`pbpaste`, `wl-paste`, `xclip`) on submit.
 - Platform support: start with macOS + Linux (`pbpaste` / `wl-paste`). Windows later.
 - Wrap detected images as `ImagePart` (already exists at `cli/lib/src/agent/content_part.dart`), injected into the outbound user message.
@@ -40,6 +44,7 @@ Follow-up to the structural refactor. Now that the runtime is clean, these three
 - Respect the model's vision capability (catalog flag `vision`) — if the active model lacks vision, fall through to saving the image to `/tmp/` and passing the path as text with a notice.
 
 **Files touched.**
+
 - `cli/lib/src/input/text_area_editor.dart` — paste handler extension.
 - New `cli/lib/src/input/clipboard_image.dart` — platform detection + decoding.
 - `cli/lib/src/runtime/turn.dart` — hook for attaching `ImagePart` to the outgoing user message.
@@ -48,11 +53,13 @@ Follow-up to the structural refactor. Now that the runtime is clean, these three
 **Effort.** 1–2 days. `ImagePart` already exists in the domain model.
 
 **Why now.**
+
 - High-delight visual debugging: "look at this UI glitch" → paste screenshot → done. No save-to-disk-and-reference dance.
 - Anthropic vision is strong and widely available; local vision models (Gemma 4, Qwen 3.6) also support it.
 - Platform-native; no new dependencies on `pbpaste`/`wl-paste` (already on every Mac/Linux).
 
 **Watch-outs.**
+
 - Don't try Windows in the first cut. PowerShell clipboard is a different animal.
 - Size cap: paste of a 10MB screenshot shouldn't accidentally fire a multimodal call. Warn + downsample or reject over 4MB.
 
@@ -63,6 +70,7 @@ Follow-up to the structural refactor. Now that the runtime is clean, these three
 **Punch line.** Auto-load tools from local MCP servers declared in `config.yaml`. Users get Postgres, filesystem-beyond-cwd, GitHub API, etc. without glue shipping a tool for each one.
 
 **Scope.**
+
 - Config: new `mcp_servers:` block in `~/.glue/config.yaml` declaring `{name, command, args, env}` per server.
 - Spawn each declared server as a child process on startup, speak JSON-RPC over stdio (the MCP wire format).
 - Introspect each server's tool list via `tools/list`, wrap each one as a `glue.Tool` that forwards to `tools/call`.
@@ -71,6 +79,7 @@ Follow-up to the structural refactor. Now that the runtime is clean, these three
 - Clean shutdown: `SIGTERM` each MCP process on app exit.
 
 **Files touched.**
+
 - `cli/lib/src/config/glue_config.dart` — parse `mcp_servers`.
 - New `cli/lib/src/agent/mcp/` module: `mcp_client.dart` (JSON-RPC over stdio), `mcp_tool_adapter.dart` (wraps each remote tool as a `Tool`), `mcp_registry.dart` (lifecycle mgmt).
 - `cli/lib/src/core/service_locator.dart` — spawn MCP servers, merge their tools into the agent's tool map.
@@ -79,11 +88,13 @@ Follow-up to the structural refactor. Now that the runtime is clean, these three
 **Effort.** 2–3 days. MCP protocol is straightforward (JSON-RPC 2.0 + a small schema); the lifecycle work is where most time goes.
 
 **Why now.**
+
 - Claude Code, gemini-cli, aider, opencode all ship MCP. Glue having zero MCP support is the largest 2026-era feature gap.
 - Massive capability unlock per line of code: users bring their own tool ecosystem instead of waiting for us to ship each integration.
 - The protocol is stable; the ecosystem is active. Early April 2026 is the moment to hop on.
 
 **Watch-outs.**
+
 - Don't build our own MCP server (at least not yet). We're a client.
 - Don't ship built-in MCP servers. Make it fully user-declared.
 - Trust: each MCP tool runs in a separate process; still needs to go through glue's approval flow (`PermissionGate`) since the tool's arguments come from the LLM.
@@ -108,6 +119,7 @@ Follow-up to the structural refactor. Now that the runtime is clean, these three
 ## What makes a "do it" decision for any of these
 
 Before committing to one, ask:
+
 - Can a single session land it? (All three: yes.)
 - Does it need a new architecture? (No — each slots into existing structure.)
 - Will the first user to try it notice? (Yes for all three.)

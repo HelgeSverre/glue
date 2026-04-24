@@ -43,6 +43,7 @@ That model is attractive for Glue because it preserves an important property: **
 The cleanest architecture is to treat these as **two products that work together**:
 
 ### 1) `glue-github-action`
+
 A reusable GitHub Action that:
 
 - installs or downloads Glue CLI
@@ -53,6 +54,7 @@ A reusable GitHub Action that:
 - optionally posts comments / creates commits / opens PRs
 
 ### 2) `Glue GitHub App`
+
 A GitHub App that:
 
 - can be installed on repos/orgs
@@ -111,18 +113,21 @@ Repositories add a workflow like:
 - run `uses: glue-labs/glue-github-action@v1`
 
 ### Pros
+
 - Fastest to ship
 - No hosted App/backend needed
 - Zero webhook server
 - Entirely repo-controlled
 
 ### Cons
+
 - `@glue` is just text matching, not a real GitHub App mention
 - no app identity, no installation flow
 - cannot centralize policy or per-installation config
 - UX is weaker: anyone can type the trigger phrase unless workflow adds guards
 
 ### Assessment
+
 This is the fastest MVP and should likely ship first even if the long-term target is a GitHub App.
 
 ---
@@ -132,6 +137,7 @@ This is the fastest MVP and should likely ship first even if the long-term targe
 The App receives mentions and dispatches repo workflows.
 
 ### Pros
+
 - Real `@glue` mention UX
 - Native installation permissions model
 - Central trigger routing and policy
@@ -139,11 +145,13 @@ The App receives mentions and dispatches repo workflows.
 - Future path to richer GitHub integration (checks, review threads, config UI)
 
 ### Cons
+
 - Requires hosted webhook service
 - Requires installation token management and event handling
 - More moving parts
 
 ### Assessment
+
 This is the recommended target architecture.
 
 ---
@@ -153,17 +161,20 @@ This is the recommended target architecture.
 The App clones repos and runs Glue in Glue-controlled workers.
 
 ### Pros
+
 - Minimal setup in customer repos
 - Can work without repository workflows
 - Full Glue control over runtime and caching
 
 ### Cons
+
 - Worst security/compliance story
 - Requires full hosted execution platform
 - Must securely clone private repos and manage secrets
 - Much larger operational burden
 
 ### Assessment
+
 Do not do this for V1.
 
 ---
@@ -175,6 +186,7 @@ Do not do this for V1.
 Recommended support matrix:
 
 ### V1
+
 - `issue_comment.created`
 - `pull_request_review_comment.created`
 - `pull_request_review.submitted`
@@ -183,6 +195,7 @@ Recommended support matrix:
 - optional: `issues.assigned`
 
 ### V2
+
 - `pull_request.opened` for auto-review
 - `check_suite.completed` / `workflow_run.completed` for CI autofix loops
 - `pull_request.synchronize` for re-review
@@ -198,6 +211,7 @@ Support these in order:
 4. **Assignment trigger**: assign the app bot/user
 
 ### Important GitHub nuance
+
 Real **@mention** behavior is strongest when Glue is a real installed GitHub App/bot identity. Without the App, repositories can only emulate this with text matching.
 
 ---
@@ -211,6 +225,7 @@ Example:
 `@glue address this review feedback and push a fix`
 
 Expected behavior:
+
 - App acknowledges with a reaction or comment
 - workflow starts
 - Glue checks out the PR head branch
@@ -225,6 +240,7 @@ Example:
 `@glue implement this and open a PR`
 
 Expected behavior:
+
 - workflow creates a new working branch from default/base branch
 - Glue implements the requested change
 - Action opens a PR linked to the issue
@@ -237,6 +253,7 @@ Example:
 `@glue fix all actionable comments in this review`
 
 Expected behavior:
+
 - workflow gathers unresolved review comments / review body
 - Glue edits code accordingly
 - posts summary with commit SHA or PR link
@@ -244,6 +261,7 @@ Expected behavior:
 ## Automated review workflow
 
 Example workflow:
+
 - on `pull_request.opened` or label `glue-review`
 - run Glue in read-only / no-write mode
 - post review summary and possibly inline comments
@@ -255,6 +273,7 @@ This does not require mention-based invocation and should be a first-class Actio
 ## Action design
 
 ## Recommended deliverable
+
 Publish a dedicated repository, likely:
 
 - `glue-labs/glue-github-action`
@@ -262,7 +281,9 @@ Publish a dedicated repository, likely:
 Implementation form should be one of:
 
 ### Prefer: JavaScript action wrapping a released Glue binary
+
 Why:
+
 - easy to publish to marketplace
 - straightforward inputs/outputs
 - can download platform-specific Glue release artifact
@@ -270,9 +291,11 @@ Why:
 - works on GitHub-hosted runners across OSes
 
 ### Alternative: composite action
+
 Works if setup logic remains simple, but JS gives more control for outputs, event parsing, retries, and API calls.
 
 ### Avoid for V1: Docker action
+
 Too limiting for enterprise and slower/coupled to Linux.
 
 ## Action responsibilities
@@ -290,6 +313,7 @@ The Action should:
 ## Suggested inputs
 
 ### Trigger/config
+
 - `trigger_phrase` default `@glue`
 - `label_trigger`
 - `assignee_trigger`
@@ -307,16 +331,19 @@ The Action should:
 - `guidelines_filename` default maybe `AGENTS.github.md` or configurable override
 
 ### Auth
+
 - `glue_api_key` or provider-specific keys
 - `github_token` optional override, else use `${{ github.token }}`
 
 ### Safety/policy
+
 - `allow_actor_association` list (`OWNER`, `MEMBER`, `COLLABORATOR`)
 - `fork_policy` (`skip`, `read-only`, `require-approval`)
 - `max_minutes`
 - `approval_mode` if Glue supports noninteractive permission policy selection
 
 ## Suggested outputs
+
 - `should_skip`
 - `branch_name`
 - `commit_sha`
@@ -346,6 +373,7 @@ Rather than a one-off root verb.
 ## Minimal CLI features needed
 
 ### 1) Headless task execution entrypoint
+
 The Action needs a stable non-interactive interface that can:
 
 - accept a prompt
@@ -365,6 +393,7 @@ glue github run \
 ```
 
 ### 2) Structured output contract
+
 Need machine-readable result schema, e.g.:
 
 - title
@@ -377,6 +406,7 @@ Need machine-readable result schema, e.g.:
 - should_skip
 
 ### 3) GitHub-context prompt builder
+
 Glue should understand common GitHub contexts:
 
 - issue body/title/comments
@@ -387,9 +417,11 @@ Glue should understand common GitHub contexts:
 This can live in the Action initially, but long-term likely belongs in CLI/library code for testability.
 
 ### 4) Safe branch/commit helpers
+
 GitHub workflows need repeatable branch naming and PR behavior.
 
 Examples:
+
 - `glue/<issue-number>-slug`
 - `glue/pr-123/fix-review-comments`
 - `glue/run-<run-id>`
@@ -403,7 +435,9 @@ This may be easier in the Action using git + GitHub API, but Glue may need conve
 ## Components
 
 ### 1) Webhook service
+
 Small service that:
+
 - receives GitHub webhooks
 - verifies signature
 - parses event payload
@@ -415,7 +449,9 @@ Small service that:
 Technology choice does not need to be Dart. A small TypeScript service is likely operationally simpler because Octokit and GitHub App tooling are mature there.
 
 ### 2) Installation config store
+
 Need per-installation/repo config, likely including:
+
 - enabled triggers
 - allowed actors / orgs
 - workflow filename or dispatch target
@@ -424,12 +460,16 @@ Need per-installation/repo config, likely including:
 - fork policy
 
 ### 3) Dispatcher
+
 Turns webhook events into one of:
+
 - `repository_dispatch`
 - `workflow_dispatch`
 
 ### 4) Optional callback/commenter
+
 Posts a lightweight acknowledgment comment like:
+
 - "Glue picked this up — starting workflow: <run link>"
 
 This is optional for MVP because the Action can comment once it starts.
@@ -441,11 +481,13 @@ This is optional for MVP because the Action can comment once it starts.
 ## Prefer `repository_dispatch` for App -> repo trigger
 
 Why:
+
 - GitHub App can fire a custom event with a payload
 - target workflow can be generic and event-driven
 - easier to pass rich normalized payload than `workflow_dispatch` inputs
 
 Example:
+
 - App sends event type `glue.invoke`
 - payload includes event kind, installation id, repo, issue/pr numbers, comment id, actor, extracted instruction, trigger metadata
 
@@ -458,9 +500,11 @@ on:
 ```
 
 ### Alternative: `workflow_dispatch`
+
 Works, but inputs are more rigid and less ergonomic for rich event payloads.
 
 ### Recommendation
+
 Use `repository_dispatch` for App-triggered flows, but also support direct event-triggered workflows for the Action-only mode.
 
 ---
@@ -479,9 +523,11 @@ This is the hard part and should drive scope.
 ## Main risks
 
 ### 1) Prompt injection from issue/PR/comment content
+
 Users can say anything in comments, including instructions to exfiltrate secrets or rewrite workflow files.
 
 Mitigations:
+
 - use explicit system/task framing for GitHub runs
 - default to least privilege
 - support read-only/review-only modes
@@ -489,27 +535,33 @@ Mitigations:
 - allow orgs to provide GitHub-specific guidelines/policy file
 
 ### 2) Forked PR privilege escalation
+
 A comment on a PR from a fork can trigger privileged workflows if not handled carefully.
 
 Mitigations:
+
 - default `fork_policy=skip`
 - if supporting forks, only allow read-only review mode
 - never checkout untrusted fork code with write token + secrets in the same workflow unless there is a deliberate approval design
 - avoid `pull_request_target` for write-capable execution on untrusted code unless the design is extremely constrained
 
 ### 3) Bot abuse / spam / cost amplification
+
 Anyone who can comment could repeatedly trigger Glue.
 
 Mitigations:
+
 - actor allowlist by association (`OWNER`, `MEMBER`, `COLLABORATOR`)
 - rate limiting per issue/PR/repo/user
 - dedupe on identical comment IDs / delivery IDs
 - concurrency control in workflows
 
 ### 4) Excessive repo permissions
+
 Glue does not always need all write scopes.
 
 Mitigations:
+
 - document minimal permissions per workflow mode
 - review-only mode: `contents: read`, `pull-requests: write` maybe `issues: write`
 - fix mode: add `contents: write`
@@ -518,16 +570,19 @@ Mitigations:
 ## Permissions guidance
 
 ### Review-only workflow
+
 - `contents: read`
 - `pull-requests: write`
 - `issues: write` if posting issue comments
 
 ### Fix / commit workflow
+
 - `contents: write`
 - `pull-requests: write`
 - `issues: write`
 
 ### Optional checks integration
+
 - `checks: write`
 
 ---
@@ -535,13 +590,16 @@ Mitigations:
 ## Handling comments and mentions correctly
 
 ## Trigger parsing
+
 The App should normalize invocation from:
+
 - issue comments
 - PR review comments
 - review body comments
 - issue title/body
 
 Needed parser outputs:
+
 - `triggered: bool`
 - `kind: mention | slash | label | assignment`
 - `instruction_text`
@@ -552,12 +610,15 @@ Needed parser outputs:
 ## Suggested parsing rules
 
 ### Mention
+
 - support `@glue` or actual bot login once registered
 - strip the mention token from the remaining instruction
 - if nothing remains, use a mode-specific default prompt like "Review this PR" or "Implement this issue"
 
 ### Slash command
+
 Examples:
+
 - `/glue review`
 - `/glue fix`
 - `/glue continue`
@@ -565,6 +626,7 @@ Examples:
 Useful even with App mentions because slash commands are easier to parse and less dependent on account naming.
 
 ### Labels / assignment
+
 Map labels/assignment to predefined modes rather than free-form instructions.
 
 ---
@@ -592,6 +654,7 @@ The GitHub integration should not just pass raw comment text. It should build a 
 This can be represented either as markdown with clear sections or structured XML/JSON injected into the prompt.
 
 ## Why this matters
+
 It reduces ambiguity and keeps Glue from overfitting to a single free-form comment without understanding surrounding GitHub context.
 
 ---
@@ -601,27 +664,34 @@ It reduces ambiguity and keeps Glue from overfitting to a single free-form comme
 ## V1 result surfaces
 
 ### 1) Single summary comment
+
 Always useful. Include:
+
 - title
 - short summary
 - branch / commit / PR URL if created
 - maybe touched files
 
 ### 2) PR creation/update
+
 For issue-to-PR or fix tasks.
 
 ### 3) Commit push to current PR branch
+
 For trusted same-repo PRs only.
 
 ## V2 result surfaces
 
 ### 4) Inline review comments
+
 High value for review mode, but trickier because mapping model findings to exact lines in a changing diff is nontrivial.
 
 ### 5) Check runs
+
 Could provide cleaner UX than comments for status/progress and review summaries.
 
 ### Recommendation
+
 V1 should optimize for **summary comments + branch/commit/PR outputs**. Inline comments can wait.
 
 ---
@@ -660,6 +730,7 @@ workflows:
 The App can read this via contents API or leave it to the workflow/Action.
 
 ### Recommendation
+
 For MVP, keep config in workflow inputs first. Add `.glue/github.yaml` once real usage patterns emerge.
 
 ---
@@ -669,12 +740,15 @@ For MVP, keep config in workflow inputs first. Add `.glue/github.yaml` once real
 ## Phase 0 — Research and design lock
 
 Deliverables:
+
 - this plan
 - explicit decision on MVP architecture
 - threat model notes
 
 ### Recommendation
+
 Lock in:
+
 - **MVP-1:** Action-only with direct workflow triggers and text-based `@glue` matching
 - **MVP-2:** GitHub App that dispatches `repository_dispatch` to the same Action-backed workflow
 
@@ -685,6 +759,7 @@ This de-risks the App by first proving the runner-side execution model.
 ## Phase 1 — Ship `glue-github-action` without a GitHub App
 
 ### Scope
+
 - create marketplace-ready Action repo
 - support direct workflows triggered by native GitHub events
 - support text-based `@glue` matching in comments/issues/reviews
@@ -695,15 +770,19 @@ This de-risks the App by first proving the runner-side execution model.
 ### Required work
 
 #### A. Define a stable headless execution contract in Glue CLI
+
 Need a reliable noninteractive interface for GitHub usage.
 
 Likely work in `cli/`:
+
 - add `glue github run` command family
 - add structured JSON result output
 - add event/context ingestion from `GITHUB_EVENT_PATH`
 
 #### B. Build Action wrapper
+
 In separate repo:
+
 - install/download Glue release
 - parse workflow inputs
 - invoke `glue github run`
@@ -711,7 +790,9 @@ In separate repo:
 - optionally call GitHub API for comments/PRs
 
 #### C. Publish workflow cookbook
+
 Examples:
+
 - comment-triggered fix
 - issue-to-PR
 - automated PR review
@@ -748,6 +829,7 @@ jobs:
 ```
 
 ### Exit criteria
+
 - Action can be used in any repo without the App
 - comment-triggered execution works
 - issue-to-PR workflow works on trusted repos
@@ -758,6 +840,7 @@ jobs:
 ## Phase 2 — Add GitHub App as trigger/router
 
 ### Scope
+
 - register GitHub App
 - build webhook service
 - support real app mentions
@@ -766,7 +849,9 @@ jobs:
 ### Required work
 
 #### A. Create App manifest and permissions
+
 Likely permissions:
+
 - Repository contents: read
 - Pull requests: read/write
 - Issues: read/write
@@ -775,6 +860,7 @@ Likely permissions:
 - Checks: optional later
 
 Events:
+
 - issue_comment
 - pull_request_review_comment
 - pull_request_review
@@ -782,7 +868,9 @@ Events:
 - maybe pull_request
 
 #### B. Build webhook receiver
+
 Responsibilities:
+
 - signature verification
 - idempotency on delivery ID
 - trigger parsing
@@ -790,6 +878,7 @@ Responsibilities:
 - dispatch
 
 #### C. Define dispatch payload schema
+
 Example:
 
 ```json
@@ -816,9 +905,11 @@ Example:
 ```
 
 #### D. Provide a standard workflow template
+
 Repos install App + add workflow listening to `repository_dispatch`.
 
 ### Exit criteria
+
 - real App mention starts the repo workflow
 - same Action does the execution
 - workflow receives normalized payload from App
@@ -828,6 +919,7 @@ Repos install App + add workflow listening to `repository_dispatch`.
 ## Phase 3 — Harden security and expand modes
 
 ### Scope
+
 - fork-safe policies
 - check-run integration
 - CI failure autofix
@@ -835,6 +927,7 @@ Repos install App + add workflow listening to `repository_dispatch`.
 - optional inline review comments
 
 ### Work items
+
 - add actor trust policy
 - add concurrency/dedup/rate limits
 - support `workflow_run` or checks-based triggers
@@ -846,6 +939,7 @@ Repos install App + add workflow listening to `repository_dispatch`.
 ## Proposed MVP boundaries
 
 ## In scope for MVP-1
+
 - Action-only
 - direct workflow invocation on comments/issues/reviews
 - text-based `@glue` trigger phrase
@@ -854,6 +948,7 @@ Repos install App + add workflow listening to `repository_dispatch`.
 - issue-to-PR and PR-fix flows
 
 ## Out of scope for MVP-1
+
 - real GitHub App
 - inline review comment MCP-like precision
 - hosted execution
@@ -861,12 +956,14 @@ Repos install App + add workflow listening to `repository_dispatch`.
 - complex per-installation config UI
 
 ## In scope for MVP-2
+
 - GitHub App webhook service
 - real mention-based trigger
 - `repository_dispatch`
 - installation-level routing/config
 
 ## Out of scope for MVP-2
+
 - running code outside Actions
 - full SaaS control plane
 
@@ -875,21 +972,27 @@ Repos install App + add workflow listening to `repository_dispatch`.
 ## Specific recommendations for Glue repo changes
 
 ## 1) Add a plan before surface expansion
+
 This document is that plan and aligns with repo guidance for non-trivial command families.
 
 ## 2) Add a new CLI noun namespace: `glue github ...`
+
 Recommended initial commands:
+
 - `glue github run` — execute a GitHub-scoped task headlessly
 - `glue github context` — print normalized GitHub context as JSON for debugging
 
 Do not add slash commands for this; this is a non-interactive/scriptable surface.
 
 ## 3) Keep GitHub-specific API logic mostly out of the TUI app
+
 This work belongs in:
+
 - `cli/lib/src/commands/`
 - a new `cli/lib/src/github/` module for event normalization / prompt synthesis / outputs
 
 Suggested new internal area:
+
 - `cli/lib/src/github/`
   - `event_parser.dart`
   - `context_builder.dart`
@@ -898,8 +1001,10 @@ Suggested new internal area:
   - `github_run_command.dart`
 
 ## 4) Prefer Action repo + App repo outside this monorepo
+
 This repo should hold the CLI functionality and docs.
 Separate repos are cleaner for:
+
 - GitHub Action marketplace packaging
 - GitHub App service deployment
 - release cadence differences
@@ -966,6 +1071,7 @@ If the question is "how could we create Glue as a GitHub App for Actions workflo
 - **Then add a lightweight GitHub App whose main job is routing @mentions into `repository_dispatch` events that invoke that same Action-backed workflow.**
 
 That gives Glue:
+
 - a simple security story
 - a good enterprise story
 - a fast path to value

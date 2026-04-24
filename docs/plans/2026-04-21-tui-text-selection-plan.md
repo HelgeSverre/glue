@@ -64,7 +64,7 @@ Short version after re-checking Glue’s actual architecture:
    - transcript export/review mode
    - config/command surface like `/mouse on|off`
 
-5. **Recommendation:** revise the plan around transcript selection first.**
+5. **Recommendation:** revise the plan around transcript selection first.\*\*
    - **Phase 1:** add internal rendered-line model + selection state + drag
      selection in transcript
    - **Phase 2:** polish interactions (`Ctrl+C`, `Esc`, click-vs-drag
@@ -73,6 +73,7 @@ Short version after re-checking Glue’s actual architecture:
      selection
 
 That is a better fit for how Glue already works today.
+
 ## External Findings
 
 ## OpenCode

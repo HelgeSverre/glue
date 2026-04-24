@@ -25,26 +25,26 @@ implementation session can execute in a single pass.
 date). Aliases in parentheses; hidden aliases (not shown in `/help`) in square
 brackets.
 
-| # | Command | Aliases | Subcommands | Takes args | Interactive (panel)? | Description |
-|---|---|---|---|---|---|---|
-| 1 | `/help` | — | — | no | panel | Show commands + keybindings |
-| 2 | `/clear` | — | — | no | immediate | Clear conversation history |
-| 3 | `/exit` | `quit`, [`q`] | — | no | immediate | Exit Glue |
-| 4 | `/tools` | — | — | no | immediate | List available tools |
-| 5 | `/copy` | — | — | no | immediate | Copy last response to clipboard |
-| 6 | `/debug` | — | — | no | immediate | Toggle debug mode |
-| 7 | `/approve` | — | — | no | immediate | Toggle approval mode (confirm ↔ auto) |
-| 8 | `/model` | `models` | — | optional | panel / direct | No args = picker; arg = switch by query |
-| 9 | `/session` | — | `copy` | optional | immediate | Show session info; `/session copy` copies ID |
-| 10 | `/history` | — | — | optional | panel / direct | Browse/fork history; arg = fork by index/query |
-| 11 | `/resume` | — | — | optional | panel / direct | Resume session; arg = switch by ID/query |
-| 12 | `/rename` | — | — | yes | immediate | Rename current session |
-| 13 | `/skills` | — | — | optional | panel / direct | Browse/activate skill |
-| 14 | `/share` | — | — | optional | immediate | Export session (html, markdown, gist) |
-| 15 | `/provider` | — | `list`, `add`, `remove`\|`rm`, `test` | optional | panel / direct | Manage providers |
-| 16 | `/paths` | [`where`] | — | no | immediate | Show Glue data paths |
-| 17 | `/config` | — | `init` | optional | external editor | Open config.yaml in `$EDITOR`; `/config init` bootstraps |
-| 18 | `/open` | — | `home`, `session`, `sessions`, `logs`, `skills`, `plans`, `cache` | yes | external | Open a Glue directory in file manager |
+| #   | Command     | Aliases       | Subcommands                                                       | Takes args | Interactive (panel)? | Description                                              |
+| --- | ----------- | ------------- | ----------------------------------------------------------------- | ---------- | -------------------- | -------------------------------------------------------- |
+| 1   | `/help`     | —             | —                                                                 | no         | panel                | Show commands + keybindings                              |
+| 2   | `/clear`    | —             | —                                                                 | no         | immediate            | Clear conversation history                               |
+| 3   | `/exit`     | `quit`, [`q`] | —                                                                 | no         | immediate            | Exit Glue                                                |
+| 4   | `/tools`    | —             | —                                                                 | no         | immediate            | List available tools                                     |
+| 5   | `/copy`     | —             | —                                                                 | no         | immediate            | Copy last response to clipboard                          |
+| 6   | `/debug`    | —             | —                                                                 | no         | immediate            | Toggle debug mode                                        |
+| 7   | `/approve`  | —             | —                                                                 | no         | immediate            | Toggle approval mode (confirm ↔ auto)                    |
+| 8   | `/model`    | `models`      | —                                                                 | optional   | panel / direct       | No args = picker; arg = switch by query                  |
+| 9   | `/session`  | —             | `copy`                                                            | optional   | immediate            | Show session info; `/session copy` copies ID             |
+| 10  | `/history`  | —             | —                                                                 | optional   | panel / direct       | Browse/fork history; arg = fork by index/query           |
+| 11  | `/resume`   | —             | —                                                                 | optional   | panel / direct       | Resume session; arg = switch by ID/query                 |
+| 12  | `/rename`   | —             | —                                                                 | yes        | immediate            | Rename current session                                   |
+| 13  | `/skills`   | —             | —                                                                 | optional   | panel / direct       | Browse/activate skill                                    |
+| 14  | `/share`    | —             | —                                                                 | optional   | immediate            | Export session (html, markdown, gist)                    |
+| 15  | `/provider` | —             | `list`, `add`, `remove`\|`rm`, `test`                             | optional   | panel / direct       | Manage providers                                         |
+| 16  | `/paths`    | [`where`]     | —                                                                 | no         | immediate            | Show Glue data paths                                     |
+| 17  | `/config`   | —             | `init`                                                            | optional   | external editor      | Open config.yaml in `$EDITOR`; `/config init` bootstraps |
+| 18  | `/open`     | —             | `home`, `session`, `sessions`, `logs`, `skills`, `plans`, `cache` | yes        | external             | Open a Glue directory in file manager                    |
 
 Registration is implemented in:
 
@@ -66,25 +66,25 @@ Claude Code's surface is large and trends toward namespace-first commands
 `/setup-vertex`, `/autofix-pr`, `/install-github-app`, `/install-slack-app`).
 For the overlap with Glue's surface:
 
-| Claude Code | Purpose |
-|---|---|
-| `/help` | Show commands |
-| `/clear` | Clear context |
-| `/exit` | Exit |
-| `/copy` | Copy response |
-| `/model` | Switch model |
-| `/config` | Open config |
-| `/export` | Export conversation (vs. Glue's `/share`) |
-| `/resume` | Resume a session |
-| `/rename` | Rename current session |
-| `/agents` | Manage subagents |
-| `/debug` | (bundled skill) debugging playbook — **not** Glue's toggle |
-| `/memory` | Manage memory (CLAUDE.md) |
-| `/permissions` | Manage permissions |
-| `/review` | Code review skill |
-| `/status` | Session status |
-| `/cost` | Token/cost breakdown |
-| `/skills` | Manage skills |
+| Claude Code    | Purpose                                                    |
+| -------------- | ---------------------------------------------------------- |
+| `/help`        | Show commands                                              |
+| `/clear`       | Clear context                                              |
+| `/exit`        | Exit                                                       |
+| `/copy`        | Copy response                                              |
+| `/model`       | Switch model                                               |
+| `/config`      | Open config                                                |
+| `/export`      | Export conversation (vs. Glue's `/share`)                  |
+| `/resume`      | Resume a session                                           |
+| `/rename`      | Rename current session                                     |
+| `/agents`      | Manage subagents                                           |
+| `/debug`       | (bundled skill) debugging playbook — **not** Glue's toggle |
+| `/memory`      | Manage memory (CLAUDE.md)                                  |
+| `/permissions` | Manage permissions                                         |
+| `/review`      | Code review skill                                          |
+| `/status`      | Session status                                             |
+| `/cost`        | Token/cost breakdown                                       |
+| `/skills`      | Manage skills                                              |
 
 Naming conventions in Claude Code:
 
@@ -97,13 +97,13 @@ Naming conventions in Claude Code:
 
 A much smaller surface:
 
-| OpenCode | Purpose |
-|---|---|
-| `/init` | Initialize project |
-| `/undo` | Revert changes |
-| `/redo` | Restore |
+| OpenCode | Purpose                 |
+| -------- | ----------------------- |
+| `/init`  | Initialize project      |
+| `/undo`  | Revert changes          |
+| `/redo`  | Restore                 |
 | `/share` | Share conversation link |
-| `/help` | Help |
+| `/help`  | Help                    |
 
 OpenCode's `/share` matches Glue's naming. `/init` there means project bootstrap
 (not config init), so there's no collision to worry about.
@@ -122,25 +122,25 @@ OpenCode's `/share` matches Glue's naming. `/init` there means project bootstrap
 
 Columns: current → proposed → rationale → breaking? (alias kept) → priority.
 
-| # | Current | Proposed | Rationale | Breaking? | Priority |
-|---|---|---|---|---|---|
-| A | `/rename` | `/rename` (no change) — **but** add `/session rename` as a sibling subcommand that delegates to the same controller method | `/rename` is ambiguous on read — "rename what?". `/session rename <title>` makes the target explicit. Keep `/rename` as top-level for ergonomics (short-name users will keep typing it). | No; alias kept | Medium |
-| B | `/session copy` | `/session id` (show + offer copy) — or keep `copy`, add `/session new` and `/session rename` as siblings | `copy` is fine but buried. Making `/session` a real noun namespace (`copy`, `rename`, `info`, `new`) improves discoverability via help text listing subcommands. Alternatively: drop `/session copy` and expose dedicated `/copy-session-id` top-level — rejected, too narrow. | No; `copy` subcommand preserved | Low (cosmetic) |
-| C | `/models` alias | Drop | Plural adds no value; `/model` already accepts a query arg so `/models` is not doing "list models" — that's what `/model` with no args does. The alias shipped only for discoverability; after six months of use, drop it. | Breaking for typed `/models`; no alias replacement | Low |
-| D | `/paths` + hidden `where` | Promote `/where` to the primary name, make `/paths` the hidden alias | `/where` matches the `glue --where` root flag and the `buildWhereReport()` function name — consistency across surfaces. `/paths` is generic; `/where` is distinct and memorable. | Not breaking; primary flips, alias flips | Medium |
-| E | `/config` (bare = edit) + `/config init` | Keep `/config` (bare = edit) + `/config init` (no change) | Considered `/config edit` for symmetry with `glue config init|show`, but `/config` alone meaning "open in editor" is more ergonomic than requiring an explicit subcommand. CLI `glue config init|show` is non-interactive and needs explicit verbs; interactive TUI doesn't. | n/a | No change |
-| F | `/provider` + subcommands | Keep as-is. No top-level `/add-provider`, `/test-provider` aliases | Noun namespace is working. Top-level verbs would dilute the command list. `/provider list|add|remove|test` is a tight, well-scoped sub-grammar. | n/a | No change |
-| G | `/exit` / `/quit` / `/q` | Keep `/exit` primary, `/quit` alias, drop hidden `/q` | `q` is a vim-ism; collides with normal typing on first keystroke after `/`. Actively harmful for discoverability of any future `/q*` commands. `/quit` is a harmless synonym (visible). | Breaking for `/q` typists; no alias | Medium |
-| H | `/debug` | Make it accept optional `on`/`off`: `/debug [on\|off]` | Today `/debug` is a bare toggle that returns "Debug mode: true/false". Awkward in scripts + requires checking state first. Accept optional arg; no arg = toggle (preserves current behavior). | No; additive | Low |
-| I | `/approve` | Keep. Consider `/approve [confirm\|auto\|autoedit\|yolo]` to match Shift+Tab cycle | Same rationale as `/debug`. Today's bare toggle cycles; adding an explicit mode arg makes the command scriptable. | No; additive | Low |
-| J | `/history` vs `/resume` | Keep both. Clarify descriptions to disambiguate | `/history` forks (branches off a prior message in the current session). `/resume` switches to a different saved session. The verbs are fine but the current `/help` descriptions ("Browse history or fork by index/query" vs "Resume a session") don't draw the distinction sharply. Tighten the strings. | No | Low (copy change) |
-| K | `/open` | Keep as noun-first (`/open <target>`) | Considered splitting to `/open-config`, `/open-logs`, etc. Rejected — `/open` as a primitive with a completer is cleaner and already works. | n/a | No change |
-| L | `/tools` | Keep | Matches user mental model; no competitor does better. | n/a | No change |
-| M | `/copy` | Keep | Just landed; matches Claude Code. | n/a | No change |
-| N | `/clear` | Keep | Universal. | n/a | No change |
-| O | `/help` | Keep | Universal. | n/a | No change |
-| P | `/skills` | Keep | Matches Claude Code. | n/a | No change |
-| Q | `/share` | Keep | Matches OpenCode; lives in its own module. | n/a | No change |
+| #   | Current                                  | Proposed                                                                                                                   | Rationale                                                                                                                                                                                                                                                                                                 | Breaking?                                                                                                                        | Priority                                                                    |
+| --- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------ | --------- | --------- |
+| A   | `/rename`                                | `/rename` (no change) — **but** add `/session rename` as a sibling subcommand that delegates to the same controller method | `/rename` is ambiguous on read — "rename what?". `/session rename <title>` makes the target explicit. Keep `/rename` as top-level for ergonomics (short-name users will keep typing it).                                                                                                                  | No; alias kept                                                                                                                   | Medium                                                                      |
+| B   | `/session copy`                          | `/session id` (show + offer copy) — or keep `copy`, add `/session new` and `/session rename` as siblings                   | `copy` is fine but buried. Making `/session` a real noun namespace (`copy`, `rename`, `info`, `new`) improves discoverability via help text listing subcommands. Alternatively: drop `/session copy` and expose dedicated `/copy-session-id` top-level — rejected, too narrow.                            | No; `copy` subcommand preserved                                                                                                  | Low (cosmetic)                                                              |
+| C   | `/models` alias                          | Drop                                                                                                                       | Plural adds no value; `/model` already accepts a query arg so `/models` is not doing "list models" — that's what `/model` with no args does. The alias shipped only for discoverability; after six months of use, drop it.                                                                                | Breaking for typed `/models`; no alias replacement                                                                               | Low                                                                         |
+| D   | `/paths` + hidden `where`                | Promote `/where` to the primary name, make `/paths` the hidden alias                                                       | `/where` matches the `glue --where` root flag and the `buildWhereReport()` function name — consistency across surfaces. `/paths` is generic; `/where` is distinct and memorable.                                                                                                                          | Not breaking; primary flips, alias flips                                                                                         | Medium                                                                      |
+| E   | `/config` (bare = edit) + `/config init` | Keep `/config` (bare = edit) + `/config init` (no change)                                                                  | Considered `/config edit` for symmetry with `glue config init                                                                                                                                                                                                                                             | show`, but `/config`alone meaning "open in editor" is more ergonomic than requiring an explicit subcommand. CLI`glue config init | show` is non-interactive and needs explicit verbs; interactive TUI doesn't. | n/a                                        | No change |
+| F   | `/provider` + subcommands                | Keep as-is. No top-level `/add-provider`, `/test-provider` aliases                                                         | Noun namespace is working. Top-level verbs would dilute the command list. `/provider list                                                                                                                                                                                                                 | add                                                                                                                              | remove                                                                      | test` is a tight, well-scoped sub-grammar. | n/a       | No change |
+| G   | `/exit` / `/quit` / `/q`                 | Keep `/exit` primary, `/quit` alias, drop hidden `/q`                                                                      | `q` is a vim-ism; collides with normal typing on first keystroke after `/`. Actively harmful for discoverability of any future `/q*` commands. `/quit` is a harmless synonym (visible).                                                                                                                   | Breaking for `/q` typists; no alias                                                                                              | Medium                                                                      |
+| H   | `/debug`                                 | Make it accept optional `on`/`off`: `/debug [on\|off]`                                                                     | Today `/debug` is a bare toggle that returns "Debug mode: true/false". Awkward in scripts + requires checking state first. Accept optional arg; no arg = toggle (preserves current behavior).                                                                                                             | No; additive                                                                                                                     | Low                                                                         |
+| I   | `/approve`                               | Keep. Consider `/approve [confirm\|auto\|autoedit\|yolo]` to match Shift+Tab cycle                                         | Same rationale as `/debug`. Today's bare toggle cycles; adding an explicit mode arg makes the command scriptable.                                                                                                                                                                                         | No; additive                                                                                                                     | Low                                                                         |
+| J   | `/history` vs `/resume`                  | Keep both. Clarify descriptions to disambiguate                                                                            | `/history` forks (branches off a prior message in the current session). `/resume` switches to a different saved session. The verbs are fine but the current `/help` descriptions ("Browse history or fork by index/query" vs "Resume a session") don't draw the distinction sharply. Tighten the strings. | No                                                                                                                               | Low (copy change)                                                           |
+| K   | `/open`                                  | Keep as noun-first (`/open <target>`)                                                                                      | Considered splitting to `/open-config`, `/open-logs`, etc. Rejected — `/open` as a primitive with a completer is cleaner and already works.                                                                                                                                                               | n/a                                                                                                                              | No change                                                                   |
+| L   | `/tools`                                 | Keep                                                                                                                       | Matches user mental model; no competitor does better.                                                                                                                                                                                                                                                     | n/a                                                                                                                              | No change                                                                   |
+| M   | `/copy`                                  | Keep                                                                                                                       | Just landed; matches Claude Code.                                                                                                                                                                                                                                                                         | n/a                                                                                                                              | No change                                                                   |
+| N   | `/clear`                                 | Keep                                                                                                                       | Universal.                                                                                                                                                                                                                                                                                                | n/a                                                                                                                              | No change                                                                   |
+| O   | `/help`                                  | Keep                                                                                                                       | Universal.                                                                                                                                                                                                                                                                                                | n/a                                                                                                                              | No change                                                                   |
+| P   | `/skills`                                | Keep                                                                                                                       | Matches Claude Code.                                                                                                                                                                                                                                                                                      | n/a                                                                                                                              | No change                                                                   |
+| Q   | `/share`                                 | Keep                                                                                                                       | Matches OpenCode; lives in its own module.                                                                                                                                                                                                                                                                | n/a                                                                                                                              | No change                                                                   |
 
 ## Recommendation
 
@@ -185,15 +185,15 @@ Columns: current → proposed → rationale → breaking? (alias kept) → prior
 
 ### Ranked by value / effort
 
-| Rank | Change | Value | Effort | Verdict |
-|---|---|---|---|---|
-| 1 | D. `/where` primary | Medium | Tiny | Do |
-| 2 | G. Drop `/q` | Medium | Tiny | Do |
-| 3 | A. Add `/session rename` | Medium | Small | Do |
-| 4 | J. Tighten `/history` + `/resume` copy | Low | Tiny | Do (free) |
-| 5 | H+I. `/debug on/off`, `/approve <mode>` | Low | Small | Optional |
-| 6 | C. Drop `/models` alias | Low | Tiny | Optional |
-| 7 | B. Flesh out `/session` subcommands | Low | Medium | Skip for now |
+| Rank | Change                                  | Value  | Effort | Verdict      |
+| ---- | --------------------------------------- | ------ | ------ | ------------ |
+| 1    | D. `/where` primary                     | Medium | Tiny   | Do           |
+| 2    | G. Drop `/q`                            | Medium | Tiny   | Do           |
+| 3    | A. Add `/session rename`                | Medium | Small  | Do           |
+| 4    | J. Tighten `/history` + `/resume` copy  | Low    | Tiny   | Do (free)    |
+| 5    | H+I. `/debug on/off`, `/approve <mode>` | Low    | Small  | Optional     |
+| 6    | C. Drop `/models` alias                 | Low    | Tiny   | Optional     |
+| 7    | B. Flesh out `/session` subcommands     | Low    | Medium | Skip for now |
 
 ## Non-goals
 
