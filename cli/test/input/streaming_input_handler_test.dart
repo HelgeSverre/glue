@@ -53,7 +53,7 @@ void main() {
       expect(autocomplete.active, isTrue,
           reason:
               'Autocomplete must activate when "/" is typed during streaming');
-      expect(autocomplete.matchCount, 4); // help, clear, info, status (alias)
+      expect(autocomplete.matchCount, 3); // help, clear, info (aliases hidden)
     });
 
     test('typing "/h" filters autocomplete to "help" during streaming', () {

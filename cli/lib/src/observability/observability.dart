@@ -84,6 +84,12 @@ class ObservabilitySpan {
             extra['error.message']?.toString() ?? extra['error']?.toString();
       }
     }
+    // Default a closed span without an explicit status to `ok`. OTLP
+    // backends (MLflow, Langfuse) treat `unset` as "still in progress",
+    // which makes finished spans look like they're hanging in the UI.
+    if (statusCode == 'unset') {
+      statusCode = 'ok';
+    }
   }
 
   Map<String, dynamic> toMap() => {
@@ -180,6 +186,11 @@ class Observability {
   void addSink(ObservabilitySink sink) => _sinks.add(sink);
 
   /// Starts a new span with the given [name].
+  ///
+  /// `session.id` is inherited from the effective parent's attributes when
+  /// the caller doesn't supply one — backends like Langfuse / OpenInference
+  /// group spans by `session.id`, so every descendant of a session-tagged
+  /// span needs to carry it explicitly rather than relying on traceId alone.
   ObservabilitySpan startSpan(
     String name, {
     String kind = 'internal',
@@ -187,10 +198,15 @@ class Observability {
     ObservabilitySpan? parent,
   }) {
     final effectiveParent = parent ?? activeSpan;
+    final merged = <String, dynamic>{...?attributes};
+    final inheritedSessionId = effectiveParent?.attributes['session.id'];
+    if (inheritedSessionId is String && inheritedSessionId.isNotEmpty) {
+      merged.putIfAbsent('session.id', () => inheritedSessionId);
+    }
     return ObservabilitySpan(
       name: name,
       kind: kind,
-      attributes: attributes,
+      attributes: merged,
       traceId: effectiveParent?.traceId,
       parentSpanId: effectiveParent?.spanId,
     );

@@ -50,7 +50,7 @@ void main() {
     test('activates on "/" prefix', () {
       ac.update('/', 1);
       expect(ac.active, isTrue);
-      expect(ac.matchCount, 6); // 5 commands + quit alias
+      expect(ac.matchCount, 5); // 5 canonical commands; aliases hidden
     });
 
     test('filters by prefix', () {
@@ -95,7 +95,7 @@ void main() {
     test('moveDown wraps around', () {
       ac.update('/', 1);
       expect(ac.selected, 0);
-      for (var i = 0; i < 6; i++) {
+      for (var i = 0; i < 5; i++) {
         ac.moveDown();
       }
       expect(ac.selected, 0); // wrapped
@@ -105,7 +105,7 @@ void main() {
       ac.update('/', 1);
       expect(ac.selected, 0);
       ac.moveUp(); // wraps to last
-      expect(ac.selected, 5);
+      expect(ac.selected, 4);
     });
 
     test('accept returns selected command', () {
@@ -128,11 +128,20 @@ void main() {
       expect(result, isNull);
     });
 
-    test('hidden aliases do not appear in autocomplete', () {
+    test('aliases and hidden aliases do not appear in autocomplete', () {
+      // Both `quit` (visible alias) and `q` (hidden alias) resolve via
+      // findByName when typed in full, but neither surfaces as a separate
+      // dropdown candidate — the picker only lists canonical names.
       ac.update('/q', 2);
+      expect(ac.active, isFalse);
+      expect(ac.matchCount, 0);
+    });
+
+    test('canonical name still matches when alias prefix shares it', () {
+      ac.update('/e', 2);
       expect(ac.active, isTrue);
-      expect(ac.selectedText, '/quit'); // /quit matches, not /q
-      expect(ac.matchCount, 1); // only /quit, not /q
+      expect(ac.matchCount, 1);
+      expect(ac.selectedText, '/exit');
     });
 
     test('dismiss resets state', () {
@@ -155,7 +164,7 @@ void main() {
     test('render produces correct number of lines', () {
       ac.update('/', 1);
       final lines = ac.render(80);
-      expect(lines, hasLength(6));
+      expect(lines, hasLength(5));
     });
 
     test('render returns empty when inactive', () {
@@ -165,7 +174,7 @@ void main() {
 
     test('overlayHeight matches match count', () {
       ac.update('/', 1);
-      expect(ac.overlayHeight, 6);
+      expect(ac.overlayHeight, 5);
       ac.update('/he', 3);
       expect(ac.overlayHeight, 1);
       ac.dismiss();

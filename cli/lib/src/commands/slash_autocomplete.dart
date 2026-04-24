@@ -93,19 +93,13 @@ class SlashAutocomplete implements AutocompleteOverlay {
   }
 
   void _updateNameMode(String prefix, String buffer) {
+    // Only canonical command names appear in the dropdown — aliases and
+    // hiddenAliases are still resolved by SlashCommandRegistry.findByName
+    // when the user types them in full, but they don't clutter the picker.
     final candidates = <_Candidate>[];
     for (final cmd in _registry.commands) {
       if (cmd.name.startsWith(prefix)) {
         candidates.add(_candidateForCommand(cmd, cmd.name));
-      }
-      for (final alias in cmd.aliases) {
-        if (alias.startsWith(prefix) && alias != cmd.name) {
-          candidates.add(_candidateForCommand(
-            cmd,
-            alias,
-            descriptionOverride: '${cmd.description} (→/${cmd.name})',
-          ));
-        }
       }
     }
 

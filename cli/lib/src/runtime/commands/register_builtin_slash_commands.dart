@@ -46,9 +46,9 @@ class _CoreCommandModule implements SlashCommandModule {
     ));
 
     registry.register(SlashCommand(
-      name: 'exit',
+      name: 'Quit',
       description: 'Exit Glue',
-      aliases: ['quit'],
+      aliases: ['exit'],
       hiddenAliases: ['q'],
       execute: (_) {
         context.system.requestExit();
@@ -98,8 +98,7 @@ class _ModelCommandModule implements SlashCommandModule {
   void register(SlashCommandRegistry registry, SlashCommandContext context) {
     registry.register(SlashCommand(
       name: 'model',
-      description:
-          'Switch model (no args = picker, with arg = switch directly)',
+      description: 'Switch model',
       aliases: ['models'],
       execute: (args) {
         if (args.isEmpty) {

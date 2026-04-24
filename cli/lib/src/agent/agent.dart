@@ -186,6 +186,11 @@ class Agent {
   /// Completers keyed by tool call ID for parallel tool execution.
   final Map<String, Completer<ToolResult>> _pendingToolResults = {};
 
+  /// In-flight `tool.<name>` spans, keyed by tool call ID. Lets [Turn] mark
+  /// tools as cancelled (with a synthetic close on the span) when the user
+  /// aborts the turn before the underlying tool future resolves.
+  final Map<String, ObservabilitySpan> _activeToolSpans = {};
+
   Agent({
     required this.llm,
     required this.tools,
@@ -481,6 +486,7 @@ class Agent {
         for (final tc in msg.toolCalls) {
           final alreadyHasResult = resultIdsAfter.contains(tc.id);
           if (!alreadyHasResult) {
+            markToolCancelled(tc.id);
             _conversation.add(Message.toolResult(
               callId: tc.id,
               content: '[cancelled by user]',
@@ -507,10 +513,9 @@ class Agent {
       );
     }
 
-    ObservabilitySpan? span;
     if (_obs != null) {
       final encodedArgs = jsonEncode(call.arguments);
-      span = _obs.startSpan(
+      _activeToolSpans[call.id] = _obs.startSpan(
         'tool.${call.name}',
         kind: 'tool',
         parent: _traceParent,
@@ -536,8 +541,11 @@ class Agent {
     try {
       final result = await tool.execute(call.arguments);
       stopwatch.stop();
-      if (span != null) {
-        _obs!.endSpan(span, extra: {
+      // remove() returns null if Turn.cancel already closed the span as
+      // cancelled — don't double-end in that case.
+      final span = _activeToolSpans.remove(call.id);
+      if (span != null && _obs != null) {
+        _obs.endSpan(span, extra: {
           'tool.duration_ms': stopwatch.elapsedMilliseconds,
           'tool.success': true,
           'tool.output': redactBody(result.content, maxBytes: 64.kilobytes),
@@ -554,8 +562,9 @@ class Agent {
       return result.withCallId(call.id);
     } catch (e, st) {
       stopwatch.stop();
-      if (span != null) {
-        _obs!.endSpan(span, extra: {
+      final span = _activeToolSpans.remove(call.id);
+      if (span != null && _obs != null) {
+        _obs.endSpan(span, extra: {
           'tool.duration_ms': stopwatch.elapsedMilliseconds,
           'tool.success': false,
           'error': true,
@@ -570,6 +579,25 @@ class Agent {
         success: false,
       );
     }
+  }
+
+  /// Ends the in-flight `tool.<name>` span for [callId] with `cancelled:
+  /// true`. No-op if there's no live span (the tool already finished, never
+  /// started, or had no observability attached).
+  ///
+  /// The underlying tool future may still be running in the background —
+  /// this method only affects the trace. If/when that future eventually
+  /// resolves, [executeTool] will see the span has already been removed
+  /// from [_activeToolSpans] and skip the success/error close.
+  void markToolCancelled(String callId, {String reason = 'user_cancel'}) {
+    final span = _activeToolSpans.remove(callId);
+    if (span == null || _obs == null) return;
+    span.setStatus('error', message: 'cancelled: $reason');
+    _obs.endSpan(span, extra: {
+      'cancelled': true,
+      'tool.success': false,
+      'tool.cancel.reason': reason,
+    });
   }
 }
 

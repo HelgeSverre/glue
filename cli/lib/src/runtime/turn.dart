@@ -73,6 +73,10 @@ class Turn {
   /// [AgentDone] / [AgentError] / [cancel].
   void run(String displayMessage, {String? expandedMessage}) {
     _beginRun();
+    // Make sure the session store exists before the turn span is opened, so
+    // `session.id` is non-empty on the agent.turn span and inherits down to
+    // every child span.
+    session.ensureStore();
     transcript.blocks.add(
       ConversationEntry.user(displayMessage, expandedText: expandedMessage),
     );
@@ -117,6 +121,7 @@ class Turn {
           render();
         },
         onDone: () {
+          _span?.setStatus('ok');
           _endSpan();
           _isRunning = false;
           if (transcript.streamingText.isNotEmpty) {
@@ -150,6 +155,9 @@ class Turn {
     required bool jsonMode,
   }) async {
     _beginRun();
+    // Print mode otherwise lazy-creates the store inside the agent loop,
+    // which leaves `session.id` empty on the agent.turn span. Force it now.
+    session.ensureStore();
     session.logEvent('user_message', {'text': expandedPrompt});
 
     Future<void> body() async {
@@ -228,6 +236,7 @@ class Turn {
         return;
       } finally {
         if (_span != null && _span!.endTime == null) {
+          _span!.setStatus('ok');
           obs!.endSpan(_span!, extra: {
             'output.value': redactBody(assistantText.toString()),
             'gen_ai.output.messages': redactBody(assistantText.toString()),
@@ -270,6 +279,11 @@ class Turn {
   void cancel() {
     _sub?.cancel();
     _sub = null;
+    // OTLP has no first-class "cancelled" status, so backends like MLflow
+    // report any UNSET-status span as in-progress forever. Mark cancellation
+    // as a non-OK status with a clear message; the `cancelled` attribute
+    // remains the load-bearing signal for queries.
+    _span?.setStatus('error', message: 'cancelled by user');
     _endSpan(extra: {'cancelled': true});
     _isRunning = false;
     renderer.stopSpinner();
@@ -284,6 +298,10 @@ class Turn {
           state.phase == ToolPhase.awaitingApproval ||
           state.phase == ToolPhase.running) {
         state.phase = ToolPhase.cancelled;
+        // Close the corresponding tool.<name> span as cancelled if it's
+        // still in flight. Safe no-op when the span never opened (approval
+        // pending) or already closed.
+        agent.markToolCancelled(state.id);
       }
     }
     agent.ensureToolResultsComplete();

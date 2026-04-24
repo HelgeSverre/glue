@@ -392,30 +392,37 @@ class App {
     try {
       await _exitCompleter.future;
     } finally {
-      // Stop all event sources before touching terminal state.
       _stopSpinner();
-      // Dispose tools (closes browser sessions, containers, etc.).
-      for (final tool in agent.tools.values) {
-        try {
-          await tool.dispose();
-        } catch (_) {}
-      }
-      await _obs?.flush();
-      await _obs?.close();
-      await _sessionManager.closeCurrent();
-      await jobSub.cancel();
-      await _jobManager.shutdown();
+      // End the current turn span while obs is still open, then drop our
+      // event sources so nothing else can paint into the alt screen.
+      _currentTurn?.cancel();
       await termSub.cancel();
       await appSub.cancel();
-      _currentTurn?.cancel();
       await _subagentSub?.cancel();
       await _events.close();
+
+      // Visual restore happens BEFORE slow IO. A misconfigured OTLP
+      // endpoint would otherwise hold the TUI hostage in raw + alt-screen
+      // mode while flush blocks on a network round-trip.
       terminal.disableMouse();
       terminal.resetScrollRegion();
       terminal.showCursor();
       terminal.write('\x1b[0m');
       terminal.disableAltScreen();
       terminal.disableRawMode();
+
+      // Slow / network teardown — capped so a hung sink can't keep the
+      // shell from returning the prompt.
+      for (final tool in agent.tools.values) {
+        try {
+          await tool.dispose();
+        } catch (_) {}
+      }
+      await _flushObsBounded();
+      await _sessionManager.closeCurrent();
+      await jobSub.cancel();
+      await _jobManager.shutdown();
+
       final sessionId = _sessionManager.currentSessionId;
       if (sessionId != null) {
         stdout
@@ -424,6 +431,18 @@ class App {
       }
       terminal.dispose();
     }
+  }
+
+  Future<void> _flushObsBounded() async {
+    final obs = _obs;
+    if (obs == null) return;
+    await Future.any<void>([
+      () async {
+        await obs.flush();
+        await obs.close();
+      }(),
+      Future<void>.delayed(const Duration(seconds: 2)),
+    ]);
   }
 
   /// Non-interactive print mode: send prompt, stream response to stdout, exit.

@@ -71,6 +71,21 @@ void main() {
       expect(span.endTime, equals(firstEnd));
     });
 
+    test('end() defaults statusCode to ok when no explicit status set', () {
+      final span = ObservabilitySpan(name: 'test', kind: 'internal');
+      expect(span.statusCode, 'unset');
+      span.end();
+      expect(span.statusCode, 'ok');
+    });
+
+    test('end() preserves explicit status set before close', () {
+      final span = ObservabilitySpan(name: 'test', kind: 'internal');
+      span.setStatus('error', message: 'cancelled by user');
+      span.end(extra: {'cancelled': true});
+      expect(span.statusCode, 'error');
+      expect(span.statusMessage, 'cancelled by user');
+    });
+
     test('end() with extra attributes merges them', () {
       final span = ObservabilitySpan(
         name: 'test',
@@ -253,6 +268,49 @@ void main() {
       obs.activeSpan = null;
       final span = obs.startSpan('test');
       expect(span.parentSpanId, isNull);
+    });
+
+    test('startSpan inherits session.id from effective parent', () {
+      final parent = obs.startSpan(
+        'turn',
+        attributes: {'session.id': 'sess-abc'},
+      );
+      final child = obs.startSpan('child', parent: parent);
+      expect(child.attributes['session.id'], 'sess-abc');
+    });
+
+    test('startSpan inherits session.id from activeSpan when no parent given',
+        () {
+      final parent = obs.startSpan(
+        'turn',
+        attributes: {'session.id': 'sess-xyz'},
+      );
+      obs.activeSpan = parent;
+      final child = obs.startSpan('child');
+      expect(child.attributes['session.id'], 'sess-xyz');
+      obs.activeSpan = null;
+    });
+
+    test('caller-supplied session.id wins over inherited value', () {
+      final parent = obs.startSpan(
+        'turn',
+        attributes: {'session.id': 'parent-sess'},
+      );
+      final child = obs.startSpan(
+        'child',
+        parent: parent,
+        attributes: {'session.id': 'child-sess'},
+      );
+      expect(child.attributes['session.id'], 'child-sess');
+    });
+
+    test('empty session.id on parent is not inherited', () {
+      final parent = obs.startSpan(
+        'turn',
+        attributes: {'session.id': ''},
+      );
+      final child = obs.startSpan('child', parent: parent);
+      expect(child.attributes.containsKey('session.id'), isFalse);
     });
   });
 
