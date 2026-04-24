@@ -1,5 +1,6 @@
-/// Adapter for GitHub Copilot using OAuth 2.0 device authorization + a
-/// periodically-refreshed short-lived Copilot bearer token.
+/// GitHub Copilot provider — OAuth 2.0 device authorization + a
+/// periodically-refreshed short-lived Copilot bearer token, inference via
+/// the OpenAI-compatible Copilot endpoint.
 ///
 /// Endpoints (all public; same client id as the Copilot CLI / LiteLLM):
 ///   - `github.com/login/device/code`            — start device flow
@@ -16,10 +17,10 @@ import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/catalog/model_catalog.dart';
 import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/credentials/credential_store.dart';
-import 'package:glue/src/providers/openai_provider.dart';
 import 'package:glue/src/providers/auth_flow.dart';
 import 'package:glue/src/providers/compatibility_profile.dart';
 import 'package:glue/src/providers/copilot_token_manager.dart';
+import 'package:glue/src/providers/openai_provider.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
 import 'package:glue/src/providers/resolved.dart';
 import 'package:http/http.dart' as http;
@@ -28,12 +29,25 @@ import 'package:glue/src/utils.dart';
 const String _deviceCodeUrl = 'https://github.com/login/device/code';
 const String _tokenUrl = 'https://github.com/login/oauth/access_token';
 const String _deviceGrantType = 'urn:ietf:params:oauth:grant-type:device_code';
+const String _defaultBaseUrl = 'https://api.githubcopilot.com';
 
-class CopilotAdapter extends ProviderAdapter {
-  CopilotAdapter({
+/// Copilot adapter + client in one class.
+///
+/// - Adapter role: device-code OAuth flow, health checks, token caching via
+///   [CredentialStore], spawning per-request client instances.
+/// - Client role: refresh the Copilot bearer on every request and delegate
+///   streaming to an internal [OpenAiProvider] configured with the
+///   Copilot-Integration-Id + Editor-Version headers Copilot demands.
+class CopilotProvider extends ProviderAdapter implements LlmClient {
+  CopilotProvider({
     http.Client? client,
     CredentialStore? credentialStore,
     http.Client Function()? requestClientFactory,
+    // Client-role state — set by createClient() when spawning a per-request
+    // instance. Zero-valued on an adapter-role instance.
+    this.model = '',
+    this.systemPrompt = '',
+    this.baseUrl = _defaultBaseUrl,
   })  : _http = client ?? http.Client(),
         _store = credentialStore,
         _requestClientFactory = requestClientFactory;
@@ -41,6 +55,12 @@ class CopilotAdapter extends ProviderAdapter {
   final http.Client _http;
   final CredentialStore? _store;
   final http.Client Function()? _requestClientFactory;
+
+  final String model;
+  final String systemPrompt;
+  final String baseUrl;
+
+  // ---------- ProviderAdapter ----------
 
   @override
   String get adapterId => 'copilot';
@@ -65,20 +85,19 @@ class CopilotAdapter extends ProviderAdapter {
     required ResolvedModel model,
     required String systemPrompt,
   }) {
-    final store = _store;
-    if (store == null) {
+    if (_store == null) {
       throw StateError(
-        'CopilotAdapter needs a CredentialStore to refresh tokens; '
+        'CopilotProvider needs a CredentialStore to refresh tokens; '
         'construct it with credentialStore:',
       );
     }
-    return _CopilotClient(
-      store: store,
+    return CopilotProvider(
+      client: _http,
+      credentialStore: _store,
+      requestClientFactory: _requestClientFactory,
       model: model.apiId,
       systemPrompt: systemPrompt,
-      baseUrl: provider.baseUrl ?? 'https://api.githubcopilot.com',
-      httpClient: _http,
-      requestClientFactory: _requestClientFactory,
+      baseUrl: provider.baseUrl ?? _defaultBaseUrl,
     );
   }
 
@@ -110,6 +129,36 @@ class CopilotAdapter extends ProviderAdapter {
       progress: progress.stream,
     );
   }
+
+  // ---------- LlmClient ----------
+
+  @override
+  Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
+    final store = _store;
+    if (store == null) {
+      throw StateError(
+        'CopilotProvider.stream called on an instance without a '
+        'CredentialStore — did you forget createClient()?',
+      );
+    }
+    final token = await freshCopilotToken(store, client: _http);
+    final inner = OpenAiProvider(
+      apiKey: token,
+      model: model,
+      systemPrompt: systemPrompt,
+      baseUrl: baseUrl,
+      profile: CompatibilityProfile.openai,
+      extraHeaders: {
+        'Copilot-Integration-Id': 'vscode-chat',
+        'Editor-Version': 'Glue/${AppConstants.version}',
+      },
+      requestClientFactory:
+          _requestClientFactory ?? (() => _http),
+    );
+    yield* inner.stream(messages, tools: tools);
+  }
+
+  // ---------- OAuth helpers (private) ----------
 
   Future<_DeviceCodeResponse> _requestDeviceCode(http.Client client) async {
     final response = await client.post(
@@ -241,44 +290,4 @@ class _DeviceCodeResponse {
   final String verificationUri;
   final Duration interval;
   final Duration expiresIn;
-}
-
-/// Thin LlmClient that refreshes its Copilot bearer on every request and
-/// injects the required Copilot-Integration-Id + Editor-Version headers.
-class _CopilotClient implements LlmClient {
-  _CopilotClient({
-    required this.store,
-    required this.model,
-    required this.systemPrompt,
-    required this.baseUrl,
-    http.Client? httpClient,
-    http.Client Function()? requestClientFactory,
-  })  : _http = httpClient,
-        _requestClientFactory = requestClientFactory;
-
-  final CredentialStore store;
-  final String model;
-  final String systemPrompt;
-  final String baseUrl;
-  final http.Client? _http;
-  final http.Client Function()? _requestClientFactory;
-
-  @override
-  Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
-    final token = await freshCopilotToken(store, client: _http);
-    final inner = OpenAiProvider(
-      apiKey: token,
-      model: model,
-      systemPrompt: systemPrompt,
-      baseUrl: baseUrl,
-      profile: CompatibilityProfile.openai,
-      extraHeaders: {
-        'Copilot-Integration-Id': 'vscode-chat',
-        'Editor-Version': 'Glue/${AppConstants.version}',
-      },
-      requestClientFactory:
-          _requestClientFactory ?? (_http != null ? () => _http : null),
-    );
-    yield* inner.stream(messages, tools: tools);
-  }
 }

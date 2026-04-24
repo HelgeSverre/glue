@@ -1,4 +1,4 @@
-/// CopilotAdapter integration tests — fake http drives device flow end-to-end.
+/// CopilotProvider integration tests — fake http drives device flow end-to-end.
 library;
 
 import 'dart:async';
@@ -9,7 +9,7 @@ import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/catalog/model_catalog.dart';
 import 'package:glue/src/credentials/credential_store.dart';
 import 'package:glue/src/providers/auth_flow.dart';
-import 'package:glue/src/providers/copilot_adapter.dart';
+import 'package:glue/src/providers/copilot_provider.dart';
 import 'package:glue/src/providers/copilot_token_manager.dart';
 import 'package:glue/src/providers/resolved.dart';
 import 'package:http/http.dart' as http;
@@ -40,7 +40,7 @@ http.StreamedResponse _json(int status, Map<String, dynamic> body) {
 }
 
 Directory _scratch() =>
-    Directory.systemTemp.createTempSync('glue_copilot_adapter_test_');
+    Directory.systemTemp.createTempSync('glue_copilot_provider_test_');
 
 const _copilotProvider = ProviderDef(
   id: 'copilot',
@@ -52,7 +52,7 @@ const _copilotProvider = ProviderDef(
 );
 
 void main() {
-  group('CopilotAdapter.beginInteractiveAuth', () {
+  group('CopilotProvider.beginInteractiveAuth', () {
     test('returns a DeviceCodeFlow whose progress stream drives token exchange',
         () async {
       final dir = _scratch();
@@ -104,7 +104,7 @@ void main() {
         );
       });
 
-      final adapter = CopilotAdapter(client: client);
+      final adapter = CopilotProvider(client: client);
       final flow = await adapter.beginInteractiveAuth(
         provider: _copilotProvider,
         store: store,
@@ -160,7 +160,7 @@ void main() {
         );
       });
 
-      final adapter = CopilotAdapter(client: client);
+      final adapter = CopilotProvider(client: client);
       final flow = await adapter.beginInteractiveAuth(
         provider: _copilotProvider,
         store: store,
@@ -173,7 +173,7 @@ void main() {
     });
   });
 
-  group('CopilotAdapter.isConnected', () {
+  group('CopilotProvider.isConnected', () {
     test('true when github_token is stored', () {
       final dir = _scratch();
       addTearDown(() => dir.deleteSync(recursive: true));
@@ -183,7 +183,7 @@ void main() {
       );
       store.setFields('copilot', {CopilotFields.githubToken: 'gho_x'});
       expect(
-        CopilotAdapter().isConnected(_copilotProvider, store),
+        CopilotProvider().isConnected(_copilotProvider, store),
         isTrue,
       );
     });
@@ -196,13 +196,13 @@ void main() {
         env: const {},
       );
       expect(
-        CopilotAdapter().isConnected(_copilotProvider, store),
+        CopilotProvider().isConnected(_copilotProvider, store),
         isFalse,
       );
     });
   });
 
-  group('CopilotAdapter.createClient', () {
+  group('CopilotProvider.createClient', () {
     test('returns an LlmClient (integration happens in stream call)', () {
       final dir = _scratch();
       addTearDown(() => dir.deleteSync(recursive: true));
@@ -218,7 +218,7 @@ void main() {
             .add(const Duration(minutes: 15))
             .toIso8601String(),
       });
-      final adapter = CopilotAdapter(credentialStore: store);
+      final adapter = CopilotProvider(credentialStore: store);
       final client = adapter.createClient(
         provider: const ResolvedProvider(
           def: _copilotProvider,
@@ -231,6 +231,180 @@ void main() {
         systemPrompt: 'test',
       );
       expect(client, isA<LlmClient>());
+      expect(client, isA<CopilotProvider>());
+    });
+
+    test('throws StateError without a CredentialStore', () {
+      final adapter = CopilotProvider();
+      expect(
+        () => adapter.createClient(
+          provider: const ResolvedProvider(
+            def: _copilotProvider,
+            credentials: {},
+          ),
+          model: const ResolvedModel(
+            def: ModelDef(id: 'gpt-4.1', name: 'GPT-4.1'),
+            provider: _copilotProvider,
+          ),
+          systemPrompt: '',
+        ),
+        throwsA(isA<StateError>()),
+      );
+    });
+  });
+
+  group('CopilotProvider.stream uses cached token', () {
+    test('reads a non-expired copilot token from the store without refreshing',
+        () async {
+      final dir = _scratch();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final store = CredentialStore(
+        path: '${dir.path}/c.json',
+        env: const {},
+      );
+      store.setFields('copilot', {
+        CopilotFields.githubToken: 'gho_valid',
+        CopilotFields.copilotToken: 'tid=fresh',
+        CopilotFields.expiresAt: DateTime.now()
+            .toUtc()
+            .add(const Duration(minutes: 20))
+            .toIso8601String(),
+      });
+
+      // Capture inference request header + verify no github exchange call.
+      var exchangeCalls = 0;
+      String? authHeader;
+      String? integrationIdHeader;
+      final client = _RoutedHttp((req) {
+        final url = req.url.toString();
+        if (url.contains('copilot_internal/v2/token')) {
+          exchangeCalls++;
+          return _Handler((_) async => _json(200, {
+                'token': 'tid=new',
+                'expires_at':
+                    DateTime.now().millisecondsSinceEpoch ~/ 1000 + 3600,
+              }));
+        }
+        if (url.contains('chat/completions')) {
+          authHeader = req.headers['Authorization'];
+          integrationIdHeader = req.headers['Copilot-Integration-Id'];
+          // Return a minimal finished SSE stream.
+          final sse = 'data: ${jsonEncode({
+                'choices': [
+                  {'index': 0, 'delta': {}, 'finish_reason': 'stop'}
+                ],
+                'usage': {'prompt_tokens': 1, 'completion_tokens': 1},
+              })}\n\ndata: [DONE]\n\n';
+          return _Handler((_) async => http.StreamedResponse(
+                Stream<List<int>>.value(utf8.encode(sse)),
+                200,
+                headers: {'content-type': 'text/event-stream'},
+              ));
+        }
+        return _Handler((_) async => http.StreamedResponse(
+              const Stream.empty(),
+              404,
+              headers: const {},
+            ));
+      });
+
+      final adapter = CopilotProvider(
+        client: client,
+        credentialStore: store,
+      );
+      final per = adapter.createClient(
+        provider: const ResolvedProvider(
+          def: _copilotProvider,
+          credentials: {'github_token': 'gho_valid'},
+        ),
+        model: const ResolvedModel(
+          def: ModelDef(id: 'gpt-4.1', name: 'GPT-4.1'),
+          provider: _copilotProvider,
+        ),
+        systemPrompt: '',
+      );
+
+      await per.stream([Message.user('hi')]).drain<void>();
+
+      expect(exchangeCalls, 0, reason: 'cached token should not re-exchange');
+      expect(authHeader, 'Bearer tid=fresh');
+      expect(integrationIdHeader, 'vscode-chat');
+    });
+
+    test('expired cached token triggers a refresh via github exchange',
+        () async {
+      final dir = _scratch();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final store = CredentialStore(
+        path: '${dir.path}/c.json',
+        env: const {},
+      );
+      store.setFields('copilot', {
+        CopilotFields.githubToken: 'gho_valid',
+        CopilotFields.copilotToken: 'tid=stale',
+        CopilotFields.expiresAt: DateTime.now()
+            .toUtc()
+            .subtract(const Duration(minutes: 5))
+            .toIso8601String(),
+      });
+
+      var exchangeCalls = 0;
+      String? authHeader;
+      final client = _RoutedHttp((req) {
+        final url = req.url.toString();
+        if (url.contains('copilot_internal/v2/token')) {
+          exchangeCalls++;
+          return _Handler((_) async => _json(200, {
+                'token': 'tid=refreshed',
+                'expires_at':
+                    DateTime.now().millisecondsSinceEpoch ~/ 1000 + 3600,
+              }));
+        }
+        if (url.contains('chat/completions')) {
+          authHeader = req.headers['Authorization'];
+          final sse = 'data: ${jsonEncode({
+                'choices': [
+                  {'index': 0, 'delta': {}, 'finish_reason': 'stop'}
+                ],
+              })}\n\ndata: [DONE]\n\n';
+          return _Handler((_) async => http.StreamedResponse(
+                Stream<List<int>>.value(utf8.encode(sse)),
+                200,
+                headers: {'content-type': 'text/event-stream'},
+              ));
+        }
+        return _Handler((_) async => http.StreamedResponse(
+              const Stream.empty(),
+              404,
+              headers: const {},
+            ));
+      });
+
+      final adapter = CopilotProvider(
+        client: client,
+        credentialStore: store,
+      );
+      final per = adapter.createClient(
+        provider: const ResolvedProvider(
+          def: _copilotProvider,
+          credentials: {'github_token': 'gho_valid'},
+        ),
+        model: const ResolvedModel(
+          def: ModelDef(id: 'gpt-4.1', name: 'GPT-4.1'),
+          provider: _copilotProvider,
+        ),
+        systemPrompt: '',
+      );
+
+      await per.stream([Message.user('hi')]).drain<void>();
+
+      expect(exchangeCalls, 1,
+          reason: 'expired token should trigger a refresh');
+      expect(authHeader, 'Bearer tid=refreshed');
+
+      // Store should have the refreshed token persisted.
+      expect(store.getField('copilot', CopilotFields.copilotToken),
+          'tid=refreshed');
     });
   });
 }

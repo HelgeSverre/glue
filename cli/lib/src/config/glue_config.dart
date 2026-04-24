@@ -14,7 +14,7 @@ import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/credentials/credential_store.dart';
 import 'package:glue/src/observability/observability_config.dart';
 import 'package:glue/src/providers/anthropic_provider.dart';
-import 'package:glue/src/providers/copilot_adapter.dart';
+import 'package:glue/src/providers/copilot_provider.dart';
 import 'package:glue/src/providers/ollama_provider.dart';
 import 'package:glue/src/providers/openai_provider.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
@@ -272,7 +272,7 @@ class GlueConfig {
           AnthropicProvider(),
           OpenAiProvider(),
           OllamaProvider(),
-          CopilotAdapter(credentialStore: credentials),
+          CopilotProvider(credentialStore: credentials),
         ]);
 
     // Resolve active model: CLI flag → GLUE_MODEL → config file → catalog default.
