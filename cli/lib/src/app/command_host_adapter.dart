@@ -34,7 +34,7 @@ class _AppCommandContext implements SlashCommandContext {
       session: _session,
       panels: app._panels,
       confirmationHost: _AppConfirmationHost(app),
-      addSystemMessage: app._addSystemMessage,
+      addSystemMessage: app._transcript.postNotice,
       render: app._render,
       setModelId: (modelId) => app._modelId = modelId,
     );
@@ -42,7 +42,7 @@ class _AppCommandContext implements SlashCommandContext {
       session: _session,
       agent: app.agent,
       panels: app._panels,
-      addSystemMessage: app._addSystemMessage,
+      addSystemMessage: app._transcript.postNotice,
       render: app._render,
       historyEntries: () {
         final entries = <HistoryPanelEntry>[];
@@ -72,20 +72,20 @@ class _AppCommandContext implements SlashCommandContext {
       canShare: () => app._mode == AppMode.idle,
       currentStore: () => _session.currentStore,
       cwd: app._cwd,
-      addSystemMessage: app._addSystemMessage,
+      addSystemMessage: app._transcript.postNotice,
       render: app._render,
     );
     skills = SkillsController(
       skillRuntime: app._skillRuntime,
       docks: app._docks,
       render: app._render,
-      addSystemMessage: app._addSystemMessage,
+      addSystemMessage: app._transcript.postNotice,
       activateSkill: app._activateSkillFromUi,
     );
     providers = ProviderController(
       config: _config,
       panels: app._panels,
-      addSystemMessage: app._addSystemMessage,
+      addSystemMessage: app._transcript.postNotice,
       render: app._render,
     );
   }

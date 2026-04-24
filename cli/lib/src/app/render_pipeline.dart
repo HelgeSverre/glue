@@ -167,7 +167,11 @@ void _doRenderImpl(App app) {
       ? '↑${app._transcript.scrollOffset}'
       : null;
   final rightSegs = [
-    _statusModelLabel(app),
+    formatStatusModelLabel(
+      app._config?.activeModel,
+      app._config?.catalogData,
+      app._modelId,
+    ),
     modeLabel,
     ansiTruncate(shortCwd, 30),
     if (scrollSeg != null) scrollSeg,

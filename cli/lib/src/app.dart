@@ -58,7 +58,6 @@ import 'package:glue/src/ui/services/panels.dart';
 import 'package:glue/src/shell/shell_autocomplete.dart';
 import 'package:glue/src/commands/slash_autocomplete.dart';
 
-part 'app/command_helpers.dart';
 part 'app/command_host_adapter.dart';
 part 'app/event_router.dart';
 part 'app/render_pipeline.dart';
@@ -522,17 +521,36 @@ class App {
     _commands = buildBuiltinSlashCommands(_commandContext);
   }
 
-  void _addSystemMessage(String message) {
-    _addSystemMessageImpl(this, message);
-  }
-
   void _openResumePanel() {
     _commandContext.sessions.openResumePanel();
   }
 
-
   Future<void> _activateSkillFromUi(String skillName) async {
-    await _activateSkillFromUiImpl(this, skillName);
+    try {
+      final activation = await activateSkillIntoConversation(
+        agent: agent,
+        skillName: skillName,
+      );
+
+      _sessionService.ensureStore();
+      _sessionService.logEvent('tool_call', {
+        'name': 'skill',
+        'arguments': {'name': skillName},
+      });
+      _sessionService.logEvent('tool_result', {
+        'name': 'skill',
+        'content': activation.content,
+      });
+
+      _transcript.blocks
+          .add(ConversationEntry.toolCall('skill', {'name': skillName}));
+      _transcript.blocks
+          .add(ConversationEntry.toolResult(activation.content));
+    } on SkillActivationError catch (e) {
+      _transcript.postNotice(e.message);
+    } catch (e) {
+      _transcript.postNotice('Error activating skill "$skillName": $e');
+    }
   }
 
   // ── App event handling ──────────────────────────────────────────────────
