@@ -481,6 +481,7 @@ class SelectPanel<T> implements AbstractPanel {
   final PanelSize _width;
   final PanelSize _height;
   final bool dismissable;
+  final void Function(List<int> filtered)? onFilterChanged;
 
   int _scrollOffset = 0;
   int _selectedIndex = 0;
@@ -506,6 +507,7 @@ class SelectPanel<T> implements AbstractPanel {
     PanelSize? height,
     this.dismissable = true,
     int initialIndex = 0,
+    this.onFilterChanged,
   })  : assert(
           headerBuilder == null || headerLines.isEmpty,
           'Provide either headerLines or headerBuilder, not both.',
@@ -557,6 +559,7 @@ class SelectPanel<T> implements AbstractPanel {
         if (searchEnabled && _query.isNotEmpty) {
           _query = _query.substring(0, _query.length - 1);
           _scrollOffset = 0;
+          _notifyFilterChanged();
           _normalizeSelection();
         }
         return true;
@@ -564,6 +567,7 @@ class SelectPanel<T> implements AbstractPanel {
         if (searchEnabled && _query.isNotEmpty) {
           _query = '';
           _scrollOffset = 0;
+          _notifyFilterChanged();
           _normalizeSelection();
         }
         return true;
@@ -601,6 +605,7 @@ class SelectPanel<T> implements AbstractPanel {
           when searchEnabled && _isSearchChar(char):
         _query += char.toLowerCase();
         _scrollOffset = 0;
+        _notifyFilterChanged();
         _normalizeSelection();
         return true;
       default:
@@ -794,6 +799,10 @@ class SelectPanel<T> implements AbstractPanel {
     if (filtered.isEmpty) return -1;
     if (!filtered.contains(_selectedIndex)) return filtered.first;
     return _selectedIndex;
+  }
+
+  void _notifyFilterChanged() {
+    onFilterChanged?.call(_filteredIndices());
   }
 
   bool _isSearchChar(String char) {

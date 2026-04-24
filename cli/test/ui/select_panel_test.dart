@@ -166,6 +166,33 @@ void main() {
       expect(joined, contains('alpha'));
     });
 
+    test('onFilterChanged fires when query changes and resets', () {
+      final filterLog = <List<int>>[];
+      final panel = SelectPanel<int>(
+        title: 'Test',
+        options: [
+          SelectOption(value: 0, label: 'apple'),
+          SelectOption(value: 1, label: 'banana'),
+          SelectOption(value: 2, label: 'apricot'),
+        ],
+        onFilterChanged: filterLog.add,
+      );
+
+      // Type 'ap' — matches apple (0) and apricot (2) but not banana (1)
+      panel.handleEvent(CharEvent('a'));
+      panel.handleEvent(CharEvent('p'));
+      expect(filterLog, hasLength(2));
+      expect(filterLog.last, containsAll([0, 2]));
+      expect(filterLog.last, isNot(contains(1)));
+
+      // Backspace once → query is 'a', banana contains 'a', so all may match
+      // Backspace twice → query empty, all 3 back
+      panel.handleEvent(KeyEvent(Key.backspace));
+      panel.handleEvent(KeyEvent(Key.backspace));
+      expect(filterLog, hasLength(4));
+      expect(filterLog.last, containsAll([0, 1, 2]));
+    });
+
     test('assertion: headerLines + headerBuilder throws', () {
       expect(
         () => SelectPanel<String>(

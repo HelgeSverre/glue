@@ -34,11 +34,19 @@ typedef CatalogRow = ({
 /// Width-aware builder for the model picker.
 ///
 /// Holds the row data and re-formats on demand, so the picker can reflow
-/// its columns as the user resizes the terminal.
+/// its columns as the user resizes the terminal. Call [updateFilter] whenever
+/// the active set of visible indices changes so provider headers track the
+/// filtered view rather than the original list order.
 class ModelPanelBuilder {
-  ModelPanelBuilder._(this._table, this.initialIndex, this.entries);
-
-  final ResponsiveTable<int> _table;
+  ModelPanelBuilder._({
+    required this.initialIndex,
+    required this.entries,
+    required List<String> headers,
+    required ModelRef currentRef,
+  })  : _headers = headers,
+        _currentRef = currentRef {
+    _rebuildTable();
+  }
 
   /// Index into [entries] for the currently active model, or 0 if none match.
   final int initialIndex;
@@ -46,9 +54,60 @@ class ModelPanelBuilder {
   /// Flat list of entries corresponding 1:1 with the builder's rows.
   final List<CatalogRow> entries;
 
+  final List<String> _headers;
+  final ModelRef _currentRef;
+  List<int>? _currentFilter;
+  late ResponsiveTable<int> _table;
+
   int get rowCount => entries.length;
   List<String> renderHeader(int width) => _table.renderHeader(width);
   String renderRow(int index, int width) => _table.renderRow(index, width);
+
+  /// Update the active filter so provider headers reflect the visible set.
+  /// Pass null to restore unfiltered (precomputed) headers.
+  void updateFilter(List<int>? filter) {
+    _currentFilter = filter;
+    _rebuildTable();
+  }
+
+  void _rebuildTable() {
+    final indexed = List<int>.generate(entries.length, (i) => i);
+    _table = ResponsiveTable<int>(
+      columns: const [
+        TableColumn(key: 'provider', header: 'PROVIDER'),
+        TableColumn(key: 'marker', header: ''),
+        TableColumn(key: 'name', header: 'MODEL'),
+        TableColumn(key: 'tag', header: 'NOTES'),
+      ],
+      rows: indexed,
+      getValues: (i) {
+        final row = entries[i];
+        final isCurrent = row.providerId == _currentRef.providerId &&
+            row.model.id == _currentRef.modelId;
+        return {
+          'provider': _effectiveHeader(i),
+          'marker': isCurrent ? '\u25cf ' : '  ',
+          'name': row.model.apiId,
+          'tag': _renderNotesWithAvailability(row),
+        };
+      },
+    );
+  }
+
+  String _effectiveHeader(int globalIndex) {
+    final f = _currentFilter;
+    if (f == null) return _headers[globalIndex];
+    final providerId = entries[globalIndex].providerId;
+    // Show provider name only if this is the first occurrence of providerId in f.
+    for (final i in f) {
+      if (entries[i].providerId == providerId) {
+        return i == globalIndex
+            ? entries[globalIndex].providerName.styled.cyan.toString()
+            : '';
+      }
+    }
+    return '';
+  }
 }
 
 /// Builds a [ModelPanelBuilder] that reflows column widths with the
@@ -75,29 +134,12 @@ ModelPanelBuilder buildModelPanel(
     lastProvider = row.providerId;
   }
 
-  final indexed = List<int>.generate(entries.length, (i) => i);
-  final table = ResponsiveTable<int>(
-    columns: const [
-      TableColumn(key: 'provider', header: 'PROVIDER'),
-      TableColumn(key: 'marker', header: ''),
-      TableColumn(key: 'name', header: 'MODEL'),
-      TableColumn(key: 'tag', header: 'NOTES'),
-    ],
-    rows: indexed,
-    getValues: (i) {
-      final row = entries[i];
-      final isCurrent = row.providerId == currentRef.providerId &&
-          row.model.id == currentRef.modelId;
-      return {
-        'provider': headers[i],
-        'marker': isCurrent ? '\u25cf ' : '  ',
-        'name': row.model.apiId,
-        'tag': _renderNotesWithAvailability(row),
-      };
-    },
+  return ModelPanelBuilder._(
+    initialIndex: flatInitial,
+    entries: entries,
+    headers: headers,
+    currentRef: currentRef,
   );
-
-  return ModelPanelBuilder._(table, flatInitial, entries);
 }
 
 /// Flatten a [ModelCatalog] into rows suitable for the model panel.

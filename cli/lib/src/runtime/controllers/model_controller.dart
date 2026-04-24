@@ -121,6 +121,7 @@ class ModelController implements ModelCommandController {
       width: panelWidth,
       height: PanelFluid(0.7, 10),
       initialIndex: builder.initialIndex,
+      onFilterChanged: builder.updateFilter,
     );
     panels.push(panel);
 

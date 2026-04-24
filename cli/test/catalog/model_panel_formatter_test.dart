@@ -151,6 +151,45 @@ void main() {
       expect(builder.renderHeader(80), isNotEmpty);
     });
 
+    test('provider header appears on first item of each provider in filtered set', () {
+      final entries = <CatalogRow>[
+        (
+          providerId: 'anthropic',
+          providerName: 'Anthropic',
+          model: const ModelDef(id: 'claude', name: 'Claude'),
+          availability: ModelAvailability.unknown,
+        ),
+        (
+          providerId: 'ollama',
+          providerName: 'Ollama',
+          model: const ModelDef(id: 'llama3:8b', name: 'Llama 3'),
+          availability: ModelAvailability.unknown,
+        ),
+        (
+          providerId: 'ollama',
+          providerName: 'Ollama',
+          model: const ModelDef(id: 'gemma4:26b', name: 'Gemma 4'),
+          availability: ModelAvailability.unknown,
+        ),
+      ];
+      final builder = buildModelPanel(
+        entries,
+        currentRef: const ModelRef(providerId: 'x', modelId: 'y'),
+      );
+
+      // Unfiltered: idx 1 (llama3) is first ollama → has header, idx 2 does not
+      expect(stripAnsi(builder.renderRow(1, 80)), contains('Ollama'));
+      expect(stripAnsi(builder.renderRow(2, 80)), isNot(contains('Ollama')));
+
+      // Filter to only [2] (gemma4) — now idx 2 is first ollama in filtered set
+      builder.updateFilter([2]);
+      expect(stripAnsi(builder.renderRow(2, 80)), contains('Ollama'));
+
+      // Reset filter
+      builder.updateFilter(null);
+      expect(stripAnsi(builder.renderRow(2, 80)), isNot(contains('Ollama')));
+    });
+
     test('MODEL column shows apiId not display name', () {
       const entry = (
         providerId: 'ollama',
