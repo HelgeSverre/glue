@@ -60,9 +60,17 @@ coverage:
     echo "Coverage report: coverage/html/index.html"
     open coverage/html/index.html
 
-# Static analysis
+# Static analysis + layering lint
 analyze:
+    #!/usr/bin/env bash
+    set -euo pipefail
     dart analyze --fatal-infos
+    leaks=$(grep -rE "package:glue/src/(catalog|providers|skills|session|commands|shell|agent|llm|storage|config)/" lib/src/ui/ 2>/dev/null || true)
+    if [ -n "$leaks" ]; then
+      echo "ui/ layering violation — ui/** must not import from feature modules:" >&2
+      echo "$leaks" >&2
+      exit 1
+    fi
 
 # Format all Dart files
 format:
@@ -78,21 +86,28 @@ gen-check:
     dart run tool/gen_models.dart --check
     dart run tool/gen_version.dart --check
 
-# Enforce the ui/ layering boundary: primitives must not know about features.
-# Fails if lib/src/ui/** imports from any feature module.
-ui-check:
+# Regenerate OTLP protobuf bindings used by the observability exporter
+proto-gen:
     #!/usr/bin/env bash
     set -euo pipefail
-    leaks=$(grep -rE "package:glue/src/(catalog|providers|skills|session|commands|shell|agent|llm|storage|config)/" lib/src/ui/ 2>/dev/null || true)
-    if [ -n "$leaks" ]; then
-      echo "ui/ layering violation — ui/** must not import from feature modules:" >&2
-      echo "$leaks" >&2
+    export PATH="$HOME/.pub-cache/bin:$PATH"
+    if ! command -v protoc >/dev/null 2>&1; then
+      echo "protoc not found. Install with: brew install protobuf" >&2
       exit 1
     fi
-    echo "ui/ layering clean."
+    if ! command -v protoc-gen-dart >/dev/null 2>&1; then
+      echo "protoc-gen-dart not found. Installing via dart pub global activate protoc_plugin..."
+      dart pub global activate protoc_plugin >/dev/null
+    fi
+    mkdir -p lib/src/generated
+    protoc --proto_path=tool/proto --dart_out=lib/src/generated \
+      tool/proto/opentelemetry/proto/common/v1/common.proto \
+      tool/proto/opentelemetry/proto/resource/v1/resource.proto \
+      tool/proto/opentelemetry/proto/trace/v1/trace.proto \
+      tool/proto/opentelemetry/proto/collector/trace/v1/trace_service.proto
 
-# Analyze + test + codegen freshness + ui layering
-check: gen-check analyze ui-check test
+# Analyze + test + codegen freshness
+check: gen-check analyze test
 
 # Get dependencies
 deps:

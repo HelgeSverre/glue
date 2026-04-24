@@ -17,7 +17,8 @@ class _FakeClient extends http.BaseClient {
     lastRequest = request;
     lastHeaders = request.headers;
     if (request is http.Request) {
-      lastBody = request.bodyBytes.isNotEmpty ? request.bodyBytes : request.body;
+      lastBody =
+          request.bodyBytes.isNotEmpty ? request.bodyBytes : request.body;
     }
     return http.StreamedResponse(const Stream<List<int>>.empty(), 200);
   }
@@ -80,8 +81,7 @@ void main() {
     final jsonBody = client.lastBody is Uint8List
         ? utf8.decode(client.lastBody as Uint8List)
         : client.lastBody as String;
-    final decoded =
-        (jsonDecode(jsonBody) as Map).cast<String, dynamic>();
+    final decoded = (jsonDecode(jsonBody) as Map).cast<String, dynamic>();
     final resourceSpans = decoded['resourceSpans'] as List;
     final firstResourceSpan =
         (resourceSpans.single as Map).cast<String, dynamic>();

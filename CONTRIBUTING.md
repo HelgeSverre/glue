@@ -72,6 +72,9 @@ dart test
 # model catalog maintenance
 just gen          # regenerate bundled model catalog
 just gen-check    # verify generated catalog is up to date
+
+# OTLP protobuf bindings (only needed if you change observability protos)
+just proto-gen
 ```
 
 Useful repo-level shortcuts:
@@ -95,6 +98,15 @@ cd cli
 dart format --set-exit-if-changed .
 dart analyze --fatal-infos
 dart test
+```
+
+### For OTEL/protobuf exporter changes
+
+If you touch generated OTLP bindings or the proto sources under `cli/tool/proto/`, also run:
+
+```sh
+cd cli
+just proto-gen
 ```
 
 ### For generated model catalog changes
