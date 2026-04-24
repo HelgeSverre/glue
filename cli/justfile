@@ -92,10 +92,38 @@ release version:
     ./glue --version
     echo "  Run: git push && git push --tags"
 
+# Generate per-subsystem class diagrams into diagrams/ (format: svg|png|txt)
+diagrams format="svg":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! dart pub global list 2>/dev/null | grep -q '^dcdg '; then
+      echo "dcdg not installed. Run: dart pub global activate dcdg" >&2
+      exit 1
+    fi
+    if ! command -v plantuml >/dev/null 2>&1; then
+      echo "plantuml not found. Install with: brew install plantuml" >&2
+      exit 1
+    fi
+    mkdir -p diagrams
+    subsystems=(agent app catalog commands config core credentials doctor input llm observability orchestrator providers rendering session share shell skills storage terminal tools ui web)
+    echo "→ all (full project)"
+    dart pub global run dcdg -b plantuml --exclude-private=all -o diagrams/_all.puml
+    plantuml -t{{format}} diagrams/_all.puml
+    for sub in "${subsystems[@]}"; do
+      dir="lib/src/$sub"
+      [ -d "$dir" ] || continue
+      echo "→ $sub"
+      dart pub global run dcdg -b plantuml --exclude-private=all -s "$dir" -o "diagrams/$sub.puml"
+      plantuml -t{{format}} "diagrams/$sub.puml"
+    done
+    echo ""
+    echo "Generated $(ls diagrams/*.{{format}} 2>/dev/null | wc -l | tr -d ' ') diagrams in diagrams/"
+
 # Remove build artifacts
 clean:
     rm -f glue
     rm -rf doc/api
+    rm -rf diagrams
 
 # Run with DevTools observability (JIT mode, dev only)
 dev *ARGS:
