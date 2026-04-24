@@ -1,7 +1,22 @@
 import 'package:glue/src/shell/host_executor.dart';
 import 'package:glue/src/shell/shell_config.dart';
 import 'package:glue/src/shell/shell_job_manager.dart';
+import 'package:glue/src/observability/debug_controller.dart';
+import 'package:glue/src/observability/observability.dart';
 import 'package:test/test.dart';
+
+class _RecordingSink extends ObservabilitySink {
+  final List<ObservabilitySpan> spans = [];
+
+  @override
+  void onSpan(ObservabilitySpan span) => spans.add(span);
+
+  @override
+  Future<void> flush() async {}
+
+  @override
+  Future<void> close() async {}
+}
 
 void main() {
   group('JobStatus', () {
@@ -39,9 +54,16 @@ void main() {
 
   group('ShellJobManager', () {
     late ShellJobManager manager;
+    late _RecordingSink sink;
 
     setUp(() {
-      manager = ShellJobManager(HostExecutor(const ShellConfig()));
+      sink = _RecordingSink();
+      final obs = Observability(debugController: DebugController());
+      obs.addSink(sink);
+      manager = ShellJobManager(
+        HostExecutor(const ShellConfig()),
+        obs: obs,
+      );
     });
 
     tearDown(() async {
@@ -77,6 +99,9 @@ void main() {
       final exits = events.whereType<JobExited>().toList();
       expect(exits, isNotEmpty);
       expect(exits.first.exitCode, 0);
+      final span = sink.spans.lastWhere((span) => span.name == 'shell.job');
+      expect(span.attributes['process.exit_code'], 0);
+      expect(span.attributes['shell.job.status'], JobStatus.exited.name);
     });
 
     test('getJob returns job by id', () async {
@@ -103,6 +128,9 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 500));
       expect(job.status,
           anyOf(JobStatus.killed, JobStatus.exited, JobStatus.failed));
+      final span = sink.spans.lastWhere((span) => span.name == 'shell.job');
+      expect(span.attributes['cancelled'], isTrue);
+      expect(span.attributes['shell.job.status'], JobStatus.killed.name);
     });
 
     test('shutdown terminates all running jobs', () async {

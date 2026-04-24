@@ -88,5 +88,50 @@ void main() {
         isTrue,
       );
     });
+
+    test('reports configured OTEL export without leaking header values', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      final env = Environment.test(home: home.path);
+      Directory(env.glueDir).createSync(recursive: true);
+      File(env.configYamlPath).writeAsStringSync('''
+active_model: ollama/qwen2.5-coder:32b
+observability:
+  otel:
+    enabled: true
+    endpoint: https://collector.example.test/base
+    headers:
+      Authorization: Bearer super-secret
+      X-Project: demo
+    service_name: glue-otel
+''');
+
+      final report = runDoctor(env);
+
+      expect(
+        report.findings.any((finding) =>
+            finding.section == 'Observability' &&
+            finding.message ==
+                'OTEL export: on (https://collector.example.test/base/v1/traces)'),
+        isTrue,
+      );
+      expect(
+        report.findings.any((finding) =>
+            finding.section == 'Observability' &&
+            finding.message == 'OTEL service: glue-otel'),
+        isTrue,
+      );
+      expect(
+        report.findings.any((finding) =>
+            finding.section == 'Observability' &&
+            finding.message == 'OTEL headers: Authorization, X-Project'),
+        isTrue,
+      );
+      expect(
+        report.findings.any((finding) =>
+            finding.message.contains('super-secret')),
+        isFalse,
+      );
+    });
   });
 }

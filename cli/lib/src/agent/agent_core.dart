@@ -199,6 +199,7 @@ class AgentCore {
   /// Optional observability sink. When non-null, tool invocations emit
   /// `tool.<name>` spans and fatal agent errors emit `agent.error` spans.
   final Observability? _obs;
+  final ObservabilitySpan? _traceParent;
 
   /// Optional predicate to exclude tools before sending to the LLM.
   bool Function(Tool)? toolFilter;
@@ -217,8 +218,10 @@ class AgentCore {
     required this.tools,
     String? modelId,
     Observability? obs,
+    ObservabilitySpan? traceParent,
   })  : modelId = modelId ?? 'unknown',
-        _obs = obs;
+        _obs = obs,
+        _traceParent = traceParent;
 
   /// The full conversation history.
   List<Message> get conversation => List.unmodifiable(_conversation);
@@ -240,25 +243,93 @@ class AgentCore {
         final assistantText = StringBuffer();
         final toolCalls = <ToolCall>[];
         final toolFutures = <Future<ToolResult>>[];
+        final iterationSpan = _obs?.startSpan(
+          'agent.iteration',
+          kind: 'agent',
+          parent: _traceParent,
+          attributes: {
+            'openinference.span.kind': 'AGENT',
+            'llm.message_count': _conversation.length,
+            'llm.tool_count': allowedTools.length,
+            'llm.model_name': modelId,
+          },
+        );
+        final llmSpan = _obs?.startSpan(
+          'llm.stream',
+          kind: 'llm',
+          parent: iterationSpan,
+          attributes: {
+            'openinference.span.kind': 'LLM',
+            'llm.model_name': modelId,
+            'llm.input_messages.count': _conversation.length,
+            'llm.tools.count': allowedTools.length,
+            'input.value': redactBody(
+              _conversationSummary(_conversation),
+              maxBytes: 65536,
+            ),
+          },
+        );
+        final previousActive = _obs?.activeSpan;
+        if (llmSpan != null) _obs!.activeSpan = llmSpan;
+        var inputTokens = 0;
+        var outputTokens = 0;
+        var textDeltaCount = 0;
 
-        await for (final chunk in llm.stream(
-          _conversation,
-          tools: allowedTools,
-        )) {
-          switch (chunk) {
-            case TextDelta(:final text):
-              assistantText.write(text);
-              yield AgentTextDelta(text);
-            case ToolCallStart(:final id, :final name):
-              yield AgentToolCallPending(id: id, name: name);
-            case ToolCallComplete(:final toolCall):
-              toolCalls.add(toolCall);
-              final completer = Completer<ToolResult>();
-              _pendingToolResults[toolCall.id] = completer;
-              toolFutures.add(completer.future);
-              yield AgentToolCall(toolCall);
-            case UsageInfo(:final totalTokens):
-              tokenCount += totalTokens;
+        try {
+          await for (final chunk in llm.stream(
+            _conversation,
+            tools: allowedTools,
+          )) {
+            switch (chunk) {
+              case TextDelta(:final text):
+                textDeltaCount++;
+                if (textDeltaCount == 1) {
+                  llmSpan?.addEvent('llm.first_token');
+                }
+                assistantText.write(text);
+                yield AgentTextDelta(text);
+              case ToolCallStart(:final id, :final name):
+                llmSpan?.addEvent('llm.tool_call.start', attributes: {
+                  'tool_call.id': id,
+                  'tool.name': name,
+                });
+                yield AgentToolCallPending(id: id, name: name);
+              case ToolCallComplete(:final toolCall):
+                toolCalls.add(toolCall);
+                llmSpan?.addEvent('llm.tool_call.complete', attributes: {
+                  'tool_call.id': toolCall.id,
+                  'tool.name': toolCall.name,
+                });
+                final completer = Completer<ToolResult>();
+                _pendingToolResults[toolCall.id] = completer;
+                toolFutures.add(completer.future);
+                yield AgentToolCall(toolCall);
+              case UsageInfo(
+                  inputTokens: final chunkInputTokens,
+                  outputTokens: final chunkOutputTokens,
+                ):
+                tokenCount += chunkInputTokens + chunkOutputTokens;
+                inputTokens += chunkInputTokens;
+                outputTokens += chunkOutputTokens;
+            }
+          }
+        } finally {
+          if (_obs != null && llmSpan != null && _obs.activeSpan == llmSpan) {
+            _obs.activeSpan = previousActive;
+          }
+          if (llmSpan != null) {
+            _obs!.endSpan(llmSpan, extra: {
+              'llm.token_count.prompt': inputTokens,
+              'llm.token_count.completion': outputTokens,
+              'llm.token_count.total': inputTokens + outputTokens,
+              'llm.output_messages.count': 1,
+              'llm.output_text.length': assistantText.length,
+              'llm.tool_call_count': toolCalls.length,
+              'output.value': redactBody(
+                assistantText.toString(),
+                maxBytes: 65536,
+              ),
+            });
           }
         }
 
@@ -268,7 +339,15 @@ class AgentCore {
         ));
 
         // No tool calls → turn is complete.
-        if (toolCalls.isEmpty) break;
+        if (toolCalls.isEmpty) {
+          if (iterationSpan != null) {
+            _obs!.endSpan(iterationSpan, extra: {
+              'agent.iteration.tool_call_count': 0,
+              'agent.iteration.output_text.length': assistantText.length,
+            });
+          }
+          break;
+        }
 
         // Tools may have started executing as soon as they were yielded
         // above, so some futures could already be resolved by the time we
@@ -284,6 +363,14 @@ class AgentCore {
             contentParts: results[i].contentParts,
           ));
           yield AgentToolResult(results[i]);
+        }
+        if (iterationSpan != null) {
+          _obs!.endSpan(iterationSpan, extra: {
+            'agent.iteration.tool_call_count': toolCalls.length,
+            'agent.iteration.output_text.length': assistantText.length,
+            'agent.iteration.tool_success_count':
+                results.where((r) => r.success).length,
+          });
         }
 
         // Loop: send tool results back to the LLM.
@@ -392,10 +479,14 @@ class AgentCore {
       span = _obs.startSpan(
         'tool.${call.name}',
         kind: 'tool',
+        parent: _traceParent,
         attributes: {
+          'openinference.span.kind': 'TOOL',
+          'tool_call.id': call.id,
           'tool.name': call.name,
           'tool.input_size': encodedArgs.length,
           'tool.input': redactBody(encodedArgs, maxBytes: 65536),
+          'input.value': redactBody(encodedArgs, maxBytes: 65536),
         },
       );
     }
@@ -409,6 +500,10 @@ class AgentCore {
           'tool.duration_ms': stopwatch.elapsedMilliseconds,
           'tool.success': true,
           'tool.output': redactBody(result.content, maxBytes: 65536),
+          'output.value': redactBody(result.content, maxBytes: 65536),
+          if (result.summary != null) 'tool.summary': result.summary,
+          if (result.metadata.isNotEmpty)
+            'tool.metadata': jsonEncode(result.metadata),
         });
       }
       return result.withCallId(call.id);
@@ -431,4 +526,26 @@ class AgentCore {
       );
     }
   }
+}
+
+String _conversationSummary(List<Message> messages) {
+  final out = <Map<String, dynamic>>[];
+  for (final message in messages) {
+    out.add({
+      'role': message.role.name,
+      if (message.text != null) 'text': message.text,
+      if (message.toolCalls.isNotEmpty)
+        'tool_calls': [
+          for (final call in message.toolCalls)
+            {
+              'id': call.id,
+              'name': call.name,
+              'arguments': call.arguments,
+            }
+        ],
+      if (message.toolCallId != null) 'tool_call_id': message.toolCallId,
+      if (message.toolName != null) 'tool_name': message.toolName,
+    });
+  }
+  return jsonEncode(out);
 }

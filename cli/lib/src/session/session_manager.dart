@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/core/environment.dart';
+import 'package:glue/src/observability/observability.dart';
+import 'package:glue/src/observability/redaction.dart';
 import 'package:glue/src/session/session_event_normalizer.dart';
 import 'package:glue/src/storage/session_store.dart';
 
@@ -108,12 +110,15 @@ class TitleContext {
 
 class SessionManager {
   final Environment environment;
+  final Observability? _obs;
   SessionStore? _store;
 
   SessionManager({
     required this.environment,
     SessionStore? sessionStore,
-  }) : _store = sessionStore;
+    Observability? observability,
+  })  : _obs = observability,
+        _store = sessionStore;
 
   SessionStore? get currentStore => _store;
   String? get currentSessionId => _store?.meta.id;
@@ -125,16 +130,36 @@ class SessionManager {
     required String cwd,
     required String modelRef,
   }) {
-    final id = _newSessionId();
-    return _store ??= SessionStore(
-      sessionDir: environment.sessionDir(id),
-      meta: SessionMeta(
-        id: id,
-        cwd: cwd,
-        modelRef: modelRef,
-        startTime: DateTime.now(),
-      ),
-    );
+    final existing = _store;
+    if (existing != null) return existing;
+
+    final span = _startSpan('session.create', attributes: {
+      'session.cwd': cwd,
+      'llm.model_name': modelRef,
+    });
+    try {
+      final id = _newSessionId();
+      final store = SessionStore(
+        sessionDir: environment.sessionDir(id),
+        meta: SessionMeta(
+          id: id,
+          cwd: cwd,
+          modelRef: modelRef,
+          startTime: DateTime.now(),
+        ),
+      );
+      _store = store;
+      _endSpan(span, extra: {'session.id': store.meta.id});
+      return store;
+    } catch (e, st) {
+      _endSpan(span, extra: {
+        'error': true,
+        'error.type': e.runtimeType.toString(),
+        'error.message': e.toString(),
+        'error.stack': st.toString(),
+      });
+      rethrow;
+    }
   }
 
   void switchToSessionStore(SessionMeta meta) {
@@ -172,7 +197,21 @@ class SessionManager {
   Future<void> closeCurrent() async {
     final store = _store;
     if (store == null) return;
-    await store.close();
+    final span = _startSpan('session.close', attributes: {
+      'session.id': store.meta.id,
+    });
+    try {
+      await store.close();
+      _endSpan(span, extra: {'session.closed': true});
+    } catch (e, st) {
+      _endSpan(span, extra: {
+        'error': true,
+        'error.type': e.runtimeType.toString(),
+        'error.message': e.toString(),
+        'error.stack': st.toString(),
+      });
+      rethrow;
+    }
   }
 
   Future<void> generateTitle({
@@ -183,34 +222,70 @@ class SessionManager {
     if (store == null) return;
     final meta = store.meta;
     if (meta.titleSource == SessionTitleSource.user) return;
-    final title = await generate(userMessage);
-    if (title != null) {
-      final now = DateTime.now().toUtc();
-      store.setTitle(
-        title,
-        source: SessionTitleSource.auto,
-        state: SessionTitleState.provisional,
-        generationCount: 1,
-        generatedAt: now,
-        lastEvaluatedAt: now,
-        renamedAt: null,
-      );
-      store.logEvent('title_generated', {'title': title});
+    final span = _startSpan('session.title.generate', attributes: {
+      'session.id': meta.id,
+      'title.input_length': userMessage.length,
+      'input.value': redactBody(userMessage, maxBytes: 8192),
+    });
+    try {
+      final title = await generate(userMessage);
+      if (title != null) {
+        final now = DateTime.now().toUtc();
+        store.setTitle(
+          title,
+          source: SessionTitleSource.auto,
+          state: SessionTitleState.provisional,
+          generationCount: 1,
+          generatedAt: now,
+          lastEvaluatedAt: now,
+          renamedAt: null,
+        );
+        store.logEvent('title_generated', {'title': title});
+      }
+      _endSpan(span, extra: {
+        'title.generated': title != null,
+        if (title != null) 'output.value': title,
+        if (title != null) 'title.output_length': title.length,
+      });
+    } catch (e, st) {
+      _endSpan(span, extra: {
+        'error': true,
+        'error.type': e.runtimeType.toString(),
+        'error.message': e.toString(),
+        'error.stack': st.toString(),
+      });
+      rethrow;
     }
   }
 
   Future<void> renameTitle(String title) async {
     final store = _store;
     if (store == null) return;
-    final now = DateTime.now().toUtc();
-    store.setTitle(
-      title,
-      source: SessionTitleSource.user,
-      state: SessionTitleState.stable,
-      generatedAt: store.meta.titleGeneratedAt ?? now,
-      lastEvaluatedAt: now,
-      renamedAt: now,
-    );
+    final span = _startSpan('session.title.rename', attributes: {
+      'session.id': store.meta.id,
+      'title.output_length': title.length,
+      'output.value': title,
+    });
+    try {
+      final now = DateTime.now().toUtc();
+      store.setTitle(
+        title,
+        source: SessionTitleSource.user,
+        state: SessionTitleState.stable,
+        generatedAt: store.meta.titleGeneratedAt ?? now,
+        lastEvaluatedAt: now,
+        renamedAt: now,
+      );
+      _endSpan(span, extra: {'title.renamed': true});
+    } catch (e, st) {
+      _endSpan(span, extra: {
+        'error': true,
+        'error.type': e.runtimeType.toString(),
+        'error.message': e.toString(),
+        'error.stack': st.toString(),
+      });
+      rethrow;
+    }
   }
 
   Future<void> reevaluateTitle({
@@ -226,41 +301,65 @@ class SessionManager {
       return;
     }
 
-    final now = DateTime.now().toUtc();
-    final currentTitle = meta.title;
-    final proposed = await generate(context);
-    final shouldReplace = _shouldReplaceTitle(
-      currentTitle: currentTitle,
-      proposedTitle: proposed,
-    );
-
-    if (currentTitle != null) {
-      store.setTitle(
-        shouldReplace ? proposed! : currentTitle,
-        source: SessionTitleSource.auto,
-        state: SessionTitleState.stable,
-        generationCount: meta.titleGenerationCount + 1,
-        generatedAt: meta.titleGeneratedAt ?? now,
-        lastEvaluatedAt: now,
+    final span = _startSpan('session.title.reevaluate', attributes: {
+      'session.id': meta.id,
+      'title.tool_count': context.toolNames.length,
+      if (context.firstUserMessage != null)
+        'title.first_user_length': context.firstUserMessage!.length,
+      if (context.latestAssistantMessage != null)
+        'title.latest_assistant_length': context.latestAssistantMessage!.length,
+    });
+    try {
+      final now = DateTime.now().toUtc();
+      final currentTitle = meta.title;
+      final proposed = await generate(context);
+      final shouldReplace = _shouldReplaceTitle(
+        currentTitle: currentTitle,
+        proposedTitle: proposed,
       );
-    } else if (proposed != null) {
-      store.setTitle(
-        proposed,
-        source: SessionTitleSource.auto,
-        state: SessionTitleState.stable,
-        generationCount: meta.titleGenerationCount + 1,
-        generatedAt: meta.titleGeneratedAt ?? now,
-        lastEvaluatedAt: now,
-      );
-    } else {
-      meta.titleState = SessionTitleState.stable;
-      meta.titleGenerationCount = meta.titleGenerationCount + 1;
-      meta.titleLastEvaluatedAt = now;
-      store.updateMeta();
-    }
 
-    if (shouldReplace && proposed != null) {
-      store.logEvent('title_reevaluated', {'title': proposed});
+      if (currentTitle != null) {
+        store.setTitle(
+          shouldReplace ? proposed! : currentTitle,
+          source: SessionTitleSource.auto,
+          state: SessionTitleState.stable,
+          generationCount: meta.titleGenerationCount + 1,
+          generatedAt: meta.titleGeneratedAt ?? now,
+          lastEvaluatedAt: now,
+        );
+      } else if (proposed != null) {
+        store.setTitle(
+          proposed,
+          source: SessionTitleSource.auto,
+          state: SessionTitleState.stable,
+          generationCount: meta.titleGenerationCount + 1,
+          generatedAt: meta.titleGeneratedAt ?? now,
+          lastEvaluatedAt: now,
+        );
+      } else {
+        meta.titleState = SessionTitleState.stable;
+        meta.titleGenerationCount = meta.titleGenerationCount + 1;
+        meta.titleLastEvaluatedAt = now;
+        store.updateMeta();
+      }
+
+      if (shouldReplace && proposed != null) {
+        store.logEvent('title_reevaluated', {'title': proposed});
+      }
+      _endSpan(span, extra: {
+        'title.generated': proposed != null,
+        'title.replaced': shouldReplace,
+        if (proposed != null) 'output.value': proposed,
+        if (proposed != null) 'title.output_length': proposed.length,
+      });
+    } catch (e, st) {
+      _endSpan(span, extra: {
+        'error': true,
+        'error.type': e.runtimeType.toString(),
+        'error.message': e.toString(),
+        'error.stack': st.toString(),
+      });
+      rethrow;
     }
   }
 
@@ -268,34 +367,60 @@ class SessionManager {
     required SessionMeta session,
     required AgentCore agent,
   }) {
-    final events =
-        SessionStore.loadConversation(environment.sessionDir(session.id));
-    switchToSessionStore(session);
-    agent.clearConversation();
+    final span = _startSpan('session.resume', attributes: {
+      'session.id': session.id,
+    });
+    try {
+      final events =
+          SessionStore.loadConversation(environment.sessionDir(session.id));
+      switchToSessionStore(session);
+      agent.clearConversation();
 
-    if (events.isEmpty) {
-      return const SessionResumeResult(
-        message: 'Session has no conversation data.',
-        hasConversation: false,
-        replay: SessionReplay(entries: [], userCount: 0, assistantCount: 0),
+      if (events.isEmpty) {
+        const result = SessionResumeResult(
+          message: 'Session has no conversation data.',
+          hasConversation: false,
+          replay: SessionReplay(entries: [], userCount: 0, assistantCount: 0),
+        );
+        _endSpan(span, extra: {
+          'session.event_count': 0,
+          'session.has_conversation': false,
+        });
+        return result;
+      }
+
+      final replay = _replayEventsIntoAgent(events, agent);
+
+      final currentStore = _store;
+      if (currentStore != null) {
+        currentStore.meta.messageCount =
+            replay.userCount + replay.assistantCount;
+        currentStore.updateMeta();
+      }
+
+      final result = SessionResumeResult(
+        message:
+            'Restored ${replay.userCount} user + ${replay.assistantCount} assistant messages.',
+        hasConversation: true,
+        replay: replay,
       );
+      _endSpan(span, extra: {
+        'session.event_count': events.length,
+        'session.has_conversation': true,
+        'session.replay.entry_count': replay.entries.length,
+        'session.user_count': replay.userCount,
+        'session.assistant_count': replay.assistantCount,
+      });
+      return result;
+    } catch (e, st) {
+      _endSpan(span, extra: {
+        'error': true,
+        'error.type': e.runtimeType.toString(),
+        'error.message': e.toString(),
+        'error.stack': st.toString(),
+      });
+      rethrow;
     }
-
-    final replay = _replayEventsIntoAgent(events, agent);
-
-    // Update message count in metadata
-    final currentStore = _store;
-    if (currentStore != null) {
-      currentStore.meta.messageCount = replay.userCount + replay.assistantCount;
-      currentStore.updateMeta();
-    }
-
-    return SessionResumeResult(
-      message:
-          'Restored ${replay.userCount} user + ${replay.assistantCount} assistant messages.',
-      hasConversation: true,
-      replay: replay,
-    );
   }
 
   SessionForkResult? forkSession({
@@ -305,51 +430,74 @@ class SessionManager {
   }) {
     final oldStore = _store;
     if (oldStore == null) return null;
+    final span = _startSpan('session.fork', attributes: {
+      'session.id': oldStore.meta.id,
+      'session.fork.user_message_index': userMessageIndex,
+      'session.fork.draft_length': messageText.length,
+      'input.value': redactBody(messageText, maxBytes: 8192),
+    });
 
-    final oldSessionId = oldStore.meta.id;
-    final allEvents = SessionStore.loadConversation(oldStore.sessionDir);
-    var userCount = 0;
-    final truncatedEvents = <Map<String, dynamic>>[];
-    for (final event in allEvents) {
-      truncatedEvents.add(event);
-      if (event['type'] == 'user_message') {
-        if (userCount == userMessageIndex) break;
-        userCount++;
+    try {
+      final oldSessionId = oldStore.meta.id;
+      final allEvents = SessionStore.loadConversation(oldStore.sessionDir);
+      var userCount = 0;
+      final truncatedEvents = <Map<String, dynamic>>[];
+      for (final event in allEvents) {
+        truncatedEvents.add(event);
+        if (event['type'] == 'user_message') {
+          if (userCount == userMessageIndex) break;
+          userCount++;
+        }
       }
+
+      unawaited(oldStore.close());
+
+      final newId = _newSessionId();
+      final newStore = SessionStore(
+        sessionDir: environment.sessionDir(newId),
+        meta: SessionMeta(
+          id: newId,
+          cwd: oldStore.meta.cwd,
+          modelRef: oldStore.meta.modelRef,
+          startTime: DateTime.now(),
+          forkedFrom: oldSessionId,
+        ),
+      );
+
+      for (final event in truncatedEvents) {
+        final type = event['type'] as String? ?? '';
+        final data = Map<String, dynamic>.from(event)
+          ..remove('type')
+          ..remove('timestamp');
+        newStore.logEvent(type, data);
+      }
+
+      _store = newStore;
+      agent.clearConversation();
+      final replay = _replayEventsIntoAgent(truncatedEvents, agent);
+      final shortId =
+          oldSessionId.length > 8 ? oldSessionId.substring(0, 8) : oldSessionId;
+      final result = SessionForkResult(
+        message: 'Forked from session $shortId…',
+        draftText: messageText,
+        replay: replay,
+      );
+      _endSpan(span, extra: {
+        'session.id': newStore.meta.id,
+        'session.fork.source_session_id': oldSessionId,
+        'session.fork.event_count': truncatedEvents.length,
+        'session.replay.entry_count': replay.entries.length,
+      });
+      return result;
+    } catch (e, st) {
+      _endSpan(span, extra: {
+        'error': true,
+        'error.type': e.runtimeType.toString(),
+        'error.message': e.toString(),
+        'error.stack': st.toString(),
+      });
+      rethrow;
     }
-
-    unawaited(oldStore.close());
-
-    final newId = _newSessionId();
-    final newStore = SessionStore(
-      sessionDir: environment.sessionDir(newId),
-      meta: SessionMeta(
-        id: newId,
-        cwd: oldStore.meta.cwd,
-        modelRef: oldStore.meta.modelRef,
-        startTime: DateTime.now(),
-        forkedFrom: oldSessionId,
-      ),
-    );
-
-    for (final event in truncatedEvents) {
-      final type = event['type'] as String? ?? '';
-      final data = Map<String, dynamic>.from(event)
-        ..remove('type')
-        ..remove('timestamp');
-      newStore.logEvent(type, data);
-    }
-
-    _store = newStore;
-    agent.clearConversation();
-    final replay = _replayEventsIntoAgent(truncatedEvents, agent);
-    final shortId =
-        oldSessionId.length > 8 ? oldSessionId.substring(0, 8) : oldSessionId;
-    return SessionForkResult(
-      message: 'Forked from session $shortId…',
-      draftText: messageText,
-      replay: replay,
-    );
   }
 
   static SessionReplay _replayEventsIntoAgent(
@@ -473,5 +621,23 @@ class SessionManager {
   String _newSessionId() {
     final now = DateTime.now();
     return '${now.millisecondsSinceEpoch}-${now.microsecond.toRadixString(36)}';
+  }
+
+  ObservabilitySpan? _startSpan(
+    String name, {
+    Map<String, dynamic>? attributes,
+  }) {
+    final obs = _obs;
+    if (obs == null) return null;
+    return obs.startSpan(name, kind: 'session', attributes: attributes);
+  }
+
+  void _endSpan(
+    ObservabilitySpan? span, {
+    Map<String, dynamic>? extra,
+  }) {
+    final obs = _obs;
+    if (span == null || obs == null) return;
+    obs.endSpan(span, extra: extra);
   }
 }

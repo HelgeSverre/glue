@@ -100,12 +100,6 @@ class AgentManager {
           name == 'spawn_subagent' || name == 'spawn_parallel_subagents');
     }
 
-    final core = AgentCore(
-      llm: llm,
-      tools: subagentTools,
-      modelId: ref.modelId,
-    );
-
     // Create a span for the subagent execution.
     final span = obs?.startSpan(
       'subagent',
@@ -117,6 +111,14 @@ class AgentManager {
         if (index != null) 'subagent.index': index,
         if (total != null) 'subagent.total': total,
       },
+    );
+
+    final core = AgentCore(
+      llm: llm,
+      tools: subagentTools,
+      modelId: ref.modelId,
+      obs: obs,
+      traceParent: span,
     );
 
     final runner = AgentRunner(

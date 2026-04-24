@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/core/environment.dart';
+import 'package:glue/src/observability/debug_controller.dart';
+import 'package:glue/src/observability/observability.dart';
 import 'package:glue/src/session/session_manager.dart';
 import 'package:glue/src/storage/session_store.dart';
 import 'package:test/test.dart';
@@ -16,16 +18,34 @@ class _NoopLlm implements LlmClient {
   }
 }
 
+class _RecordingSink extends ObservabilitySink {
+  final List<ObservabilitySpan> spans = [];
+
+  @override
+  void onSpan(ObservabilitySpan span) => spans.add(span);
+
+  @override
+  Future<void> flush() async {}
+
+  @override
+  Future<void> close() async {}
+}
+
 void main() {
   late Directory tempDir;
   late Environment environment;
   late AgentCore agent;
+  late Observability obs;
+  late _RecordingSink sink;
 
   setUp(() {
     tempDir = Directory.systemTemp.createTempSync('session_manager_test_');
     environment = Environment.test(home: tempDir.path, cwd: tempDir.path);
     environment.ensureDirectories();
     agent = AgentCore(llm: _NoopLlm(), tools: const {});
+    sink = _RecordingSink();
+    obs = Observability(debugController: DebugController());
+    obs.addSink(sink);
   });
 
   tearDown(() {
@@ -33,7 +53,8 @@ void main() {
   });
 
   test('ensureSessionStore lazily creates and reuses session store', () {
-    final manager = SessionManager(environment: environment);
+    final manager =
+        SessionManager(environment: environment, observability: obs);
 
     final first = manager.ensureSessionStore(
       cwd: environment.cwd,
@@ -46,10 +67,13 @@ void main() {
 
     expect(identical(first, second), isTrue);
     expect(Directory(first.sessionDir).existsSync(), isTrue);
+    expect(sink.spans.where((span) => span.name == 'session.create'),
+        hasLength(1));
   });
 
   test('resumeSession restores agent conversation and replay entries', () {
-    final manager = SessionManager(environment: environment);
+    final manager =
+        SessionManager(environment: environment, observability: obs);
     final meta = SessionMeta(
       id: 'resume-1',
       cwd: environment.cwd,
@@ -79,10 +103,15 @@ void main() {
       Role.toolResult,
     ]);
     expect(manager.currentSessionId, 'resume-1');
+    final span = sink.spans.lastWhere((span) => span.name == 'session.resume');
+    expect(span.attributes['session.event_count'], 4);
+    expect(span.attributes['session.has_conversation'], isTrue);
+    expect(span.attributes['session.user_count'], 1);
   });
 
   test('resumeSession reuses summary-first tool result text for replay UI', () {
-    final manager = SessionManager(environment: environment);
+    final manager =
+        SessionManager(environment: environment, observability: obs);
     final meta = SessionMeta(
       id: 'resume-summary',
       cwd: environment.cwd,
@@ -117,7 +146,8 @@ void main() {
   });
 
   test('resumeSession on empty conversation does not create extra session', () {
-    final manager = SessionManager(environment: environment);
+    final manager =
+        SessionManager(environment: environment, observability: obs);
     final meta = SessionMeta(
       id: 'resume-empty',
       cwd: environment.cwd,
@@ -136,10 +166,13 @@ void main() {
         .toList();
     expect(dirs, hasLength(1));
     expect(manager.currentSessionId, 'resume-empty');
+    final span = sink.spans.lastWhere((span) => span.name == 'session.resume');
+    expect(span.attributes['session.has_conversation'], isFalse);
   });
 
   test('forkSession creates new session and replays truncated history', () {
-    final manager = SessionManager(environment: environment);
+    final manager =
+        SessionManager(environment: environment, observability: obs);
     final oldStore = manager.ensureSessionStore(
       cwd: environment.cwd,
       modelRef: 'anthropic/claude-sonnet-4.6',
@@ -166,10 +199,14 @@ void main() {
     expect(events.where((e) => e['type'] == 'user_message'), hasLength(1));
     expect(events.first['text'], 'first question');
     expect(agent.conversation.map((m) => m.role), [Role.user]);
+    final span = sink.spans.lastWhere((span) => span.name == 'session.fork');
+    expect(span.attributes['session.fork.source_session_id'], oldId);
+    expect(span.attributes['session.replay.entry_count'], 1);
   });
 
   test('updateSessionModel persists modelRef to meta.json', () {
-    final manager = SessionManager(environment: environment);
+    final manager =
+        SessionManager(environment: environment, observability: obs);
     final store = manager.ensureSessionStore(
       cwd: environment.cwd,
       modelRef: 'anthropic/claude-sonnet-4.6',
@@ -184,7 +221,8 @@ void main() {
   });
 
   test('generateTitle sets provisional auto title and logs event', () async {
-    final manager = SessionManager(environment: environment);
+    final manager =
+        SessionManager(environment: environment, observability: obs);
     final store = manager.ensureSessionStore(
       cwd: environment.cwd,
       modelRef: 'anthropic/claude-sonnet-4.6',
@@ -202,10 +240,16 @@ void main() {
     final events = SessionStore.loadConversation(store.sessionDir);
     expect(events.last['type'], 'title_generated');
     expect(events.last['title'], 'Fix flaky docker test');
+    final span =
+        sink.spans.lastWhere((span) => span.name == 'session.title.generate');
+    expect(span.attributes['title.generated'], isTrue);
+    expect(
+        span.attributes['title.output_length'], 'Fix flaky docker test'.length);
   });
 
   test('renameTitle marks title as user-owned and stable', () async {
-    final manager = SessionManager(environment: environment);
+    final manager =
+        SessionManager(environment: environment, observability: obs);
     final store = manager.ensureSessionStore(
       cwd: environment.cwd,
       modelRef: 'anthropic/claude-sonnet-4.6',
@@ -217,10 +261,14 @@ void main() {
     expect(store.meta.titleSource, SessionTitleSource.user);
     expect(store.meta.titleState, SessionTitleState.stable);
     expect(store.meta.titleRenamedAt, isNotNull);
+    final span =
+        sink.spans.lastWhere((span) => span.name == 'session.title.rename');
+    expect(span.attributes['title.renamed'], isTrue);
   });
 
   test('reevaluateTitle promotes provisional auto title to stable', () async {
-    final manager = SessionManager(environment: environment);
+    final manager =
+        SessionManager(environment: environment, observability: obs);
     final store = manager.ensureSessionStore(
       cwd: environment.cwd,
       modelRef: 'anthropic/claude-sonnet-4.6',
@@ -242,5 +290,9 @@ void main() {
     expect(store.meta.title, 'Docker resume test flakiness');
     expect(store.meta.titleState, SessionTitleState.stable);
     expect(store.meta.titleGenerationCount, 2);
+    final span =
+        sink.spans.lastWhere((span) => span.name == 'session.title.reevaluate');
+    expect(span.attributes['title.generated'], isTrue);
+    expect(span.attributes['title.replaced'], isTrue);
   });
 }

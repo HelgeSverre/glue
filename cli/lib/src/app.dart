@@ -62,6 +62,7 @@ import 'package:glue/src/ui/shell_autocomplete.dart';
 import 'package:glue/src/ui/slash_autocomplete.dart';
 import 'package:glue/src/observability/debug_controller.dart';
 import 'package:glue/src/observability/observability.dart';
+import 'package:glue/src/observability/redaction.dart';
 
 part 'app/event_router.dart';
 part 'app/agent_orchestration.dart';
@@ -172,6 +173,7 @@ class App {
   bool _titleManuallyOverridden = false;
   bool _bashMode = false;
   Process? _bashRunProcess;
+  ObservabilitySpan? _bashSpan;
   DateTime? _lastCtrlC;
 
   final Map<String, _SubagentGroup> _subagentGroups = {};
@@ -220,7 +222,10 @@ class App {
         _systemPrompt = systemPrompt,
         _executor = executor ?? HostExecutor(const ShellConfig()),
         _jobManager = jobManager ??
-            ShellJobManager(executor ?? HostExecutor(const ShellConfig())),
+            ShellJobManager(
+              executor ?? HostExecutor(const ShellConfig()),
+              obs: obs,
+            ),
         _startupContinue = startupContinue,
         _startupPrompt = startupPrompt,
         _printMode = printMode,
@@ -233,6 +238,7 @@ class App {
     _sessionManager = SessionManager(
       environment: _environment,
       sessionStore: sessionStore,
+      observability: obs,
     );
     _shareExporter = SessionShareExporter();
     _gistPublisher = SessionGistPublisher();
@@ -766,6 +772,10 @@ class App {
 
   Future<void> _executeAndCompleteTool(ToolCall call) async {
     await _executeAndCompleteToolImpl(this, call);
+  }
+
+  void _traceToolApproval(ToolCall call, String decision) {
+    _traceToolApprovalImpl(this, call, decision);
   }
 
   void _cancelAgent() {

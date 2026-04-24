@@ -39,7 +39,8 @@ void main() {
         ['pre-existing-session'],
       );
 
-      await ServiceLocator.create(environment: env);
+      final services = await ServiceLocator.create(environment: env);
+      addTearDown(() async => services.obs.close());
 
       // After ServiceLocator.create(), no new session directory should
       // have been written to disk. The SessionStore should be created
@@ -52,6 +53,37 @@ void main() {
             'doing so makes --continue pick up the empty session instead '
             'of the real one when --resume is used.',
       );
+      expect(services.obs.sinkCount, 1);
+      expect(services.obs.autoFlushEnabled, isFalse);
+    });
+
+    test('installs OTEL exporter and enables auto-flush when configured',
+        () async {
+      final tempDir =
+          Directory.systemTemp.createTempSync('service_locator_otel_');
+      addTearDown(() => tempDir.deleteSync(recursive: true));
+
+      final env = Environment.test(
+        home: tempDir.path,
+        cwd: tempDir.path,
+        vars: {
+          'ANTHROPIC_API_KEY': 'sk-test-fake-for-validation',
+          'OTEL_EXPORTER_OTLP_ENDPOINT': 'https://collector.example.test/root',
+          'OTEL_EXPORTER_OTLP_HEADERS': 'Authorization=Bearer%20sink-test',
+          'OTEL_SERVICE_NAME': 'glue-service-locator-test',
+          'OTEL_RESOURCE_ATTRIBUTES':
+              'deployment.environment=test,openinference.project.name=service-locator',
+        },
+      );
+      env.ensureDirectories();
+
+      final services = await ServiceLocator.create(environment: env);
+      addTearDown(() async => services.obs.close());
+
+      // FileSink is always present; OTEL adds a second sink and turns on the
+      // background flush timer so completed spans get exported periodically.
+      expect(services.obs.sinkCount, 2);
+      expect(services.obs.autoFlushEnabled, isTrue);
     });
   });
 }

@@ -113,7 +113,18 @@ commented out.
 #     hyperbrowser:
 #       api_key: your-hyperbrowser-key
 
-# debug: false
+# observability:
+#   debug: false
+#   max_body_bytes: 65536
+#   redact: true
+#   otel:
+#     enabled: true
+#     endpoint: https://app.phoenix.arize.com/s/helge-sverre
+#     headers:
+#       Authorization: Bearer <token>
+#     service_name: glue
+#     resource_attributes:
+#       openinference.project.name: glue
 
 # approval_mode: confirm         # confirm | auto
 
@@ -171,6 +182,14 @@ commented out.
 | `web.browser.anchor.api_key`         | string                        | `ANCHOR_API_KEY`                    |
 | `web.browser.hyperbrowser.api_key`   | string                        | `HYPERBROWSER_API_KEY`              |
 | `debug`                              | boolean                       | `GLUE_DEBUG=1`                      |
+| `observability.debug`                | boolean                       | `GLUE_DEBUG=1`                      |
+| `observability.max_body_bytes`       | integer                       | none                                |
+| `observability.redact`               | boolean                       | none                                |
+| `observability.otel.enabled`         | boolean                       | `OTEL_SDK_DISABLED`                 |
+| `observability.otel.endpoint`        | string                        | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `PHOENIX_COLLECTOR_ENDPOINT` |
+| `observability.otel.headers`         | map                           | `OTEL_EXPORTER_OTLP_TRACES_HEADERS`, `OTEL_EXPORTER_OTLP_HEADERS`, `PHOENIX_API_KEY` |
+| `observability.otel.service_name`    | string                        | `OTEL_SERVICE_NAME`                 |
+| `observability.otel.resource_attributes` | map                       | `OTEL_RESOURCE_ATTRIBUTES`, `PHOENIX_PROJECT_NAME` |
 | `approval_mode`                      | string                        | `GLUE_APPROVAL_MODE`                |
 | `title_generation_enabled`           | boolean                       | `GLUE_TITLE_GENERATION_ENABLED`     |
 | `skills.paths`                       | list of strings               | `GLUE_SKILLS_PATHS`                 |

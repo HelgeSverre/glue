@@ -9,6 +9,7 @@ import 'package:glue/src/commands/config_command.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/observability/observability_config.dart';
+import 'package:glue/src/observability/otlp_http_trace_sink.dart';
 import 'package:glue/src/terminal/styled.dart';
 
 enum DoctorSeverity {
@@ -367,6 +368,27 @@ void _checkObservability(
     message: 'Log directory: $logsDir',
     path: logsDir,
   ));
+
+  final otel = observability.otel;
+  findings.add(DoctorFinding(
+    severity: otel.isConfigured ? DoctorSeverity.ok : DoctorSeverity.info,
+    section: section,
+    message: otel.isConfigured
+        ? 'OTEL export: on (${normalizeOtlpTracesEndpoint(otel.endpoint!)})'
+        : 'OTEL export: off',
+  ));
+  if (otel.isConfigured) {
+    findings.add(DoctorFinding(
+      severity: DoctorSeverity.info,
+      section: section,
+      message: 'OTEL service: ${otel.serviceName}',
+    ));
+    findings.add(DoctorFinding(
+      severity: DoctorSeverity.info,
+      section: section,
+      message: 'OTEL headers: ${redactOtelHeadersForDisplay(otel.headers)}',
+    ));
+  }
 
   final latestSpanLog = _latestLogFile(logsDir, 'spans-', '.jsonl');
   findings.add(DoctorFinding(

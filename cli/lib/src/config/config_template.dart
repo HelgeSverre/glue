@@ -98,6 +98,14 @@ String buildConfigTemplate() {
 #   debug: false           # or set GLUE_DEBUG=1, or run with --debug
 #   max_body_bytes: 65536  # per-request body cap in bytes before truncation
 #   redact: true           # mask api keys/bearer tokens in logged bodies
+#   otel:
+#     enabled: false
+#     endpoint: https://app.phoenix.arize.com/s/your-org
+#     headers:
+#       Authorization: Bearer your-token
+#     service_name: glue
+#     resource_attributes:
+#       openinference.project.name: glue
 
 # Tool approval mode. GLUE_APPROVAL_MODE overrides this.
 # approval_mode: confirm         # confirm | auto

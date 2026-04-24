@@ -133,6 +133,119 @@ anthropic:
       expect(config.webConfig.browser.hyperbrowserApiKey, 'hb-key');
       expect(config.webConfig.browser.isConfigured, isTrue);
     });
+
+    test('loads OTEL config from Phoenix environment aliases', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      final config = GlueConfig.load(
+        environment: _envWith(
+          home: home,
+          vars: {
+            'PHOENIX_COLLECTOR_ENDPOINT':
+                'https://app.phoenix.arize.com/s/helge-sverre',
+            'PHOENIX_API_KEY': 'test-phoenix-key',
+            'PHOENIX_PROJECT_NAME': 'phoenix-project',
+          },
+        ),
+      );
+
+      final otel = config.observability.otel;
+      expect(otel.isConfigured, isTrue);
+      expect(
+        otel.endpoint,
+        'https://app.phoenix.arize.com/s/helge-sverre',
+      );
+      expect(otel.headers['Authorization'], 'Bearer test-phoenix-key');
+      expect(
+        otel.resourceAttributes['openinference.project.name'],
+        'phoenix-project',
+      );
+    });
+
+    test('YAML OTEL config wins over standard environment fallback', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      Directory('${home.path}/.glue').createSync();
+      File('${home.path}/.glue/config.yaml').writeAsStringSync('''
+observability:
+  otel:
+    enabled: true
+    endpoint: https://yaml.example.test
+    headers:
+      Authorization: Bearer yaml
+    service_name: glue-yaml
+    resource_attributes:
+      openinference.project.name: yaml-project
+''');
+      final config = GlueConfig.load(
+        environment: _envWith(
+          home: home,
+          vars: {
+            'OTEL_EXPORTER_OTLP_TRACES_ENDPOINT': 'https://env.example.test',
+            'OTEL_EXPORTER_OTLP_TRACES_HEADERS': 'Authorization=Bearer%20env',
+            'OTEL_SERVICE_NAME': 'glue-env',
+            'OTEL_RESOURCE_ATTRIBUTES':
+                'openinference.project.name=env-project',
+          },
+        ),
+      );
+
+      final otel = config.observability.otel;
+      expect(otel.endpoint, 'https://yaml.example.test');
+      expect(otel.headers['Authorization'], 'Bearer yaml');
+      expect(otel.serviceName, 'glue-yaml');
+      expect(
+        otel.resourceAttributes['openinference.project.name'],
+        'yaml-project',
+      );
+    });
+
+    test('standard OTEL environment variables are parsed and decoded', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      final config = GlueConfig.load(
+        environment: _envWith(
+          home: home,
+          vars: {
+            'OTEL_EXPORTER_OTLP_ENDPOINT': 'https://collector.example.test',
+            'OTEL_EXPORTER_OTLP_HEADERS':
+                'Authorization=Bearer%20env,X-Trace-Tag=hello%2Cworld',
+            'OTEL_SERVICE_NAME': 'glue-env',
+            'OTEL_RESOURCE_ATTRIBUTES':
+                'deployment.environment=dev,openinference.project.name=env-project',
+          },
+        ),
+      );
+
+      final otel = config.observability.otel;
+      expect(otel.isConfigured, isTrue);
+      expect(otel.endpoint, 'https://collector.example.test');
+      expect(otel.headers['Authorization'], 'Bearer env');
+      expect(otel.headers['X-Trace-Tag'], 'hello,world');
+      expect(otel.serviceName, 'glue-env');
+      expect(otel.resourceAttributes['deployment.environment'], 'dev');
+      expect(
+        otel.resourceAttributes['openinference.project.name'],
+        'env-project',
+      );
+    });
+
+    test('OTEL_SDK_DISABLED disables exporter auto-enable from environment', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      final config = GlueConfig.load(
+        environment: _envWith(
+          home: home,
+          vars: {
+            'OTEL_EXPORTER_OTLP_ENDPOINT': 'https://collector.example.test',
+            'OTEL_SDK_DISABLED': 'true',
+          },
+        ),
+      );
+
+      expect(config.observability.otel.enabled, isFalse);
+      expect(config.observability.otel.isConfigured, isFalse);
+    });
   });
 
   group('GlueConfig.validate', () {

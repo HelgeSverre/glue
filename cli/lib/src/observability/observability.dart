@@ -2,12 +2,32 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:glue/src/observability/debug_controller.dart';
+import 'package:meta/meta.dart';
 
 final _random = Random.secure();
 
 String _hexId(int bytes) => List.generate(
         bytes, (_) => _random.nextInt(256).toRadixString(16).padLeft(2, '0'))
     .join();
+
+class ObservabilityEvent {
+  final String name;
+  final DateTime timestamp;
+  final Map<String, dynamic> attributes;
+
+  ObservabilityEvent(
+    this.name, {
+    DateTime? timestamp,
+    Map<String, dynamic>? attributes,
+  })  : timestamp = timestamp ?? DateTime.now(),
+        attributes = attributes ?? {};
+
+  Map<String, dynamic> toMap() => {
+        'name': name,
+        'timestamp': timestamp.toIso8601String(),
+        if (attributes.isNotEmpty) 'attributes': attributes,
+      };
+}
 
 /// A span representing a unit of work in the observability trace.
 ///
@@ -20,7 +40,10 @@ class ObservabilitySpan {
   final String? parentSpanId;
   final Map<String, dynamic> attributes;
   final DateTime _start;
+  final List<ObservabilityEvent> events = [];
   DateTime? _end;
+  String statusCode = 'unset';
+  String? statusMessage;
   bool _ended = false;
 
   ObservabilitySpan({
@@ -38,11 +61,29 @@ class ObservabilitySpan {
   DateTime? get endTime => _end;
   Duration get duration => (_end ?? DateTime.now()).difference(_start);
 
+  void addEvent(String name, {Map<String, dynamic>? attributes}) {
+    if (_ended) return;
+    events.add(ObservabilityEvent(name, attributes: attributes));
+  }
+
+  void setStatus(String code, {String? message}) {
+    if (_ended) return;
+    statusCode = code;
+    statusMessage = message;
+  }
+
   void end({Map<String, dynamic>? extra}) {
     if (_ended) return;
     _ended = true;
     _end = DateTime.now();
-    if (extra != null) attributes.addAll(extra);
+    if (extra != null) {
+      attributes.addAll(extra);
+      if (extra['error'] == true) {
+        statusCode = 'error';
+        statusMessage =
+            extra['error.message']?.toString() ?? extra['error']?.toString();
+      }
+    }
   }
 
   Map<String, dynamic> toMap() => {
@@ -54,6 +95,9 @@ class ObservabilitySpan {
         'start_time': _start.toIso8601String(),
         'end_time': _end?.toIso8601String(),
         'duration_ms': duration.inMilliseconds,
+        'status_code': statusCode,
+        if (statusMessage != null) 'status_message': statusMessage,
+        if (events.isNotEmpty) 'events': events.map((e) => e.toMap()).toList(),
         'attributes': attributes,
       };
 }
@@ -84,6 +128,12 @@ class Observability {
       : _debugController = debugController;
 
   bool get debugEnabled => _debugController.enabled;
+
+  @visibleForTesting
+  int get sinkCount => _sinks.length;
+
+  @visibleForTesting
+  bool get autoFlushEnabled => _flushTimer != null;
 
   /// Registers a [sink] to receive completed spans.
   void addSink(ObservabilitySink sink) => _sinks.add(sink);
