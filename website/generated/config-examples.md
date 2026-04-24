@@ -91,6 +91,7 @@ the source file, not this one.
 #   otel:
 #     enabled: true
 #     endpoint: https://app.phoenix.arize.com/s/helge-sverre
+#     protocol: http/json         # http/json | http/protobuf
 #     headers:
 #       Authorization: Bearer <token>
 #     service_name: glue
