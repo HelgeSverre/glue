@@ -11,8 +11,6 @@ import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/core/service_locator.dart';
 import 'package:glue/src/input/file_expander.dart';
-import 'package:glue/src/input/line_editor.dart' show InputAction;
-import 'package:glue/src/input/streaming_input_handler.dart';
 import 'package:glue/src/input/text_area_editor.dart';
 import 'package:glue/src/observability/debug_controller.dart';
 import 'package:glue/src/observability/observability.dart';
@@ -21,7 +19,9 @@ import 'package:glue/src/orchestrator/tool_permissions.dart';
 import 'package:glue/src/providers/llm_client_factory.dart';
 import 'package:glue/src/ui/rendering/ansi_utils.dart';
 import 'package:glue/src/ui/rendering/block_renderer.dart';
+import 'package:glue/src/runtime/app_events.dart';
 import 'package:glue/src/runtime/commands/command_host.dart';
+import 'package:glue/src/runtime/input_router.dart';
 import 'package:glue/src/runtime/commands/register_builtin_slash_commands.dart';
 import 'package:glue/src/runtime/renderer.dart';
 import 'package:glue/src/runtime/services/config.dart';
@@ -49,7 +49,6 @@ import 'package:glue/src/storage/session_store.dart';
 import 'package:glue/src/terminal/layout.dart';
 import 'package:glue/src/terminal/terminal.dart';
 import 'package:glue/src/input/at_file_hint.dart';
-import 'package:glue/src/ui/components/overlays.dart';
 import 'package:glue/src/ui/components/dock.dart';
 import 'package:glue/src/ui/services/docks.dart';
 import 'package:glue/src/ui/components/modal.dart';
@@ -61,9 +60,7 @@ import 'package:glue/src/commands/slash_autocomplete.dart';
 part 'app/command_helpers.dart';
 part 'app/command_host_adapter.dart';
 part 'app/event_router.dart';
-part 'app/events.dart';
 part 'app/render_pipeline.dart';
-part 'app/terminal_event_router.dart';
 
 // ---------------------------------------------------------------------------
 // Application state
@@ -139,7 +136,7 @@ class App {
   late final Config _configService;
   late final Session _sessionService;
   late final BashMode _bash;
-  DateTime? _lastCtrlC;
+  late final InputRouter _input;
 
   final bool _startupContinue;
   final String? _startupPrompt;
@@ -243,6 +240,27 @@ class App {
     _autocomplete = SlashAutocomplete(_commands);
     _atHint = AtFileHint();
     _shellComplete = ShellAutocomplete(ShellCompleter());
+    _input = InputRouter(
+      editor: editor,
+      layout: layout,
+      transcript: _transcript,
+      autocomplete: _autocomplete,
+      atHint: _atHint,
+      shellComplete: _shellComplete,
+      commands: _commands,
+      bash: _bash,
+      panels: _panelStack,
+      docks: _dockManager,
+      getActiveModal: () => _activeModal,
+      getMode: () => _mode,
+      getApprovalMode: () => _approvalMode,
+      setApprovalMode: (mode) => _approvalMode = mode,
+      addEvent: _events.add,
+      render: _render,
+      doRender: _doRender,
+      cancelAgent: _cancelAgent,
+      requestExit: requestExit,
+    );
   }
 
   PermissionGate get _permissionGate => PermissionGate(
@@ -337,7 +355,7 @@ class App {
       'Type /help for commands.',
     ));
 
-    final termSub = terminal.events.listen(_handleTerminalEvent);
+    final termSub = terminal.events.listen(_input.handle);
     final appSub = _events.stream.listen(_handleAppEvent);
     _subagentSub = _subagents?.updates.listen((update) {
       if (_transcript.handleSubagentUpdate(update)) _render();
@@ -526,12 +544,6 @@ class App {
 
   Future<void> _activateSkillFromUi(String skillName) async {
     await _activateSkillFromUiImpl(this, skillName);
-  }
-
-  // ── Terminal event handling ─────────────────────────────────────────────
-
-  void _handleTerminalEvent(TerminalEvent event) {
-    _handleTerminalEventImpl(this, event);
   }
 
   // ── App event handling ──────────────────────────────────────────────────

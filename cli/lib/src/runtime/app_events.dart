@@ -1,9 +1,8 @@
-part of 'package:glue/src/app.dart';
-
-/// Events that flow through the application event bus.
+/// Events that flow through the application event bus — the unified
+/// channel App uses to react to user input the [InputRouter] pre-processed
+/// into intent (submit a message, cancel the current turn, scroll, resize).
 sealed class AppEvent {}
 
-// User-initiated events.
 class UserSubmit extends AppEvent {
   final String text;
   UserSubmit(this.text);
