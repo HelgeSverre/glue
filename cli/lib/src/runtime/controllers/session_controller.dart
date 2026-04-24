@@ -6,6 +6,7 @@ import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/core/clipboard.dart';
 import 'package:glue/src/runtime/commands/command_host.dart';
 import 'package:glue/src/runtime/services/session.dart';
+import 'package:glue/src/runtime/transcript.dart';
 import 'package:glue/src/session/title_generator.dart';
 import 'package:glue/src/storage/session_store.dart';
 import 'package:glue/src/terminal/styled.dart';
@@ -32,7 +33,7 @@ class SessionController implements SessionCommandController {
     required this.session,
     required this.agent,
     required this.panels,
-    required this.addSystemMessage,
+    required this.transcript,
     required this.render,
     required this.historyEntries,
     required this.shortenPath,
@@ -45,7 +46,7 @@ class SessionController implements SessionCommandController {
   final Session session;
   final Agent agent;
   final Panels panels;
-  final void Function(String message) addSystemMessage;
+  final Transcript transcript;
   final void Function() render;
   final List<HistoryPanelEntry> Function() historyEntries;
   final String Function(String path) shortenPath;
@@ -65,7 +66,7 @@ class SessionController implements SessionCommandController {
         }
         unawaited(
           copyToClipboard(sessionId).then((ok) {
-            addSystemMessage(
+            transcript.system(
               ok
                   ? 'Session ID copied to clipboard.\n  $sessionId'
                   : 'Could not access clipboard. Session ID:\n  $sessionId',
@@ -110,7 +111,7 @@ class SessionController implements SessionCommandController {
   void openHistoryPanel() {
     final entries = historyEntries();
     if (entries.isEmpty) {
-      addSystemMessage('No conversation history.');
+      transcript.system('No conversation history.');
       render();
       return;
     }
@@ -196,7 +197,7 @@ class SessionController implements SessionCommandController {
         case 1:
           unawaited(() async {
             final copied = await copyToClipboard(entry.text);
-            addSystemMessage(
+            transcript.system(
               copied
                   ? 'Copied to clipboard.'
                   : 'Clipboard copy failed on this platform.',
@@ -211,7 +212,7 @@ class SessionController implements SessionCommandController {
   void openResumePanel() {
     final sessions = session.list();
     if (sessions.isEmpty) {
-      addSystemMessage('No saved sessions found.');
+      transcript.system('No saved sessions found.');
       render();
       return;
     }
@@ -282,7 +283,7 @@ class SessionController implements SessionCommandController {
       panels.remove(panel);
       if (meta == null) return;
       final result = session.resume(meta);
-      if (result.isNotEmpty) addSystemMessage(result);
+      if (result.isNotEmpty) transcript.system(result);
       render();
     });
   }

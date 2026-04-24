@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:glue/src/runtime/transcript.dart';
 
 import 'package:glue/src/commands/arg_completers.dart' as arg_completers;
 import 'package:glue/src/commands/slash_commands.dart';
@@ -12,21 +13,21 @@ class SkillsController implements SkillsCommandController {
     required this.skillRuntime,
     required this.docks,
     required this.render,
-    required this.addSystemMessage,
+    required this.transcript,
     required this.activateSkill,
   });
 
   final SkillRuntime skillRuntime;
   final Docks docks;
   final void Function() render;
-  final void Function(String message) addSystemMessage;
+  final Transcript transcript;
   final Future<void> Function(String skillName) activateSkill;
 
   @override
   void openSkillsPanel() {
     final registry = skillRuntime.refresh();
     if (registry.isEmpty) {
-      addSystemMessage('No skills found.\n\n${skillDiscoveryHelpText()}');
+      transcript.system('No skills found.\n\n${skillDiscoveryHelpText()}');
       render();
       return;
     }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:glue/src/runtime/transcript.dart';
 
 import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/catalog/model_catalog.dart';
@@ -28,7 +29,7 @@ class ModelController implements ModelCommandController {
     required this.session,
     required this.panels,
     required this.confirmations,
-    required this.addSystemMessage,
+    required this.transcript,
     required this.render,
     required this.setModelId,
   });
@@ -40,7 +41,7 @@ class ModelController implements ModelCommandController {
   final Session session;
   final Panels panels;
   final Confirmations confirmations;
-  final void Function(String message) addSystemMessage;
+  final Transcript transcript;
   final void Function() render;
   final void Function(String modelId) setModelId;
 
@@ -85,7 +86,7 @@ class ModelController implements ModelCommandController {
     }
 
     if (entries.isEmpty) {
-      addSystemMessage(
+      transcript.system(
         'No models available. Run `/provider add <id>` to connect one.',
       );
       render();
@@ -127,7 +128,7 @@ class ModelController implements ModelCommandController {
       panels.remove(panel);
       if (entry == null) return;
       final result = switchToRow(entry);
-      if (result.isNotEmpty) addSystemMessage(result);
+      if (result.isNotEmpty) transcript.system(result);
       render();
     }));
   }
@@ -207,7 +208,7 @@ class ModelController implements ModelCommandController {
             discovery: discovery,
             onPull: () {
               final message = _applyModelSwitch(row);
-              addSystemMessage(message);
+              transcript.system(message);
               render();
             },
           ));
@@ -244,12 +245,12 @@ class ModelController implements ModelCommandController {
     );
 
     if (!approved) {
-      addSystemMessage('Pull aborted — model not switched.');
+      transcript.system('Pull aborted — model not switched.');
       render();
       return;
     }
 
-    addSystemMessage("Pulling '$tag' from Ollama…");
+    transcript.system("Pulling '$tag' from Ollama…");
     render();
 
     discovery.invalidateCache();
@@ -262,25 +263,25 @@ class ModelController implements ModelCommandController {
         if (frame.hasError) break;
         if (frame.status != lastStatus) {
           lastStatus = frame.status;
-          addSystemMessage('  ${frame.status}');
+          transcript.system('  ${frame.status}');
           render();
         }
       }
     } catch (e) {
-      addSystemMessage('Pull failed: $e');
+      transcript.system('Pull failed: $e');
       render();
       return;
     }
 
     if (finalFrame == null || finalFrame.hasError) {
       final err = finalFrame?.error ?? 'unknown error';
-      addSystemMessage('Pull failed: $err');
+      transcript.system('Pull failed: $err');
       render();
       return;
     }
 
     if (!finalFrame.isSuccess) {
-      addSystemMessage(
+      transcript.system(
         'Pull ended without success (last status: ${finalFrame.status}).',
       );
       render();

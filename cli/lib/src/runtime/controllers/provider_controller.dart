@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:glue/src/runtime/transcript.dart';
 
 import 'package:meta/meta.dart';
 
@@ -49,13 +50,13 @@ class ProviderController implements ProviderCommandController {
   const ProviderController({
     required this.config,
     required this.panels,
-    required this.addSystemMessage,
+    required this.transcript,
     required this.render,
   });
 
   final Config config;
   final Panels panels;
-  final void Function(String message) addSystemMessage;
+  final Transcript transcript;
   final void Function() render;
 
   @override
@@ -94,7 +95,7 @@ class ProviderController implements ProviderCommandController {
     final providers =
         config.catalogData.providers.values.where((p) => p.enabled).toList();
     if (providers.isEmpty) {
-      addSystemMessage('No providers in the catalog.');
+      transcript.system('No providers in the catalog.');
       render();
       return;
     }
@@ -145,7 +146,7 @@ class ProviderController implements ProviderCommandController {
     if (providerId != null) {
       provider = config.catalogData.providers[providerId];
       if (provider == null) {
-        addSystemMessage(
+        transcript.system(
           'Unknown provider "$providerId". Try `/provider list`.',
         );
         render();
@@ -160,14 +161,14 @@ class ProviderController implements ProviderCommandController {
     }
 
     if (provider.auth.kind == AuthKind.none) {
-      addSystemMessage('${provider.name} needs no credentials.');
+      transcript.system('${provider.name} needs no credentials.');
       render();
       return;
     }
 
     final adapter = config.adapters.lookup(provider.adapter);
     if (adapter == null) {
-      addSystemMessage(
+      transcript.system(
         'No adapter for wire protocol "${provider.adapter}".',
       );
       render();
@@ -179,7 +180,7 @@ class ProviderController implements ProviderCommandController {
       store: config.credentials,
     );
     if (flow == null) {
-      addSystemMessage('${provider.name} needs no interactive setup.');
+      transcript.system('${provider.name} needs no interactive setup.');
       render();
       return;
     }
@@ -197,7 +198,7 @@ class ProviderController implements ProviderCommandController {
           flow: flow,
         );
       case PkceFlow():
-        addSystemMessage(
+        transcript.system(
           'PKCE OAuth is not implemented yet for ${provider.name}.',
         );
         render();
@@ -256,12 +257,12 @@ class ProviderController implements ProviderCommandController {
     panels.remove(panel);
 
     if (value == null) {
-      addSystemMessage('Cancelled.');
+      transcript.system('Cancelled.');
       render();
       return;
     }
     if (value.isEmpty && flow.envPresent != null) {
-      addSystemMessage(
+      transcript.system(
         'Keeping env var \$${flow.envVar}. ${provider.name} connected.',
       );
       render();
@@ -269,7 +270,7 @@ class ProviderController implements ProviderCommandController {
     }
 
     config.credentials.setFields(provider.id, {'api_key': value});
-    addSystemMessage('Connected to ${provider.name}.');
+    transcript.system('Connected to ${provider.name}.');
     render();
   }
 
@@ -283,9 +284,9 @@ class ProviderController implements ProviderCommandController {
     panels.remove(panel);
 
     if (fields == null) {
-      addSystemMessage('${provider.name} connection cancelled.');
+      transcript.system('${provider.name} connection cancelled.');
     } else {
-      addSystemMessage('Connected to ${provider.name}.');
+      transcript.system('Connected to ${provider.name}.');
     }
     render();
   }
@@ -363,22 +364,22 @@ class ProviderController implements ProviderCommandController {
           config.credentials.remove(provider.id);
           final envVar = provider.auth.envVar;
           if (envVar != null && config.credentials.readEnv(envVar) != null) {
-            addSystemMessage(
+            transcript.system(
               'Forgot stored ${provider.name}. '
               '\$$envVar is still set and will keep being used.',
             );
           } else {
-            addSystemMessage('Forgot stored ${provider.name}.');
+            transcript.system('Forgot stored ${provider.name}.');
           }
           render();
         case ProviderAction.test:
           if (adapter == null) {
-            addSystemMessage('No adapter for "${provider.adapter}".');
+            transcript.system('No adapter for "${provider.adapter}".');
             render();
             return;
           }
           if (isLocal) {
-            addSystemMessage('${provider.name}: ok (no auth).');
+            transcript.system('${provider.name}: ok (no auth).');
             render();
             return;
           }
@@ -386,14 +387,14 @@ class ProviderController implements ProviderCommandController {
           final health = adapter.validate(resolved);
           switch (health) {
             case ProviderHealth.ok:
-              addSystemMessage('${provider.name}: ok.');
+              transcript.system('${provider.name}: ok.');
             case ProviderHealth.missingCredential:
-              addSystemMessage(
+              transcript.system(
                 '${provider.name}: not connected. '
                 'Run /provider add ${provider.id}.',
               );
             case ProviderHealth.unknownAdapter:
-              addSystemMessage(
+              transcript.system(
                 '${provider.name}: adapter failed validation.',
               );
           }

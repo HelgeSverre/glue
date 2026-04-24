@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:glue/src/runtime/transcript.dart';
 
 import 'package:glue/src/commands/arg_completers.dart' as arg_completers;
 import 'package:glue/src/commands/slash_commands.dart';
@@ -18,7 +19,7 @@ class ShareController implements ShareCommandController {
     required this.canShare,
     required this.currentStore,
     required this.cwd,
-    required this.addSystemMessage,
+    required this.transcript,
     required this.render,
     ShareExporter? exporter,
     GistPublisher? gistPublisher,
@@ -28,7 +29,7 @@ class ShareController implements ShareCommandController {
   final bool Function() canShare;
   final SessionStore? Function() currentStore;
   final String cwd;
-  final void Function(String message) addSystemMessage;
+  final Transcript transcript;
   final void Function() render;
   final ShareExporter _exporter;
   final GistPublisher _gistPublisher;
@@ -76,13 +77,13 @@ class ShareController implements ShareCommandController {
               description: _gistDescription(store.meta),
             );
             final opened = await openInBrowser(gist.url);
-            addSystemMessage(
+            transcript.system(
               'Exported markdown transcript to $markdownPath\n'
               'Published gist: ${gist.url}'
               '${opened ? '\nOpened gist in browser.' : '\nCould not open gist in browser automatically.'}',
             );
           } on GistPublishError catch (e) {
-            addSystemMessage(
+            transcript.system(
               'Exported markdown transcript to $markdownPath\n'
               'Gist publish failed: ${e.message}',
             );
@@ -105,13 +106,13 @@ class ShareController implements ShareCommandController {
             : openedHtml
                 ? '\nOpened HTML transcript in browser.'
                 : '\nCould not open HTML transcript automatically.';
-        addSystemMessage('$message$openNote');
+        transcript.system('$message$openNote');
         render();
       } on StateError catch (e) {
-        addSystemMessage(e.message.toString());
+        transcript.system(e.message.toString());
         render();
       } catch (e) {
-        addSystemMessage('Share failed: $e');
+        transcript.system('Share failed: $e');
         render();
       }
     }());
