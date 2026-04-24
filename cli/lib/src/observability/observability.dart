@@ -116,16 +116,40 @@ abstract class ObservabilitySink {
 
 /// Central coordinator for tracing spans and routing them to registered sinks.
 class Observability {
+  static const _activeSpanZoneKey = #glue.observability.activeSpan;
+
   final DebugController _debugController;
   final List<ObservabilitySink> _sinks = [];
   Timer? _flushTimer;
   bool _isFlushing = false;
 
-  // TODO: use Zone values for concurrent turn support instead of mutable field.
-  ObservabilitySpan? activeSpan;
+  // Legacy mutable fallback. Will be removed once all callsites migrate to
+  // [runInSpan]. Readers should prefer [activeSpan] (which checks the zone
+  // first); writers are being migrated to [runInSpan].
+  ObservabilitySpan? _legacyActiveSpan;
 
   Observability({required DebugController debugController})
       : _debugController = debugController;
+
+  /// The span that should act as parent for any new span started right now.
+  ///
+  /// Prefers the zone-local span installed by [runInSpan] over the legacy
+  /// mutable fallback, so concurrent turns can carry their own span context
+  /// across `await` boundaries without stepping on each other.
+  ObservabilitySpan? get activeSpan =>
+      (Zone.current[_activeSpanZoneKey] as ObservabilitySpan?) ??
+      _legacyActiveSpan;
+
+  /// Legacy setter for callers that still write directly to [activeSpan].
+  /// New code should wrap work in [runInSpan] instead.
+  set activeSpan(ObservabilitySpan? span) => _legacyActiveSpan = span;
+
+  /// Runs [fn] with [span] as the current [activeSpan] for every call site
+  /// inside it, including across `await` boundaries and nested `runInSpan`
+  /// frames. No uncaught-error handler is installed — thrown exceptions
+  /// surface to the caller awaiting [fn].
+  R runInSpan<R>(ObservabilitySpan span, R Function() fn) =>
+      runZoned(fn, zoneValues: {_activeSpanZoneKey: span});
 
   bool get debugEnabled => _debugController.enabled;
 

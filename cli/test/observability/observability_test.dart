@@ -255,4 +255,108 @@ void main() {
       expect(span.parentSpanId, isNull);
     });
   });
+
+  group('Observability.runInSpan', () {
+    late Observability obs;
+
+    setUp(() {
+      obs = Observability(debugController: DebugController());
+    });
+
+    test('installs the span as activeSpan inside the zone', () {
+      final span = obs.startSpan('turn');
+      ObservabilitySpan? seen;
+      obs.runInSpan(span, () {
+        seen = obs.activeSpan;
+      });
+      expect(seen, same(span));
+      expect(obs.activeSpan, isNull);
+    });
+
+    test('activeSpan propagates across await boundaries', () async {
+      final span = obs.startSpan('turn');
+      ObservabilitySpan? seenAfterAwait;
+      await obs.runInSpan(span, () async {
+        await Future<void>.delayed(Duration.zero);
+        seenAfterAwait = obs.activeSpan;
+      });
+      expect(seenAfterAwait, same(span));
+    });
+
+    test('nested runInSpan restores the outer span on exit', () {
+      final outer = obs.startSpan('outer');
+      final inner = obs.startSpan('inner');
+      ObservabilitySpan? innerSeen;
+      ObservabilitySpan? afterInner;
+      obs.runInSpan(outer, () {
+        obs.runInSpan(inner, () {
+          innerSeen = obs.activeSpan;
+        });
+        afterInner = obs.activeSpan;
+      });
+      expect(innerSeen, same(inner));
+      expect(afterInner, same(outer));
+    });
+
+    test('concurrent futures each see their own zone-local span', () async {
+      final spanA = obs.startSpan('a');
+      final spanB = obs.startSpan('b');
+      ObservabilitySpan? seenA;
+      ObservabilitySpan? seenB;
+
+      final futureA = obs.runInSpan(spanA, () async {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        seenA = obs.activeSpan;
+      });
+      final futureB = obs.runInSpan(spanB, () async {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        seenB = obs.activeSpan;
+      });
+      await Future.wait([futureA, futureB]);
+
+      expect(seenA, same(spanA));
+      expect(seenB, same(spanB));
+    });
+
+    test('exceptions thrown inside runInSpan propagate to the awaiter',
+        () async {
+      final span = obs.startSpan('boom');
+      expect(
+        () => obs.runInSpan<Future<void>>(span, () async {
+          throw StateError('boom');
+        }),
+        throwsA(isA<StateError>()),
+      );
+    });
+
+    test('synchronous exceptions propagate through runInSpan', () {
+      final span = obs.startSpan('boom');
+      expect(
+        () => obs.runInSpan<void>(span, () {
+          throw StateError('boom');
+        }),
+        throwsA(isA<StateError>()),
+      );
+    });
+
+    test('startSpan inside runInSpan picks up the zone-local parent', () {
+      final parent = obs.startSpan('parent');
+      obs.runInSpan(parent, () {
+        final child = obs.startSpan('child');
+        expect(child.traceId, equals(parent.traceId));
+        expect(child.parentSpanId, equals(parent.spanId));
+      });
+    });
+
+    test('zone-local span shadows legacy activeSpan writer', () {
+      final legacy = obs.startSpan('legacy');
+      final zoned = obs.startSpan('zoned');
+      obs.activeSpan = legacy;
+      obs.runInSpan(zoned, () {
+        expect(obs.activeSpan, same(zoned));
+      });
+      expect(obs.activeSpan, same(legacy));
+      obs.activeSpan = null;
+    });
+  });
 }
