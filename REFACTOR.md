@@ -66,6 +66,7 @@ Settled conventions for the target shape:
 - **Services** — plural lowercase nouns on controllers: `panels`, `docks`, `confirmations`, `config`, `session`, `transcript`, `tools`. No `Impl` suffix — concrete classes get functional names (`Panels`, `Docks`) when there's one production implementation; promote to an interface + multiple impls only when a real second impl appears.
 - **Controllers** — keep the `<Feature>Controller` pattern already established (`DefaultModelCommandController`, etc.). Drop the `Default*` prefix over time — it was a placeholder from the early cut. `ModelController`, `ProviderController`, etc.
 - **Feature panels** — live in their feature module, not in `ui/`. Named after the feature they serve (`SkillsPanel`, `DeviceCodePanel`, `ApiKeyPromptPanel`, `ModelPickerRowBuilder`), not tagged with generic suffixes.
+- **Domain values** — pick the noun the domain uses, no architectural suffix. `Turn` (one user message → assistant response → maybe tools, ephemeral per cycle) is the canonical example: industry-standard in OpenAI Codex, pi-mono, Assistants API, and already load-bearing internally as the `agent.turn` observability span name. No `*Runner`, `*Manager`, `*Handler`, `*Coordinator` — the domain word is the name.
 
 ---
 
@@ -164,24 +165,28 @@ Note on `rendering/`: moves wholesale into `ui/rendering/`. All three files (`an
 - `lib/glue.dart` barrel export swapped `PanelController` → `Panels`/`Docks`; `HistoryPanelEntry`, `ProviderAction`, `providerActionsFor` re-exported from runtime.
 - Full test suite green (1505 passed, 5 skipped). Analyzer clean (4 warnings pre-existing, unrelated).
 
+### Group C1 — `Turn` extraction (landed)
+
+- **Zone-scoped observability context.** `Observability.runInContext(fn)` installs a fresh `_SpanHolder` in `Zone.current`; `activeSpan` get/set reads/writes it. Legacy mutable-field pattern inside `AgentCore`'s streaming loop still works (operates on the per-context holder when wrapped). 10 new tests cover nesting, await propagation, concurrent isolation, exception propagation. The original zone-value-as-span approach was rejected because it can't survive `yield` in an `async*` generator.
+- **`runtime/turn.dart`** — per-turn value with `run(displayMessage)` / `runPrint(expandedPrompt, jsonMode)` / `cancel()`. Owns span, stream subscription, early-approved IDs. Same class handles interactive and print mode. Subagent turns can use the same class (future).
+- **Trusted-tools moved onto `Config`.** `config.trustedTools` (Set<String>) + `config.trustTool(name)` replace the mutable `_autoApprovedTools` field on App. `PermissionGate` reads from the service.
+- **`Config` + `Session` services** now live on App (fields), not inside `_AppCommandContext`. `Turn` and command controllers share the same instances. `Session` gained a `logEvent(name, data)` facade.
+- **Deleted**: `app/agent_orchestration.dart` (340 lines of free functions). `app/session_runtime.dart` lost its 155-line `_runPrintModeImpl` (title machinery stays).
+- **App shrank**: `_startAgent` is now `Turn(…)..run()`. `_cancelAgent` is `_currentTurn?.cancel()`. `_runPrintMode` preps the prompt + session resume, delegates to `Turn.runPrint`, then handles app-level teardown (tool dispose, obs flush/close, session close) in its `finally`. The 10 thin `_*Impl` delegate methods are gone.
+- 1515 tests passing (10 new Zone-based observability tests). Analyzer clean (4 pre-existing shell warnings).
+
 ---
 
 ## What's Next
 
-Group A is **complete** (see "What's Done" above). The remaining work continues with Group B (state extraction), Group C (runtime decomposition), and Group D (App removal).
-
-### Group B — State extraction (medium risk, highest leverage)
-
-- **B1. Extract `Transcript`.** `runtime/transcript.dart` owns `_blocks`, `_toolUi`, `_scrollOffset`, `_streamingText`. Absorbs subagent event grouping (`_subagentGroups`, `_outputLineGroups`) — that's transcript behavior, not a separate coordinator. All callers route through it. `transcript.postNotice(text)` replaces `_addSystemMessage`.
-- **B2. Extract `Renderer`.** `runtime/renderer.dart` owns render loop + spinner + 60fps coalescing. Consumes `Transcript` + panels + docks.
-- **B3. `config` + `session` services.** Consolidate the 5–8 closures each controller takes for config/session state into two service objects. `session` is a facade over existing `SessionManager`; disk-level `storage/session_store.dart` stays underneath.
+Groups A, B, and C1 are **complete** (see "What's Done" above). The remaining work is the rest of Group C (C2–C5) and Group D (App removal).
 
 ### Group C — Runtime decomposition (higher risk, bigger wins)
 
-- **C1. Extract `TurnRunner`** (absorbs tool approvals). Replaces `agent_orchestration.dart` + the print-mode runner in `session_runtime.dart`. One path for interactive and non-interactive turns. Owns `_autoApprovedTools`, `_earlyApprovedIds`, and the approve/deny/confirm-modal flow — no separate `ToolApprovals` class.
+- ~~**C1. Extract `Turn`**~~ ✅ Landed. Observability moved to zone-scoped holder; `Turn` class owns per-turn span, subscription, and approval flow.
 - **C2. Extract `InputRouter`.** `runtime/input_router.dart`. Replaces `terminal_event_router.dart`. Central dispatcher with no business logic.
 - **C3. Extract `BashMode`.** `shell/bash_mode.dart`. Owns the four bash fields + `submit`/`cancel`/`runBlocking`/`startBackground`. Keeps its identity because the process lifecycle is independent of agent turns.
-- **C4. Collapse `session_runtime.dart` + `SessionTitleStateController` into the `session` service.** Print mode runner → `TurnRunner`. Title state (three booleans) + generation + `/rename` → internal behavior of the `session` service. `SessionTitleStateController` class is deleted.
+- **C4. Collapse `session_runtime.dart` + `SessionTitleStateController` into the `session` service.** Print mode runner already absorbed into `Turn` (C1). Title state (three booleans) + generation + `/rename` → internal behavior of the `session` service. `SessionTitleStateController` class is deleted.
 - **C5. Fold subagent grouping into `Transcript`.** Move `_subagentGroups`/`_outputLineGroups` from `subagent_updates.dart` into `Transcript` as a method. No standalone coordinator class.
 
 ### Group D — Removal
@@ -192,12 +197,14 @@ Group A is **complete** (see "What's Done" above). The remaining work continues 
 
 ### Deferred (not now)
 
-- **`llm` / `agent` service.** Candidates for the service roster (features wanting to ask the LLM something directly, or start a turn programmatically), but the right shape depends on how the `AgentCore` loop is restructured and whether `TurnRunner` lands first. Revisit after agent-loop cleanup; until then, the rare code that needs the LLM passes `AgentCore` directly.
-- **Global event bus for module/plugin hooks.** Once feature modules stabilise, it's worth exploring a typed `AppEvents` bus modelled on codex's `AppEventSender` — features emit events (e.g. `ModelSwitched`, `SessionResumed`, `SkillActivated`, `ToolApproved`) and other modules/future plugins subscribe. Keep it **separate from streams at async boundaries** — the bus is for cross-module notification, not for realtime streaming. Not doing this yet: we don't have enough cross-module coordination to justify it, and premature pubsub is a smoothness risk.
-- **Unified `FeatureModule` plugin abstraction.** Defer until 3+ modules all want the same registration hooks. The gemini-cli loader/registry pattern is the destination but not this commit.
-- **TurnRunner / chat-turn unification.** Separate cut.
-- **Observability `activeSpan` mutable state.** Still a known risk; address when it starts biting.
+- **Global event bus for module/plugin hooks.** Once feature modules stabilise, it's worth exploring a typed `AppEvents` bus modelled on codex's `AppEventSender` — features emit events (e.g. `ModelSwitched`, `SessionResumed`, `SkillActivated`, `ToolApproved`) and other modules/future plugins subscribe. Keep it **separate from streams at async boundaries** — the bus is for cross-module notification, not for realtime streaming. Not doing this yet: we don't have enough cross-module coordination to justify it, and premature pubsub is a smoothness risk. Trigger: the first feature that needs to subscribe to a lifecycle event of a thing it doesn't own.
+- **Unified `FeatureModule` plugin abstraction.** Defer until 3+ modules all want the same registration hooks. The gemini-cli loader/registry pattern is the destination but not this commit. Trigger: a third registration source (file-system commands, third-party plugins, MCP command registry) that doesn't fit the hardcoded `_AppCommandContext` pattern.
 - **Session storage format changes.** Locked until runtime parity is established.
+
+### Not building (investigation closed)
+
+- ~~**`llm` / `agent` service.**~~ Investigation during C1 planning found only 2 callsites outside the main agent loop (title generation via `_createTitleLlmClient`; subagent spawning via `AgentManager`). Both already well-factored through `LlmClientFactory`. A service facade would be pure ceremony. Revisit if a third kind of "ask the LLM directly" callsite appears.
+- ~~**`TurnRunner` / chat-turn unification.**~~ Obsoleted by C1 — interactive and print mode converged through the single `Turn.run` / `Turn.runPrint` API.
 
 ---
 
@@ -218,7 +225,7 @@ Things we've decided to stick with. Anyone touching the codebase should recognis
 
 ## Known Risks
 
-- **Observability.activeSpan is mutable shared state.** Concurrency + module separation make this increasingly unsafe. Move to zone-local context or explicit parent propagation before we add more concurrent paths.
+- ~~**Observability.activeSpan is mutable shared state.**~~ Addressed in C1: the active span now lives in a zone-scoped `_SpanHolder` via `Observability.runInContext`. Classic save/restore still works (and remains the pattern inside `AgentCore`'s streaming loop), but each `Turn` gets its own holder — concurrent subagents can't corrupt parent context.
 - **Streaming smoothness is a product requirement.** Any architectural move that adds generic pubsub or re-renders per event is a regression even if the code is "cleaner". Stream only at true async boundaries.
 - **Session persistence is format-locked** until the runtime reshuffle stabilises. Don't bundle schema changes into structural commits.
 
