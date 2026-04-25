@@ -2,9 +2,9 @@
 
 Status: **proposed — deferred**
 Date: 2026-04-19
-Last revised: 2026-04-19 (Option D locked in; VibeKit alignment section; `/workspace` universal path)
+Last revised: 2026-04-25 (post-`c1-turn` refactor: `service_locator` → `boot/wire.dart` references; `cli/lib/glue.dart` barrel removed; `backlog/` task IDs dropped — no such tracker exists in the repo)
 Owner: unassigned
-Prerequisite: runtime boundary prep (task-26) must land first
+Prerequisite: the boundary-prep work in `2026-04-19-runtime-boundary-plan.md` must land first. None of it has shipped as of 2026-04-25.
 
 ## Goal
 
@@ -18,9 +18,10 @@ Research is complete. Workspace sync (Option D) and universal workspace
 path (`/workspace`) are decided; remaining design decisions listed under
 "Open questions" below. Implementation is **not scheduled**. Revisit when:
 
-- Runtime boundary prep (task-26, subtasks 26.1–26.5) has landed — the
-  `RunningCommandHandle` interface and JSONL runtime events make cloud
-  adapter work substantially cheaper.
+- The boundary-prep cleanups in `2026-04-19-runtime-boundary-plan.md` have
+  landed — the `RunningCommandHandle` interface and JSONL runtime events
+  make cloud adapter work substantially cheaper. As of 2026-04-25 none of
+  those cleanups have shipped.
 - A real workload demands a cloud runtime (GPU, untrusted code, long-running
   parallel agents).
 - Daytona or E2B ships a Dart SDK — would collapse the biggest single cost
@@ -30,10 +31,10 @@ path (`/workspace`) are decided; remaining design decisions listed under
 
 - `docs/plans/2026-04-19-runtime-boundary-plan.md` — boundary prep plan.
   Must ship before this plan.
-- `backlog/tasks/task-26 - Runtime-boundary-prep-for-remote-runtimes-parent.md`
-  — tracker for the prep work.
 - `docs/reference/runtime-capabilities.yaml` — capability matrix source.
 - `cli/lib/src/shell/command_executor.dart` — current abstraction.
+- `cli/lib/src/boot/wire.dart` — composition root where a future
+  `RuntimeFactory` would be wired (replaces the deleted `service_locator`).
 - `website/.vitepress/theme/components/RuntimeMatrix.vue` — capability
   matrix renderer.
 
@@ -44,7 +45,7 @@ path (`/workspace`) are decided; remaining design decisions listed under
 | Research scope                          | Breadth-first across 6 providers                                                                                                                                                                     |
 | Implementation scope                    | Top 3 only                                                                                                                                                                                           |
 | Top-3 selection criterion               | Blend of popularity and capability/coverage                                                                                                                                                          |
-| Credentials (V1)                        | Env vars only (`E2B_API_KEY`, `DAYTONA_API_KEY`, etc.). Defer integration with task-22's `CredentialStore` to a follow-up.                                                                           |
+| Credentials (V1)                        | Env vars only (`E2B_API_KEY`, `DAYTONA_API_KEY`, etc.). Defer integration with the existing `CredentialStore` (`cli/lib/src/credentials/credential_store.dart`) to a follow-up.                      |
 | Workspace sync model                    | **Option D — git-first bootstrap + per-provider persistence opt-in** (decided 2026-04-19; see §"Workspace sync" below). Aligns with VibeKit's `.withGithub({ token, repository })` + `branch` model. |
 | Universal workspace path                | **`/workspace`** across all runtimes — Docker, host, cloud. Landed in Docker 2026-04-19. Matches VibeKit / E2B / Daytona / Sprites defaults.                                                         |
 | Top-3 providers                         | **Undecided** — candidate shortlist proposed                                                                                                                                                         |
@@ -259,7 +260,8 @@ head-start on API ergonomics.
 
 - **No browser/CDP integration story.** VibeKit expects the agent to run
   its own browser tooling inside the sandbox; our browser-provider layer
-  is ahead of them here (task-26.4 extends it with runtime-owned endpoints).
+  is ahead of them here (the boundary plan's Cleanup §4 extends it with
+  runtime-owned endpoints via `BrowserEndpointSource`).
 - **No declarative resource limits.** CPU/memory caps are per-provider
   (`billingPlan` etc.). Glue should document this limitation, not
   abstract it.
@@ -276,7 +278,7 @@ head-start on API ergonomics.
 - **HostExecutor:** cwd is the workspace; no sync needed.
 - **DockerExecutor:** cwd mounted at `/workspace`; real-time shared FS.
 - Tools (read/write/edit/shell) operate live, not on batched diffs.
-- Sessions logged to JSONL for replay (task-27 on the board).
+- Sessions logged to JSONL for replay (planned, not on a tracker).
 
 Remote runtimes break the shared-FS assumption. Bootstrap and in-session
 operations are **separate** questions.
@@ -465,12 +467,13 @@ Working glossary. Align with the vocabulary in
    separate from executors. Cloud runtimes that bundle browsers (E2B
    `browser` template, hopx Chrome, Daytona Computer Use) — do they
    become browser providers too, or stay purely command executors?
-   Runtime-boundary plan task-26.4 sketches a `BrowserEndpointSource`
+   The runtime-boundary plan's Cleanup §4 sketches a `BrowserEndpointSource`
    abstraction that would accommodate both.
 2. **Per-session vs global runtime selection.** Is the runtime picked
    once in config, or selectable per session / per tool call?
-3. **Credentials beyond V1.** Integration with task-22's
-   `CredentialStore` deferred.
+3. **Credentials beyond V1.** Integration with the existing
+   `CredentialStore` (`cli/lib/src/credentials/credential_store.dart`)
+   deferred.
 4. **Non-git workspace handling.** Tarball fallback mechanics —
    compression, `.gitignore` semantics, size caps.
 5. **Outbound network egress policy.** Allowlist, block-all, or inherit
@@ -486,8 +489,9 @@ Working glossary. Align with the vocabulary in
 
 Triggers for revisiting:
 
-- Task-26 (runtime boundary prep) lands — adapter work becomes much
-  cheaper.
+- The boundary-prep cleanups in `2026-04-19-runtime-boundary-plan.md` land
+  (`RunningCommandHandle`, `WorkspaceMapping`, JSONL runtime events,
+  `BrowserEndpointSource`) — adapter work becomes much cheaper.
 - A real workload demands it (GPU, untrusted code, parallel long-running
   agents).
 - Daytona or E2B ships a Dart SDK — collapses the biggest cost driver.
@@ -501,9 +505,9 @@ Triggers for revisiting:
 3. Resolve the 7 remaining open questions above (workspace sync and
    universal path are already decided).
 4. Draft the `ExecutionRuntime` interface, informed by actual adapter
-   needs rather than speculation.
-5. Create a backlog parent task and kick off the `writing-plans` skill
-   using this document as input.
+   needs rather than speculation. Wire it through `cli/lib/src/boot/wire.dart`
+   alongside the existing `ExecutorFactory` — no service locator.
+5. Kick off the `writing-plans` skill using this document as input.
 
 ---
 
