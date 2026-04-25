@@ -274,6 +274,7 @@ class GlueConfig {
           OpenAiCompatibleAdapter(),
           OllamaAdapter(),
           CopilotAdapter(credentialStore: credentials),
+          GeminiProvider(),
         ]);
 
     // Resolve active model: CLI flag → GLUE_MODEL → config file → catalog default.

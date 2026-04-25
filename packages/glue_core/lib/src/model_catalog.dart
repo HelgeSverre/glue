@@ -140,6 +140,7 @@ class ModelDef {
     String? apiId,
     this.recommended = false,
     this.isDefault = false,
+    this.enabled = true,
     this.capabilities = const {},
     this.contextWindow,
     this.maxOutputTokens,
@@ -161,6 +162,12 @@ class ModelDef {
 
   final bool recommended;
   final bool isDefault;
+
+  /// When `false`, the model picker hides this entry but the catalog still
+  /// records it. Useful for surfaces that aren't yet wired up at runtime
+  /// (e.g. agents that need a background-execution runner).
+  final bool enabled;
+
   final Set<String> capabilities;
   final int? contextWindow;
   final int? maxOutputTokens;
