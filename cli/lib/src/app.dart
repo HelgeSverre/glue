@@ -418,10 +418,12 @@ class App {
           await tool.dispose();
         } catch (_) {}
       }
-      await _flushObsBounded();
-      await _sessionManager.closeCurrent();
+      // Session + job teardown can still emit spans (e.g. session.close),
+      // so they must run BEFORE the obs sinks are closed.
       await jobSub.cancel();
+      await _sessionManager.closeCurrent();
       await _jobManager.shutdown();
+      await _flushObsBounded();
 
       final sessionId = _sessionManager.currentSessionId;
       if (sessionId != null) {
