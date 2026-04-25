@@ -10,6 +10,7 @@ import 'package:glue/src/catalog/model_resolver.dart';
 import 'package:glue/src/catalog/models_generated.dart';
 import 'package:glue/src/config/approval_mode.dart';
 import 'package:glue/src/config/constants.dart';
+import 'package:glue/src/context/context_config.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/credentials/credential_store.dart';
 import 'package:glue/src/observability/observability_config.dart';
@@ -76,6 +77,7 @@ class GlueConfig {
     DockerConfig? dockerConfig,
     WebConfig? webConfig,
     this.observability = const ObservabilityConfig(),
+    this.contextConfig = const ContextConfig(),
     this.skillPaths = const [],
     this.approvalMode = ApprovalMode.confirm,
     this.titleGenerationEnabled = true,
@@ -113,6 +115,10 @@ class GlueConfig {
   final DockerConfig dockerConfig;
   final WebConfig webConfig;
   final ObservabilityConfig observability;
+
+  /// Context-window management configuration.
+  final ContextConfig contextConfig;
+
   final List<String> skillPaths;
   final ApprovalMode approvalMode;
 
@@ -194,6 +200,7 @@ class GlueConfig {
   GlueConfig copyWith({
     ModelRef? activeModel,
     ObservabilityConfig? observability,
+    ContextConfig? contextConfig,
   }) {
     return GlueConfig(
       activeModel: activeModel ?? this.activeModel,
@@ -209,6 +216,7 @@ class GlueConfig {
       dockerConfig: dockerConfig,
       webConfig: webConfig,
       observability: observability ?? this.observability,
+      contextConfig: contextConfig ?? this.contextConfig,
       skillPaths: skillPaths,
       approvalMode: approvalMode,
       titleGenerationEnabled: titleGenerationEnabled,
@@ -580,6 +588,19 @@ class GlueConfig {
       skillPaths.addAll(fileSkillPaths.cast<String>());
     }
 
+    // Context-window management config.
+    final contextSection = fileConfig?['context'] as Map?;
+    final contextConfig = ContextConfig(
+      autoCompact: contextSection?['auto_compact'] as bool? ?? true,
+      compactThreshold:
+          (contextSection?['compact_threshold'] as num?)?.toDouble() ?? 0.80,
+      criticalThreshold:
+          (contextSection?['critical_threshold'] as num?)?.toDouble() ?? 0.95,
+      keepRecentTurns: contextSection?['keep_recent_turns'] as int? ?? 4,
+      toolResultTrimAfter:
+          contextSection?['tool_result_trim_after'] as int? ?? 3,
+    );
+
     return GlueConfig(
       activeModel: activeModel,
       smallModel: smallModel,
@@ -593,6 +614,7 @@ class GlueConfig {
       dockerConfig: dockerConfig,
       webConfig: webConfig,
       observability: observabilityConfig,
+      contextConfig: contextConfig,
       skillPaths: skillPaths,
       approvalMode: approvalMode,
       titleGenerationEnabled: titleGenerationEnabled,

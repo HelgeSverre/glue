@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
+import 'package:glue/src/context/context_manager.dart';
+import 'package:glue/src/context/overflow_handler.dart';
 import 'package:glue/src/llm/llm.dart';
 import 'package:glue/src/observability/observability.dart';
 import 'package:glue/src/observability/redaction.dart';
@@ -177,6 +179,11 @@ class Agent {
   /// Optional predicate to exclude tools before sending to the LLM.
   bool Function(Tool)? toolFilter;
 
+  /// Optional context-window manager. When set, the agent loop trims and
+  /// compacts [_conversation] before each LLM call (see [ContextManager]).
+  /// Wired in `boot/wire.dart`.
+  ContextManager? contextManager;
+
   /// Tools to send to the LLM, filtered by [toolFilter] when set.
   List<Tool> get allowedTools {
     if (toolFilter == null) return tools.values.toList();
@@ -216,12 +223,25 @@ class Agent {
   Stream<AgentEvent> run(String userMessage) async* {
     _conversation.add(Message.user(userMessage));
 
+    // Allow at most one overflow retry per top-level user turn. Reset after
+    // any successful LLM call so a long, multi-iteration turn can still
+    // recover from an overflow that appears later.
+    var overflowRetried = false;
+
     try {
       while (true) {
         final assistantText = StringBuffer();
         final toolCalls = <ToolCall>[];
         final toolFutures = <Future<ToolResult>>[];
         final providerName = _providerName(modelId);
+
+        // Trim/compact the conversation before sending to the provider. The
+        // original [_conversation] is never mutated — only the view sent to
+        // the LLM is affected.
+        final prepared = contextManager != null
+            ? await contextManager!.prepareForLlm(_conversation)
+            : _conversation;
+
         final iterationSpan = _obs?.startSpan(
           'agent.iteration',
           kind: 'agent',
@@ -246,14 +266,15 @@ class Agent {
             'gen_ai.request.model': modelId,
             if (providerName != null) 'gen_ai.provider.name': providerName,
             'llm.model_name': modelId,
-            'llm.input_messages.count': _conversation.length,
+            'llm.input_messages.count': prepared.length,
+            'llm.context.raw_messages': _conversation.length,
             'llm.tools.count': allowedTools.length,
             'input.value': redactBody(
-              _conversationSummary(_conversation),
+              _conversationSummary(prepared),
               maxBytes: 64.kilobytes,
             ),
             'gen_ai.input.messages': redactBody(
-              _conversationSummary(_conversation),
+              _conversationSummary(prepared),
               maxBytes: 64.kilobytes,
             ),
           },
@@ -263,44 +284,70 @@ class Agent {
         var inputTokens = 0;
         var outputTokens = 0;
         var textDeltaCount = 0;
+        var overflowOnThisIteration = false;
 
         try {
-          await for (final chunk in llm.stream(
-            _conversation,
-            tools: allowedTools,
-          )) {
-            switch (chunk) {
-              case TextDelta(:final text):
-                textDeltaCount++;
-                if (textDeltaCount == 1) {
-                  llmSpan?.addEvent('llm.first_token');
-                }
-                assistantText.write(text);
-                yield AgentTextDelta(text);
-              case ToolCallStart(:final id, :final name):
-                llmSpan?.addEvent('llm.tool_call.start', attributes: {
-                  'tool_call.id': id,
-                  'tool.name': name,
-                });
-                yield AgentToolCallPending(id: id, name: name);
-              case ToolCallComplete(:final toolCall):
-                toolCalls.add(toolCall);
-                llmSpan?.addEvent('llm.tool_call.complete', attributes: {
-                  'tool_call.id': toolCall.id,
-                  'tool.name': toolCall.name,
-                });
-                final completer = Completer<ToolResult>();
-                _pendingToolResults[toolCall.id] = completer;
-                toolFutures.add(completer.future);
-                yield AgentToolCall(toolCall);
-              case UsageInfo(
-                  inputTokens: final chunkInputTokens,
-                  outputTokens: final chunkOutputTokens,
-                ):
-                tokenCount += chunkInputTokens + chunkOutputTokens;
-                inputTokens += chunkInputTokens;
-                outputTokens += chunkOutputTokens;
+          try {
+            await for (final chunk in llm.stream(
+              prepared,
+              tools: allowedTools,
+            )) {
+              switch (chunk) {
+                case TextDelta(:final text):
+                  textDeltaCount++;
+                  if (textDeltaCount == 1) {
+                    llmSpan?.addEvent('llm.first_token');
+                  }
+                  assistantText.write(text);
+                  yield AgentTextDelta(text);
+                case ToolCallStart(:final id, :final name):
+                  llmSpan?.addEvent('llm.tool_call.start', attributes: {
+                    'tool_call.id': id,
+                    'tool.name': name,
+                  });
+                  yield AgentToolCallPending(id: id, name: name);
+                case ToolCallComplete(:final toolCall):
+                  toolCalls.add(toolCall);
+                  llmSpan?.addEvent('llm.tool_call.complete', attributes: {
+                    'tool_call.id': toolCall.id,
+                    'tool.name': toolCall.name,
+                  });
+                  final completer = Completer<ToolResult>();
+                  _pendingToolResults[toolCall.id] = completer;
+                  toolFutures.add(completer.future);
+                  yield AgentToolCall(toolCall);
+                case UsageInfo(
+                    inputTokens: final chunkInputTokens,
+                    outputTokens: final chunkOutputTokens,
+                  ):
+                  tokenCount += chunkInputTokens + chunkOutputTokens;
+                  inputTokens += chunkInputTokens;
+                  outputTokens += chunkOutputTokens;
+              }
             }
+          } catch (e) {
+            // Detect provider context-overflow and retry once with an
+            // emergency trim. Not all errors are retryable.
+            if (!overflowRetried && contextManager != null) {
+              final overflow = OverflowClassifier.classify(e);
+              if (overflow != null) {
+                overflowRetried = true;
+                overflowOnThisIteration = true;
+                contextManager!.requestEmergencyTrim(_conversation);
+                // Discard partial pending tool state so the retried stream
+                // starts clean.
+                for (final completer in _pendingToolResults.values) {
+                  if (!completer.isCompleted) {
+                    completer.completeError(
+                      StateError('context overflow — retrying'),
+                    );
+                  }
+                }
+                _pendingToolResults.clear();
+                llmSpan?.addEvent('llm.context.overflow_retry');
+              }
+            }
+            if (!overflowOnThisIteration) rethrow;
           }
         } finally {
           if (_obs != null && llmSpan != null && _obs.activeSpan == llmSpan) {
@@ -327,6 +374,22 @@ class Agent {
               ),
             });
           }
+        }
+
+        if (overflowOnThisIteration) {
+          // Drop the half-finished iteration spans and start a fresh one with
+          // the trimmed conversation.
+          if (iterationSpan != null) _obs?.endSpan(iterationSpan);
+          continue;
+        }
+        // Reset the retry guard after a successful LLM call.
+        overflowRetried = false;
+
+        // Calibrate the token estimator with actual provider counts so future
+        // budget decisions tighten or relax based on observed usage.
+        final cm = contextManager;
+        if (cm != null && inputTokens > 0) {
+          cm.estimator.calibrate(cm.lastRawEstimate, inputTokens);
         }
 
         _conversation.add(Message.assistant(

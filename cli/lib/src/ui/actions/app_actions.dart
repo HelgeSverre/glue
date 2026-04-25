@@ -82,6 +82,7 @@ class AppActions {
       getApprovalMode: getApprovalMode,
       setApprovalMode: setApprovalMode,
       transcript: transcript,
+      agent: agent,
     );
     models = ModelActions(
       config: config,

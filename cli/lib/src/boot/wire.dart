@@ -6,6 +6,9 @@ import 'package:glue/src/boot/observability.dart';
 import 'package:glue/src/boot/providers.dart';
 import 'package:glue/src/boot/tools.dart';
 import 'package:glue/src/config/glue_config.dart';
+import 'package:glue/src/context/context_budget.dart';
+import 'package:glue/src/context/context_manager.dart';
+import 'package:glue/src/context/conversation_compactor.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/input/text_area_editor.dart';
 import 'package:glue/src/observability/debug_controller.dart';
@@ -119,6 +122,13 @@ Future<AppContext> wireAppContext({
     modelId: config.activeModel.modelId,
     obs: obs,
   );
+  agent.contextManager = _wireContextManager(
+    config: config,
+    llmFactory: llmFactory,
+    systemPrompt: systemPrompt,
+    obs: obs,
+  );
+
   final subagents = Subagents(
     tools: tools,
     llmFactory: llmFactory,
@@ -144,6 +154,55 @@ Future<AppContext> wireAppContext({
     obs: obs,
     debugController: debugController,
     skillRuntime: skillRuntime,
+  );
+}
+
+/// Builds the [ContextManager] for the active model. Tier 2 (LLM-backed
+/// compaction) is enabled only when [GlueConfig.smallModel] is configured and
+/// its client can be constructed; otherwise Tiers 1 + 3 still apply.
+ContextManager _wireContextManager({
+  required GlueConfig config,
+  required LlmClientFactory llmFactory,
+  required String systemPrompt,
+  required Observability obs,
+}) {
+  final resolved = config.resolveModel(config.activeModel);
+  final budget = ContextBudget.fromModelDef(
+    resolved.def,
+    config: config.contextConfig,
+  );
+
+  LlmClient? smallClient;
+  final smallRef = config.smallModel;
+  if (smallRef != null) {
+    try {
+      smallClient = llmFactory.createFor(
+        smallRef,
+        systemPrompt:
+            'You are a helpful assistant that summarizes conversations.',
+      );
+    } catch (e) {
+      // Small model misconfigured or provider unavailable: Tier 2 compaction
+      // is disabled, but Tiers 1 + 3 still apply.
+      final span = obs.startSpan(
+        'context.small_model_unavailable',
+        attributes: {'error': '$e'},
+      );
+      obs.endSpan(span);
+    }
+  }
+
+  return ContextManager.fromBudget(
+    budget,
+    compactor: smallClient != null
+        ? ConversationCompactor(
+            summaryClient: smallClient,
+            keepRecentTurns: config.contextConfig.keepRecentTurns,
+          )
+        : null,
+    obs: obs,
+    autoCompact: config.contextConfig.autoCompact,
+    systemPrompt: systemPrompt,
   );
 }
 

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart' as tool_contract;
 import 'package:glue/src/config/approval_mode.dart';
 import 'package:glue/src/core/clipboard.dart';
@@ -18,6 +19,7 @@ class ChatActions {
     required this.getApprovalMode,
     required this.setApprovalMode,
     required this.transcript,
+    required this.agent,
   });
 
   final Terminal terminal;
@@ -28,6 +30,7 @@ class ChatActions {
   final ApprovalMode Function() getApprovalMode;
   final void Function(ApprovalMode mode) setApprovalMode;
   final Transcript transcript;
+  final Agent agent;
 
   String clearConversation() {
     clearConversationState();
@@ -42,6 +45,27 @@ class ChatActions {
       buf.writeln('  ${tool.name} — ${tool.description}');
     }
     return buf.toString();
+  }
+
+  /// Force a compaction of the agent's conversation. Reports the result via
+  /// the transcript. No-op (with a friendly message) when no [ContextManager]
+  /// is wired.
+  Future<void> compactContext() async {
+    final cm = agent.contextManager;
+    if (cm == null) {
+      transcript.system('Context management is disabled.');
+      render();
+      return;
+    }
+    final result = await cm.forceCompact(agent.conversation.toList());
+    final freed = result.removedTokens;
+    final summary = result.summaryTokens;
+    final message = freed > 0
+        ? 'Compacted: freed ~$freed tokens '
+            '(summary now ~$summary tokens).'
+        : 'Context already fits — nothing to compact.';
+    transcript.system(message);
+    render();
   }
 
   String toggleApproval() {

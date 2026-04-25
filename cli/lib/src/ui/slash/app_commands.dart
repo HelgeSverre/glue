@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:glue/src/commands/arg_completers.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/ui/actions/app_actions.dart';
@@ -28,6 +30,15 @@ void registerCoreSlashCommands(AppCommands commands, AppActions actions) {
     name: 'clear',
     description: 'Clear conversation history',
     execute: (_) => c.chat.clearConversation(),
+  ));
+
+  commands.register(SlashCommand(
+    name: 'compact',
+    description: 'Summarize older turns to free context-window space',
+    execute: (_) {
+      unawaited(c.chat.compactContext());
+      return null;
+    },
   ));
 
   commands.register(SlashCommand(
