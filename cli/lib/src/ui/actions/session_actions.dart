@@ -14,7 +14,7 @@ import 'package:glue/src/utils.dart';
 
 /// A conversation-history entry eligible for fork/copy actions in the
 /// `/history` panel. Built by the app layer (which owns the rendered block
-/// list) and handed to [SessionController.openHistoryPanel].
+/// list) and handed to [SessionActions.openHistoryPanel].
 class HistoryPanelEntry {
   final int userMessageIndex;
   final String text;
@@ -25,8 +25,8 @@ class HistoryPanelEntry {
   });
 }
 
-class SessionController {
-  const SessionController({
+class SessionActions {
+  const SessionActions({
     required this.session,
     required this.agent,
     required this.panels,

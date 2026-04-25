@@ -42,6 +42,21 @@ void main() {
       expect(registry.execute('/model gpt-4'), 'model=gpt-4');
     });
 
+    test('execute allows side-effect-only commands', () {
+      var ran = false;
+      registry.register(SlashCommand(
+        name: 'copy',
+        description: 'Copy last response',
+        execute: (_) {
+          ran = true;
+          return null;
+        },
+      ));
+
+      expect(registry.execute('/copy'), isNull);
+      expect(ran, isTrue);
+    });
+
     test('aliases respond to aliased names', () {
       registry.register(SlashCommand(
         name: 'exit',
@@ -82,6 +97,21 @@ void main() {
       ));
 
       expect(registry.execute('/HELP'), 'Help text');
+    });
+
+    test('case-insensitive primary names and aliases are normalized on lookup',
+        () {
+      registry.register(SlashCommand(
+        name: 'Quit',
+        description: 'Exit',
+        aliases: ['EXIT'],
+        hiddenAliases: ['Q'],
+        execute: (_) => 'bye',
+      ));
+
+      expect(registry.execute('/quit'), 'bye');
+      expect(registry.execute('/exit'), 'bye');
+      expect(registry.execute('/q'), 'bye');
     });
 
     test('no slash prefix returns null', () {

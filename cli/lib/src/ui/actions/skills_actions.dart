@@ -5,8 +5,8 @@ import 'package:glue/src/skills/skill_runtime.dart';
 import 'package:glue/src/skills/skills_docked_panel.dart';
 import 'package:glue/src/ui/services/docks.dart';
 
-class SkillsController {
-  const SkillsController({
+class SkillsActions {
+  const SkillsActions({
     required this.skillRuntime,
     required this.docks,
     required this.render,

@@ -43,8 +43,8 @@ List<ProviderAction> providerActionsFor({
   ];
 }
 
-class ProviderController {
-  const ProviderController({
+class ProviderActions {
+  const ProviderActions({
     required this.config,
     required this.panels,
     required this.transcript,

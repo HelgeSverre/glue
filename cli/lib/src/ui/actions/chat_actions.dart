@@ -8,8 +8,8 @@ import 'package:glue/src/runtime/transcript.dart';
 import 'package:glue/src/terminal/layout.dart';
 import 'package:glue/src/terminal/terminal.dart';
 
-class ChatController {
-  const ChatController({
+class ChatActions {
+  const ChatActions({
     required this.terminal,
     required this.layout,
     required this.clearConversationState,

@@ -17,8 +17,8 @@ import 'package:glue/src/ui/components/panel.dart';
 import 'package:glue/src/ui/rendering/ansi_utils.dart';
 import 'package:glue/src/ui/services/panels.dart';
 
-class ModelController {
-  const ModelController({
+class ModelActions {
+  const ModelActions({
     required this.config,
     required this.getLlmFactory,
     required this.getSystemPrompt,

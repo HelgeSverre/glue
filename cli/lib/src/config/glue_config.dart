@@ -103,7 +103,7 @@ class GlueConfig {
 
   /// Registry of provider adapters (anthropic, openai-compatible, …).
   ///
-  /// Not final — ServiceLocator swaps this after observability is constructed
+  /// Not final — boot wiring swaps this after observability is constructed
   /// so adapters can thread a logging HTTP factory into their LLM clients.
   AdapterRegistry adapters;
 
@@ -203,8 +203,8 @@ class GlueConfig {
       catalogData: catalogData,
       credentials: credentials,
       adapters: adapters,
-      maxSubagentDepth: maxSubagentDepth,
-      bashMaxLines: bashMaxLines,
+      maxSubagentDepth: maxSubagentDepth, // TODO: remove
+      bashMaxLines: bashMaxLines, // TODO: remove
       shellConfig: shellConfig,
       dockerConfig: dockerConfig,
       webConfig: webConfig,
@@ -229,6 +229,7 @@ class GlueConfig {
     CredentialStore? credentialsOverride,
     AdapterRegistry? adaptersOverride,
   }) {
+    // TODO: make neat wrapper DotEnv.getOr() etc
     final env = environment?.vars ?? Platform.environment;
     final home = env['HOME'] ?? '.';
 

@@ -5,7 +5,7 @@ import 'package:glue/src/storage/config_store.dart';
 /// Feature-facing handle to the active [GlueConfig] plus cross-turn trust
 /// preferences.
 ///
-/// Controllers used to take `GlueConfig? Function() getConfig` and
+/// UI actions used to take `GlueConfig? Function() getConfig` and
 /// `void Function(GlueConfig) setConfig` as separate closures — this
 /// service bundles both behind a single injectable dependency, and also
 /// owns the trusted-tool allow-list (previously a mutable `Set<String>`

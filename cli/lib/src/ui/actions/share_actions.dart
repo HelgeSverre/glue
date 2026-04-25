@@ -6,12 +6,12 @@ import 'package:glue/src/share/gist_publisher.dart';
 import 'package:glue/src/share/share_exporter.dart';
 import 'package:glue/src/storage/session_store.dart';
 
-/// Handles `/share` — owns its own [ShareExporter] and [GistPublisher] by
-/// default; tests can inject fakes. Sits in `share/` so the whole export
-/// pipeline (controller, exporter, renderer, gist publisher, html assets)
-/// is one directory.
-class ShareController {
-  ShareController({
+/// Handles `/share` from the TUI command surface.
+///
+/// The export pipeline stays in `share/`; this class is only the UI action
+/// coordinator that reads the current session and reports results.
+class ShareActions {
+  ShareActions({
     required this.canShare,
     required this.currentStore,
     required this.cwd,

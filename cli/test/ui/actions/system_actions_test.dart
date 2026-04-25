@@ -1,5 +1,5 @@
 import 'package:glue/src/ui/rendering/ansi_utils.dart';
-import 'package:glue/src/runtime/controllers/system_controller.dart';
+import 'package:glue/src/ui/actions/system_actions.dart';
 import 'package:glue/src/ui/components/panel.dart';
 import 'package:glue/src/ui/services/panels.dart';
 import 'package:test/test.dart';

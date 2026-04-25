@@ -71,8 +71,8 @@ List<String> buildHelpLines(List<SlashCommand> commands, int contentWidth) {
   return lines;
 }
 
-class SystemController {
-  SystemController({
+class SystemActions {
+  SystemActions({
     required this.environment,
     required void Function() requestExit,
     required this.panels,

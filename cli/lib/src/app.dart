@@ -5,12 +5,10 @@ import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/subagents.dart';
 import 'package:glue/src/catalog/model_display.dart';
 import 'package:glue/src/commands/slash_autocomplete.dart';
-import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/config/approval_mode.dart';
 import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/core/environment.dart';
-import 'package:glue/src/core/service_locator.dart';
 import 'package:glue/src/input/at_file_hint.dart';
 import 'package:glue/src/input/file_expander.dart';
 import 'package:glue/src/input/text_area_editor.dart';
@@ -19,14 +17,6 @@ import 'package:glue/src/observability/observability.dart';
 import 'package:glue/src/providers/llm_client_factory.dart';
 import 'package:glue/src/runtime/app_events.dart';
 import 'package:glue/src/runtime/app_mode.dart';
-import 'package:glue/src/runtime/commands/command_host.dart';
-import 'package:glue/src/runtime/commands/register_builtin_slash_commands.dart';
-import 'package:glue/src/runtime/controllers/chat_controller.dart';
-import 'package:glue/src/runtime/controllers/model_controller.dart';
-import 'package:glue/src/runtime/controllers/provider_controller.dart';
-import 'package:glue/src/runtime/controllers/session_controller.dart';
-import 'package:glue/src/runtime/controllers/skills_controller.dart';
-import 'package:glue/src/runtime/controllers/system_controller.dart';
 import 'package:glue/src/runtime/input_router.dart';
 import 'package:glue/src/runtime/permission_gate.dart';
 import 'package:glue/src/runtime/renderer.dart';
@@ -36,7 +26,6 @@ import 'package:glue/src/runtime/tool_permissions.dart';
 import 'package:glue/src/runtime/transcript.dart';
 import 'package:glue/src/runtime/turn.dart';
 import 'package:glue/src/session/session_manager.dart';
-import 'package:glue/src/share/share_controller.dart';
 import 'package:glue/src/shell/bash_mode.dart';
 import 'package:glue/src/shell/command_executor.dart';
 import 'package:glue/src/shell/host_executor.dart';
@@ -54,11 +43,11 @@ import 'package:glue/src/ui/components/modal.dart';
 import 'package:glue/src/ui/components/panel.dart';
 import 'package:glue/src/ui/rendering/ansi_utils.dart';
 import 'package:glue/src/ui/rendering/block_renderer.dart';
-import 'package:glue/src/ui/services/confirmations.dart';
+import 'package:glue/src/ui/actions/app_actions.dart';
+import 'package:glue/src/ui/slash/app_commands.dart';
 import 'package:glue/src/ui/services/docks.dart';
 import 'package:glue/src/ui/services/panels.dart';
 
-part 'app/controllers.dart';
 part 'app/paint.dart';
 
 // ---------------------------------------------------------------------------
@@ -88,8 +77,8 @@ class App {
   StreamSubscription<SubagentUpdate>? _subagentSub;
   final _exitCompleter = Completer<void>();
 
-  late final SlashCommandRegistry _commands;
-  late final _AppControllers _commandContext;
+  late final AppCommands commands;
+  late final AppActions actions;
   String _modelId;
   final Environment _environment;
   late final String _cwd;
@@ -211,8 +200,55 @@ class App {
       stopSpinner: _stopSpinner,
       render: _render,
     );
-    _initCommands();
-    _autocomplete = SlashAutocomplete(_commands);
+    commands = AppCommands();
+    actions = AppActions(
+      environment: _environment,
+      requestExit: requestExit,
+      panels: _panels,
+      commands: () => commands.all,
+      render: _render,
+      currentSessionId: () => _sessionService.currentId,
+      terminal: terminal,
+      layout: layout,
+      clearConversationState: () {
+        _transcript.blocks.clear();
+        _transcript.scrollOffset = 0;
+        _transcript.streamingText = '';
+      },
+      tools: () => agent.tools.values,
+      getApprovalMode: () => _approvalMode,
+      setApprovalMode: (mode) => _approvalMode = mode,
+      transcript: _transcript,
+      config: _configService,
+      getLlmFactory: () => _llmFactory,
+      getSystemPrompt: () => _systemPrompt,
+      agent: agent,
+      session: _sessionService,
+      confirmations: AppConfirmations(
+        setMode: (mode) => _mode = mode,
+        setActiveModal: (modal) => _activeModal = modal,
+        getActiveModal: () => _activeModal,
+        render: _render,
+      ),
+      setModelId: (modelId) => _modelId = modelId,
+      shortenPath: _shortenPath,
+      cwd: _cwd,
+      modelLabel: () => formatInfoModelLabel(
+        _config?.activeModel,
+        _config?.catalogData,
+        _modelId,
+      ),
+      approvalLabel: () => _approvalMode.label,
+      autoApprovedTools: () => _configService.trustedTools.toList(),
+      canShare: () => _mode == AppMode.idle,
+      currentStore: () => _sessionService.currentStore,
+      skillRuntime: _skillRuntime,
+      docks: _docks,
+      activateSkill: _activateSkillFromUi,
+      debugController: _debugController,
+    );
+    registerCoreSlashCommands(commands, actions);
+    _autocomplete = SlashAutocomplete(commands.registry);
     _atHint = AtFileHint();
     _shellComplete = ShellAutocomplete(ShellCompleter());
     _input = InputRouter(
@@ -222,7 +258,7 @@ class App {
       autocomplete: _autocomplete,
       atHint: _atHint,
       shellComplete: _shellComplete,
-      commands: _commands,
+      commands: commands.registry,
       bash: _bash,
       panels: _panelStack,
       docks: _dockManager,
@@ -244,45 +280,6 @@ class App {
         tools: agent.tools,
         cwd: _cwd,
       );
-
-  /// Convenience factory that creates a fully wired [App] with real
-  /// LLM provider and subagent system.
-  static Future<App> create({
-    String? model,
-    String? prompt,
-    bool printMode = false,
-    bool jsonMode = false,
-    String? resumeSessionId,
-    bool startupContinue = false,
-    bool debug = false,
-  }) async {
-    final services = await ServiceLocator.create(model: model, debug: debug);
-
-    return App(
-      terminal: services.terminal,
-      layout: services.layout,
-      editor: services.editor,
-      agent: services.agent,
-      modelId: services.config.activeModel.modelId,
-      subagents: services.subagents,
-      llmFactory: services.llmFactory,
-      config: services.config,
-      systemPrompt: services.systemPrompt,
-      extraTrustedTools: services.trustedTools,
-      sessionStore: services.sessionStore,
-      executor: services.executor,
-      jobManager: services.jobManager,
-      startupContinue: startupContinue,
-      startupPrompt: prompt,
-      printMode: printMode,
-      jsonMode: jsonMode,
-      resumeSessionId: resumeSessionId,
-      obs: services.obs,
-      debugController: services.debugController,
-      skillRuntime: services.skillRuntime,
-      environment: services.environment,
-    );
-  }
 
   /// Builds the prompt for print mode by combining stdin content and the
   /// user-supplied prompt string. Exposed as a static method for testing.
@@ -353,7 +350,7 @@ class App {
     if (_resumeSessionId != null) {
       final sessions = _sessionManager.listSessions();
       if (_resumeSessionId.isEmpty) {
-        _openResumePanel();
+        actions.sessions.openResumePanel();
         _render();
       } else {
         final match = sessions.where((s) => s.id == _resumeSessionId).toList();
@@ -399,6 +396,7 @@ class App {
       await termSub.cancel();
       await appSub.cancel();
       await _subagentSub?.cancel();
+      await jobSub.cancel();
       await _events.close();
 
       // Visual restore happens BEFORE slow IO. A misconfigured OTLP
@@ -420,7 +418,6 @@ class App {
       }
       // Session + job teardown can still emit spans (e.g. session.close),
       // so they must run BEFORE the obs sinks are closed.
-      await jobSub.cancel();
       await _sessionManager.closeCurrent();
       await _jobManager.shutdown();
       await _flushObsBounded();
@@ -533,17 +530,6 @@ class App {
     requestExit();
   }
 
-  // ── Slash commands ──────────────────────────────────────────────────────
-
-  void _initCommands() {
-    _commandContext = _AppControllers(this);
-    _commands = buildBuiltinSlashCommands(_commandContext);
-  }
-
-  void _openResumePanel() {
-    _commandContext.sessions.openResumePanel();
-  }
-
   Future<void> _activateSkillFromUi(String skillName) async {
     try {
       final activation = await activateSkillIntoConversation(
@@ -579,7 +565,7 @@ class App {
         if (_bash.active) {
           _bash.submit(text);
         } else if (text.startsWith('/')) {
-          final result = _commands.execute(text);
+          final result = commands.execute(text);
           if (result != null && result.isNotEmpty) {
             _transcript.system(result);
           }

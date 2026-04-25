@@ -25,17 +25,18 @@ typedef ArgCompleter = List<SlashArgCandidate> Function(
   String partial,
 );
 
+typedef SlashCommandAction = String? Function(List<String> args);
+
 /// A registered slash command.
 class SlashCommand {
   final String name;
   final String description;
   final List<String> aliases;
   final List<String> hiddenAliases;
-  final String Function(List<String> args) execute;
+  final SlashCommandAction execute;
 
-  /// Optional arg-completer attached after registration via
-  /// [SlashCommandRegistry.attachArgCompleter]. `null` means the command
-  /// does not participate in argument autocomplete.
+  /// Optional arg-completer. `null` means the command does not participate
+  /// in argument autocomplete.
   ArgCompleter? completeArg;
 
   SlashCommand({
@@ -46,6 +47,18 @@ class SlashCommand {
     required this.execute,
     this.completeArg,
   });
+
+  Iterable<String> get visibleNames sync* {
+    yield name;
+    yield* aliases;
+  }
+
+  bool matchesName(String name) {
+    final needle = name.toLowerCase();
+    return this.name.toLowerCase() == needle ||
+        aliases.any((alias) => alias.toLowerCase() == needle) ||
+        hiddenAliases.any((alias) => alias.toLowerCase() == needle);
+  }
 }
 
 /// Registry of all slash commands.
@@ -77,13 +90,8 @@ class SlashCommandRegistry {
   /// Find a command by its primary name or any alias/hidden alias.
   /// Matching is case-insensitive.
   SlashCommand? findByName(String name) {
-    final needle = name.toLowerCase();
     for (final c in _commands) {
-      if (c.name == needle ||
-          c.aliases.contains(needle) ||
-          c.hiddenAliases.contains(needle)) {
-        return c;
-      }
+      if (c.matchesName(name)) return c;
     }
     return null;
   }

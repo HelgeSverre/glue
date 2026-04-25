@@ -2,7 +2,7 @@ import 'package:glue/src/ui/components/panel.dart';
 
 /// A feature-facing handle to the modal panel stack.
 ///
-/// Controllers build their own [AbstractPanel]s (model pickers, auth prompts,
+/// Actions build their own [AbstractPanel]s (model pickers, auth prompts,
 /// session resume lists, etc.) and route them through this service so the app
 /// can keep stack ownership, render scheduling, and key routing in one place.
 class Panels {

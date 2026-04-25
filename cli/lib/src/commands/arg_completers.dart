@@ -7,8 +7,7 @@
 ///
 /// Closure factories (e.g. [modelArgCompleter], [providerArgCompleter])
 /// bind the low-level functions to live state ([Config], [SkillRuntime])
-/// and return an [ArgCompleter] ready to hand to
-/// [SlashCommandRegistry.attachArgCompleter].
+/// and return an [ArgCompleter] ready for a [SlashCommand].
 library;
 
 import 'package:glue/src/catalog/model_catalog.dart';
@@ -146,10 +145,7 @@ List<SlashArgCandidate> shareArgCandidates(
 // Closure factories
 //
 // Each factory below returns an [ArgCompleter] bound to the live state
-// it needs (catalog snapshot, skill registry). Slash-command modules in
-// `runtime/commands/register_builtin_slash_commands.dart` call these in
-// `attachArgCompleters()` instead of each controller carrying a
-// forwarding method.
+// it needs (catalog snapshot, skill registry).
 // -----------------------------------------------------------------------
 
 ArgCompleter modelArgCompleter(Config config) => (prior, partial) {
