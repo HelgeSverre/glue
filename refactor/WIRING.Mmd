@@ -1,0 +1,82 @@
+%% Glue CLI wiring target.
+%% The CLI/TUI/API/plugin surfaces are skins over runtime services.
+%% AppContext is a boot artifact, not a service locator for inner code.
+
+flowchart TB
+  subgraph Current["Current wiring pressure"]
+    CurMain["bin/glue.dart<br/>CLI args + command runner + app launch"]
+    CurLocator["ServiceLocator.create<br/>config + providers + tools + UI + agent"]
+    CurApp["App<br/>terminal, input, render, turn, slash, session"]
+    CurActions["controllers<br/>TUI actions mixed with panels/parsing"]
+    CurSlash["SlashCommandRegistry<br/>interactive slash commands"]
+    CurRuntime["Turn + Agent + Session<br/>runtime behavior"]
+
+    CurMain --> CurLocator --> CurApp
+    CurApp --> CurSlash --> CurActions
+    CurApp --> CurRuntime
+    CurActions --> CurRuntime
+  end
+
+  subgraph Target["Target wiring"]
+    Main["bin/glue.dart<br/>main only"]
+    CliRunner["cli/runner.dart<br/>CLI adapter"]
+    Boot["boot/wire.dart<br/>explicit construction"]
+    Context["AppContext<br/>entrypoint context only"]
+
+    Runtime["runtime/Runtime<br/>turns, approvals, sessions, events"]
+    Agent["agent/Agent"]
+    Tools["tools/Toolset"]
+    Session["session/Session"]
+    Providers["providers/Clients"]
+    Events["RuntimeEvent stream"]
+
+    CliCommands["cli/commands<br/>thin request/result adapters"]
+    UiApp["ui/UiApp<br/>terminal/editor/renderer"]
+    UiActions["ui/actions<br/>TUI coordinators"]
+    UiSlash["ui/slash/AppCommands<br/>slash syntax -> actions"]
+    Panels["ui/panels<br/>tables, modals, docks"]
+    Outputs["output adapters<br/>human/json/ndjson"]
+
+    FutureApi["future api/rpc/web"]
+    FuturePlugins["future plugins"]
+
+    Main --> CliRunner --> Boot --> Context
+
+    Context --> Runtime
+    Context --> CliCommands
+    Context --> UiApp
+
+    CliCommands --> Runtime
+    CliCommands --> Outputs
+
+    UiApp --> UiSlash --> UiActions
+    UiActions --> Runtime
+    UiActions --> Panels
+    UiApp --> Events
+
+    Runtime --> Agent
+    Runtime --> Tools
+    Runtime --> Session
+    Runtime --> Providers
+    Runtime --> Events
+    Events --> Outputs
+
+    FutureApi -. "same runtime services" .-> Runtime
+    FuturePlugins -. "approved plugin API" .-> Runtime
+  end
+
+  subgraph Rules["Dependency rules"]
+    Rule1["CLI/TUI/API parse input and format output"]
+    Rule2["Runtime owns workflows and emits structured events"]
+    Rule3["Agent/tools/session/providers do not import UI"]
+    Rule4["Boot may import broadly; inner code gets explicit deps"]
+    Rule5["Slash commands are TUI syntax, not core business logic"]
+  end
+
+  Outputs --> Rule1
+  Runtime --> Rule2
+  Agent --> Rule3
+  Boot --> Rule4
+  UiSlash --> Rule5
+
+  CurRuntime -. "migrate incrementally" .-> Main
