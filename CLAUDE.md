@@ -42,10 +42,10 @@ dart format --set-exit-if-changed .
 dart analyze --fatal-infos                 # Zero warnings policy
 dart test
 just check                                 # gen-check + analyze + test
-just gen-check                             # Fail if bundled model catalog is stale
+just gen-check                             # Fail if bundled model catalog or version constant is stale
 
-# Regenerate bundled model catalog from docs/reference/models.yaml
-just gen                                   # dart run tool/gen_models.dart
+# Regenerate bundled model catalog (from docs/reference/models.yaml) and version constant
+just gen                                   # gen_models.dart + gen_version.dart
 
 # Single test file
 dart test test/llm/anthropic_client_test.dart
@@ -66,9 +66,17 @@ just cli::test      # CLI tests only
 
 Glue is a terminal-native coding agent. Source lives under `cli/lib/src/`. The main layers:
 
+> An in-progress refactor (branch `refactor/c1-turn`, see `refactor/GOAL.md` and `refactor/PHASE-*.md`) is moving the CLI toward an explicit `bin → boot → runtime → {agent,tools,session,providers}` dependency direction with `ui/` as a sibling of runtime. Several modules below already reflect that target shape; treat the dependency rule as authoritative when adding new code.
+
+**Bootstrap** (`boot/`): Explicit composition root. Wires HTTP clients, providers, tools, and observability for `bin/glue.dart`; replaces the old service-locator. `wire.dart` is the entry point.
+
+**CLI subcommands** (`cli/`): Non-interactive top-level commands runnable as `glue <noun> <verb>` — `runner.dart` (root command), `config.dart`, `doctor.dart`, `completions.dart`.
+
 **Agent loop** (`agent/`): `AgentCore` runs the LLM↔tool ReAct loop, streaming `AgentEvent`s (sealed class — use switch/case pattern matching). `AgentRunner` executes agents headlessly. `AgentManager` spawns subagents. `ContentPart` models multimodal message parts.
 
-**App controller** (`app.dart` + `app/` part files): Event-driven architecture merging terminal input and agent events into a single stream. 60fps async rendering with scroll regions. Never blocks.
+**Runtime** (`runtime/`): The interactive session orchestrator — `Turn` (one user→assistant exchange), `Transcript`, `PermissionGate` and `tool_permissions.dart` (approval modes, allow/deny lists), `InputRouter`, `Renderer`, `app_events.dart`, plus `controllers/`, `services/` (config, session), and slash `commands/`. Replaces the older `orchestrator/` and the heavyweight `app.dart` controller.
+
+**App paint helpers** (`app/`): Thin paint/layout helpers retained from the previous architecture; most behavior has moved into `runtime/`.
 
 **LLM clients** (`llm/`): `LlmClient` interface with implementations for Anthropic (SSE), OpenAI/Mistral (SSE), and Ollama (NDJSON). `LlmFactory` creates clients from config. `MessageMapper` bridges Glue's internal message shape to each provider wire format.
 
@@ -80,19 +88,19 @@ Glue is a terminal-native coding agent. Source lives under `cli/lib/src/`. The m
 
 **Config & storage** (`config/`, `storage/`, `credentials/`, `session/`, `core/`): `GlueConfig` resolves CLI args → env vars → `~/.glue/config.yaml` → defaults. `CredentialStore` holds API keys/tokens. `SessionStore`/`SessionManager` persist conversation sessions. `core/environment.dart` centralizes GLUE_HOME path resolution.
 
-**Rendering** (`terminal/` + `rendering/` + `ui/`): Raw terminal I/O and ANSI rendering; layout with output/overlay/status/input zones; markdown renderer. `ui/` holds higher-level interactive components — modals, docked panels, autocomplete overlays (slash, `@file`, shell), responsive tables, theme tokens/recipes.
+**Rendering** (`terminal/` + `ui/`): Raw terminal I/O and ANSI rendering; layout with output/overlay/status/input zones; markdown renderer. `ui/` holds higher-level interactive components — modals, docked panels, autocomplete overlays (slash, `@file`, shell), responsive tables, theme tokens/recipes. `ui/` MUST NOT import from feature modules (`catalog`, `providers`, `skills`, `session`, `commands`, `shell`, `agent`, `llm`, `storage`, `config`); `just analyze` enforces this.
 
 **Input** (`input/`): `LineEditor`, `TextAreaEditor`, file-reference expansion (`@file`), and streaming input handling.
 
-**Commands** (`commands/`): Top-level CLI subcommands (`ConfigCommand`, `DoctorCommand`), slash-command registry and completions.
+**Slash commands & completions** (`commands/`): Slash-command registry, slash autocomplete, and shared arg completers. Top-level CLI subcommands have moved to `cli/`; `config_command.dart` remains here as the shared implementation.
 
-**Orchestration** (`orchestrator/`): Permission gating for tool execution (approval modes, allow/deny lists).
+**Share / export** (`share/`): Transcript exporter, gist publisher, and HTML/markdown renderers used by `/share`.
 
 **Web** (`web/`): Split into `web/search/` (providers: Brave, DuckDuckGo, Firecrawl, Tavily — routed via `SearchRouter`) and `web/browser/` (local + remote providers: Anchor, Browserbase, Browserless, Docker, Hyperbrowser, Steel) plus `web/fetch/` (HTML→markdown, Jina reader, PDF/OCR extraction, truncation).
 
 **Doctor** (`doctor/`): Installation and config health checks surfaced by `glue doctor`.
 
-**Other key modules**: `skills/` (skill discovery and execution), `tools/` (web/subagent tools), `observability/` (tracing, OTEL, Langfuse).
+**Other key modules**: `skills/` (skill discovery and execution), `tools/` (web/subagent tools), `observability/` (tracing, OTEL, Langfuse — generated OTLP protobufs live in `generated/opentelemetry/`).
 
 ## Code Conventions
 
