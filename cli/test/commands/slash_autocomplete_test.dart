@@ -22,7 +22,6 @@ SlashCommandRegistry _makeRegistry() {
   reg.register(SlashCommand(
     name: 'model',
     description: 'Show or change model',
-    aliases: ['models'],
     execute: (_) => '',
   ));
   reg.register(SlashCommand(
@@ -51,7 +50,7 @@ void main() {
     test('activates on "/" prefix', () {
       ac.update('/', 1);
       expect(ac.active, isTrue);
-      expect(ac.matchCount, 7); // 5 names + 2 visible aliases
+      expect(ac.matchCount, 6); // 5 names + 1 visible alias (/quit)
     });
 
     test('filters by prefix', () {
@@ -96,7 +95,7 @@ void main() {
     test('moveDown wraps around', () {
       ac.update('/', 1);
       expect(ac.selected, 0);
-      for (var i = 0; i < 7; i++) {
+      for (var i = 0; i < 6; i++) {
         ac.moveDown();
       }
       expect(ac.selected, 0); // wrapped
@@ -106,7 +105,7 @@ void main() {
       ac.update('/', 1);
       expect(ac.selected, 0);
       ac.moveUp(); // wraps to last
-      expect(ac.selected, 6);
+      expect(ac.selected, 5);
     });
 
     test('accept returns selected command', () {
@@ -136,13 +135,6 @@ void main() {
       expect(ac.selectedText, '/quit');
     });
 
-    test('visible model alias appears in autocomplete', () {
-      ac.update('/models', 7);
-      expect(ac.active, isTrue);
-      expect(ac.matchCount, 1);
-      expect(ac.selectedText, '/models');
-    });
-
     test('canonical name still matches when alias prefix shares it', () {
       ac.update('/e', 2);
       expect(ac.active, isTrue);
@@ -170,7 +162,7 @@ void main() {
     test('render produces correct number of lines', () {
       ac.update('/', 1);
       final lines = ac.render(80);
-      expect(lines, hasLength(7));
+      expect(lines, hasLength(6));
     });
 
     test('render returns empty when inactive', () {
@@ -180,7 +172,7 @@ void main() {
 
     test('overlayHeight matches match count', () {
       ac.update('/', 1);
-      expect(ac.overlayHeight, 7);
+      expect(ac.overlayHeight, 6);
       ac.update('/he', 3);
       expect(ac.overlayHeight, 1);
       ac.dismiss();
@@ -279,19 +271,10 @@ void main() {
       expect(result?.text, '/model ');
     });
 
-    test('visible aliases inherit parent command completer behavior', () {
-      ac.update('/models', 7);
-      expect(ac.active, isTrue);
-      expect(ac.matchCount, 1);
-      expect(ac.selectedText, '/models ');
-      final result = ac.accept('/models', 7);
-      expect(result?.text, '/models ');
-    });
-
     test('name mode → arg mode transition on space', () {
       ac.update('/mod', 4); // name mode, /model selected
       expect(ac.active, isTrue);
-      expect(ac.matchCount, 2); // /model and visible alias /models
+      expect(ac.matchCount, 1); // only /model
       ac.update('/model ', 7); // space typed
       expect(ac.active, isTrue);
       expect(ac.matchCount, 3); // arg candidates
@@ -302,7 +285,7 @@ void main() {
       expect(ac.matchCount, 3);
       ac.update('/model', 6); // backspace removed the space
       expect(ac.active, isTrue);
-      expect(ac.matchCount, 2); // back to /model and /models name candidates
+      expect(ac.matchCount, 1); // /model only
       expect(ac.selectedText, '/model ');
     });
 

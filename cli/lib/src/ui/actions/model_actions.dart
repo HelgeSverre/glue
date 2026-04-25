@@ -147,7 +147,7 @@ class ModelActions {
       case ResolvedPassthrough():
         if (!outcome.providerKnown) {
           return 'Unknown provider "${outcome.ref.providerId}". '
-              'Run `/models` to list available providers.';
+              'Run `/model` to list available providers.';
         }
         final provider = cfg.catalogData.providers[outcome.ref.providerId]!;
         final synthetic = ModelDef(

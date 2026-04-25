@@ -615,7 +615,7 @@ ModelRef _resolveModelRef(String raw, ModelCatalog catalog) {
       if (!outcome.providerKnown) {
         throw ConfigError(
           'unknown provider "${outcome.ref.providerId}" in model "$raw". '
-          'Try `/models` to list available providers.',
+          'Try `/model` to list available providers.',
         );
       }
       return outcome.ref;
@@ -629,7 +629,7 @@ ModelRef _resolveModelRef(String raw, ModelCatalog catalog) {
     case UnknownBareInput():
       throw ConfigError(
         'could not resolve model "$raw". Use `<provider>/<id>` '
-        '(e.g. `ollama/gemma4:latest`) or run `/models` to list options.',
+        '(e.g. `ollama/gemma4:latest`) or run `/model` to list options.',
       );
   }
 }

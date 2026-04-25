@@ -71,7 +71,6 @@ void registerCoreSlashCommands(AppCommands commands, AppActions actions) {
   commands.register(SlashCommand(
     name: 'model',
     description: 'Switch model',
-    aliases: const ['models'],
     completeArg: modelArgCompleter(c.config),
     execute: (args) {
       if (args.isEmpty) {
