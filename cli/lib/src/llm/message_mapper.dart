@@ -113,6 +113,109 @@ class AnthropicMessageMapper extends MessageMapper {
   }
 }
 
+/// Gemini Developer API (`v1beta/models/{model}:streamGenerateContent`) format.
+///
+/// - System prompt is kept separate; the request builder lifts it into the
+///   top-level `systemInstruction.parts[].text` field.
+/// - Roles are `user` and `model` (no `assistant`, no `system`, no `tool`).
+/// - Tool calls are `{functionCall: {name, args}}` parts on `model` messages.
+/// - Tool results are `{functionResponse: {name, response: {content}}}` parts
+///   on `user` messages.
+/// - Image parts become `{inlineData: {mimeType, data}}`.
+/// - Orphaned tool results (no matching prior `functionCall`) are dropped, and
+///   consecutive same-role messages are coalesced — Gemini requires alternating
+///   user/model turns.
+class GeminiMessageMapper extends MessageMapper {
+  const GeminiMessageMapper();
+
+  @override
+  MappedMessages mapMessages(
+    List<Message> messages, {
+    required String systemPrompt,
+  }) {
+    final mapped = <Map<String, dynamic>>[];
+
+    // Track the most recent assistant `functionCall` names so we can drop
+    // orphaned tool_result messages after session resume/fork.
+    var lastFunctionCallNames = <String>{};
+
+    void appendOrCoalesce(String role, List<Map<String, dynamic>> parts) {
+      if (parts.isEmpty) return;
+      if (mapped.isNotEmpty && mapped.last['role'] == role) {
+        (mapped.last['parts'] as List).addAll(parts);
+      } else {
+        mapped.add({'role': role, 'parts': parts});
+      }
+    }
+
+    for (final msg in messages) {
+      switch (msg.role) {
+        case Role.user:
+          lastFunctionCallNames = {};
+          appendOrCoalesce('user', [
+            {'text': msg.text ?? ''},
+          ]);
+        case Role.assistant:
+          lastFunctionCallNames = {for (final tc in msg.toolCalls) tc.name};
+          final parts = <Map<String, dynamic>>[];
+          if (msg.text != null && msg.text!.isNotEmpty) {
+            parts.add({'text': msg.text});
+          }
+          for (final tc in msg.toolCalls) {
+            parts.add({
+              'functionCall': {
+                'name': tc.name,
+                'args': tc.arguments,
+              },
+            });
+          }
+          appendOrCoalesce('model', parts);
+        case Role.toolResult:
+          // Gemini matches tool results to calls by *name*, not id, so drop
+          // results whose name doesn't match a recent assistant call.
+          final name = msg.toolName ?? '';
+          if (name.isEmpty || !lastFunctionCallNames.contains(name)) {
+            continue;
+          }
+          final parts = <Map<String, dynamic>>[];
+
+          final imageParts = msg.contentParts == null
+              ? const <ImagePart>[]
+              : msg.contentParts!.whereType<ImagePart>().toList();
+          final hasImages = imageParts.isNotEmpty;
+          final textContent = (msg.contentParts != null)
+              ? ContentPart.textOnly(msg.contentParts!)
+              : (msg.text ?? '');
+
+          parts.add({
+            'functionResponse': {
+              'name': name,
+              'response': {
+                'content':
+                    textContent.isNotEmpty ? textContent : (msg.text ?? ''),
+              },
+            },
+          });
+
+          if (hasImages) {
+            for (final img in imageParts) {
+              parts.add({
+                'inlineData': {
+                  'mimeType': img.mimeType,
+                  'data': img.toBase64(),
+                },
+              });
+            }
+          }
+
+          appendOrCoalesce('user', parts);
+      }
+    }
+
+    return MappedMessages(systemPrompt: systemPrompt, messages: mapped);
+  }
+}
+
 /// OpenAI Chat Completions format.
 ///
 /// - System prompt is a message with `role: "system"`.

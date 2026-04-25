@@ -14,10 +14,10 @@
 # the OpenAI API wire format", not "this provider is OpenAI".
 
 version: 1
-updated_at: 2026-04-24
+updated_at: 2026-04-25
 
 defaults:
-  model: anthropic/claude-sonnet-4-6
+  model: anthropic/claude-sonnet-4-7
   small_model: openai/gpt-5.4-mini
   local_model: ollama/gemma4:26b
 
@@ -117,8 +117,8 @@ providers:
     auth:
       api_key: env:OPENAI_API_KEY
     models:
-      gpt-5.4:
-        name: GPT-5.4
+      gpt-5.5:
+        name: GPT-5.5
         recommended: true
         default: true
         capabilities: [chat, tools, vision, files, json, reasoning, coding]
@@ -126,6 +126,14 @@ providers:
         speed: standard
         cost: high
         notes: Frontier general-purpose and agentic coding model.
+      gpt-5.4:
+        name: GPT-5.4
+        recommended: true
+        capabilities: [chat, tools, vision, files, json, reasoning, coding]
+        context_window: 400000
+        speed: standard
+        cost: high
+        notes: Prior frontier model — kept for pinned configs.
       gpt-5.4-mini:
         name: GPT-5.4 Mini
         recommended: true
@@ -167,23 +175,82 @@ providers:
     auth:
       api_key: env:GEMINI_API_KEY
     models:
-      gemini-pro-latest:
-        name: Gemini Pro Latest
+      gemini-3.1-pro-preview:
+        name: Gemini 3.1 Pro Preview
         recommended: true
         default: true
         capabilities: [chat, tools, vision, files, json, reasoning, coding]
         context_window: 1000000
         speed: standard
         cost: medium
-        notes: Stable alias for the current Pro-class model. Tracking the 3.1 Pro → 3 Pro transition as those exit preview; Gemini 2.5 Pro retires 2026-06-17.
-      gemini-flash-latest:
-        name: Gemini Flash Latest
+        notes: Current Pro-class preview. Strongest Gemini model for complex reasoning, coding, and research.
+      gemini-3-flash-preview:
+        name: Gemini 3 Flash Preview
         recommended: true
         capabilities: [chat, tools, vision, files, json, coding]
         context_window: 1000000
         speed: fast
         cost: low
-        notes: Fast model for summarization, extraction, and browser-heavy work. Gemini 3 Flash (preview) reports ~78% SWE-bench Verified — strong agentic-coding candidate once GA. Gemini 2.5 Flash retires 2026-06-17.
+        notes: Fast, balanced, multimodal. ~78% SWE-bench Verified — strong agentic-coding candidate.
+      gemini-3.1-flash-lite-preview:
+        name: Gemini 3.1 Flash-Lite Preview
+        recommended: false
+        capabilities: [chat, tools, vision, json, coding]
+        context_window: 1000000
+        speed: fast
+        cost: low
+        notes: Cost-efficient, fastest performance for high-frequency, lightweight tasks.
+      gemini-2.5-pro:
+        name: Gemini 2.5 Pro
+        recommended: false
+        capabilities: [chat, tools, vision, files, json, reasoning, coding]
+        context_window: 1000000
+        speed: standard
+        cost: medium
+        notes: GA Pro model. Retires 2026-06-17 — prefer 3.1 Pro Preview for new work.
+      gemini-2.5-flash:
+        name: Gemini 2.5 Flash
+        recommended: false
+        capabilities: [chat, tools, vision, files, json, coding]
+        context_window: 1000000
+        speed: fast
+        cost: low
+        notes: GA Flash. Retires 2026-06-17 — prefer 3 Flash Preview for new work.
+      gemini-2.5-flash-lite:
+        name: Gemini 2.5 Flash-Lite
+        recommended: false
+        capabilities: [chat, tools, vision, json, coding]
+        context_window: 1000000
+        speed: fast
+        cost: low
+        notes: GA Flash-Lite. Retires 2026-06-17.
+      deep-research-pro-preview-12-2025:
+        name: Deep Research Pro (Dec 2025)
+        recommended: false
+        enabled: false
+        capabilities: [chat, reasoning, tools]
+        context_window: 1000000
+        speed: slower
+        cost: high
+        notes: Deep Research agent (legacy preview). Requires background-execution runner — not yet wired up in Glue.
+      deep-research-preview-04-2026:
+        name: Deep Research Preview (Apr 2026)
+        recommended: false
+        enabled: false
+        capabilities: [chat, reasoning, tools, browser]
+        context_window: 1000000
+        speed: slower
+        cost: high
+        notes: Fast Deep Research agent — interactive use. Requires background runner (not yet wired up in Glue).
+      deep-research-max-preview-04-2026:
+        name: Deep Research Max Preview (Apr 2026)
+        recommended: false
+        enabled: false
+        capabilities: [chat, reasoning, tools, browser]
+        context_window: 1000000
+        speed: slower
+        cost: high
+        notes: Maximum-comprehensiveness Deep Research agent. Requires background runner (not yet wired up in Glue).
 
   mistral:
     name: Mistral AI
@@ -517,15 +584,15 @@ profiles:
     description: Default interactive coding session.
     recommended:
       - anthropic/claude-opus-4-7
-      - anthropic/claude-sonnet-4-6
-      - openai/gpt-5.4
+      - anthropic/claude-sonnet-4-7
+      - openai/gpt-5.5
       - openai/o3
       - mistral/devstral-latest
       - groq/llama-4-scout-17b-16e-instruct
   cheap:
     description: Low-cost summaries, titles, and quick checks.
     recommended:
-      - openai/gpt-5.4-mini
+      - openai/gpt-5.5-mini
       - openai/o4-mini
       - anthropic/claude-haiku-4-5
       - gemini/gemini-flash-latest

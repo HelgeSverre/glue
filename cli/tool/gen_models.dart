@@ -107,6 +107,7 @@ String _render(ModelCatalog c) {
         ..writeln('          apiId: ${_str(m.apiId)},')
         ..writeln('          recommended: ${m.recommended},')
         ..writeln('          isDefault: ${m.isDefault},')
+        ..writeln('          enabled: ${m.enabled},')
         ..writeln(
             '          capabilities: ${_renderStringSet(m.capabilities)},')
         ..writeln('          contextWindow: ${m.contextWindow},')

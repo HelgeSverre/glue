@@ -4,7 +4,7 @@ default:
     @just --list
 
 # Compile AOT native binary (injects build timestamp + git SHA via -D defines)
-build:
+build: gen
     #!/usr/bin/env bash
     set -euo pipefail
     BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -31,7 +31,7 @@ run *args: build
     ./glue {{args}}
 
 # Run unit tests (pass args: just test test/llm/)
-test *args:
+test *args: gen
     dart test {{args}}
 
 # Run e2e integration tests (requires: ollama + qwen2.5:7b)
