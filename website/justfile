@@ -14,7 +14,7 @@ deps-if-needed:
     fi
 
 # Generate API docs from Dart source
-generate: deps-if-needed
+gen: deps-if-needed
     cd ../cli && dart run tool/gen_models.dart
     cd ../cli && dart run tool/generate_website_api.dart
     cd ../cli && dart run tool/generate_site_reference.dart
@@ -24,7 +24,7 @@ generate: deps-if-needed
 
 
 # Regenerate site reference files only (models, runtime matrix, config, sessions, CLI changelog)
-generate-reference:
+gen-reference:
     cd ../cli && dart run tool/generate_site_reference.dart
     cp ../cli/CHANGELOG.md generated/cli-changelog.md
     npx prettier --write ./generated/*.md
@@ -35,23 +35,23 @@ og: deps-if-needed
     npm run og
 
 # Fail if generated reference files are out of date with canonical sources
-check-generated: generate-reference
+check-generated: gen-reference
     #!/usr/bin/env bash
     set -euo pipefail
     if ! git diff --quiet -- generated/; then
       echo "✗ Generated site reference files are out of date." >&2
-      echo "  Run 'just website::generate-reference' and commit the result." >&2
+      echo "  Run 'just website::gen-reference' and commit the result." >&2
       git --no-pager diff --stat -- generated/ >&2
       exit 1
     fi
     echo "✓ Generated site reference files match canonical sources."
 
 # Serve locally for development
-dev: deps-if-needed generate
+dev: deps-if-needed gen
     npx vitepress dev
 
 # Build static site
-build: deps-if-needed generate
+build: deps-if-needed gen
     npx vitepress build
 
 # Quality gate for docs (drift check + consistency check + build)

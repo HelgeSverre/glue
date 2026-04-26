@@ -9,7 +9,7 @@
       .fg-3 { fill: #6B6F76; }
       .mono { font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; }
       .sans { font-family: 'Inter', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif; }
-      .eyebrow { font-size: 22px; letter-spacing: 2.5px; text-transform: uppercase; }
+      .eyebrow { font-size: 22px; letter-spacing: 2.5px; }
       .headline { font-size: {{HEADLINE_SIZE}}px; font-weight: 600; letter-spacing: -2px; }
       .subtitle { font-size: 26px; font-weight: 400; }
       .tag { font-size: 20px; letter-spacing: 1.5px; }
@@ -44,6 +44,6 @@
   </g>
 
   <g transform="translate(1120, 555)" text-anchor="end">
-    <text class="mono accent tag" x="0" y="0">GETGLUE.DEV</text>
+    <text class="mono accent tag" x="0" y="0">GetGlue.dev</text>
   </g>
 </svg>
