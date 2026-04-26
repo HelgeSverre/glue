@@ -1,15 +1,20 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
+import 'package:glue/src/boot/providers.dart';
 import 'package:glue/src/catalog/catalog_parser.dart';
 import 'package:glue/src/commands/config_command.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/core/environment.dart';
+import 'package:glue/src/credentials/credential_store.dart';
+import 'package:glue/src/diagnostics/terminal_diagnostics.dart';
 import 'package:glue/src/observability/observability_config.dart';
 import 'package:glue/src/observability/otlp_http_trace_sink.dart';
+import 'package:glue/src/providers/provider_adapter.dart';
 import 'package:glue/src/terminal/styled.dart';
 
 enum DoctorSeverity {
@@ -53,7 +58,24 @@ class DoctorReport {
   bool get hasErrors => errorCount > 0;
 }
 
-DoctorReport runDoctor(Environment environment) {
+/// Builder for the [AdapterRegistry] used by the verbose connectivity probe.
+/// Defaults to the production registry; tests inject a fake to avoid network.
+typedef DoctorAdaptersBuilder = AdapterRegistry Function(
+  CredentialStore credentials,
+);
+
+AdapterRegistry _defaultAdaptersBuilder(CredentialStore credentials) {
+  return wireProviderAdapters(
+    credentials: credentials,
+    httpClient: (_) => http.Client(),
+  );
+}
+
+Future<DoctorReport> runDoctor(
+  Environment environment, {
+  bool verbose = false,
+  DoctorAdaptersBuilder? adaptersBuilder,
+}) async {
   final findings = <DoctorFinding>[];
 
   void add(
@@ -72,6 +94,15 @@ DoctorReport runDoctor(Environment environment) {
 
   add('Environment', DoctorSeverity.ok, 'GLUE_HOME: ${environment.glueDir}');
   add('Environment', DoctorSeverity.ok, 'cwd: ${environment.cwd}');
+
+  final term = TerminalDiagnostics.collect();
+  final ttySev = (term.stdinHasTerminal && term.stdoutHasTerminal)
+      ? DoctorSeverity.ok
+      : DoctorSeverity.warning;
+  add('Terminal', ttySev, term.verdict);
+  for (final line in term.toReportLines().skip(1) /* verdict already added */) {
+    add('Terminal', DoctorSeverity.info, line);
+  }
 
   _checkPath(findings, 'Core files', 'config.yaml', environment.configYamlPath);
   _checkPath(
@@ -109,6 +140,13 @@ DoctorReport runDoctor(Environment environment) {
     p.join(environment.cacheDir, 'models.yaml'),
   );
   _checkConfigValidation(findings, environment);
+  if (verbose) {
+    await _probeConfiguredProviders(
+      findings,
+      environment,
+      adaptersBuilder ?? _defaultAdaptersBuilder,
+    );
+  }
   _checkObservability(findings, environment);
   _checkSessions(findings, environment.sessionsDir);
   _checkTmpFiles(findings, environment.glueDir);
@@ -336,6 +374,82 @@ void _checkConfigValidation(
     message: result.message,
     path: environment.configYamlPath,
   ));
+}
+
+/// Probes every configured provider in parallel and emits one
+/// [DoctorFinding] per provider. Only invoked when `--verbose` is set —
+/// keeps the fast-path under a second.
+///
+/// "Configured" means [ProviderAdapter.isConnected] returns true: env var
+/// resolves, credential is stored, or the provider is [AuthKind.none] (local
+/// LLMs). Catalog drift (`unknownAdapter`) and missing credentials are
+/// already surfaced by the earlier `_checkConfigValidation` row.
+Future<void> _probeConfiguredProviders(
+  List<DoctorFinding> findings,
+  Environment environment,
+  DoctorAdaptersBuilder adaptersBuilder,
+) async {
+  const section = 'Provider connectivity';
+  GlueConfig config;
+  try {
+    config = GlueConfig.load(environment: environment);
+  } on Object catch (e) {
+    findings.add(DoctorFinding(
+      severity: DoctorSeverity.info,
+      section: section,
+      message: 'skipped: config did not load ($e)',
+    ));
+    return;
+  }
+
+  final registry = adaptersBuilder(config.credentials);
+  final probes = <Future<DoctorFinding>>[];
+  for (final def in config.catalogData.providers.values) {
+    final adapter = registry.lookup(def.adapter);
+    if (adapter == null) continue;
+    if (!adapter.isConnected(def, config.credentials)) continue;
+    final resolved = config.resolveProviderById(def.id);
+    probes.add(adapter.probe(resolved).then((health) {
+      return DoctorFinding(
+        severity: _severityFor(health),
+        section: section,
+        message: '${def.name}: ${_statusLabel(health)}',
+      );
+    }));
+  }
+
+  if (probes.isEmpty) {
+    findings.add(const DoctorFinding(
+      severity: DoctorSeverity.info,
+      section: section,
+      message: 'no configured providers to probe',
+    ));
+    return;
+  }
+
+  final rows = await Future.wait(probes);
+  rows.sort((a, b) => a.message.compareTo(b.message));
+  findings.addAll(rows);
+}
+
+DoctorSeverity _severityFor(ProviderHealth health) {
+  return switch (health) {
+    ProviderHealth.ok => DoctorSeverity.ok,
+    ProviderHealth.unauthorized => DoctorSeverity.error,
+    ProviderHealth.unreachable => DoctorSeverity.info,
+    ProviderHealth.unknownAdapter => DoctorSeverity.warning,
+    ProviderHealth.missingCredential => DoctorSeverity.info,
+  };
+}
+
+String _statusLabel(ProviderHealth health) {
+  return switch (health) {
+    ProviderHealth.ok => 'ok',
+    ProviderHealth.unauthorized => 'credentials rejected',
+    ProviderHealth.unreachable => 'unreachable',
+    ProviderHealth.unknownAdapter => 'no adapter',
+    ProviderHealth.missingCredential => 'not connected',
+  };
 }
 
 void _checkObservability(

@@ -22,11 +22,9 @@ class DoctorCommand extends Command<int> {
 
   @override
   Future<int> run() async {
-    final report = runDoctor(Environment.detect());
-    stdout.write(renderDoctorReport(
-      report,
-      verbose: argResults!.flag('verbose'),
-    ));
+    final verbose = argResults!.flag('verbose');
+    final report = await runDoctor(Environment.detect(), verbose: verbose);
+    stdout.write(renderDoctorReport(report, verbose: verbose));
     return report.hasErrors ? 1 : 0;
   }
 }

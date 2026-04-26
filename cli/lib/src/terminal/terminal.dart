@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:glue/src/diagnostics/terminal_diagnostics.dart';
+
 // ---------------------------------------------------------------------------
 // Event types
 // ---------------------------------------------------------------------------
@@ -163,6 +165,22 @@ class Terminal {
   /// Enters raw mode — the terminal now owns every byte from stdin.
   void enableRawMode() {
     if (_isRaw) return;
+
+    if (!stdin.hasTerminal) {
+      final diag = TerminalDiagnostics.collect();
+      final hint = diag.markers.contains('intellij')
+          ? '\nHint: in IntelliJ/PhpStorm, enable "Emulate terminal in '
+              'output console" on the Run Configuration ("Modify options").'
+          : '';
+      throw StateError(
+        'Cannot enable raw mode: stdin is not a terminal.\n'
+        '${diag.verdict}\n'
+        'For non-interactive use, pass --print/-p to glue.$hint\n'
+        'Run `glue doctor` for the full terminal diagnostic.',
+      );
+    }
+
+
     stdin.echoMode = false;
     stdin.lineMode = false;
     _isRaw = true;
@@ -181,7 +199,7 @@ class Terminal {
   void disableRawMode() {
     if (!_isRaw) return;
     // Disable bracketed paste mode before restoring terminal.
-    stdout.write('\x1b[?2004l');
+    stdout.write('\x1b[?2004l'); // TODO: abstract into enable/disableBracketedPaste() or stdout.ansiEscapes(Escape.bracketedPaste(bool enable))
     stdin.echoMode = true;
     stdin.lineMode = true;
     _isRaw = false;

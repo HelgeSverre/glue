@@ -38,15 +38,15 @@ import 'package:glue/src/skills/skill_runtime.dart';
 import 'package:glue/src/storage/session_store.dart';
 import 'package:glue/src/terminal/layout.dart';
 import 'package:glue/src/terminal/terminal.dart';
+import 'package:glue/src/ui/actions/app_actions.dart';
 import 'package:glue/src/ui/components/dock.dart';
 import 'package:glue/src/ui/components/modal.dart';
 import 'package:glue/src/ui/components/panel.dart';
 import 'package:glue/src/ui/rendering/ansi_utils.dart';
 import 'package:glue/src/ui/rendering/block_renderer.dart';
-import 'package:glue/src/ui/actions/app_actions.dart';
-import 'package:glue/src/ui/slash/app_commands.dart';
 import 'package:glue/src/ui/services/docks.dart';
 import 'package:glue/src/ui/services/panels.dart';
+import 'package:glue/src/ui/slash/app_commands.dart';
 
 part 'app/paint.dart';
 
@@ -457,10 +457,12 @@ class App {
       if (_resumeSessionId != null) {
         if (_resumeSessionId.isEmpty) {
           stderr.writeln(
-              'Error: --print does not support bare --resume; pass a session ID.');
+            'Error: --print does not support bare --resume; pass a session ID.',
+          );
           return;
         }
         final sessions = _sessionManager.listSessions();
+
         final match = sessions.where((s) => s.id == _resumeSessionId).toList();
         if (match.isEmpty) {
           stderr.writeln('Session $_resumeSessionId not found.');

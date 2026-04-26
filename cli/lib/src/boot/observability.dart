@@ -1,6 +1,7 @@
 import 'package:glue/src/boot/http.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/core/environment.dart';
+import 'package:glue/src/diagnostics/terminal_diagnostics.dart';
 import 'package:glue/src/observability/debug_controller.dart';
 import 'package:glue/src/observability/file_sink.dart';
 import 'package:glue/src/observability/http_trace_sink.dart';
@@ -42,6 +43,19 @@ ObservabilityBundle wireObservability({
   if (debugController.enabled) {
     observability.addSink(HttpTraceSink(logsDir: environment.logsDir));
   }
+
+  // Emit a single boot.diagnostics span snapshotting the terminal/stdio
+  // environment. Routed through the FileSink above, so it lands in
+  // ~/.glue/logs/spans-<date>.jsonl on every startup and is available for
+  // post-mortem when the interactive TUI fails to start (e.g. raw-mode
+  // crash under PhpStorm's debug console).
+  final diagnostics = TerminalDiagnostics.collect();
+  final bootSpan = observability.startSpan(
+    'boot.diagnostics',
+    kind: 'internal',
+    attributes: diagnostics.toAttributes(),
+  );
+  observability.endSpan(bootSpan);
 
   http.Client makeHttpClient(String spanKind) => debugController.enabled
       ? LoggingHttpClient(
