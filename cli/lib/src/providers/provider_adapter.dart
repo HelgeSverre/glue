@@ -15,7 +15,25 @@ import 'package:glue/src/credentials/credential_store.dart';
 import 'package:glue/src/providers/auth_flow.dart';
 import 'package:glue/src/providers/resolved.dart';
 
-enum ProviderHealth { ok, missingCredential, unknownAdapter }
+enum ProviderHealth {
+  /// Probe accepted — the credential authenticates against the provider.
+  ok,
+
+  /// No credential resolved (env unset, nothing stored).
+  missingCredential,
+
+  /// Server rejected the credential (HTTP 401/403, or provider-specific
+  /// equivalents like Gemini's `API_KEY_INVALID`).
+  unauthorized,
+
+  /// Couldn't determine — network error, timeout, or 5xx. Distinct from
+  /// [unauthorized] so callers can decide whether to block (bad key) or
+  /// proceed offline (down service / no network).
+  unreachable,
+
+  /// No adapter registered for the provider's wire protocol.
+  unknownAdapter,
+}
 
 class DiscoveredModel {
   const DiscoveredModel({required this.id, required this.name});
@@ -27,7 +45,28 @@ class DiscoveredModel {
 abstract class ProviderAdapter {
   String get adapterId;
 
+  /// In-memory health check — does this provider have a usable credential
+  /// in hand? Cheap, synchronous, no network. Use [probe] to actually verify
+  /// the credential against the API.
   ProviderHealth validate(ResolvedProvider provider);
+
+  /// Network probe — does the API accept this credential right now?
+  ///
+  /// Issues a single cheap, auth-required request (typically `GET /models`)
+  /// and classifies the result:
+  ///   - 200 → [ProviderHealth.ok]
+  ///   - 401/403 / API_KEY_INVALID → [ProviderHealth.unauthorized]
+  ///   - timeout / network error / 5xx → [ProviderHealth.unreachable]
+  ///   - missing credential up front → [ProviderHealth.missingCredential]
+  ///
+  /// Default implementation falls back to [validate] (no network). Adapters
+  /// that can probe should override.
+  Future<ProviderHealth> probe(
+    ResolvedProvider provider, {
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
+    return validate(provider);
+  }
 
   LlmClient createClient({
     required ResolvedProvider provider,

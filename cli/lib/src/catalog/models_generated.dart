@@ -10,7 +10,7 @@ const ModelCatalog bundledCatalog = ModelCatalog(
   updatedAt: '2026-04-25',
   defaults: DefaultsConfig(
     model: 'anthropic/claude-sonnet-4-7',
-    smallModel: 'openai/gpt-5.5-mini',
+    smallModel: 'openai/gpt-5.4-mini',
     localModel: 'ollama/gemma4:26b',
   ),
   capabilities: {
@@ -187,10 +187,10 @@ const ModelCatalog bundledCatalog = ModelCatalog(
           cost: 'high',
           notes: 'Prior frontier model — kept for pinned configs.',
         ),
-        'gpt-5.5-mini': ModelDef(
-          id: 'gpt-5.5-mini',
-          name: 'GPT-5.5 Mini',
-          apiId: 'gpt-5.5-mini',
+        'gpt-5.4-mini': ModelDef(
+          id: 'gpt-5.4-mini',
+          name: 'GPT-5.4 Mini',
+          apiId: 'gpt-5.4-mini',
           recommended: true,
           isDefault: false,
           enabled: true,

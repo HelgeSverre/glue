@@ -34,6 +34,24 @@ class ResolvedProvider {
   /// When the catalog omits `compatibility`, default to the adapter id.
   /// This keeps vanilla OpenAI the default; provider quirks opt in by name.
   String get compatibility => def.compatibility ?? def.adapter;
+
+  /// Return a copy with [apiKey] replaced — and the matching
+  /// `credentials['api_key']` field updated to keep the two views in sync
+  /// (see field doc above). Used by the API-key-prompt flow to probe a
+  /// just-entered key without persisting it to the credential store first.
+  ResolvedProvider withApiKey(String? apiKey) {
+    final mergedCredentials = Map<String, String>.from(credentials);
+    if (apiKey == null || apiKey.isEmpty) {
+      mergedCredentials.remove('api_key');
+    } else {
+      mergedCredentials['api_key'] = apiKey;
+    }
+    return ResolvedProvider(
+      def: def,
+      apiKey: apiKey,
+      credentials: mergedCredentials,
+    );
+  }
 }
 
 class ResolvedModel {

@@ -8,6 +8,7 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart';
@@ -62,6 +63,51 @@ class OpenAiProvider extends ProviderAdapter implements LlmClient {
     return (apiKey != null && apiKey.isNotEmpty)
         ? ProviderHealth.ok
         : ProviderHealth.missingCredential;
+  }
+
+  /// `GET <baseUrl>/models` against the OpenAI-compat surface — works for
+  /// canonical OpenAI plus drop-in clones (Groq, OpenRouter, Mistral, Together,
+  /// vLLM, llama.cpp). Honors [ResolvedProvider.baseUrl] so non-OpenAI hosts
+  /// probe the right URL.
+  ///
+  /// AuthKind.none endpoints (local LLMs) are probed without an Authorization
+  /// header — the question is "is the server reachable?", not "is my key ok?".
+  @override
+  Future<ProviderHealth> probe(
+    ResolvedProvider provider, {
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
+    final isNoAuth = provider.def.auth.kind == AuthKind.none;
+    final apiKey = provider.apiKey;
+    if (!isNoAuth && (apiKey == null || apiKey.isEmpty)) {
+      return ProviderHealth.missingCredential;
+    }
+    final base = Uri.parse(provider.baseUrl ?? _defaultBaseUrl);
+    final endpointBase =
+        base.path.endsWith('/') ? base : base.replace(path: '${base.path}/');
+    final uri = endpointBase.resolve('models');
+    final profile = CompatibilityProfile.fromString(provider.compatibility);
+    final headers = <String, String>{
+      ...provider.requestHeaders,
+      if (!isNoAuth && apiKey != null) ...profile.authHeaders(apiKey),
+    };
+    final client = (_requestClientFactory ?? http.Client.new)();
+    try {
+      final response = await client.get(uri, headers: headers).timeout(timeout);
+      if (response.statusCode == 200) return ProviderHealth.ok;
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        return ProviderHealth.unauthorized;
+      }
+      return ProviderHealth.unreachable;
+    } on TimeoutException {
+      return ProviderHealth.unreachable;
+    } on SocketException {
+      return ProviderHealth.unreachable;
+    } on http.ClientException {
+      return ProviderHealth.unreachable;
+    } finally {
+      client.close();
+    }
   }
 
   @override

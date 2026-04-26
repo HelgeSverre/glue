@@ -12,6 +12,7 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
@@ -97,6 +98,28 @@ class OllamaDiscovery {
   /// call this; normal picker open should rely on the TTL.
   void invalidateCache() {
     _cache.remove(_cacheKey());
+  }
+
+  /// Probe whether the daemon is reachable. 200 ⇒ true; anything else
+  /// (refused, timeout, malformed response) ⇒ false. Never throws. Bypasses
+  /// the [listInstalled] cache because "is the daemon up *right now*?" is a
+  /// question the cache shouldn't answer.
+  Future<bool> ping() async {
+    final client = _clientFactory();
+    try {
+      final response = await client.get(_tagsUri()).timeout(timeout);
+      return response.statusCode == 200;
+    } on TimeoutException {
+      return false;
+    } on SocketException {
+      return false;
+    } on http.ClientException {
+      return false;
+    } catch (_) {
+      return false;
+    } finally {
+      client.close();
+    }
   }
 
   /// Stream NDJSON progress from `POST /api/pull`. The stream completes

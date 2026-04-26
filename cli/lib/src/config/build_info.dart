@@ -5,21 +5,29 @@
 /// and the formatted output falls back to `(dev)`.
 class BuildInfo {
   /// ISO-8601 UTC timestamp of when the binary was compiled.
-  static const String buildTime =
-      String.fromEnvironment('GLUE_BUILD_TIME', defaultValue: '');
+  static const String buildTime = String.fromEnvironment(
+    'GLUE_BUILD_TIME',
+    defaultValue: '',
+  );
 
   /// Short git SHA (e.g. `a1b2c3d`) at compile time.
-  static const String gitSha =
-      String.fromEnvironment('GLUE_GIT_SHA', defaultValue: '');
+  static const String gitSha = String.fromEnvironment(
+    'GLUE_GIT_SHA',
+    defaultValue: '',
+  );
 
   /// Non-empty marker (e.g. `+dirty`) when the working tree had uncommitted
   /// changes at compile time.
-  static const String gitDirty =
-      String.fromEnvironment('GLUE_GIT_DIRTY', defaultValue: '');
+  static const String gitDirty = String.fromEnvironment(
+    'GLUE_GIT_DIRTY',
+    defaultValue: '',
+  );
 
   /// Host that produced the build — typically `$USER@$HOSTNAME` or `ci`.
-  static const String builtBy =
-      String.fromEnvironment('GLUE_BUILT_BY', defaultValue: '');
+  static const String builtBy = String.fromEnvironment(
+    'GLUE_BUILT_BY',
+    defaultValue: '',
+  );
 
   /// True when any build metadata was injected at compile time.
   static bool get isReleaseBuild => buildTime.isNotEmpty || gitSha.isNotEmpty;
@@ -45,12 +53,15 @@ class BuildInfo {
       buffer.writeln('build: dev (no metadata injected)');
       return buffer.toString().trimRight();
     }
+
     if (gitSha.isNotEmpty) {
       buffer.writeln('commit: $gitSha$gitDirty');
     }
+
     if (buildTime.isNotEmpty) {
       buffer.writeln('built:  $buildTime');
     }
+
     if (builtBy.isNotEmpty) {
       buffer.writeln('by:     $builtBy');
     }

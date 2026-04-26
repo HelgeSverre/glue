@@ -8,6 +8,7 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart';
@@ -53,6 +54,47 @@ class GeminiProvider extends ProviderAdapter implements LlmClient {
     return (apiKey != null && apiKey.isNotEmpty)
         ? ProviderHealth.ok
         : ProviderHealth.missingCredential;
+  }
+
+  /// `GET /v1beta/models` — cheapest auth-required endpoint. 200 ⇒ key works,
+  /// 400/401/403 ⇒ rejected, anything else ⇒ couldn't determine.
+  @override
+  Future<ProviderHealth> probe(
+    ResolvedProvider provider, {
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
+    final apiKey = provider.apiKey;
+    if (apiKey == null || apiKey.isEmpty) {
+      return ProviderHealth.missingCredential;
+    }
+    final base = Uri.parse(provider.baseUrl ?? _defaultBaseUrl);
+    final uri = base.resolve('/$_apiVersion/models');
+    final client = (_requestClientFactory ?? http.Client.new)();
+    try {
+      final response = await client
+          .get(uri, headers: {'x-goog-api-key': apiKey}).timeout(timeout);
+      if (response.statusCode == 200) return ProviderHealth.ok;
+      // Gemini returns 400 with reason API_KEY_INVALID for bad keys, plus
+      // the more typical 401/403. Treat all of those as rejected.
+      if (response.statusCode == 400 ||
+          response.statusCode == 401 ||
+          response.statusCode == 403) {
+        if (response.statusCode == 400 &&
+            !response.body.contains('API_KEY_INVALID')) {
+          return ProviderHealth.unreachable;
+        }
+        return ProviderHealth.unauthorized;
+      }
+      return ProviderHealth.unreachable;
+    } on TimeoutException {
+      return ProviderHealth.unreachable;
+    } on SocketException {
+      return ProviderHealth.unreachable;
+    } on http.ClientException {
+      return ProviderHealth.unreachable;
+    } finally {
+      client.close();
+    }
   }
 
   @override

@@ -88,6 +88,25 @@ class OllamaProvider extends ProviderAdapter implements LlmClient {
   @override
   ProviderHealth validate(ResolvedProvider provider) => ProviderHealth.ok;
 
+  /// Ping `GET /api/tags` to confirm the daemon is up. No auth needed, so
+  /// the only failure mode is "couldn't reach it".
+  @override
+  Future<ProviderHealth> probe(
+    ResolvedProvider provider, {
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
+    final discovery = OllamaDiscovery(
+      baseUrl: Uri.parse(
+        _stripV1Suffix(provider.baseUrl ?? _defaultBaseUrl),
+      ),
+      clientFactory: _requestClientFactory,
+      timeout: timeout,
+    );
+    return await discovery.ping()
+        ? ProviderHealth.ok
+        : ProviderHealth.unreachable;
+  }
+
   @override
   bool isConnected(ProviderDef provider, CredentialStore store) => true;
 

@@ -3,6 +3,7 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart';
@@ -49,6 +50,40 @@ class AnthropicProvider extends ProviderAdapter implements LlmClient {
     return (apiKey != null && apiKey.isNotEmpty)
         ? ProviderHealth.ok
         : ProviderHealth.missingCredential;
+  }
+
+  /// `GET /v1/models` — cheap, auth-required, no token cost.
+  @override
+  Future<ProviderHealth> probe(
+    ResolvedProvider provider, {
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
+    final apiKey = provider.apiKey;
+    if (apiKey == null || apiKey.isEmpty) {
+      return ProviderHealth.missingCredential;
+    }
+    final base = Uri.parse(provider.baseUrl ?? _defaultBaseUrl);
+    final uri = base.resolve('/v1/models');
+    final client = (_requestClientFactory ?? http.Client.new)();
+    try {
+      final response = await client.get(uri, headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': _apiVersion,
+      }).timeout(timeout);
+      if (response.statusCode == 200) return ProviderHealth.ok;
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        return ProviderHealth.unauthorized;
+      }
+      return ProviderHealth.unreachable;
+    } on TimeoutException {
+      return ProviderHealth.unreachable;
+    } on SocketException {
+      return ProviderHealth.unreachable;
+    } on http.ClientException {
+      return ProviderHealth.unreachable;
+    } finally {
+      client.close();
+    }
   }
 
   @override

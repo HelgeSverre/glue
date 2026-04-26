@@ -11,6 +11,7 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart';
@@ -71,6 +72,63 @@ class CopilotProvider extends ProviderAdapter implements LlmClient {
     return (github != null && github.isNotEmpty)
         ? ProviderHealth.ok
         : ProviderHealth.missingCredential;
+  }
+
+  /// Refresh the Copilot bearer (the real failure mode — the GitHub token can
+  /// silently lose Copilot eligibility), then `GET /models`. Bearer-exchange
+  /// failure ⇒ unauthorized; HTTP 401/403 from `/models` ⇒ unauthorized;
+  /// anything else network-flavored ⇒ unreachable.
+  @override
+  Future<ProviderHealth> probe(
+    ResolvedProvider provider, {
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
+    final github = provider.credentials[CopilotFields.githubToken];
+    if (github == null || github.isEmpty) {
+      return ProviderHealth.missingCredential;
+    }
+    final store = _store;
+    if (store == null) return ProviderHealth.unreachable;
+
+    final String token;
+    try {
+      token = await freshCopilotToken(store, client: _http).timeout(timeout);
+    } on CopilotAuthException {
+      return ProviderHealth.unauthorized;
+    } on TimeoutException {
+      return ProviderHealth.unreachable;
+    } on SocketException {
+      return ProviderHealth.unreachable;
+    } on http.ClientException {
+      return ProviderHealth.unreachable;
+    }
+
+    final base = Uri.parse(provider.baseUrl ?? _defaultBaseUrl);
+    final endpointBase =
+        base.path.endsWith('/') ? base : base.replace(path: '${base.path}/');
+    final uri = endpointBase.resolve('models');
+    final client = (_requestClientFactory ?? (() => _http))();
+    try {
+      final response = await client.get(uri, headers: {
+        'Authorization': 'Bearer $token',
+        'Copilot-Integration-Id': 'vscode-chat',
+      }).timeout(timeout);
+      if (response.statusCode == 200) return ProviderHealth.ok;
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        return ProviderHealth.unauthorized;
+      }
+      return ProviderHealth.unreachable;
+    } on TimeoutException {
+      return ProviderHealth.unreachable;
+    } on SocketException {
+      return ProviderHealth.unreachable;
+    } on http.ClientException {
+      return ProviderHealth.unreachable;
+    } finally {
+      // Don't close `_http` (shared lifecycle) — only close per-request
+      // clients spawned by the factory.
+      if (_requestClientFactory != null) client.close();
+    }
   }
 
   @override

@@ -62,8 +62,6 @@ class ApiKeyPromptPanel implements AbstractPanel {
         return true;
       case KeyEvent(key: Key.enter):
         final entered = _buffer.toString();
-        // Empty submit with env set → keep env (return ''). Empty without
-        // env → require input; ignore the submit.
         if (entered.isEmpty && !hasEnvPresent) return true;
         _submitted.complete(entered);
         return true;
@@ -77,6 +75,9 @@ class ApiKeyPromptPanel implements AbstractPanel {
         return true;
       case KeyEvent(key: Key.ctrlU):
         _buffer.clear();
+        return true;
+      case PasteEvent(:final content):
+        _buffer.write(content);
         return true;
       case CharEvent(:final char, alt: false):
         _buffer.write(char);
