@@ -25,8 +25,8 @@ Bundled skills currently live in `cli/skills/` and are discovered via `cli/lib/s
 1. optionally reads `GLUE_BUNDLED_SKILLS_DIR`
 2. otherwise derives paths from `Platform.script`
 3. tries guessed locations like:
-    - `<packageRoot>/skills`
-    - `<packageRoot>/cli/skills`
+   - `<packageRoot>/skills`
+   - `<packageRoot>/cli/skills`
 
 That makes built-in skill availability depend on the runtime filesystem layout of the executable or source checkout.
 
@@ -59,21 +59,21 @@ Built-in skills should behave like other packaged application resources:
 ## Goals
 
 1. **Self-contained install behavior**
-    - A user on a separate machine with only the installed Glue artifact should always get built-in skills.
+   - A user on a separate machine with only the installed Glue artifact should always get built-in skills.
 
 2. **Explicit runtime ownership**
-    - Built-in assets should live in a Glue-managed subtree under `GLUE_HOME`, separate from user-authored global
-      skills.
+   - Built-in assets should live in a Glue-managed subtree under `GLUE_HOME`, separate from user-authored global
+     skills.
 
 3. **Minimal reusable asset system**
-    - Introduce a small `AssetBundle` abstraction that supports current skill bundling and can be reused later for
-      simple bundled markdown/text assets.
+   - Introduce a small `AssetBundle` abstraction that supports current skill bundling and can be reused later for
+     simple bundled markdown/text assets.
 
 4. **Simpler skill discovery**
-    - Remove executable-relative path guessing and discover skills from explicit directories only.
+   - Remove executable-relative path guessing and discover skills from explicit directories only.
 
 5. **Preserve user override precedence**
-    - Project and user skills must still override built-in skills by name.
+   - Project and user skills must still override built-in skills by name.
 
 ## Non-Goals
 
@@ -332,14 +332,14 @@ This plan intentionally leaves room for future bundled text assets without imple
 Potential future uses:
 
 1. **Markdown-backed slash commands**
-    - e.g. `cli/assets/slash-commands/<name>.md`
-    - materialized into a Glue-managed command asset dir
+   - e.g. `cli/assets/slash-commands/<name>.md`
+   - materialized into a Glue-managed command asset dir
 
 2. **Prompt templates or docs snippets**
-    - stored in `cli/assets/templates/...`
+   - stored in `cli/assets/templates/...`
 
 3. **Small helper config files**
-    - bundled defaults or examples
+   - bundled defaults or examples
 
 If future binary bundling is ever needed, the naming can remain compatible, but binary support itself stays out of scope
 for this iteration.
@@ -353,8 +353,8 @@ for this iteration.
 3. Add `cli/tool/gen_assets.dart`
 4. Add generated file output: `cli/lib/src/assets/assets_generated.dart`
 5. Update `cli/justfile`
-    - include `gen_assets.dart` in `gen`
-    - include `gen_assets.dart --check` in `gen-check`
+   - include `gen_assets.dart` in `gen`
+   - include `gen_assets.dart --check` in `gen-check`
 
 ### Acceptance criteria
 
@@ -440,21 +440,21 @@ for this iteration.
 ## Unit tests
 
 1. **Generator tests**
-    - generated file is fresh
-    - embedded relative paths are correct
-    - embedded contents round-trip correctly
+   - generated file is fresh
+   - embedded relative paths are correct
+   - embedded contents round-trip correctly
 
 2. **Installer tests**
-    - installs files into empty target dir
-    - updates changed files
-    - preserves identical files without churn
-    - prunes stale managed files
-    - does not touch unrelated user files outside bundle manifest scope
+   - installs files into empty target dir
+   - updates changed files
+   - preserves identical files without churn
+   - prunes stale managed files
+   - does not touch unrelated user files outside bundle manifest scope
 
 3. **Skill discovery tests**
-    - built-in managed dir is discovered as `SkillSource.builtin`
-    - project/global/custom override builtin by name
-    - body loading works from installed builtin files
+   - built-in managed dir is discovered as `SkillSource.builtin`
+   - project/global/custom override builtin by name
+   - body loading works from installed builtin files
 
 ## Regression tests
 
@@ -492,18 +492,18 @@ Users can still override built-ins by placing same-named skills in:
 ## Open Questions
 
 1. **Should the manifest live inside the bundle target dir or under cache?**
-    - Recommendation: keep it inside the managed target dir for locality and easier debugging.
+   - Recommendation: keep it inside the managed target dir for locality and easier debugging.
 
 2. **Should bundled skill files be rewritten on every startup or only when changed?**
-    - Recommendation: only when changed, using manifest/hash comparison.
+   - Recommendation: only when changed, using manifest/hash comparison.
 
 3. **Should built-in asset installation failures be fatal?**
-    - Recommendation: treat as non-fatal but visible. Glue should continue running, but diagnostics/logging should make
-      the failure obvious.
+   - Recommendation: treat as non-fatal but visible. Glue should continue running, but diagnostics/logging should make
+     the failure obvious.
 
 4. **Should `global` discovery include `_builtin` implicitly or should builtin always be passed explicitly?**
-    - Recommendation: keep builtin explicit. Do not make `SkillRegistry` infer managed builtin subdirectories
-      automatically.
+   - Recommendation: keep builtin explicit. Do not make `SkillRegistry` infer managed builtin subdirectories
+     automatically.
 
 ## Acceptance Criteria Summary
 
@@ -528,7 +528,7 @@ This plan is complete when:
 - Keep the API intentionally small so future asset families can reuse it without forcing a framework onto the codebase.
 - Do not add binary support until a concrete use case exists.
 
-------------------
+---
 
 # DESREGARD ABOVE, INVESTIGATE IF THIS CAN BEUSED INSTEAD:
 
