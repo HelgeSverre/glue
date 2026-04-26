@@ -41,7 +41,7 @@ class CatalogSourceConfig {
   });
 
   /// `never | manual | daily | startup`. See `docs/reference/models.yaml`.
-  final String refresh;
+  final String refresh; // TODO: enum?
 
   /// When non-null, background refresh pulls from here.
   final Uri? remoteUrl;
@@ -193,6 +193,18 @@ class GlueConfig {
         throw ConfigError(
           'Not connected to "${resolved.id}". '
           'Run /provider add ${resolved.id}$envHint.',
+        );
+      case ProviderHealth.unauthorized:
+        // validate() is synchronous and never returns this — only probe()
+        // does. Cover the case anyway so the switch stays exhaustive.
+        throw ConfigError(
+          'Credentials for "${resolved.id}" were rejected. '
+          'Run /provider add ${resolved.id} to update them.',
+        );
+      case ProviderHealth.unreachable:
+        throw ConfigError(
+          'Could not reach "${resolved.id}". Try `/provider test '
+          '${resolved.id}` once you\'re online.',
         );
     }
   }

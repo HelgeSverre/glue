@@ -230,6 +230,40 @@ void main() {
       );
       expect(OllamaProvider().isConnected(_provider().def, store), isTrue);
     });
+
+    test('probe ⇒ ok when /api/tags returns 200', () async {
+      final adapter = OllamaProvider(
+        requestClientFactory: () => _FakeHttp((req) async {
+          expect(req.url.path, '/api/tags');
+          return http.StreamedResponse(
+            Stream<List<int>>.value(utf8.encode('{"models":[]}')),
+            200,
+          );
+        }),
+      );
+      expect(await adapter.probe(_provider()), ProviderHealth.ok);
+    });
+
+    test('probe ⇒ unreachable when daemon refuses connection', () async {
+      final adapter = OllamaProvider(
+        requestClientFactory: () => _FakeHttp((_) async {
+          throw const SocketException('refused');
+        }),
+      );
+      expect(await adapter.probe(_provider()), ProviderHealth.unreachable);
+    });
+
+    test('probe ⇒ unreachable on 500', () async {
+      final adapter = OllamaProvider(
+        requestClientFactory: () => _FakeHttp((_) async {
+          return http.StreamedResponse(
+            const Stream<List<int>>.empty(),
+            500,
+          );
+        }),
+      );
+      expect(await adapter.probe(_provider()), ProviderHealth.unreachable);
+    });
   });
 
   group('OllamaProvider.discoverModels', () {

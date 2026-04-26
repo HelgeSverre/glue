@@ -21,13 +21,14 @@ void main() {
       bundledPaths: [bundledDir],
     );
 
-    expect(registry.length, greaterThanOrEqualTo(3));
+    expect(registry.length, greaterThanOrEqualTo(4));
     expect(
       registry.list().map((s) => s.source).toSet(),
       contains(SkillSource.custom),
     );
     expect(registry.findByName('code-review'), isNotNull);
     expect(registry.findByName('agentic-research'), isNotNull);
+    expect(registry.findByName('skill-creator'), isNotNull);
   });
 
   test('bundled skills have unique names and non-empty bodies', () {

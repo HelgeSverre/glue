@@ -11,6 +11,7 @@ import 'package:glue/src/credentials/credential_store.dart';
 import 'package:glue/src/providers/auth_flow.dart';
 import 'package:glue/src/providers/copilot_provider.dart';
 import 'package:glue/src/providers/copilot_token_manager.dart';
+import 'package:glue/src/providers/provider_adapter.dart';
 import 'package:glue/src/providers/resolved.dart';
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
@@ -199,6 +200,86 @@ void main() {
         CopilotProvider().isConnected(_copilotProvider, store),
         isFalse,
       );
+    });
+  });
+
+  group('CopilotProvider.probe', () {
+    test('missingCredential when no github_token in resolved.credentials',
+        () async {
+      final adapter = CopilotProvider();
+      final health = await adapter.probe(
+        const ResolvedProvider(def: _copilotProvider, credentials: {}),
+      );
+      expect(health, ProviderHealth.missingCredential);
+    });
+
+    test('unauthorized when github→copilot exchange fails (e.g. revoked)',
+        () async {
+      final dir = _scratch();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final store = CredentialStore(
+        path: '${dir.path}/c.json',
+        env: const {},
+      );
+      // No cached copilot token, so freshCopilotToken() will hit the
+      // exchange endpoint — and we make it 401.
+      store.setFields(
+        'copilot',
+        {CopilotFields.githubToken: 'gho_revoked'},
+      );
+      final client = _RoutedHttp((req) {
+        if (req.url.toString().contains('copilot_internal/v2/token')) {
+          return _Handler((_) async => _json(401, {'message': 'no copilot'}));
+        }
+        return _Handler((_) async => http.StreamedResponse(
+              const Stream.empty(),
+              500,
+              headers: const {},
+            ));
+      });
+      final adapter = CopilotProvider(client: client, credentialStore: store);
+      final health = await adapter.probe(
+        const ResolvedProvider(
+          def: _copilotProvider,
+          credentials: {'github_token': 'gho_revoked'},
+        ),
+      );
+      expect(health, ProviderHealth.unauthorized);
+    });
+
+    test('ok when /models returns 200', () async {
+      final dir = _scratch();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final store = CredentialStore(
+        path: '${dir.path}/c.json',
+        env: const {},
+      );
+      // Pre-populate a fresh copilot token so probe() skips the exchange.
+      store.setFields('copilot', {
+        CopilotFields.githubToken: 'gho_valid',
+        CopilotFields.copilotToken: 'tid=fresh',
+        CopilotFields.expiresAt: DateTime.now()
+            .toUtc()
+            .add(const Duration(minutes: 20))
+            .toIso8601String(),
+      });
+      String? sentAuth;
+      Uri? captured;
+      final client = _RoutedHttp((req) {
+        captured = req.url;
+        sentAuth = req.headers['Authorization'];
+        return _Handler((_) async => _json(200, {'data': []}));
+      });
+      final adapter = CopilotProvider(client: client, credentialStore: store);
+      final health = await adapter.probe(
+        const ResolvedProvider(
+          def: _copilotProvider,
+          credentials: {'github_token': 'gho_valid'},
+        ),
+      );
+      expect(health, ProviderHealth.ok);
+      expect(sentAuth, 'Bearer tid=fresh');
+      expect(captured!.path, '/models');
     });
   });
 

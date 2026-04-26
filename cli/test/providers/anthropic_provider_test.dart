@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/catalog/model_catalog.dart';
@@ -6,7 +8,30 @@ import 'package:glue/src/llm/llm.dart';
 import 'package:glue/src/providers/anthropic_provider.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
 import 'package:glue/src/providers/resolved.dart';
+import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
+
+class _FakeHttp extends http.BaseClient {
+  _FakeHttp(this.handler);
+  final Future<http.StreamedResponse> Function(http.BaseRequest req) handler;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) =>
+      handler(request);
+}
+
+http.StreamedResponse _resp(int status, [Object body = const {}]) {
+  final bytes = utf8.encode(body is String ? body : jsonEncode(body));
+  return http.StreamedResponse(Stream<List<int>>.value(bytes), status);
+}
+
+const _anthropicProvider = ProviderDef(
+  id: 'anthropic',
+  name: 'Anthropic',
+  adapter: 'anthropic',
+  auth: AuthSpec(kind: AuthKind.apiKey, envVar: 'ANTHROPIC_API_KEY'),
+  models: {},
+);
 
 void main() {
   group('AnthropicProvider (adapter role)', () {
@@ -52,6 +77,71 @@ void main() {
         adapter.validate(const ResolvedProvider(def: provider, apiKey: 'sk')),
         ProviderHealth.ok,
       );
+    });
+
+    test('probe forwards x-api-key + version on 200 → ok', () async {
+      String? sentKey;
+      String? sentVersion;
+      Uri? captured;
+      final adapter = AnthropicProvider(
+        requestClientFactory: () => _FakeHttp((req) async {
+          captured = req.url;
+          sentKey = req.headers['x-api-key'];
+          sentVersion = req.headers['anthropic-version'];
+          return _resp(200, {'data': []});
+        }),
+      );
+      final health = await adapter.probe(
+        const ResolvedProvider(def: _anthropicProvider, apiKey: 'sk-good'),
+      );
+      expect(health, ProviderHealth.ok);
+      expect(sentKey, 'sk-good');
+      expect(sentVersion, '2023-06-01');
+      expect(captured!.path, '/v1/models');
+    });
+
+    test('probe 401 → unauthorized', () async {
+      final adapter = AnthropicProvider(
+        requestClientFactory: () => _FakeHttp((_) async => _resp(401)),
+      );
+      final health = await adapter.probe(
+        const ResolvedProvider(def: _anthropicProvider, apiKey: 'sk-bad'),
+      );
+      expect(health, ProviderHealth.unauthorized);
+    });
+
+    test('probe 500 → unreachable', () async {
+      final adapter = AnthropicProvider(
+        requestClientFactory: () => _FakeHttp((_) async => _resp(500)),
+      );
+      final health = await adapter.probe(
+        const ResolvedProvider(def: _anthropicProvider, apiKey: 'sk-x'),
+      );
+      expect(health, ProviderHealth.unreachable);
+    });
+
+    test('probe missing key → missingCredential without HTTP', () async {
+      final adapter = AnthropicProvider(
+        requestClientFactory: () => _FakeHttp((_) async {
+          fail('probe should not call HTTP without a key');
+        }),
+      );
+      final health = await adapter.probe(
+        const ResolvedProvider(def: _anthropicProvider, apiKey: null),
+      );
+      expect(health, ProviderHealth.missingCredential);
+    });
+
+    test('probe SocketException → unreachable', () async {
+      final adapter = AnthropicProvider(
+        requestClientFactory: () => _FakeHttp((_) async {
+          throw const SocketException('refused');
+        }),
+      );
+      final health = await adapter.probe(
+        const ResolvedProvider(def: _anthropicProvider, apiKey: 'sk-x'),
+      );
+      expect(health, ProviderHealth.unreachable);
     });
 
     test('createClient honors custom base URL from ProviderDef', () {

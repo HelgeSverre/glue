@@ -8,6 +8,7 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart';
@@ -45,6 +46,15 @@ class _CapturingClient implements http.Client {
 
   @override
   noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _ProbeClient extends http.BaseClient {
+  _ProbeClient(this.handler);
+  final Future<http.StreamedResponse> Function(http.BaseRequest req) handler;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) =>
+      handler(request);
 }
 
 Future<_CapturedRequest> _capture(
@@ -194,6 +204,111 @@ void main() {
         adapter.validate(_resolved(id: 'openai', apiKey: 'sk-x')),
         ProviderHealth.ok,
       );
+    });
+  });
+
+  group('OpenAiProvider.probe', () {
+    test('200 → ok and forwards Bearer + uses provider baseUrl', () async {
+      Uri? captured;
+      String? auth;
+      final adapter = OpenAiProvider(
+        requestClientFactory: () => _ProbeClient((req) async {
+          captured = req.url;
+          auth = req.headers['Authorization'];
+          return http.StreamedResponse(
+            Stream.value(utf8.encode('{"data":[]}')),
+            200,
+          );
+        }),
+      );
+      final health = await adapter.probe(
+        _resolved(
+          id: 'mistral',
+          baseUrl: 'https://api.mistral.ai/v1',
+          apiKey: 'sk-mistral',
+        ),
+      );
+      expect(health, ProviderHealth.ok);
+      expect(captured!.host, 'api.mistral.ai');
+      expect(captured!.path, '/v1/models');
+      expect(auth, 'Bearer sk-mistral');
+    });
+
+    test('401 → unauthorized', () async {
+      final adapter = OpenAiProvider(
+        requestClientFactory: () => _ProbeClient(
+          (_) async => http.StreamedResponse(
+            const Stream<List<int>>.empty(),
+            401,
+          ),
+        ),
+      );
+      final health = await adapter.probe(_resolved(id: 'openai', apiKey: 'x'));
+      expect(health, ProviderHealth.unauthorized);
+    });
+
+    test('500 → unreachable', () async {
+      final adapter = OpenAiProvider(
+        requestClientFactory: () => _ProbeClient(
+          (_) async => http.StreamedResponse(
+            const Stream<List<int>>.empty(),
+            500,
+          ),
+        ),
+      );
+      final health = await adapter.probe(_resolved(id: 'openai', apiKey: 'x'));
+      expect(health, ProviderHealth.unreachable);
+    });
+
+    test('AuthKind.none probes without auth header (200 → ok)', () async {
+      String? auth;
+      final adapter = OpenAiProvider(
+        requestClientFactory: () => _ProbeClient((req) async {
+          auth = req.headers['Authorization'];
+          return http.StreamedResponse(
+            Stream.value(utf8.encode('{"data":[]}')),
+            200,
+          );
+        }),
+      );
+      final health = await adapter.probe(
+        _resolved(id: 'localvllm', authKind: AuthKind.none),
+      );
+      expect(health, ProviderHealth.ok);
+      expect(auth, isNull,
+          reason: 'no-auth providers must not send Authorization header');
+    });
+
+    test('AuthKind.none ⇒ unreachable when server is down', () async {
+      final adapter = OpenAiProvider(
+        requestClientFactory: () => _ProbeClient((_) async {
+          throw const SocketException('refused');
+        }),
+      );
+      final health = await adapter.probe(
+        _resolved(id: 'localvllm', authKind: AuthKind.none),
+      );
+      expect(health, ProviderHealth.unreachable);
+    });
+
+    test('missing key → missingCredential without HTTP', () async {
+      final adapter = OpenAiProvider(
+        requestClientFactory: () => _ProbeClient((_) async {
+          fail('probe should not call HTTP without a key');
+        }),
+      );
+      final health = await adapter.probe(_resolved(id: 'openai'));
+      expect(health, ProviderHealth.missingCredential);
+    });
+
+    test('SocketException → unreachable', () async {
+      final adapter = OpenAiProvider(
+        requestClientFactory: () => _ProbeClient((_) async {
+          throw const SocketException('refused');
+        }),
+      );
+      final health = await adapter.probe(_resolved(id: 'openai', apiKey: 'x'));
+      expect(health, ProviderHealth.unreachable);
     });
   });
 

@@ -58,6 +58,33 @@ void main() {
       final r = ResolvedProvider(def: p, apiKey: null);
       expect(r.compatibility, 'groq');
     });
+
+    test('withApiKey overlays apiKey AND syncs credentials.api_key', () {
+      final p = _provider(adapter: 'openai');
+      final original = ResolvedProvider(
+        def: p,
+        apiKey: 'old-key',
+        credentials: const {'api_key': 'old-key', 'extra': 'preserved'},
+      );
+      final updated = original.withApiKey('new-key');
+      expect(updated.apiKey, 'new-key');
+      expect(updated.credentials['api_key'], 'new-key',
+          reason: 'credentials map should be in sync with apiKey');
+      expect(updated.credentials['extra'], 'preserved',
+          reason: 'unrelated credential fields must survive the overlay');
+    });
+
+    test('withApiKey(null) clears both apiKey and credentials.api_key', () {
+      final p = _provider(adapter: 'openai');
+      final original = ResolvedProvider(
+        def: p,
+        apiKey: 'old',
+        credentials: const {'api_key': 'old'},
+      );
+      final cleared = original.withApiKey(null);
+      expect(cleared.apiKey, isNull);
+      expect(cleared.credentials.containsKey('api_key'), isFalse);
+    });
   });
 
   group('AdapterRegistry', () {

@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:glue/src/agent/agent.dart';
 import 'package:glue/src/agent/tools.dart';
@@ -8,7 +10,30 @@ import 'package:glue/src/llm/tool_schema.dart';
 import 'package:glue/src/providers/gemini_provider.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
 import 'package:glue/src/providers/resolved.dart';
+import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
+
+class _FakeHttp extends http.BaseClient {
+  _FakeHttp(this.handler);
+  final Future<http.StreamedResponse> Function(http.BaseRequest req) handler;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) =>
+      handler(request);
+}
+
+http.StreamedResponse _resp(int status, [Object body = const {}]) {
+  final bytes = utf8.encode(body is String ? body : jsonEncode(body));
+  return http.StreamedResponse(Stream<List<int>>.value(bytes), status);
+}
+
+const _geminiProvider = ProviderDef(
+  id: 'gemini',
+  name: 'Google Gemini',
+  adapter: 'gemini',
+  auth: AuthSpec(kind: AuthKind.apiKey, envVar: 'GEMINI_API_KEY'),
+  models: {},
+);
 
 void main() {
   group('GeminiProvider (adapter role)', () {
@@ -42,25 +67,124 @@ void main() {
 
     test('validate returns missingCredential when apiKey is null/empty', () {
       final adapter = GeminiProvider();
-      const provider = ProviderDef(
-        id: 'gemini',
-        name: 'Google Gemini',
-        adapter: 'gemini',
-        auth: AuthSpec(kind: AuthKind.apiKey, envVar: 'GEMINI_API_KEY'),
-        models: {},
-      );
       expect(
-        adapter.validate(const ResolvedProvider(def: provider, apiKey: null)),
+        adapter.validate(
+          const ResolvedProvider(def: _geminiProvider, apiKey: null),
+        ),
         ProviderHealth.missingCredential,
       );
       expect(
-        adapter.validate(const ResolvedProvider(def: provider, apiKey: '')),
+        adapter.validate(
+          const ResolvedProvider(def: _geminiProvider, apiKey: ''),
+        ),
         ProviderHealth.missingCredential,
       );
       expect(
-        adapter.validate(const ResolvedProvider(def: provider, apiKey: 'sk')),
+        adapter.validate(
+          const ResolvedProvider(def: _geminiProvider, apiKey: 'sk'),
+        ),
         ProviderHealth.ok,
       );
+    });
+  });
+
+  group('GeminiProvider.probe', () {
+    test('returns missingCredential when apiKey is empty', () async {
+      final adapter = GeminiProvider(
+        requestClientFactory: () => _FakeHttp((_) async {
+          fail('probe should not call HTTP without a key');
+        }),
+      );
+      final health = await adapter.probe(
+        const ResolvedProvider(def: _geminiProvider, apiKey: ''),
+      );
+      expect(health, ProviderHealth.missingCredential);
+    });
+
+    test('200 → ok and forwards x-goog-api-key', () async {
+      String? sentKey;
+      Uri? captured;
+      final adapter = GeminiProvider(
+        requestClientFactory: () => _FakeHttp((req) async {
+          captured = req.url;
+          sentKey = req.headers['x-goog-api-key'];
+          return _resp(200, {'models': []});
+        }),
+      );
+      final health = await adapter.probe(
+        const ResolvedProvider(def: _geminiProvider, apiKey: 'sk-good'),
+      );
+      expect(health, ProviderHealth.ok);
+      expect(sentKey, 'sk-good');
+      expect(captured!.path, '/v1beta/models');
+    });
+
+    test('400 with API_KEY_INVALID → unauthorized', () async {
+      final adapter = GeminiProvider(
+        requestClientFactory: () => _FakeHttp((_) async {
+          return _resp(400, {
+            'error': {
+              'code': 400,
+              'message': 'API key not valid.',
+              'status': 'INVALID_ARGUMENT',
+              'details': [
+                {'reason': 'API_KEY_INVALID'}
+              ],
+            }
+          });
+        }),
+      );
+      final health = await adapter.probe(
+        const ResolvedProvider(def: _geminiProvider, apiKey: 'sk-bad'),
+      );
+      expect(health, ProviderHealth.unauthorized);
+    });
+
+    test('401 → unauthorized', () async {
+      final adapter = GeminiProvider(
+        requestClientFactory: () => _FakeHttp((_) async => _resp(401)),
+      );
+      final health = await adapter.probe(
+        const ResolvedProvider(def: _geminiProvider, apiKey: 'sk-bad'),
+      );
+      expect(health, ProviderHealth.unauthorized);
+    });
+
+    test('400 without API_KEY_INVALID reason → unreachable', () async {
+      // 400 with some other reason (e.g. malformed request from us). Don't
+      // accuse the user of having a bad key when the server's complaint
+      // could be on our side.
+      final adapter = GeminiProvider(
+        requestClientFactory: () => _FakeHttp((_) async => _resp(400, {
+              'error': {'message': 'something else'}
+            })),
+      );
+      final health = await adapter.probe(
+        const ResolvedProvider(def: _geminiProvider, apiKey: 'sk-x'),
+      );
+      expect(health, ProviderHealth.unreachable);
+    });
+
+    test('SocketException → unreachable', () async {
+      final adapter = GeminiProvider(
+        requestClientFactory: () => _FakeHttp((_) async {
+          throw const SocketException('refused');
+        }),
+      );
+      final health = await adapter.probe(
+        const ResolvedProvider(def: _geminiProvider, apiKey: 'sk-x'),
+      );
+      expect(health, ProviderHealth.unreachable);
+    });
+
+    test('500 → unreachable', () async {
+      final adapter = GeminiProvider(
+        requestClientFactory: () => _FakeHttp((_) async => _resp(500)),
+      );
+      final health = await adapter.probe(
+        const ResolvedProvider(def: _geminiProvider, apiKey: 'sk-x'),
+      );
+      expect(health, ProviderHealth.unreachable);
     });
   });
 
@@ -82,8 +206,7 @@ void main() {
 
     test('uppercases nested array item types', () {
       final encoded = const GeminiToolEncoder().encodeAll([_ArrayTool()]);
-      final decl =
-          (encoded.first['functionDeclarations'] as List).first as Map;
+      final decl = (encoded.first['functionDeclarations'] as List).first as Map;
       final params = decl['parameters'] as Map<String, dynamic>;
       final props = params['properties'] as Map<String, dynamic>;
       final tagsSchema = props['tags'] as Map;

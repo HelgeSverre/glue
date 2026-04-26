@@ -1,4 +1,5 @@
-import 'package:glue/src/runtime/app_mode.dart';
+import 'dart:developer' as developer;
+
 import 'package:glue/src/commands/slash_autocomplete.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/config/approval_mode.dart';
@@ -8,6 +9,7 @@ import 'package:glue/src/input/line_editor.dart' show InputAction;
 import 'package:glue/src/input/streaming_input_handler.dart';
 import 'package:glue/src/input/text_area_editor.dart';
 import 'package:glue/src/runtime/app_events.dart';
+import 'package:glue/src/runtime/app_mode.dart';
 import 'package:glue/src/runtime/transcript.dart';
 import 'package:glue/src/shell/bash_mode.dart';
 import 'package:glue/src/shell/shell_autocomplete.dart';
@@ -76,6 +78,9 @@ class InputRouter {
   DateTime? _lastCtrlC;
 
   void handle(TerminalEvent event) {
+    developer.log('InputRouter received event: $event', name: 'InputRouter');
+    developer.inspect(event);
+
     switch (event) {
       case CharEvent() || KeyEvent():
         if (panels.isNotEmpty && !panels.last.isComplete) {
