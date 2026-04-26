@@ -29,8 +29,8 @@ custom `import_lint` rules) get most of the way. The cost is multiple
 `pubspec.yaml` files per concern, which is not Glue's current shape.
 
 **Glue applicability.** Probably overkill at current size. The
-*principle* — make architectural drift fail loudly — is worth keeping.
-The *mechanism* (split into seven packages) is not.
+_principle_ — make architectural drift fail loudly — is worth keeping.
+The _mechanism_ (split into seven packages) is not.
 
 ## 2. Prefer boring, agent-legible technology
 
@@ -44,8 +44,9 @@ serialization. None of these are exciting; all of them are unambiguous
 to an LLM.
 
 **Glue applicability.** Already aligned. Dart's std lib + `package:args`
-+ `package:logging` are the boring, well-documented stack. Don't
-introduce niche packages without a reason agents can read off the code.
+
+- `package:logging` are the boring, well-documented stack. Don't
+  introduce niche packages without a reason agents can read off the code.
 
 ## 3. Forward-only dependencies
 
@@ -54,7 +55,7 @@ The dependency graph flows in one direction. Cross-cutting concerns
 imports. An agent working in the inner layers never has to understand
 the outer-layer details.
 
-The reasoning: an agent's effective context is the *transitive closure*
+The reasoning: an agent's effective context is the _transitive closure_
 of types it touches. If `usecases` imports a concrete PTY type, every
 agent task that touches usecases now needs to understand PTYs.
 Forward-only dependencies bound the context required for any one task.
@@ -72,13 +73,13 @@ daemon processes.
 
 agent-tui's port set is small and stable:
 
-| Port                | Owns                                    |
-| ------------------- | --------------------------------------- |
-| `SessionRepository` | Spawn, get, list, kill sessions         |
-| `SessionOps`        | Per-session: read screen, send input    |
-| `Clock`             | `now()` and `elapsed()` — for waits     |
-| `ShutdownNotifier`  | Daemon shutdown signal                  |
-| `TerminalEngine`    | VT emulation behind a trait             |
+| Port                | Owns                                 |
+| ------------------- | ------------------------------------ |
+| `SessionRepository` | Spawn, get, list, kill sessions      |
+| `SessionOps`        | Per-session: read screen, send input |
+| `Clock`             | `now()` and `elapsed()` — for waits  |
+| `ShutdownNotifier`  | Daemon shutdown signal               |
+| `TerminalEngine`    | VT emulation behind a trait          |
 
 **Dart equivalent.** Abstract classes with concrete implementations.
 Glue already does this in places (`ShellRunner`, `ApiClient`); the

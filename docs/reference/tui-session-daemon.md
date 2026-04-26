@@ -13,10 +13,10 @@ agent return to a still-running thing instead of re-spawning.
 
 ## Process types
 
-| Process            | Role                                                                          |
-| ------------------ | ----------------------------------------------------------------------------- |
-| `agent-tui daemon` | Long-running session manager + HTTP/WS server + embedded UI                   |
-| `agent-tui <cmd>`  | One-shot client; connects, sends one JSON-RPC call, prints result, exits      |
+| Process            | Role                                                                         |
+| ------------------ | ---------------------------------------------------------------------------- |
+| `agent-tui daemon` | Long-running session manager + HTTP/WS server + embedded UI                  |
+| `agent-tui <cmd>`  | One-shot client; connects, sends one JSON-RPC call, prints result, exits     |
 | Bun web UI         | Optional standalone web server when you want the UI separate from the daemon |
 
 The daemon is plain enough to run under `systemd` or in a Procfile —
@@ -27,9 +27,9 @@ agent-tui ships an example unit file in `docs/ops/process-model.md`.
 The daemon speaks JSON-RPC 2.0 line-delimited messages, and clients can
 reach it two ways:
 
-| Transport | Selected via                                       | When to use                          |
-| --------- | -------------------------------------------------- | ------------------------------------ |
-| Unix      | default; `AGENT_TUI_TRANSPORT=unix`                | Local CLI ↔ local daemon             |
+| Transport | Selected via                                         | When to use                              |
+| --------- | ---------------------------------------------------- | ---------------------------------------- |
+| Unix      | default; `AGENT_TUI_TRANSPORT=unix`                  | Local CLI ↔ local daemon                 |
 | WebSocket | `AGENT_TUI_TRANSPORT=ws`, `AGENT_TUI_WS_ADDR=ws://…` | Remote client, browser, container ↔ host |
 
 Same JSON-RPC envelopes go over both. The transport layer is a thin
@@ -132,27 +132,27 @@ polling — see `wait-conditions.md`.
 
 ## Configuration surface
 
-| Env var                          | Purpose                                              | Default                         |
-| -------------------------------- | ---------------------------------------------------- | ------------------------------- |
-| `AGENT_TUI_SOCKET`               | Unix socket path                                     | `$XDG_RUNTIME_DIR/agent-tui.sock` |
-| `AGENT_TUI_TRANSPORT`            | `unix` or `ws`                                       | `unix`                          |
-| `AGENT_TUI_WS_ADDR`              | Remote WS URL (client side, when transport is `ws`)  | —                               |
-| `AGENT_TUI_WS_LISTEN`            | Daemon WS bind address                               | `127.0.0.1:0`                   |
-| `AGENT_TUI_WS_ALLOW_REMOTE`      | Permit non-loopback bind                             | `false`                         |
-| `AGENT_TUI_WS_STATE`             | WS state file location                               | `~/.agent-tui/api.json`         |
-| `AGENT_TUI_WS_DISABLED`          | Skip starting the WS server                          | `false`                         |
-| `AGENT_TUI_WS_MAX_CONNECTIONS`   | Cap on concurrent WS clients                         | `32`                            |
-| `AGENT_TUI_SESSION_STORE`        | Session metadata log path                            | `~/.agent-tui/sessions.jsonl`   |
-| `AGENT_TUI_DETACH_KEYS`          | Sequence to detach from `attach` mode                | `Ctrl-P Ctrl-Q`                 |
+| Env var                        | Purpose                                             | Default                           |
+| ------------------------------ | --------------------------------------------------- | --------------------------------- |
+| `AGENT_TUI_SOCKET`             | Unix socket path                                    | `$XDG_RUNTIME_DIR/agent-tui.sock` |
+| `AGENT_TUI_TRANSPORT`          | `unix` or `ws`                                      | `unix`                            |
+| `AGENT_TUI_WS_ADDR`            | Remote WS URL (client side, when transport is `ws`) | —                                 |
+| `AGENT_TUI_WS_LISTEN`          | Daemon WS bind address                              | `127.0.0.1:0`                     |
+| `AGENT_TUI_WS_ALLOW_REMOTE`    | Permit non-loopback bind                            | `false`                           |
+| `AGENT_TUI_WS_STATE`           | WS state file location                              | `~/.agent-tui/api.json`           |
+| `AGENT_TUI_WS_DISABLED`        | Skip starting the WS server                         | `false`                           |
+| `AGENT_TUI_WS_MAX_CONNECTIONS` | Cap on concurrent WS clients                        | `32`                              |
+| `AGENT_TUI_SESSION_STORE`      | Session metadata log path                           | `~/.agent-tui/sessions.jsonl`     |
+| `AGENT_TUI_DETACH_KEYS`        | Sequence to detach from `attach` mode               | `Ctrl-P Ctrl-Q`                   |
 
 ## Where this lives in agent-tui
 
-| Concern                | File                                                                  |
-| ---------------------- | --------------------------------------------------------------------- |
-| Daemon runtime         | `cli/crates/agent-tui-infra/src/infra/daemon/session.rs` (2.4k LOC)   |
-| Repository facade      | `cli/crates/agent-tui-infra/src/infra/daemon/repository.rs`           |
-| Unix transport         | `cli/crates/agent-tui-infra/src/infra/ipc/transport.rs`               |
-| Auto-start logic       | same — `start_daemon_background_impl()` plus the reaper pattern        |
-| Process polling        | `cli/crates/agent-tui-infra/src/infra/ipc/polling.rs`                 |
-| Persistence            | `cli/crates/agent-tui-infra/src/infra/daemon/repository.rs`           |
-| Process model docs     | `docs/ops/process-model.md`                                           |
+| Concern            | File                                                                |
+| ------------------ | ------------------------------------------------------------------- |
+| Daemon runtime     | `cli/crates/agent-tui-infra/src/infra/daemon/session.rs` (2.4k LOC) |
+| Repository facade  | `cli/crates/agent-tui-infra/src/infra/daemon/repository.rs`         |
+| Unix transport     | `cli/crates/agent-tui-infra/src/infra/ipc/transport.rs`             |
+| Auto-start logic   | same — `start_daemon_background_impl()` plus the reaper pattern     |
+| Process polling    | `cli/crates/agent-tui-infra/src/infra/ipc/polling.rs`               |
+| Persistence        | `cli/crates/agent-tui-infra/src/infra/daemon/repository.rs`         |
+| Process model docs | `docs/ops/process-model.md`                                         |

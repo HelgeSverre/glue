@@ -21,11 +21,13 @@ into a result, gets formatted out. Errors at any layer propagate
 back through the same chain.
 
 What this isn't:
+
 - Hexagonal architecture (no port/adapter abstraction unless needed).
 - Onion architecture (no domain/infrastructure rings).
 - MVC (no controller).
 
 It's the smallest split that lets you test each piece in isolation:
+
 - Test input parsing without doing real work.
 - Test execution with a fake config struct.
 - Test output rendering against a known result.
@@ -33,7 +35,7 @@ It's the smallest split that lets you test each piece in isolation:
 ## Why three is the right number
 
 The post's argument is YAGNI applied to CLI scaffolding. A CLI
-*always* has these three responsibilities. It *might* have:
+_always_ has these three responsibilities. It _might_ have:
 
 - A persistent config file (only matters if there's user state).
 - A subcommand router (only matters if there's more than one verb).
@@ -66,7 +68,7 @@ Three things this gets right:
 
 1. **`main()` does no work.** It can't, because it returns nothing
    useful and can't be tested. Move every line of logic into a
-   function that *can* be tested.
+   function that _can_ be tested.
 2. **`Run()` returns `int`, not `error`.** The integer is the exit
    code. Returning `error` would force `main()` to translate, which
    is exactly the layering violation we're trying to avoid.
@@ -95,11 +97,11 @@ boundary that returns an `int`.
 The convention the post recommends, which is older than Go and
 almost universal in Unix CLI tooling:
 
-| Code | Meaning                                       | Examples                                          |
-| ---- | --------------------------------------------- | ------------------------------------------------- |
-| 0    | Success                                       | Command ran, produced expected output             |
-| 1    | Runtime error                                 | API call failed, file not found, network timeout  |
-| 2    | Initialization / argument error               | Bad flag, missing required value, validation fail |
+| Code | Meaning                         | Examples                                          |
+| ---- | ------------------------------- | ------------------------------------------------- |
+| 0    | Success                         | Command ran, produced expected output             |
+| 1    | Runtime error                   | API call failed, file not found, network timeout  |
+| 2    | Initialization / argument error | Bad flag, missing required value, validation fail |
 
 What this enables in shell scripts:
 
@@ -135,7 +137,7 @@ Glue's CLI lives in `cli/bin/main.dart` (or equivalent). The
 audit:
 
 1. **Is `main()` a single line that delegates?** If it loads
-   config, sets up logging, parses argv, and *then* calls a
+   config, sets up logging, parses argv, and _then_ calls a
    function — pull all of that into the called function. The post's
    point is that everything except `exit()` should be testable.
 2. **Does Glue distinguish exit code 1 from 2?** Test cases:
@@ -154,8 +156,8 @@ audit:
      model's response, token counts, finish reason).
    - **Output**: take `RunResult` → render to stdout (human format,
      `--json`, or whatever).
-   The TUI mode is just a different output layer fed by the same
-   execution path with `RunConfig.interactive = true`.
+     The TUI mode is just a different output layer fed by the same
+     execution path with `RunConfig.interactive = true`.
 
 If any of these don't hold today, the file changes are mechanical:
 move code into `GlueCli.run()`, split `RunConfig` from its parsing,
@@ -163,9 +165,9 @@ split rendering from execution. None of this requires a redesign.
 
 ## Where this lives in the source
 
-| Pattern                              | Location in the post                                                |
-| ------------------------------------ | ------------------------------------------------------------------- |
-| Three-layer model                    | § "Core Architectural Principle (Three Essential Layers)"           |
-| Single-line `main()`                 | § "The Single-Line Main Function" (credited to Nate Finch)          |
-| Exit code triad (0 / 1 / 2)          | § "User Input Layer: Flag Parsing"                                  |
-| YAGNI for additional layers          | § "Introduction & Context"                                          |
+| Pattern                     | Location in the post                                       |
+| --------------------------- | ---------------------------------------------------------- |
+| Three-layer model           | § "Core Architectural Principle (Three Essential Layers)"  |
+| Single-line `main()`        | § "The Single-Line Main Function" (credited to Nate Finch) |
+| Exit code triad (0 / 1 / 2) | § "User Input Layer: Flag Parsing"                         |
+| YAGNI for additional layers | § "Introduction & Context"                                 |

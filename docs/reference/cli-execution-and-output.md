@@ -19,7 +19,7 @@ func NewXKCDClient() *XKCDClient { ... }
 func (c *XKCDClient) Fetch(n ComicNumber) (model.Comic, error) { ... }
 ```
 
-This *looks* like good encapsulation — domain-named type, hidden
+This _looks_ like good encapsulation — domain-named type, hidden
 HTTP details, methods that speak the domain's vocabulary. The
 post's argument is that it's the wrong abstraction:
 
@@ -53,7 +53,7 @@ Two pieces:
    URL and any decoding target. It works for XKCD, but it'd also
    work for the JSON Placeholder API, GitHub, Anthropic — anything
    that returns JSON over HTTP. The reusability comes from
-   *reducing* what's in the type, not adding to it.
+   _reducing_ what's in the type, not adding to it.
 
 The customization that the wrapper type was supposed to enable
 (testing, retries, base-URL overrides) lives on the `http.Client`
@@ -94,7 +94,7 @@ The reasoning is timing, not capability:
   splitting them after they've been unified for six months is
   re-deriving which call site needed which behavior.
 - Machine output and human output have different audiences. Their
-  *shape requirements diverge over time*. Building toward that
+  _shape requirements diverge over time_. Building toward that
   divergence from day one is cheap; retrofitting it isn't.
 
 The same logic applies to any pair of "output adapters" that
@@ -122,7 +122,7 @@ size it becomes a deletion target.
 What you can't do once `check()` is sprinkled through the code:
 
 - Translate one error into a warning: `couldn't find optional
-  config file → continue with defaults`.
+config file → continue with defaults`.
 - Retry an operation that the user might have transient-failed.
 - Aggregate multiple errors and report them all at once.
 - Add structured logging that captures the error before exiting.
@@ -136,13 +136,13 @@ ask for. Once `check()` is the failure path, every one of them is
 
 The Dart equivalents to watch for:
 
-| Dart shortcut         | What's wrong with it                              |
-| --------------------- | ------------------------------------------------- |
-| `result!`             | Throws on null with no caller-friendly message    |
-| `?? throw "..."`      | Same problem, slightly better message             |
-| `assert()`            | Removed in production builds — silent failure      |
-| `exit(1)` mid-call    | No deferred cleanup, no test isolation             |
-| `.then(... .catchError((_) => exit(1)))` | Same issue, futurized |
+| Dart shortcut                            | What's wrong with it                           |
+| ---------------------------------------- | ---------------------------------------------- |
+| `result!`                                | Throws on null with no caller-friendly message |
+| `?? throw "..."`                         | Same problem, slightly better message          |
+| `assert()`                               | Removed in production builds — silent failure  |
+| `exit(1)` mid-call                       | No deferred cleanup, no test isolation         |
+| `.then(... .catchError((_) => exit(1)))` | Same issue, futurized                          |
 
 The post's preferred shape is `return err` everywhere, then a
 single `if err != nil { return 1 }` at the top of `CLI()`. In Dart
@@ -192,11 +192,11 @@ The post's three execution-layer ideas, projected onto Glue:
    - `--json` machine output (if it exists; if not, it'll be
      asked for soon).
    - Error output to stderr.
-   Each is a separate output adapter consuming the same
-   `RunResult`. They should not share rendering code beyond
-   pure formatting helpers (e.g. a `formatDuration(d)` is
-   fine to share; a `RunResult.toString()` that all three call
-   is the trap the post warns about).
+     Each is a separate output adapter consuming the same
+     `RunResult`. They should not share rendering code beyond
+     pure formatting helpers (e.g. a `formatDuration(d)` is
+     fine to share; a `RunResult.toString()` that all three call
+     is the trap the post warns about).
 3. **Look for `check()`-equivalents in Glue's tool layer.** Tool
    call execution is the most likely place — a `ShellTool` that
    throws on `exitCode != 0` instead of returning the
@@ -213,10 +213,10 @@ The post's three execution-layer ideas, projected onto Glue:
 
 ## Where this lives in the source
 
-| Pattern                                            | Location in the post                                  |
-| -------------------------------------------------- | ----------------------------------------------------- |
-| `BuildURL` + `fetchJSON` over `XKCDClient`         | § "Actual Task Execution"                             |
-| Customizing via `http.Client.Transport`            | same — credited to Mat Ryer's dependency-injection style |
-| `printJSON` vs `prettyPrint` separation            | § "Output Formatting"                                 |
-| The `check()` anti-pattern                         | § "Problems with Existing Patterns" — error handling  |
-| Why "the rewrite was the same line count"          | § "Public API Summary"                                |
+| Pattern                                    | Location in the post                                     |
+| ------------------------------------------ | -------------------------------------------------------- |
+| `BuildURL` + `fetchJSON` over `XKCDClient` | § "Actual Task Execution"                                |
+| Customizing via `http.Client.Transport`    | same — credited to Mat Ryer's dependency-injection style |
+| `printJSON` vs `prettyPrint` separation    | § "Output Formatting"                                    |
+| The `check()` anti-pattern                 | § "Problems with Existing Patterns" — error handling     |
+| Why "the rewrite was the same line count"  | § "Public API Summary"                                   |

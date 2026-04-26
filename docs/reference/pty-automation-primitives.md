@@ -6,18 +6,18 @@ want for a `tui_run` tool.
 
 ## The verb set
 
-| Verb           | What it does                                                              |
-| -------------- | ------------------------------------------------------------------------- |
-| `spawn`        | Start a command under a PTY at a given size; return `{ session_id, pid }` |
-| `screenshot`   | Capture the current screen as plain text + cursor + (optional) styled     |
-| `type`         | Write a literal UTF-8 string to the PTY                                   |
-| `press`        | Send one named key (`Enter`, `Ctrl+C`, `ArrowDown`, …)                    |
-| `keydown`      | Hold a modifier key down                                                  |
-| `keyup`        | Release a modifier key                                                    |
-| `wait`         | Block until a screen condition holds or a timeout elapses                 |
-| `resize`       | Change the PTY size (rows/cols)                                           |
-| `kill`         | Terminate the session and its process group                               |
-| `restart`      | Kill + re-spawn with the original launch spec; new `session_id`           |
+| Verb         | What it does                                                              |
+| ------------ | ------------------------------------------------------------------------- |
+| `spawn`      | Start a command under a PTY at a given size; return `{ session_id, pid }` |
+| `screenshot` | Capture the current screen as plain text + cursor + (optional) styled     |
+| `type`       | Write a literal UTF-8 string to the PTY                                   |
+| `press`      | Send one named key (`Enter`, `Ctrl+C`, `ArrowDown`, …)                    |
+| `keydown`    | Hold a modifier key down                                                  |
+| `keyup`      | Release a modifier key                                                    |
+| `wait`       | Block until a screen condition holds or a timeout elapses                 |
+| `resize`     | Change the PTY size (rows/cols)                                           |
+| `kill`       | Terminate the session and its process group                               |
+| `restart`    | Kill + re-spawn with the original launch spec; new `session_id`           |
 
 That's the entire surface area an agent needs to drive almost any TUI.
 
@@ -79,26 +79,26 @@ agent-tui maps human-readable key names to the byte sequences that real
 terminals send. The full mapping table from
 `cli/crates/agent-tui-infra/src/infra/terminal/pty.rs::key_to_escape_sequence`:
 
-| Key            | Bytes                  |
-| -------------- | ---------------------- |
-| `Enter`        | `\r`                   |
-| `Tab`          | `\t`                   |
-| `Escape`       | `\x1b`                 |
-| `Backspace`    | `\x7f`                 |
-| `Delete`       | `\x1b[3~`              |
-| `Space`        | `\x20`                 |
-| `ArrowUp`      | `\x1b[A`               |
-| `ArrowDown`    | `\x1b[B`               |
-| `ArrowRight`   | `\x1b[C`               |
-| `ArrowLeft`    | `\x1b[D`               |
-| `Home`         | `\x1b[H`               |
-| `End`          | `\x1b[F`               |
-| `PageUp`       | `\x1b[5~`              |
-| `PageDown`     | `\x1b[6~`              |
-| `Insert`       | `\x1b[2~`              |
-| `F1`–`F4`      | `\x1bO{P,Q,R,S}`       |
-| `F5`–`F12`     | `\x1b[{15..24}~`       |
-| `Shift+Tab`    | `\x1b[Z`               |
+| Key          | Bytes            |
+| ------------ | ---------------- |
+| `Enter`      | `\r`             |
+| `Tab`        | `\t`             |
+| `Escape`     | `\x1b`           |
+| `Backspace`  | `\x7f`           |
+| `Delete`     | `\x1b[3~`        |
+| `Space`      | `\x20`           |
+| `ArrowUp`    | `\x1b[A`         |
+| `ArrowDown`  | `\x1b[B`         |
+| `ArrowRight` | `\x1b[C`         |
+| `ArrowLeft`  | `\x1b[D`         |
+| `Home`       | `\x1b[H`         |
+| `End`        | `\x1b[F`         |
+| `PageUp`     | `\x1b[5~`        |
+| `PageDown`   | `\x1b[6~`        |
+| `Insert`     | `\x1b[2~`        |
+| `F1`–`F4`    | `\x1bO{P,Q,R,S}` |
+| `F5`–`F12`   | `\x1b[{15..24}~` |
+| `Shift+Tab`  | `\x1b[Z`         |
 
 ### Modifiers
 
@@ -131,8 +131,8 @@ distinction in its tool surface.
 
 agent-tui doesn't store the raw bytes the program emitted — it runs them
 through a real terminal emulator and reads back the resulting screen
-state. That makes the captured "screenshot" what a human would *see*,
-not what was *written*.
+state. That makes the captured "screenshot" what a human would _see_,
+not what was _written_.
 
 The emulator is `tattoy-wezterm-term` (the wezterm-derived VT crate).
 Each session owns a `VirtualTerminal` of fixed `(rows, cols)` plus a
@@ -142,11 +142,11 @@ underline / inverse, and Unicode width handling all come for free.
 
 The capture API has three flavors:
 
-| Method                  | What you get                                                   |
-| ----------------------- | -------------------------------------------------------------- |
-| `screen_text()`         | Plain text, trailing whitespace per row trimmed, no styling    |
-| `screen_render()`       | Same content, but with ANSI escapes for colors/styles re-emitted |
-| `screen_render_compact()` | Compacted styled output (whitespace runs collapsed)          |
+| Method                    | What you get                                                     |
+| ------------------------- | ---------------------------------------------------------------- |
+| `screen_text()`           | Plain text, trailing whitespace per row trimmed, no styling      |
+| `screen_render()`         | Same content, but with ANSI escapes for colors/styles re-emitted |
+| `screen_render_compact()` | Compacted styled output (whitespace runs collapsed)              |
 
 The `screen_text()` format is what an LLM should see by default — it's
 the smallest payload that preserves layout. The styled variants are for
@@ -195,10 +195,10 @@ work.
 
 ## Where this lives in agent-tui
 
-| Concern                    | File                                                                |
-| -------------------------- | ------------------------------------------------------------------- |
-| PTY spawn / read / kill    | `cli/crates/agent-tui-infra/src/infra/terminal/pty.rs`              |
-| Virtual terminal           | `cli/crates/agent-tui-infra/src/infra/terminal/vterm.rs`            |
-| Screen rendering / trim    | `cli/crates/agent-tui-infra/src/infra/terminal/render.rs`           |
-| Modifier handling          | `cli/crates/agent-tui-infra/src/infra/daemon/session.rs` (`ModifierState`) |
-| Use-case orchestration     | `cli/crates/agent-tui-usecases/src/usecases/{snapshot,input,wait}.rs` |
+| Concern                 | File                                                                       |
+| ----------------------- | -------------------------------------------------------------------------- |
+| PTY spawn / read / kill | `cli/crates/agent-tui-infra/src/infra/terminal/pty.rs`                     |
+| Virtual terminal        | `cli/crates/agent-tui-infra/src/infra/terminal/vterm.rs`                   |
+| Screen rendering / trim | `cli/crates/agent-tui-infra/src/infra/terminal/render.rs`                  |
+| Modifier handling       | `cli/crates/agent-tui-infra/src/infra/daemon/session.rs` (`ModifierState`) |
+| Use-case orchestration  | `cli/crates/agent-tui-usecases/src/usecases/{snapshot,input,wait}.rs`      |

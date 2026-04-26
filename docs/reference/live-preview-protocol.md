@@ -162,10 +162,10 @@ reconnect, or surface to the user.
 
 ## Where this lives in agent-tui
 
-| Concern                        | File                                                       |
-| ------------------------------ | ---------------------------------------------------------- |
-| HTTP/WS server                 | `cli/crates/agent-tui-app/src/...` (axum)                  |
-| Live preview RPC               | `cli/crates/agent-tui-adapters/src/adapters/rpc/...`       |
-| Token + URL state file         | `~/.agent-tui/api.json` (path via `AGENT_TUI_WS_STATE`)    |
-| Embedded UI                    | `web/src/` (Bun + xterm.js), built and embedded at compile |
-| OpenAPI / AsyncAPI specs       | `docs/api/openapi.yaml`, `docs/api/asyncapi.yaml`          |
+| Concern                  | File                                                       |
+| ------------------------ | ---------------------------------------------------------- |
+| HTTP/WS server           | `cli/crates/agent-tui-app/src/...` (axum)                  |
+| Live preview RPC         | `cli/crates/agent-tui-adapters/src/adapters/rpc/...`       |
+| Token + URL state file   | `~/.agent-tui/api.json` (path via `AGENT_TUI_WS_STATE`)    |
+| Embedded UI              | `web/src/` (Bun + xterm.js), built and embedded at compile |
+| OpenAPI / AsyncAPI specs | `docs/api/openapi.yaml`, `docs/api/asyncapi.yaml`          |

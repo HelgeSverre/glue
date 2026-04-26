@@ -6,11 +6,11 @@ project. It defines three observable conditions that cover almost every
 
 ## The three conditions
 
-| Condition    | Holds when                                                      | Use it for                                            |
-| ------------ | --------------------------------------------------------------- | ----------------------------------------------------- |
-| `Text(s)`    | `screen_text().contains(s)`                                     | Wait for a label, prompt, or completion message       |
-| `TextGone(s)`| `!screen_text().contains(s)`                                    | Wait for a "Loading…" / spinner / "Saving…" to vanish |
-| `Stable`     | The screen hash hasn't changed for N consecutive samples        | "Whatever the program was doing, it's done now"       |
+| Condition     | Holds when                                               | Use it for                                            |
+| ------------- | -------------------------------------------------------- | ----------------------------------------------------- |
+| `Text(s)`     | `screen_text().contains(s)`                              | Wait for a label, prompt, or completion message       |
+| `TextGone(s)` | `!screen_text().contains(s)`                             | Wait for a "Loading…" / spinner / "Saving…" to vanish |
+| `Stable`      | The screen hash hasn't changed for N consecutive samples | "Whatever the program was doing, it's done now"       |
 
 All three operate on the trimmed plain-text screenshot — no styling, no
 cursor, no scrollback. That is deliberate: text containment is robust
@@ -118,8 +118,8 @@ tool. Worth keeping that boundary in any Glue equivalent.
 
 ## Where this lives in agent-tui
 
-| Concern                | File                                                                       |
-| ---------------------- | -------------------------------------------------------------------------- |
-| Condition types        | `cli/crates/agent-tui-domain/src/domain/types.rs` (`WaitConditionType`)    |
-| Parsing + check logic  | `cli/crates/agent-tui-usecases/src/usecases/wait_condition.rs`             |
-| Wait loop              | `cli/crates/agent-tui-usecases/src/usecases/wait.rs`                       |
+| Concern               | File                                                                    |
+| --------------------- | ----------------------------------------------------------------------- |
+| Condition types       | `cli/crates/agent-tui-domain/src/domain/types.rs` (`WaitConditionType`) |
+| Parsing + check logic | `cli/crates/agent-tui-usecases/src/usecases/wait_condition.rs`          |
+| Wait loop             | `cli/crates/agent-tui-usecases/src/usecases/wait.rs`                    |

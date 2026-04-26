@@ -47,7 +47,7 @@ func CLI(args []string) int {
 
 The four things this is doing right, each non-obvious in isolation:
 
-### 1. The struct *is* the configuration
+### 1. The struct _is_ the configuration
 
 Not a "config object passed to" the rest of the program — the
 program operates as methods on the struct. `app.run()` reads
@@ -79,7 +79,7 @@ package leaks state across invocations.
 
 `flag.NewFlagSet("name", flag.ContinueOnError)` makes a fresh
 parser scoped to one call. The `ContinueOnError` mode (vs.
-`ExitOnError`) lets `fromArgs` *return* the error to the caller
+`ExitOnError`) lets `fromArgs` _return_ the error to the caller
 instead of calling `os.Exit` from inside the flag library — which
 matters because the caller is the only place that knows whether
 to exit 2 (bad flags), exit 1 (a different layer's error), or
@@ -92,8 +92,8 @@ fl.DurationVar(&app.hc.Timeout, "t", 30*time.Second, "HTTP timeout")
 ```
 
 `http.Client.Timeout` is a `time.Duration`. The flag is parsed as
-a `time.Duration` (`30s`, `2m`, `500ms`). The flag binds *directly
-into the struct field that consumes it*. No intermediate `int
+a `time.Duration` (`30s`, `2m`, `500ms`). The flag binds _directly
+into the struct field that consumes it_. No intermediate `int
 seconds` variable, no manual conversion.
 
 The general lesson: when a flag's parsed value has the same type
@@ -106,7 +106,7 @@ implementations) to make this clean.
 
 When a user passes `--help`, the `flag` package returns
 `flag.ErrHelp` from `Parse`. The post's pattern returns that
-same sentinel from `fromArgs` *also* when validation fails:
+same sentinel from `fromArgs` _also_ when validation fails:
 
 ```go
 if app.comicNo <= 0 {
@@ -222,10 +222,10 @@ needing 12-line "set up the globals" preambles.
 
 ## Where this lives in the source
 
-| Pattern                                  | Location in the post                                  |
-| ---------------------------------------- | ----------------------------------------------------- |
-| `appEnv` struct + `fromArgs` method      | § "User Input Layer: Flag Parsing"                    |
-| `flag.NewFlagSet` over global `flag`     | same — citing Peter Bourgon's "no globals" rule       |
-| `DurationVar` straight into client field | same — example uses `http.Client.Timeout`             |
-| `flag.ErrHelp` as the validation return  | same — unifies `--help` and "bad flag" return paths   |
-| Two packages, not three                  | § "Problems with Existing Patterns" (Dave Cheney link)|
+| Pattern                                  | Location in the post                                   |
+| ---------------------------------------- | ------------------------------------------------------ |
+| `appEnv` struct + `fromArgs` method      | § "User Input Layer: Flag Parsing"                     |
+| `flag.NewFlagSet` over global `flag`     | same — citing Peter Bourgon's "no globals" rule        |
+| `DurationVar` straight into client field | same — example uses `http.Client.Timeout`              |
+| `flag.ErrHelp` as the validation return  | same — unifies `--help` and "bad flag" return paths    |
+| Two packages, not three                  | § "Problems with Existing Patterns" (Dave Cheney link) |

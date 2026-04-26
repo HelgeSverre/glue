@@ -2,34 +2,35 @@
 
 Follow-up to the structural refactor. Now that the runtime is clean, these three features are where attention goes next. Ranked by impact per effort.
 
-## 1. Git-aware slash commands (`/diff`, `/status`, `/log`)
+## 1. Git aware pwd and branch name in status bar
 
-**Punch line.** Thin slash-command wrappers around `git` that render as collapsible transcript blocks. Skips the "one second, let me run bash for you" detour users hit ten times per session.
+## regular, no git repo
 
-**Scope.**
+```text
+1:  ◆ Glue v0.1.2 — gpt-5.4
+2:  Working directory: ~/code/glue
+3:  Type /help for commands.
+[.... truncated for brevity  ]
+-3:
+-#   [status]                                       [provider]   [model]    [mode]     [pwd]        [token count]
+-2: -[ Ready       ~[EXPANDS_TO_FIT]~                   openai · gpt-5.4 · [confirm] · ~/code/glue · 0 tokens]
+-1: ❯ this is the text i type
+```
 
-- New `git` slash-command module alongside the existing builtins in `cli/lib/src/runtime/commands/register_builtin_slash_commands.dart`.
-- `/diff [pathspec]` → runs `git diff --color=always`, renders output as a bash-style transcript block.
-- `/status` → `git status --short`, with emoji/colour badges for staged / unstaged / untracked.
-- `/log [-n N]` → short log, defaults to last 10 commits.
-- No new controller needed; the commands can use `BashTool` or run the executor directly via a thin helper.
-- Handles "not a git repo" gracefully with a single transcript notice.
+## In git repo
 
-**Files touched.**
+```text
+1:  ◆ Glue v0.1.2 — gpt-5.4
+2:  Working directory: ~/code/glue
+3:  Type /help for commands.
+[....]
+-3:
+-#   [status]                                       [provider]   [model]    [mode]     [pwd]         [git-branch]        [token count]
+-2: -[ Ready       ~[EXPANDS_TO_FIT]~                   openai · gpt-5.4 · [confirm] · ~/code/glue (feature/bugfix-123) · 0 tokens]
+-1: ❯ this is the text i type
+```
 
-- `cli/lib/src/runtime/commands/register_builtin_slash_commands.dart` — new `_GitCommandModule`.
-- New `cli/lib/src/commands/git_commands.dart` — thin shell-out helpers.
-- `cli/test/commands/` — add tests with a fake executor.
-
-**Effort.** 1–2 days. No new architecture. Existing `CommandExecutor` does the work.
-
-**Why now.**
-
-- Felt every session. The agent already uses bash for git; surfacing it to the user via slash commands removes a common "ok run bash and show me" round-trip.
-- Minimal risk: the commands are CLI wrappers; git itself does all the work.
-- Natural pairing with the existing `/share`, `/session`, `/model` command family.
-
----
+if we ar ein a git repo, id like to show
 
 ## 2. Clipboard image paste
 
@@ -106,23 +107,5 @@ Follow-up to the structural refactor. Now that the runtime is clean, these three
 
 - **Prompt caching for Anthropic** — Real token-cost win. Needs message-prep refactor + cache-control headers. Medium effort, medium win. Do after #1–#3.
 - **Session search / cross-session history** — Sessions are already persisted; searching them is a small UI. Nice-to-have.
-- **Context-window warning** — Token counting already exists; needs a UI alert at 80% of the model's context window. 2-hour job, can ship whenever.
 - **Plan mode (`/plan` → think + exec)** — Matches Claude's plan mode; requires integrating extended thinking or two-pass prompts. Architectural; defer.
 - **Image paste on Windows** — deliberately excluded from #2; revisit when the top 3 are done.
-
-## Not recommending
-
-- "Add more observability" — already have OpenInference spans.
-- "Add more tests" — always true, not actionable.
-- Generic quality-of-life passes — schedule those as janitorial work in the background, not as features.
-
-## What makes a "do it" decision for any of these
-
-Before committing to one, ask:
-
-- Can a single session land it? (All three: yes.)
-- Does it need a new architecture? (No — each slots into existing structure.)
-- Will the first user to try it notice? (Yes for all three.)
-- Does it make glue more competitive against Claude Code / opencode / aider? (#3 most; #1 + #2 visibly.)
-
-All three pass. Suggested order: **#1 → #2 → #3**, by impact-per-effort.

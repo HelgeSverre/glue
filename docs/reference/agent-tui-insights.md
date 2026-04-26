@@ -9,7 +9,7 @@ TUI itself — the TUI in the name is what it controls.
 These notes exist because Glue has overlapping concerns:
 
 - Glue's shell tool blocks on anything interactive (`npm init`, `git rebase
-  -i`, `gh auth login`, `vipe`, REPLs, password prompts).
+-i`, `gh auth login`, `vipe`, REPLs, password prompts).
 - Glue could expose a TUI-driving tool to its agent so those flows stop
   hanging the conversation.
 - Glue's own session model (resumable conversations) maps cleanly onto a
@@ -17,14 +17,14 @@ These notes exist because Glue has overlapping concerns:
 
 The companion files break the system down by concern:
 
-| File                                  | What it covers                                             |
-| ------------------------------------- | ---------------------------------------------------------- |
-| `pty-automation-primitives.md`        | PTY spawn, key encoding, type/press, screen capture        |
-| `wait-conditions.md`                  | `text`, `stable`, `text_gone` waits and the stable tracker |
-| `tui-session-daemon.md`               | Daemon process model, IPC transports, session lifecycle    |
-| `live-preview-protocol.md`            | JSON-RPC over WebSocket for streaming terminal state       |
-| `clean-architecture-layout.md`        | Crate layout, dependency matrix, port traits, enforcement  |
-| `agent-first-architecture.md`         | Underlying design beliefs (companion to the layout doc)    |
+| File                           | What it covers                                             |
+| ------------------------------ | ---------------------------------------------------------- |
+| `pty-automation-primitives.md` | PTY spawn, key encoding, type/press, screen capture        |
+| `wait-conditions.md`           | `text`, `stable`, `text_gone` waits and the stable tracker |
+| `tui-session-daemon.md`        | Daemon process model, IPC transports, session lifecycle    |
+| `live-preview-protocol.md`     | JSON-RPC over WebSocket for streaming terminal state       |
+| `clean-architecture-layout.md` | Crate layout, dependency matrix, port traits, enforcement  |
+| `agent-first-architecture.md`  | Underlying design beliefs (companion to the layout doc)    |
 
 ## What's actually novel here
 
@@ -50,7 +50,7 @@ choices are non-obvious and worth lifting into Glue:
   the Unix socket uses; clients pick `unix` vs `ws` via env var
   (`AGENT_TUI_TRANSPORT`). One protocol, two carriers.
 - **Compile-time architecture enforcement via Cargo crate boundaries** —
-  not a Dart-portable idea, but the *principle* (make the layer rule a
+  not a Dart-portable idea, but the _principle_ (make the layer rule a
   hard error, not a code-review item) maps onto Dart via package
   separation or strict imports.
 

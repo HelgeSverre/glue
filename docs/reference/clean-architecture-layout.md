@@ -34,15 +34,15 @@ crate would behave identically at runtime.
 This is the canonical rule, written into both `ARCHITECTURE.md` and a
 test fixture (`cli/crates/agent-tui/tests/architecture.rs`):
 
-| Crate                  | May depend on                                                                          |
-| ---------------------- | -------------------------------------------------------------------------------------- |
-| `agent-tui-common`     | _(nothing internal)_                                                                   |
-| `agent-tui-domain`     | `common`                                                                               |
-| `agent-tui-usecases`   | `domain`, `common`                                                                     |
-| `agent-tui-adapters`   | `usecases`, `domain`, `common`                                                         |
-| `agent-tui-infra`      | `usecases`, `domain`, `common`                                                         |
-| `agent-tui-app`        | `adapters`, `infra`, `usecases`, `domain`, `common`                                    |
-| `agent-tui` (facade)   | `app` (plus external crates for binary entry points)                                   |
+| Crate                | May depend on                                        |
+| -------------------- | ---------------------------------------------------- |
+| `agent-tui-common`   | _(nothing internal)_                                 |
+| `agent-tui-domain`   | `common`                                             |
+| `agent-tui-usecases` | `domain`, `common`                                   |
+| `agent-tui-adapters` | `usecases`, `domain`, `common`                       |
+| `agent-tui-infra`    | `usecases`, `domain`, `common`                       |
+| `agent-tui-app`      | `adapters`, `infra`, `usecases`, `domain`, `common`  |
+| `agent-tui` (facade) | `app` (plus external crates for binary entry points) |
 
 Reading the table: `usecases` cannot import from `infra` (that would be
 an inward arrow turning into an outward one). `adapters` and `infra`
@@ -134,14 +134,14 @@ One file per business operation. Each has a trait + an `Impl` struct:
 Plus the **port traits** — the boundary `infra` and `adapters` plug
 into:
 
-| Port                | Owns                                                                        |
-| ------------------- | --------------------------------------------------------------------------- |
-| `SessionRepository` | spawn / get / list / kill / restart sessions, set active                    |
-| `SessionOps`        | per-session ops: read screen, send input, resize, stream subscribe          |
-| `Clock`             | `now()`, `elapsed()`, `elapsed_ms()` — for wait timers                      |
-| `ShutdownNotifier`  | signal daemon shutdown to the use cases                                     |
-| `TerminalEngine`    | VT emulation behind a trait — `process_bytes`, `snapshot`, `plain_text`     |
-| `StreamWaiter`      | "block until new bytes or timeout" handle returned by `stream_subscribe`    |
+| Port                | Owns                                                                     |
+| ------------------- | ------------------------------------------------------------------------ |
+| `SessionRepository` | spawn / get / list / kill / restart sessions, set active                 |
+| `SessionOps`        | per-session ops: read screen, send input, resize, stream subscribe       |
+| `Clock`             | `now()`, `elapsed()`, `elapsed_ms()` — for wait timers                   |
+| `ShutdownNotifier`  | signal daemon shutdown to the use cases                                  |
+| `TerminalEngine`    | VT emulation behind a trait — `process_bytes`, `snapshot`, `plain_text`  |
+| `StreamWaiter`      | "block until new bytes or timeout" handle returned by `stream_subscribe` |
 
 The use cases write against these traits. They never import a concrete
 PTY type, daemon struct, or IPC client. The whole point of the layer
@@ -176,7 +176,7 @@ Where the use-case ports become real:
 - The session metadata persistence layer (`sessions.jsonl` reader/writer).
 
 Infra knows how to do the real thing. It depends on the use-case
-*traits* but is never depended on by the use cases themselves — that
+_traits_ but is never depended on by the use cases themselves — that
 arrow only goes inward.
 
 ### `app` — composition root
@@ -254,7 +254,7 @@ for node in resolve_nodes {
 ```
 
 This catches dependencies that were added to a `Cargo.toml` but
-shouldn't have been. The Cargo build doesn't object to *adding* a
+shouldn't have been. The Cargo build doesn't object to _adding_ a
 dependency that was previously absent — the test does.
 
 It also asserts that **the legacy single-crate layout is gone**: the
@@ -370,17 +370,17 @@ without the workspace machinery:
 The core takeaway: agent-tui's Clean Architecture isn't valuable
 because it has eight crates. It's valuable because the dependency rule
 is **mechanically checked**, not stylistically encouraged. Replicate
-the *checking*; the eight-crate shape is incidental.
+the _checking_; the eight-crate shape is incidental.
 
 ## Where this lives in agent-tui
 
-| Concern                          | File                                                                   |
-| -------------------------------- | ---------------------------------------------------------------------- |
-| Top-level architecture statement | `ARCHITECTURE.md` (root)                                               |
-| Target-state manifesto           | `cli/docs/architecture/clean_arch_target.md`                           |
-| Frozen dependency snapshot       | `cli/docs/architecture/dependencies.json`                              |
-| Architecture test fixture        | `cli/crates/agent-tui/tests/architecture.rs`                           |
-| xtask validator                  | `cli/crates/xtask/src/main.rs` — `Commands::Architecture`              |
-| Workspace + pinned external deps | `cli/Cargo.toml`                                                       |
-| Shared lint policy               | `cli/clippy.toml`                                                      |
-| Port definitions                 | `cli/crates/agent-tui-usecases/src/usecases/ports/`                    |
+| Concern                          | File                                                      |
+| -------------------------------- | --------------------------------------------------------- |
+| Top-level architecture statement | `ARCHITECTURE.md` (root)                                  |
+| Target-state manifesto           | `cli/docs/architecture/clean_arch_target.md`              |
+| Frozen dependency snapshot       | `cli/docs/architecture/dependencies.json`                 |
+| Architecture test fixture        | `cli/crates/agent-tui/tests/architecture.rs`              |
+| xtask validator                  | `cli/crates/xtask/src/main.rs` — `Commands::Architecture` |
+| Workspace + pinned external deps | `cli/Cargo.toml`                                          |
+| Shared lint policy               | `cli/clippy.toml`                                         |
+| Port definitions                 | `cli/crates/agent-tui-usecases/src/usecases/ports/`       |

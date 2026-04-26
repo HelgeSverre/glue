@@ -14,10 +14,10 @@ grows. The companion files break it down.
 
 ## Companion files
 
-| File                              | What it covers                                                            |
-| --------------------------------- | ------------------------------------------------------------------------- |
-| `cli-three-layer-architecture.md` | The input/execute/output split, the `main → Run() int` shape, exit codes  |
-| `cli-config-and-flags.md`         | The `appEnv` struct pattern: configuration as a value, no globals, no `init()` |
+| File                              | What it covers                                                                     |
+| --------------------------------- | ---------------------------------------------------------------------------------- |
+| `cli-three-layer-architecture.md` | The input/execute/output split, the `main → Run() int` shape, exit codes           |
+| `cli-config-and-flags.md`         | The `appEnv` struct pattern: configuration as a value, no globals, no `init()`     |
 | `cli-execution-and-output.md`     | Generic helpers over wrapper clients; separate `printJSON` and `prettyPrint` paths |
 
 ## What's actually novel here
@@ -51,7 +51,7 @@ through a year of feature additions yet.
   response except "abort." Real CLIs need warnings, retries, and
   recovery; the helper makes that impossible to add later.
 - **Generic helpers, not wrapper client types.** `func (app *appEnv)
-  fetchJSON(url string, data interface{}) error` is reusable into the
+fetchJSON(url string, data interface{}) error` is reusable into the
   next CLI; `XKCDClient.Fetch()` isn't.
 - **Two separate output functions, not a polymorphic one.**
   `printJSON()` and `prettyPrint()` will diverge — let them. Sharing a
@@ -63,7 +63,7 @@ through a year of feature additions yet.
 ## Where this maps onto Glue
 
 Glue is a Dart CLI/TUI. The post's Go-specific recommendations
-(`flag.NewFlagSet`, `http.Client`) don't transfer; the *patterns* do.
+(`flag.NewFlagSet`, `http.Client`) don't transfer; the _patterns_ do.
 Concrete hooks:
 
 1. **Audit Glue's exit codes.** Glue should return 0 for success, 2
@@ -75,8 +75,8 @@ Concrete hooks:
 2. **Look at how Glue's flag parsing is wired.** Dart's
    `package:args` is the analogue to Go's `flag` package. The
    pattern to mirror: parse into a config struct (a `class
-   GlueConfig`), not into module-level variables. `fromArgs(List<String>
-   args)` becomes a static factory or constructor. See
+GlueConfig`), not into module-level variables. `fromArgs(List<String>
+args)` becomes a static factory or constructor. See
    `cli-config-and-flags.md`.
 3. **Confirm `glue -p "..."` (non-interactive mode) and the TUI
    share an execution layer**, not an output layer. The post's
@@ -92,8 +92,8 @@ Concrete hooks:
    `cli-execution-and-output.md`.
 5. **Glue's `cli.Run()` analogue.** Glue's `bin/main.dart` should
    be a single line: `Future<void> main(List<String> args) async =>
-   exit(await GlueCli.run(args));`. Anything else (logger setup,
-   config loading) belongs *inside* the `run()` function, where it
+exit(await GlueCli.run(args));`. Anything else (logger setup,
+   config loading) belongs _inside_ the `run()` function, where it
    can be tested.
 
 ## Source provenance
