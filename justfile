@@ -10,6 +10,9 @@ test: cli::test
 # Monorepo build pass (CLI binary + unified site)
 build: cli::build website::build
 
+# Monorepo codegen (CLI catalog/version + website reference docs)
+gen: cli::gen website::gen
+
 # Monorepo cleanup
 clean: cli::clean website::clean
 
