@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 /**
- * Badge generator - creates SVG and PNG badges in multiple sizes.
+ * Badge generator - creates SVG badges in multiple sizes.
  * @module badges/generate
  */
 
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { Resvg } from "@resvg/resvg-js";
 
 import { COLORS, SYMBOL_PATH, FONT_FAMILY, LAYOUT } from "./design-tokens.mjs";
 import { BADGE_CONFIGS, STYLES } from "./config.mjs";
@@ -39,64 +38,32 @@ function esc(str) {
  * @param {string} config.messageBg
  * @param {string} [config.labelColor]
  * @param {string} [config.messageColor]
- * @param {boolean} [config.showIcon]
  * @param {string} style - 'sm', 'md', or 'lg'
  * @returns {string}
  */
 function generateSvg(
-  {
-    label,
-    message,
-    labelBg,
-    messageBg,
-    labelColor,
-    messageColor,
-    showIcon = true,
-  },
+  { label, message, labelBg, messageBg, labelColor, messageColor },
   style,
 ) {
   const layout = LAYOUT[style];
   const charWidth = layout.charWidth;
 
-  const labelWidth = showIcon
-    ? label.length * charWidth + 26
-    : label.length * charWidth + 14;
+  const labelWidth = label.length * charWidth + 26;
   const messageWidth = message.length * charWidth + 16;
   const svgWidth = labelWidth + messageWidth;
   const height = layout.height;
 
-  const iconGroup = showIcon
-    ? `<g transform="translate(${layout.iconX} ${layout.iconY}) scale(${layout.iconScale})">
-      <path d="${SYMBOL_PATH}" fill="${messageBg}"/>
-    </g>`
-    : "";
-
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${height}" viewBox="0 0 ${svgWidth} ${height}" role="img" aria-label="Glue: ${label} ${message}">
   <title>Glue: ${label} ${message}</title>
-  <defs>
-    <clipPath id="r">
-      <rect width="${svgWidth}" height="${height}" rx="0" fill="#fff"/>
-    </clipPath>
-  </defs>
-  <g clip-path="url(#r)">
-    <rect width="${labelWidth}" height="${height}" fill="${labelBg}"/>
-    <rect x="${labelWidth}" width="${messageWidth}" height="${height}" fill="${messageBg}"/>
-    <rect x="${labelWidth}" width="${layout.dividerWidth}" height="${height}" fill="${COLORS.divider}" opacity="0.65"/>
-    ${iconGroup}
-    <text x="${showIcon ? 26 : 7}" y="${layout.textY}" fill="${labelColor || COLORS.text}" font-family="${FONT_FAMILY}" font-size="${layout.fontSize}" font-weight="${layout.fontWeight}" text-rendering="geometricPrecision">${esc(label)}</text>
-    <text x="${labelWidth + 8}" y="${layout.textY}" fill="${messageColor || COLORS.surface}" font-family="${FONT_FAMILY}" font-size="${layout.fontSize}" font-weight="${layout.fontWeight}" text-rendering="geometricPrecision">${esc(message)}</text>
+  <rect width="${labelWidth}" height="${height}" fill="${labelBg}"/>
+  <rect x="${labelWidth}" width="${messageWidth}" height="${height}" fill="${messageBg}"/>
+  <rect x="${labelWidth}" width="${layout.dividerWidth}" height="${height}" fill="${COLORS.divider}" opacity="0.65"/>
+  <g transform="translate(${layout.iconX} ${layout.iconY}) scale(${layout.iconScale})">
+    <path d="${SYMBOL_PATH}" fill="${messageBg}"/>
   </g>
+  <text x="26" y="${layout.textY}" fill="${labelColor || COLORS.text}" font-family="${FONT_FAMILY}" font-size="${layout.fontSize}" font-weight="${layout.fontWeight}" text-rendering="geometricPrecision">${esc(label)}</text>
+  <text x="${labelWidth + 8}" y="${layout.textY}" fill="${messageColor || COLORS.surface}" font-family="${FONT_FAMILY}" font-size="${layout.fontSize}" font-weight="${layout.fontWeight}" text-rendering="geometricPrecision">${esc(message)}</text>
 </svg>`;
-}
-
-/**
- * Generate PNG buffer from SVG string.
- * @param {string} svg
- * @returns {Promise<Buffer>}
- */
-async function renderPng(svg) {
-  const resvg = new Resvg(svg);
-  return resvg.render().asPng();
 }
 
 /**
@@ -137,19 +104,12 @@ async function main() {
       const fileBase = filenameFor(config, style);
       const svg = generateSvg(config, style);
 
-      // Write SVG
       const svgPath = path.join(BADGES_DIR, `${fileBase}.svg`);
       await writeFile(svgPath, svg, "utf-8");
-
-      // Write PNG
-      const pngBuffer = await renderPng(svg);
-      const pngPath = path.join(BADGES_DIR, `${fileBase}.png`);
-      await writeFile(pngPath, pngBuffer);
 
       jsonBadges.push({
         id: fileBase,
         file: `${fileBase}.svg`,
-        pngFile: `${fileBase}.png`,
         label: config.label,
         message: config.message,
         labelBg: config.labelBg,
@@ -160,19 +120,16 @@ async function main() {
         style,
       });
 
-      console.log(`  → ${fileBase}.svg + .png`);
+      console.log(`  → ${fileBase}.svg`);
     }
   }
 
-  // Write JSON manifest
   const jsonOutput = JSON.stringify(jsonBadges, null, 2);
   await writeFile(path.join(BADGES_DIR, "badges.json"), jsonOutput, "utf-8");
   console.log("  → badges.json");
 
   const total = BADGE_CONFIGS.length * STYLES.length;
-  console.log(
-    `✓ generated ${total} badges (${total * 2} files) in public/badges/`,
-  );
+  console.log(`✓ generated ${total} badges in public/badges/`);
 }
 
 main().catch((err) => {

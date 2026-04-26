@@ -7,10 +7,8 @@
 export const COLORS = {
   accent: "#FACC15",
   surface: "#0A0A0B",
-  surfaceLight: "#FFFFFF",
   divider: "#222326",
   text: "#E6E6E6",
-  textLight: "#111111",
   success: "#22C55E",
   warning: "#EAB308",
   error: "#EF4444",

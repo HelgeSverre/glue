@@ -14,7 +14,6 @@ import { COLORS } from "./design-tokens.mjs";
  * @property {string} [labelColor] - Text color for label
  * @property {string} [messageColor] - Text color for message
  * @property {string} category - Badge category
- * @property {boolean} [showIcon=true] - Whether to show Glue symbol
  */
 
 /** @type {BadgeConfig[]} */
@@ -260,14 +259,3 @@ export const BADGE_CONFIGS = [
  * Styles to generate for each badge.
  */
 export const STYLES = ["sm", "md", "lg"];
-
-/**
- * Get all styles to generate (or just specific ones).
- * @param {string|string[]} [filter]
- * @returns {string[]}
- */
-export function getStyles(filter) {
-  if (!filter) return STYLES;
-  const list = Array.isArray(filter) ? filter : [filter];
-  return STYLES.filter((s) => list.includes(s));
-}
