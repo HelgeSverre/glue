@@ -80,7 +80,8 @@ class ProviderActions {
         return _providerRemove(cfg, rest.first);
       case 'test':
         if (rest.isEmpty) return 'Usage: /provider test <id>';
-        return _providerTest(cfg, rest.first);
+        unawaited(_providerTest(cfg, rest.first));
+        return '';
       default:
         return 'Usage: /provider [list|add|remove|test] [<id>]';
     }
@@ -265,8 +266,49 @@ class ProviderActions {
       return;
     }
 
-    config.credentials.setFields(provider.id, {'api_key': value});
-    transcript.system('Connected to ${provider.name}.');
+    final adapter = config.adapters.lookup(provider.adapter);
+    if (adapter == null) {
+      transcript.system(
+        'No adapter for wire protocol "${provider.adapter}".',
+      );
+      render();
+      return;
+    }
+
+    // Probe the entered key BEFORE persisting it. Build a transient
+    // ResolvedProvider with the new value overlaid; resolveProviderById
+    // would only see what's already stored.
+    final probeResolved =
+        config.resolveProviderById(provider.id).withApiKey(value);
+    transcript.system('Verifying key…');
+    render();
+    final health = await adapter.probe(probeResolved);
+
+    switch (health) {
+      case ProviderHealth.ok:
+        config.credentials.setFields(provider.id, {'api_key': value});
+        transcript.system('Connected to ${provider.name}.');
+      case ProviderHealth.unauthorized:
+        transcript.system(
+          '${provider.name}: that key was rejected by the API. '
+          'Try again with /provider add ${provider.id}.',
+        );
+      case ProviderHealth.unreachable:
+        // Don't block setup on a flaky network — persist and warn. The
+        // next chat turn will surface any real auth problem.
+        config.credentials.setFields(provider.id, {'api_key': value});
+        transcript.system(
+          'Saved ${provider.name} key, but couldn\'t reach the API to '
+          'verify it. Try /provider test ${provider.id} once you\'re online.',
+        );
+      case ProviderHealth.missingCredential:
+      case ProviderHealth.unknownAdapter:
+        // Defensive — both are impossible reaching this branch (we just
+        // supplied a non-empty key and a known adapter).
+        transcript.system(
+          '${provider.name}: unexpected probe result ($health).',
+        );
+    }
     render();
   }
 
@@ -369,32 +411,7 @@ class ProviderActions {
           }
           render();
         case ProviderAction.test:
-          if (adapter == null) {
-            transcript.system('No adapter for "${provider.adapter}".');
-            render();
-            return;
-          }
-          if (isLocal) {
-            transcript.system('${provider.name}: ok (no auth).');
-            render();
-            return;
-          }
-          final resolved = config.resolveProviderById(provider.id);
-          final health = adapter.validate(resolved);
-          switch (health) {
-            case ProviderHealth.ok:
-              transcript.system('${provider.name}: ok.');
-            case ProviderHealth.missingCredential:
-              transcript.system(
-                '${provider.name}: not connected. '
-                'Run /provider add ${provider.id}.',
-              );
-            case ProviderHealth.unknownAdapter:
-              transcript.system(
-                '${provider.name}: adapter failed validation.',
-              );
-          }
-          render();
+          await _providerTest(config, provider.id);
       }
     });
   }
@@ -411,22 +428,50 @@ class ProviderActions {
     return 'Forgot stored credentials for ${provider.name}.';
   }
 
-  String _providerTest(GlueConfig config, String id) {
+  Future<void> _providerTest(GlueConfig config, String id) async {
     final provider = config.catalogData.providers[id];
-    if (provider == null) return 'Unknown provider "$id".';
+    if (provider == null) {
+      transcript.system('Unknown provider "$id".');
+      render();
+      return;
+    }
     final adapter = config.adapters.lookup(provider.adapter);
     if (adapter == null) {
-      return 'No adapter for wire protocol "${provider.adapter}".';
+      transcript.system('No adapter for wire protocol "${provider.adapter}".');
+      render();
+      return;
     }
+    transcript.system('Testing ${provider.name}…');
+    render();
     final resolved = config.resolveProviderById(provider.id);
-    final health = adapter.validate(resolved);
+    // Probe for every kind including AuthKind.none — the adapter decides
+    // what "ok" means. Local providers (Ollama, vLLM) need a real ping to
+    // detect a downed daemon; short-circuiting to ok would re-introduce the
+    // very bug this method exists to fix.
+    final health = await adapter.probe(resolved);
+    transcript.system(_probeMessage(provider, health));
+    render();
+  }
+
+  /// Single source of truth for the user-facing "Test" result line. Used by
+  /// both `/provider test` and the action panel's Test button so they stay
+  /// in sync.
+  static String _probeMessage(ProviderDef provider, ProviderHealth health) {
     switch (health) {
       case ProviderHealth.ok:
         return '${provider.name}: ok.';
       case ProviderHealth.missingCredential:
-        return '${provider.name}: missing credential. Run /provider add ${provider.id}.';
+        return '${provider.name}: not connected. '
+            'Run /provider add ${provider.id}.';
+      case ProviderHealth.unauthorized:
+        return '${provider.name}: credentials rejected by the API. '
+            'Run /provider add ${provider.id} to update them.';
+      case ProviderHealth.unreachable:
+        return '${provider.name}: couldn\'t reach the API '
+            '(network or service down).';
       case ProviderHealth.unknownAdapter:
-        return '${provider.name}: adapter "${provider.adapter}" failed validation.';
+        return '${provider.name}: adapter "${provider.adapter}" '
+            'failed validation.';
     }
   }
 }

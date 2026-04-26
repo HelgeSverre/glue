@@ -332,6 +332,7 @@ class App {
     terminal.clearScreen();
     layout.apply();
 
+    // TODO: INTRO Block, make it fancy like junie later.
     _transcript.blocks.add(ConversationEntry.system(
       '\x1b[33m◆\x1b[0m Glue v${AppConstants.version} — $_modelId\n'
       'Working directory: ${_shortenPath(_cwd)}\n'

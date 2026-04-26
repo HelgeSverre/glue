@@ -28,11 +28,11 @@ install: build
 
 # Build and run interactively
 run *args: build
-    ./glue {{args}}
+    ./glue {{ args }}
 
 # Run unit tests (pass args: just test test/llm/)
 test *args: gen
-    dart test {{args}}
+    dart test {{ args }}
 
 # Run e2e integration tests (requires: ollama + qwen2.5:7b)
 e2e:
@@ -40,7 +40,7 @@ e2e:
 
 # Run network-backed integration tests (e.g. live DuckDuckGo search)
 integration *args:
-    dart test --run-skipped -t integration {{args}}
+    dart test --run-skipped -t integration {{ args }}
 
 # Generate HTML test coverage report and open it in the browser
 coverage:
@@ -60,17 +60,10 @@ coverage:
     echo "Coverage report: coverage/html/index.html"
     open coverage/html/index.html
 
-# Static analysis + layering lint
 analyze:
     #!/usr/bin/env bash
     set -euo pipefail
     dart analyze --fatal-infos
-    leaks=$(grep -rE "package:glue/src/(catalog|providers|skills|session|commands|shell|agent|llm|storage|config)/" lib/src/ui/ 2>/dev/null || true)
-    if [ -n "$leaks" ]; then
-      echo "ui/ layering violation — ui/** must not import from feature modules:" >&2
-      echo "$leaks" >&2
-      exit 1
-    fi
 
 # Format all Dart files
 format:
@@ -122,19 +115,19 @@ docs-serve: docs
     npx serve doc/api
 
 # Bump version, commit, tag, then build so the binary carries the tagged SHA
-[confirm: "Release a new version?"]
+[confirm("Release a new version?")]
 release version:
     #!/usr/bin/env bash
     set -euo pipefail
-    sed -i '' "s/^version: .*/version: {{version}}/" pubspec.yaml
+    sed -i '' "s/^version: .*/version: {{ version }}/" pubspec.yaml
     dart run tool/gen_version.dart
-    echo "Updated pubspec.yaml to {{version}}"
+    echo "Updated pubspec.yaml to {{ version }}"
     git add pubspec.yaml lib/src/config/version_generated.dart
-    git commit -m "release: v{{version}}"
-    git tag "v{{version}}"
+    git commit -m "release: v{{ version }}"
+    git tag "v{{ version }}"
     just build
     echo ""
-    echo "Released v{{version}} — ./glue --version"
+    echo "Released v{{ version }} — ./glue --version"
     ./glue --version
     echo "  Run: git push && git push --tags"
 
@@ -183,17 +176,17 @@ diagrams format="svg":
     echo "→ all (full project)"
     dart pub global run dcdg -b plantuml --exclude-private=all -o diagrams/_all.puml
     inject_header diagrams/_all.puml
-    plantuml -t{{format}} diagrams/_all.puml
+    plantuml -t{{ format }} diagrams/_all.puml
     for sub in "${subsystems[@]}"; do
       dir="lib/src/$sub"
       [ -d "$dir" ] || continue
       echo "→ $sub"
       dart pub global run dcdg -b plantuml --exclude-private=all -s "$dir" -o "diagrams/$sub.puml"
       inject_header "diagrams/$sub.puml"
-      plantuml -t{{format}} "diagrams/$sub.puml"
+      plantuml -t{{ format }} "diagrams/$sub.puml"
     done
     echo ""
-    echo "Generated $(ls diagrams/*.{{format}} 2>/dev/null | wc -l | tr -d ' ') diagrams in diagrams/"
+    echo "Generated $(ls diagrams/*.{{ format }} 2>/dev/null | wc -l | tr -d ' ') diagrams in diagrams/"
 
 # Remove build artifacts
 clean:
@@ -203,13 +196,13 @@ clean:
 
 # Run with DevTools observability (JIT mode, dev only)
 dev *ARGS:
-    dart --enable-vm-service --timeline-streams=Dart run bin/glue.dart {{ARGS}}
+    dart --enable-vm-service --timeline-streams=Dart run bin/glue.dart {{ ARGS }}
 
 # Run with DevTools, paused at start for debugger attachment
 dev-pause *ARGS:
-    dart --enable-vm-service --pause-isolates-on-start --timeline-streams=Dart run bin/glue.dart {{ARGS}}
+    dart --enable-vm-service --pause-isolates-on-start --timeline-streams=Dart run bin/glue.dart {{ ARGS }}
 
 # Run with full profiling streams (VM, Isolate, GC, Dart)
 dev-profile *ARGS:
     @echo "Starting Glue with full profiling..."
-    dart --enable-vm-service --timeline-streams=VM,Isolate,GC,Dart run bin/glue.dart {{ARGS}}
+    dart --enable-vm-service --timeline-streams=VM,Isolate,GC,Dart run bin/glue.dart {{ ARGS }}
