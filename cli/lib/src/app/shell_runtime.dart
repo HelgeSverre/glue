@@ -53,7 +53,7 @@ Future<void> _runBlockingBashImpl(App app, String command) async {
       app._blocks.add(_ConversationEntry.system('Exit code: $exitCode'));
     }
     if (span != null && app._obs != null && span.endTime == null) {
-      app._obs!.endSpan(span, extra: {
+      app._obs.endSpan(span, extra: {
         'process.exit_code': exitCode,
         'process.output_length': stripped.length,
       });
@@ -62,7 +62,7 @@ Future<void> _runBlockingBashImpl(App app, String command) async {
     app._bashRunProcess = null;
     app._blocks.add(_ConversationEntry.error('Bash error: $e'));
     if (span != null && app._obs != null && span.endTime == null) {
-      app._obs!.endSpan(span, extra: {
+      app._obs.endSpan(span, extra: {
         'error': true,
         'error.type': e.runtimeType.toString(),
         'error.message': e.toString(),
@@ -77,7 +77,7 @@ Future<void> _runBlockingBashImpl(App app, String command) async {
 void _cancelBashImpl(App app) {
   final span = app._bashSpan;
   if (span != null && app._obs != null && span.endTime == null) {
-    app._obs!.endSpan(span, extra: {
+    app._obs.endSpan(span, extra: {
       'cancelled': true,
     });
   }
