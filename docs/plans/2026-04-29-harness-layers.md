@@ -335,10 +335,20 @@ surface?* If yes, harness. If no, surface.
     "ask" decisions through `session/request_permission` with an
     async waiter for the client's reply.
 18. **CLI as ACP client (optional).**
-19. **WebSocket transport.**
-20. **Multi-client session attach.**
-21. **MCP server.** Sibling protocol, same package — see the dedicated
-    plan doc.
+19. ✅ **WebSocket transport.** `WebSocketTransport` implements
+    `JsonRpcTransport`; `AcpHttpHost` binds an HTTP server, accepts
+    WebSocket upgrades on `/acp` (configurable), and runs one
+    `AcpServer` per connection with a delegate factory for
+    per-connection isolation. CLI grows `glue serve --port N
+    [--host H] [--ws-path /p]`.
+20. ✅ **Image content blocks.** ACP messages now use a sealed
+    `AcpContentBlock` (text, image, audio, resource_link, unknown
+    pass-through) and a sealed `AcpToolCallContent` (content / diff /
+    terminal). `ToolResult.contentParts` (TextPart / ImagePart) flows
+    through to the ACP client unchanged; image-bearing tool results
+    (e.g. `web_browser` screenshots) are first-class.
+21. **Multi-client session attach.**
+22. **MCP client.** See `docs/plans/2026-04-29-mcp-client.md`.
 
 ## What this PR delivers
 

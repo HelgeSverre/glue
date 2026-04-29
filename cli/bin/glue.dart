@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:args/args.dart';
@@ -346,11 +347,30 @@ class ServeCommand extends Command<int> {
             'This is the default and is what editors expect.',
       )
       ..addOption(
+        'port',
+        abbr: 'p',
+        help: 'Run the ACP server over WebSocket on the given port '
+            '(implies --no-stdio). 0 binds an ephemeral port.',
+      )
+      ..addOption(
+        'host',
+        defaultsTo: '127.0.0.1',
+        help: 'Bind address for --port mode. Defaults to loopback; '
+            'pass 0.0.0.0 to expose on all interfaces (use with care).',
+      )
+      ..addOption(
+        'ws-path',
+        defaultsTo: '/acp',
+        help: 'HTTP path that accepts the WebSocket upgrade. Use `*` to '
+            'accept any path.',
+      )
+      ..addOption(
         'protocol',
         defaultsTo: 'acp',
         allowed: ['acp'],
-        help: 'Protocol to serve. ACP only for now; MCP is planned — '
-            'see docs/plans/2026-04-29-mcp-client.md.',
+        help: 'Protocol to serve. ACP only for now; MCP-client support '
+            'lives in glue_strategies — see '
+            'docs/plans/2026-04-29-mcp-client.md.',
       )
       ..addFlag(
         'debug',
@@ -365,41 +385,35 @@ class ServeCommand extends Command<int> {
 
   @override
   String get description =>
-      'Serve Glue\'s harness as an ACP agent over stdio (for editors).';
+      'Serve Glue\'s harness as an ACP agent over stdio or WebSocket.';
 
   @override
   Future<int> run() async {
-    final stdioFlag = argResults!.flag('stdio');
-    if (!stdioFlag) {
-      stderr.writeln(
-        'glue serve: only --stdio is implemented today. '
-        'HTTP/WebSocket transports land in follow-up commits.',
-      );
-      return 64;
+    final portRaw = argResults!.option('port');
+    final debug = argResults!.flag('debug');
+
+    // Build process-wide harness services once. Per-connection state
+    // lives in CliAcpDelegate instances created below.
+    final services = await ServiceLocator.create(debug: debug);
+
+    if (portRaw != null) {
+      return _runWebSocket(services, portRaw, argResults!.option('host')!,
+          argResults!.option('ws-path')!);
     }
+    return _runStdio(services);
+  }
 
-    final services =
-        await ServiceLocator.create(debug: argResults!.flag('debug'));
+  Future<int> _runStdio(AppServices services) async {
     final delegate = CliAcpDelegate(services: services);
-
     final transport = LineDelimitedTransport(
       input: stdin,
       output: stdout,
     );
-
     final server = AcpServer(
       transport: transport,
       delegate: delegate,
-      config: const AcpServerConfig(
-        protocolVersion: 1,
-        agentInfo: AgentInfo(
-          name: 'glue',
-          title: 'Glue',
-          version: AppConstants.version,
-        ),
-      ),
+      config: _config(),
     );
-
     try {
       await server.serve();
     } finally {
@@ -407,6 +421,70 @@ class ServeCommand extends Command<int> {
       await services.obs.close();
     }
     return 0;
+  }
+
+  Future<int> _runWebSocket(
+    AppServices services,
+    String portRaw,
+    String host,
+    String wsPath,
+  ) async {
+    final port = int.tryParse(portRaw);
+    if (port == null || port < 0 || port > 65535) {
+      stderr.writeln('Error: --port must be an integer in 0..65535');
+      return 64;
+    }
+    final address = await _resolveBindAddress(host);
+    if (address == null) {
+      stderr.writeln('Error: could not resolve --host "$host"');
+      return 64;
+    }
+    final httpHost = AcpHttpHost(
+      delegateFactory: () => CliAcpDelegate(services: services),
+      config: _config(),
+      path: wsPath,
+    );
+    final boundPort = await httpHost.start(address: address, port: port);
+    stderr.writeln(
+      '[glue serve] ACP over WebSocket on ws://${address.host}:$boundPort'
+      '${wsPath == '*' ? '' : wsPath}',
+    );
+
+    // Run until SIGINT.
+    final exitSignal = Completer<void>();
+    final sigintSub = ProcessSignal.sigint.watch().listen((_) {
+      if (!exitSignal.isCompleted) exitSignal.complete();
+    });
+    try {
+      await exitSignal.future;
+    } finally {
+      await sigintSub.cancel();
+      await httpHost.stop();
+      await services.obs.close();
+    }
+    return 0;
+  }
+
+  AcpServerConfig _config() => const AcpServerConfig(
+        protocolVersion: 1,
+        agentInfo: AgentInfo(
+          name: 'glue',
+          title: 'Glue',
+          version: AppConstants.version,
+        ),
+      );
+}
+
+Future<InternetAddress?> _resolveBindAddress(String host) async {
+  if (host == '0.0.0.0') return InternetAddress.anyIPv4;
+  if (host == '::') return InternetAddress.anyIPv6;
+  final asLiteral = InternetAddress.tryParse(host);
+  if (asLiteral != null) return asLiteral;
+  try {
+    final lookups = await InternetAddress.lookup(host);
+    return lookups.isEmpty ? null : lookups.first;
+  } on SocketException {
+    return null;
   }
 }
 

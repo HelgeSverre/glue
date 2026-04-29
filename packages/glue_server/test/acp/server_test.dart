@@ -211,6 +211,67 @@ void main() {
       expect(delegate.cancelled, isTrue);
     });
 
+    test('tool result with ImagePart surfaces as image content block',
+        () async {
+      final call = ToolCall(
+        id: const ToolCallId('tc-img'),
+        name: 'web_browser',
+        arguments: const {'action': 'screenshot'},
+      );
+      final delegate = _FakeDelegate(scripted: [
+        AgentToolCallPending(id: call.id, name: call.name),
+        AgentToolCall(call),
+        AgentToolResult(ToolResult(
+          callId: call.id,
+          content: 'Screenshot captured.',
+          summary: 'web_browser: screenshot of example.com',
+          contentParts: const [
+            TextPart('Screenshot of example.com'),
+            ImagePart(bytes: [0x89, 0x50, 0x4e, 0x47], mimeType: 'image/png'),
+          ],
+        )),
+        AgentDone(),
+      ]);
+      final server = AcpServer(transport: transport, delegate: delegate);
+      final serverFuture = server.serve();
+
+      input.add(utf8.encode(
+        '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
+        '{"cwd":"/tmp/p"}}\n',
+      ));
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      var sent = await readSent();
+      final sessionId = (sent.single['result']! as Map)['sessionId'] as String;
+      output.buffer.clear();
+
+      input.add(utf8.encode(
+        '{"jsonrpc":"2.0","id":2,"method":"session/prompt","params":'
+        '{"sessionId":"$sessionId","prompt":[{"type":"text","text":"go"}]}}\n',
+      ));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await input.close();
+      await serverFuture;
+
+      sent = await readSent();
+      final completedUpdate = sent
+          .where((m) => m['method'] == 'session/update')
+          .map((m) => (m['params']! as Map)['update'] as Map)
+          .firstWhere(
+            (u) => u['status'] == 'completed',
+            orElse: () => fail('expected a completed tool_call_update'),
+          );
+      final content = completedUpdate['content']! as List;
+      // Two entries: text + image.
+      expect(content, hasLength(2));
+      final imageEntry = content.firstWhere(
+        (c) => ((c as Map)['content'] as Map?)?['type'] == 'image',
+        orElse: () => fail('expected an image content block'),
+      ) as Map;
+      final imageBlock = imageEntry['content']! as Map;
+      expect(imageBlock['mimeType'], 'image/png');
+      expect(imageBlock['data'], isA<String>()); // base64
+    });
+
     test('tool call → permission allow → tool runs to completion', () async {
       final call = ToolCall(
         id: const ToolCallId('tc-1'),
