@@ -19,8 +19,8 @@
 ///    subscribe" work without missing or duplicating events.
 library;
 
-import 'package:glue/src/_proposed_core/ids.dart';
-import 'package:glue/src/_proposed_core/model_ref.dart';
+import 'package:glue_core/src/ids.dart';
+import 'package:glue_core/src/model_ref.dart';
 
 /// Base type for all events emitted by a [Session].
 ///

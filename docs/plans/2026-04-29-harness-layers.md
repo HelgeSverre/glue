@@ -54,11 +54,13 @@ are allowed within reason. Cross-layer-up imports are bugs. The linter at
 
 ## Subsystem → layer mapping
 
-`cli/lib/src/` directories map to layers as follows:
+The `glue_core` package (at `packages/glue_core/`) is the dedicated
+home for pure-data types. The CLI's `cli/lib/src/` directories map to
+layers as follows:
 
 | Subsystem         | Layer       | Notes                                     |
 |-------------------|-------------|-------------------------------------------|
-| `_proposed_core/` | core        | Pure data types — staging for `glue_core` |
+| `packages/glue_core/` | core    | Pure data types in their own package      |
 | `agent/`          | harness     | AgentCore loop, manager, factory, jobs    |
 | `app/`, `app.dart`| surface     | App controller, event-merge loop          |
 | `catalog/`        | harness     | Bundled + remote model catalog            |
@@ -307,7 +309,10 @@ surface?* If yes, harness. If no, surface.
 
 **Harness consolidation:**
 
-13. **Extract `_proposed_core/` as a sibling `glue_core` package.**
+13. ✅ **Extract `_proposed_core/` as a sibling `glue_core` package.**
+    Pure-data types now live under `packages/glue_core/`; CLI consumes
+    via path dependency and the `package:glue_core/glue_core.dart`
+    public barrel.
 14. **Extract harness package.**
 15. **Trim the CLI.**
 

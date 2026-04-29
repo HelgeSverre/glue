@@ -12,8 +12,8 @@ library;
 
 import 'dart:async';
 
-import 'package:glue/src/_proposed_core/content_part.dart';
-import 'package:glue/src/_proposed_core/ids.dart';
+import 'package:glue_core/src/content_part.dart';
+import 'package:glue_core/src/ids.dart';
 
 /// Schema for a single tool parameter.
 class ToolParameter {

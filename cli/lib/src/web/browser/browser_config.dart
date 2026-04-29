@@ -1,4 +1,4 @@
-import 'package:glue/src/_proposed_core/app_constants.dart';
+import 'package:glue_core/glue_core.dart';
 
 /// Supported browser execution backends.
 ///

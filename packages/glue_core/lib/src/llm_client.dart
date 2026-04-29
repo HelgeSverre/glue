@@ -7,8 +7,8 @@
 /// boundary.
 library;
 
-import 'package:glue/src/_proposed_core/message.dart';
-import 'package:glue/src/_proposed_core/tool.dart';
+import 'package:glue_core/src/message.dart';
+import 'package:glue_core/src/tool.dart';
 
 /// Abstract LLM client — wraps any provider (Anthropic, OpenAI, etc.).
 ///

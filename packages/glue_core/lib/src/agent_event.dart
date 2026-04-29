@@ -8,9 +8,9 @@
 /// proposed future contract.
 library;
 
-import 'package:glue/src/_proposed_core/ids.dart';
-import 'package:glue/src/_proposed_core/message.dart';
-import 'package:glue/src/_proposed_core/tool.dart';
+import 'package:glue_core/src/ids.dart';
+import 'package:glue_core/src/message.dart';
+import 'package:glue_core/src/tool.dart';
 
 /// Events emitted by the agent that the UI subscribes to.
 sealed class AgentEvent {}

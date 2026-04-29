@@ -1,11 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:glue/src/_proposed_core/agent_event.dart';
-import 'package:glue/src/_proposed_core/ids.dart';
-import 'package:glue/src/_proposed_core/llm_client.dart';
-import 'package:glue/src/_proposed_core/message.dart';
-import 'package:glue/src/_proposed_core/tool.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/observability/observability.dart';
 import 'package:glue/src/observability/redaction.dart';
 
@@ -13,11 +9,11 @@ import 'package:glue/src/observability/redaction.dart';
 // declared here. Consumers that import this file continue to get the
 // same names; the types now live in `_proposed_core/` so strategies can
 // depend on them without crossing the harness layer.
-export 'package:glue/src/_proposed_core/agent_event.dart';
-export 'package:glue/src/_proposed_core/content_part.dart';
-export 'package:glue/src/_proposed_core/llm_client.dart';
-export 'package:glue/src/_proposed_core/message.dart';
-export 'package:glue/src/_proposed_core/tool.dart' show Tool;
+export 'package:glue_core/src/agent_event.dart';
+export 'package:glue_core/src/content_part.dart';
+export 'package:glue_core/src/llm_client.dart';
+export 'package:glue_core/src/message.dart';
+export 'package:glue_core/src/tool.dart' show Tool;
 
 // ---------------------------------------------------------------------------
 // Agent core

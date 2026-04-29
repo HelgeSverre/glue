@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:glue/src/_proposed_core/tool.dart';
-import 'package:glue/src/config/constants.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/shell/command_executor.dart';
 
 // Re-export the abstract tool surface. The data types (Tool, ToolParameter,
@@ -10,7 +9,7 @@ import 'package:glue/src/shell/command_executor.dart';
 // so strategies can depend on them without crossing the harness layer.
 // Tool *implementations* (ReadFileTool, BashTool, …) stay in this file because
 // they pull in I/O and runtime dependencies.
-export 'package:glue/src/_proposed_core/tool.dart';
+export 'package:glue_core/src/tool.dart';
 
 // ---------------------------------------------------------------------------
 // Built-in tools

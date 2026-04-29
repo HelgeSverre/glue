@@ -1,15 +1,7 @@
 import 'dart:async';
 
-import 'package:glue/src/_proposed_core/ids.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/glue.dart';
-import 'package:glue/src/agent/agent_core.dart'
-    show
-        AgentEvent,
-        AgentTextDelta,
-        AgentToolCall,
-        AgentToolResult,
-        AgentDone,
-        Role;
 import 'package:test/test.dart';
 
 // ---------------------------------------------------------------------------

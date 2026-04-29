@@ -5,7 +5,7 @@
 /// directly, so the credential boundary stays single-hop.
 library;
 
-import 'package:glue/src/_proposed_core/model_catalog.dart';
+import 'package:glue_core/glue_core.dart';
 
 class ResolvedProvider {
   const ResolvedProvider({

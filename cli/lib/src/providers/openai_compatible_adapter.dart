@@ -6,8 +6,7 @@
 /// branching code here.
 library;
 
-import 'package:glue/src/_proposed_core/llm_client.dart';
-import 'package:glue/src/_proposed_core/model_catalog.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/llm/openai_client.dart';
 import 'package:glue/src/providers/compatibility_profile.dart';
 import 'package:glue/src/providers/provider_adapter.dart';

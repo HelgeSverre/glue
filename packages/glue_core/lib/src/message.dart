@@ -9,8 +9,8 @@
 /// The agent loop class itself ([AgentCore]) stays in `agent/`.
 library;
 
-import 'package:glue/src/_proposed_core/content_part.dart';
-import 'package:glue/src/_proposed_core/ids.dart';
+import 'package:glue_core/src/content_part.dart';
+import 'package:glue_core/src/ids.dart';
 
 // ---------------------------------------------------------------------------
 // Message types for the conversation history

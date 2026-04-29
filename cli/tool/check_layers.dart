@@ -54,9 +54,9 @@ const _subsystemLayers = <String, _Layer>{
   'shell': _Layer.strategies,
   'web': _Layer.strategies,
 
-  // Proposed core — pure data types, the staging area for the future
-  // `glue_core` package. Below strategies, so any subsystem can import.
-  '_proposed_core': _Layer.core,
+  // External `glue_core` package — treated as a synthetic subsystem at
+  // core rank. Any subsystem may import from it. See `_subsystemOfImport`.
+  '<glue_core>': _Layer.core,
 };
 
 enum _Layer {
@@ -151,7 +151,7 @@ void main(List<String> args) {
 }
 
 final _importPattern = RegExp(
-  r'''^\s*import\s+['"](package:glue/[^'"]+)['"]''',
+  r'''^\s*import\s+['"](package:(?:glue|glue_core)/[^'"]+)['"]''',
 );
 
 String? _subsystemOf(String filePath) {
@@ -167,6 +167,9 @@ String? _subsystemOf(String filePath) {
 }
 
 String? _subsystemOfImport(String importUri) {
+  // External `glue_core` package — synthetic subsystem at core rank.
+  if (importUri.startsWith('package:glue_core/')) return '<glue_core>';
+
   // `package:glue/src/<subsystem>/...`
   const prefix = 'package:glue/src/';
   if (!importUri.startsWith(prefix)) return null;

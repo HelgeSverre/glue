@@ -1,9 +1,9 @@
 // ignore_for_file: avoid_print
-/// Generates `lib/src/_proposed_core/version_generated.dart` from the
-/// `version:` field in `pubspec.yaml`, so `pubspec.yaml` is the single
-/// source of truth.
+/// Generates `packages/glue_core/lib/src/version_generated.dart` from the
+/// `version:` field in `cli/pubspec.yaml`, so `cli/pubspec.yaml` is the
+/// single source of truth.
 ///
-/// Usage:
+/// Usage (run from `cli/`):
 ///   dart run tool/gen_version.dart          # regenerate in place
 ///   dart run tool/gen_version.dart --check  # exit 1 if file would change
 ///
@@ -13,7 +13,7 @@ library;
 import 'dart:io';
 
 const _sourcePath = 'pubspec.yaml';
-const _outPath = 'lib/src/_proposed_core/version_generated.dart';
+const _outPath = '../packages/glue_core/lib/src/version_generated.dart';
 
 void main(List<String> args) {
   final checkMode = args.contains('--check');

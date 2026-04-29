@@ -2,11 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-import 'package:glue/src/_proposed_core/content_part.dart';
-import 'package:glue/src/_proposed_core/ids.dart';
-import 'package:glue/src/_proposed_core/llm_client.dart';
-import 'package:glue/src/_proposed_core/message.dart';
-import 'package:glue/src/_proposed_core/tool.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/llm/ndjson.dart';
 import 'package:glue/src/llm/tool_schema.dart';
 

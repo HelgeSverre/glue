@@ -8,9 +8,9 @@
 /// it as one JSON-RPC method. Tests can replay command logs.
 library;
 
-import 'package:glue/src/_proposed_core/ids.dart';
-import 'package:glue/src/_proposed_core/model_ref.dart';
-import 'package:glue/src/_proposed_core/session_event.dart';
+import 'package:glue_core/src/ids.dart';
+import 'package:glue_core/src/model_ref.dart';
+import 'package:glue_core/src/session_event.dart';
 
 /// Base type for all surface→harness commands.
 sealed class SessionCommand {

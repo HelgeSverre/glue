@@ -1,9 +1,8 @@
-import 'package:glue/src/_proposed_core/ids.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/agent_manager.dart';
 import 'package:glue/src/agent/agent_runner.dart';
 import 'package:glue/src/agent/tools.dart';
-import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/agent/llm_factory.dart';
 import 'package:test/test.dart';
 

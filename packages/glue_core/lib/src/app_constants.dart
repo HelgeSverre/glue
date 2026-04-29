@@ -6,7 +6,7 @@
 /// values without crossing the harness boundary.
 library;
 
-import 'package:glue/src/_proposed_core/version_generated.dart';
+import 'package:glue_core/src/version_generated.dart';
 
 /// Application-wide configuration constants.
 ///

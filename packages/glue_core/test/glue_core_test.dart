@@ -7,7 +7,7 @@
 /// consumers about it?" impossible to miss.
 library;
 
-import 'package:glue/src/_proposed_core/proposed_core.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:test/test.dart';
 
 void main() {

@@ -1,6 +1,5 @@
-import 'package:glue/src/_proposed_core/ids.dart';
-import 'package:glue/src/_proposed_core/session_event.dart' as core;
-import 'package:glue/src/agent/agent_core.dart';
+import 'package:glue_core/glue_core.dart';
+import 'package:glue_core/glue_core.dart' as core;
 import 'package:glue/src/config/approval_mode.dart';
 
 enum PermissionDecision { allow, ask, deny }

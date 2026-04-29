@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:glue/src/_proposed_core/app_constants.dart';
+import 'package:glue_core/glue_core.dart';
 
 /// The type of shell detected on the system.
 enum ShellType { bash, fish, zsh, sh }

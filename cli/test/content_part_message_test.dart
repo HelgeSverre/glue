@@ -1,6 +1,4 @@
-import 'package:glue/src/_proposed_core/ids.dart';
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/tools.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:test/test.dart';
 
 void main() {

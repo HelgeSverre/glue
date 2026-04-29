@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:glue/src/_proposed_core/ids.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/observability/observability.dart';

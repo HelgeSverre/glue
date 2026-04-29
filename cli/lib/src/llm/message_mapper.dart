@@ -1,8 +1,6 @@
 import 'dart:convert';
 
-import 'package:glue/src/_proposed_core/content_part.dart';
-import 'package:glue/src/_proposed_core/ids.dart';
-import 'package:glue/src/_proposed_core/message.dart';
+import 'package:glue_core/glue_core.dart';
 
 /// Result of mapping Glue messages to a provider-specific format.
 class MappedMessages {

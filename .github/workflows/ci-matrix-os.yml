@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "cli/**"
+      - "packages/**"
       - ".github/workflows/ci-matrix-os.yml"
   workflow_dispatch:
 
@@ -20,7 +21,6 @@ jobs:
           - windows-latest
     defaults:
       run:
-        working-directory: cli
         shell: bash
 
     steps:
@@ -30,8 +30,18 @@ jobs:
       - name: Setup Dart
         uses: dart-lang/setup-dart@v1
 
-      - name: Install dependencies
+      - name: Install glue_core dependencies
+        working-directory: packages/glue_core
         run: dart pub get
 
-      - name: Run tests
+      - name: Install CLI dependencies
+        working-directory: cli
+        run: dart pub get
+
+      - name: Run glue_core tests
+        working-directory: packages/glue_core
+        run: dart test
+
+      - name: Run CLI tests
+        working-directory: cli
         run: dart test

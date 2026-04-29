@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:glue/src/_proposed_core/ids.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/storage/session_store.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';

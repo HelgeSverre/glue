@@ -1,5 +1,4 @@
-import 'package:glue/src/_proposed_core/llm_client.dart';
-import 'package:glue/src/_proposed_core/model_ref.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/config/glue_config.dart';
 
 /// Creates [LlmClient] instances from a [ModelRef] via the adapter registry.
