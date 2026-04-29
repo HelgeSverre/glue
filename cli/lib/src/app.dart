@@ -281,10 +281,17 @@ class App {
   }) async {
     final services = await ServiceLocator.create(model: model, debug: debug);
 
+    // Surface objects (terminal/layout/editor) are constructed here, not
+    // by the harness. ServiceLocator deliberately does not bundle them so
+    // that core/ can stay below surface/ in the layered architecture.
+    final terminal = Terminal();
+    final layout = Layout(terminal);
+    final editor = TextAreaEditor();
+
     return App(
-      terminal: services.terminal,
-      layout: services.layout,
-      editor: services.editor,
+      terminal: terminal,
+      layout: layout,
+      editor: editor,
       agent: services.agent,
       modelId: services.config.activeModel.modelId,
       manager: services.manager,

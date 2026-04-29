@@ -60,9 +60,12 @@ gen-check:
     dart run tool/gen_models.dart --check
     dart run tool/gen_version.dart --check
 
-# Layer-import linter (warn-only — see docs/plans/2026-04-29-harness-layers.md)
+# Layer-import linter (strict — see docs/plans/2026-04-29-harness-layers.md)
+# Surface↔non-surface boundary is enforced. Run `--aspirational` to also see
+# the future strategies→harness violations that will resolve once glue_core
+# is extracted.
 check-layers *args:
-    dart run tool/check_layers.dart {{args}}
+    dart run tool/check_layers.dart --strict {{args}}
 
 # Analyze + test + codegen freshness + layer hygiene
 check: gen-check analyze test check-layers

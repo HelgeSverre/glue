@@ -54,12 +54,13 @@ jobs:
       - name: Check CLI formatting
         run: dart format --output=none --set-exit-if-changed cli
 
-      - name: Layer-import hygiene (warn-only)
+      - name: Layer-import hygiene
         # See docs/plans/2026-04-29-harness-layers.md.
-        # Plan: flip to --strict once the existing worklist is cleared.
+        # Strict: enforces the surface↔non-surface boundary. Aspirational
+        # strategies→harness violations are advisory and surfaced by
+        # `--aspirational`; they resolve once glue_core is extracted.
         working-directory: cli
-        run: dart run tool/check_layers.dart
-        continue-on-error: true
+        run: dart run tool/check_layers.dart --strict
 
       - name: Run monorepo quality gate
         run: just check

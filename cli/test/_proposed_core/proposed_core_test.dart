@@ -103,7 +103,8 @@ void main() {
           kind: ChunkKind.text,
         ),
       ];
-      final sorted = [...events]..sort((a, b) => a.sequence.compareTo(b.sequence));
+      final sorted = [...events]
+        ..sort((a, b) => a.sequence.compareTo(b.sequence));
       expect(sorted.map((e) => e.sequence), orderedEquals([0, 1, 2]));
     });
   });
@@ -140,7 +141,8 @@ void main() {
       const id = ToolCallId('t');
       const elapsed = Duration.zero;
       expect(
-        name(const ToolOkSnapshot(id: id, elapsed: elapsed, contentSummary: '')),
+        name(
+            const ToolOkSnapshot(id: id, elapsed: elapsed, contentSummary: '')),
         equals('ok'),
       );
       expect(

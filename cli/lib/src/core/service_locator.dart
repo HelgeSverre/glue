@@ -4,7 +4,6 @@ import 'package:glue/src/agent/prompts.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/core/environment.dart';
-import 'package:glue/src/input/text_area_editor.dart';
 import 'package:glue/src/llm/llm_factory.dart';
 import 'package:glue/src/observability/debug_controller.dart';
 import 'package:glue/src/observability/file_sink.dart';
@@ -24,8 +23,6 @@ import 'package:glue/src/skills/skill_runtime.dart';
 import 'package:glue/src/skills/skill_tool.dart';
 import 'package:glue/src/storage/config_store.dart';
 import 'package:glue/src/storage/session_store.dart';
-import 'package:glue/src/terminal/layout.dart';
-import 'package:glue/src/terminal/terminal.dart';
 import 'package:glue/src/tools/subagent_tools.dart';
 import 'package:glue/src/tools/web_browser_tool.dart';
 import 'package:glue/src/tools/web_fetch_tool.dart';
@@ -55,10 +52,6 @@ class ServiceLocator {
     final resolvedEnv = environment ?? Environment.detect();
     final config = GlueConfig.load(cliModel: model, environment: resolvedEnv);
     config.validate();
-
-    final terminal = Terminal();
-    final layout = Layout(terminal);
-    final editor = TextAreaEditor();
 
     final skillRuntime = SkillRuntime(
       cwd: resolvedEnv.cwd,
@@ -219,9 +212,6 @@ class ServiceLocator {
     return AppServices(
       environment: resolvedEnv,
       config: config,
-      terminal: terminal,
-      layout: layout,
-      editor: editor,
       agent: agent,
       manager: manager,
       llmFactory: llmFactory,
@@ -236,12 +226,15 @@ class ServiceLocator {
   }
 }
 
+/// Harness-layer services constructed by [ServiceLocator].
+///
+/// Surface concerns (terminal, layout, line editor) are not bundled here —
+/// the surface (e.g. `App.create`) constructs those itself. Keeping
+/// [AppServices] surface-free is what lets `core/` stay below `surface/`
+/// in the layered architecture (see `tool/check_layers.dart`).
 class AppServices {
   final Environment environment;
   final GlueConfig config;
-  final Terminal terminal;
-  final Layout layout;
-  final TextAreaEditor editor;
   final AgentCore agent;
   final AgentManager manager;
   final LlmClientFactory llmFactory;
@@ -260,9 +253,6 @@ class AppServices {
   const AppServices({
     required this.environment,
     required this.config,
-    required this.terminal,
-    required this.layout,
-    required this.editor,
     required this.agent,
     required this.manager,
     required this.llmFactory,
