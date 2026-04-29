@@ -64,8 +64,9 @@ const _subsystemLayers = <String, _Layer>{
   'shell': _Layer.strategies,
   'web': _Layer.strategies,
 
-  // Proposed core (PR 2). Treated as harness — no surface, no I/O.
-  '_proposed_core': _Layer.harness,
+  // Proposed core — pure data types, the staging area for the future
+  // `glue_core` package. Below strategies, so any subsystem can import.
+  '_proposed_core': _Layer.core,
 };
 
 enum _Layer {
@@ -75,6 +76,9 @@ enum _Layer {
   // future-violations under --aspirational without enforcing them now.
   harness(1, 'harness', aspirationalRank: 2),
   strategies(1, 'strategies'),
+  // Pure data types — no behavior, no I/O. Strictly below strategies so
+  // any subsystem can import them. This is the future `glue_core` package.
+  core(0, 'core'),
   // Reserved — no subsystem maps to it today, but keeping the rank stable
   // means future transport-layer subsystems just need a _subsystemLayers entry.
   transport(0, 'transport');

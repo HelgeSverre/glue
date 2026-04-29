@@ -3,8 +3,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'package:glue/src/_proposed_core/ids.dart';
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/tools.dart';
+import 'package:glue/src/_proposed_core/llm_client.dart';
+import 'package:glue/src/_proposed_core/message.dart';
+import 'package:glue/src/_proposed_core/tool.dart';
 import 'package:glue/src/llm/message_mapper.dart';
 import 'package:glue/src/llm/sse.dart';
 import 'package:glue/src/llm/tool_schema.dart';

@@ -9,8 +9,8 @@
 library;
 
 import 'package:glue/src/_proposed_core/ids.dart';
+import 'package:glue/src/_proposed_core/model_ref.dart';
 import 'package:glue/src/_proposed_core/session_event.dart';
-import 'package:glue/src/catalog/model_ref.dart';
 
 /// Base type for all surface→harness commands.
 sealed class SessionCommand {

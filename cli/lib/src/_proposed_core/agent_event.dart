@@ -1,0 +1,50 @@
+/// Events emitted by the agent loop that the surface (UI, ACP, web)
+/// subscribes to.
+///
+/// **Status:** part of the proposed core data model — see
+/// `docs/plans/2026-04-29-harness-layers.md`. Originally lived in
+/// `agent/agent_core.dart`. This is the *current* agent-event vocabulary;
+/// the richer [SessionEvent] hierarchy in `session_event.dart` is the
+/// proposed future contract.
+library;
+
+import 'package:glue/src/_proposed_core/ids.dart';
+import 'package:glue/src/_proposed_core/message.dart';
+import 'package:glue/src/_proposed_core/tool.dart';
+
+/// Events emitted by the agent that the UI subscribes to.
+sealed class AgentEvent {}
+
+/// A delta of generated text forwarded to the UI.
+class AgentTextDelta extends AgentEvent {
+  final String delta;
+  AgentTextDelta(this.delta);
+}
+
+/// Notification that a tool call is being prepared.
+class AgentToolCallPending extends AgentEvent {
+  final ToolCallId id;
+  final String name;
+  AgentToolCallPending({required this.id, required this.name});
+}
+
+/// A fully-formed tool call ready for execution.
+class AgentToolCall extends AgentEvent {
+  final ToolCall call;
+  AgentToolCall(this.call);
+}
+
+/// The result of an executed tool call.
+class AgentToolResult extends AgentEvent {
+  final ToolResult result;
+  AgentToolResult(this.result);
+}
+
+/// Signals that the agent has finished its response.
+class AgentDone extends AgentEvent {}
+
+/// An error encountered during the agent loop.
+class AgentError extends AgentEvent {
+  final Object error;
+  AgentError(this.error);
+}

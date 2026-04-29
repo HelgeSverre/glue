@@ -1,6 +1,5 @@
 import 'package:glue/src/_proposed_core/ids.dart';
 import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/llm/message_mapper.dart';
 import 'package:test/test.dart';
 

@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:glue/src/_proposed_core/ids.dart';
 import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/llm/ollama_client.dart';
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';

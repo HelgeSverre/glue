@@ -1,4 +1,4 @@
-import 'package:glue/src/agent/tools.dart';
+import 'package:glue/src/_proposed_core/tool.dart';
 
 /// Encodes [Tool] definitions into provider-specific JSON schemas.
 sealed class ToolSchemaEncoder {

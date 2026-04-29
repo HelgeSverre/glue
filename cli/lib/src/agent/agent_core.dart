@@ -1,180 +1,23 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:glue/src/_proposed_core/agent_event.dart';
 import 'package:glue/src/_proposed_core/ids.dart';
-import 'package:glue/src/agent/content_part.dart';
-import 'package:glue/src/agent/tools.dart';
+import 'package:glue/src/_proposed_core/llm_client.dart';
+import 'package:glue/src/_proposed_core/message.dart';
+import 'package:glue/src/_proposed_core/tool.dart';
 import 'package:glue/src/observability/observability.dart';
 import 'package:glue/src/observability/redaction.dart';
 
-// ---------------------------------------------------------------------------
-// Message types for the conversation history
-// ---------------------------------------------------------------------------
-
-/// Role of a message in the conversation.
-///
-/// {@category Agent}
-enum Role { user, assistant, toolResult }
-
-/// A single message in the conversation history.
-class Message {
-  final Role role;
-  final String? text;
-  final List<ToolCall> toolCalls;
-  final String? toolCallId;
-  final String? toolName;
-  final List<ContentPart>? contentParts;
-
-  const Message._({
-    required this.role,
-    this.text,
-    this.toolCalls = const [],
-    this.toolCallId,
-    this.toolName,
-    this.contentParts,
-  });
-
-  factory Message.user(String text) => Message._(role: Role.user, text: text);
-
-  factory Message.assistant({String? text, List<ToolCall>? toolCalls}) =>
-      Message._(
-        role: Role.assistant,
-        text: text,
-        toolCalls: toolCalls ?? const [],
-      );
-
-  factory Message.toolResult({
-    required ToolCallId callId,
-    required String content,
-    String? toolName,
-    List<ContentPart>? contentParts,
-  }) =>
-      Message._(
-          role: Role.toolResult,
-          text: content,
-          toolCallId: callId.value,
-          toolName: toolName,
-          contentParts: contentParts);
-}
-
-// ---------------------------------------------------------------------------
-// LLM streaming types
-// ---------------------------------------------------------------------------
-
-/// A chunk emitted by the LLM streaming response.
-sealed class LlmChunk {}
-
-/// A delta of generated text.
-class TextDelta extends LlmChunk {
-  final String text;
-  TextDelta(this.text);
-}
-
-/// The model has started a tool call, but the arguments are still streaming in.
-///
-/// Use this to show early UI feedback (e.g. "preparing read_file…") before the
-/// full [ToolCallComplete] arrives with parsed arguments.
-///
-/// Not every provider emits this — Ollama delivers tool calls fully formed, so
-/// you may only receive [ToolCallComplete]. Always treat this event as optional.
-class ToolCallStart extends LlmChunk {
-  final ToolCallId id;
-  final String name;
-  ToolCallStart({required this.id, required this.name});
-}
-
-/// A fully-formed tool call with parsed arguments, ready to execute.
-class ToolCallComplete extends LlmChunk {
-  final ToolCall toolCall;
-  ToolCallComplete(this.toolCall);
-}
-
-/// Token usage reported by the LLM after a response.
-class UsageInfo extends LlmChunk {
-  final int inputTokens;
-  final int outputTokens;
-  UsageInfo({required this.inputTokens, required this.outputTokens});
-
-  int get totalTokens => inputTokens + outputTokens;
-}
-
-// ---------------------------------------------------------------------------
-// Tool call / result
-// ---------------------------------------------------------------------------
-
-/// A tool invocation requested by the model.
-class ToolCall {
-  final ToolCallId id;
-  final String name;
-  final Map<String, dynamic> arguments;
-  final String description;
-
-  ToolCall({
-    required this.id,
-    required this.name,
-    required this.arguments,
-    this.description = '',
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Abstract LLM client
-// ---------------------------------------------------------------------------
-
-/// Abstract LLM client — wraps any provider (Anthropic, OpenAI, etc.).
-///
-/// Implementations stream [LlmChunk]s for a given conversation and optional
-/// tool definitions.
-abstract class LlmClient {
-  /// Streams a response for the given [messages].
-  ///
-  /// If [tools] are provided the model may emit [ToolCallComplete] chunks.
-  Stream<LlmChunk> stream(
-    List<Message> messages, {
-    List<Tool>? tools,
-  });
-}
-
-// ---------------------------------------------------------------------------
-// App-level events emitted by the agent
-// ---------------------------------------------------------------------------
-
-/// Events emitted by the agent that the UI subscribes to.
-sealed class AgentEvent {}
-
-/// A delta of generated text forwarded to the UI.
-class AgentTextDelta extends AgentEvent {
-  final String delta;
-  AgentTextDelta(this.delta);
-}
-
-/// Notification that a tool call is being prepared.
-class AgentToolCallPending extends AgentEvent {
-  final ToolCallId id;
-  final String name;
-  AgentToolCallPending({required this.id, required this.name});
-}
-
-/// A fully-formed tool call ready for execution.
-class AgentToolCall extends AgentEvent {
-  final ToolCall call;
-  AgentToolCall(this.call);
-}
-
-/// The result of an executed tool call.
-class AgentToolResult extends AgentEvent {
-  final ToolResult result;
-  AgentToolResult(this.result);
-}
-
-/// Signals that the agent has finished its response.
-class AgentDone extends AgentEvent {}
-
-/// An error encountered during the agent loop.
-class AgentError extends AgentEvent {
-  final Object error;
-  AgentError(this.error);
-}
+// Re-export the data types and event vocabulary that were originally
+// declared here. Consumers that import this file continue to get the
+// same names; the types now live in `_proposed_core/` so strategies can
+// depend on them without crossing the harness layer.
+export 'package:glue/src/_proposed_core/agent_event.dart';
+export 'package:glue/src/_proposed_core/content_part.dart';
+export 'package:glue/src/_proposed_core/llm_client.dart';
+export 'package:glue/src/_proposed_core/message.dart';
+export 'package:glue/src/_proposed_core/tool.dart' show Tool;
 
 // ---------------------------------------------------------------------------
 // Agent core

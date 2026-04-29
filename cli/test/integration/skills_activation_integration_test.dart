@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/tools.dart' show Tool;
 import 'package:glue/src/skills/skill_activation.dart';
 import 'package:glue/src/skills/skill_runtime.dart';
 import 'package:glue/src/skills/skill_tool.dart';
