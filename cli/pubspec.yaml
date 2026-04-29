@@ -23,6 +23,8 @@ dependencies:
   cli_completion: ^0.5.1
   glue_core:
     path: ../packages/glue_core
+  glue_strategies:
+    path: ../packages/glue_strategies
   html: ^0.15.5
   http: ^1.6.0
   markdown: ^7.3.1

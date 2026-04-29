@@ -1,4 +1,4 @@
-import 'package:glue/src/web/browser/providers/docker_browser_provider.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:test/test.dart';
 
 void main() {

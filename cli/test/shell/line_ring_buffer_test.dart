@@ -1,4 +1,4 @@
-import 'package:glue/src/shell/line_ring_buffer.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:test/test.dart';
 
 void main() {

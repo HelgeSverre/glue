@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:glue/src/agent/tools.dart';
-import 'package:glue/src/web/search/search_router.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 
 class WebSearchTool extends Tool {
   final FutureOr<SearchRouter> Function() _routerProvider;

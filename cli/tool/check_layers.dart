@@ -47,15 +47,14 @@ const _subsystemLayers = <String, _Layer>{
   'storage': _Layer.harness,
   'tools': _Layer.harness,
 
-  // Strategies
-  'credentials': _Layer.strategies,
-  'llm': _Layer.strategies,
-  'providers': _Layer.strategies,
-  'shell': _Layer.strategies,
-  'web': _Layer.strategies,
+  // External `glue_strategies` package — synthetic strategies-rank
+  // subsystem. The credentials/, llm/, providers/, shell/, web/ source
+  // dirs moved out of cli/lib/src/ in the package extraction; their
+  // public surface is now consumed via `package:glue_strategies/...`.
+  '<glue_strategies>': _Layer.strategies,
 
-  // External `glue_core` package — treated as a synthetic subsystem at
-  // core rank. Any subsystem may import from it. See `_subsystemOfImport`.
+  // External `glue_core` package — synthetic subsystem at core rank.
+  // Any subsystem may import from it. See `_subsystemOfImport`.
   '<glue_core>': _Layer.core,
 };
 
@@ -151,7 +150,7 @@ void main(List<String> args) {
 }
 
 final _importPattern = RegExp(
-  r'''^\s*import\s+['"](package:(?:glue|glue_core)/[^'"]+)['"]''',
+  r'''^\s*import\s+['"](package:(?:glue|glue_core|glue_strategies)/[^'"]+)['"]''',
 );
 
 String? _subsystemOf(String filePath) {
@@ -167,8 +166,11 @@ String? _subsystemOf(String filePath) {
 }
 
 String? _subsystemOfImport(String importUri) {
-  // External `glue_core` package — synthetic subsystem at core rank.
+  // External packages — each maps to a single synthetic subsystem.
   if (importUri.startsWith('package:glue_core/')) return '<glue_core>';
+  if (importUri.startsWith('package:glue_strategies/')) {
+    return '<glue_strategies>';
+  }
 
   // `package:glue/src/<subsystem>/...`
   const prefix = 'package:glue/src/';

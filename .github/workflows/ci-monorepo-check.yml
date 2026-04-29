@@ -52,18 +52,23 @@ jobs:
       - name: Install glue_core dependencies
         run: just glue_core::deps
 
+      - name: Install glue_strategies dependencies
+        # Depends on glue_core via path; resolve after glue_core::deps.
+        run: just glue_strategies::deps
+
       - name: Install CLI dependencies
-        # CLI's pubspec depends on glue_core via path; resolve after
-        # glue_core::deps so the path target exists.
+        # CLI's pubspec depends on glue_core + glue_strategies via path;
+        # resolve after both so the path targets exist.
         run: just cli::deps
 
       - name: Install site dependencies
         run: npm ci --prefix website
 
-      - name: Check formatting (cli + glue_core)
+      - name: Check formatting (cli + glue_core + glue_strategies)
         run: |
           dart format --output=none --set-exit-if-changed cli
           dart format --output=none --set-exit-if-changed packages/glue_core
+          dart format --output=none --set-exit-if-changed packages/glue_strategies
 
       - name: Layer-import hygiene
         # See docs/plans/2026-04-29-harness-layers.md.

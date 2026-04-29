@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as p;
-import 'package:glue/src/shell/docker_config.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 
 class SessionState {
   static const int _currentVersion = 1;

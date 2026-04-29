@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:glue/src/commands/slash_commands.dart';
-import 'package:glue/src/shell/shell_completer.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:glue/src/ui/at_file_hint.dart';
 import 'package:glue/src/ui/autocomplete_overlay.dart';
 import 'package:glue/src/ui/shell_autocomplete.dart';

@@ -4,8 +4,7 @@ library;
 import 'dart:io';
 
 import 'package:glue/src/tools/web_browser_tool.dart';
-import 'package:glue/src/web/browser/browser_manager.dart';
-import 'package:glue/src/web/browser/providers/anchor_provider.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:test/test.dart';
 import 'package:yaml/yaml.dart';
 

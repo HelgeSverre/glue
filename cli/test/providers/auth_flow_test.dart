@@ -1,4 +1,4 @@
-import 'package:glue/src/providers/auth_flow.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:glue_core/glue_core.dart';
 import 'package:test/test.dart';
 

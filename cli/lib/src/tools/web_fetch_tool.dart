@@ -1,6 +1,5 @@
 import 'package:glue/src/agent/tools.dart';
-import 'package:glue/src/web/web_config.dart';
-import 'package:glue/src/web/fetch/web_fetch_client.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:http/http.dart' as http;
 
 class WebFetchTool extends Tool {

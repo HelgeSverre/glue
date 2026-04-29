@@ -34,12 +34,20 @@ jobs:
         working-directory: packages/glue_core
         run: dart pub get
 
+      - name: Install glue_strategies dependencies
+        working-directory: packages/glue_strategies
+        run: dart pub get
+
       - name: Install CLI dependencies
         working-directory: cli
         run: dart pub get
 
       - name: Run glue_core tests
         working-directory: packages/glue_core
+        run: dart test
+
+      - name: Run glue_strategies tests
+        working-directory: packages/glue_strategies
         run: dart test
 
       - name: Run CLI tests

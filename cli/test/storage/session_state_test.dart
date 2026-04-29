@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:glue/src/shell/docker_config.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:glue/src/storage/session_state.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';

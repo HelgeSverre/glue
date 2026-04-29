@@ -10,7 +10,7 @@ import 'dart:math';
 
 import 'package:glue/src/core/clipboard.dart';
 import 'package:glue/src/core/url_launcher.dart';
-import 'package:glue/src/providers/auth_flow.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
 import 'package:glue/src/terminal/styled.dart';
 import 'package:glue/src/terminal/terminal.dart';

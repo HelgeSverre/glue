@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:glue_core/glue_core.dart';
-import 'package:glue/src/llm/ollama_client.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 

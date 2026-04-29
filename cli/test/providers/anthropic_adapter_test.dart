@@ -1,8 +1,5 @@
 import 'package:glue_core/glue_core.dart';
-import 'package:glue/src/llm/anthropic_client.dart';
-import 'package:glue/src/providers/anthropic_adapter.dart';
-import 'package:glue/src/providers/provider_adapter.dart';
-import 'package:glue/src/providers/resolved.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:test/test.dart';
 
 void main() {

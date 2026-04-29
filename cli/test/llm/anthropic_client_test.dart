@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/llm/anthropic_client.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:test/test.dart';
 
 // A mock HTTP client is complex; test the SSE parsing logic directly.

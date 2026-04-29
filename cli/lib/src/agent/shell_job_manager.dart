@@ -3,8 +3,7 @@ import 'dart:io';
 
 import 'package:glue/src/observability/observability.dart';
 import 'package:glue/src/observability/redaction.dart';
-import 'package:glue/src/shell/command_executor.dart';
-import 'package:glue/src/shell/line_ring_buffer.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 
 enum JobStatus {
   running,

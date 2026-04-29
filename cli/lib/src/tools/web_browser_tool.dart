@@ -3,10 +3,7 @@ import 'dart:async';
 import 'package:puppeteer/puppeteer.dart' as pptr;
 
 import 'package:glue_core/glue_core.dart';
-import 'package:glue/src/web/browser/browser_manager.dart';
-import 'package:glue/src/web/fetch/html_extractor.dart';
-import 'package:glue/src/web/fetch/html_to_markdown.dart';
-import 'package:glue/src/web/fetch/truncation.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 
 /// Tool for browser-based web interaction via Chrome DevTools Protocol.
 class WebBrowserTool extends Tool {

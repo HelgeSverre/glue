@@ -9,18 +9,8 @@ import 'package:glue/src/catalog/model_resolver.dart';
 import 'package:glue/src/catalog/models_generated.dart';
 import 'package:glue/src/config/approval_mode.dart';
 import 'package:glue/src/core/environment.dart';
-import 'package:glue/src/credentials/credential_store.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:glue/src/observability/observability_config.dart';
-import 'package:glue/src/providers/anthropic_adapter.dart';
-import 'package:glue/src/providers/copilot_adapter.dart';
-import 'package:glue/src/providers/ollama_adapter.dart';
-import 'package:glue/src/providers/openai_compatible_adapter.dart';
-import 'package:glue/src/providers/provider_adapter.dart';
-import 'package:glue/src/providers/resolved.dart';
-import 'package:glue/src/shell/docker_config.dart';
-import 'package:glue/src/shell/shell_config.dart';
-import 'package:glue/src/web/browser/browser_config.dart';
-import 'package:glue/src/web/web_config.dart';
 
 /// Splits a path-list env var using platform-appropriate separators.
 /// Unix uses `:` (like `$PATH`), Windows uses `;`.

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:glue_core/glue_core.dart';
-import 'package:glue/src/shell/command_executor.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 
 // Re-export the abstract tool surface. The data types (Tool, ToolParameter,
 // ToolResult, ToolTrust, ForwardingTool) now live in `_proposed_core/tool.dart`

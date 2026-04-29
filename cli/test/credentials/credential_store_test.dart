@@ -6,8 +6,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:glue_core/glue_core.dart';
-import 'package:glue/src/credentials/credential_ref.dart';
-import 'package:glue/src/credentials/credential_store.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:test/test.dart';
 
 Directory _scratch() {

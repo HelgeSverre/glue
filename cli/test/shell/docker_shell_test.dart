@@ -4,7 +4,7 @@
 // Expects the target shell to be installed in the container.
 import 'dart:io';
 
-import 'package:glue/src/shell/shell_completer.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 
 int _passed = 0;
 int _failed = 0;

@@ -1,5 +1,5 @@
 import 'package:glue_core/glue_core.dart';
-import 'package:glue/src/providers/ollama_discovery.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:glue/src/ui/model_panel_formatter.dart';
 import 'package:test/test.dart';
 

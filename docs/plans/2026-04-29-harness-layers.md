@@ -304,8 +304,14 @@ surface?* If yes, harness. If no, surface.
 
 **Strategy extraction:**
 
-11. **Move strategies to `glue_strategies` package.**
-12. **Move transport layer to `glue_transport` package.**
+11. ✅ **Move strategies to `glue_strategies` package.**
+    `credentials/`, `llm/`, `providers/`, `shell/`, `web/` source dirs
+    moved out of `cli/lib/src/` into `packages/glue_strategies/`. CLI
+    consumes via path dependency and the
+    `package:glue_strategies/glue_strategies.dart` public barrel.
+12. **Move transport layer to `glue_transport` package.** (HTTP, SSE,
+    NDJSON, process spawning — extract from glue_strategies once a
+    second consumer needs them.)
 
 **Harness consolidation:**
 

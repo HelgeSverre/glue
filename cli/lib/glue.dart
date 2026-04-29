@@ -82,21 +82,35 @@ export 'src/catalog/catalog_loader.dart' show loadCatalog;
 export 'src/catalog/catalog_parser.dart'
     show parseCatalogYaml, CatalogParseException;
 export 'src/catalog/models_generated.dart' show bundledCatalog;
-export 'src/credentials/credential_ref.dart'
+export 'package:glue_strategies/glue_strategies.dart'
     show
         CredentialRef,
         EnvCredential,
         StoredCredential,
         InlineCredential,
-        NoCredential;
-export 'src/credentials/credential_store.dart' show CredentialStore;
-export 'src/providers/provider_adapter.dart'
-    show ProviderAdapter, AdapterRegistry, ProviderHealth, DiscoveredModel;
-export 'src/providers/resolved.dart' show ResolvedProvider, ResolvedModel;
-export 'src/providers/compatibility_profile.dart' show CompatibilityProfile;
-export 'src/providers/anthropic_adapter.dart' show AnthropicAdapter;
-export 'src/providers/openai_compatible_adapter.dart'
-    show OpenAiCompatibleAdapter;
+        NoCredential,
+        CredentialStore,
+        ProviderAdapter,
+        AdapterRegistry,
+        ProviderHealth,
+        DiscoveredModel,
+        ResolvedProvider,
+        ResolvedModel,
+        CompatibilityProfile,
+        AnthropicAdapter,
+        OpenAiCompatibleAdapter,
+        CommandExecutor,
+        CaptureResult,
+        RunningCommand,
+        DockerConfig,
+        MountEntry,
+        MountMode,
+        DockerExecutor,
+        ExecutorFactory,
+        HostExecutor,
+        ShellConfig,
+        ShellMode,
+        LineRingBuffer;
 export 'src/agent/llm_factory.dart' show LlmClientFactory;
 export 'src/agent/agent_runner.dart' show AgentRunner, ToolApprovalPolicy;
 export 'src/agent/agent_manager.dart' show AgentManager;
@@ -180,15 +194,7 @@ export 'src/input/file_expander.dart' show expandFileRefs, extractFileRefs;
 export 'src/ui/at_file_hint.dart' show AtFileHint;
 export 'src/ui/autocomplete_overlay.dart'
     show AutocompleteOverlay, AcceptResult;
-export 'src/shell/command_executor.dart'
-    show CommandExecutor, CaptureResult, RunningCommand;
-export 'src/shell/docker_config.dart' show DockerConfig, MountEntry, MountMode;
-export 'src/shell/docker_executor.dart' show DockerExecutor;
-export 'src/shell/executor_factory.dart' show ExecutorFactory;
-export 'src/shell/host_executor.dart' show HostExecutor;
-export 'src/shell/shell_config.dart' show ShellConfig, ShellMode;
 export 'src/storage/session_state.dart' show SessionState;
-export 'src/shell/line_ring_buffer.dart' show LineRingBuffer;
 export 'src/agent/shell_job_manager.dart'
     show
         ShellJobManager,

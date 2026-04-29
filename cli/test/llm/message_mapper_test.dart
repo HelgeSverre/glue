@@ -1,5 +1,5 @@
 import 'package:glue_core/glue_core.dart';
-import 'package:glue/src/llm/message_mapper.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:test/test.dart';
 
 void main() {
