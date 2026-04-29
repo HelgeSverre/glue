@@ -42,6 +42,10 @@ jobs:
         working-directory: packages/glue_harness
         run: dart pub get
 
+      - name: Install glue_server dependencies
+        working-directory: packages/glue_server
+        run: dart pub get
+
       - name: Install CLI dependencies
         working-directory: cli
         run: dart pub get
@@ -56,6 +60,10 @@ jobs:
 
       - name: Run glue_harness tests
         working-directory: packages/glue_harness
+        run: dart test
+
+      - name: Run glue_server tests
+        working-directory: packages/glue_server
         run: dart test
 
       - name: Run CLI tests

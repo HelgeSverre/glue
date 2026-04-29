@@ -60,8 +60,12 @@ jobs:
         # Depends on glue_core + glue_strategies via path.
         run: just glue_harness::deps
 
+      - name: Install glue_server dependencies
+        # Depends only on glue_core via path.
+        run: just glue_server::deps
+
       - name: Install CLI dependencies
-        # CLI's pubspec depends on all three via path; resolve last.
+        # CLI's pubspec depends on all four via path; resolve last.
         run: just cli::deps
 
       - name: Install site dependencies
@@ -73,6 +77,7 @@ jobs:
           dart format --output=none --set-exit-if-changed packages/glue_core
           dart format --output=none --set-exit-if-changed packages/glue_strategies
           dart format --output=none --set-exit-if-changed packages/glue_harness
+          dart format --output=none --set-exit-if-changed packages/glue_server
 
       - name: Layer-import hygiene
         # See docs/plans/2026-04-29-harness-layers.md.

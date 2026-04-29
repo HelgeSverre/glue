@@ -6,6 +6,7 @@ import 'package:cli_completion/cli_completion.dart';
 import 'package:cli_completion/installer.dart';
 import 'package:cli_completion/parser.dart';
 import 'package:glue/glue.dart';
+import 'package:glue_server/glue_server.dart';
 import 'package:path/path.dart' as p;
 
 const appDescription = 'The coding agent that holds it all together.';
@@ -93,6 +94,7 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
     addCommand(CompletionsCommand());
     addCommand(ConfigCommand());
     addCommand(DoctorCommand());
+    addCommand(ServeCommand());
   }
 
   @override
@@ -319,6 +321,111 @@ class DoctorCommand extends Command<int> {
       verbose: argResults!.flag('verbose'),
     ));
     return report.hasErrors ? 1 : 0;
+  }
+}
+
+/// `glue serve` — expose Glue's harness over an external protocol.
+///
+/// Today: ACP over stdio (`--stdio`, the default). Planned: MCP, HTTP +
+/// SSE, WebSocket. See:
+///   docs/plans/2026-02-27-acp-webui.md
+///   docs/plans/2026-04-29-mcp-server.md
+///
+/// This command currently performs the JSON-RPC handshake and echoes
+/// the agent's `initialize` capabilities — enough for an editor to
+/// confirm the binary speaks the protocol. Full session/prompt routing
+/// lands in a follow-up.
+class ServeCommand extends Command<int> {
+  ServeCommand() {
+    argParser
+      ..addFlag(
+        'stdio',
+        defaultsTo: true,
+        help: 'Speak ACP over stdin/stdout (line-delimited JSON-RPC). '
+            'This is the default and is what editors expect.',
+      )
+      ..addOption(
+        'protocol',
+        defaultsTo: 'acp',
+        allowed: ['acp'],
+        help: 'Protocol to serve. ACP only for now; MCP is planned — '
+            'see docs/plans/2026-04-29-mcp-server.md.',
+      );
+  }
+
+  @override
+  String get name => 'serve';
+
+  @override
+  String get description =>
+      'Serve Glue\'s harness as an ACP agent over stdio (for editors).';
+
+  @override
+  Future<int> run() async {
+    final stdioFlag = argResults!.flag('stdio');
+    if (!stdioFlag) {
+      stderr.writeln(
+        'glue serve: only --stdio is implemented today. '
+        'HTTP/WebSocket transports land in follow-up commits.',
+      );
+      return 64;
+    }
+
+    final transport = LineDelimitedTransport(
+      input: stdin,
+      output: stdout,
+    );
+
+    // Minimum viable handshake: respond to `initialize` with our
+    // capabilities, ack `session/new` with a stubbed sessionId, and
+    // return a method-not-found error for anything else. This proves
+    // the framing works end-to-end while the full event-driven
+    // session loop is wired in a follow-up.
+    var sessionCounter = 0;
+    // ignore: cancel_subscriptions — drained explicitly by sub.asFuture below.
+    final sub = transport.incoming.listen((message) {
+      switch (message) {
+        case JsonRpcRequest(:final id, :final method):
+          if (method == AcpMethod.initialize) {
+            transport.send(JsonRpcResponse(
+              id: id,
+              result: const InitializeResult(
+                protocolVersion: 1,
+                agentInfo: AgentInfo(
+                  name: 'glue',
+                  title: 'Glue',
+                  version: AppConstants.version,
+                ),
+              ).toJson(),
+            ));
+          } else if (method == AcpMethod.sessionNew) {
+            sessionCounter++;
+            transport.send(JsonRpcResponse(
+              id: id,
+              result:
+                  SessionNewResult(sessionId: 'sess-$sessionCounter').toJson(),
+            ));
+          } else {
+            transport.send(JsonRpcError(
+              id: id,
+              code: JsonRpcErrorCode.methodNotFound,
+              message: 'glue serve --stdio: method "$method" not implemented '
+                  'in this scaffold (see docs/plans/2026-02-27-acp-webui.md).',
+            ));
+          }
+        case JsonRpcNotification():
+          // Notifications are accepted silently in the scaffold.
+          break;
+        case JsonRpcResponse():
+        case JsonRpcError():
+          // We're not the requester; ignore.
+          break;
+      }
+    });
+
+    await sub.asFuture<void>();
+    await transport.close();
+    return 0;
   }
 }
 

@@ -39,6 +39,10 @@ const _subsystemLayers = <String, _Layer>{
   '<glue_harness>': _Layer.harness,
   '<glue_strategies>': _Layer.strategies,
   '<glue_core>': _Layer.core,
+  // glue_server is a protocol-adapter library — depends only on
+  // glue_core and is consumed by surfaces. Same rank as core so any
+  // layer can import it.
+  '<glue_server>': _Layer.core,
 };
 
 enum _Layer {
@@ -133,7 +137,7 @@ void main(List<String> args) {
 }
 
 final _importPattern = RegExp(
-  r'''^\s*import\s+['"](package:(?:glue|glue_core|glue_strategies|glue_harness)/[^'"]+)['"]''',
+  r'''^\s*import\s+['"](package:(?:glue|glue_core|glue_strategies|glue_harness|glue_server)/[^'"]+)['"]''',
 );
 
 String? _subsystemOf(String filePath) {
@@ -156,6 +160,9 @@ String? _subsystemOfImport(String importUri) {
   }
   if (importUri.startsWith('package:glue_harness/')) {
     return '<glue_harness>';
+  }
+  if (importUri.startsWith('package:glue_server/')) {
+    return '<glue_server>';
   }
 
   // `package:glue/src/<subsystem>/...`

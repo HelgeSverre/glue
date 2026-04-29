@@ -25,6 +25,8 @@ dependencies:
     path: ../packages/glue_core
   glue_harness:
     path: ../packages/glue_harness
+  glue_server:
+    path: ../packages/glue_server
   glue_strategies:
     path: ../packages/glue_strategies
   html: ^0.15.5

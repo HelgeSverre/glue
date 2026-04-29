@@ -1,0 +1,94 @@
+/// Translates Glue's typed [SessionEvent] vocabulary (from glue_core)
+/// into ACP `session/update` payloads.
+///
+/// Pure function — no harness state, no side effects. The server class
+/// in `server.dart` calls this to render every event the harness emits.
+///
+/// Coverage today: the conversation, tool, and thinking events that ACP
+/// has direct counterparts for. Lifecycle events (TurnStarted/Completed,
+/// StatusChange, MetricsUpdated, TitleGenerated) and permission/auth
+/// events return `null` — they are handled out-of-band by the server
+/// (e.g. permission events drive `session/request_permission` requests,
+/// not `session/update` notifications).
+library;
+
+import 'package:glue_core/glue_core.dart';
+import 'package:glue_server/src/acp/messages.dart';
+
+/// Maps a single [SessionEvent] to a [SessionUpdate], or returns `null`
+/// when the event has no `session/update` representation.
+SessionUpdate? sessionEventToAcpUpdate(SessionEvent event) {
+  return switch (event) {
+    AssistantChunkEvent(:final delta, :final kind) => kind == ChunkKind.thinking
+        ? AgentThoughtChunkUpdate(delta)
+        : AgentMessageChunkUpdate(delta),
+    AssistantMessageEvent() => null, // chunks already covered the text
+    AssistantThinkingStartedEvent() => null,
+    AssistantThinkingCompletedEvent() => null,
+    UserMessageEvent() => null, // client knows what it sent
+    ToolCallStartedEvent(:final id, :final tool, :final kind, :final args) =>
+      ToolCallUpdate(
+        toolCallId: id.value,
+        title: tool,
+        kind_: _toolKindToAcp(kind),
+        status: ToolCallStatus.inProgress,
+        rawInput: args,
+      ),
+    ToolCallProgressEvent() => null, // not yet surfaced
+    ToolCallCompletedEvent(:final id, :final result) => ToolCallStatusUpdate(
+        toolCallId: id.value,
+        status: switch (result) {
+          ToolOkSnapshot() => ToolCallStatus.completed,
+          ToolErrorSnapshot() => ToolCallStatus.failed,
+          ToolCancelledSnapshot() => ToolCallStatus.failed,
+        },
+        content: _resultContent(result),
+      ),
+    PermissionRequestedEvent() => null, // drives session/request_permission
+    PermissionResolvedEvent() => null,
+    SubagentSpawnedEvent() => null, // surfaced as forwarded events
+    SubagentEventForwardedEvent(:final inner) => sessionEventToAcpUpdate(inner),
+    SubagentCompletedEvent() => null,
+    DeviceCodeRequestedEvent() => null, // out-of-band auth flow
+    DeviceCodeResolvedEvent() => null,
+    TurnStartedEvent() => null,
+    TurnCompletedEvent() => null, // server returns SessionPromptResult
+    StatusChangeEvent() => null,
+    TitleGeneratedEvent() => null,
+    MetricsUpdatedEvent() => null,
+    ErrorEvent() => null, // server emits a JSON-RPC error
+  };
+}
+
+ToolCallKind _toolKindToAcp(ToolKind kind) {
+  return switch (kind) {
+    ToolKind.read => ToolCallKind.read,
+    ToolKind.write => ToolCallKind.edit,
+    ToolKind.exec => ToolCallKind.execute,
+    ToolKind.network => ToolCallKind.fetch,
+    ToolKind.meta => ToolCallKind.other,
+  };
+}
+
+List<Map<String, Object?>> _resultContent(ToolResultSnapshot result) {
+  return switch (result) {
+    ToolOkSnapshot(:final contentSummary) => [
+        {
+          'type': 'content',
+          'content': {'type': 'text', 'text': contentSummary},
+        },
+      ],
+    ToolErrorSnapshot(:final message) => [
+        {
+          'type': 'content',
+          'content': {'type': 'text', 'text': 'Error: $message'},
+        },
+      ],
+    ToolCancelledSnapshot() => [
+        {
+          'type': 'content',
+          'content': {'type': 'text', 'text': '[cancelled]'},
+        },
+      ],
+  };
+}
