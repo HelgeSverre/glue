@@ -7,7 +7,7 @@ library;
 
 import 'package:yaml/yaml.dart';
 
-import 'package:glue/src/catalog/model_catalog.dart';
+import 'package:glue_core/glue_core.dart';
 
 class CatalogParseException implements Exception {
   CatalogParseException(this.message, {this.path});

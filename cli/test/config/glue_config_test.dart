@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:glue/src/catalog/model_ref.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/web/browser/browser_config.dart';

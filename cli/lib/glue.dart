@@ -47,7 +47,20 @@ export 'src/agent/agent_core.dart'
         UsageInfo,
         ToolCall,
         Message;
-export 'src/agent/content_part.dart' show ContentPart, TextPart, ImagePart;
+export 'package:glue_core/glue_core.dart'
+    show
+        ContentPart,
+        TextPart,
+        ImagePart,
+        AppConstants,
+        ModelCatalog,
+        ProviderDef,
+        ModelDef,
+        AuthSpec,
+        AuthKind,
+        Capability,
+        ModelRef,
+        ModelRefParseException;
 export 'src/agent/tools.dart'
     show
         Tool,
@@ -62,13 +75,9 @@ export 'src/agent/tools.dart'
         GrepTool,
         ListDirectoryTool;
 export 'src/config/build_info.dart' show BuildInfo;
-export 'src/config/constants.dart' show AppConstants;
 export 'src/config/glue_config.dart'
     show GlueConfig, CatalogSourceConfig, ConfigError, splitPathList;
 export 'src/config/approval_mode.dart' show ApprovalMode, ApprovalModeExt;
-export 'src/catalog/model_catalog.dart'
-    show ModelCatalog, ProviderDef, ModelDef, AuthSpec, AuthKind, Capability;
-export 'src/catalog/model_ref.dart' show ModelRef, ModelRefParseException;
 export 'src/catalog/catalog_loader.dart' show loadCatalog;
 export 'src/catalog/catalog_parser.dart'
     show parseCatalogYaml, CatalogParseException;

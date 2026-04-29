@@ -10,8 +10,7 @@ library;
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/catalog/model_catalog.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/llm/openai_client.dart';
 import 'package:glue/src/providers/compatibility_profile.dart';
 import 'package:glue/src/providers/openai_compatible_adapter.dart';

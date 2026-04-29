@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:glue/src/config/constants.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/observability/observability.dart';
 import 'package:glue/src/observability/observability_config.dart';
 import 'package:http/http.dart' as http;

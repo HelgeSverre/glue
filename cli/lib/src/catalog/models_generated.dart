@@ -3,7 +3,7 @@
 // Regenerate with: dart run tool/gen_models.dart
 // ignore_for_file: lines_longer_than_80_chars
 
-import 'package:glue/src/catalog/model_catalog.dart';
+import 'package:glue_core/glue_core.dart';
 
 const ModelCatalog bundledCatalog = ModelCatalog(
   version: 1,

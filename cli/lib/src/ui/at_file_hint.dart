@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-import 'package:glue/src/config/constants.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
 import 'package:glue/src/terminal/styled.dart';
 import 'package:glue/src/ui/autocomplete_overlay.dart';

@@ -1,5 +1,4 @@
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/catalog/model_catalog.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/providers/provider_adapter.dart';
 import 'package:glue/src/providers/resolved.dart';
 import 'package:test/test.dart';

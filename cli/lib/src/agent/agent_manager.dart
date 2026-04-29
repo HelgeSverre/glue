@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/agent_runner.dart';
-import 'package:glue/src/catalog/model_ref.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/agent/llm_factory.dart';
 import 'package:glue/src/observability/observability.dart';

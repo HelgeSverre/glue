@@ -5,7 +5,7 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:glue/src/catalog/model_catalog.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/credentials/credential_ref.dart';
 import 'package:glue/src/credentials/credential_store.dart';
 import 'package:test/test.dart';

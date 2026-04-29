@@ -1,4 +1,4 @@
-import 'package:glue/src/catalog/model_ref.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/llm/anthropic_client.dart';
 import 'package:glue/src/agent/llm_factory.dart';

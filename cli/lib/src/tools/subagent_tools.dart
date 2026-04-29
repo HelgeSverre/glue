@@ -1,8 +1,7 @@
 import 'dart:convert';
 
 import 'package:glue/src/agent/agent_manager.dart';
-import 'package:glue/src/agent/tools.dart';
-import 'package:glue/src/catalog/model_ref.dart';
+import 'package:glue_core/glue_core.dart';
 
 /// Tool that spawns a single subagent to perform a focused task.
 class SpawnSubagentTool extends Tool {

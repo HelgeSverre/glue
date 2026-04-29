@@ -3,8 +3,7 @@ import 'dart:math' as math;
 
 import 'package:meta/meta.dart';
 
-import 'package:glue/src/catalog/model_catalog.dart';
-import 'package:glue/src/catalog/model_ref.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/core/clipboard.dart' as shared_clipboard;

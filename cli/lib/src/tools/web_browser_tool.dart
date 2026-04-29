@@ -2,8 +2,7 @@ import 'dart:async';
 
 import 'package:puppeteer/puppeteer.dart' as pptr;
 
-import 'package:glue/src/agent/content_part.dart';
-import 'package:glue/src/agent/tools.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/web/browser/browser_manager.dart';
 import 'package:glue/src/web/fetch/html_extractor.dart';
 import 'package:glue/src/web/fetch/html_to_markdown.dart';

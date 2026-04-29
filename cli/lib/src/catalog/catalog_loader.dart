@@ -10,7 +10,7 @@
 /// copy is self-contained.
 library;
 
-import 'package:glue/src/catalog/model_catalog.dart';
+import 'package:glue_core/glue_core.dart';
 
 ModelCatalog loadCatalog({
   required ModelCatalog bundled,

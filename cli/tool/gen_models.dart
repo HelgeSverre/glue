@@ -12,7 +12,7 @@ library;
 import 'dart:io';
 
 import 'package:glue/src/catalog/catalog_parser.dart';
-import 'package:glue/src/catalog/model_catalog.dart';
+import 'package:glue_core/glue_core.dart';
 
 const _sourcePath = '../docs/reference/models.yaml';
 const _outPath = 'lib/src/catalog/models_generated.dart';
@@ -68,7 +68,7 @@ String _render(ModelCatalog c) {
     ..writeln('// Regenerate with: dart run tool/gen_models.dart')
     ..writeln('// ignore_for_file: lines_longer_than_80_chars')
     ..writeln()
-    ..writeln("import 'package:glue/src/catalog/model_catalog.dart';")
+    ..writeln("import 'package:glue_core/glue_core.dart';")
     ..writeln()
     ..writeln('const ModelCatalog bundledCatalog = ModelCatalog(')
     ..writeln('  version: ${c.version},')

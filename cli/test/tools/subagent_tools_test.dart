@@ -1,8 +1,7 @@
 import 'dart:convert';
 
-import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/agent_manager.dart';
-import 'package:glue/src/catalog/model_ref.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/agent/llm_factory.dart';
 import 'package:glue/src/tools/subagent_tools.dart';
 import 'package:test/test.dart';

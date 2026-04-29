@@ -4,12 +4,10 @@ import 'package:yaml/yaml.dart';
 
 import 'package:glue/src/catalog/catalog_loader.dart';
 import 'package:glue/src/catalog/catalog_parser.dart';
-import 'package:glue/src/catalog/model_catalog.dart';
-import 'package:glue/src/catalog/model_ref.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/catalog/model_resolver.dart';
 import 'package:glue/src/catalog/models_generated.dart';
 import 'package:glue/src/config/approval_mode.dart';
-import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/credentials/credential_store.dart';
 import 'package:glue/src/observability/observability_config.dart';
