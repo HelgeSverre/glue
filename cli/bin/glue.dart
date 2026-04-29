@@ -6,6 +6,7 @@ import 'package:cli_completion/cli_completion.dart';
 import 'package:cli_completion/installer.dart';
 import 'package:cli_completion/parser.dart';
 import 'package:glue/glue.dart';
+import 'package:glue/src/acp/cli_acp_delegate.dart';
 import 'package:glue_server/glue_server.dart';
 import 'package:path/path.dart' as p;
 
@@ -331,10 +332,10 @@ class DoctorCommand extends Command<int> {
 ///   docs/plans/2026-02-27-acp-webui.md
 ///   docs/plans/2026-04-29-mcp-server.md
 ///
-/// This command currently performs the JSON-RPC handshake and echoes
-/// the agent's `initialize` capabilities — enough for an editor to
-/// confirm the binary speaks the protocol. Full session/prompt routing
-/// lands in a follow-up.
+/// Wires `AcpServer` (in glue_server) to a `CliAcpDelegate` that owns
+/// per-session [AgentCore] instances, runs prompts through the harness,
+/// and routes `PermissionGate` "ask" decisions through ACP's
+/// `session/request_permission`.
 class ServeCommand extends Command<int> {
   ServeCommand() {
     argParser
@@ -350,6 +351,12 @@ class ServeCommand extends Command<int> {
         allowed: ['acp'],
         help: 'Protocol to serve. ACP only for now; MCP is planned — '
             'see docs/plans/2026-04-29-mcp-server.md.',
+      )
+      ..addFlag(
+        'debug',
+        abbr: 'd',
+        negatable: false,
+        help: 'Enable debug observability sinks for the agent loop.',
       );
   }
 
@@ -371,60 +378,34 @@ class ServeCommand extends Command<int> {
       return 64;
     }
 
+    final services =
+        await ServiceLocator.create(debug: argResults!.flag('debug'));
+    final delegate = CliAcpDelegate(services: services);
+
     final transport = LineDelimitedTransport(
       input: stdin,
       output: stdout,
     );
 
-    // Minimum viable handshake: respond to `initialize` with our
-    // capabilities, ack `session/new` with a stubbed sessionId, and
-    // return a method-not-found error for anything else. This proves
-    // the framing works end-to-end while the full event-driven
-    // session loop is wired in a follow-up.
-    var sessionCounter = 0;
-    // ignore: cancel_subscriptions — drained explicitly by sub.asFuture below.
-    final sub = transport.incoming.listen((message) {
-      switch (message) {
-        case JsonRpcRequest(:final id, :final method):
-          if (method == AcpMethod.initialize) {
-            transport.send(JsonRpcResponse(
-              id: id,
-              result: const InitializeResult(
-                protocolVersion: 1,
-                agentInfo: AgentInfo(
-                  name: 'glue',
-                  title: 'Glue',
-                  version: AppConstants.version,
-                ),
-              ).toJson(),
-            ));
-          } else if (method == AcpMethod.sessionNew) {
-            sessionCounter++;
-            transport.send(JsonRpcResponse(
-              id: id,
-              result:
-                  SessionNewResult(sessionId: 'sess-$sessionCounter').toJson(),
-            ));
-          } else {
-            transport.send(JsonRpcError(
-              id: id,
-              code: JsonRpcErrorCode.methodNotFound,
-              message: 'glue serve --stdio: method "$method" not implemented '
-                  'in this scaffold (see docs/plans/2026-02-27-acp-webui.md).',
-            ));
-          }
-        case JsonRpcNotification():
-          // Notifications are accepted silently in the scaffold.
-          break;
-        case JsonRpcResponse():
-        case JsonRpcError():
-          // We're not the requester; ignore.
-          break;
-      }
-    });
+    final server = AcpServer(
+      transport: transport,
+      delegate: delegate,
+      config: const AcpServerConfig(
+        protocolVersion: 1,
+        agentInfo: AgentInfo(
+          name: 'glue',
+          title: 'Glue',
+          version: AppConstants.version,
+        ),
+      ),
+    );
 
-    await sub.asFuture<void>();
-    await transport.close();
+    try {
+      await server.serve();
+    } finally {
+      await transport.close();
+      await services.obs.close();
+    }
     return 0;
   }
 }

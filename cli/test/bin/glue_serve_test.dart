@@ -1,8 +1,10 @@
 /// End-to-end tests for `glue serve --stdio`.
 ///
 /// Spawns the bin entrypoint, writes JSON-RPC messages on stdin, and
-/// asserts the handshake response on stdout. Exercises the same code
-/// path an editor would hit when launching glue as an ACP agent.
+/// asserts the responses on stdout. Exercises the full ACP server →
+/// CliAcpDelegate → ServiceLocator wiring. The spawned process gets a
+/// fresh `GLUE_HOME` and a fake API key so it can stand up the locator
+/// without touching the user's real config or making network calls.
 library;
 
 import 'dart:async';
@@ -26,9 +28,9 @@ void main() {
     final response = jsonDecode(lines.single) as Map<String, Object?>;
     expect(response['jsonrpc'], '2.0');
     expect(response['id'], 1);
-    final result = response['result'] as Map<String, Object?>;
+    final result = response['result']! as Map<String, Object?>;
     expect(result['protocolVersion'], 1);
-    final agent = result['agentInfo'] as Map<String, Object?>;
+    final agent = result['agentInfo']! as Map<String, Object?>;
     expect(agent['name'], 'glue');
     expect(agent['version'], isA<String>());
   }, timeout: const Timeout(Duration(seconds: 60)));
@@ -40,37 +42,48 @@ void main() {
     );
     expect(lines, hasLength(2));
     final newResp = jsonDecode(lines[1]) as Map<String, Object?>;
-    final result = newResp['result'] as Map<String, Object?>;
+    final result = newResp['result']! as Map<String, Object?>;
     expect(result['sessionId'], isA<String>());
-    expect((result['sessionId']! as String).startsWith('sess-'), isTrue);
+    // CliAcpDelegate prefixes ids with `glue-` (vs the older `sess-` stub).
+    expect((result['sessionId']! as String).startsWith('glue-'), isTrue);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
-  test('returns method-not-found for unimplemented methods', () async {
+  test('session/prompt against an unknown session returns -32001', () async {
     const promptRequest =
         '{"jsonrpc":"2.0","id":3,"method":"session/prompt","params":'
-        '{"sessionId":"s","prompt":[]}}\n';
+        '{"sessionId":"unknown","prompt":[{"type":"text","text":"hi"}]}}\n';
     final lines =
         await _serveAndCollect([_initializeRequest, promptRequest], 2);
     expect(lines, hasLength(2));
     final errResp = jsonDecode(lines[1]) as Map<String, Object?>;
     expect(errResp['error'], isNotNull);
     final err = errResp['error']! as Map<String, Object?>;
-    expect(err['code'], -32601); // methodNotFound
+    // Glue-reserved code for sessionNotFound.
+    expect(err['code'], -32001);
   }, timeout: const Timeout(Duration(seconds: 60)));
 }
 
 /// Spawns `dart run bin/glue.dart serve --stdio`, writes [requests] to
-/// stdin, then reads stdout until [expectedLines] newline-terminated
-/// messages have been received. Closes stdin to let the server exit.
+/// stdin, then reads stdout until [expectedLines] messages have been
+/// received. Provides a fake API key + isolated `GLUE_HOME` so the
+/// real ServiceLocator can construct without hitting the user's config
+/// or making network calls.
 Future<List<String>> _serveAndCollect(
   List<String> requests,
   int expectedLines,
 ) async {
+  final tmp = Directory.systemTemp.createTempSync('glue_serve_test_');
+  addTearDown(() => tmp.deleteSync(recursive: true));
+
   final process = await Process.start(
     'dart',
     ['run', 'bin/glue.dart', 'serve', '--stdio'],
     workingDirectory: Directory.current.path,
     runInShell: true,
+    environment: {
+      'GLUE_HOME': tmp.path,
+      'ANTHROPIC_API_KEY': 'sk-test-fake-for-validation',
+    },
   );
 
   final received = <String>[];

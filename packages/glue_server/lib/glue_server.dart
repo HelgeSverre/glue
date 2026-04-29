@@ -12,8 +12,10 @@
 /// harness/runtime is on the other side.
 library;
 
+export 'package:glue_server/src/acp/agent_event_mapping.dart';
 export 'package:glue_server/src/acp/event_mapping.dart';
 export 'package:glue_server/src/acp/messages.dart';
+export 'package:glue_server/src/acp/server.dart';
 export 'package:glue_server/src/jsonrpc/codec.dart';
 export 'package:glue_server/src/jsonrpc/messages.dart';
 export 'package:glue_server/src/jsonrpc/transport.dart';

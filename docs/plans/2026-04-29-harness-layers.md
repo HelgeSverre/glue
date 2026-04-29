@@ -319,19 +319,21 @@ surface?* If yes, harness. If no, surface.
 
 **Surface expansion:**
 
-16. ✅ **Add `glue serve --stdio` (ACP server skeleton).** New
+16. ✅ **Add `glue serve --stdio` (ACP server).** New
     `packages/glue_server/` provides JSON-RPC 2.0 framing,
     line-delimited stdio transport, ACP message types (initialize,
     session/new, session/prompt, session/cancel, session/update,
-    session/request_permission), and a SessionEvent → ACP update
-    mapping. CLI grows a `serve` subcommand that performs the
-    handshake and stubs unimplemented methods with method-not-found.
-    Full session/prompt routing lands in a follow-up. See
-    `docs/plans/2026-04-29-mcp-server.md` for the sibling MCP work.
-17. **`session/prompt` round-trip.** Wire the server's `session/new`
-    to a real `SessionStore`, route `session/prompt` to a one-shot
-    `AgentRunner`, stream events as `session/update` notifications,
-    and surface `PermissionRequestedEvent` as `session/request_permission`.
+    session/request_permission), an `AcpServer` dispatcher, and a
+    `SessionEvent` / `AgentEvent` → ACP update mapping.
+17. ✅ **`session/prompt` round-trip.** `AcpServer` routes
+    `session/new` to an `AcpServerDelegate.createSession`; the cli's
+    `CliAcpDelegate` builds a per-session `AgentCore` + tool registry
+    via `ServiceLocator`. `session/prompt` runs `AgentCore.run()`,
+    streams text deltas as `agent_message_chunk` notifications,
+    synthesises `tool_call` / `tool_call_update` lifecycle around
+    each `AgentToolCall`, and routes the harness's `PermissionGate`
+    "ask" decisions through `session/request_permission` with an
+    async waiter for the client's reply.
 18. **CLI as ACP client (optional).**
 19. **WebSocket transport.**
 20. **Multi-client session attach.**

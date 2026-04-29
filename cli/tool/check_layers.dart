@@ -26,6 +26,7 @@ import 'dart:io';
 const _subsystemLayers = <String, _Layer>{
   // Surface — all that's left in cli/lib/src/ after the harness +
   // strategies + core extractions.
+  'acp': _Layer.surface,
   'app': _Layer.surface,
   'commands': _Layer.surface,
   'doctor': _Layer.surface,
