@@ -125,7 +125,7 @@ class PanelController {
       gap: ' ',
       includeHeaderInWidth: true,
       getValues: (s) {
-        final displayId = s.title ?? s.id;
+        final displayId = s.title ?? s.id.value;
         return {
           'fork': s.forkedFrom != null ? '[F]'.styled.cyan.toString() : '',
           'id': displayId.styled.cyan.toString(),

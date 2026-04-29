@@ -20,6 +20,7 @@
 library;
 
 import 'package:glue/src/_proposed_core/ids.dart';
+import 'package:glue/src/catalog/model_ref.dart';
 
 /// Base type for all events emitted by a [Session].
 ///

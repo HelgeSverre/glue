@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:glue/src/_proposed_core/ids.dart';
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:glue/src/observability/observability.dart';
@@ -121,7 +122,7 @@ class SessionManager {
         _store = sessionStore;
 
   SessionStore? get currentStore => _store;
-  String? get currentSessionId => _store?.meta.id;
+  SessionId? get currentSessionId => _store?.meta.id;
 
   List<SessionMeta> listSessions() =>
       SessionStore.listSessions(environment.sessionsDir);
@@ -460,7 +461,7 @@ class SessionManager {
           cwd: oldStore.meta.cwd,
           modelRef: oldStore.meta.modelRef,
           startTime: DateTime.now(),
-          forkedFrom: oldSessionId,
+          forkedFrom: oldSessionId.value,
         ),
       );
 
@@ -475,8 +476,8 @@ class SessionManager {
       _store = newStore;
       agent.clearConversation();
       final replay = _replayEventsIntoAgent(truncatedEvents, agent);
-      final shortId =
-          oldSessionId.length > 8 ? oldSessionId.substring(0, 8) : oldSessionId;
+      final oldIdStr = oldSessionId.value;
+      final shortId = oldIdStr.length > 8 ? oldIdStr.substring(0, 8) : oldIdStr;
       final result = SessionForkResult(
         message: 'Forked from session $shortId…',
         draftText: messageText,
@@ -618,9 +619,11 @@ class SessionManager {
     return generic.contains(_normalizeTitle(title));
   }
 
-  String _newSessionId() {
+  SessionId _newSessionId() {
     final now = DateTime.now();
-    return '${now.millisecondsSinceEpoch}-${now.microsecond.toRadixString(36)}';
+    return SessionId(
+      '${now.millisecondsSinceEpoch}-${now.microsecond.toRadixString(36)}',
+    );
   }
 
   ObservabilitySpan? _startSpan(

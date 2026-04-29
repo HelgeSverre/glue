@@ -65,7 +65,10 @@ void main() {
         turnId: turn,
         timestamp: ts,
         sequence: 0,
-        model: const ModelRef('anthropic/claude-opus-4-7'),
+        model: const ModelRef(
+          providerId: 'anthropic',
+          modelId: 'claude-opus-4-7',
+        ),
       );
       expect(name(event), equals('TurnStartedEvent'));
 
@@ -93,7 +96,7 @@ void main() {
           turnId: turn,
           timestamp: ts,
           sequence: 1,
-          model: const ModelRef('m'),
+          model: const ModelRef(providerId: 'p', modelId: 'm'),
         ),
         AssistantChunkEvent(
           turnId: turn,

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:glue/src/_proposed_core/ids.dart';
 import 'package:glue/src/share/session_share_exporter.dart';
 import 'package:glue/src/storage/session_store.dart';
 import 'package:test/test.dart';
@@ -17,7 +18,7 @@ void main() {
       store = SessionStore(
         sessionDir: sessionDir,
         meta: SessionMeta(
-          id: 'session-1',
+          id: const SessionId('session-1'),
           cwd: '/tmp/project',
           modelRef: 'anthropic/claude-sonnet-4.6',
           startTime: DateTime.parse('2026-04-22T04:00:00Z'),

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:glue/src/_proposed_core/ids.dart';
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/core/environment.dart';
@@ -75,7 +76,7 @@ void main() {
     final manager =
         SessionManager(environment: environment, observability: obs);
     final meta = SessionMeta(
-      id: 'resume-1',
+      id: const SessionId('resume-1'),
       cwd: environment.cwd,
       modelRef: 'anthropic/claude-sonnet-4.6',
       startTime: DateTime.now(),
@@ -113,7 +114,7 @@ void main() {
     final manager =
         SessionManager(environment: environment, observability: obs);
     final meta = SessionMeta(
-      id: 'resume-summary',
+      id: const SessionId('resume-summary'),
       cwd: environment.cwd,
       modelRef: 'anthropic/claude-sonnet-4.6',
       startTime: DateTime.now(),
@@ -149,7 +150,7 @@ void main() {
     final manager =
         SessionManager(environment: environment, observability: obs);
     final meta = SessionMeta(
-      id: 'resume-empty',
+      id: const SessionId('resume-empty'),
       cwd: environment.cwd,
       modelRef: 'anthropic/claude-sonnet-4.6',
       startTime: DateTime.now(),

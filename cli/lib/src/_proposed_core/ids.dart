@@ -22,9 +22,10 @@ extension type const SkillId(String value) {}
 
 extension type const PermissionRequestId(String value) {}
 
-/// e.g. `'anthropic/claude-opus-4-7'`. Already informally used elsewhere
-/// in the codebase as a String — this wrapper makes the contract explicit.
-extension type const ModelRef(String value) {}
-
 /// e.g. `'anthropic'`, `'openai'`, `'ollama'`, `'copilot'`.
 extension type const ProviderId(String value) {}
+
+// NOTE: a structured `ModelRef` class already exists in
+// `package:glue/src/catalog/model_ref.dart`. We do not duplicate it as an
+// extension type here. When `glue_core` is extracted, the structured form
+// will move there alongside these IDs.

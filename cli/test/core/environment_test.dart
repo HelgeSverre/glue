@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:glue/src/_proposed_core/ids.dart';
 import 'package:glue/src/core/environment.dart';
 import 'package:test/test.dart';
 
@@ -21,7 +22,10 @@ void main() {
     expect(environment.cwd, '/work/cwd');
     expect(environment.configPath, endsWith('.glue/preferences.json'));
     expect(environment.configYamlPath, endsWith('.glue/config.yaml'));
-    expect(environment.sessionDir('abc123'), endsWith('.glue/sessions/abc123'));
+    expect(
+      environment.sessionDir(const SessionId('abc123')),
+      endsWith('.glue/sessions/abc123'),
+    );
   });
 
   test('ensureDirectories creates sessions, logs, and cache dirs', () {

@@ -1,3 +1,4 @@
+import 'package:glue/src/_proposed_core/ids.dart';
 import 'package:glue/src/share/renderer/markdown_renderer.dart';
 import 'package:glue/src/share/share_models.dart';
 import 'package:glue/src/storage/session_store.dart';
@@ -6,7 +7,7 @@ import 'package:test/test.dart';
 void main() {
   group('ShareMarkdownRenderer', () {
     final meta = SessionMeta(
-      id: 'session-1',
+      id: const SessionId('session-1'),
       cwd: '/tmp/project',
       modelRef: 'anthropic/claude-sonnet-4.6',
       startTime: DateTime.parse('2026-04-22T04:00:00Z'),

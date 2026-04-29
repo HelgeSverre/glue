@@ -373,7 +373,8 @@ class App {
         _openResumePanel();
         _render();
       } else {
-        final match = sessions.where((s) => s.id == _resumeSessionId).toList();
+        final match =
+            sessions.where((s) => s.id.value == _resumeSessionId).toList();
         if (match.isNotEmpty) {
           final result = _resumeSession(match.first);
           if (result.isNotEmpty) {

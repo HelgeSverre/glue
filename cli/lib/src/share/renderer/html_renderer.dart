@@ -47,7 +47,7 @@ class ShareHtmlRenderer {
              <path d="M3 15h16"></path>
             </svg>
             <span class="share-meta-label">Session</span>
-            <code>${escapeShareHtml(meta.id)}</code>
+            <code>${escapeShareHtml(meta.id.value)}</code>
           </div>
           <div class="share-meta-item">
             <svg class="share-meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

@@ -17,3 +17,6 @@ library;
 export 'package:glue/src/_proposed_core/ids.dart';
 export 'package:glue/src/_proposed_core/session_command.dart';
 export 'package:glue/src/_proposed_core/session_event.dart';
+// Re-exported so consumers of the proposed core get the canonical model
+// reference type in the same import.
+export 'package:glue/src/catalog/model_ref.dart' show ModelRef;

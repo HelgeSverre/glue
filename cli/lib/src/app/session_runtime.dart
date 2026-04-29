@@ -9,7 +9,8 @@ Future<void> _runPrintModeImpl(App app) async {
       return;
     }
     final sessions = app._sessionManager.listSessions();
-    final match = sessions.where((s) => s.id == app._resumeSessionId).toList();
+    final match =
+        sessions.where((s) => s.id.value == app._resumeSessionId).toList();
     if (match.isEmpty) {
       stderr.writeln('Session ${app._resumeSessionId} not found.');
       return;

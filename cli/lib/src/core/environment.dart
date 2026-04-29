@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:glue/src/_proposed_core/ids.dart';
 import 'package:path/path.dart' as p;
 
 /// Runtime environment abstraction for paths and environment variables.
@@ -70,7 +71,8 @@ class Environment {
   String get skillsDir => p.join(glueDir, 'skills');
   String get cacheDir => p.join(glueDir, 'cache');
 
-  String sessionDir(String sessionId) => p.join(sessionsDir, sessionId);
+  String sessionDir(SessionId sessionId) =>
+      p.join(sessionsDir, sessionId.value);
 
   void ensureDirectories() {
     Directory(sessionsDir).createSync(recursive: true);

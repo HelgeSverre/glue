@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:glue/src/_proposed_core/ids.dart';
 import 'package:path/path.dart' as p;
 
 /// Metadata for a saved session, including model ref and timing.
@@ -11,7 +12,7 @@ class SessionMeta {
   static const int currentSchemaVersion = 3;
 
   final int schemaVersion;
-  final String id;
+  final SessionId id;
   final String cwd;
   final String? projectPath;
 
@@ -84,9 +85,9 @@ class SessionMeta {
     this.summary,
   });
 
-  Map<String, dynamic> toJson() => {
+  Map<String, Object?> toJson() => {
         'schema_version': schemaVersion,
-        'id': id,
+        'id': id.value,
         'cwd': cwd,
         if (projectPath != null) 'project_path': projectPath,
         'model_ref': modelRef,
@@ -137,7 +138,7 @@ class SessionMeta {
     final titleState = _parseTitleState(json['title_state'] as String?);
     return SessionMeta(
       schemaVersion: schema,
-      id: json['id'] as String,
+      id: SessionId(json['id'] as String),
       cwd: json['cwd'] as String? ?? '',
       projectPath: json['project_path'] as String?,
       modelRef: resolvedRef,

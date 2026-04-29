@@ -230,7 +230,8 @@ observability:
       );
     });
 
-    test('OTEL_SDK_DISABLED disables exporter auto-enable from environment', () {
+    test('OTEL_SDK_DISABLED disables exporter auto-enable from environment',
+        () {
       final home = _scratch();
       addTearDown(() => home.deleteSync(recursive: true));
       final config = GlueConfig.load(
