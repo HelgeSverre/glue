@@ -7,6 +7,8 @@
 /// [PkceFlow] → (scaffolded; not implemented this pass).
 library;
 
+import 'package:glue_core/glue_core.dart';
+
 sealed class AuthFlow {
   const AuthFlow({required this.providerId, required this.providerName});
 
@@ -55,6 +57,29 @@ class DeviceCodeFlow extends AuthFlow {
   /// Emits [AuthFlowPolling] while waiting, then terminates with
   /// [AuthFlowSucceeded] (with the stored fields) or [AuthFlowFailed].
   final Stream<AuthFlowProgress> progress;
+
+  /// Builds the typed proposed-core [DeviceCodeRequestedEvent] for this
+  /// flow. Future surfaces (ACP server, web UI) consume this event from
+  /// the session event stream rather than reading the [DeviceCodeFlow]
+  /// fields directly. Today's CLI still uses the legacy fields; this
+  /// method exists so new surfaces can build on the typed contract.
+  DeviceCodeRequestedEvent toRequestEvent({
+    required TurnId turnId,
+    required int sequence,
+    DateTime? timestamp,
+  }) {
+    final now = timestamp ?? DateTime.now();
+    final expiresIn =
+        expiresAt.isAfter(now) ? expiresAt.difference(now) : Duration.zero;
+    return DeviceCodeRequestedEvent(
+      turnId: turnId,
+      timestamp: now,
+      sequence: sequence,
+      code: userCode,
+      verificationUrl: verificationUri,
+      expiresIn: expiresIn,
+    );
+  }
 }
 
 /// OAuth 2.0 Authorization Code + PKCE. Opens a browser to [authUrl]; a local
@@ -99,4 +124,36 @@ class AuthFlowFailed extends AuthFlowProgress {
 
   /// User-facing reason string. Must not include secrets.
   final String reason;
+}
+
+/// Bridge from the legacy [AuthFlowProgress] stream into the typed
+/// proposed-core [DeviceCodeResolvedEvent].
+///
+/// Returns `null` for [AuthFlowPolling] (heartbeat — nothing to forward).
+/// [AuthFlowSucceeded] becomes a success event; [AuthFlowFailed] becomes
+/// a failure event carrying [AuthFlowFailed.reason].
+extension AuthFlowProgressTypedEvent on AuthFlowProgress {
+  DeviceCodeResolvedEvent? toResolvedEvent({
+    required TurnId turnId,
+    required int sequence,
+    DateTime? timestamp,
+  }) {
+    final progress = this;
+    return switch (progress) {
+      AuthFlowPolling() => null,
+      AuthFlowSucceeded() => DeviceCodeResolvedEvent(
+          turnId: turnId,
+          timestamp: timestamp ?? DateTime.now(),
+          sequence: sequence,
+          success: true,
+        ),
+      AuthFlowFailed(:final reason) => DeviceCodeResolvedEvent(
+          turnId: turnId,
+          timestamp: timestamp ?? DateTime.now(),
+          sequence: sequence,
+          success: false,
+          errorMessage: reason,
+        ),
+    };
+  }
 }
