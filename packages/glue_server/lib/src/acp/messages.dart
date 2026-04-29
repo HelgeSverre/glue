@@ -1,14 +1,16 @@
 /// Typed Dart shapes for the subset of the Agent Client Protocol (ACP)
 /// that Glue's server implements.
 ///
-/// Only the v1 message vocabulary needed to drive a `glue serve --stdio`
-/// session: `initialize`, `session/new`, `session/prompt`,
-/// `session/cancel`, `session/update`, `session/request_permission`,
-/// plus their parameter and response shapes.
+/// Only the v1 message vocabulary needed to drive a `glue serve` session:
+/// `initialize`, `session/new`, `session/prompt`, `session/cancel`,
+/// `session/update`, `session/request_permission`, plus their parameter
+/// and response shapes.
 ///
 /// See `docs/plans/2026-02-27-acp-webui.md` and the upstream spec at
 /// https://agentclientprotocol.com/.
 library;
+
+import 'package:glue_server/src/acp/content.dart';
 
 // ---------------------------------------------------------------------------
 // Method names
@@ -128,28 +130,32 @@ class SessionNewResult {
 class SessionPromptParams {
   const SessionPromptParams({required this.sessionId, required this.prompt});
   final String sessionId;
-  final List<Map<String, Object?>> prompt;
+  final List<AcpContentBlock> prompt;
 
   factory SessionPromptParams.fromJson(Map<String, Object?> json) =>
       SessionPromptParams(
         sessionId: json['sessionId'] as String,
-        prompt: ((json['prompt'] as List?) ?? const [])
-            .whereType<Map<Object?, Object?>>()
-            .map((e) => e.cast<String, Object?>())
-            .toList(),
+        prompt: [
+          for (final block in (json['prompt'] as List?) ?? const [])
+            if (block is Map<Object?, Object?>)
+              AcpContentBlock.fromJson(block.cast<String, Object?>()),
+        ],
       );
 
-  /// Convenience: returns the concatenated text of all `text`-type
-  /// prompt blocks (the only kind the v1 server understands).
+  /// Convenience: returns the concatenated text of all [AcpTextBlock]s
+  /// in the prompt. Image/audio/resource blocks are ignored — see
+  /// [imageBlocks] for those.
   String get text {
     final buf = StringBuffer();
     for (final block in prompt) {
-      if (block['type'] == 'text') {
-        buf.write(block['text'] ?? '');
-      }
+      if (block is AcpTextBlock) buf.write(block.text);
     }
     return buf.toString();
   }
+
+  /// Image blocks the client attached to the prompt. Empty when text-only.
+  List<AcpImageBlock> get imageBlocks =>
+      prompt.whereType<AcpImageBlock>().toList();
 }
 
 class SessionPromptResult {
@@ -260,7 +266,7 @@ class ToolCallStatusUpdate extends SessionUpdate {
 
   final String toolCallId;
   final ToolCallStatus status;
-  final List<Map<String, Object?>> content;
+  final List<AcpToolCallContent> content;
 
   @override
   String get kind => 'tool_call_update';
@@ -270,7 +276,8 @@ class ToolCallStatusUpdate extends SessionUpdate {
         'sessionUpdate': kind,
         'toolCallId': toolCallId,
         'status': status.wireName,
-        if (content.isNotEmpty) 'content': content,
+        if (content.isNotEmpty)
+          'content': [for (final c in content) c.toJson()],
       };
 }
 

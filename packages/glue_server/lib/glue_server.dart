@@ -2,7 +2,7 @@
 ///
 /// Today: ACP (Agent Client Protocol). Planned: MCP (Model Context
 /// Protocol). See `docs/plans/2026-02-27-acp-webui.md` and
-/// `docs/plans/2026-04-29-mcp-server.md`.
+/// `docs/plans/2026-04-29-mcp-client.md`.
 ///
 /// This package depends only on `glue_core` for typed messages — it has
 /// **no** runtime dependency on `glue_harness` or `glue_strategies`.
@@ -13,6 +13,7 @@
 library;
 
 export 'package:glue_server/src/acp/agent_event_mapping.dart';
+export 'package:glue_server/src/acp/content.dart';
 export 'package:glue_server/src/acp/event_mapping.dart';
 export 'package:glue_server/src/acp/messages.dart';
 export 'package:glue_server/src/acp/server.dart';

@@ -89,7 +89,10 @@ void main() {
       );
       final upd = sessionEventToAcpUpdate(event)! as ToolCallStatusUpdate;
       expect(upd.status, ToolCallStatus.completed);
-      expect(upd.content.first['type'], 'content');
+      expect(upd.content.first, isA<AcpToolCallContentValue>());
+      final block = (upd.content.first as AcpToolCallContentValue).block;
+      expect(block, isA<AcpTextBlock>());
+      expect((block as AcpTextBlock).text, 'Read foo.dart (42 lines)');
     });
 
     test('ToolCallCompletedEvent (error) → failed', () {

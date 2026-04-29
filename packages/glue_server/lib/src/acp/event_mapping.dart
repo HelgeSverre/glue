@@ -13,6 +13,7 @@
 library;
 
 import 'package:glue_core/glue_core.dart';
+import 'package:glue_server/src/acp/content.dart';
 import 'package:glue_server/src/acp/messages.dart';
 
 /// Maps a single [SessionEvent] to a [SessionUpdate], or returns `null`
@@ -70,25 +71,16 @@ ToolCallKind _toolKindToAcp(ToolKind kind) {
   };
 }
 
-List<Map<String, Object?>> _resultContent(ToolResultSnapshot result) {
+List<AcpToolCallContent> _resultContent(ToolResultSnapshot result) {
   return switch (result) {
     ToolOkSnapshot(:final contentSummary) => [
-        {
-          'type': 'content',
-          'content': {'type': 'text', 'text': contentSummary},
-        },
+        AcpToolCallContentValue(AcpTextBlock(contentSummary)),
       ],
     ToolErrorSnapshot(:final message) => [
-        {
-          'type': 'content',
-          'content': {'type': 'text', 'text': 'Error: $message'},
-        },
+        AcpToolCallContentValue(AcpTextBlock('Error: $message')),
       ],
-    ToolCancelledSnapshot() => [
-        {
-          'type': 'content',
-          'content': {'type': 'text', 'text': '[cancelled]'},
-        },
+    ToolCancelledSnapshot() => const [
+        AcpToolCallContentValue(AcpTextBlock('[cancelled]')),
       ],
   };
 }

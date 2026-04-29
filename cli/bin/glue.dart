@@ -330,7 +330,7 @@ class DoctorCommand extends Command<int> {
 /// Today: ACP over stdio (`--stdio`, the default). Planned: MCP, HTTP +
 /// SSE, WebSocket. See:
 ///   docs/plans/2026-02-27-acp-webui.md
-///   docs/plans/2026-04-29-mcp-server.md
+///   docs/plans/2026-04-29-mcp-client.md
 ///
 /// Wires `AcpServer` (in glue_server) to a `CliAcpDelegate` that owns
 /// per-session [AgentCore] instances, runs prompts through the harness,
@@ -350,7 +350,7 @@ class ServeCommand extends Command<int> {
         defaultsTo: 'acp',
         allowed: ['acp'],
         help: 'Protocol to serve. ACP only for now; MCP is planned — '
-            'see docs/plans/2026-04-29-mcp-server.md.',
+            'see docs/plans/2026-04-29-mcp-client.md.',
       )
       ..addFlag(
         'debug',

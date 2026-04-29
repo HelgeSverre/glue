@@ -17,6 +17,7 @@ import 'dart:async';
 
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_server/src/acp/agent_event_mapping.dart';
+import 'package:glue_server/src/acp/content.dart';
 import 'package:glue_server/src/acp/messages.dart';
 import 'package:glue_server/src/jsonrpc/messages.dart';
 import 'package:glue_server/src/jsonrpc/transport.dart';
@@ -314,15 +315,7 @@ class AcpServer {
                   status: result.success
                       ? ToolCallStatus.completed
                       : ToolCallStatus.failed,
-                  content: [
-                    {
-                      'type': 'content',
-                      'content': {
-                        'type': 'text',
-                        'text': result.summary ?? result.content,
-                      },
-                    },
-                  ],
+                  content: _toolResultContent(result),
                 ),
               ).toJson(),
             ));
@@ -377,6 +370,26 @@ class AcpServer {
       PermissionCancelled() => false,
     };
   }
+}
+
+/// Builds the `content[]` array for a `tool_call_update` notification.
+///
+/// Prefers [ToolResult.contentParts] when present (multimodal — e.g. a
+/// screenshot from `web_browser`). Falls back to a single text block
+/// derived from [ToolResult.summary] or [ToolResult.content] otherwise.
+List<AcpToolCallContent> _toolResultContent(ToolResult result) {
+  final parts = result.contentParts;
+  if (parts != null && parts.isNotEmpty) {
+    return [
+      for (final part in parts)
+        AcpToolCallContentValue(AcpContentBlock.fromContentPart(part)),
+    ];
+  }
+  return [
+    AcpToolCallContentValue(
+      AcpTextBlock(result.summary ?? result.content),
+    ),
+  ];
 }
 
 /// Internal sentinel used to signal a prompt was cancelled. Delegates
