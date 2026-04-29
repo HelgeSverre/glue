@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import 'package:glue/src/_proposed_core/ids.dart';
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
@@ -175,7 +176,7 @@ class OllamaClient implements LlmClient {
           for (final tc in toolCalls) {
             final fn = (tc as Map).cast<String, dynamic>()['function'] as Map;
             toolCallCounter++;
-            final id = 'ollama_tc_$toolCallCounter';
+            final id = ToolCallId('ollama_tc_$toolCallCounter');
             final name = fn['name'] as String;
             yield ToolCallStart(id: id, name: name);
             yield ToolCallComplete(ToolCall(

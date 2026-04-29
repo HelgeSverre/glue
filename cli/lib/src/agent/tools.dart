@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:glue/src/_proposed_core/ids.dart';
 import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/config/constants.dart';
 import 'package:glue/src/shell/command_executor.dart';
@@ -52,7 +53,7 @@ enum ToolTrust {
 class ToolResult {
   /// The call-site identifier, set by the agent. Empty when produced
   /// directly by a [Tool].
-  final String callId;
+  final ToolCallId callId;
 
   /// Whether the invocation succeeded. `false` flags the UI and LLM that
   /// the tool could not complete its task.
@@ -75,7 +76,7 @@ class ToolResult {
   final List<ContentPart>? contentParts;
 
   ToolResult({
-    this.callId = '',
+    this.callId = const ToolCallId(''),
     this.success = true,
     required this.content,
     this.summary,
@@ -83,7 +84,7 @@ class ToolResult {
     this.contentParts,
   }) : metadata = metadata ?? const {};
 
-  factory ToolResult.denied(String callId) => ToolResult(
+  factory ToolResult.denied(ToolCallId callId) => ToolResult(
         callId: callId,
         success: false,
         content: 'User denied tool execution',
@@ -91,7 +92,7 @@ class ToolResult {
 
   /// Returns a copy with [callId] set. The agent invokes this to stamp a
   /// tool's bare output with the originating call's identifier.
-  ToolResult withCallId(String id) => ToolResult(
+  ToolResult withCallId(ToolCallId id) => ToolResult(
         callId: id,
         success: success,
         content: content,

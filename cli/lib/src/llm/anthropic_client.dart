@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import 'package:glue/src/_proposed_core/ids.dart';
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/llm/message_mapper.dart';
@@ -106,7 +107,7 @@ class AnthropicClient implements LlmClient {
           final index = event['index'] as int;
           final block = event['content_block'] as Map<String, dynamic>;
           if (block['type'] == 'tool_use') {
-            final id = block['id'] as String;
+            final id = ToolCallId(block['id'] as String);
             final name = block['name'] as String;
             toolBuffers[index] = _ToolUseBuffer(id: id, name: name);
             yield ToolCallStart(id: id, name: name);
@@ -160,7 +161,7 @@ class AnthropicClient implements LlmClient {
 }
 
 class _ToolUseBuffer {
-  final String id;
+  final ToolCallId id;
   final String name;
   final StringBuffer buffer = StringBuffer();
   _ToolUseBuffer({required this.id, required this.name});

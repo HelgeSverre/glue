@@ -1,3 +1,4 @@
+import 'package:glue/src/_proposed_core/ids.dart';
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/llm/message_mapper.dart';
@@ -7,9 +8,13 @@ void main() {
   final messages = [
     Message.user('hello'),
     Message.assistant(text: 'hi there', toolCalls: [
-      ToolCall(id: 'tc1', name: 'read_file', arguments: {'path': 'f.txt'}),
+      ToolCall(
+          id: const ToolCallId('tc1'),
+          name: 'read_file',
+          arguments: {'path': 'f.txt'}),
     ]),
-    Message.toolResult(callId: 'tc1', content: 'file contents'),
+    Message.toolResult(
+        callId: const ToolCallId('tc1'), content: 'file contents'),
   ];
 
   group('AnthropicMessageMapper', () {
@@ -37,10 +42,12 @@ void main() {
       const mapper = AnthropicMessageMapper();
       final msgs = [
         Message.assistant(toolCalls: [
-          ToolCall(id: 'tc1', name: 'bash', arguments: {}),
+          ToolCall(id: const ToolCallId('tc1'), name: 'bash', arguments: {}),
         ]),
         Message.toolResult(
-            callId: 'tc1', content: 'result text', toolName: 'bash'),
+            callId: const ToolCallId('tc1'),
+            content: 'result text',
+            toolName: 'bash'),
       ];
       final result = mapper.mapMessages(msgs, systemPrompt: '');
       // assistant + tool_result = 2
@@ -55,10 +62,11 @@ void main() {
       const mapper = AnthropicMessageMapper();
       final msgs = [
         Message.assistant(toolCalls: [
-          ToolCall(id: 'tc1', name: 'web_browser', arguments: {}),
+          ToolCall(
+              id: const ToolCallId('tc1'), name: 'web_browser', arguments: {}),
         ]),
         Message.toolResult(
-          callId: 'tc1',
+          callId: const ToolCallId('tc1'),
           content: 'Screenshot captured.',
           toolName: 'web_browser',
           contentParts: [
@@ -88,10 +96,10 @@ void main() {
       const mapper = AnthropicMessageMapper();
       final msgs = [
         Message.assistant(toolCalls: [
-          ToolCall(id: 'tc1', name: 'bash', arguments: {}),
+          ToolCall(id: const ToolCallId('tc1'), name: 'bash', arguments: {}),
         ]),
         Message.toolResult(
-          callId: 'tc1',
+          callId: const ToolCallId('tc1'),
           content: 'just text',
           toolName: 'bash',
           contentParts: [const TextPart('just text')],
@@ -112,12 +120,16 @@ void main() {
           text: 'I will read',
           toolCalls: [
             ToolCall(
-                id: 'tc1', name: 'read_file', arguments: {'path': 'a.txt'}),
+                id: const ToolCallId('tc1'),
+                name: 'read_file',
+                arguments: {'path': 'a.txt'}),
           ],
         ),
-        Message.toolResult(callId: 'tc1', content: 'file contents'),
+        Message.toolResult(
+            callId: const ToolCallId('tc1'), content: 'file contents'),
         // Orphaned: tc_stale references a tool_use not in the preceding assistant message.
-        Message.toolResult(callId: 'tc_stale', content: 'stale result'),
+        Message.toolResult(
+            callId: const ToolCallId('tc_stale'), content: 'stale result'),
         Message.assistant(text: 'Here is the summary'),
       ];
       final result = mapper.mapMessages(msgs, systemPrompt: '');
@@ -137,7 +149,8 @@ void main() {
         // Assistant message without tool_calls (e.g. after session resume).
         Message.assistant(text: 'I read the file for you'),
         // This tool_result is orphaned because the preceding assistant has no tool_uses.
-        Message.toolResult(callId: 'tc1', content: 'file contents'),
+        Message.toolResult(
+            callId: const ToolCallId('tc1'), content: 'file contents'),
         Message.user('thanks'),
       ];
       final result = mapper.mapMessages(msgs, systemPrompt: '');
@@ -155,12 +168,16 @@ void main() {
         Message.assistant(
           text: '',
           toolCalls: [
-            ToolCall(id: 'tc1', name: 'read_file', arguments: {}),
-            ToolCall(id: 'tc2', name: 'write_file', arguments: {}),
+            ToolCall(
+                id: const ToolCallId('tc1'), name: 'read_file', arguments: {}),
+            ToolCall(
+                id: const ToolCallId('tc2'), name: 'write_file', arguments: {}),
           ],
         ),
-        Message.toolResult(callId: 'tc1', content: 'result 1'),
-        Message.toolResult(callId: 'tc2', content: 'result 2'),
+        Message.toolResult(
+            callId: const ToolCallId('tc1'), content: 'result 1'),
+        Message.toolResult(
+            callId: const ToolCallId('tc2'), content: 'result 2'),
       ];
       final result = mapper.mapMessages(msgs, systemPrompt: '');
       // user + assistant + tool_result(tc1) + tool_result(tc2) = 4.
@@ -174,13 +191,16 @@ void main() {
         Message.assistant(
           text: '',
           toolCalls: [
-            ToolCall(id: 'tc1', name: 'read_file', arguments: {}),
-            ToolCall(id: 'tc2', name: 'write_file', arguments: {}),
+            ToolCall(
+                id: const ToolCallId('tc1'), name: 'read_file', arguments: {}),
+            ToolCall(
+                id: const ToolCallId('tc2'), name: 'write_file', arguments: {}),
           ],
         ),
-        Message.toolResult(callId: 'tc1', content: 'ok'),
-        Message.toolResult(callId: 'tc_orphan', content: 'orphan'),
-        Message.toolResult(callId: 'tc2', content: 'ok'),
+        Message.toolResult(callId: const ToolCallId('tc1'), content: 'ok'),
+        Message.toolResult(
+            callId: const ToolCallId('tc_orphan'), content: 'orphan'),
+        Message.toolResult(callId: const ToolCallId('tc2'), content: 'ok'),
       ];
       final result = mapper.mapMessages(msgs, systemPrompt: '');
       // user + assistant + tc1 + tc2 = 4 (tc_orphan dropped).
@@ -211,7 +231,9 @@ void main() {
           text: '',
           toolCalls: [
             ToolCall(
-                id: 'tc1', name: 'read_file', arguments: {'path': '/foo.txt'}),
+                id: const ToolCallId('tc1'),
+                name: 'read_file',
+                arguments: {'path': '/foo.txt'}),
           ],
         ),
       ];
@@ -237,10 +259,12 @@ void main() {
       final msgs = [
         Message.user('hi'),
         Message.assistant(toolCalls: [
-          ToolCall(id: 'tc1', name: 'bash', arguments: {}),
+          ToolCall(id: const ToolCallId('tc1'), name: 'bash', arguments: {}),
         ]),
         Message.toolResult(
-            callId: 'tc1', content: 'result text', toolName: 'bash'),
+            callId: const ToolCallId('tc1'),
+            content: 'result text',
+            toolName: 'bash'),
       ];
       final result = mapper.mapMessages(msgs, systemPrompt: 'sys');
       // system + user + assistant + tool = 4
@@ -256,10 +280,11 @@ void main() {
       final msgs = [
         Message.user('hi'),
         Message.assistant(toolCalls: [
-          ToolCall(id: 'tc1', name: 'web_browser', arguments: {}),
+          ToolCall(
+              id: const ToolCallId('tc1'), name: 'web_browser', arguments: {}),
         ]),
         Message.toolResult(
-          callId: 'tc1',
+          callId: const ToolCallId('tc1'),
           content: 'Screenshot captured.',
           toolName: 'web_browser',
           contentParts: [
@@ -295,10 +320,10 @@ void main() {
       final msgs = [
         Message.user('hi'),
         Message.assistant(toolCalls: [
-          ToolCall(id: 'tc1', name: 'bash', arguments: {}),
+          ToolCall(id: const ToolCallId('tc1'), name: 'bash', arguments: {}),
         ]),
         Message.toolResult(
-          callId: 'tc1',
+          callId: const ToolCallId('tc1'),
           content: 'output',
           toolName: 'bash',
           contentParts: [const TextPart('output')],

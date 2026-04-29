@@ -45,7 +45,9 @@ void main() {
 
     test('allows trusted tools', () {
       final call = ToolCall(
-          id: '1', name: 'read_file', arguments: const {'path': 'a.txt'});
+          id: const core.ToolCallId('1'),
+          name: 'read_file',
+          arguments: const {'path': 'a.txt'});
       expect(gate.resolve(call), PermissionDecision.allow);
     });
 
@@ -62,18 +64,23 @@ void main() {
         cwd: '/tmp/project',
       );
       final call = ToolCall(
-          id: '1', name: 'read_file', arguments: const {'path': 'a.txt'});
+          id: const core.ToolCallId('1'),
+          name: 'read_file',
+          arguments: const {'path': 'a.txt'});
       expect(safeGate.resolve(call), PermissionDecision.allow);
     });
 
     test('asks for untrusted mutating tools', () {
-      final call =
-          ToolCall(id: '2', name: 'bash', arguments: const {'command': 'ls'});
+      final call = ToolCall(
+          id: const core.ToolCallId('2'),
+          name: 'bash',
+          arguments: const {'command': 'ls'});
       expect(gate.resolve(call), PermissionDecision.ask);
     });
 
     test('denies unknown tool', () {
-      final call = ToolCall(id: '3', name: 'missing', arguments: const {});
+      final call = ToolCall(
+          id: const core.ToolCallId('3'), name: 'missing', arguments: const {});
       expect(gate.resolve(call), PermissionDecision.deny);
     });
   });
@@ -88,12 +95,15 @@ void main() {
 
     test('allows everything', () {
       final call = ToolCall(
-          id: '1', name: 'bash', arguments: const {'command': 'rm -rf /'});
+          id: const core.ToolCallId('1'),
+          name: 'bash',
+          arguments: const {'command': 'rm -rf /'});
       expect(gate.resolve(call), PermissionDecision.allow);
     });
 
     test('still denies unknown tool', () {
-      final call = ToolCall(id: '2', name: 'missing', arguments: const {});
+      final call = ToolCall(
+          id: const core.ToolCallId('2'), name: 'missing', arguments: const {});
       expect(gate.resolve(call), PermissionDecision.deny);
     });
   });
@@ -160,7 +170,7 @@ void main() {
 
     test('builds a typed PermissionRequestedEvent for an ask decision', () {
       final call = ToolCall(
-        id: 'tc-1',
+        id: const core.ToolCallId('tc-1'),
         name: 'bash',
         arguments: const {'cmd': 'ls'},
       );
@@ -184,7 +194,7 @@ void main() {
 
     test('write tools surface as ToolKind.write danger level', () {
       final call = ToolCall(
-        id: 'tc-2',
+        id: const core.ToolCallId('tc-2'),
         name: 'write_file',
         arguments: const {'path': 'x', 'content': 'y'},
       );
@@ -200,7 +210,7 @@ void main() {
     test('unknown tools default to ToolKind.exec danger level', () {
       // Use an arbitrary tool name not in the registry.
       final call = ToolCall(
-        id: 'tc-3',
+        id: const core.ToolCallId('tc-3'),
         name: 'rogue',
         arguments: const {},
       );

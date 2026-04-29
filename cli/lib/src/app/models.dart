@@ -36,8 +36,8 @@ class _ConversationEntry {
   ) =>
       _ConversationEntry._(_EntryKind.toolCall, name, args: args);
 
-  factory _ConversationEntry.toolCallRef(String callId) =>
-      _ConversationEntry._(_EntryKind.toolCallRef, callId);
+  factory _ConversationEntry.toolCallRef(ToolCallId callId) =>
+      _ConversationEntry._(_EntryKind.toolCallRef, callId.value);
 
   factory _ConversationEntry.toolResult(String content) =>
       _ConversationEntry._(_EntryKind.toolResult, content);
@@ -116,7 +116,7 @@ enum _ToolPhase {
 }
 
 class _ToolCallUiState {
-  final String id;
+  final ToolCallId id;
   final String name;
   Map<String, dynamic>? args;
   _ToolPhase phase;

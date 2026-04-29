@@ -1,3 +1,4 @@
+import 'package:glue/src/_proposed_core/ids.dart';
 import 'package:glue/src/agent/agent_core.dart';
 
 class SkillActivationError implements Exception {
@@ -9,7 +10,7 @@ class SkillActivationError implements Exception {
 }
 
 class SkillActivationResult {
-  final String callId;
+  final ToolCallId callId;
   final String content;
   final String skillName;
 
@@ -38,7 +39,9 @@ Future<SkillActivationResult> activateSkillIntoConversation({
     throw SkillActivationError(content);
   }
 
-  final callId = '$callIdPrefix-${DateTime.now().microsecondsSinceEpoch}';
+  final callId = ToolCallId(
+    '$callIdPrefix-${DateTime.now().microsecondsSinceEpoch}',
+  );
   final call = ToolCall(
     id: callId,
     name: 'skill',

@@ -1,3 +1,4 @@
+import 'package:glue/src/_proposed_core/ids.dart';
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
@@ -88,8 +89,8 @@ void main() {
         summary: 'one-liner',
         metadata: {'k': 1},
       );
-      final stamped = result.withCallId('abc');
-      expect(stamped.callId, 'abc');
+      final stamped = result.withCallId(const ToolCallId('abc'));
+      expect(stamped.callId, const ToolCallId('abc'));
       expect(stamped.content, 'hi');
       expect(stamped.summary, 'one-liner');
       expect(stamped.metadata, {'k': 1});
@@ -103,7 +104,7 @@ void main() {
         tools: {'text_tool': _TextTool()},
       );
       final result = await core.executeTool(
-        ToolCall(id: 'c1', name: 'text_tool', arguments: {}),
+        ToolCall(id: const ToolCallId('c1'), name: 'text_tool', arguments: {}),
       );
       expect(result.content, 'hello');
       expect(result.callId, 'c1');
@@ -116,7 +117,7 @@ void main() {
         tools: {'image_tool': _ImageTool()},
       );
       final result = await core.executeTool(
-        ToolCall(id: 'c1', name: 'image_tool', arguments: {}),
+        ToolCall(id: const ToolCallId('c1'), name: 'image_tool', arguments: {}),
       );
       expect(result.content, 'Screenshot captured.');
       expect(result.contentParts, isNotNull);
@@ -130,7 +131,7 @@ void main() {
         tools: {},
       );
       final result = await core.executeTool(
-        ToolCall(id: 'c1', name: 'nope', arguments: {}),
+        ToolCall(id: const ToolCallId('c1'), name: 'nope', arguments: {}),
       );
       expect(result.success, isFalse);
       expect(result.contentParts, isNull);

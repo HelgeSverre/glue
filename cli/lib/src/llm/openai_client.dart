@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import 'package:glue/src/_proposed_core/ids.dart';
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/llm/message_mapper.dart';
@@ -140,7 +141,7 @@ class OpenAiClient implements LlmClient {
           final fn = (tcMap['function'] as Map?)?.cast<String, dynamic>();
 
           if (!toolBuilders.containsKey(index)) {
-            final id = (tcMap['id'] as String?) ?? 'call_$index';
+            final id = ToolCallId((tcMap['id'] as String?) ?? 'call_$index');
             final name = fn?['name'] as String? ?? '';
             toolBuilders[index] = _ToolCallBuilder(id: id, name: name);
             yield ToolCallStart(id: id, name: name);
@@ -186,7 +187,7 @@ class OpenAiClient implements LlmClient {
 }
 
 class _ToolCallBuilder {
-  final String id;
+  final ToolCallId id;
   final String name;
   final StringBuffer argsBuffer = StringBuffer();
   _ToolCallBuilder({required this.id, required this.name});

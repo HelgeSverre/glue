@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:glue/src/_proposed_core/ids.dart';
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/content_part.dart';
 
@@ -41,12 +42,12 @@ class AnthropicMessageMapper extends MessageMapper {
 
     // Track tool_use IDs from the most recent assistant message so we can
     // drop orphaned tool_result blocks that would trigger a 400 from the API.
-    var lastToolUseIds = <String>{};
+    var lastToolUseIds = <ToolCallId>{};
 
     for (final msg in messages) {
       switch (msg.role) {
         case Role.user:
-          lastToolUseIds = {};
+          lastToolUseIds = <ToolCallId>{};
           mapped.add({
             'role': 'user',
             'content': [
@@ -72,8 +73,9 @@ class AnthropicMessageMapper extends MessageMapper {
           // Skip tool_result whose tool_use_id has no matching tool_use in the
           // preceding assistant message – this prevents Anthropic API 400s
           // caused by orphaned results after session resume/fork.
-          if (msg.toolCallId != null &&
-              !lastToolUseIds.contains(msg.toolCallId)) {
+          final toolCallIdStr = msg.toolCallId;
+          if (toolCallIdStr != null &&
+              !lastToolUseIds.contains(ToolCallId(toolCallIdStr))) {
             continue;
           }
           final dynamic toolContent;

@@ -1,3 +1,4 @@
+import 'package:glue/src/_proposed_core/ids.dart';
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/agent/agent_manager.dart';
 import 'package:glue/src/agent/agent_runner.dart';
@@ -22,7 +23,7 @@ class _MockLlm implements LlmClient {
       yield TextDelta('I\'ll read that file. ');
       yield ToolCallComplete(
         ToolCall(
-          id: 'tc_$_calls',
+          id: ToolCallId('tc_$_calls'),
           name: 'read_file',
           arguments: {'path': 'pubspec.yaml'},
         ),

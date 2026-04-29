@@ -553,7 +553,9 @@ class SessionManager {
 
         case NormalizedSessionEventKind.toolCall:
           final name = event.toolName!;
-          final id = event.toolCallId ?? 'replay_${pendingToolCalls.length}';
+          final id = ToolCallId(
+            event.toolCallId ?? 'replay_${pendingToolCalls.length}',
+          );
           final args = event.toolArguments ?? const <String, dynamic>{};
           pendingToolCalls.add(ToolCall(id: id, name: name, arguments: args));
           toolNames.add(name);
@@ -563,7 +565,10 @@ class SessionManager {
           final callId = event.toolCallId;
           if (callId != null) {
             pendingToolResults.add(
-              Message.toolResult(callId: callId, content: event.text),
+              Message.toolResult(
+                callId: ToolCallId(callId),
+                content: event.text,
+              ),
             );
           }
           entries.add(SessionReplayEntry.toolResult(event.visibleText));

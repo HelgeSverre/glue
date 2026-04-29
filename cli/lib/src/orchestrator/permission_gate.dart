@@ -84,7 +84,7 @@ class PermissionGate {
       timestamp: timestamp ?? DateTime.now(),
       sequence: sequence,
       requestId: requestId,
-      toolCallId: ToolCallId(call.id),
+      toolCallId: call.id,
       scope: scope,
       summary: summary,
       dangerLevel: _classifyDanger(tool),

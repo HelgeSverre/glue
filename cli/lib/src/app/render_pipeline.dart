@@ -54,8 +54,9 @@ void _doRenderImpl(App app) {
       _EntryKind.user => renderer.renderUser(block.text),
       _EntryKind.assistant => renderer.renderAssistant(block.text),
       _EntryKind.toolCall => renderer.renderToolCall(block.text, block.args),
-      _EntryKind.toolCallRef =>
-        renderer.renderToolCallRef(app._toolUi[block.text]?.toRenderState()),
+      _EntryKind.toolCallRef => renderer.renderToolCallRef(
+          app._toolUi[ToolCallId(block.text)]?.toRenderState(),
+        ),
       _EntryKind.toolResult => renderer.renderToolResult(block.text),
       _EntryKind.error => renderer.renderError(block.text),
       _EntryKind.subagent => renderer.renderSubagent(block.text),

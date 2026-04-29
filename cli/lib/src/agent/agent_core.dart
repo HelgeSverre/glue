@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:glue/src/_proposed_core/ids.dart';
 import 'package:glue/src/agent/content_part.dart';
 import 'package:glue/src/agent/tools.dart';
 import 'package:glue/src/observability/observability.dart';
@@ -43,7 +44,7 @@ class Message {
       );
 
   factory Message.toolResult({
-    required String callId,
+    required ToolCallId callId,
     required String content,
     String? toolName,
     List<ContentPart>? contentParts,
@@ -51,7 +52,7 @@ class Message {
       Message._(
           role: Role.toolResult,
           text: content,
-          toolCallId: callId,
+          toolCallId: callId.value,
           toolName: toolName,
           contentParts: contentParts);
 }
@@ -77,7 +78,7 @@ class TextDelta extends LlmChunk {
 /// Not every provider emits this — Ollama delivers tool calls fully formed, so
 /// you may only receive [ToolCallComplete]. Always treat this event as optional.
 class ToolCallStart extends LlmChunk {
-  final String id;
+  final ToolCallId id;
   final String name;
   ToolCallStart({required this.id, required this.name});
 }
@@ -103,7 +104,7 @@ class UsageInfo extends LlmChunk {
 
 /// A tool invocation requested by the model.
 class ToolCall {
-  final String id;
+  final ToolCallId id;
   final String name;
   final Map<String, dynamic> arguments;
   final String description;
@@ -149,7 +150,7 @@ class AgentTextDelta extends AgentEvent {
 
 /// Notification that a tool call is being prepared.
 class AgentToolCallPending extends AgentEvent {
-  final String id;
+  final ToolCallId id;
   final String name;
   AgentToolCallPending({required this.id, required this.name});
 }
@@ -211,7 +212,7 @@ class AgentCore {
   }
 
   /// Completers keyed by tool call ID for parallel tool execution.
-  final Map<String, Completer<ToolResult>> _pendingToolResults = {};
+  final Map<ToolCallId, Completer<ToolResult>> _pendingToolResults = {};
 
   AgentCore({
     required this.llm,
@@ -436,11 +437,11 @@ class AgentCore {
       if (msg.role == Role.toolResult) continue;
 
       if (msg.role == Role.assistant && msg.toolCalls.isNotEmpty) {
-        final resultIdsAfter = <String>{};
+        final resultIdsAfter = <ToolCallId>{};
         for (var j = i + 1; j < _conversation.length; j++) {
           if (_conversation[j].role == Role.toolResult) {
             final id = _conversation[j].toolCallId;
-            if (id != null) resultIdsAfter.add(id);
+            if (id != null) resultIdsAfter.add(ToolCallId(id));
           }
         }
 

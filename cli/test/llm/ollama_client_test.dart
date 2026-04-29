@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:glue/src/_proposed_core/ids.dart';
 import 'package:glue/src/agent/agent_core.dart';
 import 'package:glue/src/llm/ollama_client.dart';
 import 'package:test/test.dart';
@@ -89,7 +90,7 @@ void main() {
   group('Ollama message mapping', () {
     test('tool result uses tool name not call ID', () {
       final msg = Message.toolResult(
-        callId: 'ollama_tc_1',
+        callId: const ToolCallId('ollama_tc_1'),
         content: 'file contents',
         toolName: 'read_file',
       );

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:glue/src/_proposed_core/ids.dart';
 import 'package:glue/glue.dart';
 import 'package:glue/src/agent/agent_core.dart'
     show
@@ -139,7 +140,7 @@ void main() {
   test('tool call flow: ToolCallComplete → completeToolCall → re-calls LLM',
       () async {
     final toolCall = ToolCall(
-      id: 'call_1',
+      id: const ToolCallId('call_1'),
       name: 'test_tool',
       arguments: {},
     );
@@ -174,7 +175,8 @@ void main() {
   });
 
   test('executeTool with known tool returns successful result', () async {
-    final call = ToolCall(id: 'c1', name: 'test_tool', arguments: {});
+    final call =
+        ToolCall(id: const ToolCallId('c1'), name: 'test_tool', arguments: {});
 
     final result = await agent.executeTool(call);
 
@@ -184,7 +186,8 @@ void main() {
   });
 
   test('executeTool with unknown tool returns error result', () async {
-    final call = ToolCall(id: 'c2', name: 'no_such_tool', arguments: {});
+    final call = ToolCall(
+        id: const ToolCallId('c2'), name: 'no_such_tool', arguments: {});
 
     final result = await agent.executeTool(call);
 
@@ -200,7 +203,8 @@ void main() {
       tools: {throwingTool.name: throwingTool},
     );
 
-    final call = ToolCall(id: 'c3', name: 'throwing_tool', arguments: {});
+    final call = ToolCall(
+        id: const ToolCallId('c3'), name: 'throwing_tool', arguments: {});
     final result = await agentWithThrowing.executeTool(call);
 
     expect(result.callId, 'c3');
@@ -237,7 +241,7 @@ void main() {
 
   test('tool result denied still feeds back to LLM', () async {
     final toolCall = ToolCall(
-      id: 'call_denied',
+      id: const ToolCallId('call_denied'),
       name: 'test_tool',
       arguments: {},
     );
@@ -273,12 +277,12 @@ void main() {
 
   test('emits all tool calls before awaiting results (parallel)', () async {
     final toolCall1 = ToolCall(
-      id: 'tc1',
+      id: const ToolCallId('tc1'),
       name: 'test_tool',
       arguments: {'path': 'a.txt'},
     );
     final toolCall2 = ToolCall(
-      id: 'tc2',
+      id: const ToolCallId('tc2'),
       name: 'test_tool',
       arguments: {'path': 'b.txt'},
     );

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:glue/src/_proposed_core/ids.dart';
 import 'package:glue/src/terminal/terminal.dart';
 import 'package:glue/src/terminal/layout.dart';
 import 'package:glue/src/input/line_editor.dart' show InputAction;
@@ -122,7 +123,7 @@ class App {
 
   AppMode _mode = AppMode.idle;
   final List<_ConversationEntry> _blocks = [];
-  final Map<String, _ToolCallUiState> _toolUi = {};
+  final Map<ToolCallId, _ToolCallUiState> _toolUi = {};
   int _scrollOffset = 0;
 
   static const _spinnerFrames = [
@@ -189,7 +190,7 @@ class App {
   final DebugController? _debugController;
   late final SkillRuntime _skillRuntime;
   ApprovalMode _approvalMode;
-  final Set<String> _earlyApprovedIds = {};
+  final Set<ToolCallId> _earlyApprovedIds = {};
 
   App({
     required this.terminal,
