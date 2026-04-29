@@ -1,7 +1,7 @@
 import 'package:glue/src/catalog/model_ref.dart';
 import 'package:glue/src/config/glue_config.dart';
 import 'package:glue/src/llm/anthropic_client.dart';
-import 'package:glue/src/llm/llm_factory.dart';
+import 'package:glue/src/agent/llm_factory.dart';
 import 'package:glue/src/llm/ollama_client.dart';
 import 'package:glue/src/llm/openai_client.dart';
 import 'package:test/test.dart';

@@ -1,4 +1,4 @@
-import 'package:glue/src/config/constants.dart';
+import 'package:glue/src/_proposed_core/app_constants.dart';
 import 'package:glue/src/web/browser/browser_config.dart';
 
 class WebFetchConfig {

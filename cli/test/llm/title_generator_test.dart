@@ -1,5 +1,5 @@
 import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/llm/title_generator.dart';
+import 'package:glue/src/agent/title_generator.dart';
 import 'package:glue/src/session/session_manager.dart';
 import 'package:test/test.dart';
 

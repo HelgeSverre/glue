@@ -4,27 +4,17 @@
 /// Enforces the layered architecture defined in
 /// `docs/plans/2026-04-29-harness-layers.md`:
 ///
-///   surface  →  harness  →  strategies  →  transport
+///   surface  →  harness  →  strategies  →  core
 ///
-/// **Today's enforcement**: harness and strategies share a rank (they are
-/// peers in the current codebase because data types like `Message` and
-/// `ToolCall` haven't yet moved to a `glue_core` package — until then,
-/// strategies legitimately import from harness data subsystems). The only
-/// rule the linter enforces today is the surface↔non-surface boundary.
-///
-/// **Future tightening**: once `glue_core` is extracted (step 4 of the
-/// migration plan), restore harness rank above strategies and let the
-/// linter flag the strategies→harness imports that remain.
+/// Same-layer imports are allowed. Cross-layer-up imports are violations
+/// (e.g. `agent/` reaching into `app/`, or `llm/` reaching into `session/`).
 ///
 /// Usage:
-///   dart run tool/check_layers.dart            # warn-only, exit 0
+///   dart run tool/check_layers.dart            # report; exit 0
 ///   dart run tool/check_layers.dart --strict   # exit 1 on violations
 ///   dart run tool/check_layers.dart --json     # machine-readable output
-///   dart run tool/check_layers.dart --aspirational
-///       # report future strategies→harness violations as well (advisory)
 ///
-/// CI runs the warn-only mode initially. The plan is to flip to `--strict`
-/// once the existing worklist is cleared.
+/// CI runs `--strict`.
 library;
 
 import 'dart:convert';
@@ -71,10 +61,7 @@ const _subsystemLayers = <String, _Layer>{
 
 enum _Layer {
   surface(3, 'surface'),
-  // harness and strategies share rank 1 today — see file-level dartdoc.
-  // The aspirationalRank field records the future split so we can flag
-  // future-violations under --aspirational without enforcing them now.
-  harness(1, 'harness', aspirationalRank: 2),
+  harness(2, 'harness'),
   strategies(1, 'strategies'),
   // Pure data types — no behavior, no I/O. Strictly below strategies so
   // any subsystem can import them. This is the future `glue_core` package.
@@ -83,23 +70,14 @@ enum _Layer {
   // means future transport-layer subsystems just need a _subsystemLayers entry.
   transport(0, 'transport');
 
-  const _Layer(this.rank, this.name, {int? aspirationalRank})
-      : aspirationalRank = aspirationalRank ?? rank;
-
-  /// Rank used in default mode.
+  const _Layer(this.rank, this.name);
   final int rank;
-
-  /// Rank used under `--aspirational`. Currently differs only for harness
-  /// (which will rise above strategies once `glue_core` is extracted).
-  final int aspirationalRank;
-
   final String name;
 }
 
 void main(List<String> args) {
   final strict = args.contains('--strict');
   final asJson = args.contains('--json');
-  final aspirational = args.contains('--aspirational');
   final root = Directory('lib/src');
   if (!root.existsSync()) {
     stderr.writeln('check_layers: lib/src not found (run from cli/)');
@@ -139,10 +117,7 @@ void main(List<String> args) {
         continue;
       }
 
-      final fromRank =
-          aspirational ? fromLayer.aspirationalRank : fromLayer.rank;
-      final toRank = aspirational ? toLayer.aspirationalRank : toLayer.rank;
-      if (toRank > fromRank) {
+      if (toLayer.rank > fromLayer.rank) {
         violations.add(
           _Violation(
             file: relPath,

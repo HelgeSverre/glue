@@ -1,6 +1,7 @@
 // ignore_for_file: avoid_print
-/// Generates `lib/src/config/version_generated.dart` from the `version:`
-/// field in `pubspec.yaml`, so `pubspec.yaml` is the single source of truth.
+/// Generates `lib/src/_proposed_core/version_generated.dart` from the
+/// `version:` field in `pubspec.yaml`, so `pubspec.yaml` is the single
+/// source of truth.
 ///
 /// Usage:
 ///   dart run tool/gen_version.dart          # regenerate in place
@@ -12,7 +13,7 @@ library;
 import 'dart:io';
 
 const _sourcePath = 'pubspec.yaml';
-const _outPath = 'lib/src/config/version_generated.dart';
+const _outPath = 'lib/src/_proposed_core/version_generated.dart';
 
 void main(List<String> args) {
   final checkMode = args.contains('--check');

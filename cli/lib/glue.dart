@@ -88,7 +88,7 @@ export 'src/providers/compatibility_profile.dart' show CompatibilityProfile;
 export 'src/providers/anthropic_adapter.dart' show AnthropicAdapter;
 export 'src/providers/openai_compatible_adapter.dart'
     show OpenAiCompatibleAdapter;
-export 'src/llm/llm_factory.dart' show LlmClientFactory;
+export 'src/agent/llm_factory.dart' show LlmClientFactory;
 export 'src/agent/agent_runner.dart' show AgentRunner, ToolApprovalPolicy;
 export 'src/agent/agent_manager.dart' show AgentManager;
 export 'src/agent/prompts.dart' show Prompts;
@@ -180,7 +180,7 @@ export 'src/shell/host_executor.dart' show HostExecutor;
 export 'src/shell/shell_config.dart' show ShellConfig, ShellMode;
 export 'src/storage/session_state.dart' show SessionState;
 export 'src/shell/line_ring_buffer.dart' show LineRingBuffer;
-export 'src/shell/shell_job_manager.dart'
+export 'src/agent/shell_job_manager.dart'
     show
         ShellJobManager,
         ShellJob,

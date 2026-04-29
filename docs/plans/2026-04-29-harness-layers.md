@@ -49,21 +49,22 @@ top of the existing CLI without dragging surface concerns into core code.
 ```
 
 **Rule:** a layer may import only from layers below it. Same-layer imports
-are allowed within reason. Cross-layer-up imports are bugs. The linter
-introduced in this PR enforces this rule (warn-only initially).
+are allowed within reason. Cross-layer-up imports are bugs. The linter at
+`cli/tool/check_layers.dart` enforces this rule in CI (`--strict`).
 
-## Subsystem → layer mapping (today's tree)
+## Subsystem → layer mapping
 
-Today's `cli/lib/src/` directories map to layers as follows:
+`cli/lib/src/` directories map to layers as follows:
 
 | Subsystem         | Layer       | Notes                                     |
 |-------------------|-------------|-------------------------------------------|
-| `agent/`          | harness     | AgentCore, AgentRunner, AgentManager      |
+| `_proposed_core/` | core        | Pure data types — staging for `glue_core` |
+| `agent/`          | harness     | AgentCore loop, manager, factory, jobs    |
 | `app/`, `app.dart`| surface     | App controller, event-merge loop          |
 | `catalog/`        | harness     | Bundled + remote model catalog            |
 | `commands/`       | surface     | CLI subcommands (config, doctor)          |
 | `config/`         | harness     | GlueConfig resolver                       |
-| `core/`           | harness     | Environment, service locator (see below)  |
+| `core/`           | harness     | Environment, service locator              |
 | `credentials/`    | strategies  | CredentialStore impls                     |
 | `doctor/`         | surface     | Doctor checks + output formatting         |
 | `extensions/`     | harness     | Internal extension methods                |
@@ -79,14 +80,9 @@ Today's `cli/lib/src/` directories map to layers as follows:
 | `skills/`         | harness     | Skill discovery + execution               |
 | `storage/`        | harness     | Persistence helpers                       |
 | `terminal/`       | surface     | Raw terminal I/O                          |
-| `tools/`          | harness     | Tool definitions                          |
+| `tools/`          | harness     | Tool implementations                      |
 | `ui/`             | surface     | Modals, panels, autocomplete              |
 | `web/`            | strategies  | Search/Browser/Fetch providers            |
-
-Known coupling that the linter will surface as a worklist item:
-- `core/service_locator.dart` imports `input/text_area_editor.dart`. This is
-  a known violation — service_locator straddles the surface/harness boundary
-  today. Will be addressed in a later decoupling PR.
 
 ## Target package structure
 
@@ -277,40 +273,50 @@ surface?* If yes, harness. If no, surface.
 
 ## Migration sequencing
 
-**Foundational (do these first):**
+**Foundational:**
 
-1. ✅ **Linter PR** (this PR). Layer-import enforcement script in CI as
-   warn-only. Produces the worklist.
-2. **Type wrappers PR.** Add `extension type` wrappers for IDs.
-3. ✅ **Sealed event types PR** (this PR). Define `SessionEvent` as a sealed
-   type covering today's agent emissions. No consumer migration yet.
+1. ✅ **Linter PR.** Layer-import enforcement script in CI.
+2. ✅ **Type wrappers PR.** `SessionId` and `ToolCallId` adopted across
+   session, agent, LLM, and orchestrator code.
+3. ✅ **Sealed event types PR.** `SessionEvent` and `SessionCommand`
+   defined as the proposed surface↔harness contract.
 
-**Decoupling (largest set, do gradually):**
+**Decoupling:**
 
-4. **Move data types to `glue_core`.** Identity types, domain types, event
-   types, command types.
-5. **Permission gate PR.** Convert callback to events + dispatch.
-6. **OAuth device flow PR.** Same transformation.
-7. **Settings cascade PR.** `SettingsResolver` with source tracking.
-8. **Per-subsystem decoupling PRs.** One per subsystem with violations.
-9. **Flip linter to error.**
+4. ✅ **Move data types to `_proposed_core/` (the future `glue_core`).**
+   `Message`, `ToolCall`, `LlmChunk`, `Tool`, `ToolResult`, `ToolTrust`,
+   `ContentPart`, `LlmClient`, `AgentEvent`, `ModelRef`, `ModelCatalog`,
+   `AppConstants`. Strategies now import directly from `_proposed_core/`
+   for the types they need. `agent/` and `catalog/` re-export shims keep
+   their old harness rank for non-strategy consumers.
+5. ✅ **Misclassified-subsystem moves.** `title_generator`,
+   `llm_factory`, `shell_job_manager` moved to `agent/` (harness) — they
+   were data-driven services, not wire-format strategies.
+6. ✅ **Permission gate PR.** `PermissionGate.requestEventFor(...)` emits
+   typed `PermissionRequestedEvent`s for new surfaces.
+7. ✅ **service_locator decoupled** from `terminal/` and `input/`.
+8. ✅ **Linter flipped to strict, full four-layer enforcement.**
+9. **OAuth device flow PR.** Same callback→events transformation as
+   the permission gate.
+10. **Settings cascade PR.** `SettingsResolver` with source tracking.
 
 **Strategy extraction:**
 
-10. **Move strategies to `glue_strategies`.**
-11. **Move transport layer to `glue_transport`.**
+11. **Move strategies to `glue_strategies` package.**
+12. **Move transport layer to `glue_transport` package.**
 
 **Harness consolidation:**
 
-12. **Extract harness package.**
-13. **Trim the CLI.**
+13. **Extract `_proposed_core/` as a sibling `glue_core` package.**
+14. **Extract harness package.**
+15. **Trim the CLI.**
 
 **Surface expansion:**
 
-14. **Add `glue serve --stdio`.**
-15. **CLI as ACP client (optional).**
-16. **WebSocket transport.**
-17. **Multi-client session attach.**
+16. **Add `glue serve --stdio`.**
+17. **CLI as ACP client (optional).**
+18. **WebSocket transport.**
+19. **Multi-client session attach.**
 
 ## What this PR delivers
 

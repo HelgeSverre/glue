@@ -15,7 +15,7 @@ import 'package:glue/src/_proposed_core/llm_client.dart';
 import 'package:glue/src/_proposed_core/message.dart';
 import 'package:glue/src/_proposed_core/tool.dart';
 import 'package:glue/src/_proposed_core/model_catalog.dart';
-import 'package:glue/src/config/constants.dart';
+import 'package:glue/src/_proposed_core/app_constants.dart';
 import 'package:glue/src/credentials/credential_store.dart';
 import 'package:glue/src/llm/openai_client.dart';
 import 'package:glue/src/providers/auth_flow.dart';
