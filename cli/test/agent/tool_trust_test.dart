@@ -1,4 +1,4 @@
-import 'package:glue/src/agent/tools.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
 
 class _StubTool extends Tool {

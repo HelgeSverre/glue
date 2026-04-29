@@ -1,5 +1,4 @@
-import 'package:glue/src/core/environment.dart';
-import 'package:glue/src/core/where_report.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
 
 void main() {

@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:glue/src/skills/skill_runtime.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 

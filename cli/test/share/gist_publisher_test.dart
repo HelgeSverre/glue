@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:glue/src/share/gist_publisher.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
 
 void main() {

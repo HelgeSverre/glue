@@ -1,9 +1,7 @@
 import 'dart:async';
 
 import 'package:glue_core/glue_core.dart';
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/agent_runner.dart';
-import 'package:glue/src/agent/tools.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
 
 /// Minimal LLM that returns text only (no tool calls).

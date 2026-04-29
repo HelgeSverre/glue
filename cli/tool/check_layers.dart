@@ -24,7 +24,8 @@ import 'dart:io';
 /// here are treated as unknown and skipped (they do not produce violations
 /// but are reported in the summary).
 const _subsystemLayers = <String, _Layer>{
-  // Surface
+  // Surface — all that's left in cli/lib/src/ after the harness +
+  // strategies + core extractions.
   'app': _Layer.surface,
   'commands': _Layer.surface,
   'doctor': _Layer.surface,
@@ -33,28 +34,10 @@ const _subsystemLayers = <String, _Layer>{
   'terminal': _Layer.surface,
   'ui': _Layer.surface,
 
-  // Harness
-  'agent': _Layer.harness,
-  'catalog': _Layer.harness,
-  'config': _Layer.harness,
-  'core': _Layer.harness,
-  'extensions': _Layer.harness,
-  'observability': _Layer.harness,
-  'orchestrator': _Layer.harness,
-  'session': _Layer.harness,
-  'share': _Layer.harness,
-  'skills': _Layer.harness,
-  'storage': _Layer.harness,
-  'tools': _Layer.harness,
-
-  // External `glue_strategies` package — synthetic strategies-rank
-  // subsystem. The credentials/, llm/, providers/, shell/, web/ source
-  // dirs moved out of cli/lib/src/ in the package extraction; their
-  // public surface is now consumed via `package:glue_strategies/...`.
+  // External packages — each maps to a single synthetic subsystem at
+  // the appropriate rank. See `_subsystemOfImport`.
+  '<glue_harness>': _Layer.harness,
   '<glue_strategies>': _Layer.strategies,
-
-  // External `glue_core` package — synthetic subsystem at core rank.
-  // Any subsystem may import from it. See `_subsystemOfImport`.
   '<glue_core>': _Layer.core,
 };
 
@@ -150,7 +133,7 @@ void main(List<String> args) {
 }
 
 final _importPattern = RegExp(
-  r'''^\s*import\s+['"](package:(?:glue|glue_core|glue_strategies)/[^'"]+)['"]''',
+  r'''^\s*import\s+['"](package:(?:glue|glue_core|glue_strategies|glue_harness)/[^'"]+)['"]''',
 );
 
 String? _subsystemOf(String filePath) {
@@ -170,6 +153,9 @@ String? _subsystemOfImport(String importUri) {
   if (importUri.startsWith('package:glue_core/')) return '<glue_core>';
   if (importUri.startsWith('package:glue_strategies/')) {
     return '<glue_strategies>';
+  }
+  if (importUri.startsWith('package:glue_harness/')) {
+    return '<glue_harness>';
   }
 
   // `package:glue/src/<subsystem>/...`

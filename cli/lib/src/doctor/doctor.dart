@@ -4,12 +4,8 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
-import 'package:glue/src/catalog/catalog_parser.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:glue/src/commands/config_command.dart';
-import 'package:glue/src/config/glue_config.dart';
-import 'package:glue/src/core/environment.dart';
-import 'package:glue/src/observability/observability_config.dart';
-import 'package:glue/src/observability/otlp_http_trace_sink.dart';
 import 'package:glue/src/terminal/styled.dart';
 
 enum DoctorSeverity {

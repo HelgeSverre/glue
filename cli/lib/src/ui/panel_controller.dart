@@ -5,11 +5,10 @@ import 'package:meta/meta.dart';
 
 import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/commands/slash_commands.dart';
-import 'package:glue/src/config/glue_config.dart';
-import 'package:glue/src/core/clipboard.dart' as shared_clipboard;
+import 'package:glue_harness/glue_harness.dart';
+import 'package:glue_harness/glue_harness.dart' as shared_clipboard;
 import 'package:glue_strategies/glue_strategies.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
-import 'package:glue/src/storage/session_store.dart';
 import 'package:glue/src/terminal/styled.dart';
 import 'package:glue/src/ui/api_key_prompt_panel.dart';
 import 'package:glue/src/ui/device_code_panel.dart';

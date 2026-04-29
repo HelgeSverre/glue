@@ -54,36 +54,24 @@ are allowed within reason. Cross-layer-up imports are bugs. The linter at
 
 ## Subsystem → layer mapping
 
-The `glue_core` package (at `packages/glue_core/`) is the dedicated
-home for pure-data types. The CLI's `cli/lib/src/` directories map to
-layers as follows:
+After the package extractions:
 
-| Subsystem         | Layer       | Notes                                     |
-|-------------------|-------------|-------------------------------------------|
-| `packages/glue_core/` | core    | Pure data types in their own package      |
-| `agent/`          | harness     | AgentCore loop, manager, factory, jobs    |
-| `app/`, `app.dart`| surface     | App controller, event-merge loop          |
-| `catalog/`        | harness     | Bundled + remote model catalog            |
-| `commands/`       | surface     | CLI subcommands (config, doctor)          |
-| `config/`         | harness     | GlueConfig resolver                       |
-| `core/`           | harness     | Environment, service locator              |
-| `credentials/`    | strategies  | CredentialStore impls                     |
-| `doctor/`         | surface     | Doctor checks + output formatting         |
-| `extensions/`     | harness     | Internal extension methods                |
-| `input/`          | surface     | LineEditor, TextAreaEditor                |
-| `llm/`            | strategies  | Provider wire-format clients              |
-| `observability/`  | harness     | Tracing, OTEL, Langfuse                   |
-| `orchestrator/`   | harness     | Permission gating                         |
-| `providers/`      | strategies  | Higher-level provider adapters            |
-| `rendering/`      | surface     | ANSI + markdown rendering                 |
-| `session/`        | harness     | SessionStore, SessionManager              |
-| `share/`          | harness     | Session export/share                      |
-| `shell/`          | strategies  | CommandExecutor (host, docker)            |
-| `skills/`         | harness     | Skill discovery + execution               |
-| `storage/`        | harness     | Persistence helpers                       |
-| `terminal/`       | surface     | Raw terminal I/O                          |
-| `tools/`          | harness     | Tool implementations                      |
-| `ui/`             | surface     | Modals, panels, autocomplete              |
+| Package / Subsystem    | Layer      | Notes                                |
+|------------------------|------------|--------------------------------------|
+| `packages/glue_core/`  | core       | Pure data types                      |
+| `packages/glue_strategies/` | strategies | LLM clients, providers, exec, web |
+| `packages/glue_harness/`    | harness    | Agent loop, sessions, catalog, tools |
+| `cli/lib/src/app/`     | surface    | App controller, event-merge loop     |
+| `cli/lib/src/commands/`| surface    | CLI subcommands (config, doctor)     |
+| `cli/lib/src/doctor/`  | surface    | Doctor checks + output formatting    |
+| `cli/lib/src/input/`   | surface    | LineEditor, TextAreaEditor           |
+| `cli/lib/src/rendering/`| surface   | ANSI + markdown rendering            |
+| `cli/lib/src/terminal/`| surface    | Raw terminal I/O                     |
+| `cli/lib/src/ui/`      | surface    | Modals, panels, autocomplete         |
+
+The CLI is now a pure surface package. The harness/strategies/core
+extractions mean the four-layer architecture is enforced not just by
+the linter but by Dart's package boundaries.
 | `web/`            | strategies  | Search/Browser/Fetch providers            |
 
 ## Target package structure
@@ -319,8 +307,15 @@ surface?* If yes, harness. If no, surface.
     Pure-data types now live under `packages/glue_core/`; CLI consumes
     via path dependency and the `package:glue_core/glue_core.dart`
     public barrel.
-14. **Extract harness package.**
-15. **Trim the CLI.**
+14. ✅ **Extract harness package.** Twelve subsystems (`agent/`,
+    `catalog/`, `config/`, `core/`, `extensions/`, `observability/`,
+    `orchestrator/`, `session/`, `share/`, `skills/`, `storage/`,
+    `tools/`) now live under `packages/glue_harness/`. CLI is now a
+    pure surface package — only `app/`, `commands/`, `doctor/`,
+    `input/`, `rendering/`, `terminal/`, `ui/` remain in
+    `cli/lib/src/`.
+15. **Trim the CLI.** (Largely done by #14; remaining work is
+    barrel cleanup and naming.)
 
 **Surface expansion:**
 

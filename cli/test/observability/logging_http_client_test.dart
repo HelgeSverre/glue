@@ -1,8 +1,6 @@
 import 'dart:convert';
 
-import 'package:glue/src/observability/debug_controller.dart';
-import 'package:glue/src/observability/logging_http_client.dart';
-import 'package:glue/src/observability/observability.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 

@@ -2,12 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:glue_core/glue_core.dart';
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/core/environment.dart';
-import 'package:glue/src/observability/debug_controller.dart';
-import 'package:glue/src/observability/observability.dart';
-import 'package:glue/src/session/session_manager.dart';
-import 'package:glue/src/storage/session_store.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
 
 class _NoopLlm implements LlmClient {

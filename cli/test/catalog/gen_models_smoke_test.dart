@@ -9,8 +9,7 @@ library;
 
 import 'dart:io';
 
-import 'package:glue/src/catalog/catalog_parser.dart';
-import 'package:glue/src/catalog/models_generated.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
 
 void main() {

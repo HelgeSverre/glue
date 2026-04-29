@@ -1,4 +1,4 @@
-import 'package:glue/src/config/build_info.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
 
 void main() {

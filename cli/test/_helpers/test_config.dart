@@ -2,8 +2,7 @@
 library;
 
 import 'package:glue_core/glue_core.dart';
-import 'package:glue/src/catalog/models_generated.dart';
-import 'package:glue/src/config/glue_config.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 
 GlueConfig testConfig({

@@ -1,8 +1,5 @@
 import 'package:glue_core/glue_core.dart' as core;
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/tools.dart';
-import 'package:glue/src/config/approval_mode.dart';
-import 'package:glue/src/orchestrator/permission_gate.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
 
 class _StubTool extends Tool {

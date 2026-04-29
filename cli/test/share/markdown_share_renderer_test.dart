@@ -1,7 +1,5 @@
 import 'package:glue_core/glue_core.dart';
-import 'package:glue/src/share/renderer/markdown_renderer.dart';
-import 'package:glue/src/share/share_models.dart';
-import 'package:glue/src/storage/session_store.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
 
 void main() {

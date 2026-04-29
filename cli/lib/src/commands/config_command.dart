@@ -1,8 +1,6 @@
 import 'dart:io';
 
-import 'package:glue/src/config/config_template.dart';
-import 'package:glue/src/config/glue_config.dart';
-import 'package:glue/src/core/environment.dart';
+import 'package:glue_harness/glue_harness.dart';
 
 enum ConfigInitStatus {
   created,

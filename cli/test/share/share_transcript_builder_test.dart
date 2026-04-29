@@ -1,5 +1,4 @@
-import 'package:glue/src/share/share_models.dart';
-import 'package:glue/src/share/share_transcript_builder.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
 
 void main() {

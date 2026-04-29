@@ -1,7 +1,6 @@
 import 'package:glue_core/glue_core.dart';
-import 'package:glue/src/config/glue_config.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:glue_strategies/glue_strategies.dart';
-import 'package:glue/src/agent/llm_factory.dart';
 import 'package:test/test.dart';
 
 import '../_helpers/test_config.dart';

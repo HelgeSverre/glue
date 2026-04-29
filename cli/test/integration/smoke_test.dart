@@ -1,9 +1,5 @@
 import 'package:glue_core/glue_core.dart';
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/agent_manager.dart';
-import 'package:glue/src/agent/agent_runner.dart';
-import 'package:glue/src/agent/tools.dart';
-import 'package:glue/src/agent/llm_factory.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
 
 import '../_helpers/test_config.dart';

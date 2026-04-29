@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:glue_core/glue_core.dart';
-import 'package:glue/src/storage/session_store.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 

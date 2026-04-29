@@ -7,7 +7,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data' show BytesBuilder;
 
-import 'package:glue/src/core/clipboard.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
 
 // ignore_for_file: close_sinks
