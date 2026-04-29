@@ -54,6 +54,13 @@ jobs:
       - name: Check CLI formatting
         run: dart format --output=none --set-exit-if-changed cli
 
+      - name: Layer-import hygiene (warn-only)
+        # See docs/plans/2026-04-29-harness-layers.md.
+        # Plan: flip to --strict once the existing worklist is cleared.
+        working-directory: cli
+        run: dart run tool/check_layers.dart
+        continue-on-error: true
+
       - name: Run monorepo quality gate
         run: just check
 
