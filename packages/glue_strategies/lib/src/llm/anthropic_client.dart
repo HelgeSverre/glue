@@ -9,6 +9,14 @@ import 'package:glue_strategies/src/llm/tool_schema.dart';
 
 /// LLM client for the Anthropic Messages API with streaming.
 ///
+/// Prompt caching: when [promptCacheEnabled] is true (default), the
+/// request body includes a top-level `cache_control: {type: "ephemeral"}`
+/// directive. Anthropic's auto-caching advances the cache breakpoint to
+/// the last cacheable block on each turn, so a growing conversation
+/// accumulates cache hits without the client tracking breakpoint
+/// placement explicitly. Caching is GA on Claude 4.x — no beta header
+/// needed. Older models silently ignore the directive.
+///
 /// {@category LLM Providers}
 class AnthropicClient implements LlmClient {
   final http.Client Function() _requestClientFactory;
@@ -16,6 +24,7 @@ class AnthropicClient implements LlmClient {
   final String model;
   final String systemPrompt;
   final Uri _baseUri;
+  final bool promptCacheEnabled;
 
   static const _apiVersion = '2023-06-01';
   static const _defaultBaseUrl = 'https://api.anthropic.com';
@@ -26,6 +35,7 @@ class AnthropicClient implements LlmClient {
     required this.systemPrompt,
     String baseUrl = _defaultBaseUrl,
     http.Client Function()? requestClientFactory,
+    this.promptCacheEnabled = true,
   })  : _requestClientFactory = requestClientFactory ?? http.Client.new,
         _baseUri = Uri.parse(baseUrl);
 
@@ -48,6 +58,15 @@ class AnthropicClient implements LlmClient {
 
       if (tools != null && tools.isNotEmpty) {
         body['tools'] = const AnthropicToolEncoder().encodeAll(tools);
+      }
+
+      if (promptCacheEnabled) {
+        // Top-level auto-caching: Anthropic advances the cache breakpoint
+        // to the last cacheable block (system → tools → messages) so the
+        // largest stable prefix accrues cache hits across turns. No
+        // mapper changes needed; older models that don't support caching
+        // silently ignore this field.
+        body['cache_control'] = {'type': 'ephemeral'};
       }
 
       final request = http.Request(
@@ -90,6 +109,8 @@ class AnthropicClient implements LlmClient {
     final toolBuffers = <int, _ToolUseBuffer>{};
     int inputTokens = 0;
     int outputTokens = 0;
+    int? cacheReadTokens;
+    int? cacheCreationTokens;
 
     await for (final event in events) {
       final type = event['type'] as String?;
@@ -99,6 +120,15 @@ class AnthropicClient implements LlmClient {
           final usage = (event['message'] as Map?)?['usage'] as Map?;
           if (usage != null) {
             inputTokens = (usage['input_tokens'] as int?) ?? 0;
+            // Per current Anthropic docs, the message_start usage block
+            // carries cache statistics. Both fields may be absent on a
+            // cold cache or on providers that proxy without forwarding
+            // them — leave the locals null in that case so UsageInfo
+            // distinguishes "not reported" from "zero".
+            final cacheRead = usage['cache_read_input_tokens'];
+            if (cacheRead is int) cacheReadTokens = cacheRead;
+            final cacheCreate = usage['cache_creation_input_tokens'];
+            if (cacheCreate is int) cacheCreationTokens = cacheCreate;
           }
 
         case 'content_block_start':
@@ -152,6 +182,8 @@ class AnthropicClient implements LlmClient {
           yield UsageInfo(
             inputTokens: inputTokens,
             outputTokens: outputTokens,
+            cacheReadTokens: cacheReadTokens,
+            cacheCreationTokens: cacheCreationTokens,
           );
       }
     }

@@ -163,5 +163,102 @@ void main() {
       final deltaIdx = chunks.indexWhere((c) => c is ToolCallComplete);
       expect(startIdx, lessThan(deltaIdx));
     });
+
+    test('surfaces cached_tokens from prompt_tokens_details (native OpenAI)',
+        () async {
+      final events = [
+        {
+          'choices': [],
+          'usage': {
+            'prompt_tokens': 4096,
+            'completion_tokens': 64,
+            'prompt_tokens_details': {'cached_tokens': 3500},
+          },
+        },
+      ];
+
+      final usage = (await OpenAiClient.parseStreamEvents(
+        Stream.fromIterable(events),
+      ).toList())
+          .whereType<UsageInfo>()
+          .single;
+
+      expect(usage.inputTokens, 4096);
+      expect(usage.outputTokens, 64);
+      expect(usage.cacheReadTokens, 3500);
+      expect(usage.cacheCreationTokens, isNull);
+    });
+
+    test(
+        'surfaces OpenRouter cache_write_tokens alongside cached_tokens',
+        () async {
+      // OpenRouter normalises the upstream Anthropic shape into
+      // OpenAI-shaped `prompt_tokens_details.cached_tokens` plus a sibling
+      // `cache_write_tokens`. We surface both into UsageInfo so cost
+      // estimation can distinguish reads from writes.
+      final events = [
+        {
+          'choices': [],
+          'usage': {
+            'prompt_tokens': 12000,
+            'completion_tokens': 128,
+            'prompt_tokens_details': {'cached_tokens': 9000},
+            'cache_write_tokens': 1200,
+          },
+        },
+      ];
+
+      final usage = (await OpenAiClient.parseStreamEvents(
+        Stream.fromIterable(events),
+      ).toList())
+          .whereType<UsageInfo>()
+          .single;
+
+      expect(usage.cacheReadTokens, 9000);
+      expect(usage.cacheCreationTokens, 1200);
+    });
+
+    test('falls back to Anthropic-shape fields when proxy forwards them',
+        () async {
+      final events = [
+        {
+          'choices': [],
+          'usage': {
+            'prompt_tokens': 8000,
+            'completion_tokens': 50,
+            'cache_read_input_tokens': 7500,
+            'cache_creation_input_tokens': 400,
+          },
+        },
+      ];
+
+      final usage = (await OpenAiClient.parseStreamEvents(
+        Stream.fromIterable(events),
+      ).toList())
+          .whereType<UsageInfo>()
+          .single;
+
+      expect(usage.cacheReadTokens, 7500);
+      expect(usage.cacheCreationTokens, 400);
+    });
+
+    test('leaves cache fields null when no caching info is reported',
+        () async {
+      final events = [
+        {
+          'choices': [],
+          'usage': {'prompt_tokens': 200, 'completion_tokens': 10},
+        },
+      ];
+
+      final usage = (await OpenAiClient.parseStreamEvents(
+        Stream.fromIterable(events),
+      ).toList())
+          .whereType<UsageInfo>()
+          .single;
+
+      expect(usage.cacheReadTokens, isNull);
+      expect(usage.cacheCreationTokens, isNull);
+    });
   });
 }

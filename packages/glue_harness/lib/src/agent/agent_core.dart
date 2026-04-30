@@ -120,6 +120,9 @@ class AgentCore {
         if (llmSpan != null) _obs!.activeSpan = llmSpan;
         var inputTokens = 0;
         var outputTokens = 0;
+        var cacheReadTokens = 0;
+        var cacheCreationTokens = 0;
+        var sawCacheStats = false;
         var textDeltaCount = 0;
 
         try {
@@ -154,10 +157,20 @@ class AgentCore {
               case UsageInfo(
                   inputTokens: final chunkInputTokens,
                   outputTokens: final chunkOutputTokens,
+                  cacheReadTokens: final chunkCacheRead,
+                  cacheCreationTokens: final chunkCacheCreate,
                 ):
                 tokenCount += chunkInputTokens + chunkOutputTokens;
                 inputTokens += chunkInputTokens;
                 outputTokens += chunkOutputTokens;
+                if (chunkCacheRead != null) {
+                  cacheReadTokens += chunkCacheRead;
+                  sawCacheStats = true;
+                }
+                if (chunkCacheCreate != null) {
+                  cacheCreationTokens += chunkCacheCreate;
+                  sawCacheStats = true;
+                }
             }
           }
         } finally {
@@ -165,6 +178,14 @@ class AgentCore {
             _obs.activeSpan = previousActive;
           }
           if (llmSpan != null) {
+            // Cache savings: cached_read_tokens are billed at ~10× discount
+            // on Anthropic and ~50% on OpenAI. The percentage we surface is
+            // a coarse "fraction of effective input served from cache" —
+            // useful for spotting drops in hit rate, not for billing math.
+            final billableInput = inputTokens + cacheReadTokens;
+            final cacheSavingsPct = (sawCacheStats && billableInput > 0)
+                ? (cacheReadTokens * 100 / billableInput)
+                : 0.0;
             _obs!.endSpan(llmSpan, extra: {
               'llm.token_count.prompt': inputTokens,
               'llm.token_count.completion': outputTokens,
@@ -172,6 +193,12 @@ class AgentCore {
               'llm.output_messages.count': 1,
               'llm.output_text.length': assistantText.length,
               'llm.tool_call_count': toolCalls.length,
+              if (sawCacheStats) 'llm.cache_read_tokens': cacheReadTokens,
+              if (sawCacheStats)
+                'llm.cache_creation_tokens': cacheCreationTokens,
+              if (sawCacheStats)
+                'llm.cache_savings_pct':
+                    double.parse(cacheSavingsPct.toStringAsFixed(1)),
               'output.value': redactBody(
                 assistantText.toString(),
                 maxBytes: 65536,

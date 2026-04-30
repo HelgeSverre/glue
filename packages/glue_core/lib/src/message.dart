@@ -100,10 +100,31 @@ class ToolCallComplete extends LlmChunk {
 }
 
 /// Token usage reported by the LLM after a response.
+///
+/// [cacheReadTokens] and [cacheCreationTokens] surface provider-native
+/// prompt caching statistics when available. Both are nullable: `null`
+/// means the provider did not report the field (e.g. Ollama, or a cache
+/// miss on a provider that omits zeroed fields). Distinguish "not
+/// reported" from "reported as zero" — that distinction is the difference
+/// between a passive read and an unsupported provider.
+///
+/// `inputTokens` reflects only the **uncached** input tokens billed at
+/// the provider's standard rate. Cache reads are billed separately
+/// (Anthropic: 0.1× input price; OpenAI: ~50% discount). Total billed
+/// input across the request is roughly:
+///   `inputTokens + (cacheReadTokens ?? 0) + (cacheCreationTokens ?? 0)`.
 class UsageInfo extends LlmChunk {
   final int inputTokens;
   final int outputTokens;
-  UsageInfo({required this.inputTokens, required this.outputTokens});
+  final int? cacheReadTokens;
+  final int? cacheCreationTokens;
+
+  UsageInfo({
+    required this.inputTokens,
+    required this.outputTokens,
+    this.cacheReadTokens,
+    this.cacheCreationTokens,
+  });
 
   int get totalTokens => inputTokens + outputTokens;
 }

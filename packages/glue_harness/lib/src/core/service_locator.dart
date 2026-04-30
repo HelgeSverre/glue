@@ -83,7 +83,10 @@ class ServiceLocator {
     // observability. GlueConfig.load constructed plain adapters before obs
     // existed; we swap them here now that we can wrap.
     config.adapters = AdapterRegistry([
-      AnthropicAdapter(requestClientFactory: () => mkHttp('llm.anthropic')),
+      AnthropicAdapter(
+        requestClientFactory: () => mkHttp('llm.anthropic'),
+        promptCacheEnabled: config.anthropicPromptCache,
+      ),
       OpenAiCompatibleAdapter(requestClientFactory: () => mkHttp('llm.openai')),
       OllamaAdapter(requestClientFactory: () => mkHttp('llm.ollama')),
       CopilotAdapter(

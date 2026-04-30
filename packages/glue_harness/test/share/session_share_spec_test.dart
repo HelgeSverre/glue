@@ -7,9 +7,12 @@ void main() {
     // Resolve paths relative to the repo root so the test works regardless of
     // whether `dart test` was launched from packages/glue_harness/ (the usual
     // case) or from the repo root.
+    // The plan moves to docs/plans/done/ once shipped. Accept either path.
     final candidatePlanPaths = [
       'docs/plans/2026-04-22-share-command.md',
+      'docs/plans/done/2026-04-22-share-command.md',
       '../../docs/plans/2026-04-22-share-command.md',
+      '../../docs/plans/done/2026-04-22-share-command.md',
     ];
     final planExists =
         candidatePlanPaths.any((path) => File(path).existsSync());

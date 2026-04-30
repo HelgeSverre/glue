@@ -111,10 +111,7 @@ class OpenAiClient implements LlmClient {
       if (choices == null || choices.isEmpty) {
         // Usage-only chunk (stream_options.include_usage).
         if (usage != null) {
-          yield UsageInfo(
-            inputTokens: (usage['prompt_tokens'] as int?) ?? 0,
-            outputTokens: (usage['completion_tokens'] as int?) ?? 0,
-          );
+          yield _usageInfoFromOpenAi(usage);
         }
         continue;
       }
@@ -175,13 +172,39 @@ class OpenAiClient implements LlmClient {
 
       // Usage in final chunk.
       if (usage != null) {
-        yield UsageInfo(
-          inputTokens: (usage['prompt_tokens'] as int?) ?? 0,
-          outputTokens: (usage['completion_tokens'] as int?) ?? 0,
-        );
+        yield _usageInfoFromOpenAi(usage);
       }
     }
   }
+}
+
+/// Parses a Chat Completions / OpenRouter `usage` object into [UsageInfo].
+///
+/// Handles three shapes encountered in practice:
+///
+/// - **Native OpenAI**: `prompt_tokens`, `completion_tokens`, optional
+///   `prompt_tokens_details.cached_tokens` for hit count. No equivalent
+///   of `cache_creation_input_tokens` — OpenAI's cache is fully managed
+///   server-side.
+/// - **OpenRouter (any upstream)**: same as above, plus a top-level
+///   `cache_write_tokens` populated when the upstream is Anthropic and a
+///   write occurred. Kept null on OpenAI upstream where caching is fully
+///   automatic.
+/// - **Proxies that forward Anthropic shape**: surface
+///   `cache_creation_input_tokens` / `cache_read_input_tokens` if seen,
+///   but the OpenAI-shaped path is the primary expectation.
+UsageInfo _usageInfoFromOpenAi(Map<String, dynamic> usage) {
+  final promptDetails =
+      (usage['prompt_tokens_details'] as Map?)?.cast<String, dynamic>();
+  final cachedTokens = promptDetails?['cached_tokens'] as int?;
+  final cacheWriteOpenRouter = usage['cache_write_tokens'] as int?;
+  final cacheCreateAnthropic = usage['cache_creation_input_tokens'] as int?;
+  return UsageInfo(
+    inputTokens: (usage['prompt_tokens'] as int?) ?? 0,
+    outputTokens: (usage['completion_tokens'] as int?) ?? 0,
+    cacheReadTokens: cachedTokens ?? (usage['cache_read_input_tokens'] as int?),
+    cacheCreationTokens: cacheWriteOpenRouter ?? cacheCreateAnthropic,
+  );
 }
 
 class _ToolCallBuilder {

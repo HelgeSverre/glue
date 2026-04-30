@@ -66,6 +66,7 @@ class GlueConfig {
     this.skillPaths = const [],
     this.approvalMode = ApprovalMode.confirm,
     this.titleGenerationEnabled = true,
+    this.anthropicPromptCache = true,
   })  : shellConfig = shellConfig ?? const ShellConfig(),
         dockerConfig = dockerConfig ?? const DockerConfig(),
         webConfig = webConfig ?? const WebConfig();
@@ -109,6 +110,18 @@ class GlueConfig {
   /// Resolution order: `GLUE_TITLE_GENERATION_ENABLED` env var →
   /// `title_generation_enabled` YAML key → default `true`.
   final bool titleGenerationEnabled;
+
+  /// When `true` (default), Anthropic requests include a top-level
+  /// `cache_control: {type: "ephemeral"}` directive that enables
+  /// auto-caching of the largest stable prefix of the request. Disable
+  /// for proxies that reject the field, or for measurement comparisons.
+  ///
+  /// Resolution order: `GLUE_ANTHROPIC_PROMPT_CACHE` env var →
+  /// `anthropic_prompt_cache` YAML key → default `true`.
+  ///
+  /// Caching is GA on Claude 4.x and silently no-op on older Anthropic
+  /// models. The flag has no effect on non-Anthropic providers.
+  final bool anthropicPromptCache;
 
   /// Resolve [ref] against the loaded catalog and credential store.
   ///
@@ -199,6 +212,7 @@ class GlueConfig {
       skillPaths: skillPaths,
       approvalMode: approvalMode,
       titleGenerationEnabled: titleGenerationEnabled,
+      anthropicPromptCache: anthropicPromptCache,
     );
   }
 
@@ -548,6 +562,15 @@ class GlueConfig {
         ? (titleEnabledEnv.toLowerCase() == 'true' || titleEnabledEnv == '1')
         : (titleEnabledYaml ?? true);
 
+    // Anthropic prompt caching. Env wins over YAML; default enabled. Set
+    // to `false` to suppress the top-level cache_control directive — useful
+    // for proxies that reject the field, or for measurement comparisons.
+    final cacheEnabledEnv = env['GLUE_ANTHROPIC_PROMPT_CACHE'];
+    final cacheEnabledYaml = fileConfig?['anthropic_prompt_cache'] as bool?;
+    final anthropicPromptCache = cacheEnabledEnv != null
+        ? (cacheEnabledEnv.toLowerCase() == 'true' || cacheEnabledEnv == '1')
+        : (cacheEnabledYaml ?? true);
+
     // Skill paths.
     final skillPaths = <String>[];
     final envSkillPaths = env['GLUE_SKILLS_PATHS'];
@@ -578,6 +601,7 @@ class GlueConfig {
       skillPaths: skillPaths,
       approvalMode: approvalMode,
       titleGenerationEnabled: titleGenerationEnabled,
+      anthropicPromptCache: anthropicPromptCache,
     );
   }
 }

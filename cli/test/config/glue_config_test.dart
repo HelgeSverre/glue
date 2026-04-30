@@ -336,6 +336,44 @@ title_generation_enabled: false
     });
   });
 
+  group('GlueConfig.anthropicPromptCache', () {
+    test('defaults to true when nothing sets it', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      final config = GlueConfig.load(environment: _envWith(home: home));
+      expect(config.anthropicPromptCache, isTrue);
+    });
+
+    test('YAML anthropic_prompt_cache: false disables it', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      Directory('${home.path}/.glue').createSync();
+      File('${home.path}/.glue/config.yaml').writeAsStringSync('''
+active_model: anthropic/claude-sonnet-4.6
+anthropic_prompt_cache: false
+''');
+      final config = GlueConfig.load(environment: _envWith(home: home));
+      expect(config.anthropicPromptCache, isFalse);
+    });
+
+    test('env GLUE_ANTHROPIC_PROMPT_CACHE=false overrides YAML=true', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      Directory('${home.path}/.glue').createSync();
+      File('${home.path}/.glue/config.yaml').writeAsStringSync('''
+active_model: anthropic/claude-sonnet-4.6
+anthropic_prompt_cache: true
+''');
+      final config = GlueConfig.load(
+        environment: _envWith(
+          home: home,
+          vars: {'GLUE_ANTHROPIC_PROMPT_CACHE': 'false'},
+        ),
+      );
+      expect(config.anthropicPromptCache, isFalse);
+    });
+  });
+
   group('GlueConfig.resolveProvider / resolveModel', () {
     test('resolves known provider + model', () {
       final home = _scratch();
