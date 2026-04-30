@@ -11,6 +11,7 @@ library;
 
 import 'dart:async';
 
+import 'package:glue_core/glue_core.dart';
 import 'package:glue_harness/glue_harness.dart';
 import 'package:glue_server/glue_server.dart';
 
@@ -129,6 +130,44 @@ class CliAcpDelegate extends AcpServerDelegate {
       await innerSub.cancel();
       session.activeController = null;
     }
+  }
+
+  @override
+  UsageReport usageSummary(String sessionId) {
+    final session = _sessions[sessionId];
+    if (session == null) {
+      // Empty report rather than throwing — matches the CLI's "no calls"
+      // behaviour and lets a polling client distinguish "session exists
+      // but quiet" from "unknown session" via the JSON-RPC error level.
+      return buildUsageReport(usageEvents: const [], sessionId: sessionId);
+    }
+    final stats = session.agent.stats;
+    if (stats.turnCount == 0) {
+      return buildUsageReport(
+        usageEvents: const [],
+        sessionId: sessionId,
+        modelLabel: services.config.activeModel.toString(),
+      );
+    }
+    // ACP sessions go straight through AgentCore — there's no
+    // SessionManager writing JSONL — so we synthesise a single 'main'
+    // row from the live agent stats. Subagent / title roles will fall
+    // out for free once those flows are wired into ACP sessions.
+    return buildUsageReport(
+      usageEvents: [
+        {
+          'type': 'usage',
+          'role': 'main',
+          'input_tokens': stats.inputTokens,
+          'output_tokens': stats.outputTokens,
+          'cache_read_tokens': stats.cacheReadTokens,
+          'cache_creation_tokens': stats.cacheCreationTokens,
+          'turn_count': stats.turnCount,
+        }
+      ],
+      sessionId: sessionId,
+      modelLabel: services.config.activeModel.toString(),
+    );
   }
 
   @override

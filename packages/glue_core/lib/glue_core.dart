@@ -28,4 +28,5 @@ export 'package:glue_core/src/model_ref.dart';
 export 'package:glue_core/src/session_command.dart';
 export 'package:glue_core/src/session_event.dart';
 export 'package:glue_core/src/tool.dart';
+export 'package:glue_core/src/usage_report.dart';
 export 'package:glue_core/src/usage_stats.dart';

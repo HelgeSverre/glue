@@ -30,6 +30,10 @@ class _TextOnlyDelegate extends AcpServerDelegate {
   void cancelPrompt(String sessionId) {}
 
   @override
+  UsageReport usageSummary(String sessionId) =>
+      buildUsageReport(usageEvents: const [], sessionId: sessionId);
+
+  @override
   Future<void> closeSession(String sessionId) async {}
 }
 

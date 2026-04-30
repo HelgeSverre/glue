@@ -55,6 +55,15 @@ class _FakeDelegate extends AcpServerDelegate {
     cancelled = true;
   }
 
+  /// Tests can override this to script per-session usage; the default
+  /// returns an empty report so unrelated tests don't have to care.
+  UsageReport Function(String sessionId)? usageSummaryAnswer;
+
+  @override
+  UsageReport usageSummary(String sessionId) =>
+      usageSummaryAnswer?.call(sessionId) ??
+      buildUsageReport(usageEvents: const [], sessionId: sessionId);
+
   @override
   Future<void> closeSession(String sessionId) async {}
 }
@@ -188,6 +197,83 @@ void main() {
 
       final sent = await readSent();
       expect(sent.single['error']! as Map, contains('code'));
+      expect(((sent.single['error']! as Map)['code'] as num).toInt(), -32001);
+    });
+
+    test('session/usage_summary returns the delegate report as JSON',
+        () async {
+      final delegate = _FakeDelegate(scripted: const []);
+      delegate.usageSummaryAnswer = (sessionId) => buildUsageReport(
+            sessionId: sessionId,
+            modelLabel: 'anthropic/claude-sonnet-4.6',
+            usageEvents: [
+              {
+                'type': 'usage',
+                'role': 'main',
+                'input_tokens': 1000,
+                'output_tokens': 500,
+                'cache_read_tokens': 8000,
+                'cache_creation_tokens': 1500,
+                'turn_count': 3,
+              },
+            ],
+          );
+      final server = AcpServer(transport: transport, delegate: delegate);
+      final serverFuture = server.serve();
+
+      input.add(utf8.encode(
+        '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
+        '{"cwd":"/tmp/p"}}\n',
+      ));
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      var sent = await readSent();
+      final sessionId = (sent.single['result']! as Map)['sessionId'] as String;
+      output.buffer.clear();
+
+      input.add(utf8.encode(
+        '{"jsonrpc":"2.0","id":42,"method":"session/usage_summary","params":'
+        '{"sessionId":"$sessionId"}}\n',
+      ));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      await input.close();
+      await serverFuture;
+
+      sent = await readSent();
+      final response = sent.singleWhere((m) => m['id'] == 42);
+      final result = response['result']! as Map<Object?, Object?>;
+      expect(result['model'], 'anthropic/claude-sonnet-4.6');
+      expect(result['session_id'], sessionId);
+      final totals = result['totals']! as Map<Object?, Object?>;
+      expect(totals['calls'], 3);
+      expect(totals['input_tokens'], 1000);
+      expect(totals['output_tokens'], 500);
+      expect(totals['cache_read_tokens'], 8000);
+      expect(totals['cache_creation_tokens'], 1500);
+      expect(totals['total_tokens'], 11000);
+      // 8000 / (1000 + 8000)
+      expect(totals['cache_hit_rate'], closeTo(8 / 9, 1e-9));
+      final byRole = result['by_role']! as List;
+      expect(byRole, hasLength(1));
+      expect((byRole.single as Map)['role'], 'main');
+    });
+
+    test('session/usage_summary on unknown session returns sessionNotFound',
+        () async {
+      final delegate = _FakeDelegate(scripted: const []);
+      final server = AcpServer(transport: transport, delegate: delegate);
+      final serverFuture = server.serve();
+
+      input.add(utf8.encode(
+        '{"jsonrpc":"2.0","id":1,"method":"session/usage_summary","params":'
+        '{"sessionId":"never-created"}}\n',
+      ));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      await input.close();
+      await serverFuture;
+
+      final sent = await readSent();
+      expect(sent.single['error'], isNotNull);
+      // sessionNotFound is -32001 in the existing JsonRpcErrorCode enum.
       expect(((sent.single['error']! as Map)['code'] as num).toInt(), -32001);
     });
 

@@ -53,6 +53,11 @@ abstract class AcpServerDelegate {
   /// Cancel the active prompt on [sessionId], if any. Best-effort.
   void cancelPrompt(String sessionId);
 
+  /// Returns a per-role token-usage breakdown for [sessionId]. Surfaces
+  /// the same data the CLI shows under `/usage`, in a structure ACP
+  /// clients can consume directly. Tokens only — no cost / pricing.
+  UsageReport usageSummary(String sessionId);
+
   /// Close any resources held for [sessionId]. Called on connection
   /// teardown.
   Future<void> closeSession(String sessionId);
@@ -171,6 +176,25 @@ class AcpServer {
           transport.send(JsonRpcResponse(
             id: id,
             result: SessionPromptResult(stopReason: stopReason).toJson(),
+          ));
+        case AcpMethod.sessionUsageSummary:
+          final sessionId = (params?['sessionId'] as String?)?.trim();
+          if (sessionId == null || sessionId.isEmpty) {
+            _replyInvalidParams(
+                id, 'session/usage_summary requires sessionId');
+            return;
+          }
+          if (!_knownSessions.contains(sessionId)) {
+            transport.send(JsonRpcError(
+              id: id,
+              code: JsonRpcErrorCode.sessionNotFound,
+              message: 'unknown session: $sessionId',
+            ));
+            return;
+          }
+          transport.send(JsonRpcResponse(
+            id: id,
+            result: delegate.usageSummary(sessionId).toJson(),
           ));
         default:
           transport.send(JsonRpcError(

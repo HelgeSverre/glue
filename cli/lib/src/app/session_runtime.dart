@@ -185,6 +185,24 @@ String _resumeSessionImpl(App app, SessionMeta session) {
     return 'Session ${session.id} has no conversation data.';
   }
 
+  // Show a one-line token-usage summary for this session so resume
+  // surfaces cost continuity instead of pretending the counter restarts
+  // at zero. Skipped on Ollama / pre-recordUsage sessions where no
+  // usage rows were ever persisted.
+  final usage = result.replay.totalUsage;
+  if (usage.totalCalls > 0) {
+    final summary =
+        StringBuffer('Carry-over: ${_formatTokens(usage.totalTokens)} tokens '
+            'over ${usage.totalCalls} call${usage.totalCalls == 1 ? '' : 's'}');
+    final hit = usage.cacheHitRate;
+    if (hit != null &&
+        (usage.totalCacheRead > 0 || usage.totalCacheWrite > 0)) {
+      summary.write(' · ${(hit * 100).toStringAsFixed(0)}% cached');
+    }
+    summary.write('. Run /usage for the per-role breakdown.');
+    app._blocks.add(_ConversationEntry.system(summary.toString()));
+  }
+
   app._appendSessionReplayEntries(result.replay.entries);
 
   // Backfill title for resumed sessions that lack one.

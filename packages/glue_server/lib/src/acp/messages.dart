@@ -23,6 +23,7 @@ abstract final class AcpMethod {
   static const sessionCancel = 'session/cancel';
   static const sessionUpdate = 'session/update';
   static const sessionRequestPermission = 'session/request_permission';
+  static const sessionUsageSummary = 'session/usage_summary';
 }
 
 // ---------------------------------------------------------------------------

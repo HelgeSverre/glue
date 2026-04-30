@@ -112,10 +112,16 @@ class SessionReplay {
   final String? latestAssistantMessage;
   final List<String> toolNames;
 
+  /// Per-role token totals aggregated from persisted `usage` JSONL rows.
+  /// Always non-null but may have an empty `rows` list when no usage was
+  /// ever recorded (Ollama session, very old session predating recordUsage).
+  final UsageReport totalUsage;
+
   const SessionReplay({
     required this.entries,
     required this.userCount,
     required this.assistantCount,
+    required this.totalUsage,
     this.firstUserMessage,
     this.latestUserMessage,
     this.firstAssistantMessage,
@@ -465,10 +471,15 @@ class SessionManager {
       agent.clearConversation();
 
       if (events.isEmpty) {
-        const result = SessionResumeResult(
+        final result = SessionResumeResult(
           message: 'Session has no conversation data.',
           hasConversation: false,
-          replay: SessionReplay(entries: [], userCount: 0, assistantCount: 0),
+          replay: SessionReplay(
+            entries: const [],
+            userCount: 0,
+            assistantCount: 0,
+            totalUsage: buildUsageReport(usageEvents: const []),
+          ),
         );
         _endSpan(span, extra: {
           'session.event_count': 0,
@@ -708,6 +719,7 @@ class SessionManager {
       firstAssistantMessage: firstAssistantMessage,
       latestAssistantMessage: latestAssistantMessage,
       toolNames: toolNames,
+      totalUsage: buildUsageReport(usageEvents: events),
     );
   }
 
