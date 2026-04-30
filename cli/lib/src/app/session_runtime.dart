@@ -70,6 +70,13 @@ Future<void> _runPrintModeImpl(App app) async {
           assistantText.write(delta);
           if (!app._jsonMode) stdout.write(delta);
 
+        case AgentUsage(:final usage):
+          // Print mode also persists, so attribute the usage.
+          app._sessionManager.recordUsage(
+            UsageStats()..record(usage),
+            role: 'main',
+          );
+
         case AgentToolCall(:final call):
           conversationLog.add({
             'type': 'tool_call',
@@ -197,7 +204,13 @@ void _generateTitleImpl(App app, String userMessage) {
   final llmClient = app._createTitleLlmClient();
   if (llmClient == null) return;
 
-  final generator = TitleGenerator(llmClient: llmClient);
+  final generator = TitleGenerator(
+    llmClient: llmClient,
+    onUsage: (usage) => app._sessionManager.recordUsage(
+      UsageStats()..record(usage),
+      role: 'title',
+    ),
+  );
   unawaited(app._sessionManager.generateTitle(
     userMessage: userMessage,
     generate: generator.generate,
@@ -252,7 +265,13 @@ void _reevaluateTitleImpl(App app) {
   final llmClient = app._createTitleLlmClient();
   if (llmClient == null) return;
   app._titleReevaluationRequested = true;
-  final generator = TitleGenerator(llmClient: llmClient);
+  final generator = TitleGenerator(
+    llmClient: llmClient,
+    onUsage: (usage) => app._sessionManager.recordUsage(
+      UsageStats()..record(usage),
+      role: 'title',
+    ),
+  );
   unawaited(app._sessionManager.reevaluateTitle(
     context: TitleContext(
       firstUserMessage: firstUserMessage,

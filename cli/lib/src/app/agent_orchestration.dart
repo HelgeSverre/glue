@@ -193,6 +193,14 @@ void _handleAgentEventImpl(App app, AgentEvent event) {
       app._startSpinner();
       app._render();
 
+    case AgentUsage(:final usage):
+      // Forward main-agent token usage to the session log so resumes and
+      // /share output reflect cumulative cost.
+      app._sessionManager.recordUsage(
+        UsageStats()..record(usage),
+        role: 'main',
+      );
+
     case AgentDone():
       if (app._streamingText.isNotEmpty) {
         app._ensureSessionStore();

@@ -34,7 +34,15 @@ class AgentCore {
   final Map<String, Tool> tools;
   final String modelId;
   final List<Message> _conversation = [];
-  int tokenCount = 0;
+
+  /// Cumulative usage across every LLM call this core has run. Surfaces
+  /// (CLI status bar, ACP `session/usage`, tests) read it directly.
+  final UsageStats stats = UsageStats();
+
+  /// Back-compat helper: the old `tokenCount` getter returned
+  /// `inputTokens + outputTokens` only. We preserve the contract so the
+  /// status-bar text doesn't change behavior on this PR.
+  int get tokenCount => stats.inputTokens + stats.outputTokens;
 
   /// Optional observability sink. When non-null, tool invocations emit
   /// `tool.<name>` spans and fatal agent errors emit `agent.error` spans.
@@ -154,23 +162,19 @@ class AgentCore {
                 _pendingToolResults[toolCall.id] = completer;
                 toolFutures.add(completer.future);
                 yield AgentToolCall(toolCall);
-              case UsageInfo(
-                  inputTokens: final chunkInputTokens,
-                  outputTokens: final chunkOutputTokens,
-                  cacheReadTokens: final chunkCacheRead,
-                  cacheCreationTokens: final chunkCacheCreate,
-                ):
-                tokenCount += chunkInputTokens + chunkOutputTokens;
-                inputTokens += chunkInputTokens;
-                outputTokens += chunkOutputTokens;
-                if (chunkCacheRead != null) {
-                  cacheReadTokens += chunkCacheRead;
+              case final UsageInfo usage:
+                stats.record(usage);
+                inputTokens += usage.inputTokens;
+                outputTokens += usage.outputTokens;
+                if (usage.cacheReadTokens != null) {
+                  cacheReadTokens += usage.cacheReadTokens!;
                   sawCacheStats = true;
                 }
-                if (chunkCacheCreate != null) {
-                  cacheCreationTokens += chunkCacheCreate;
+                if (usage.cacheCreationTokens != null) {
+                  cacheCreationTokens += usage.cacheCreationTokens!;
                   sawCacheStats = true;
                 }
+                yield AgentUsage(usage);
             }
           }
         } finally {

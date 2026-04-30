@@ -1,6 +1,6 @@
 import 'dart:async';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue_harness/src/agent/agent_core.dart';
-import 'package:glue_harness/src/agent/tools.dart';
 
 /// Policy for automatic tool approval in headless execution.
 ///
@@ -29,6 +29,12 @@ class AgentRunner {
   /// Used to forward subagent activity to the parent UI.
   final void Function(AgentEvent)? onEvent;
 
+  /// Cumulative usage observed during this runner's lifetime. Surfaces
+  /// the subagent's token cost back to the parent — without this, every
+  /// subagent's `AgentCore.stats` would be discarded when the manager
+  /// returns.
+  final UsageStats stats = UsageStats();
+
   AgentRunner({
     required this.core,
     required this.policy,
@@ -54,6 +60,8 @@ class AgentRunner {
           core.completeToolCall(result);
         case AgentToolResult():
           break;
+        case AgentUsage(:final usage):
+          stats.record(usage);
         case AgentDone():
           break;
         case AgentError(:final error):

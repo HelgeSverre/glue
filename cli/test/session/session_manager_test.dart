@@ -261,6 +261,74 @@ void main() {
     expect(span.attributes['title.renamed'], isTrue);
   });
 
+  test('recordUsage updates SessionMeta totals and writes a usage row',
+      () async {
+    final manager =
+        SessionManager(environment: environment, observability: obs);
+    final store = manager.ensureSessionStore(
+      cwd: environment.cwd,
+      modelRef: 'anthropic/claude-sonnet-4.6',
+    );
+
+    manager.recordUsage(
+      UsageStats(
+        inputTokens: 100,
+        outputTokens: 50,
+        cacheReadTokens: 800,
+        cacheCreationTokens: 200,
+        turnCount: 1,
+      ),
+      role: 'main',
+    );
+    manager.recordUsage(
+      UsageStats(inputTokens: 5, outputTokens: 3, turnCount: 1),
+      role: 'subagent',
+    );
+    manager.recordUsage(
+      UsageStats(inputTokens: 30, outputTokens: 6, turnCount: 1),
+      role: 'title',
+    );
+
+    // Totals fold every billable bucket on the meta.
+    expect(store.meta.tokenCount, 100 + 50 + 800 + 200 + 5 + 3 + 30 + 6);
+    expect(store.meta.cacheReadTokens, 800);
+    expect(store.meta.cacheCreationTokens, 200);
+
+    // The conversation log records per-role usage rows.
+    final convPath =
+        '${environment.sessionDir(store.meta.id)}/conversation.jsonl';
+    final lines = await File(convPath).readAsLines();
+    final usageEvents = lines
+        .map((l) => jsonDecode(l) as Map<String, dynamic>)
+        .where((e) => e['type'] == 'usage')
+        .toList();
+    expect(usageEvents.map((e) => e['role']), ['main', 'subagent', 'title']);
+    expect(usageEvents.first['cache_read_tokens'], 800);
+  });
+
+  test('recordUsage is a no-op when no session store is active', () {
+    final manager =
+        SessionManager(environment: environment, observability: obs);
+    expect(
+      () => manager.recordUsage(
+        UsageStats(inputTokens: 1, outputTokens: 1, turnCount: 1),
+        role: 'main',
+      ),
+      returnsNormally,
+    );
+  });
+
+  test('recordUsage skips empty stats', () {
+    final manager =
+        SessionManager(environment: environment, observability: obs);
+    final store = manager.ensureSessionStore(
+      cwd: environment.cwd,
+      modelRef: 'anthropic/claude-sonnet-4.6',
+    );
+    manager.recordUsage(UsageStats(), role: 'main');
+    expect(store.meta.tokenCount, isNull);
+  });
+
   test('reevaluateTitle promotes provisional auto title to stable', () async {
     final manager =
         SessionManager(environment: environment, observability: obs);

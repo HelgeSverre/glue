@@ -46,6 +46,10 @@ void _handleSubagentUpdateImpl(App app, SubagentUpdate update) {
       break;
     case AgentTextDelta():
       break;
+    case AgentUsage():
+      // Subagent usage is rolled up by AgentManager and persisted via
+      // onSubagentUsage. The transient render path doesn't display it.
+      break;
     case AgentDone():
       group.done = true;
       group._currentTool = null;

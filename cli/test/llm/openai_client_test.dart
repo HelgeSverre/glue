@@ -189,8 +189,7 @@ void main() {
       expect(usage.cacheCreationTokens, isNull);
     });
 
-    test(
-        'surfaces OpenRouter cache_write_tokens alongside cached_tokens',
+    test('surfaces OpenRouter cache_write_tokens alongside cached_tokens',
         () async {
       // OpenRouter normalises the upstream Anthropic shape into
       // OpenAI-shaped `prompt_tokens_details.cached_tokens` plus a sibling
@@ -242,8 +241,7 @@ void main() {
       expect(usage.cacheCreationTokens, 400);
     });
 
-    test('leaves cache fields null when no caching info is reported',
-        () async {
+    test('leaves cache fields null when no caching info is reported', () async {
       final events = [
         {
           'choices': [],

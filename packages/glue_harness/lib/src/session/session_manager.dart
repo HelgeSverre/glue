@@ -253,6 +253,35 @@ class SessionManager {
     }
   }
 
+  /// Records [stats] against the current session under [role] (e.g.
+  /// `'main'`, `'subagent'`, `'title'`). Updates the persisted token
+  /// counters on `SessionMeta` and writes a `usage` JSONL row so a
+  /// surface or replay can attribute costs to where they came from.
+  ///
+  /// No-op when no session store is active.
+  void recordUsage(UsageStats stats, {required String role}) {
+    final store = _store;
+    if (store == null || stats.turnCount == 0) return;
+
+    final meta = store.meta;
+    meta.tokenCount = (meta.tokenCount ?? 0) +
+        stats.inputTokens +
+        stats.outputTokens +
+        stats.cacheReadTokens +
+        stats.cacheCreationTokens;
+    if (stats.cacheReadTokens > 0) {
+      meta.cacheReadTokens =
+          (meta.cacheReadTokens ?? 0) + stats.cacheReadTokens;
+    }
+    if (stats.cacheCreationTokens > 0) {
+      meta.cacheCreationTokens =
+          (meta.cacheCreationTokens ?? 0) + stats.cacheCreationTokens;
+    }
+    store.updateMeta();
+
+    store.logEvent('usage', {'role': role, ...stats.toJson()});
+  }
+
   Future<void> closeCurrent() async {
     final store = _store;
     if (store == null) return;

@@ -24,6 +24,8 @@ SessionUpdate? agentEventToAcpUpdate(AgentEvent event) {
     AgentToolCallPending() => null, // server emits tool_call(pending) itself
     AgentToolCall() => null, // server emits tool_call(in_progress) itself
     AgentToolResult() => null, // server emits tool_call_update itself
+    AgentUsage() =>
+      null, // surfaced via session/usage_summary, not session/update
     AgentDone() => null, // server returns SessionPromptResult
     AgentError() => null, // server emits a JSON-RPC error
   };

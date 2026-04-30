@@ -341,6 +341,11 @@ class AcpServer {
                 ),
               ).toJson(),
             ));
+          case AgentUsage():
+            // Token usage flows through to ACP clients via the upcoming
+            // `session/usage_summary` request; per-call deltas don't need
+            // a notification today.
+            break;
           case AgentDone():
             stopReason = StopReason.endTurn;
           case AgentError(:final error):

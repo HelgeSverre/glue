@@ -209,6 +209,9 @@ class App {
     _manager?.onPersistEvent = (type, data) {
       _sessionManager.logEvent(type, data);
     };
+    _manager?.onSubagentUsage = (stats) {
+      _sessionManager.recordUsage(stats, role: 'subagent');
+    };
     _shareExporter = SessionShareExporter();
     _gistPublisher = SessionGistPublisher();
     _panels = PanelController(

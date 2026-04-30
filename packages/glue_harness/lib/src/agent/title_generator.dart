@@ -17,8 +17,14 @@ class TitleGenerator {
 
   final LlmClient _llm;
 
+  /// Optional per-call usage callback. Surfaces wire this to
+  /// `SessionManager.recordUsage(stats, role: 'title')` so small-model
+  /// title-generation cost is accounted for in session totals.
+  void Function(UsageInfo)? onUsage;
+
   TitleGenerator({
     required LlmClient llmClient,
+    this.onUsage,
   }) : _llm = llmClient;
 
   /// Generate a title from the first user message.
@@ -32,8 +38,13 @@ class TitleGenerator {
 
       final buffer = StringBuffer();
       await for (final chunk in stream) {
-        if (chunk case TextDelta(:final text)) {
-          buffer.write(text);
+        switch (chunk) {
+          case TextDelta(:final text):
+            buffer.write(text);
+          case UsageInfo():
+            onUsage?.call(chunk);
+          default:
+            break;
         }
       }
 
@@ -71,8 +82,13 @@ class TitleGenerator {
       final stream = _llm.stream([Message.user(buffer.toString().trim())]);
       final response = StringBuffer();
       await for (final chunk in stream) {
-        if (chunk case TextDelta(:final text)) {
-          response.write(text);
+        switch (chunk) {
+          case TextDelta(:final text):
+            response.write(text);
+          case UsageInfo():
+            onUsage?.call(chunk);
+          default:
+            break;
         }
       }
       return sanitize(response.toString());

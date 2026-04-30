@@ -43,6 +43,14 @@ class AgentToolResult extends AgentEvent {
 /// Signals that the agent has finished its response.
 class AgentDone extends AgentEvent {}
 
+/// Token usage reported by the LLM for one call. Forwarded as an
+/// [AgentEvent] so [AgentRunner], surfaces, and the session log can
+/// aggregate per-call costs without poking inside [AgentCore].
+class AgentUsage extends AgentEvent {
+  final UsageInfo usage;
+  AgentUsage(this.usage);
+}
+
 /// An error encountered during the agent loop.
 class AgentError extends AgentEvent {
   final Object error;

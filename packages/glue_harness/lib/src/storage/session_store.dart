@@ -47,8 +47,14 @@ class SessionMeta {
   String? prUrl;
   String? prStatus;
 
-  // Metrics.
+  // Metrics. tokenCount tracks total LLM tokens billed across the
+  // session — main agent + subagents + title generation. cacheReadTokens
+  // and cacheCreationTokens are non-null on providers that report cache
+  // statistics (Anthropic, OpenAI, OpenRouter); null on Ollama and
+  // others that don't.
   int? tokenCount;
+  int? cacheReadTokens;
+  int? cacheCreationTokens;
   double? cost;
   int? messageCount;
 
@@ -80,6 +86,8 @@ class SessionMeta {
     this.prUrl,
     this.prStatus,
     this.tokenCount,
+    this.cacheReadTokens,
+    this.cacheCreationTokens,
     this.cost,
     this.messageCount,
     this.summary,
@@ -115,6 +123,9 @@ class SessionMeta {
         if (prUrl != null) 'pr_url': prUrl,
         if (prStatus != null) 'pr_status': prStatus,
         if (tokenCount != null) 'token_count': tokenCount,
+        if (cacheReadTokens != null) 'cache_read_tokens': cacheReadTokens,
+        if (cacheCreationTokens != null)
+          'cache_creation_tokens': cacheCreationTokens,
         if (cost != null) 'cost': cost,
         if (messageCount != null) 'message_count': messageCount,
         if (summary != null) 'summary': summary,
@@ -174,6 +185,8 @@ class SessionMeta {
       prUrl: json['pr_url'] as String?,
       prStatus: json['pr_status'] as String?,
       tokenCount: json['token_count'] as int?,
+      cacheReadTokens: json['cache_read_tokens'] as int?,
+      cacheCreationTokens: json['cache_creation_tokens'] as int?,
       cost: (json['cost'] as num?)?.toDouble(),
       messageCount: json['message_count'] as int?,
       summary: json['summary'] as String?,

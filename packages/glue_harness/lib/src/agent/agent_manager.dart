@@ -64,6 +64,17 @@ class AgentManager {
   /// activity remains live-only (the legacy behavior).
   SubagentEventSink? onPersistEvent;
 
+  /// Cumulative usage across every subagent this manager has spawned.
+  /// Surfaces (CLI status bar, ACP usage endpoint) read this to attribute
+  /// subagent cost separately from the parent agent's own LLM calls.
+  final UsageStats subagentStats = UsageStats();
+
+  /// Optional callback invoked when a subagent finishes, with that
+  /// subagent's [UsageStats]. Surfaces wire this to
+  /// `SessionManager.recordUsage(stats, role: 'subagent')` so the rollup
+  /// is also persisted.
+  void Function(UsageStats)? onSubagentUsage;
+
   final _updateController = StreamController<SubagentUpdate>.broadcast();
   final _idRandom = Random();
 
@@ -175,12 +186,14 @@ class AgentManager {
 
     try {
       final result = await runner.runToCompletion(task);
+      _finaliseSubagentUsage(subagentId, runner.stats);
       onPersistEvent?.call('subagent_completed', {
         'subagent_id': subagentId.value,
       });
       if (span != null) obs!.endSpan(span);
       return result;
     } catch (e) {
+      _finaliseSubagentUsage(subagentId, runner.stats);
       onPersistEvent?.call('subagent_completed', {
         'subagent_id': subagentId.value,
         'error': e.toString(),
@@ -188,6 +201,16 @@ class AgentManager {
       if (span != null) obs!.endSpan(span, extra: {'error': e.toString()});
       rethrow;
     }
+  }
+
+  void _finaliseSubagentUsage(SubagentId subagentId, UsageStats subagent) {
+    if (subagent.turnCount == 0) return;
+    subagentStats.merge(subagent);
+    onPersistEvent?.call('subagent_usage', {
+      'subagent_id': subagentId.value,
+      ...subagent.toJson(),
+    });
+    onSubagentUsage?.call(subagent.snapshot());
   }
 
   /// Spawns [tasks] in parallel, each as independent subagents.
@@ -248,6 +271,15 @@ Map<String, dynamic> serializeAgentEvent(AgentEvent event) {
     AgentError(:final error) => {
         'type': 'agent_error',
         'error': error.toString(),
+      },
+    AgentUsage(:final usage) => {
+        'type': 'usage',
+        'input_tokens': usage.inputTokens,
+        'output_tokens': usage.outputTokens,
+        if (usage.cacheReadTokens != null)
+          'cache_read_tokens': usage.cacheReadTokens,
+        if (usage.cacheCreationTokens != null)
+          'cache_creation_tokens': usage.cacheCreationTokens,
       },
   };
 }
