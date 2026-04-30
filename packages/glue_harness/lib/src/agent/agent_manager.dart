@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:glue_harness/src/agent/agent_core.dart';
 import 'package:glue_harness/src/agent/agent_runner.dart';
@@ -8,6 +9,16 @@ import 'package:glue_harness/src/agent/llm_factory.dart';
 import 'package:glue_harness/src/observability/observability.dart';
 import 'package:glue_harness/src/orchestrator/tool_permissions.dart';
 import 'package:glue_harness/src/tools/subagent_tools.dart';
+
+/// Signature for persisting subagent activity onto the parent session log.
+///
+/// Wired by surfaces (CLI, ACP server) to `SessionManager.logEvent` so the
+/// transcript can be replayed and shared. Three event types are emitted:
+/// `subagent_spawned`, `subagent_event`, `subagent_completed`. The
+/// `subagent_event` payload nests a serialised inner [AgentEvent] under
+/// `inner`.
+typedef SubagentEventSink = void Function(
+    String type, Map<String, dynamic> data);
 
 /// An update from a running subagent, forwarded to the UI.
 class SubagentUpdate {
@@ -47,7 +58,14 @@ class AgentManager {
   final Set<String> allowedSubagentTools;
   final Observability? obs;
 
+  /// Optional sink for persisting subagent activity onto the parent session
+  /// log. Surfaces wire this to `SessionManager.logEvent` so subagent
+  /// transcripts survive resume and feed `/share`. When `null`, subagent
+  /// activity remains live-only (the legacy behavior).
+  SubagentEventSink? onPersistEvent;
+
   final _updateController = StreamController<SubagentUpdate>.broadcast();
+  final _idRandom = Random();
 
   /// Stream of updates from running subagents.
   Stream<SubagentUpdate> get updates => _updateController.stream;
@@ -59,8 +77,15 @@ class AgentManager {
     required this.systemPrompt,
     Set<String>? allowedSubagentTools,
     this.obs,
+    this.onPersistEvent,
   }) : allowedSubagentTools =
             allowedSubagentTools ?? ToolPermissions.subagentSafeTools;
+
+  SubagentId _mintSubagentId() {
+    final ts = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
+    final rand = _idRandom.nextInt(1 << 32).toRadixString(36).padLeft(7, '0');
+    return SubagentId('sub-$ts-$rand');
+  }
 
   /// Spawns a single subagent to complete a [task].
   ///
@@ -112,6 +137,16 @@ class AgentManager {
       },
     );
 
+    final subagentId = _mintSubagentId();
+    onPersistEvent?.call('subagent_spawned', {
+      'subagent_id': subagentId.value,
+      'task': task,
+      'depth': currentDepth,
+      if (index != null) 'index': index,
+      if (total != null) 'total': total,
+      'model': ref.toString(),
+    });
+
     final core = AgentCore(
       llm: llm,
       tools: subagentTools,
@@ -124,19 +159,32 @@ class AgentManager {
       core: core,
       policy: ToolApprovalPolicy.allowlist,
       allowedTools: allowedSubagentTools,
-      onEvent: (event) => _updateController.add(SubagentUpdate(
-        task: task,
-        index: index,
-        total: total,
-        event: event,
-      )),
+      onEvent: (event) {
+        onPersistEvent?.call('subagent_event', {
+          'subagent_id': subagentId.value,
+          'inner': serializeAgentEvent(event),
+        });
+        _updateController.add(SubagentUpdate(
+          task: task,
+          index: index,
+          total: total,
+          event: event,
+        ));
+      },
     );
 
     try {
       final result = await runner.runToCompletion(task);
+      onPersistEvent?.call('subagent_completed', {
+        'subagent_id': subagentId.value,
+      });
       if (span != null) obs!.endSpan(span);
       return result;
     } catch (e) {
+      onPersistEvent?.call('subagent_completed', {
+        'subagent_id': subagentId.value,
+        'error': e.toString(),
+      });
       if (span != null) obs!.endSpan(span, extra: {'error': e.toString()});
       rethrow;
     }
@@ -165,4 +213,41 @@ class AgentManager {
         ),
     ]);
   }
+}
+
+/// Serialises an [AgentEvent] into a JSON-compatible map for persistence
+/// in the parent session log under `subagent_event.inner`. The shape mirrors
+/// the top-level conversation event types where they overlap (`tool_call`,
+/// `tool_result`, `assistant_message`) so the same normaliser can recurse
+/// into either.
+Map<String, dynamic> serializeAgentEvent(AgentEvent event) {
+  return switch (event) {
+    AgentTextDelta(:final delta) => {
+        'type': 'assistant_message',
+        'text': delta,
+      },
+    AgentToolCallPending(:final id, :final name) => {
+        'type': 'tool_call_pending',
+        'id': id.value,
+        'name': name,
+      },
+    AgentToolCall(:final call) => {
+        'type': 'tool_call',
+        'id': call.id.value,
+        'name': call.name,
+        'arguments': call.arguments,
+      },
+    AgentToolResult(:final result) => {
+        'type': 'tool_result',
+        'call_id': result.callId.value,
+        'success': result.success,
+        'content': result.content,
+        if (result.summary != null) 'summary': result.summary,
+      },
+    AgentDone() => {'type': 'agent_done'},
+    AgentError(:final error) => {
+        'type': 'agent_error',
+        'error': error.toString(),
+      },
+  };
 }

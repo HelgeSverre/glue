@@ -1,4 +1,12 @@
-enum NormalizedSessionEventKind { user, assistant, toolCall, toolResult }
+enum NormalizedSessionEventKind {
+  user,
+  assistant,
+  toolCall,
+  toolResult,
+  subagentSpawned,
+  subagentEvent,
+  subagentCompleted,
+}
 
 class NormalizedSessionEvent {
   final NormalizedSessionEventKind kind;
@@ -8,6 +16,14 @@ class NormalizedSessionEvent {
   final Map<String, dynamic>? toolArguments;
   final String? toolResultSummary;
 
+  // Subagent-specific fields. Populated on subagent* kinds; null otherwise.
+  final String? subagentId;
+  final int? subagentIndex;
+  final int? subagentTotal;
+  final int? subagentDepth;
+  final NormalizedSessionEvent? subagentInner;
+  final String? subagentError;
+
   const NormalizedSessionEvent._({
     required this.kind,
     required this.text,
@@ -15,6 +31,12 @@ class NormalizedSessionEvent {
     this.toolName,
     this.toolArguments,
     this.toolResultSummary,
+    this.subagentId,
+    this.subagentIndex,
+    this.subagentTotal,
+    this.subagentDepth,
+    this.subagentInner,
+    this.subagentError,
   });
 
   factory NormalizedSessionEvent.user(String text) => NormalizedSessionEvent._(
@@ -49,6 +71,44 @@ class NormalizedSessionEvent {
         text: content,
         toolCallId: callId,
         toolResultSummary: summary,
+      );
+
+  factory NormalizedSessionEvent.subagentSpawned({
+    required String subagentId,
+    required String task,
+    int? index,
+    int? total,
+    int? depth,
+  }) =>
+      NormalizedSessionEvent._(
+        kind: NormalizedSessionEventKind.subagentSpawned,
+        text: task,
+        subagentId: subagentId,
+        subagentIndex: index,
+        subagentTotal: total,
+        subagentDepth: depth,
+      );
+
+  factory NormalizedSessionEvent.subagentEvent({
+    required String subagentId,
+    required NormalizedSessionEvent inner,
+  }) =>
+      NormalizedSessionEvent._(
+        kind: NormalizedSessionEventKind.subagentEvent,
+        text: inner.visibleText,
+        subagentId: subagentId,
+        subagentInner: inner,
+      );
+
+  factory NormalizedSessionEvent.subagentCompleted({
+    required String subagentId,
+    String? error,
+  }) =>
+      NormalizedSessionEvent._(
+        kind: NormalizedSessionEventKind.subagentCompleted,
+        text: error ?? '',
+        subagentId: subagentId,
+        subagentError: error,
       );
 
   String get visibleText {
@@ -97,6 +157,38 @@ NormalizedSessionEvent? normalizeSessionEvent(Map<String, dynamic> event) {
         callId: event['call_id'] as String?,
         content: content,
         summary: summary,
+      );
+    case 'subagent_spawned':
+      final id = (event['subagent_id'] as String? ?? '').trim();
+      final task = (event['task'] as String? ?? '').trim();
+      if (id.isEmpty || task.isEmpty) return null;
+      return NormalizedSessionEvent.subagentSpawned(
+        subagentId: id,
+        task: task,
+        index: event['index'] as int?,
+        total: event['total'] as int?,
+        depth: event['depth'] as int?,
+      );
+    case 'subagent_event':
+      final id = (event['subagent_id'] as String? ?? '').trim();
+      if (id.isEmpty) return null;
+      final inner = event['inner'];
+      if (inner is! Map) return null;
+      final innerMap = inner is Map<String, dynamic>
+          ? inner
+          : inner.map((k, v) => MapEntry('$k', v));
+      final normalizedInner = normalizeSessionEvent(innerMap);
+      if (normalizedInner == null) return null;
+      return NormalizedSessionEvent.subagentEvent(
+        subagentId: id,
+        inner: normalizedInner,
+      );
+    case 'subagent_completed':
+      final id = (event['subagent_id'] as String? ?? '').trim();
+      if (id.isEmpty) return null;
+      return NormalizedSessionEvent.subagentCompleted(
+        subagentId: id,
+        error: event['error'] as String?,
       );
     default:
       return null;

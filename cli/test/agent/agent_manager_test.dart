@@ -57,5 +57,81 @@ void main() {
         throwsA(isA<Exception>()),
       );
     });
+
+    test('emits subagent_spawned/event/completed via onPersistEvent', () async {
+      final persisted = <Map<String, dynamic>>[];
+      manager.onPersistEvent = (type, data) {
+        persisted.add({'type': type, ...data});
+      };
+
+      await manager.spawnSubagent(task: 'verify persistence');
+
+      expect(persisted.first['type'], 'subagent_spawned');
+      expect(persisted.first['task'], 'verify persistence');
+      expect(persisted.first['subagent_id'], isA<String>());
+      final subagentId = persisted.first['subagent_id'];
+
+      expect(persisted.last['type'], 'subagent_completed');
+      expect(persisted.last['subagent_id'], subagentId);
+      expect(persisted.last.containsKey('error'), isFalse);
+
+      // All inner events carry the same subagent_id and a serialised inner.
+      final innerEvents =
+          persisted.where((e) => e['type'] == 'subagent_event').toList();
+      expect(innerEvents, isNotEmpty);
+      for (final e in innerEvents) {
+        expect(e['subagent_id'], subagentId);
+        expect(e['inner'], isA<Map<String, dynamic>>());
+      }
+    });
+
+    test('parallel spawns produce distinct subagent ids', () async {
+      final ids = <String>{};
+      manager.onPersistEvent = (type, data) {
+        if (type == 'subagent_spawned') {
+          ids.add(data['subagent_id'] as String);
+        }
+      };
+
+      await manager.spawnParallel(tasks: ['A', 'B', 'C']);
+
+      expect(ids, hasLength(3));
+    });
+
+    test('always emits subagent_completed even when the LLM errors', () async {
+      // AgentRunner internally captures provider errors and returns a string
+      // result rather than rethrowing, so this test asserts the persistence
+      // pipe fires its terminal event regardless of how the runner finishes.
+      final failingManager = AgentManager(
+        tools: const {},
+        llmFactory: _ThrowingFactory(),
+        config: testConfig(env: {'ANTHROPIC_API_KEY': 'sk-test'}),
+        systemPrompt: 'unused',
+      );
+      final persisted = <Map<String, dynamic>>[];
+      failingManager.onPersistEvent =
+          (type, data) => persisted.add({'type': type, ...data});
+
+      await failingManager.spawnSubagent(task: 'will fail');
+
+      expect(persisted.first['type'], 'subagent_spawned');
+      expect(persisted.last['type'], 'subagent_completed');
+    });
   });
+}
+
+class _ThrowingFactory implements LlmClientFactory {
+  @override
+  LlmClient createFor(ModelRef ref, {required String systemPrompt}) =>
+      _ThrowingLlm();
+
+  @override
+  LlmClient createFromConfig({required String systemPrompt}) => _ThrowingLlm();
+}
+
+class _ThrowingLlm implements LlmClient {
+  @override
+  Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
+    throw Exception('boom');
+  }
 }

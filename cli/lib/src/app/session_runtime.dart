@@ -306,6 +306,12 @@ void _appendSessionReplayEntriesImpl(
   App app,
   List<SessionReplayEntry> entries,
 ) {
+  // Subagent groups are reconstructed on the fly: spawn opens a group keyed
+  // by subagent_id; subsequent events append to that group; completion just
+  // marks it done. Activity that arrives without a matching open group is
+  // skipped to avoid silent shape drift.
+  final openGroups = <String, _SubagentGroup>{};
+
   for (final entry in entries) {
     switch (entry.kind) {
       case SessionReplayKind.user:
@@ -319,6 +325,68 @@ void _appendSessionReplayEntriesImpl(
         ));
       case SessionReplayKind.toolResult:
         app._blocks.add(_ConversationEntry.toolResult(entry.text));
+
+      case SessionReplayKind.subagentSpawned:
+        final id = entry.subagentId!;
+        final group = _SubagentGroup(
+          task: entry.text,
+          index: entry.subagentIndex,
+          total: entry.subagentTotal,
+        );
+        openGroups[id] = group;
+        app._subagentGroups['${entry.text}:${entry.subagentIndex ?? 0}'] =
+            group;
+        app._blocks.add(_ConversationEntry.subagentGroup(group));
+
+      case SessionReplayKind.subagentEvent:
+        final id = entry.subagentId;
+        final group = id == null ? null : openGroups[id];
+        if (group == null) continue;
+        final inner = entry.subagentInner;
+        if (inner == null) continue;
+        final prefix = group.index != null
+            ? '↳ [${group.index! + 1}/${group.total}]'
+            : '↳';
+        switch (inner.kind) {
+          case SessionReplayKind.toolCall:
+            final argsPreview =
+                (inner.toolArguments ?? const <String, dynamic>{})
+                    .entries
+                    .take(2)
+                    .map((e) => '${e.key}: ${e.value}')
+                    .join(', ');
+            group.entries.add(_SubagentEntry(
+              '$prefix ▶ ${inner.toolName ?? inner.text}  $argsPreview',
+            ));
+          case SessionReplayKind.toolResult:
+            final display = inner.text.length > 80
+                ? '${inner.text.substring(0, 80)}…'
+                : inner.text;
+            group.entries.add(_SubagentEntry(
+              '$prefix ✓ ${display.replaceAll('\n', ' ')}',
+              rawContent: inner.text.length > 80 ? inner.text : null,
+            ));
+          default:
+            // Assistant text and other inner kinds render as plain lines.
+            final display = inner.text.length > 80
+                ? '${inner.text.substring(0, 80)}…'
+                : inner.text;
+            group.entries.add(
+                _SubagentEntry('$prefix · ${display.replaceAll('\n', ' ')}'));
+        }
+
+      case SessionReplayKind.subagentCompleted:
+        final id = entry.subagentId;
+        final group = id == null ? null : openGroups.remove(id);
+        if (group == null) continue;
+        group.done = true;
+        if (entry.subagentError != null) {
+          final prefix = group.index != null
+              ? '↳ [${group.index! + 1}/${group.total}]'
+              : '↳';
+          group.entries
+              .add(_SubagentEntry('$prefix ✗ Error: ${entry.subagentError}'));
+        }
     }
   }
 }

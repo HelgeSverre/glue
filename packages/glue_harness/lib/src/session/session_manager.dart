@@ -8,7 +8,15 @@ import 'package:glue_harness/src/observability/redaction.dart';
 import 'package:glue_harness/src/session/session_event_normalizer.dart';
 import 'package:glue_harness/src/storage/session_store.dart';
 
-enum SessionReplayKind { user, assistant, toolCall, toolResult }
+enum SessionReplayKind {
+  user,
+  assistant,
+  toolCall,
+  toolResult,
+  subagentSpawned,
+  subagentEvent,
+  subagentCompleted,
+}
 
 class SessionReplayEntry {
   final SessionReplayKind kind;
@@ -16,11 +24,23 @@ class SessionReplayEntry {
   final String? toolName;
   final Map<String, dynamic>? toolArguments;
 
+  // Subagent fields (populated for subagent* kinds; null otherwise).
+  final String? subagentId;
+  final int? subagentIndex;
+  final int? subagentTotal;
+  final SessionReplayEntry? subagentInner;
+  final String? subagentError;
+
   const SessionReplayEntry._({
     required this.kind,
     required this.text,
     this.toolName,
     this.toolArguments,
+    this.subagentId,
+    this.subagentIndex,
+    this.subagentTotal,
+    this.subagentInner,
+    this.subagentError,
   });
 
   factory SessionReplayEntry.user(String text) =>
@@ -42,6 +62,44 @@ class SessionReplayEntry {
 
   factory SessionReplayEntry.toolResult(String text) =>
       SessionReplayEntry._(kind: SessionReplayKind.toolResult, text: text);
+
+  factory SessionReplayEntry.subagentSpawned({
+    required String subagentId,
+    required String task,
+    int? index,
+    int? total,
+  }) =>
+      SessionReplayEntry._(
+        kind: SessionReplayKind.subagentSpawned,
+        text: task,
+        subagentId: subagentId,
+        subagentIndex: index,
+        subagentTotal: total,
+      );
+
+  factory SessionReplayEntry.subagentEvent({
+    required String subagentId,
+    required SessionReplayEntry inner,
+  }) =>
+      SessionReplayEntry._(
+        kind: SessionReplayKind.subagentEvent,
+        text: inner.text,
+        subagentId: subagentId,
+        toolName: inner.toolName,
+        toolArguments: inner.toolArguments,
+        subagentInner: inner,
+      );
+
+  factory SessionReplayEntry.subagentCompleted({
+    required String subagentId,
+    String? error,
+  }) =>
+      SessionReplayEntry._(
+        kind: SessionReplayKind.subagentCompleted,
+        text: error ?? '',
+        subagentId: subagentId,
+        subagentError: error,
+      );
 }
 
 class SessionReplay {
@@ -572,6 +630,42 @@ class SessionManager {
             );
           }
           entries.add(SessionReplayEntry.toolResult(event.visibleText));
+
+        case NormalizedSessionEventKind.subagentSpawned:
+          // Subagent activity is a side channel — it does not enter the
+          // parent's conversation history. Surface it as a replay entry so
+          // the CLI can rebuild its `_SubagentGroup` blocks.
+          flushPending();
+          entries.add(SessionReplayEntry.subagentSpawned(
+            subagentId: event.subagentId!,
+            task: event.text,
+            index: event.subagentIndex,
+            total: event.subagentTotal,
+          ));
+
+        case NormalizedSessionEventKind.subagentEvent:
+          final inner = event.subagentInner!;
+          final innerEntry = switch (inner.kind) {
+            NormalizedSessionEventKind.toolCall => SessionReplayEntry.toolCall(
+                inner.toolName ?? inner.text,
+                inner.toolArguments ?? const <String, dynamic>{},
+              ),
+            NormalizedSessionEventKind.toolResult =>
+              SessionReplayEntry.toolResult(inner.visibleText),
+            NormalizedSessionEventKind.assistant =>
+              SessionReplayEntry.assistant(inner.visibleText),
+            _ => SessionReplayEntry.assistant(inner.visibleText),
+          };
+          entries.add(SessionReplayEntry.subagentEvent(
+            subagentId: event.subagentId!,
+            inner: innerEntry,
+          ));
+
+        case NormalizedSessionEventKind.subagentCompleted:
+          entries.add(SessionReplayEntry.subagentCompleted(
+            subagentId: event.subagentId!,
+            error: event.subagentError,
+          ));
       }
     }
     flushPending();

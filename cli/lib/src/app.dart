@@ -206,6 +206,9 @@ class App {
       sessionStore: sessionStore,
       observability: obs,
     );
+    _manager?.onPersistEvent = (type, data) {
+      _sessionManager.logEvent(type, data);
+    };
     _shareExporter = SessionShareExporter();
     _gistPublisher = SessionGistPublisher();
     _panels = PanelController(

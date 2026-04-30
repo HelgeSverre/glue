@@ -14,8 +14,8 @@ class ShareHtmlAssetsLoader {
     // cli/ (legacy), then ../packages/glue_harness/lib/... (cli/ cwd).
     final candidates = [
       p.join('lib', 'src', 'share', 'html', fileName),
-      p.join('packages', 'glue_harness', 'lib', 'src', 'share', 'html',
-          fileName),
+      p.join(
+          'packages', 'glue_harness', 'lib', 'src', 'share', 'html', fileName),
       p.join('cli', 'lib', 'src', 'share', 'html', fileName),
       p.join('..', 'packages', 'glue_harness', 'lib', 'src', 'share', 'html',
           fileName),

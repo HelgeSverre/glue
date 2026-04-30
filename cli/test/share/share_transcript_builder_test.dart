@@ -58,18 +58,162 @@ void main() {
       expect(transcript.entries.single.text, '2 files changed');
     });
 
-    test('ignores raw subagent-like events until a persisted schema exists',
-        () {
+    test('ignores unknown event types', () {
       final builder = ShareTranscriptBuilder();
 
       final transcript = builder.build([
-        {'type': 'subagent_message', 'text': 'ui-only update'},
+        {'type': 'subagent_message', 'text': 'old fictional type'},
         {'type': 'user_message', 'text': 'hello'},
       ]);
 
       expect(transcript.entries, hasLength(1));
       expect(transcript.entries.single.kind, ShareEntryKind.user);
       expect(transcript.entries.single.text, 'hello');
+    });
+
+    test('builds a subagent group from spawned/event/completed rows', () {
+      final builder = ShareTranscriptBuilder();
+
+      final transcript = builder.build([
+        {'type': 'user_message', 'text': 'analyze repo'},
+        {
+          'type': 'subagent_spawned',
+          'subagent_id': 'sub-1',
+          'task': 'docs-research',
+          'depth': 0,
+        },
+        {
+          'type': 'subagent_event',
+          'subagent_id': 'sub-1',
+          'inner': {
+            'type': 'tool_call',
+            'name': 'read_file',
+            'arguments': {'path': 'README.md'},
+          },
+        },
+        {
+          'type': 'subagent_event',
+          'subagent_id': 'sub-1',
+          'inner': {'type': 'tool_result', 'content': 'contents'},
+        },
+        {'type': 'subagent_completed', 'subagent_id': 'sub-1'},
+        {'type': 'assistant_message', 'text': 'done'},
+      ]);
+
+      expect(
+        transcript.entries.map((e) => e.kind).toList(),
+        [
+          ShareEntryKind.user,
+          ShareEntryKind.subagentGroup,
+          ShareEntryKind.assistant,
+        ],
+      );
+      final group = transcript.entries[1];
+      expect(group.subagentId, 'sub-1');
+      expect(group.text, 'docs-research');
+      expect(group.children, hasLength(2));
+      expect(group.children[0].kind, ShareEntryKind.toolCall);
+      expect(group.children[0].toolName, 'read_file');
+      expect(group.children[1].kind, ShareEntryKind.toolResult);
+      expect(group.children[1].text, 'contents');
+    });
+
+    test('builds two parallel subagent groups', () {
+      final builder = ShareTranscriptBuilder();
+
+      final transcript = builder.build([
+        {
+          'type': 'subagent_spawned',
+          'subagent_id': 'sub-a',
+          'task': 'first',
+          'index': 0,
+          'total': 2,
+        },
+        {
+          'type': 'subagent_event',
+          'subagent_id': 'sub-a',
+          'inner': {'type': 'assistant_message', 'text': 'progress a'},
+        },
+        {'type': 'subagent_completed', 'subagent_id': 'sub-a'},
+        {
+          'type': 'subagent_spawned',
+          'subagent_id': 'sub-b',
+          'task': 'second',
+          'index': 1,
+          'total': 2,
+        },
+        {
+          'type': 'subagent_event',
+          'subagent_id': 'sub-b',
+          'inner': {'type': 'assistant_message', 'text': 'progress b'},
+        },
+        {'type': 'subagent_completed', 'subagent_id': 'sub-b'},
+      ]);
+
+      final groups = transcript.entries
+          .where((e) => e.kind == ShareEntryKind.subagentGroup)
+          .toList();
+      expect(groups, hasLength(2));
+      expect(groups.map((g) => g.subagentId), ['sub-a', 'sub-b']);
+      expect(groups[0].children.single.text, 'progress a');
+      expect(groups[1].children.single.text, 'progress b');
+    });
+
+    test('handles a nested subagent that spawns its own subagent', () {
+      final builder = ShareTranscriptBuilder();
+
+      final transcript = builder.build([
+        {
+          'type': 'subagent_spawned',
+          'subagent_id': 'parent',
+          'task': 'parent-task',
+        },
+        {
+          'type': 'subagent_event',
+          'subagent_id': 'parent',
+          'inner': {'type': 'assistant_message', 'text': 'parent says hi'},
+        },
+        {
+          'type': 'subagent_spawned',
+          'subagent_id': 'child',
+          'task': 'child-task',
+          'depth': 1,
+        },
+        {
+          'type': 'subagent_event',
+          'subagent_id': 'child',
+          'inner': {'type': 'assistant_message', 'text': 'child works'},
+        },
+        {'type': 'subagent_completed', 'subagent_id': 'child'},
+        {'type': 'subagent_completed', 'subagent_id': 'parent'},
+      ]);
+
+      expect(transcript.entries, hasLength(1));
+      final parent = transcript.entries.single;
+      expect(parent.kind, ShareEntryKind.subagentGroup);
+      expect(parent.subagentId, 'parent');
+      expect(parent.children, hasLength(2));
+      expect(parent.children[0].kind, ShareEntryKind.subagentMessage);
+      expect(parent.children[0].text, 'parent says hi');
+      expect(parent.children[1].kind, ShareEntryKind.subagentGroup);
+      expect(parent.children[1].subagentId, 'child');
+      expect(parent.children[1].children.single.text, 'child works');
+    });
+
+    test('skips orphaned subagent events without a matching open group', () {
+      final builder = ShareTranscriptBuilder();
+
+      final transcript = builder.build([
+        {
+          'type': 'subagent_event',
+          'subagent_id': 'never-spawned',
+          'inner': {'type': 'assistant_message', 'text': 'orphan'},
+        },
+        {'type': 'user_message', 'text': 'hello'},
+      ]);
+
+      expect(transcript.entries, hasLength(1));
+      expect(transcript.entries.single.kind, ShareEntryKind.user);
     });
 
     test('supports nested subagent fixture entries', () {
