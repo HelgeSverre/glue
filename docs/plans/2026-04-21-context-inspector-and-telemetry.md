@@ -1,6 +1,7 @@
 # Context Inspector and Telemetry — Research + Implementation Plan
 
 > Status: research / design. No code changes yet.
+> Re-spec'd 2026-04-30 against the harness/strategies/core split.
 
 ## Goal
 
@@ -9,11 +10,43 @@ Give Glue users a truthful way to inspect how the active context window is being
 Concretely, this plan delivers:
 
 1. A real `/context` slash command for the interactive TUI.
-2. Structured context telemetry that can back both chat output (MVP) and a future docked right-side panel.
+2. Structured context telemetry that can back both chat output (MVP) and a future docked right-side panel — and crucially, a future ACP-server endpoint, since ACP clients need the same data.
 3. Error classification and tracking for provider calls that fail because request or response context is too large.
 4. A clear model of how Glue currently manages context growth, where it already caps inputs, and where it currently has no first-class compaction story.
 
 This is **not** just a slash command. `/context` is the UX surface for a broader context-observability subsystem.
+
+---
+
+## How this plan relates to the harness layers
+
+Context telemetry must live in the harness so every surface (CLI today, ACP
+server tomorrow, web later) sees the same numbers.
+
+Layer placement (from `2026-04-29-harness-layers.md`):
+
+- **Data types** (`glue_core`): `ContextSnapshot`, `ContextBreakdownItem`,
+  `ContextContributor`, `ContextEvent`, new `ContextOverflowEvent` /
+  `ContextSnapshotEvent` variants in `session_event.dart`.
+- **Harness** (`glue_harness`):
+  - the snapshot **builder** — invoked before each provider request from
+    `AgentCore`, since only the harness has the full context (system
+    prompt, instruction files, message history, tool schemas).
+  - emission of context `SessionEvent`s into the existing event stream.
+  - extension of `ObservabilityHub` (already in
+    `packages/glue_harness/lib/src/observability/`) to attach context
+    attributes to the per-turn span.
+- **Strategies** (`glue_strategies`): provider clients raise typed
+  `ContextOverflowException` from
+  `packages/glue_strategies/lib/src/llm/*.dart`; the harness classifies
+  them.
+- **Surfaces**: the CLI's `/context` slash command formats the latest
+  snapshot. The ACP server adds a `session/context_snapshot` request that
+  returns the same structured data.
+
+Important: the formatter/renderer is a **surface** concern. Different
+surfaces will format the same telemetry differently. Don't bake string
+formatting into the harness.
 
 ---
 
@@ -29,14 +62,12 @@ Add context telemetry to Glue's runtime so developers can inspect current contex
 
 #### 1. Aggregate per-turn token usage exists
 
-`cli/lib/src/agent/agent_core.dart`
-
-- `UsageInfo` captures `inputTokens` + `outputTokens`.
-- `AgentCore.tokenCount` accumulates `totalTokens` over the session.
-- This is fed by provider-specific parsers in:
-  - `cli/lib/src/llm/openai_client.dart`
-  - `cli/lib/src/llm/anthropic_client.dart`
-  - `cli/lib/src/llm/ollama_client.dart`
+- `UsageInfo` in `packages/glue_core/lib/src/message.dart` captures `inputTokens` + `outputTokens`.
+- `AgentCore.tokenCount` in `packages/glue_harness/lib/src/agent/agent_core.dart` accumulates `totalTokens` over the session.
+- Fed by provider-specific parsers in:
+  - `packages/glue_strategies/lib/src/llm/openai_client.dart`
+  - `packages/glue_strategies/lib/src/llm/anthropic_client.dart`
+  - `packages/glue_strategies/lib/src/llm/ollama_client.dart`
 
 **What this gives us today:**
 - total provider-reported token usage per session
@@ -51,38 +82,33 @@ Add context telemetry to Glue's runtime so developers can inspect current contex
 
 #### 2. Generic observability exists
 
-Glue already has an observability layer:
+Glue already has an observability layer in
+`packages/glue_harness/lib/src/observability/`:
 
-- `cli/lib/src/observability/observability.dart`
-- `cli/lib/src/observability/logging_http_client.dart`
-- `cli/lib/src/observability/file_sink.dart`
-- `cli/lib/src/observability/http_trace_sink.dart`
+- `observability.dart`
+- `logging_http_client.dart`
+- `file_sink.dart`
+- `http_trace_sink.dart`
 
-Capabilities already present:
+Capabilities present:
 - spans for tool execution (`tool.<name>`)
 - spans for outbound HTTP requests (`http.<kind>`)
 - redacted body/header logging
 - max-body truncation in logs
 - sink abstraction suitable for file/HTTP export
 
-**Gap:** this is generic request/tool tracing, not context telemetry.
+**Gap:** generic request/tool tracing, not context telemetry.
 
 #### 3. Session storage already supports append-only event logging
 
-`docs/reference/session-storage.md`
-
-Sessions store:
+`docs/reference/session-storage.md` describes the format. Sessions store:
 - `meta.json`
 - `conversation.jsonl`
 - `state.json`
 
-Current conversation events include:
-- `user_message`
-- `assistant_message`
-- `tool_call`
-- `tool_result`
+Current persisted `SessionEvent` variants include user/assistant messages, tool calls, tool results, permission events.
 
-**Opportunity:** context snapshots and overflow/truncation events can be logged into the same append-only stream without inventing a second persistence model.
+**Opportunity:** context snapshots and overflow/truncation can be added as new typed `SessionEvent` variants in `glue_core/session_event.dart` rather than inventing a parallel persistence model.
 
 ---
 
@@ -92,125 +118,99 @@ Glue already has several **localized caps** and truncation safeguards.
 
 #### 1. Project instruction files are capped at 50 KB
 
-`cli/lib/src/agent/prompts.dart`
+`packages/glue_harness/lib/src/agent/prompts.dart`
 
 - `AGENTS.md` and `CLAUDE.md` are read into the system prompt.
 - Each file is truncated if it exceeds `_maxGuidanceBytes = 50 * 1024`.
 - Truncation is explicit: `"(truncated — file exceeded 50KB)"`.
 
 **Good:** prevents runaway rules files from silently bloating the prompt.
-
 **Bad:** no telemetry records how often this happens or how much was dropped.
 
 #### 2. `@file` expansion rejects oversized files
 
-Covered by tests in `cli/test/input/file_expander_test.dart`.
+Covered by `cli/test/input/file_expander_test.dart` — `@file` expansion lives in the CLI surface (`cli/lib/src/input/file_expander.dart`).
 
-- Files over 100 KB are not fully expanded into prompt context.
-- They render as `[too large: ...]` markers instead.
+- Files over 100 KB render as `[too large: ...]` markers.
 
 **Good:** direct user expansion has a hard guardrail.
-
-**Bad:** the event is not surfaced as structured telemetry or context diagnostics.
+**Bad:** the event is not surfaced as structured telemetry.
 
 #### 3. Web/browser/fetch tool content is token-truncated
 
-Key files:
-- `cli/lib/src/web/fetch/truncation.dart`
-- `cli/lib/src/web/fetch/web_fetch_client.dart`
-- `cli/lib/src/tools/web_browser_tool.dart`
+Key files (now in `glue_strategies`):
+- `packages/glue_strategies/lib/src/web/fetch/truncation.dart`
+- `packages/glue_strategies/lib/src/web/fetch/web_fetch_client.dart`
+- `packages/glue_harness/lib/src/tools/web_browser_tool.dart`
 
-Patterns in use:
+Patterns:
 - content is approximated to token counts via `TokenTruncation`
-- outputs are clipped to a configured/derived token budget
-- truncation markers are appended to results
+- outputs clipped to a configured/derived token budget
+- truncation markers appended
 
-**Good:** large remote content does not blindly enter context.
-
-**Bad:** this uses estimated token math and the truncation decision is not exposed in a central event stream.
+**Bad:** truncation decisions not exposed in a central event stream.
 
 #### 4. Some oversized web responses are rejected outright
 
-`cli/test/web/fetch/web_fetch_client_test.dart`
-
-Tests assert explicit failure when response size exceeds the byte limit:
+`packages/glue_strategies/test/web/fetch/web_fetch_client_test.dart` tests assert explicit failure when response size exceeds the byte limit:
 - `"Response too large: ... bytes (max ...)"`
 
-**Good:** Glue already has the right instinct for very large payloads — fail fast.
-
-**Bad:** no normalized failure type; this is just an error string.
+**Bad:** no normalized failure type — just an error string.
 
 #### 5. Ollama `num_ctx` is bounded
 
-`cli/lib/src/llm/ollama_client.dart`
+`packages/glue_strategies/lib/src/llm/ollama_client.dart`
 
 - `ollamaNumCtxCeiling = 131072`
 - catalog context windows are capped before being sent as `options.num_ctx`
 
-**Good:** avoids absurd context claims causing local OOM issues.
-
-**Bad:** this is model/request shaping, not session introspection.
+**Bad:** request shaping, not session introspection.
 
 #### 6. Session fork replays truncated history slices
 
-`cli/lib/src/session/session_manager.dart`
+`packages/glue_harness/lib/src/session/session_manager.dart`
 
 - `forkSession()` truncates the replayed event history to a selected branch point.
 
-**Good:** state branching is not blindly replaying everything.
-
-**Bad:** this is not compaction or long-session context management.
+**Bad:** not compaction or long-session context management.
 
 ---
 
 ### What Glue does **not** appear to have yet
 
-This is the critical gap analysis.
+Critical gap analysis.
 
 #### 1. No first-class conversation compaction runtime
 
-I searched for:
-- `compact`
-- `autocompact`
-- compaction thresholds
-- context checkpointing
-- summarization of old turns before provider calls
+I searched for `compact`, `autocompact`, compaction thresholds, context
+checkpointing, summarization of old turns before provider calls.
 
 What exists:
 - tests/autocomplete references to `/compact`
 - design docs and plans discussing compaction or thinking tokens
 
 What I did **not** find in live runtime code:
-- a compactor service
-- a slash command implementation for `/compact`
+- a compactor service in `glue_harness`
+- a slash command implementation for `/compact` in `cli`
 - automatic turn compaction at token thresholds
 - summarizer-driven checkpointing
 - replacement of older conversation turns with compact summaries
 
-**Working conclusion:** Glue currently uses edge truncation and payload caps, but does not yet have a first-class session compaction story comparable to Claude Code, OpenCode, Cline, or Kiro.
+**Conclusion:** Glue currently uses edge truncation and payload caps, but does not yet have a first-class session compaction story.
 
 #### 2. No normalized classification of context-overflow failures
 
-I did not find a dedicated error normalization layer for:
+No dedicated error normalization layer for:
 - prompt/context window exceeded
 - request payload too large
 - provider refused overlong input
 - tool output too large for safe inclusion
 
-Current behavior appears to be:
-- provider HTTP error bubbles up as generic exception text
-- logs contain truncated request/response bodies
-- user gets a low-level failure rather than a context-specific explanation
+Today: provider HTTP error bubbles up as generic exception text.
 
 #### 3. No current context snapshot model
 
-There is no existing runtime object like:
-- `ContextSnapshot`
-- `ContextBreakdown`
-- `TopContributor`
-- `ContextFailureEvent`
-
-So `/context` cannot be implemented truthfully yet without first adding these primitives.
+There is no `ContextSnapshot`, `ContextBreakdown`, `TopContributor`, or `ContextFailureEvent` type. So `/context` cannot be implemented truthfully without adding these primitives.
 
 ---
 
@@ -218,71 +218,15 @@ So `/context` cannot be implemented truthfully yet without first adding these pr
 
 ### User-facing reasons
 
-1. **Debugging degraded sessions**
-   - When the agent starts getting vague or forgetful, users need to know whether the issue is context growth, not model quality.
-
-2. **Debugging payload failures**
-   - When a provider request errors because the prompt got too large, the user should see what filled it.
-
-3. **Reducing superstition**
-   - Without visibility, users cargo-cult around `/clear`, model switches, and narrower prompts without understanding the real bottleneck.
+1. **Debugging degraded sessions** — when the agent gets vague or forgetful, users need to know whether context growth is the cause.
+2. **Debugging payload failures** — when a provider request errors because the prompt got too large, the user should see what filled it.
+3. **Reducing superstition** — without visibility, users cargo-cult around `/clear` and model switches.
 
 ### Product/engineering reasons
 
-1. **Telemetry before optimization**
-   - We should not build compaction, caching, or retrieval improvements blind.
-
-2. **Future right-panel UI needs structured data anyway**
-   - If we only build a string-producing slash command now, we will rewrite it later.
-
-3. **Trust**
-   - A `/context` command that invents precise-looking numbers from vibes is worse than nothing. Structured telemetry prevents that.
-
----
-
-## External Research Summary
-
-### Relevant precedents
-
-#### Claude Code
-Strongest precedent.
-
-- Built-in `/context` command reportedly shows category-level usage:
-  - system prompt
-  - system tools
-  - MCP tools
-  - memory files
-  - skills
-  - messages
-  - free space
-  - auto-compact buffer
-- Also has `/compact` and auto-compaction as first-class concepts.
-
-#### Aider
-Related, but not equivalent.
-
-- `/tokens` exposes token usage for current context.
-- `/context` means "context mode" rather than global occupancy breakdown.
-- Shows that exposing raw counts is useful, but it is not enough for Glue's goal.
-
-#### GitHub Copilot / Kiro / Cline / Roo / OpenCode
-Useful product patterns mentioned in research corpus:
-- context usage gauges in UI
-- auto-summarization / compaction thresholds
-- explicit context management guidance
-- context-aware failure recovery
-- session-level context pressure indicators
-
-### Product lesson from external tools
-
-The tools that handle context well do **at least one** of these:
-- expose visible usage meters
-- compact/summarize when near limit
-- maintain persistent structured memory/checkpoints
-- use retrieval/scoping to avoid bloating the main window
-- track token/cost/usage as first-class telemetry
-
-Glue currently does some localized truncation, but not enough of the above.
+1. **Telemetry before optimization** — don't build compaction blind.
+2. **Future ACP/web parity** — ACP clients will demand the same data; structured telemetry from day one prevents a rewrite.
+3. **Trust** — A `/context` command that invents precise-looking numbers is worse than nothing. Structured telemetry with confidence labels prevents that.
 
 ---
 
@@ -290,9 +234,7 @@ Glue currently does some localized truncation, but not enough of the above.
 
 ### MVP (v1): `/context` prints a report in chat output
 
-This is the right first surface.
-
-When the user types `/context`, Glue prints a textual report like:
+Surface implementation lives in `cli/lib/src/commands/builtin_commands.dart`. The slash command pulls a `ContextSnapshot` from the session and formats it. Sample output:
 
 ```text
 Context usage: 142k / 400k tokens (35.5%)
@@ -338,49 +280,32 @@ The report must answer four questions:
 
 ### MVP non-goals
 
-- no right-side panel yet
+- no docked right-side panel yet
 - no live auto-updating dashboard
 - no drill-down interactivity
 - no compaction implementation in the same PR
+- no ACP `session/context_snapshot` endpoint yet (but the data model must support it)
 
 ### V2: docked right-side context panel
 
-Use the same telemetry model to render a docked panel with sections/tabs:
+CLI-side panel using existing `DockManager`/`DockedPanel` machinery. Same telemetry source.
 
-1. **Overview**
-   - current used / max / free
-   - percentage
-   - risk level
-
-2. **Breakdown**
-   - category table
-   - exact vs estimated markers
-
-3. **Contributors**
-   - top files, tool results, prompt sections, message groups
-
-4. **Timeline**
-   - turn-by-turn growth
-   - spikes after tool calls or file reads
-
-5. **Failures**
-   - context overflow
-   - request too large
-   - truncated payload events
-   - retry outcomes
-
-Because Glue already has `DockManager`, `DockedPanel`, and right-side docking support, this is realistic — but only if telemetry is structured from day one.
+Sections: Overview, Breakdown, Contributors, Timeline, Failures.
 
 ---
 
 ## Recommended Data Model
+
+All types live in `packages/glue_core/lib/src/context_telemetry.dart` (new
+file) so they are usable by harness, surfaces, and tests without circular
+imports.
 
 ### Context snapshot
 
 ```dart
 class ContextSnapshot {
   final DateTime timestamp;
-  final String modelRef;
+  final ModelRef modelRef;             // typed extension type from glue_core
   final int? contextWindowTokens;
   final int? usedTokens;
   final int? freeTokens;
@@ -441,68 +366,39 @@ class ContextContributor {
 }
 ```
 
-### Per-turn telemetry
+### Per-turn telemetry (typed `SessionEvent`)
+
+In `packages/glue_core/lib/src/session_event.dart`:
 
 ```dart
-class ContextTurnTelemetry {
-  final String turnId;
-  final DateTime timestamp;
-  final int? promptTokens;
-  final int? completionTokens;
-  final int? totalTokens;
+class ContextSnapshotEvent extends SessionEvent {
+  final TurnId turnId;          // typed wrapper from glue_core/ids.dart
+  final ContextSnapshot snapshotBefore;
+  final ContextSnapshot? snapshotAfter;
   final int? requestBytes;
   final int? responseBytes;
-  final ContextSnapshot? snapshotBefore;
-  final ContextSnapshot? snapshotAfter;
-  final List<ContextEvent> events;
-}
-```
-
-### Context events
-
-```dart
-sealed class ContextEvent {
-  const ContextEvent();
 }
 
-class ToolResultTruncated extends ContextEvent {
-  final String toolName;
-  final int originalBytes;
-  final int keptBytes;
-}
-
-class WebResponseRejected extends ContextEvent {
-  final int sizeBytes;
-  final int limitBytes;
-}
-
-class ProviderContextOverflow extends ContextEvent {
+class ContextOverflowEvent extends SessionEvent {
   final String provider;
   final String model;
   final String rawMessage;
 }
 
-class RetryAfterContextTrim extends ContextEvent {
-  final String strategy;
-}
-
-class ProjectInstructionTruncated extends ContextEvent {
-  final String path;
-  final int originalBytes;
-  final int keptBytes;
-}
-
-class FileExpansionRejected extends ContextEvent {
-  final String path;
-  final int sizeBytes;
-  final int limitBytes;
-}
+class ToolResultTruncatedEvent extends SessionEvent { ... }
+class WebResponseRejectedEvent extends SessionEvent { ... }
+class ProjectInstructionTruncatedEvent extends SessionEvent { ... }
+class FileExpansionRejectedEvent extends SessionEvent { ... }
+class RetryAfterContextTrimEvent extends SessionEvent { ... }
 ```
+
+Inheriting `SessionEvent` gets persistence, replay, and ACP forwarding for
+free.
 
 ### Critical design rule
 
 Every reported count must carry a confidence level:
-- **exact** — from provider/runtime/accounted bytes/tokens
+- **exact** — provider/runtime/accounted bytes/tokens
 - **estimated** — token estimation logic (char-count heuristics, etc.)
 - **derived** — inferred from higher-level totals
 
@@ -514,57 +410,62 @@ No unlabeled fake precision.
 
 ### Exact today
 
-We can already get exact or near-exact values for:
 - provider-reported `prompt_tokens` / `input_tokens`
 - provider-reported `completion_tokens` / `output_tokens`
-- byte sizes of logged request/response bodies
-- size of instruction files before/after truncation
+- byte sizes of logged request/response bodies (via `LoggingHttpClient`)
+- size of instruction files before/after truncation (visible in `prompts.dart`)
 - size of tool results before/after truncation/rejection
 
 ### Estimated in v1
 
-We will likely need estimation for:
 - tokens attributable to instruction file sections
 - tokens attributable to message history slices
 - tokens attributable to loaded tool schemas
 - tokens attributable to file reads and tool results currently present in effective prompt context
 
-If exact tokenizer infrastructure exists per model later, we can upgrade these from estimated to exact. For v1, estimates are acceptable only if marked.
+If exact tokenizer infrastructure exists per model later, upgrade these from estimated to exact. For v1, estimates are acceptable only if marked.
 
 ---
 
 ## Failure Handling Plan
 
-Glue needs a normalized ladder for oversized prompt/response failures.
-
 ### New normalized failure classes
 
-At minimum:
-- `contextWindowExceeded`
-- `requestPayloadTooLarge`
-- `responsePayloadTooLarge`
-- `toolOutputTooLarge`
+In `packages/glue_strategies/lib/src/llm/llm_errors.dart` (new):
+
+- `ContextWindowExceededException`
+- `RequestPayloadTooLargeException`
+- `ResponsePayloadTooLargeException`
+- `ToolOutputTooLargeException`
+
+Provider clients (`anthropic_client.dart`, `openai_client.dart`,
+`ollama_client.dart`) classify HTTP error bodies and throw the typed
+exceptions. The harness's `AgentCore` catches them and emits typed
+`ContextOverflowEvent`s.
 
 ### Recovery behavior
 
 For provider request overflow:
-1. classify the error
-2. emit a `ProviderContextOverflow` event
-3. capture a `ContextSnapshot`
-4. surface a useful user-facing message
+1. classify the error in the strategies-layer client
+2. emit a `ContextOverflowEvent`
+3. capture a `ContextSnapshot` and emit `ContextSnapshotEvent`
+4. surface a useful user-facing message (CLI formats; ACP returns structured data)
 5. optionally retry once after deterministic trimming if safe
 
-### User-facing message shape
+### User-facing message shape (CLI surface)
 
-Instead of a raw provider error, the user should see something like:
-
-> Request exceeded the model context budget. The largest contributors were conversation history and a recent tool result. Run `/context` to inspect details, or retry after narrowing scope.
+```
+Request exceeded the model context budget. The largest contributors were
+conversation history and a recent tool result. Run `/context` to inspect
+details, or retry after narrowing scope.
+```
 
 ### Retry rules
 
 - at most one automatic retry
 - only after a deterministic trim strategy
 - never infinite loop
+- always observable as an `RetryAfterContextTrimEvent`
 
 ---
 
@@ -575,94 +476,108 @@ Instead of a raw provider error, the user should see something like:
 Build the data model and event capture before rendering anything.
 
 Deliverables:
-- `ContextSnapshot`
-- `ContextBreakdownItem`
-- `ContextContributor`
-- `ContextTurnTelemetry`
-- `ContextEvent` types
-- a context snapshot builder invoked before each provider request
+- `ContextSnapshot`, `ContextBreakdownItem`, `ContextContributor` in `glue_core`
+- `ContextSnapshotEvent`, `ContextOverflowEvent`, etc. in `glue_core/session_event.dart`
+- a context snapshot builder in `glue_harness/lib/src/agent/context_snapshot_builder.dart`, invoked from `AgentCore` before each provider request
 - event emission for current truncation/rejection paths
 
 Likely files:
-- `cli/lib/src/agent/agent_core.dart`
-- `cli/lib/src/agent/prompts.dart`
-- `cli/lib/src/llm/*.dart`
-- `cli/lib/src/observability/*.dart`
-- session logging/storage files
+- `packages/glue_core/lib/src/context_telemetry.dart` (new)
+- `packages/glue_core/lib/src/session_event.dart`
+- `packages/glue_harness/lib/src/agent/agent_core.dart`
+- `packages/glue_harness/lib/src/agent/prompts.dart`
+- `packages/glue_harness/lib/src/agent/context_snapshot_builder.dart` (new)
+- `packages/glue_strategies/lib/src/llm/*.dart`
+- `packages/glue_strategies/lib/src/web/fetch/*.dart`
+- `packages/glue_harness/lib/src/observability/*.dart` (attach context attributes to per-turn span)
 
-### Phase 2 — `/context` MVP
+### Phase 2 — `/context` MVP (CLI surface)
 
 Deliverables:
-- `/context` slash command
-- textual report renderer for current snapshot
+- `/context` slash command in `cli/lib/src/commands/builtin_commands.dart` and registered in `cli/lib/src/commands/slash_commands.dart`
+- textual report formatter in `cli/lib/src/commands/context_report_formatter.dart` (new)
 - optional `--verbose`
-- optional `--json` if cheap
+- optional `--json` for debugging/automation
 
-Likely files:
-- `cli/lib/src/commands/builtin_commands.dart`
-- `cli/lib/src/commands/slash_commands.dart`
-- app/controller wiring
-- report formatter file (new)
+The formatter consumes structured `ContextSnapshot`s pulled from the
+harness — no string-formatting in the harness.
 
-### Phase 3 — overflow/failure classification and recovery
+### Phase 3 — Overflow/failure classification and recovery
 
 Deliverables:
-- normalized context-related provider errors
-- telemetry events for overflow/rejection
-- user-facing recovery messages
-- one-shot retry path after deterministic trim (if safe)
+- typed exceptions in `glue_strategies/llm/llm_errors.dart`
+- harness emits `ContextOverflowEvent` and a `ContextSnapshotEvent` on classification
+- user-facing recovery messages (CLI formatter)
+- optional one-shot retry path after deterministic trim, observable via `RetryAfterContextTrimEvent`
 
-### Phase 4 — docked panel v2
+### Phase 4 — Docked panel v2 (CLI surface)
 
 Deliverables:
-- `ContextDockedPanel`
+- `ContextDockedPanel` in `cli/lib/src/ui/`
 - overview, breakdown, contributors, failures, timeline sections
 - navigation/drill-down UX
 
-Leverages existing docked panel architecture.
+Leverages existing docked panel architecture in `cli/lib/src/ui/`.
+
+### Phase 5 — ACP parity (server surface)
+
+Deliverables:
+- `session/context_snapshot` ACP request in `packages/glue_server/lib/src/acp/`
+- mapping `ContextSnapshotEvent` / `ContextOverflowEvent` → ACP notifications
+
+No new harness work; just surface plumbing.
 
 ---
 
 ## File-Level Impact Estimate
 
-### Core runtime / telemetry
-- `cli/lib/src/agent/agent_core.dart`
-- `cli/lib/src/agent/prompts.dart`
-- `cli/lib/src/llm/openai_client.dart`
-- `cli/lib/src/llm/anthropic_client.dart`
-- `cli/lib/src/llm/ollama_client.dart`
-- `cli/lib/src/observability/observability.dart`
-- `cli/lib/src/observability/logging_http_client.dart`
-- session logging/storage files
+### Core + Harness runtime / telemetry
+- `packages/glue_core/lib/src/context_telemetry.dart` (new)
+- `packages/glue_core/lib/src/session_event.dart`
+- `packages/glue_harness/lib/src/agent/agent_core.dart`
+- `packages/glue_harness/lib/src/agent/prompts.dart`
+- `packages/glue_harness/lib/src/agent/context_snapshot_builder.dart` (new)
+- `packages/glue_harness/lib/src/observability/observability.dart`
+- `packages/glue_harness/lib/src/observability/logging_http_client.dart`
 
-### Command surface
+### Strategies (provider error classification)
+- `packages/glue_strategies/lib/src/llm/openai_client.dart`
+- `packages/glue_strategies/lib/src/llm/anthropic_client.dart`
+- `packages/glue_strategies/lib/src/llm/ollama_client.dart`
+- `packages/glue_strategies/lib/src/llm/llm_errors.dart` (new)
+- `packages/glue_strategies/lib/src/web/fetch/web_fetch_client.dart`
+
+### CLI surface
 - `cli/lib/src/commands/builtin_commands.dart`
-- possibly command formatter/helper files
+- `cli/lib/src/commands/slash_commands.dart`
+- `cli/lib/src/commands/context_report_formatter.dart` (new)
+- `cli/lib/src/ui/` (panel v2)
+- `cli/lib/src/app/render_pipeline.dart` (if rendering inline notices)
 
-### TUI v2
-- `cli/lib/src/ui/docked_panel.dart`
-- `cli/lib/src/ui/dock_manager.dart`
-- new context panel file(s)
-- app render/event plumbing as needed
+### ACP surface (phase 5)
+- `packages/glue_server/lib/src/acp/`
 
 ### Tests
-- llm provider tests for overflow classification
-- command tests for `/context`
-- observability/session tests for event emission
-- panel tests for v2
+- `packages/glue_strategies/test/llm/` for overflow classification
+- `packages/glue_harness/test/agent/context_snapshot_builder_test.dart`
+- `packages/glue_harness/test/observability/` for span emission
+- `cli/test/commands/` for `/context`
+- `cli/test/ui/` for panel v2
+- `packages/glue_server/test/acp/` for ACP mapping
 
 ---
 
 ## Open Questions
 
 1. **Can we compute a trustworthy current context-window max per model at runtime?**
-   - Catalog metadata likely has context window info, but provider-side effective limits may differ.
+   - `glue_core/model_catalog.dart` has context window info; provider-side effective limits may differ.
 
 2. **Do we want `/context --json` in MVP, or is that premature?**
-   - It is useful for debugging and future automation, but not required for first user value.
+   - Useful for debugging and ACP testing. Cheap to ship if the data model is already structured. Recommend yes.
 
 3. **Should context snapshots be persisted every turn, or only on demand + on failure?**
    - Every turn gives better timeline data but raises log volume.
+   - Recommend: lightweight snapshot per turn (just totals + categories), full breakdown on demand and on failure.
 
 4. **Do we ship failure classification and `/context` in the same PR, or split them?**
    - Same PR is cleaner conceptually; separate PRs reduce risk.
@@ -684,9 +599,9 @@ If we estimate tokens and present them as exact percentages without labels, `/co
 
 #### 2. Wrong abstraction layer
 
-If the whole implementation lives in slash-command string formatting logic, the future panel will require a rewrite.
+If the implementation lives in slash-command string formatting logic (CLI), the future panel and ACP endpoint will require a rewrite.
 
-**Mitigation:** telemetry model first, report renderer second.
+**Mitigation:** telemetry model in `glue_core`, snapshot builder in `glue_harness`, formatter in `cli`.
 
 #### 3. Over-scoped MVP
 
@@ -696,7 +611,7 @@ A docked interactive panel, timeline engine, and recovery system in one shot is 
 
 #### 4. Telemetry overload
 
-If every turn records huge snapshots in full fidelity, logs become noisy and expensive.
+Full-fidelity snapshots every turn make logs noisy and expensive.
 
 **Mitigation:** keep snapshots compact; store structured contributor summaries, not raw duplicated payload text.
 
@@ -704,7 +619,7 @@ If every turn records huge snapshots in full fidelity, logs become noisy and exp
 
 If Glue auto-retries with aggressive trimming and silently changes what the model sees, debugging becomes harder.
 
-**Mitigation:** one retry max; explicit user-facing message; event logged.
+**Mitigation:** one retry max; explicit user-facing message; `RetryAfterContextTrimEvent` always logged.
 
 ---
 
@@ -712,17 +627,17 @@ If Glue auto-retries with aggressive trimming and silently changes what the mode
 
 ### Phase 1
 
-- Glue emits structured context-related telemetry events for:
+- Glue emits structured context-related typed `SessionEvent`s for:
   - truncated project instructions
   - rejected oversized file expansions
   - truncated tool/web payloads
   - provider context overflow failures
-- A `ContextSnapshot` can be constructed at request time.
-- Session/event logging can persist context-related events without schema ambiguity.
+- A `ContextSnapshot` can be constructed at request time inside the harness.
+- `SessionStore` persists context-related events without schema ambiguity (they're just `SessionEvent` variants).
 
 ### Phase 2
 
-- `/context` exists as a visible slash command.
+- `/context` exists as a visible slash command in the CLI.
 - `/context` prints:
   - current usage vs max
   - breakdown by category
@@ -733,24 +648,31 @@ If Glue auto-retries with aggressive trimming and silently changes what the mode
 
 ### Phase 3
 
-- Provider overflow errors are normalized and surfaced clearly.
-- At least one context-overflow path emits a structured failure event.
-- Optional retry (if implemented) happens at most once and is observable.
+- Provider overflow errors are classified into typed exceptions in `glue_strategies`.
+- The harness emits `ContextOverflowEvent` + `ContextSnapshotEvent` when classification fires.
+- Optional retry (if implemented) happens at most once and is observable via `RetryAfterContextTrimEvent`.
 
 ### Phase 4
 
 - Right-side docked panel can render the same telemetry model used by `/context`.
 - Panel supports overview + at least one drill-down dimension.
 
+### Phase 5
+
+- `glue serve` exposes `session/context_snapshot` returning the same snapshot shape.
+- ACP clients can subscribe to context-related events.
+
 ---
 
 ## Recommended Execution Order
 
-1. Instrument current truncation/rejection paths.
-2. Add `ContextSnapshot` builder.
-3. Add `/context` chat renderer.
-4. Normalize provider overflow failures.
-5. Only then start the docked panel.
+1. Add data model in `glue_core`.
+2. Instrument current truncation/rejection paths in `glue_harness` + `glue_strategies` to emit typed events.
+3. Add `ContextSnapshotBuilder` invoked from `AgentCore`.
+4. Add `/context` CLI formatter + slash command.
+5. Normalize provider overflow failures into typed exceptions.
+6. Only then start the docked panel.
+7. ACP parity last.
 
 Anything else is backwards.
 
@@ -760,8 +682,8 @@ Anything else is backwards.
 
 This plan is based on direct inspection of the live Glue runtime, not just external tool research.
 
-The most important non-obvious conclusion is this:
+The most important non-obvious conclusion:
 
-> Glue already has several smart local guardrails against oversized inputs, but it does not yet appear to have a first-class session compaction system or a truthful context-inspection surface.
+> Glue already has several smart local guardrails against oversized inputs, but it does not yet have a first-class session compaction system or a truthful context-inspection surface.
 
-That means the right move is not to fake a `/context` command from `tokenCount` and vibes. The right move is to build context telemetry as a runtime primitive and let `/context` be the first user-facing consumer of that data.
+The right move is not to fake a `/context` command from `tokenCount` and vibes. The right move is to build context telemetry as a harness primitive, with a `glue_core` data model, and let `/context` be the first user-facing consumer. ACP and the docked panel come for free.

@@ -1,6 +1,7 @@
 # Bundled Assets + Skill Runtime Refactor Plan
 
 > Status: design / planning only. No code changes in this plan.
+> Re-spec'd 2026-04-30 against the harness/strategies/core split.
 
 ## Goal
 
@@ -13,11 +14,31 @@ Replace Glue's current repo/install-layout-dependent bundled skill discovery wit
 
 This plan also establishes a minimal general-purpose `AssetBundle` concept that can later support other simple bundled text assets, such as markdown-backed slash commands, without overengineering a plugin/package system.
 
+## How this plan relates to the harness layers
+
+Skills are a **harness-level** subsystem (see `2026-04-29-harness-layers.md`):
+they sit at the same level as session storage and observability and run inside
+`Glue.open()` long before any surface attaches.
+
+Important consequence for asset bundling: bundled skill assets must be authored
+and embedded in a place that all surfaces share. The CLI is no longer the only
+distributable artifact — `glue serve` (ACP server in `packages/glue_server/`)
+also needs the same skills, and a future `glue_web` surface will too. So the
+asset source must live inside the harness package, not the CLI surface
+package.
+
+That changes one major decision from the original plan: bundled assets live
+under `packages/glue_harness/assets/`, generated into
+`packages/glue_harness/lib/src/skills/assets_generated.dart`, and consumed by
+the harness's `SkillRegistry`. Surfaces never see asset bytes — they see
+discovered skills via the existing harness API.
+
 ## Problem Statement
 
 ### Current behavior is install-fragile
 
-Bundled skills currently live in `cli/skills/` and are discovered via `cli/lib/src/skills/skill_paths.dart`, which:
+Bundled skills currently live in `cli/skills/` and are discovered via
+`packages/glue_harness/lib/src/skills/skill_paths.dart`, which:
 
 1. optionally reads `GLUE_BUNDLED_SKILLS_DIR`
 2. otherwise derives paths from `Platform.script`
@@ -25,17 +46,24 @@ Bundled skills currently live in `cli/skills/` and are discovered via `cli/lib/s
    - `<packageRoot>/skills`
    - `<packageRoot>/cli/skills`
 
-That makes built-in skill availability depend on the runtime filesystem layout of the executable or source checkout.
+That makes built-in skill availability depend on the runtime filesystem layout
+of the executable or source checkout — and worse, it embeds knowledge of the
+CLI surface's directory layout into the harness package. A separately
+distributed `glue serve` binary or an ACP-only client cannot rely on those
+paths existing.
 
-This is the wrong abstraction for a distributable CLI. Installed Glue should assume:
+This is the wrong abstraction for a distributable harness. Installed Glue
+should assume:
 
 - the source repo is not present
 - `cli/skills/` is not visible on disk
-- only the installed executable and user data directories are guaranteed
+- only the installed executable and `~/.glue/` (= `GLUE_HOME`) are guaranteed
 
 ### Current behavior complicates the mental model
 
-Today, the term “bundled skill” really means “a skill found by looking near the executable or repo checkout.” That is surprising and hard to reason about.
+Today, the term "bundled skill" really means "a skill found by looking near
+the executable or repo checkout." That is surprising and hard to reason
+about, and it bleeds surface assumptions into the harness.
 
 It also creates implementation noise:
 
@@ -45,28 +73,32 @@ It also creates implementation noise:
 
 ### Desired behavior
 
-Built-in skills should behave like other packaged application resources:
+Built-in skills should behave like other packaged harness resources:
 
-- authored in the repo
-- embedded in the distributed artifact
+- authored in the repo under the harness package
+- embedded in the distributed artifact via `dart run tool/gen_assets.dart`
 - materialized into a stable runtime location owned by Glue
 - discovered from explicit, deterministic paths only
+- visible identically to all surfaces (CLI, ACP server, future web)
 
 ## Goals
 
 1. **Self-contained install behavior**
-   - A user on a separate machine with only the installed Glue artifact should always get built-in skills.
+   - A user on a separate machine with only an installed Glue binary should always get built-in skills.
 
-2. **Explicit runtime ownership**
+2. **Surface independence**
+   - Built-in skill assets must not live in any surface package. Both `glue` (CLI) and `glue serve` binaries must produce the same built-in skills.
+
+3. **Explicit runtime ownership**
    - Built-in assets should live in a Glue-managed subtree under `GLUE_HOME`, separate from user-authored global skills.
 
-3. **Minimal reusable asset system**
+4. **Minimal reusable asset system**
    - Introduce a small `AssetBundle` abstraction that supports current skill bundling and can be reused later for simple bundled markdown/text assets.
 
-4. **Simpler skill discovery**
+5. **Simpler skill discovery**
    - Remove executable-relative path guessing and discover skills from explicit directories only.
 
-5. **Preserve user override precedence**
+6. **Preserve user override precedence**
    - Project and user skills must still override built-in skills by name.
 
 ## Non-Goals
@@ -79,60 +111,69 @@ Built-in skills should behave like other packaged application resources:
 
 ## Proposed Design
 
-## 1. Move built-in repo assets under `cli/assets/`
+### 1. Move built-in repo assets under `packages/glue_harness/assets/`
 
-Create a new repo asset root:
+Create a new repo asset root under the harness package:
 
-- `cli/assets/skills/<skill-name>/SKILL.md`
+- `packages/glue_harness/assets/skills/<skill-name>/SKILL.md`
 
 This replaces `cli/skills/` as the source of truth for built-in skills.
 
 Rationale:
 
-- clarifies that these are packaged assets, not runtime-discovered source files
-- creates a natural namespace for future bundled resources
-- avoids conflating repo layout with runtime skill discovery
+- clarifies that these are packaged harness resources, not surface files
+- both `cli` and `glue_server` consume them transitively via the harness
+- creates a natural namespace for future bundled harness resources
+- avoids conflating any one surface's repo layout with runtime skill discovery
 
 Future-compatible asset families may include:
 
-- `cli/assets/skills/...`
-- `cli/assets/slash-commands/...`
-- `cli/assets/bin/...`
+- `packages/glue_harness/assets/skills/...`
+- `packages/glue_harness/assets/slash-commands/...` (harness-defined slash commands; surface-only commands stay in surface packages)
+- `packages/glue_harness/assets/templates/...`
 
 But this plan only implements `assets/skills`.
 
-## 2. Add build-time asset codegen
+### 2. Add build-time asset codegen
 
-Add a generator:
+Add a generator inside the harness package:
 
-- `cli/tool/gen_assets.dart`
+- `packages/glue_harness/tool/gen_assets.dart`
 
 Responsibilities:
 
-- scan `cli/assets/skills/**`
+- scan `packages/glue_harness/assets/skills/**`
 - read UTF-8 text files
-- generate `cli/lib/src/assets/assets_generated.dart`
+- generate `packages/glue_harness/lib/src/skills/assets_generated.dart`
 - support both normal mode and `--check`
-- follow existing generator conventions used by `gen_models.dart` and `gen_version.dart`
+- follow existing generator conventions used by `cli/tool/gen_models.dart` and `cli/tool/gen_version.dart`
 
-The generated file should embed bundled assets directly into Dart source.
+The generated file embeds bundled assets directly into Dart source. Wire it
+into the monorepo `just gen` and `just gen-check` recipes alongside the
+existing model catalog and version generators.
 
-### Generated representation
+#### Generated representation
 
 Keep the representation small and text-focused.
 
-Suggested types:
+Suggested types in `packages/glue_harness/lib/src/skills/asset_bundle.dart`:
 
 ```dart
 class BundledAssetFile {
   final String relativePath;
   final String content;
   final String sha256;
+  const BundledAssetFile({
+    required this.relativePath,
+    required this.content,
+    required this.sha256,
+  });
 }
 
 class BundledAssetBundle {
   final String id;
   final List<BundledAssetFile> files;
+  const BundledAssetBundle({required this.id, required this.files});
 }
 ```
 
@@ -145,21 +186,29 @@ const BundledAssetBundle bundledSkillsBundle = BundledAssetBundle(
 );
 ```
 
-This is intentionally limited to text assets in v1.
+Intentionally limited to text assets in v1.
 
-## 3. Introduce a tiny runtime asset install/sync layer
+### 3. Introduce a tiny runtime asset install/sync layer
 
-Add a small runtime asset module:
+Add a small runtime asset module **inside the harness**:
 
-- `cli/lib/src/assets/asset_bundle.dart`
-- `cli/lib/src/assets/asset_installer.dart`
+- `packages/glue_harness/lib/src/skills/asset_bundle.dart` (data types)
+- `packages/glue_harness/lib/src/skills/asset_installer.dart` (sync logic)
 
-### `AssetInstaller` responsibilities
+Public surface in the harness barrel (`packages/glue_harness/lib/glue_harness.dart`):
+
+- `AssetInstaller`
+- `BundledAssetBundle`
+
+Surfaces never call these directly — `Glue.open()` invokes them during
+startup. They remain public only for testing.
+
+#### `AssetInstaller` responsibilities
 
 - ensure target directory exists
 - write missing files
 - overwrite changed files
-- optionally prune stale files previously managed by the same bundle
+- prune stale files previously managed by the same bundle
 - never touch user-owned directories outside the managed target subtree
 
 Suggested API:
@@ -174,21 +223,20 @@ class AssetInstaller {
 }
 ```
 
-`installAll()` should be small and explicit. For this iteration it installs only the bundled skills bundle.
+`installAll()` is small and explicit. v1 installs only the bundled skills bundle.
 
-## 4. Materialize built-in skills under `GLUE_HOME`
+### 4. Materialize built-in skills under `GLUE_HOME`
 
-Built-in skills should be installed into a Glue-managed subtree under `Environment.skillsDir`.
+Built-in skills are installed into a Glue-managed subtree under
+`Environment.skillsDir` (`packages/glue_harness/lib/src/core/environment.dart`).
 
 Recommended target:
 
 - `<GLUE_HOME>/skills/_builtin/<skill-name>/SKILL.md`
 
-Not directly into:
+Not directly into `<GLUE_HOME>/skills/<skill-name>/`.
 
-- `<GLUE_HOME>/skills/<skill-name>/...`
-
-### Why use `_builtin`
+#### Why use `_builtin`
 
 This keeps Glue-owned files separate from user-owned global skills.
 
@@ -199,33 +247,36 @@ Benefits:
 - allows Glue to re-sync built-ins freely
 - preserves a clean override model: users override by placing a same-named skill in project/global locations
 
-## 5. Simplify skill discovery to explicit paths only
+### 5. Simplify skill discovery to explicit paths only
 
-Refactor skill runtime/discovery so bundled built-ins come from the managed runtime dir, not from executable-relative lookup.
+Refactor `packages/glue_harness/lib/src/skills/skill_runtime.dart` and
+`skill_registry.dart` so bundled built-ins come from the managed runtime dir,
+not from executable-relative lookup.
 
 After the refactor, skill discovery sources should be:
 
-1. project-local: `<cwd>/.glue/skills`
+1. project-local: `<workspaceRoot>/.glue/skills`
 2. configured extra paths: `skill_paths`
 3. global user: `<GLUE_HOME>/skills`
 4. built-in managed: `<GLUE_HOME>/skills/_builtin`
 
-### Remove current bundled path heuristics
+#### Remove current bundled path heuristics
 
 Delete or obsolete:
 
-- `cli/lib/src/skills/skill_paths.dart`
+- `packages/glue_harness/lib/src/skills/skill_paths.dart`
 - `GLUE_BUNDLED_SKILLS_DIR`
 - `Platform.script`-derived bundle lookup
 - repo-relative `skills/` or `cli/skills/` probing
 
-The runtime should no longer try to locate its own source tree.
+The harness should no longer try to locate its own source tree.
 
-## 6. Add an explicit builtin skill source label
+### 6. Add an explicit builtin skill source label
 
-Today built-in skills discovered via `bundledPaths` are effectively labeled as `SkillSource.custom`.
+Today built-in skills discovered via `bundledPaths` are effectively labeled as
+`SkillSource.custom`.
 
-Add a dedicated source variant:
+Add a dedicated source variant in `packages/glue_harness/lib/src/skills/skill_parser.dart`:
 
 ```dart
 enum SkillSource { project, global, custom, builtin }
@@ -233,14 +284,15 @@ enum SkillSource { project, global, custom, builtin }
 
 This improves:
 
-- `/skills` UI labeling
+- `/skills` UI labeling (CLI surface)
+- ACP responses (`glue_server` mapping uses the same enum)
 - tests
 - internal clarity
 - future observability/debugging
 
-## 7. Install bundled assets before skill runtime initialization
+### 7. Install bundled assets before skill runtime initialization
 
-In `ServiceLocator.create()`:
+In `packages/glue_harness/lib/src/core/service_locator.dart` `ServiceLocator.create()`:
 
 1. resolve environment
 2. ensure Glue directories exist
@@ -248,9 +300,10 @@ In `ServiceLocator.create()`:
 4. initialize `SkillRuntime`
 5. build prompt from discovered skills
 
-This ensures built-in skills are present before discovery occurs.
+Both `cli/` and `glue_server/` already construct their dependencies via
+`ServiceLocator`, so this single change lights up both surfaces.
 
-## 8. Slightly expand `Environment.ensureDirectories()`
+### 8. Slightly expand `Environment.ensureDirectories()`
 
 `Environment.ensureDirectories()` currently creates:
 
@@ -258,7 +311,7 @@ This ensures built-in skills are present before discovery occurs.
 - `logsDir`
 - `cacheDir`
 
-Because built-in skills will now be materialized under `skillsDir`, this plan recommends also ensuring:
+Because built-in skills will now be materialized under `skillsDir`, also ensure:
 
 - `skillsDir`
 
@@ -266,7 +319,7 @@ The `_builtin` subdirectory itself can still be created by the installer.
 
 ## Sync Strategy
 
-## Recommended v1 sync behavior
+### Recommended v1 sync behavior
 
 Use per-file content hashes plus a small manifest written into the managed target directory.
 
@@ -279,6 +332,7 @@ Manifest contents:
 - bundle id
 - file list
 - content hashes
+- harness version that wrote it (use `glue_core/version_generated.dart`)
 
 ### Installer behavior
 
@@ -294,15 +348,13 @@ This gives deterministic upgrades while containing all mutation within the Glue-
 
 ### Why not skip the manifest entirely?
 
-Comparing file contents directly would work for v1, but a manifest makes safe pruning easier when built-in skills are renamed or removed. That is worth the small complexity cost.
+Comparing file contents directly would work for v1, but a manifest makes safe pruning easier when built-in skills are renamed or removed. Worth the small complexity cost.
 
 ## API Simplicity Constraints
 
-This plan intentionally keeps the asset API small.
-
 ### Allowed complexity
 
-- one generated assets file
+- one generated assets file per harness build
 - one installer module
 - one managed runtime target for skills
 - one manifest per installed bundle
@@ -315,7 +367,8 @@ This plan intentionally keeps the asset API small.
 - compression, archive extraction, or remote downloads
 - generic executable-permission management
 
-The design should feel like “embedded files synced to a target directory,” not a framework.
+Should feel like "embedded files synced to a target directory," not a framework.
+
 
 ## Future Reuse
 
@@ -324,11 +377,11 @@ This plan intentionally leaves room for future bundled text assets without imple
 Potential future uses:
 
 1. **Markdown-backed slash commands**
-   - e.g. `cli/assets/slash-commands/<name>.md`
+   - e.g. `packages/glue_harness/assets/slash-commands/<name>.md`
    - materialized into a Glue-managed command asset dir
 
 2. **Prompt templates or docs snippets**
-   - stored in `cli/assets/templates/...`
+   - stored in `packages/glue_harness/assets/templates/...`
 
 3. **Small helper config files**
    - bundled defaults or examples
@@ -337,59 +390,60 @@ If future binary bundling is ever needed, the naming can remain compatible, but 
 
 ## Detailed Refactor Plan
 
-## Phase 1 — Asset source + generator
+### Phase 1 — Asset source + generator
 
-1. Create `cli/assets/skills/`
-2. Move existing built-in skills from `cli/skills/` to `cli/assets/skills/`
-3. Add `cli/tool/gen_assets.dart`
-4. Add generated file output: `cli/lib/src/assets/assets_generated.dart`
-5. Update `cli/justfile`
-   - include `gen_assets.dart` in `gen`
-   - include `gen_assets.dart --check` in `gen-check`
+1. Create `packages/glue_harness/assets/skills/`
+2. Move existing built-in skills from `cli/skills/` to `packages/glue_harness/assets/skills/`
+3. Add `packages/glue_harness/tool/gen_assets.dart`
+4. Add generated file output: `packages/glue_harness/lib/src/skills/assets_generated.dart`
+5. Update root `justfile` and per-package recipes:
+   - include `gen_assets.dart` in monorepo `just gen`
+   - include `gen_assets.dart --check` in monorepo `just gen-check`
 
-### Acceptance criteria
+#### Acceptance criteria
 
 - `just gen` regenerates assets successfully
 - `just gen-check` fails when generated assets are stale
-- generated asset file contains all built-in skills from `assets/skills`
+- generated asset file contains all built-in skills from `packages/glue_harness/assets/skills`
 
-## Phase 2 — Runtime asset install support
+### Phase 2 — Runtime asset install support
 
-1. Add runtime asset types and installer
+1. Add runtime asset types and installer in `packages/glue_harness/lib/src/skills/`
 2. Add managed install target for built-in skills
 3. Update `Environment.ensureDirectories()` to create `skillsDir`
 4. Hook asset installation into `ServiceLocator.create()` before `SkillRuntime` init
 
-### Acceptance criteria
+#### Acceptance criteria
 
-- a fresh `GLUE_HOME` gets a populated built-in skills subtree on startup
+- a fresh `GLUE_HOME` gets a populated built-in skills subtree on startup, in both CLI and ACP-server invocations
 - repeated startup is idempotent
 - removed/renamed built-in skills are pruned from the managed subtree
 
-## Phase 3 — Skill runtime/discovery simplification
+### Phase 3 — Skill runtime/discovery simplification
 
 1. Remove bundled path discovery heuristics from `SkillRuntime`
-2. Remove `skill_paths.dart`
+2. Remove `packages/glue_harness/lib/src/skills/skill_paths.dart`
 3. Remove `GLUE_BUNDLED_SKILLS_DIR`
 4. Point bundled skill discovery at `<GLUE_HOME>/skills/_builtin`
-5. Add `SkillSource.builtin`
-6. Update skill discovery help text to reflect the new model
+5. Add `SkillSource.builtin` and propagate through ACP mappings in `glue_server`
+6. Update skill discovery help text in CLI commands and ACP responses
 
-### Acceptance criteria
+#### Acceptance criteria
 
-- no runtime code depends on `Platform.script` to find built-in skills
-- no runtime code references `GLUE_BUNDLED_SKILLS_DIR`
+- no harness code depends on `Platform.script` to find built-in skills
+- no code references `GLUE_BUNDLED_SKILLS_DIR`
 - built-in skills are discovered from the managed Glue runtime dir only
 - project/global/custom precedence still works
+- ACP `session/list_skills` (or equivalent) reports the new source label
 
-## Phase 4 — Tests and docs
+### Phase 4 — Tests and docs
 
-1. Replace path-guessing tests with install/sync tests
+1. Replace path-guessing tests with install/sync tests in `packages/glue_harness/test/skills/`
 2. Rewrite bundled skill tests to validate generated/install behavior rather than repo-relative lookup
 3. Update docs/comments that refer to `cli/skills/`
-4. Add/update plan and architecture docs where skill bundling/runtime locations are described
+4. Update plan and architecture docs where skill bundling/runtime locations are described
 
-### Acceptance criteria
+#### Acceptance criteria
 
 - tests cover generator output freshness
 - tests cover startup install into managed builtin dir
@@ -401,34 +455,36 @@ If future binary bundling is ever needed, the naming can remain compatible, but 
 
 ### New files
 
-- `cli/tool/gen_assets.dart`
-- `cli/lib/src/assets/asset_bundle.dart`
-- `cli/lib/src/assets/asset_installer.dart`
-- `cli/lib/src/assets/assets_generated.dart`
-- new tests under `cli/test/assets/`
+- `packages/glue_harness/tool/gen_assets.dart`
+- `packages/glue_harness/lib/src/skills/asset_bundle.dart`
+- `packages/glue_harness/lib/src/skills/asset_installer.dart`
+- `packages/glue_harness/lib/src/skills/assets_generated.dart`
+- new tests under `packages/glue_harness/test/skills/`
 
 ### Moved / reorganized files
 
-- `cli/skills/**` → `cli/assets/skills/**`
+- `cli/skills/**` → `packages/glue_harness/assets/skills/**`
 
 ### Modified files
 
-- `cli/justfile`
-- `cli/lib/src/core/service_locator.dart`
-- `cli/lib/src/core/environment.dart`
-- `cli/lib/src/skills/skill_runtime.dart`
-- `cli/lib/src/skills/skill_registry.dart`
-- `cli/lib/src/skills/skill_parser.dart` (for `SkillSource.builtin`)
+- root `justfile`, `cli/justfile`, and `packages/glue_harness/` justfile/recipes
+- `packages/glue_harness/lib/src/core/service_locator.dart`
+- `packages/glue_harness/lib/src/core/environment.dart`
+- `packages/glue_harness/lib/src/skills/skill_runtime.dart`
+- `packages/glue_harness/lib/src/skills/skill_registry.dart`
+- `packages/glue_harness/lib/src/skills/skill_parser.dart` (for `SkillSource.builtin`)
+- `packages/glue_harness/lib/glue_harness.dart` (barrel)
+- ACP mappers in `packages/glue_server/lib/src/acp/` (if they expose source labels)
 - docs/tests referencing current layout
 
 ### Removed files
 
-- `cli/lib/src/skills/skill_paths.dart`
-- `cli/test/skills/skill_paths_test.dart`
+- `packages/glue_harness/lib/src/skills/skill_paths.dart`
+- `packages/glue_harness/test/skills/skill_paths_test.dart` (if present; otherwise the `cli` test analogue)
 
 ## Test Strategy
 
-## Unit tests
+### Unit tests (in `packages/glue_harness/test/skills/`)
 
 1. **Generator tests**
    - generated file is fresh
@@ -447,12 +503,13 @@ If future binary bundling is ever needed, the naming can remain compatible, but 
    - project/global/custom override builtin by name
    - body loading works from installed builtin files
 
-## Regression tests
+### Cross-surface regression tests
 
-1. startup with empty `GLUE_HOME` still exposes built-in skills in prompt/tool list
-2. `/skills` UI still sees bundled built-ins
-3. `skill` tool still loads built-in skill bodies correctly
-4. `just gen-check` fails if bundled assets generator output is stale
+1. CLI startup with empty `GLUE_HOME` still exposes built-in skills in prompt/tool list (`cli/test/`)
+2. `glue serve --stdio` startup with empty `GLUE_HOME` exposes the same skills via ACP (`packages/glue_server/test/`)
+3. `/skills` UI still sees bundled built-ins (CLI surface)
+4. `skill` tool still loads built-in skill bodies correctly
+5. `just gen-check` fails if bundled assets generator output is stale
 
 ## Migration Notes
 
@@ -464,13 +521,15 @@ The repo source directory for built-ins changes from:
 
 to:
 
-- `cli/assets/skills/`
+- `packages/glue_harness/assets/skills/`
 
 ### Runtime migration
 
 Users do not need to copy any files manually. Built-ins are reinstalled by Glue into:
 
 - `<GLUE_HOME>/skills/_builtin`
+
+…regardless of which surface they launched (CLI or `glue serve`).
 
 ### Precedence remains stable
 
@@ -489,10 +548,13 @@ Users can still override built-ins by placing same-named skills in:
    - Recommendation: only when changed, using manifest/hash comparison.
 
 3. **Should built-in asset installation failures be fatal?**
-   - Recommendation: treat as non-fatal but visible. Glue should continue running, but diagnostics/logging should make the failure obvious.
+   - Recommendation: treat as non-fatal but visible. Glue should continue running, but diagnostics/logging via `ObservabilityHub` should make the failure obvious.
 
 4. **Should `global` discovery include `_builtin` implicitly or should builtin always be passed explicitly?**
    - Recommendation: keep builtin explicit. Do not make `SkillRegistry` infer managed builtin subdirectories automatically.
+
+5. **Does `glue_server` need a way to opt out of bundled-skill install?**
+   - Recommendation: no. ACP clients expect parity with CLI; an opt-out would create a divergence with no clear use case. Reconsider only when a specific deploy needs read-only `GLUE_HOME`.
 
 ## Acceptance Criteria Summary
 
@@ -500,17 +562,18 @@ This plan is complete when:
 
 1. built-in skills no longer depend on repo/executable-relative lookup
 2. `GLUE_BUNDLED_SKILLS_DIR` is removed entirely
-3. `cli/lib/src/skills/skill_paths.dart` is removed
-4. built-in skills are authored under `cli/assets/skills`
+3. `packages/glue_harness/lib/src/skills/skill_paths.dart` is removed
+4. built-in skills are authored under `packages/glue_harness/assets/skills`
 5. generated embedded assets are produced by codegen and checked by `just gen-check`
-6. startup materializes bundled built-ins into `<GLUE_HOME>/skills/_builtin`
+6. startup materializes bundled built-ins into `<GLUE_HOME>/skills/_builtin` for both CLI and ACP-server entry points
 7. skill discovery reads built-ins from the managed runtime dir only
 8. user/project/custom precedence still overrides built-ins
 9. the asset-bundling abstraction remains small and text-focused
 
 ## Recommended Implementation Notes
 
-- Prefer `assets_generated.dart` over package-manager asset bundling assumptions, since Glue must work as a standalone compiled binary.
+- Author bundled assets in the harness package, never the surface package, so all surfaces share one source of truth.
+- Prefer `assets_generated.dart` over package-manager asset bundling assumptions, since Glue must work as a standalone compiled binary on multiple surfaces.
 - Prefer explicit managed subtrees under `GLUE_HOME` over mixing Glue-owned and user-owned files in the same directory level.
 - Keep the API intentionally small so future asset families can reuse it without forcing a framework onto the codebase.
 - Do not add binary support until a concrete use case exists.
