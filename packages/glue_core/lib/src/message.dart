@@ -39,7 +39,12 @@ class Message {
     this.contentParts,
   });
 
-  factory Message.user(String text) => Message._(role: Role.user, text: text);
+  /// Build a user message. Pass [contentParts] for multimodal input
+  /// (text + images + resource links) — the LLM mappers will serialise
+  /// them per provider, falling back to [text] for clients that don't
+  /// support multimodal input.
+  factory Message.user(String text, {List<ContentPart>? contentParts}) =>
+      Message._(role: Role.user, text: text, contentParts: contentParts);
 
   factory Message.assistant({String? text, List<ToolCall>? toolCalls}) =>
       Message._(

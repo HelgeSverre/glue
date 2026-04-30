@@ -25,6 +25,7 @@ class AcpHttpHost {
     required this.delegateFactory,
     this.config = const AcpServerConfig(),
     this.path = '/acp',
+    this.bearerToken,
   });
 
   /// Called once per inbound connection — produces the delegate the
@@ -39,6 +40,11 @@ class AcpHttpHost {
   /// HTTP path that accepts the WebSocket upgrade. Other paths return
   /// 404. `*` accepts any path.
   final String path;
+
+  /// When non-null, every WebSocket upgrade must present this token in
+  /// either an `Authorization: Bearer <token>` header or a `?token=…`
+  /// query parameter. Required for non-loopback binds.
+  final String? bearerToken;
 
   HttpServer? _server;
   final Set<_Connection> _connections = {};
@@ -76,6 +82,14 @@ class AcpHttpHost {
         request.response
           ..statusCode = HttpStatus.notFound
           ..write('not found');
+        await request.response.close();
+        continue;
+      }
+      if (!_authorized(request)) {
+        request.response
+          ..statusCode = HttpStatus.unauthorized
+          ..headers.add(HttpHeaders.wwwAuthenticateHeader, 'Bearer realm="acp"')
+          ..write('unauthorized');
         await request.response.close();
         continue;
       }
@@ -127,6 +141,35 @@ class AcpHttpHost {
     _connections.clear();
     if (!_connectionsClosed.isClosed) await _connectionsClosed.close();
   }
+
+  bool _authorized(HttpRequest request) {
+    final expected = bearerToken;
+    if (expected == null) return true;
+    final auth = request.headers.value(HttpHeaders.authorizationHeader);
+    if (auth != null) {
+      const prefix = 'Bearer ';
+      if (auth.startsWith(prefix) &&
+          _constantTimeEquals(auth.substring(prefix.length), expected)) {
+        return true;
+      }
+    }
+    final query = request.uri.queryParameters['token'];
+    if (query != null && _constantTimeEquals(query, expected)) {
+      return true;
+    }
+    return false;
+  }
+}
+
+/// Constant-time string compare to avoid leaking the token byte-by-byte
+/// through timing. Cheap enough that we always run it.
+bool _constantTimeEquals(String a, String b) {
+  if (a.length != b.length) return false;
+  var diff = 0;
+  for (var i = 0; i < a.length; i++) {
+    diff |= a.codeUnitAt(i) ^ b.codeUnitAt(i);
+  }
+  return diff == 0;
 }
 
 class _Connection {

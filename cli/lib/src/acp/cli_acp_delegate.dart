@@ -68,6 +68,7 @@ class CliAcpDelegate extends AcpServerDelegate {
     required String sessionId,
     required String userMessage,
     required Future<bool> Function(ToolCall call) requestPermission,
+    List<ContentPart> userContentParts = const [],
   }) async* {
     final session = _sessions[sessionId];
     if (session == null) {
@@ -76,7 +77,10 @@ class CliAcpDelegate extends AcpServerDelegate {
 
     final controller = StreamController<AgentEvent>();
     session.activeController = controller;
-    final agentEvents = session.agent.run(userMessage);
+    final agentEvents = session.agent.run(
+      userMessage,
+      userContentParts: userContentParts.isEmpty ? null : userContentParts,
+    );
 
     final innerSub = agentEvents.listen(
       (event) async {

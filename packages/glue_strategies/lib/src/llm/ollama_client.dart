@@ -65,7 +65,40 @@ class OllamaClient implements LlmClient {
       for (final msg in messages) {
         switch (msg.role) {
           case Role.user:
-            mappedMessages.add({'role': 'user', 'content': msg.text ?? ''});
+            final parts = msg.contentParts;
+            if (parts != null && ContentPart.hasImages(parts)) {
+              // Ollama expects images on a top-level `images` field as
+              // base64 strings; the text/resource_link parts collapse
+              // into the message content.
+              final images = parts
+                  .whereType<ImagePart>()
+                  .map((img) => img.toBase64())
+                  .toList();
+              final body = StringBuffer(msg.text ?? '');
+              final extra = ContentPart.textWithLinks(parts);
+              if (extra.isNotEmpty) {
+                if (body.isNotEmpty) body.write('\n');
+                body.write(extra);
+              }
+              mappedMessages.add({
+                'role': 'user',
+                'content': body.toString(),
+                'images': images,
+              });
+            } else if (parts != null && parts.isNotEmpty) {
+              // No images; render as text + markdown links.
+              final extra = ContentPart.textWithLinks(parts);
+              final body = StringBuffer(msg.text ?? '');
+              if (extra.isNotEmpty) {
+                if (body.isNotEmpty) body.write('\n');
+                body.write(extra);
+              }
+              mappedMessages.add(
+                {'role': 'user', 'content': body.toString()},
+              );
+            } else {
+              mappedMessages.add({'role': 'user', 'content': msg.text ?? ''});
+            }
           case Role.assistant:
             final entry = <String, dynamic>{
               'role': 'assistant',
@@ -85,7 +118,7 @@ class OllamaClient implements LlmClient {
             mappedMessages.add(entry);
           case Role.toolResult:
             final textContent = (msg.contentParts != null)
-                ? ContentPart.textOnly(msg.contentParts!)
+                ? ContentPart.textWithLinks(msg.contentParts!)
                 : (msg.text ?? '');
             mappedMessages.add({
               'role': 'tool',

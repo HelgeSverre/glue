@@ -75,8 +75,15 @@ class AgentCore {
   /// Runs a [userMessage] through the agent loop.
   ///
   /// Returns a stream of [AgentEvent]s that the UI subscribes to.
-  Stream<AgentEvent> run(String userMessage) async* {
-    _conversation.add(Message.user(userMessage));
+  /// Pass [userContentParts] for multimodal input (images, resource
+  /// links) — the LLM mappers will serialise them per provider.
+  Stream<AgentEvent> run(
+    String userMessage, {
+    List<ContentPart>? userContentParts,
+  }) async* {
+    _conversation.add(
+      Message.user(userMessage, contentParts: userContentParts),
+    );
 
     try {
       while (true) {

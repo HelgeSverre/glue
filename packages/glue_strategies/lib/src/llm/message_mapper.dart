@@ -46,12 +46,38 @@ class AnthropicMessageMapper extends MessageMapper {
       switch (msg.role) {
         case Role.user:
           lastToolUseIds = <ToolCallId>{};
-          mapped.add({
-            'role': 'user',
-            'content': [
-              {'type': 'text', 'text': msg.text ?? ''}
-            ],
-          });
+          final parts = msg.contentParts;
+          if (parts != null && parts.isNotEmpty) {
+            // Multimodal user input — text + images + resource links.
+            mapped.add({
+              'role': 'user',
+              'content': [
+                if (msg.text != null && msg.text!.isNotEmpty)
+                  {'type': 'text', 'text': msg.text},
+                for (final part in parts)
+                  if (part is TextPart)
+                    {'type': 'text', 'text': part.text}
+                  else if (part is ImagePart)
+                    {
+                      'type': 'image',
+                      'source': {
+                        'type': 'base64',
+                        'media_type': part.mimeType,
+                        'data': part.toBase64(),
+                      },
+                    }
+                  else if (part is ResourceLinkPart)
+                    {'type': 'text', 'text': part.toMarkdownLink()},
+              ],
+            });
+          } else {
+            mapped.add({
+              'role': 'user',
+              'content': [
+                {'type': 'text', 'text': msg.text ?? ''}
+              ],
+            });
+          }
         case Role.assistant:
           lastToolUseIds = {for (final tc in msg.toolCalls) tc.id};
           final content = <Map<String, dynamic>>[];
@@ -92,7 +118,13 @@ class AnthropicMessageMapper extends MessageMapper {
                       'data': part.toBase64(),
                     }
                   }
+                else if (part is ResourceLinkPart)
+                  {'type': 'text', 'text': part.toMarkdownLink()},
             ];
+          } else if (msg.contentParts != null &&
+              ContentPart.hasResourceLinks(msg.contentParts!)) {
+            // Pure text + links — render the links inline.
+            toolContent = ContentPart.textWithLinks(msg.contentParts!);
           } else {
             toolContent = msg.text ?? '';
           }
@@ -136,7 +168,31 @@ class OpenAiMessageMapper extends MessageMapper {
     for (final msg in messages) {
       switch (msg.role) {
         case Role.user:
-          mapped.add({'role': 'user', 'content': msg.text ?? ''});
+          final parts = msg.contentParts;
+          if (parts != null && parts.isNotEmpty) {
+            mapped.add({
+              'role': 'user',
+              'content': [
+                if (msg.text != null && msg.text!.isNotEmpty)
+                  {'type': 'text', 'text': msg.text},
+                for (final part in parts)
+                  if (part is TextPart)
+                    {'type': 'text', 'text': part.text}
+                  else if (part is ImagePart)
+                    {
+                      'type': 'image_url',
+                      'image_url': {
+                        'url':
+                            'data:${part.mimeType};base64,${part.toBase64()}',
+                      },
+                    }
+                  else if (part is ResourceLinkPart)
+                    {'type': 'text', 'text': part.toMarkdownLink()},
+              ],
+            });
+          } else {
+            mapped.add({'role': 'user', 'content': msg.text ?? ''});
+          }
         case Role.assistant:
           final entry = <String, dynamic>{
             'role': 'assistant',
@@ -157,8 +213,11 @@ class OpenAiMessageMapper extends MessageMapper {
           }
           mapped.add(entry);
         case Role.toolResult:
+          // textWithLinks renders ResourceLinkParts as `[name](uri)`
+          // alongside any text parts; image parts are streamed in a
+          // separate user-role message below.
           final textContent = (msg.contentParts != null)
-              ? ContentPart.textOnly(msg.contentParts!)
+              ? ContentPart.textWithLinks(msg.contentParts!)
               : (msg.text ?? '');
           mapped.add({
             'role': 'tool',

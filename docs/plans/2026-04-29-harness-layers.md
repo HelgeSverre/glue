@@ -335,18 +335,28 @@ surface?* If yes, harness. If no, surface.
     "ask" decisions through `session/request_permission` with an
     async waiter for the client's reply.
 18. **CLI as ACP client (optional).**
-19. ✅ **WebSocket transport.** `WebSocketTransport` implements
-    `JsonRpcTransport`; `AcpHttpHost` binds an HTTP server, accepts
-    WebSocket upgrades on `/acp` (configurable), and runs one
-    `AcpServer` per connection with a delegate factory for
-    per-connection isolation. CLI grows `glue serve --port N
-    [--host H] [--ws-path /p]`.
-20. ✅ **Image content blocks.** ACP messages now use a sealed
-    `AcpContentBlock` (text, image, audio, resource_link, unknown
-    pass-through) and a sealed `AcpToolCallContent` (content / diff /
-    terminal). `ToolResult.contentParts` (TextPart / ImagePart) flows
-    through to the ACP client unchanged; image-bearing tool results
-    (e.g. `web_browser` screenshots) are first-class.
+19. ✅ **WebSocket transport + bearer-token auth.**
+    `WebSocketTransport` implements `JsonRpcTransport`; `AcpHttpHost`
+    binds an HTTP server, accepts WS upgrades on `/acp`, and runs one
+    `AcpServer` per connection. CLI: `glue serve --port N [--host H]
+    [--ws-path /p] [--token T]`. Non-loopback binds *require*
+    `--token`; the host validates `Authorization: Bearer …` headers
+    or `?token=…` query in constant time.
+20. ✅ **Multimodal content blocks (images + resource_links + diffs).**
+    `glue_core.ContentPart` gains `ResourceLinkPart` alongside
+    `TextPart`/`ImagePart`. All three LLM mappers
+    (Anthropic/OpenAI/Ollama) serialise resource_link as inline
+    markdown (`[name](uri)`) for LLMs that don't speak it natively;
+    images flow through provider-specific image channels for vision
+    support. ACP messages use sealed `AcpContentBlock` and
+    `AcpToolCallContent`. `web_fetch` emits a `ResourceLinkPart` for
+    the fetched URL; `write_file`/`edit_file` emit a `diff` content
+    block with old_text/new_text so editors render real diff views.
+    `session/prompt` accepts image and resource_link blocks; the
+    server translates them to `ContentPart`s, threads them through
+    `AcpServerDelegate.prompt(userContentParts: …)`, and the cli's
+    `CliAcpDelegate` passes them to `AgentCore.run(userContentParts:
+    …)` so the LLM sees the multimodal input.
 21. **Multi-client session attach.**
 22. **MCP client.** See `docs/plans/2026-04-29-mcp-client.md`.
 

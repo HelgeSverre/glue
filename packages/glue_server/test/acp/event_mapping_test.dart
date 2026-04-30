@@ -150,6 +150,47 @@ void main() {
       expect((upd! as AgentMessageChunkUpdate).text, 'sub');
     });
 
+    test('AcpContentBlock.fromContentPart preserves all variants', () {
+      final text = AcpContentBlock.fromContentPart(const TextPart('hi'));
+      expect(text, isA<AcpTextBlock>());
+      expect((text as AcpTextBlock).text, 'hi');
+
+      final image = AcpContentBlock.fromContentPart(
+        const ImagePart(bytes: [1, 2, 3], mimeType: 'image/png'),
+      );
+      expect(image, isA<AcpImageBlock>());
+      expect((image as AcpImageBlock).mimeType, 'image/png');
+
+      final link = AcpContentBlock.fromContentPart(
+        const ResourceLinkPart(
+          uri: 'https://example.com/x.html',
+          name: 'Example',
+          description: 'an example page',
+          mimeType: 'text/html',
+        ),
+      );
+      expect(link, isA<AcpResourceLinkBlock>());
+      final wire = (link as AcpResourceLinkBlock).toJson();
+      expect(wire, {
+        'type': 'resource_link',
+        'uri': 'https://example.com/x.html',
+        'name': 'Example',
+        'description': 'an example page',
+        'mimeType': 'text/html',
+      });
+    });
+
+    test('AcpResourceLinkBlock round-trips through fromJson', () {
+      const original = AcpResourceLinkBlock(
+        uri: 'https://example.com/',
+        name: 'Example',
+      );
+      final back = AcpContentBlock.fromJson(original.toJson());
+      expect(back, isA<AcpResourceLinkBlock>());
+      expect((back as AcpResourceLinkBlock).uri, original.uri);
+      expect(back.name, original.name);
+    });
+
     test('out-of-band events return null', () {
       final permission = PermissionRequestedEvent(
         turnId: turn,

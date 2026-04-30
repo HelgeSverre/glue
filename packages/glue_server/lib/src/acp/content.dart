@@ -57,6 +57,12 @@ sealed class AcpContentBlock {
       TextPart(:final text) => AcpTextBlock(text),
       ImagePart() =>
         AcpImageBlock(mimeType: part.mimeType, data: part.toBase64()),
+      ResourceLinkPart() => AcpResourceLinkBlock(
+          uri: part.uri,
+          name: part.name,
+          description: part.description,
+          mimeType: part.mimeType,
+        ),
     };
   }
 }

@@ -21,6 +21,7 @@ class _TextOnlyDelegate extends AcpServerDelegate {
     required String sessionId,
     required String userMessage,
     required Future<bool> Function(ToolCall call) requestPermission,
+    List<ContentPart> userContentParts = const [],
   }) async* {
     // No scripted events — these tests focus on connection lifecycle.
   }
@@ -134,6 +135,93 @@ void main() {
       final response = await request.close();
       expect(response.statusCode, 400);
       await response.drain<void>();
+    });
+  });
+
+  group('AcpHttpHost bearer token', () {
+    test('rejects connections without a token header or query', () async {
+      final host = AcpHttpHost(
+        delegateFactory: _TextOnlyDelegate.new,
+        bearerToken: 'secret-abc',
+      );
+      final port = await host.start(port: 0);
+      addTearDown(host.stop);
+
+      final client = HttpClient();
+      addTearDown(client.close);
+      final request =
+          await client.getUrl(Uri.parse('http://127.0.0.1:$port/acp'));
+      final response = await request.close();
+      expect(response.statusCode, 401);
+      expect(
+        response.headers.value(HttpHeaders.wwwAuthenticateHeader),
+        contains('Bearer'),
+      );
+      await response.drain<void>();
+    });
+
+    test('rejects WS upgrades with a wrong token', () async {
+      final host = AcpHttpHost(
+        delegateFactory: _TextOnlyDelegate.new,
+        bearerToken: 'secret-abc',
+      );
+      final port = await host.start(port: 0);
+      addTearDown(host.stop);
+
+      await expectLater(
+        WebSocket.connect(
+          'ws://127.0.0.1:$port/acp',
+          headers: const {'Authorization': 'Bearer wrong'},
+        ),
+        throwsA(isA<WebSocketException>()),
+      );
+    });
+
+    test('accepts WS upgrades with the correct Authorization header', () async {
+      final host = AcpHttpHost(
+        delegateFactory: _TextOnlyDelegate.new,
+        bearerToken: 'secret-abc',
+      );
+      final port = await host.start(port: 0);
+      addTearDown(host.stop);
+
+      final ws = await WebSocket.connect(
+        'ws://127.0.0.1:$port/acp',
+        headers: const {'Authorization': 'Bearer secret-abc'},
+      );
+      addTearDown(ws.close);
+
+      ws.add(jsonEncode({
+        'jsonrpc': '2.0',
+        'id': 1,
+        'method': 'initialize',
+        'params': {'protocolVersion': 1},
+      }));
+      final reply = await ws.first as String;
+      expect((jsonDecode(reply) as Map)['id'], 1);
+    });
+
+    test('accepts WS upgrades with the correct ?token= query param', () async {
+      final host = AcpHttpHost(
+        delegateFactory: _TextOnlyDelegate.new,
+        bearerToken: 'secret-abc',
+      );
+      final port = await host.start(port: 0);
+      addTearDown(host.stop);
+
+      final ws = await WebSocket.connect(
+        'ws://127.0.0.1:$port/acp?token=secret-abc',
+      );
+      addTearDown(ws.close);
+
+      ws.add(jsonEncode({
+        'jsonrpc': '2.0',
+        'id': 1,
+        'method': 'initialize',
+        'params': {'protocolVersion': 1},
+      }));
+      final reply = await ws.first as String;
+      expect((jsonDecode(reply) as Map)['id'], 1);
     });
   });
 }

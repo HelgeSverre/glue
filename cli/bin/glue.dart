@@ -365,6 +365,12 @@ class ServeCommand extends Command<int> {
             'accept any path.',
       )
       ..addOption(
+        'token',
+        help: 'Require this bearer token on every WS connection (sent as '
+            '`Authorization: Bearer …` header or `?token=…` query). '
+            'Required when --host is non-loopback.',
+      )
+      ..addOption(
         'protocol',
         defaultsTo: 'acp',
         allowed: ['acp'],
@@ -397,8 +403,13 @@ class ServeCommand extends Command<int> {
     final services = await ServiceLocator.create(debug: debug);
 
     if (portRaw != null) {
-      return _runWebSocket(services, portRaw, argResults!.option('host')!,
-          argResults!.option('ws-path')!);
+      return _runWebSocket(
+        services,
+        portRaw,
+        argResults!.option('host')!,
+        argResults!.option('ws-path')!,
+        argResults!.option('token'),
+      );
     }
     return _runStdio(services);
   }
@@ -428,6 +439,7 @@ class ServeCommand extends Command<int> {
     String portRaw,
     String host,
     String wsPath,
+    String? token,
   ) async {
     final port = int.tryParse(portRaw);
     if (port == null || port < 0 || port > 65535) {
@@ -439,15 +451,27 @@ class ServeCommand extends Command<int> {
       stderr.writeln('Error: could not resolve --host "$host"');
       return 64;
     }
+    // Refuse to bind a non-loopback address without a token: this is
+    // the safety guarantee the docs promise.
+    final isLoopback = address.isLoopback;
+    if (!isLoopback && (token == null || token.isEmpty)) {
+      stderr.writeln(
+        'Error: --host ${address.host} requires --token. Refusing to '
+        'bind a non-loopback address without an auth token.',
+      );
+      return 64;
+    }
     final httpHost = AcpHttpHost(
       delegateFactory: () => CliAcpDelegate(services: services),
       config: _config(),
       path: wsPath,
+      bearerToken: (token != null && token.isNotEmpty) ? token : null,
     );
     final boundPort = await httpHost.start(address: address, port: port);
     stderr.writeln(
       '[glue serve] ACP over WebSocket on ws://${address.host}:$boundPort'
-      '${wsPath == '*' ? '' : wsPath}',
+      '${wsPath == '*' ? '' : wsPath}'
+      '${httpHost.bearerToken != null ? ' (auth: bearer token required)' : ''}',
     );
 
     // Run until SIGINT.

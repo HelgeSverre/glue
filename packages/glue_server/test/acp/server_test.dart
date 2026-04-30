@@ -29,14 +29,18 @@ class _FakeDelegate extends AcpServerDelegate {
     return 'session-${params.cwd.hashCode}';
   }
 
+  List<ContentPart> lastUserContentParts = const [];
+
   @override
   Stream<AgentEvent> prompt({
     required String sessionId,
     required String userMessage,
     required Future<bool> Function(ToolCall call) requestPermission,
+    List<ContentPart> userContentParts = const [],
   }) async* {
     lastSessionId = sessionId;
     lastUserMessage = userMessage;
+    lastUserContentParts = userContentParts;
     for (final event in scripted) {
       if (event is AgentToolCall && permissionAnswer != null) {
         final granted = await requestPermission(event.call);
@@ -209,6 +213,112 @@ void main() {
       await serverFuture;
 
       expect(delegate.cancelled, isTrue);
+    });
+
+    test('session/prompt with image block forwards ImagePart to delegate',
+        () async {
+      final delegate = _FakeDelegate(scripted: [AgentDone()]);
+      final server = AcpServer(transport: transport, delegate: delegate);
+      final serverFuture = server.serve();
+
+      input.add(utf8.encode(
+        '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
+        '{"cwd":"/tmp/p"}}\n',
+      ));
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      final newRespLines = await readSent();
+      final sessionId =
+          (newRespLines.single['result']! as Map)['sessionId'] as String;
+      output.buffer.clear();
+
+      // Tiny PNG-ish bytes encoded as base64 (just for the test).
+      final base64 = base64Encode([0x89, 0x50, 0x4e, 0x47, 0x0d]);
+      final promptJson = jsonEncode({
+        'jsonrpc': '2.0',
+        'id': 2,
+        'method': 'session/prompt',
+        'params': {
+          'sessionId': sessionId,
+          'prompt': [
+            {'type': 'text', 'text': 'what does this look like?'},
+            {'type': 'image', 'mimeType': 'image/png', 'data': base64},
+          ],
+        },
+      });
+      input.add(utf8.encode('$promptJson\n'));
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      await input.close();
+      await serverFuture;
+
+      expect(delegate.lastUserMessage, 'what does this look like?');
+      expect(delegate.lastUserContentParts, hasLength(1));
+      final part = delegate.lastUserContentParts.single;
+      expect(part, isA<ImagePart>());
+      expect((part as ImagePart).mimeType, 'image/png');
+      expect(part.bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d]);
+    });
+
+    test('tool result with diff metadata surfaces as diff content block',
+        () async {
+      final call = ToolCall(
+        id: const ToolCallId('tc-edit'),
+        name: 'write_file',
+        arguments: const {'path': '/tmp/x.txt', 'content': 'new'},
+      );
+      final delegate = _FakeDelegate(scripted: [
+        AgentToolCallPending(id: call.id, name: call.name),
+        AgentToolCall(call),
+        AgentToolResult(ToolResult(
+          callId: call.id,
+          content: 'Wrote 3 bytes to /tmp/x.txt',
+          summary: 'Wrote /tmp/x.txt',
+          metadata: const {
+            'path': '/tmp/x.txt',
+            'diff': {
+              'path': '/tmp/x.txt',
+              'old_text': 'old\n',
+              'new_text': 'new',
+            },
+          },
+        )),
+        AgentDone(),
+      ]);
+      final server = AcpServer(transport: transport, delegate: delegate);
+      final serverFuture = server.serve();
+
+      input.add(utf8.encode(
+        '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
+        '{"cwd":"/tmp/p"}}\n',
+      ));
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      var sent = await readSent();
+      final sessionId = (sent.single['result']! as Map)['sessionId'] as String;
+      output.buffer.clear();
+
+      input.add(utf8.encode(
+        '{"jsonrpc":"2.0","id":2,"method":"session/prompt","params":'
+        '{"sessionId":"$sessionId","prompt":[{"type":"text","text":"go"}]}}\n',
+      ));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await input.close();
+      await serverFuture;
+
+      sent = await readSent();
+      final completed = sent
+          .where((m) => m['method'] == 'session/update')
+          .map((m) => (m['params']! as Map)['update'] as Map)
+          .firstWhere(
+            (u) => u['status'] == 'completed',
+            orElse: () => fail('expected a completed tool_call_update'),
+          );
+      final content = completed['content']! as List;
+      // The diff block is emitted first; nothing else (no contentParts).
+      expect(content, hasLength(1));
+      final diff = content.first as Map;
+      expect(diff['type'], 'diff');
+      expect(diff['path'], '/tmp/x.txt');
+      expect(diff['oldText'], 'old\n');
+      expect(diff['newText'], 'new');
     });
 
     test('tool result with ImagePart surfaces as image content block',

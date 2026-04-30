@@ -123,6 +123,7 @@ class WriteFileTool extends Tool {
     }
     final file = File(path);
     final isNew = !await file.exists();
+    final oldText = isNew ? '' : await file.readAsString();
     await file.parent.create(recursive: true);
     await file.writeAsString(content);
     final lineCount = _countLines(content);
@@ -136,6 +137,13 @@ class WriteFileTool extends Tool {
         'bytes': content.length,
         'line_count': lineCount,
         'is_new_file': isNew,
+        // ACP-side: glue_server emits these as a `diff` content block
+        // on tool_call_update so editors can render a real diff view.
+        'diff': {
+          'path': path,
+          'old_text': oldText,
+          'new_text': content,
+        },
       },
     );
   }
@@ -383,6 +391,7 @@ class EditFileTool extends Tool {
           'old_lines': 0,
           'new_lines': newLines,
           'is_new_file': true,
+          'diff': {'path': path, 'old_text': '', 'new_text': newString},
         },
       );
     }
@@ -435,6 +444,7 @@ class EditFileTool extends Tool {
         'old_lines': oldLines,
         'new_lines': newLines,
         'is_new_file': false,
+        'diff': {'path': path, 'old_text': content, 'new_text': newContent},
       },
     );
   }

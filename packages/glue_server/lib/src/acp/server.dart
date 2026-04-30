@@ -38,10 +38,16 @@ abstract class AcpServerDelegate {
   /// When a [Tool] call needs permission, the server invokes
   /// [requestPermission] (which the delegate routes to *its* permission
   /// gate). The future resolves to `true` to allow, `false` to deny.
+  ///
+  /// [userContentParts] carries multimodal input attached to the
+  /// prompt (images, resource_links). Empty when the client sent only
+  /// text. Implementations are free to ignore parts they can't
+  /// represent — but ideally pass them through to the LLM.
   Stream<AgentEvent> prompt({
     required String sessionId,
     required String userMessage,
     required Future<bool> Function(ToolCall call) requestPermission,
+    List<ContentPart> userContentParts = const [],
   });
 
   /// Cancel the active prompt on [sessionId], if any. Best-effort.
@@ -240,11 +246,27 @@ class AcpServer {
   /// gating tool calls through `session/request_permission`.
   Future<StopReason> _runPrompt(SessionPromptParams promptParams) async {
     final sessionId = promptParams.sessionId;
+    // Translate non-text prompt blocks (images, resource_links) into
+    // glue_core ContentParts for the harness to consume.
+    final userParts = <ContentPart>[
+      for (final block in promptParams.prompt)
+        if (block is AcpImageBlock)
+          ImagePart(bytes: block.decodedBytes(), mimeType: block.mimeType)
+        else if (block is AcpResourceLinkBlock)
+          ResourceLinkPart(
+            uri: block.uri,
+            name: block.name,
+            description: block.description,
+            mimeType: block.mimeType,
+          ),
+    ];
+
     final stream = delegate.prompt(
       sessionId: sessionId,
       userMessage: promptParams.text,
       requestPermission: (call) =>
           _requestPermissionFromClient(sessionId: sessionId, call: call),
+      userContentParts: userParts,
     );
 
     // Track every tool call we've announced so we can update its status
@@ -374,22 +396,52 @@ class AcpServer {
 
 /// Builds the `content[]` array for a `tool_call_update` notification.
 ///
-/// Prefers [ToolResult.contentParts] when present (multimodal — e.g. a
-/// screenshot from `web_browser`). Falls back to a single text block
-/// derived from [ToolResult.summary] or [ToolResult.content] otherwise.
+/// Priority order:
+///   1. `result.metadata['diff']` (path/old_text/new_text) — emit a
+///      `diff` content block so editors render a real diff view.
+///   2. `result.contentParts` — multimodal output (text, images,
+///      resource links) flows through unchanged.
+///   3. Fallback: a single `text` block derived from
+///      [ToolResult.summary] or [ToolResult.content].
+///
+/// (1) and (2) compose: a write_file result whose contentParts include
+/// e.g. a confirmation TextPart still gets the diff block first, then
+/// the text parts after.
 List<AcpToolCallContent> _toolResultContent(ToolResult result) {
+  final out = <AcpToolCallContent>[];
+
+  // Diff metadata (write_file / edit_file).
+  final diffRaw = result.metadata['diff'];
+  if (diffRaw is Map) {
+    final diff = diffRaw.cast<String, Object?>();
+    final path = diff['path'];
+    final oldText = diff['old_text'];
+    final newText = diff['new_text'];
+    if (path is String && oldText is String && newText is String) {
+      out.add(AcpToolCallDiff(
+        path: path,
+        oldText: oldText,
+        newText: newText,
+      ));
+    }
+  }
+
+  // Multimodal content parts.
   final parts = result.contentParts;
   if (parts != null && parts.isNotEmpty) {
-    return [
-      for (final part in parts)
-        AcpToolCallContentValue(AcpContentBlock.fromContentPart(part)),
-    ];
+    for (final part in parts) {
+      out.add(AcpToolCallContentValue(AcpContentBlock.fromContentPart(part)));
+    }
+    return out;
   }
-  return [
-    AcpToolCallContentValue(
-      AcpTextBlock(result.summary ?? result.content),
-    ),
-  ];
+
+  if (out.isEmpty) {
+    // No diff, no parts — fall back to a single text block.
+    out.add(
+      AcpToolCallContentValue(AcpTextBlock(result.summary ?? result.content)),
+    );
+  }
+  return out;
 }
 
 /// Internal sentinel used to signal a prompt was cancelled. Delegates

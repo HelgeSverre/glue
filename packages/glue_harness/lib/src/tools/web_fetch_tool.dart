@@ -1,4 +1,4 @@
-import 'package:glue_harness/src/agent/tools.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 import 'package:http/http.dart' as http;
 
@@ -68,9 +68,24 @@ class WebFetchTool extends Tool {
     buf.write(result.markdown);
     final body = buf.toString();
     final markdown = result.markdown ?? '';
+
+    // Surface the fetched URL as a resource_link so editor/web ACP
+    // clients can render an inline link in the tool-call card. The
+    // body text travels alongside as a TextPart so the agent's LLM
+    // sees the actual content.
+    final contentParts = <ContentPart>[
+      TextPart(body),
+      ResourceLinkPart(
+        uri: result.url,
+        name: result.title ?? url,
+        mimeType: 'text/markdown',
+      ),
+    ];
+
     return ToolResult(
       content: body,
       summary: 'Fetched $url (${markdown.length} chars)',
+      contentParts: contentParts,
       metadata: {
         'url': url,
         'title': result.title,
