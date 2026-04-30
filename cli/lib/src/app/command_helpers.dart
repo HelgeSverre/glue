@@ -131,20 +131,6 @@ String _renameSessionImpl(App app, String title) {
   return 'Renamed session to "$normalized".';
 }
 
-String _usageActionImpl(App app) {
-  final store = app._sessionManager.currentStore;
-  if (store == null) {
-    return 'No active session yet — nothing to report.';
-  }
-  final events = SessionStore.loadConversation(store.sessionDir);
-  final report = buildUsageReport(
-    usageEvents: events,
-    modelLabel: store.meta.modelRef,
-    sessionId: store.meta.id.value,
-  );
-  return formatUsageReport(report);
-}
-
 String _shareActionImpl(App app, List<String> args) {
   if (app._mode != AppMode.idle) {
     return 'Wait for the current turn to finish before sharing.';

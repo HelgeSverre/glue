@@ -542,7 +542,16 @@ class App {
     return _sessionActionImpl(this, args);
   }
 
-  String _usageReport() => _usageActionImpl(this);
+  String _usageReport() {
+    final store = _sessionManager.currentStore;
+    if (store == null) return 'No active session yet — nothing to report.';
+    final report = buildUsageReport(
+      usageEvents: SessionStore.loadConversation(store.sessionDir),
+      modelLabel: store.meta.modelRef,
+      sessionId: store.meta.id.value,
+    );
+    return formatUsageReport(report);
+  }
 
   String _shareAction(List<String> args) {
     return _shareActionImpl(this, args);
