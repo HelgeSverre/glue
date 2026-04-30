@@ -1,7 +1,7 @@
 # /share command spec and implementation plan
 
-> Status: largely shipped. This doc is now a follow-up tracker.
-> Re-spec'd 2026-04-30 against the harness/strategies/core split and the actual landed code.
+> Status: shipped, with two small gaps. This doc is now a follow-up tracker.
+> Re-spec'd 2026-04-30 against the harness/strategies/core split and verified against the actual landed code.
 
 ## Goal
 
@@ -17,7 +17,7 @@ The export is for sharing the readable conversation transcript, not for dumping 
 - assistant messages
 - tool calls
 - tool results
-- subagent activity, including nested subagent structure
+- subagent activity, including nested subagent structure (renderer-side; persistence path is the open gap below)
 
 It excludes internal-only bookkeeping such as title generation events, observability spans, token/cost internals, and unrelated raw metadata.
 
@@ -26,116 +26,105 @@ It excludes internal-only bookkeeping such as title generation events, observabi
 | Concern | Layer | Package |
 |---|---|---|
 | Normalized transcript model + builder | harness | `packages/glue_harness/lib/src/share/share_models.dart`, `share_transcript_builder.dart` |
+| Session event normalizer (prefers `summary` over `content` for tool results) | harness | `packages/glue_harness/lib/src/session/session_event_normalizer.dart` |
 | Markdown renderer | harness | `packages/glue_harness/lib/src/share/renderer/markdown_renderer.dart` |
 | HTML renderer + template + CSS | harness | `packages/glue_harness/lib/src/share/renderer/html_renderer.dart`, `html/share_page_template.html`, `html/share_page.css`, `html/share_html_assets_loader.dart` |
 | Export coordinator | harness | `packages/glue_harness/lib/src/share/session_share_exporter.dart` |
 | Gist publisher | harness | `packages/glue_harness/lib/src/share/gist_publisher.dart` |
-| Slash command wiring | CLI surface | `cli/lib/src/commands/builtin_commands.dart` (`share` entry registered with `shareAction`) |
+| Slash command wiring | CLI surface | `cli/lib/src/commands/builtin_commands.dart` (`share` entry, line 90, registered with `shareAction`) |
 | Barrel exports | harness public API | `packages/glue_harness/lib/glue_harness.dart` |
+| Subagent event types | core | `packages/glue_core/lib/src/session_event.dart` (`SubagentSpawnedEvent`, `SubagentEventForwardedEvent`, `SubagentCompletedEvent`) |
+| ACP mapping for subagent events | server | `packages/glue_server/lib/src/acp/event_mapping.dart` |
 
-The share renderers and exporter live in the harness so any surface — CLI today, `glue serve` (ACP) tomorrow — can produce the same output. The slash command itself is in the CLI surface, since slash commands are a CLI concept.
+## Verified shipped
 
-## What has shipped
+Confirmed against `claude/architect-harness-layers-maSVJ` as of 2026-04-30:
 
-Verified present in `claude/architect-harness-layers-maSVJ` as of 2026-04-30:
+- ✅ `share_models.dart` with `ShareEntry` / `ShareEntryKind` (kept independent of `glue_core`'s `Message` so renderers don't pull in chat semantics).
+- ✅ `share_transcript_builder.dart` consuming persisted `SessionEvent`s via `normalizeSessionEvents`.
+- ✅ Tool-result content selection: the normalizer (`session_event_normalizer.dart`) prefers a non-empty trimmed `summary` over `content` (`_visibleToolResultText`).
+- ✅ `markdown_renderer.dart` emits per-entry anchors: `<a id="entry-N"></a>`.
+- ✅ `html_renderer.dart` emits per-entry section ids and anchor links: `<section ... id="entry-N">…<a href="#entry-N">#N</a>`.
+- ✅ HTML renderer already has CSS classes for `share-entry-subagent-group` and `share-entry-subagent-message`, and renders `share-children` for nested entries — the renderer is ready to display subagent nesting once the data flows in.
+- ✅ HTML template + CSS bundled as static assets, loaded via `share_html_assets_loader.dart`.
+- ✅ `session_share_exporter.dart` orchestrating builder → renderer → file writes.
+- ✅ `gist_publisher.dart` for the `gh` integration; `cli/test/share/gist_publisher_test.dart` already covers 4 cases.
+- ✅ CLI slash command `/share` wired through `shareAction` in `builtin_commands.dart:90`.
+- ✅ Subagent event types defined in `glue_core` (`SubagentSpawnedEvent`, `SubagentEventForwardedEvent`, `SubagentCompletedEvent`).
+- ✅ ACP server already maps subagent events: `SubagentEventForwardedEvent` unwraps to its inner event (`packages/glue_server/lib/src/acp/event_mapping.dart:50-52`).
+- ✅ Test coverage in `cli/test/share/` totalling 681 lines across 7 files: `gist_publisher_test.dart`, `html_share_renderer_test.dart`, `markdown_share_renderer_test.dart`, `session_share_exporter_test.dart`, `session_share_spec_test.dart`, `share_html_assets_loader_test.dart`, `share_transcript_builder_test.dart`.
+- ✅ Builder test explicitly asserts the current contract: `ignores raw subagent-like events until a persisted schema exists` (confirms the open gap below is intentional, not an oversight).
+- ✅ Builder test exercises the subagent-fixture path through `fromEntries(...)` for nested groups.
 
-- `share_models.dart` with the share entry types and `ShareEntryKind` enum (kept independent of `glue_core`'s `Message` so renderers don't pull in chat semantics)
-- `share_transcript_builder.dart` consuming persisted `SessionEvent`s
-- `markdown_renderer.dart` and `html_renderer.dart`, both using the shared `renderer_support.dart`
-- HTML template + CSS bundled as static assets, loaded via `share_html_assets_loader.dart`
-- `session_share_exporter.dart` orchestrating builder → renderer → file writes
-- `gist_publisher.dart` for the `gh` integration
-- CLI slash command `/share` wired through `shareAction` in `builtin_commands.dart`
+## Open gaps (only two)
 
-## What still needs doing (open follow-ups)
+### 1. Subagent events are defined and ACP-mapped, but `AgentManager` does not yet emit them
 
-### 1. Subagent event persistence
-
-The transcript builder still treats subagent activity as opportunistic
-fixture data — there is no persisted `SubagentStartEvent` /
-`SubagentMessageEvent` / etc. in `glue_core/session_event.dart`.
+The types exist in `glue_core` and the ACP server already knows how to map
+them, but a search of `packages/glue_harness/lib/src/agent/agent_manager.dart`
+shows no emission of `SubagentSpawnedEvent` / `SubagentEventForwardedEvent` /
+`SubagentCompletedEvent`. Until the harness emits these onto the parent
+session's event sink, persisted sessions cannot reconstruct nested
+subagent transcripts in `/share` output. The transcript builder
+deliberately ignores raw subagent-shaped JSON until that emission exists
+(see the `ignores raw subagent-like events` test).
 
 Concrete plan:
 
-- Add typed subagent events to `glue_core/session_event.dart`:
-  - `SubagentStartedEvent { SubagentId id; SubagentId? parentId; String agentRole; ... }`
-  - `SubagentMessageEvent { SubagentId id; String text; ... }`
-  - `SubagentToolCallEvent { SubagentId id; ToolCallId callId; ... }`
-  - `SubagentToolResultEvent { SubagentId id; ToolCallId callId; ToolResult result; }`
-  - `SubagentFinishedEvent { SubagentId id; }`
-- Have `AgentManager` (`packages/glue_harness/lib/src/agent/agent_manager.dart`) emit these events on the parent session's event sink.
-- Update `share_transcript_builder.dart` to map them into `ShareEntryKind.subagentGroup` / `subagentMessage` with `parentId`-driven nesting.
-- Add tests in `packages/glue_harness/test/share/share_transcript_builder_test.dart` for nested subagent structures.
+- In `packages/glue_harness/lib/src/agent/agent_manager.dart`, on subagent spawn/finish, emit:
+  - `SubagentSpawnedEvent { childId, parentId?, agentRole, ... }` on the parent's session event sink.
+  - For each event the child agent emits, wrap it in `SubagentEventForwardedEvent { childId, inner: <child SessionEvent> }` and forward to the parent sink.
+  - On child completion, emit `SubagentCompletedEvent { childId }`.
+- Extend `share_transcript_builder.dart`:
+  - When `normalizeSessionEvents` (or a new sibling normalizer) sees a `SubagentSpawnedEvent`, push a new `ShareEntryKind.subagentGroup` entry and a stack frame.
+  - For each `SubagentEventForwardedEvent`, normalize the inner event and append to the active subagent group's `children`.
+  - On `SubagentCompletedEvent`, pop the stack frame.
+- Promote the existing `cli/test/share/share_transcript_builder_test.dart` `ignores raw subagent-like events…` case from "ignores" to "renders nested groups" once the events are real.
 
-### 2. Tool-result content selection
+### 2. Long tool output collapse
 
-Confirm the builder uses `summary` when present and falls back to `content`.
-If not already covered, add a test in
-`packages/glue_harness/test/share/share_transcript_builder_test.dart`.
+`html_renderer.dart` does not wrap long tool output in `<details>`. Pure
+renderer change: introduce a configurable line threshold (default
+something like 30 lines) and wrap tool-result `share-entry-body` content
+above the threshold in `<details><summary>show output</summary>…</details>`.
+Add a test case in `html_share_renderer_test.dart`.
 
-### 3. Raw HTML in assistant markdown
+## Test location migration (housekeeping)
 
-Decide: pre-escape or accept as trusted local content. Today's renderer uses the `markdown` package, which does not sanitize. For local file exports the risk is contained, but document the choice in `html_renderer.dart` and add a test asserting the chosen behavior.
+Tests for share live in `cli/test/share/` because they predate the harness
+extraction. The harness package currently has no `test/` directory at all
+(`packages/glue_harness/test` is empty / nonexistent). Two options:
 
-### 4. Long tool output collapse
+- **Now:** migrate `cli/test/share/*.dart` to
+  `packages/glue_harness/test/share/*.dart`, since the code under test is in
+  the harness package. This also creates the harness's `test/` tree, which
+  other plans (thinking-tokens, prompt-caching, ask-user, context-inspector)
+  expect to exist.
+- **Later:** leave them where they are; risk is that future contributors
+  won't find them when modifying harness share code, and `dart test` runs
+  per-package will not exercise the share suite as part of the harness gate.
 
-Add a `<details>` wrapper for tool output over a configurable line threshold in `html_renderer.dart`. Pure renderer change.
-
-### 5. Markdown anchors for parity
-
-Confirm Markdown export emits `<a id="entry-n"></a>` anchors per entry. If not, add and test.
-
-### 6. Gist publishing UX
-
-`gist_publisher.dart` is in place. Gaps:
-
-- error reporting when `gh` is missing or unauthenticated
-- selecting which artifact to publish (Markdown only by default)
-- tests covering the parsing of `gh gist create` output for the resulting URL
-
-Add `packages/glue_harness/test/share/gist_publisher_test.dart` if not yet present.
-
-### 7. ACP `session/export` surface (future)
-
-Once subagent events persist, add an ACP request in
-`packages/glue_server/lib/src/acp/` that returns the rendered Markdown/HTML
-(or a `resource_link` to a saved file). No new harness work — the renderers
-already produce strings.
+Recommendation: migrate. This is a one-PR mechanical move; imports may need
+adjusting from `package:glue/...` to `package:glue_harness/...` and
+`package:glue_core/...` where appropriate.
 
 ## Migration notes from the original plan
 
-- The original plan placed share code in `lib/src/share/` of the CLI package. The actual landed location is `packages/glue_harness/lib/src/share/`. This is the right home: the renderers are surface-agnostic and the harness is the only place all surfaces share.
-- Templates live in `packages/glue_harness/lib/src/share/html/` rather than `templates/`. They are loaded via a generated assets approach in `share_html_assets_loader.dart`, sidestepping `Platform.script` heuristics. (The bundled-assets plan generalizes this pattern further.)
+- Original plan placed share code under `cli/lib/src/share/`. Actual landed location is `packages/glue_harness/lib/src/share/`. Right home — the renderers are surface-agnostic.
+- Templates live in `packages/glue_harness/lib/src/share/html/` rather than a top-level `templates/`. Loaded via static assets through `share_html_assets_loader.dart`, sidestepping `Platform.script` heuristics. The bundled-assets plan generalizes this pattern further.
 - We chose static asset loading instead of `mustache_template`. The remaining string interpolation is small enough that adding a templating dependency is not worth it.
-
-## Test plan (status)
-
-| Test file | Status |
-|---|---|
-| `packages/glue_harness/test/share/share_transcript_builder_test.dart` | exists; extend for subagent events once those persist |
-| `packages/glue_harness/test/share/markdown_renderer_test.dart` | confirm coverage of nested subagent groups, anchors, empty transcripts |
-| `packages/glue_harness/test/share/html_renderer_test.dart` | confirm coverage of self-contained HTML, anchor ids, escaping, nested subagents, collapse-long-output if implemented |
-| `packages/glue_harness/test/share/session_share_exporter_test.dart` | should cover successful md/html writes, no-active-session error, empty-conversation error |
-| `cli/test/commands/builtin_commands_test.dart` | should cover `/share`, `/share html`, `/share md`, invalid args, busy-state error |
-| `packages/glue_harness/test/share/gist_publisher_test.dart` | add if missing — missing `gh`, unauthenticated `gh`, URL parse |
-
-## Output naming and defaults (no change)
-
-- `glue-session-<session-id>.html`
-- `glue-session-<session-id>.md`
-- Default output directory: current working directory
-- `/share gist` publishes Markdown by default
 
 ## Acceptance criteria for "fully done"
 
-This plan is fully closed when:
+This plan closes when:
 
-1. Subagent events are persisted as typed `SessionEvent` variants in `glue_core` and emitted by `AgentManager`.
-2. The transcript builder renders nested subagent groups from real persisted events, not fixtures.
-3. Renderer behavior around raw HTML in assistant markdown is documented and tested.
-4. Long tool outputs collapse via `<details>` over a configurable threshold (HTML).
-5. Markdown export emits per-entry anchors.
-6. `gist_publisher.dart` has full error-path test coverage.
-7. (Optional) `glue serve` exposes `session/export` with the same renderer output.
+1. `AgentManager` emits typed `SubagentSpawnedEvent` / `SubagentEventForwardedEvent` / `SubagentCompletedEvent` on the parent session's event sink.
+2. The transcript builder consumes those events and renders nested subagent groups from real persisted sessions (not `fromEntries(...)` fixtures).
+3. Long tool outputs collapse via `<details>` over a configurable threshold (HTML).
+4. Share tests live in `packages/glue_harness/test/share/` (migrated from `cli/test/share/`).
 
-Items 1–6 are the realistic next batch. Item 7 lands when the ACP surface needs it.
+Items 1–3 are real product work. Item 4 is housekeeping but should land alongside (1) so the harness gets its `test/` tree from the same change.
+
+A future ACP `session/export` request, returning rendered Markdown/HTML or
+a `resource_link` to a saved file, lands when an ACP client needs it. No
+new harness work — the renderers already produce strings.
