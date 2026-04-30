@@ -14,6 +14,7 @@ import 'package:glue/src/commands/arg_completers.dart' as arg_completers;
 import 'package:glue/src/commands/builtin_commands.dart';
 import 'package:glue/src/commands/config_command.dart';
 import 'package:glue/src/commands/slash_commands.dart';
+import 'package:glue/src/commands/usage_report.dart';
 import 'package:glue/src/app/model_display.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 import 'package:glue/src/ui/model_panel_formatter.dart'
@@ -436,6 +437,7 @@ class App {
       switchModelByQuery: _switchModelByQuery,
       sessionAction: _sessionAction,
       shareAction: _shareAction,
+      usageReport: _usageReport,
       listTools: _buildToolsOutput,
       openHistoryPanel: _openHistoryPanel,
       historyActionByQuery: _historyFromCommand,
@@ -539,6 +541,8 @@ class App {
   String _sessionAction(List<String> args) {
     return _sessionActionImpl(this, args);
   }
+
+  String _usageReport() => _usageActionImpl(this);
 
   String _shareAction(List<String> args) {
     return _shareActionImpl(this, args);

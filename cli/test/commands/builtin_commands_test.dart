@@ -88,6 +88,7 @@ void main() {
       String Function(List<String> args)? configAction,
       String Function(List<String> args)? sessionAction,
       String Function(List<String> args)? shareAction,
+      String Function()? usageReport,
     }) {
       return BuiltinCommands.create(
         openHelpPanel: () {},
@@ -97,6 +98,7 @@ void main() {
         switchModelByQuery: (_) => '',
         sessionAction: sessionAction ?? (_) => '',
         shareAction: shareAction ?? (_) => '',
+        usageReport: usageReport ?? () => '',
         listTools: () => '',
         openHistoryPanel: openHistoryPanel ?? () {},
         historyActionByQuery: historyActionByQuery ?? (_) => '',
