@@ -87,24 +87,20 @@ via CSS rules in `share_page.css`. Setting the threshold to 0 disables
 the collapse entirely. Tests cover short passthrough, long collapse,
 and the disable knob.
 
-## Test location migration (housekeeping)
+## Test location migration (housekeeping) — ✅ shipped
 
-Tests for share live in `cli/test/share/` because they predate the harness
-extraction. The harness package currently has no `test/` directory at all
-(`packages/glue_harness/test` is empty / nonexistent). Two options:
+Share tests now live in `packages/glue_harness/test/share/` (migrated from
+`cli/test/share/`). Imports were already
+`package:glue_harness/glue_harness.dart` / `package:glue_core/glue_core.dart` /
+`package:test/test.dart`, so the move was a pure file rename. The repo-layout
+spec test (`session_share_spec_test.dart`) was rewritten to resolve plan and
+asset paths from the harness package's working directory while still tolerating
+runs from the repo root.
 
-- **Now:** migrate `cli/test/share/*.dart` to
-  `packages/glue_harness/test/share/*.dart`, since the code under test is in
-  the harness package. This also creates the harness's `test/` tree, which
-  other plans (thinking-tokens, prompt-caching, ask-user, context-inspector)
-  expect to exist.
-- **Later:** leave them where they are; risk is that future contributors
-  won't find them when modifying harness share code, and `dart test` runs
-  per-package will not exercise the share suite as part of the harness gate.
-
-Recommendation: migrate. This is a one-PR mechanical move; imports may need
-adjusting from `package:glue/...` to `package:glue_harness/...` and
-`package:glue_core/...` where appropriate.
+This change establishes the harness's `test/` tree, which the other plans
+(thinking-tokens, prompt-caching, ask-user, context-inspector,
+subagent-event-persistence) had been writing tests against on the assumption
+it would exist.
 
 ## Migration notes from the original plan
 
@@ -116,7 +112,7 @@ adjusting from `package:glue/...` to `package:glue_harness/...` and
 
 1. ✅ `AgentManager` emits subagent spawn/event/completion onto the parent session log; the transcript builder produces nested subagent groups from real persisted sessions. Shipped via `2026-04-30-subagent-event-persistence.md`.
 2. ✅ Long tool outputs collapse via `<details>` over a configurable threshold (HTML).
-3. **Pending:** Share tests live in `packages/glue_harness/test/share/` (currently in `cli/test/share/`). Pure housekeeping move.
+3. ✅ Share tests live in `packages/glue_harness/test/share/`.
 
 A future ACP `session/export` request, returning rendered Markdown/HTML or
 a `resource_link` to a saved file, lands when an ACP client needs it. No
