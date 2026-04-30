@@ -207,6 +207,31 @@ code, pre {
   word-break: break-word;
 }
 
+.share-collapsible {
+  margin-top: 6px;
+  margin-left: 3ch;
+}
+
+.share-collapsible > summary {
+  cursor: pointer;
+  color: var(--dim);
+  padding: 4px 0;
+  user-select: none;
+}
+
+.share-collapsible > summary:hover {
+  color: var(--fg);
+}
+
+.share-collapsible[open] > summary {
+  margin-bottom: 4px;
+}
+
+.share-collapsible > .share-pre {
+  margin-top: 0;
+  margin-left: 0;
+}
+
 .share-tool-phase {
   margin-left: 1ch;
   color: var(--dim);

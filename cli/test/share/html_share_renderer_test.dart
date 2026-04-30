@@ -170,5 +170,69 @@ void main() {
       expect(output, contains('review raw HTML policy'));
       expect(output, contains('#8 Subagent message'));
     });
+
+    test('renders short tool results inline without <details>', () {
+      final renderer = ShareHtmlRenderer();
+      final shortOutput = List.generate(5, (i) => 'line $i').join('\n');
+
+      final output = renderer.render(
+        meta: meta,
+        transcript: ShareTranscript(entries: [
+          ShareEntry(
+            index: 1,
+            kind: ShareEntryKind.toolResult,
+            text: shortOutput,
+          ),
+        ]),
+        exportedAt: DateTime.parse('2026-04-22T04:20:00Z'),
+      );
+
+      expect(output, contains('share-tool-result'));
+      expect(output, isNot(contains('<details')));
+      expect(output, contains('line 4'));
+    });
+
+    test('wraps long tool results in a collapsible <details> block', () {
+      final renderer = ShareHtmlRenderer(collapseToolOutputAfterLines: 10);
+      final longOutput = List.generate(40, (i) => 'line $i').join('\n');
+
+      final output = renderer.render(
+        meta: meta,
+        transcript: ShareTranscript(entries: [
+          ShareEntry(
+            index: 1,
+            kind: ShareEntryKind.toolResult,
+            text: longOutput,
+          ),
+        ]),
+        exportedAt: DateTime.parse('2026-04-22T04:20:00Z'),
+      );
+
+      expect(output, contains('<details class="share-collapsible">'));
+      expect(output, contains('<summary>Show output (40 lines)</summary>'));
+      expect(output, contains('share-tool-result'));
+      // Body still escaped and present inside the collapsible.
+      expect(output, contains('line 39'));
+    });
+
+    test('collapseToolOutputAfterLines=0 disables the collapse for any length',
+        () {
+      final renderer = ShareHtmlRenderer(collapseToolOutputAfterLines: 0);
+      final longOutput = List.generate(200, (i) => 'line $i').join('\n');
+
+      final output = renderer.render(
+        meta: meta,
+        transcript: ShareTranscript(entries: [
+          ShareEntry(
+            index: 1,
+            kind: ShareEntryKind.toolResult,
+            text: longOutput,
+          ),
+        ]),
+        exportedAt: DateTime.parse('2026-04-22T04:20:00Z'),
+      );
+
+      expect(output, isNot(contains('<details')));
+    });
   });
 }

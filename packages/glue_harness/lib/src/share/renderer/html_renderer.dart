@@ -4,10 +4,17 @@ import 'package:glue_harness/src/share/share_models.dart';
 import 'package:glue_harness/src/storage/session_store.dart';
 
 class ShareHtmlRenderer {
-  ShareHtmlRenderer({ShareHtmlAssetsLoader? assetsLoader})
-      : _assetsLoader = assetsLoader ?? const ShareHtmlAssetsLoader();
+  ShareHtmlRenderer({
+    ShareHtmlAssetsLoader? assetsLoader,
+    this.collapseToolOutputAfterLines = 30,
+  }) : _assetsLoader = assetsLoader ?? const ShareHtmlAssetsLoader();
 
   final ShareHtmlAssetsLoader _assetsLoader;
+
+  /// Tool result blocks longer than this many lines render inside a
+  /// `<details>` element so the page stays scannable. Set to a very large
+  /// value (or zero) to disable.
+  final int collapseToolOutputAfterLines;
 
   String render({
     required SessionMeta meta,
@@ -119,11 +126,21 @@ class ShareHtmlRenderer {
       case ShareEntryKind.toolCall:
         return '<pre class="share-pre share-tool-args">${escapeShareHtml(prettyShareJson(entry.toolArguments ?? const <String, dynamic>{}))}</pre>';
       case ShareEntryKind.toolResult:
-        return '<pre class="share-pre share-tool-result">${escapeShareHtml(entry.text)}</pre>';
+        return _renderToolResultBody(entry.text);
       case ShareEntryKind.subagentGroup:
         final children = entry.children.map(_entry).join();
         return '<div class="share-entry-body">${escapeShareHtml(entry.text)}</div><div class="share-children">$children</div>';
     }
+  }
+
+  String _renderToolResultBody(String text) {
+    final lineCount = '\n'.allMatches(text).length + 1;
+    final shouldCollapse = collapseToolOutputAfterLines > 0 &&
+        lineCount > collapseToolOutputAfterLines;
+    final pre =
+        '<pre class="share-pre share-tool-result">${escapeShareHtml(text)}</pre>';
+    if (!shouldCollapse) return pre;
+    return '<details class="share-collapsible"><summary>Show output ($lineCount lines)</summary>$pre</details>';
   }
 
   String _outline(ShareEntry entry, {required bool nested}) {

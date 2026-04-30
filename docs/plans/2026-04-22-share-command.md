@@ -56,38 +56,36 @@ Confirmed against `claude/architect-harness-layers-maSVJ` as of 2026-04-30:
 - ✅ Builder test explicitly asserts the current contract: `ignores raw subagent-like events until a persisted schema exists` (confirms the open gap below is intentional, not an oversight).
 - ✅ Builder test exercises the subagent-fixture path through `fromEntries(...)` for nested groups.
 
-## Open gaps (only two)
+## Open gaps
 
-### 1. Subagent events are defined and ACP-mapped, but `AgentManager` does not yet emit them
+### 1. Subagent persistence — ✅ shipped
 
-The types exist in `glue_core` and the ACP server already knows how to map
-them, but a search of `packages/glue_harness/lib/src/agent/agent_manager.dart`
-shows no emission of `SubagentSpawnedEvent` / `SubagentEventForwardedEvent` /
-`SubagentCompletedEvent`. Until the harness emits these onto the parent
-session's event sink, persisted sessions cannot reconstruct nested
-subagent transcripts in `/share` output. The transcript builder
-deliberately ignores raw subagent-shaped JSON until that emission exists
-(see the `ignores raw subagent-like events` test).
+Tracked separately in `2026-04-30-subagent-event-persistence.md` and
+implemented in `feat(harness): persist subagent activity to
+conversation.jsonl`. `AgentManager` now emits
+`subagent_spawned` / `subagent_event` / `subagent_completed` JSON rows
+through an `onPersistEvent` sink wired by the CLI to
+`_sessionManager.logEvent`. The transcript builder consumes them via the
+session-event normalizer and produces nested
+`ShareEntryKind.subagentGroup` entries. The CLI session resume path
+reconstructs `_SubagentGroup` blocks from the same JSONL on resume.
 
-Concrete plan:
+Note: this used the simpler "Option A" (untyped JSON rows) rather than
+typed `SubagentSpawnedEvent` / `SubagentEventForwardedEvent` /
+`SubagentCompletedEvent`. The typed `SessionEvent` classes in
+`glue_core` remain a forward-looking ACP boundary contract; migrating
+`SessionStore.logEvent` to consume typed events is a separate larger
+refactor and does not block share output.
 
-- In `packages/glue_harness/lib/src/agent/agent_manager.dart`, on subagent spawn/finish, emit:
-  - `SubagentSpawnedEvent { childId, parentId?, agentRole, ... }` on the parent's session event sink.
-  - For each event the child agent emits, wrap it in `SubagentEventForwardedEvent { childId, inner: <child SessionEvent> }` and forward to the parent sink.
-  - On child completion, emit `SubagentCompletedEvent { childId }`.
-- Extend `share_transcript_builder.dart`:
-  - When `normalizeSessionEvents` (or a new sibling normalizer) sees a `SubagentSpawnedEvent`, push a new `ShareEntryKind.subagentGroup` entry and a stack frame.
-  - For each `SubagentEventForwardedEvent`, normalize the inner event and append to the active subagent group's `children`.
-  - On `SubagentCompletedEvent`, pop the stack frame.
-- Promote the existing `cli/test/share/share_transcript_builder_test.dart` `ignores raw subagent-like events…` case from "ignores" to "renders nested groups" once the events are real.
+### 2. Long tool output collapse — ✅ shipped
 
-### 2. Long tool output collapse
-
-`html_renderer.dart` does not wrap long tool output in `<details>`. Pure
-renderer change: introduce a configurable line threshold (default
-something like 30 lines) and wrap tool-result `share-entry-body` content
-above the threshold in `<details><summary>show output</summary>…</details>`.
-Add a test case in `html_share_renderer_test.dart`.
+`ShareHtmlRenderer` now accepts `collapseToolOutputAfterLines` (default
+30) and wraps tool result blocks above that threshold in
+`<details class="share-collapsible"><summary>Show output (N
+lines)</summary>…</details>`. The summary control is dimmed and clickable
+via CSS rules in `share_page.css`. Setting the threshold to 0 disables
+the collapse entirely. Tests cover short passthrough, long collapse,
+and the disable knob.
 
 ## Test location migration (housekeeping)
 
@@ -116,14 +114,9 @@ adjusting from `package:glue/...` to `package:glue_harness/...` and
 
 ## Acceptance criteria for "fully done"
 
-This plan closes when:
-
-1. `AgentManager` emits typed `SubagentSpawnedEvent` / `SubagentEventForwardedEvent` / `SubagentCompletedEvent` on the parent session's event sink.
-2. The transcript builder consumes those events and renders nested subagent groups from real persisted sessions (not `fromEntries(...)` fixtures).
-3. Long tool outputs collapse via `<details>` over a configurable threshold (HTML).
-4. Share tests live in `packages/glue_harness/test/share/` (migrated from `cli/test/share/`).
-
-Items 1–3 are real product work. Item 4 is housekeeping but should land alongside (1) so the harness gets its `test/` tree from the same change.
+1. ✅ `AgentManager` emits subagent spawn/event/completion onto the parent session log; the transcript builder produces nested subagent groups from real persisted sessions. Shipped via `2026-04-30-subagent-event-persistence.md`.
+2. ✅ Long tool outputs collapse via `<details>` over a configurable threshold (HTML).
+3. **Pending:** Share tests live in `packages/glue_harness/test/share/` (currently in `cli/test/share/`). Pure housekeeping move.
 
 A future ACP `session/export` request, returning rendered Markdown/HTML or
 a `resource_link` to a saved file, lands when an ACP client needs it. No
