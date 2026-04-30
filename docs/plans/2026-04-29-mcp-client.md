@@ -72,11 +72,21 @@ mcp:
       env:
         DEBUG: "false"
 
-    # http+sse transport
+    # http+sse with bearer token
     company-wiki:
       url: "https://mcp.example.com/wiki"
-      headers:
-        Authorization: "Bearer ${WIKI_MCP_TOKEN}"
+      auth:
+        kind: bearer
+        token: "${WIKI_MCP_TOKEN}"   # see § Auth → env-var expansion
+
+    # http+sse with OAuth (discovery-driven)
+    notion:
+      url: "https://mcp.notion.com"
+      auth:
+        kind: oauth
+        # discovery, dynamic client registration, and token storage are
+        # all handled by glue's OAuth flow. No client_id needed here
+        # for servers that support DCR (RFC 7591).
 
     # disabled servers stay in config but skip the connect step
     postgres:
@@ -90,12 +100,119 @@ mcp:
       - "filesystem.list_directory"
     deny:
       - "*.delete_file"     # never expose this name from any server
+
+  # connection lifecycle (see § Connection lifecycle for defaults)
+  reconnect:
+    enabled: true
+    initial_delay_ms: 500
+    max_delay_ms: 30000
+    max_attempts: 10        # per server, resets after a successful connect
+  call_timeout_seconds: 30  # default; overridable per-server
 ```
 
 ACP integration: `session/new`'s params already accept `mcpServers`.
 When a client passes that, Glue's ACP delegate uses *that* list for
 the session instead of (or in addition to — see open question) the
 config.yaml list. This matches how Zed, Claude Desktop, etc. behave.
+
+## Auth
+
+Three authentication modes ship in v1:
+
+### Bearer token
+
+For HTTP+SSE / WebSocket transports. Token comes from one of
+(in priority order):
+
+1. `auth.token` literal in config (discouraged — leaks via dotfile sync)
+2. `auth.token: "${ENV_VAR}"` interpolation from the process env
+3. Glue's `CredentialStore` under the key `mcp:<server-id>:bearer`
+   (set via `glue mcp auth set <server> --bearer …` — encrypted at rest)
+
+**Env-var expansion** happens at config-load. Missing var → load fails
+loudly with the server name and the missing var. (We don't lazy-load
+because lazy means the user finds out at session start, after waiting
+through provider init.) Empty string is treated as missing.
+
+### OAuth 2.1 (Authorization Code + PKCE)
+
+Required by the upstream MCP spec for HTTP transports beginning with
+the 2025-03-26 protocol revision. Flow:
+
+1. **Discovery** — `GET /.well-known/oauth-authorization-server` from
+   the MCP server's base URL. We honour `authorization_endpoint`,
+   `token_endpoint`, `registration_endpoint` (RFC 8414).
+2. **Dynamic Client Registration** — `POST` to `registration_endpoint`
+   with our redirect URI, client name `glue`, logo URL. Response gives
+   `client_id` (+ optional `client_secret` for confidential clients).
+   We persist these per-server in `CredentialStore` so re-registration
+   only happens on first connect.
+3. **Authorization** — open the user's browser to
+   `authorization_endpoint` with PKCE challenge + a fresh `state`. We
+   bind a one-shot loopback HTTP server on `127.0.0.1:0` that the user
+   is redirected back to with the authorization code. The server then
+   shuts down. If the user dismisses the browser, the loopback server
+   times out after 5 minutes.
+4. **Token exchange** — POST to `token_endpoint`, get `access_token` +
+   `refresh_token` + `expires_in`. Stored encrypted in
+   `CredentialStore` under `mcp:<server-id>:oauth`.
+5. **Per-call** — `Authorization: Bearer <access_token>`. On 401 with
+   `error=invalid_token`, refresh once using the stored refresh token
+   and retry. If refresh fails (revoked, expired refresh token), emit
+   `McpServerAuthRequiredEvent` (see § MCP event vocabulary) and pause the
+   server until the user re-authorises via `glue mcp auth login`.
+
+This reuses the existing OAuth state machine generalised from
+`CopilotAdapter` — same loopback-redirect mechanics, same encrypted
+credential store, just driven by discovery rather than hardcoded
+endpoints.
+
+### None (stdio implicit trust)
+
+Subprocesses spawned over stdio are implicitly trusted — the user
+launched them. No auth header. The integrity story is process
+isolation + env hygiene (next section).
+
+### stdio env hygiene
+
+By default a stdio server's subprocess gets a **scrubbed** environment:
+`PATH`, `HOME`, `LANG`, `TERM`, `USER`, `SHELL`, the OS-specific
+homologues, and *only* the keys explicitly listed in the server's
+`env:` block. This prevents the user's `OPENAI_API_KEY` /
+`AWS_SECRET_ACCESS_KEY` / `~/.netrc` indirections from leaking to
+every MCP server they install.
+
+(Claude Desktop currently inherits the full parent env. We're
+intentionally stricter; it's `mcp.subprocess_env: full` in
+`glue_config.yaml` to opt out.)
+
+### Process lifecycle for stdio
+
+- Spawned with `start_mode: detached: false` so the child dies if
+  Glue dies. On Linux additionally `PR_SET_PDEATHSIG = SIGTERM` to
+  guarantee orphan-free exit; on macOS we use a watchdog. Without
+  this, killed-Glue → zombie MCP processes is a real problem.
+- Clean shutdown: `SIGTERM` → wait 2s → `SIGKILL`.
+- Crash-loop detection: if a server respawns >5 times in 60 seconds
+  it's marked dead for the rest of the session and an
+  `McpServerError` event fires.
+
+### Credential storage
+
+Everything sensitive (bearer tokens supplied via `glue mcp auth set`,
+OAuth tokens, registered client_secrets) lives in the existing
+`CredentialStore` under namespaced keys:
+
+| Key                                | Value                            |
+|------------------------------------|----------------------------------|
+| `mcp:<server-id>:bearer`           | the literal bearer token         |
+| `mcp:<server-id>:oauth.access`     | access token + expires_at        |
+| `mcp:<server-id>:oauth.refresh`    | refresh token                    |
+| `mcp:<server-id>:oauth.client_id`  | DCR-issued client id             |
+| `mcp:<server-id>:oauth.client_secret` | DCR-issued secret (if any)    |
+
+`CredentialStore` is already encrypted-at-rest and shared across
+sessions, so re-auth survives Glue restarts.
 
 ## Tool registration flow
 
@@ -166,14 +283,13 @@ On `initialize`, advertise:
 ```json
 {
   "capabilities": {
-    "roots": { "listChanged": true },
-    "sampling": {}
+    "roots": { "listChanged": true }
   },
   "clientInfo": {
     "name": "glue",
     "version": "<from glue_core/AppConstants.version>"
   },
-  "protocolVersion": "2024-11-05"
+  "protocolVersion": "2025-03-26"
 }
 ```
 
@@ -181,26 +297,177 @@ On `initialize`, advertise:
   Servers like `filesystem` use this to scope access. Glue advertises
   the cwd from `session/new` (or the project root if detected).
   `listChanged` because cwd can change mid-session.
-- **`sampling`** — placeholder. Glue won't proxy LLM calls back to MCP
-  servers in v1; deferred. Some servers (`mcp-langchain`,
-  `mcp-search-and-summarize`) use sampling to ask the *client's* LLM
-  to do work. v2.
+- **`sampling`** — *not* advertised in v1. If a server's `initialize`
+  response lists `sampling` in `serverCapabilities` *and* its tool
+  descriptors require it, we emit `McpServerError(reason:
+  unsupported_capability)`, mark the server unavailable, and surface
+  in `glue mcp test`. Failing loud at connect rather than at first
+  call.
 
-## Error handling
+### Protocol version handling
 
-The agent loop must keep running when any individual MCP server is
-flaky. Concrete behaviours:
+Glue pins `MCP_PROTOCOL_VERSION` to `"2025-03-26"` per release. Server
+responses are negotiated as follows:
 
-- **Server fails to start** → log, skip its tools, continue session.
-- **`tools/list` errors** → cache the last good list (per-server),
-  retry on next session.
-- **`tools/call` errors** → return as `ToolResult(success: false, ...)`
-  — same shape as a native tool failing. The agent can recover.
-- **Connection drops mid-session** → mark all of that server's tools
-  as unavailable. Future `tools/list_changed` notifications can
-  resurrect them.
-- **Slow server** → 30s default timeout per `tools/call`, configurable
-  per server. Surface as `success: false` with a "timeout" summary.
+| Server's `protocolVersion` response                    | Action                                                  |
+|--------------------------------------------------------|---------------------------------------------------------|
+| Equal to ours                                          | Continue.                                               |
+| One we know about but older (within 12 months)         | Continue with downgrade flag — we suppress messages we know don't exist on the older spec. Logged. |
+| Newer than ours                                        | Continue with upgrade-tolerant mode — we ignore unknown notification types from the server (we don't *send* anything new) and warn at connect. |
+| Unparseable, or older than our minimum-supported (currently 2024-11-05) | Refuse. Emit `McpServerError(reason: protocol_too_old)` and disable. |
+
+The client never silently sends messages the server can't understand
+— spec downgrade is a one-way truncation of what *we* emit.
+
+## Connection lifecycle
+
+The agent loop keeps running when any individual MCP server is flaky.
+This section specifies *exactly* what happens at each transition.
+
+### State machine (per server)
+
+```
+disconnected ──connect attempt──▶ connecting
+                                      │
+                                      ├── ok ──▶ connected ──drop──▶ reconnecting
+                                      │              │                   │
+                                      │              │                   ├── retries left ──▶ reconnecting (backoff)
+                                      │              │                   └── exhausted ─────▶ dead
+                                      └── fail ──▶ reconnecting (backoff)
+                                                       │
+                                                       └── max_attempts ──▶ dead
+```
+
+### Drop detection
+
+- **stdio**: child stdout EOF or non-zero exit → drop.
+- **HTTP+SSE**: SSE stream disconnect, or 5xx on the next request → drop.
+- **WebSocket**: `WebSocket.close` with non-1000 code, or absent
+  pong-on-ping after 30s → drop.
+
+### Backoff (with jitter)
+
+```
+attempt N delay = clamp(initial * 2^(N-1), 0, max) ± random(0, 0.3 * delay)
+```
+
+Defaults: `initial=500ms`, `max=30s`, `max_attempts=10` per server.
+Reset to attempt 0 after any successful `tools/list` round-trip.
+Exhausting `max_attempts` transitions the server to `dead` for the
+session; `glue mcp reconnect <server>` (or restarting the session)
+clears it.
+
+### In-flight `tools/call` during a drop
+
+| State at drop          | Behaviour                                            |
+|------------------------|------------------------------------------------------|
+| Pending response       | Resolve as `ToolResult(success: false, summary: "server disconnected", metadata: {"retryable": true})` immediately. Do not auto-retry — the agent loop decides whether to retry or change tack. |
+| Queued (rate-limited)  | Reject with the same shape.                          |
+| New call while reconnecting | Reject immediately with `"server reconnecting"`. The agent typically waits / picks another tool. |
+
+We never auto-replay tool calls. Even reads can have side effects
+(rate-limit charges, audit log entries). Replay is the agent's call.
+
+### Crash-loop and dead state
+
+A server that respawns/reconnects ≥5 times in 60s is marked `dead`
+without further attempts. Avoids hot-looping a broken server and
+spamming the user with reconnect events.
+
+### Hot config reload (deferred)
+
+v1: config changes apply at next session. Hot reload is a v2 feature
+(open question on whether mid-session pool reconfiguration is worth
+the complexity).
+
+## MCP event vocabulary
+
+New `SessionEvent` variants in `glue_core` (sealed-extending the
+existing hierarchy in `session_event.dart`). Surfaces — TUI, ACP
+clients, observability sinks — pattern-match exhaustively.
+
+```dart
+class McpServerConnectedEvent extends SessionEvent {
+  final String serverId;
+  final String serverVersion;            // from initialize response
+  final List<String> toolNames;          // namespaced
+}
+
+class McpServerDisconnectedEvent extends SessionEvent {
+  final String serverId;
+  final McpDisconnectReason reason;      // dropped | shutdown | crashLoop | dead
+  final int reconnectAttempt;            // 0 if not retrying
+  final Duration nextAttemptIn;          // Duration.zero if dead
+}
+
+class McpServerErrorEvent extends SessionEvent {
+  final String serverId;
+  final McpErrorKind kind;
+    // protocolTooOld | unsupportedCapability | authFailed
+    // | spawnFailed | crashLoop
+    // (authRequired is its own event below)
+  final String message;                  // human-readable
+}
+
+class McpServerAuthRequiredEvent extends SessionEvent {
+  final String serverId;
+  final String reauthCommand;            // e.g. "glue mcp auth login notion"
+  // Surfaces remediate by: TUI shows a banner with the command;
+  // ACP clients can show a notification + button.
+}
+
+class McpToolListChangedEvent extends SessionEvent {
+  final String serverId;
+  final List<String> added;              // namespaced
+  final List<String> removed;
+}
+```
+
+### ACP surface for MCP events
+
+ACP doesn't have native MCP-status notifications. v1 strategy:
+
+- Reflect them as `session/update` notifications using a
+  Glue-extension `sessionUpdate: "glue_mcp_status"` discriminator. The
+  payload mirrors the `SessionEvent` variant. Clients that don't
+  recognise the type ignore it (forward-compatible).
+- `McpServerAuthRequiredEvent` *additionally* triggers a
+  `session/request_permission`-shaped request with a single `oauth`
+  option, so editors that already render the permission modal get
+  re-auth UX for free.
+- `tools/call` failures continue to flow as `tool_call_update(failed)`
+  with the disconnect reason in the content text.
+
+### TUI surface
+
+- New `/mcp` slash command opens a status panel listing each
+  configured server, its connection state, last error, tool count.
+- Status-bar indicator when *any* server is in `reconnecting` or
+  `dead`: `MCP: 2 dead, 1 reconnecting`.
+- Inline system-message on `McpServerDisconnectedEvent` with a hint
+  about `/mcp reconnect <server>` if applicable.
+
+### Observability
+
+Every event is logged as a span on the current `Observability` sink
+(reusing the existing infrastructure). OpenTelemetry users get them
+as structured events on the session's parent span; debug builds
+write them to the per-session log file.
+
+## Concurrency
+
+- **Multiple in-flight `tools/call` per server.** Supported. JSON-RPC
+  correlates by id; the `McpClient` keeps a `Map<int, Completer>` for
+  pending calls. The agent already invokes tools via `Future.wait`
+  for parallelism; this just extends to MCP-sourced tools.
+- **Server-side rate limiting.** When a server returns a JSON-RPC
+  error with `code == -32011` (Glue-reserved for rate limit) or an
+  HTTP 429, `McpClient` waits the `Retry-After` (HTTP) or
+  `data.retry_after_seconds` (JSON-RPC) hint, then retries the call
+  *once* before surfacing as failure. Configurable per server.
+- **Backpressure.** No explicit limit on concurrent calls per server.
+  If a server can't handle parallelism it should rate-limit; we
+  honour the response.
 
 ## Testing strategy
 
@@ -219,87 +486,150 @@ flaky. Concrete behaviours:
 
 ```sh
 # inspect / debug user-configured servers
-glue mcp list                # list configured servers + connection state
-glue mcp tools <server>      # list tools advertised by one server
+glue mcp list                # configured servers + state (connected/dead/…)
+glue mcp tools <server>      # tools advertised by one server
 glue mcp call <server> <tool> --arg key=value
 glue mcp test <server>       # ping initialize + tools/list
+glue mcp reconnect <server>  # clear `dead` state, retry immediately
+
+# auth helpers
+glue mcp auth set <server> --bearer    # prompts for token, stores encrypted
+glue mcp auth login <server>           # OAuth: opens browser, completes flow
+glue mcp auth logout <server>          # forgets stored credentials
+glue mcp auth status                   # per-server: bearer | oauth(expires…) | none
 
 # in-session toggles
-/mcp                          # slash command: list servers + their tools
+/mcp                          # slash command: status panel
 /mcp toggle <server>          # disable/enable for the current session
+/mcp reconnect <server>       # same as the top-level command
 /mcp call <server>.<tool>     # invoke directly without the agent
 ```
 
 ## Implementation order
 
 1. **`glue_strategies/mcp_client/protocol.dart`** — shared MCP message
-   types (initialize, tools/list, tools/call, …). Reuses
-   `glue_server`'s `JsonRpcMessage` for transport.
+   types (initialize, tools/list, tools/call, tools/list_changed,
+   server `error`/auth shapes). Reuses `glue_server`'s
+   `JsonRpcMessage` for transport.
 2. **`mcp_client/transport/stdio.dart`** — subprocess spawn + stdio
-   pipe. (HTTP+SSE and WebSocket transports follow.)
-3. **`mcp_client/client.dart`** — `McpClient`: initialize, list tools,
-   call tool. Handles request correlation by id.
-4. **`mcp_client/tool_factory.dart`** — wraps an MCP tool descriptor
-   into a glue_core `Tool` impl whose `execute()` calls the client.
-5. **`mcp_client/pool.dart`** — `McpClientPool`: holds N clients, one
-   per configured server; lifecycle and lazy-connect logic.
-6. **Config plumbing** — `mcp:` section in `glue_config.yaml`, parsed
-   by `glue_harness`'s `GlueConfig`. (`glue_harness` is allowed to
-   import strategies via the path dep, so it can drive the pool.)
-7. **`ServiceLocator` integration** — at session start, build the
-   pool from config + any session-scoped servers, register tools.
-8. **ACP integration** — `CliAcpDelegate.createSession` honours
-   `SessionNewParams.mcpServers` (passed by the editor/web client).
-9. **`glue mcp` CLI subcommands** — list/test/call helpers for
-   debugging.
-10. **In-session `/mcp` slash commands** — visibility toggles, manual
-    invocation.
-11. **HTTP+SSE transport.**
-12. **WebSocket transport.**
-13. **`tools/list_changed` reactivity.** When a server pushes the
-    notification, refresh its tool list mid-session and update the
-    agent's registry.
-14. **Server-side resources / prompts** — MCP servers can also expose
-    *resources* (`resources/list`, `resources/read`) and *prompts*
-    (`prompts/list`, `prompts/get`). v2: surface these as
-    `glue://mcp/<server>/...` for the agent to read, and as a
-    `/prompts` slash command for users.
+   pipe with the env-hygiene + PR_SET_PDEATHSIG + crash-loop logic
+   from § Connection lifecycle.
+3. **`mcp_client/client.dart`** — `McpClient`: initialize (with
+   protocol-version negotiation), list tools, call tool with the
+   concurrent-id pending map, rate-limit retry, drop/reconnect state
+   machine.
+4. **`mcp_client/connection_state.dart`** — sealed
+   `McpConnectionState` (disconnected / connecting / connected /
+   reconnecting / dead) + the backoff-with-jitter helper.
+5. **MCP `SessionEvent` variants** — five new sealed-extending types
+   in `glue_core/session_event.dart`:
+   `McpServerConnectedEvent`, `McpServerDisconnectedEvent`,
+   `McpServerErrorEvent`, `McpServerAuthRequiredEvent`,
+   `McpToolListChangedEvent`. Update the exhaustiveness test.
+6. **`mcp_client/tool_factory.dart`** — wraps an MCP tool descriptor
+   into a glue_core `Tool` impl whose `execute()` calls the client
+   (and whose `disabled`/`unavailable` state reflects connection
+   state).
+7. **`mcp_client/pool.dart`** — `McpClientPool`: holds N clients,
+   one per configured server; eager-connect on session start
+   (non-blocking), lifecycle, drives reconnect.
+8. **Config plumbing** — `mcp:` section in `glue_config.yaml`,
+   parsed by `glue_harness`'s `GlueConfig`. Env-var expansion at
+   load (with missing-var diagnostics). Reconnect / call_timeout
+   defaults.
+9. **Bearer auth** — config + `CredentialStore` integration + the
+   `glue mcp auth set` subcommand.
+10. **OAuth 2.1 (PKCE + DCR)** — generalise the existing Copilot
+    OAuth machinery in `glue_strategies/providers/auth_flow.dart`:
+    discovery (`/.well-known/oauth-authorization-server`), DCR
+    (`registration_endpoint`), loopback redirect, encrypted token
+    storage, refresh-on-401-once. Surfaces as
+    `glue mcp auth login <server>` and the typed
+    `McpServerAuthRequiredEvent`.
+11. **`ServiceLocator` integration** — at session start, build the
+    pool from config + any session-scoped servers, register tools.
+12. **ACP integration** — `CliAcpDelegate.createSession` honours
+    `SessionNewParams.mcpServers`. MCP `SessionEvent`s map to the
+    Glue-extension `glue_mcp_status` `session/update` payloads.
+    `McpServerAuthRequiredEvent` additionally surfaces a
+    `session/request_permission`-shaped re-auth request.
+13. **`glue mcp` CLI subcommands** — list / tools / call / test /
+    reconnect / auth (set/login/logout/status).
+14. **In-session `/mcp` slash commands** — status panel, toggle,
+    reconnect, direct invocation.
+15. **HTTP+SSE transport.** Includes the SSE drop-detection +
+    reconnect path.
+16. **WebSocket transport.**
+17. **`tools/list_changed` reactivity.** Subscribe at connect; on
+    notification refresh the server's tool list, diff against last,
+    emit `McpToolListChangedEvent` with added/removed.
+18. **Conformance harness in CI.** Run the official
+    `@modelcontextprotocol/server-everything` reference server in
+    nightly + assert tool round-trips and the connection-lifecycle
+    behaviours.
 
-Estimated total: ~800–1000 lines across `mcp_client/` plus harness +
-ACP integration.
+Estimated total: ~1200–1500 lines across `mcp_client/` plus
+glue_core event additions + harness + ACP integration. The OAuth
+and connection-lifecycle additions roughly double the original
+estimate. Resources / prompts (`resources/*`, `prompts/*`) are
+deferred to v2 — see § Out of scope.
 
 ## Out of scope for v1
 
 - **`sampling` capability** — letting MCP servers ask Glue's LLM to do
-  work. Powerful but rare; deferred until we see real demand.
+  work. Powerful but rare. We refuse-with-error rather than partially
+  support; deferred until we see real demand.
 - **`roots/listChanged` notifications going *out*** — we advertise the
-  capability but don't push updates yet.
+  capability but don't push updates yet (cwd is fixed for the session
+  in v1 anyway).
 - **Resources** (`resources/*`) and **prompts** (`prompts/*`) —
   v2; tool support is the most-requested.
-- **Multi-tenant auth, key management** — config files are the v1
-  story. A keychain integration comes later.
+- **Hot config reload.** Config changes apply at next session.
+- **Confidential clients (OAuth client_secret in config).** v1 only
+  supports public clients (PKCE-only) and DCR-issued credentials.
+- **OS keychain integration.** v1 stores credentials in
+  `CredentialStore`'s encrypted file. Keychain (macOS Keychain,
+  Linux Secret Service) is a follow-up.
 - **Inline server install** (`glue mcp install <pkg>`) — the user
   installs servers themselves with `npm`/`brew`/whatever; we just
   consume them.
 
 ## Open questions
 
+These need a decision before coding ships, but each has a recommended
+default that the doc above already assumes.
+
 1. **Session vs. global config precedence.** When ACP's
    `session/new.mcpServers` is non-empty *and* `~/.glue/config.yaml`
-   has servers, do we union, override per-session, or use only the
-   ACP list? Claude Desktop / Cursor seem to use only the editor's
-   list per-session. Same here? Or layered?
-2. **Auto-approve names.** ACP carries the namespaced name in
-   `request_permission.title`. Should we expose `tool_policy.auto_approve`
-   to the editor so it can suppress the modal locally? (Trade-off:
-   visibility vs. convenience.)
-3. **Server warmup** — connect lazily (on first tool invocation) or
-   eagerly at session start? Eagerly is better UX but slower
-   `session/new` if a server is sluggish. Probably eager with a
-   non-blocking connect + per-call retry on failure.
-4. **Spec versioning.** The MCP spec bumps occasionally. We pin one
-   `protocolVersion` per release; if a server speaks a newer one, do
-   we negotiate down or refuse? Spec says negotiate.
+   has servers, do we union, override, or replace? Claude Desktop /
+   Cursor use *only* the editor's list per-session.
+   **Recommended:** match — replace, not union. The editor is the
+   source of truth for that session.
+2. **Auto-approve names over ACP.** Should we expose
+   `tool_policy.auto_approve` to the editor (in the `glue_mcp_status`
+   payload) so it can suppress the permission modal client-side?
+   **Recommended:** no — the gate runs in the harness regardless;
+   leaking the policy doesn't change behaviour and makes the auth
+   surface confusing.
+3. **Eager vs lazy connect.** Eagerly at `session/new` makes the
+   first tool call snappy; lazily defers the cost.
+   **Recommended:** eager + non-blocking (fire all `connect()`s in
+   parallel, don't await). `tools/list` populates the registry as
+   each completes; `McpToolListChangedEvent` fires when each lands.
+4. **OAuth on stdio.** The MCP spec auth section is HTTP-focused.
+   For stdio servers that nevertheless want OAuth (some Anthropic
+   examples bridge a stdio shim to an OAuth API), do we support it?
+   **Recommended:** v1 = no. stdio is implicitly trusted; OAuth-style
+   stdio servers can use an envelope auth header passed via env.
+5. **Server identity for credential keys.** OAuth + bearer keys
+   namespace by `<server-id>`, but the user can rename a server in
+   their config. Re-authing every rename is annoying.
+   **Recommended:** keys are by server-id (the user's chosen name).
+   Renaming → user re-auths once. Document the trade-off.
+6. **`tool_policy.deny` patterns.** Glob-style (`*.delete_file`)?
+   Exact match only?
+   **Recommended:** glob with `*` and `?` wildcards, scoped to the
+   namespaced name. Same matcher we'd use for any allow/deny lists.
 
 ---
 
