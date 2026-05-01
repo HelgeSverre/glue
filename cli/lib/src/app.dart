@@ -107,6 +107,7 @@ class App {
   int _spinnerFrame = 0;
   Timer? _spinnerTimer;
   String _streamingText = '';
+  String _streamingThinking = '';
   StreamSubscription<AgentEvent>? _agentSub;
   StreamSubscription<SubagentUpdate>? _subagentSub;
   final _exitCompleter = Completer<void>();

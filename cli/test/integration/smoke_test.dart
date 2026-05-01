@@ -54,7 +54,7 @@ void main() {
       );
       final result = await runner.runToCompletion('Please read pubspec.yaml');
       expect(result, contains('Done with the task'));
-      expect(core.tokenCount, greaterThan(0));
+      expect(core.stats.totalTokens, greaterThan(0));
     });
 
     test('AgentManager spawns parallel subagents', () async {

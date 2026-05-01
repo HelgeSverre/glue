@@ -86,6 +86,18 @@ class BlockRenderer {
     return '$header\n$indented';
   }
 
+  /// Render a streaming reasoning / "thinking" block. Styled dim + italic
+  /// so the user reads it as deliberative-aside, not as the final answer.
+  /// `▸` differentiates from the assistant's `◆` and the user's `❯`.
+  String renderThinking(String text) {
+    final header = ' ${'▸ Thinking'.styled.dim.gray}';
+    final md = MarkdownRenderer(_inner - 2);
+    final body = md.render(text);
+    final indented =
+        body.split('\n').map((l) => '   ${l.styled.dim.italic}').join('\n');
+    return '$header\n$indented';
+  }
+
   /// Render a tool call block.
   String renderToolCall(String name, Map<String, dynamic>? args) {
     final header = ' ${'▶ Tool: $name'.styled.bold.yellow}';

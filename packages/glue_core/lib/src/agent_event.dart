@@ -21,6 +21,15 @@ class AgentTextDelta extends AgentEvent {
   AgentTextDelta(this.delta);
 }
 
+/// A delta of streaming reasoning/"thinking" content forwarded to the
+/// UI. Only emitted by reasoning-capable models. Renderers should style
+/// this distinctly from [AgentTextDelta] (typically dim + italic) so
+/// users see the reasoning as an aside, not as the final answer.
+class AgentThinkingDelta extends AgentEvent {
+  final String delta;
+  AgentThinkingDelta(this.delta);
+}
+
 /// Notification that a tool call is being prepared.
 class AgentToolCallPending extends AgentEvent {
   final ToolCallId id;

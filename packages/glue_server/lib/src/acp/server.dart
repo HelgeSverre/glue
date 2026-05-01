@@ -180,8 +180,7 @@ class AcpServer {
         case AcpMethod.sessionUsageSummary:
           final sessionId = (params?['sessionId'] as String?)?.trim();
           if (sessionId == null || sessionId.isEmpty) {
-            _replyInvalidParams(
-                id, 'session/usage_summary requires sessionId');
+            _replyInvalidParams(id, 'session/usage_summary requires sessionId');
             return;
           }
           if (!_knownSessions.contains(sessionId)) {
@@ -309,6 +308,10 @@ class AcpServer {
                 update: AgentMessageChunkUpdate(delta),
               ).toJson(),
             ));
+          case AgentThinkingDelta():
+            // Reasoning traces are a phase-2 ACP feature; agent_event_mapping
+            // returns null so we drop the event here.
+            break;
           case AgentToolCallPending(:final id, :final name):
             if (announced.add(id.value)) {
               transport.send(JsonRpcNotification(

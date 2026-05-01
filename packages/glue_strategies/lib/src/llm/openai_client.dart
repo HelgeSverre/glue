@@ -121,6 +121,15 @@ class OpenAiClient implements LlmClient {
           <String, dynamic>{};
       final finishReason = choice['finish_reason'] as String?;
 
+      // Reasoning ("thinking") content. GPT-5 / o-series put it on
+      // `delta.reasoning`; some gateways and DeepSeek use
+      // `delta.reasoning_content`. A single delta object can carry both
+      // reasoning and content, so this branch precedes the content check.
+      final reasoning = delta['reasoning'] ?? delta['reasoning_content'];
+      if (reasoning is String && reasoning.isNotEmpty) {
+        yield ThinkingDelta(reasoning);
+      }
+
       // Text content.
       final content = delta['content'] as String?;
       if (content != null && content.isNotEmpty) {

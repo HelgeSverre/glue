@@ -21,6 +21,8 @@ import 'package:glue_server/src/acp/messages.dart';
 SessionUpdate? agentEventToAcpUpdate(AgentEvent event) {
   return switch (event) {
     AgentTextDelta(:final delta) => AgentMessageChunkUpdate(delta),
+    AgentThinkingDelta() =>
+      null, // ACP `agent_thought_chunk` mapping is a phase-2 follow-up
     AgentToolCallPending() => null, // server emits tool_call(pending) itself
     AgentToolCall() => null, // server emits tool_call(in_progress) itself
     AgentToolResult() => null, // server emits tool_call_update itself

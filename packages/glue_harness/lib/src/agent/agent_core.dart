@@ -36,13 +36,13 @@ class AgentCore {
   final List<Message> _conversation = [];
 
   /// Cumulative usage across every LLM call this core has run. Surfaces
-  /// (CLI status bar, ACP `session/usage`, tests) read it directly.
+  /// (CLI status bar, ACP `session/usage_summary`, tests) read it
+  /// directly via [stats]. The old `tokenCount` field has been removed —
+  /// it counted only `input + output` and undercounted heavy-cache
+  /// sessions, which the status bar then displayed in conflict with
+  /// `/usage`. Use `stats.totalTokens` for the all-buckets total or
+  /// `stats.billedInputTokens` to compute hit rate.
   final UsageStats stats = UsageStats();
-
-  /// Back-compat helper: the old `tokenCount` getter returned
-  /// `inputTokens + outputTokens` only. We preserve the contract so the
-  /// status-bar text doesn't change behavior on this PR.
-  int get tokenCount => stats.inputTokens + stats.outputTokens;
 
   /// Optional observability sink. When non-null, tool invocations emit
   /// `tool.<name>` spans and fatal agent errors emit `agent.error` spans.
@@ -146,6 +146,11 @@ class AgentCore {
                 }
                 assistantText.write(text);
                 yield AgentTextDelta(text);
+              case ThinkingDelta(:final text):
+                // Forward but do NOT append to assistantText. Thinking
+                // content stays out of the conversation history we send
+                // back to the model.
+                yield AgentThinkingDelta(text);
               case ToolCallStart(:final id, :final name):
                 llmSpan?.addEvent('llm.tool_call.start', attributes: {
                   'tool_call.id': id,

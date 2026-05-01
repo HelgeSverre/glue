@@ -164,6 +164,60 @@ void main() {
       expect(startIdx, lessThan(deltaIdx));
     });
 
+    test('emits ThinkingDelta for delta.reasoning', () async {
+      final events = [
+        {
+          'choices': [
+            {'index': 0, 'delta': {'reasoning': 'reasoning step 1'}}
+          ]
+        },
+        {
+          'choices': [
+            {'index': 0, 'delta': {'reasoning': ' step 2'}}
+          ]
+        },
+        {
+          'choices': [
+            {'index': 0, 'delta': {'content': 'final answer'}}
+          ]
+        },
+        {
+          'choices': [
+            {'index': 0, 'delta': {}, 'finish_reason': 'stop'}
+          ],
+          'usage': {'prompt_tokens': 5, 'completion_tokens': 3},
+        },
+      ];
+
+      final chunks = await OpenAiClient.parseStreamEvents(
+        Stream.fromIterable(events),
+      ).toList();
+
+      expect(
+        chunks.whereType<ThinkingDelta>().map((c) => c.text),
+        ['reasoning step 1', ' step 2'],
+      );
+      expect(
+        chunks.whereType<TextDelta>().map((c) => c.text),
+        ['final answer'],
+      );
+    });
+
+    test('emits ThinkingDelta for delta.reasoning_content (proxy variant)',
+        () async {
+      final events = [
+        {
+          'choices': [
+            {'index': 0, 'delta': {'reasoning_content': 'hmm'}}
+          ]
+        },
+      ];
+      final chunks = await OpenAiClient.parseStreamEvents(
+        Stream.fromIterable(events),
+      ).toList();
+      expect(chunks.whereType<ThinkingDelta>().map((c) => c.text), ['hmm']);
+    });
+
     test('surfaces cached_tokens from prompt_tokens_details (native OpenAI)',
         () async {
       final events = [

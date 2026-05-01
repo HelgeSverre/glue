@@ -44,6 +44,15 @@ void main() {
       expect(output, contains('Hello from assistant'));
     });
 
+    test('renderThinking: dim+italic body with ▸ Thinking header', () {
+      final output = renderer.renderThinking('considering options');
+      expect(output, contains('▸ Thinking'));
+      // ANSI: \x1b[2m = dim, \x1b[3m = italic
+      expect(output, contains('\x1b[2m'));
+      expect(output, contains('\x1b[3m'));
+      expect(output, contains('considering options'));
+    });
+
     test('renders bold markdown', () {
       final output = renderer.renderAssistant('This is **bold** text');
       // Bold ANSI: \x1b[1m

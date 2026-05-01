@@ -55,7 +55,6 @@ class SessionMeta {
   int? tokenCount;
   int? cacheReadTokens;
   int? cacheCreationTokens;
-  double? cost;
   int? messageCount;
 
   // Summary.
@@ -88,7 +87,6 @@ class SessionMeta {
     this.tokenCount,
     this.cacheReadTokens,
     this.cacheCreationTokens,
-    this.cost,
     this.messageCount,
     this.summary,
   });
@@ -126,7 +124,6 @@ class SessionMeta {
         if (cacheReadTokens != null) 'cache_read_tokens': cacheReadTokens,
         if (cacheCreationTokens != null)
           'cache_creation_tokens': cacheCreationTokens,
-        if (cost != null) 'cost': cost,
         if (messageCount != null) 'message_count': messageCount,
         if (summary != null) 'summary': summary,
       };
@@ -187,7 +184,6 @@ class SessionMeta {
       tokenCount: json['token_count'] as int?,
       cacheReadTokens: json['cache_read_tokens'] as int?,
       cacheCreationTokens: json['cache_creation_tokens'] as int?,
-      cost: (json['cost'] as num?)?.toDouble(),
       messageCount: json['message_count'] as int?,
       summary: json['summary'] as String?,
     );

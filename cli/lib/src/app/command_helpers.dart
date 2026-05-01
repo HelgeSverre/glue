@@ -4,6 +4,7 @@ String _clearConversationImpl(App app) {
   app._blocks.clear();
   app._scrollOffset = 0;
   app._streamingText = '';
+  app._streamingThinking = '';
   app.terminal.clearScreen();
   app.layout.apply();
   return 'Cleared.';
@@ -82,7 +83,7 @@ String _buildSessionInfoImpl(App app) {
   buf.writeln('  Model:        $displayModel');
   buf.writeln('  Directory:    $shortCwd');
   buf.writeln('  Started:      $startedLabel');
-  buf.writeln('  Tokens used:  ${app.agent.tokenCount}');
+  buf.writeln('  Tokens used:  ${app.agent.stats.totalTokens}');
   buf.writeln('  Messages:     ${app.agent.conversation.length}');
   buf.writeln('  Tools:        ${app.agent.tools.length} registered');
   buf.writeln(

@@ -194,6 +194,14 @@ class OllamaClient implements LlmClient {
       final done = event['done'] as bool? ?? false;
 
       if (message != null) {
+        // Reasoning content for thinking-capable models (DeepSeek R1,
+        // QwQ, …). Precedes `content` because a single message chunk
+        // can carry both fields.
+        final thinking = message['thinking'] as String?;
+        if (thinking != null && thinking.isNotEmpty) {
+          yield ThinkingDelta(thinking);
+        }
+
         // Text content.
         final content = message['content'] as String?;
         if (content != null && content.isNotEmpty) {

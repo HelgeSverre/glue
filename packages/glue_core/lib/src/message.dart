@@ -80,6 +80,23 @@ class TextDelta extends LlmChunk {
   TextDelta(this.text);
 }
 
+/// A delta of streaming reasoning/"thinking" content. Distinct from
+/// [TextDelta] so renderers can style it as deliberative-aside rather
+/// than final assistant output.
+///
+/// Only reasoning-capable models emit this — Claude 4.x with extended
+/// thinking, GPT-5 / o-series, DeepSeek R1, QwQ, etc. Parsers that don't
+/// see thinking blocks simply never yield this variant.
+///
+/// Thinking content is **not** appended to the assistant message that
+/// gets sent back to the model on the next turn — Anthropic explicitly
+/// forbids this without the right block structure, and including it
+/// would pollute context for other providers.
+class ThinkingDelta extends LlmChunk {
+  final String text;
+  ThinkingDelta(this.text);
+}
+
 /// The model has started a tool call, but the arguments are still streaming in.
 ///
 /// Use this to show early UI feedback (e.g. "preparing read_file…") before the

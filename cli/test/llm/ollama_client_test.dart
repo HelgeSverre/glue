@@ -158,5 +158,34 @@ void main() {
       expect(completes[1].toolCall.arguments['path'], 'b.dart');
       // Arguments did not cross-contaminate across the two calls.
     });
+
+    test('emits ThinkingDelta for message.thinking (DeepSeek R1 / QwQ)',
+        () async {
+      final events = [
+        {
+          'message': {'role': 'assistant', 'thinking': 'step 1'},
+          'done': false,
+        },
+        {
+          'message': {'role': 'assistant', 'thinking': ' step 2'},
+          'done': false,
+        },
+        {
+          'message': {'role': 'assistant', 'content': 'done'},
+          'done': true,
+        },
+      ];
+      final chunks = await OllamaClient.parseStreamEvents(
+        Stream.fromIterable(events),
+      ).toList();
+      expect(
+        chunks.whereType<ThinkingDelta>().map((c) => c.text),
+        ['step 1', ' step 2'],
+      );
+      expect(
+        chunks.whereType<TextDelta>().map((c) => c.text),
+        ['done'],
+      );
+    });
   });
 }

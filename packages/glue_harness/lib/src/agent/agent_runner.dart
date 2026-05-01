@@ -53,6 +53,10 @@ class AgentRunner {
       switch (event) {
         case AgentTextDelta(:final delta):
           buf.write(delta);
+        case AgentThinkingDelta():
+          // Headless mode discards reasoning traces — they're a UI
+          // affordance, not part of the structured result.
+          break;
         case AgentToolCallPending():
           break;
         case AgentToolCall(:final call):

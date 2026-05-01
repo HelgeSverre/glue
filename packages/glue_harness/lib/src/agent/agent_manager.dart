@@ -249,6 +249,10 @@ Map<String, dynamic> serializeAgentEvent(AgentEvent event) {
         'type': 'assistant_message',
         'text': delta,
       },
+    AgentThinkingDelta(:final delta) => {
+        'type': 'assistant_thinking',
+        'text': delta,
+      },
     AgentToolCallPending(:final id, :final name) => {
         'type': 'tool_call_pending',
         'id': id.value,

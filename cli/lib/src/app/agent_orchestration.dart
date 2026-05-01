@@ -10,6 +10,16 @@ void _endTurnSpanImpl(App app, {Map<String, dynamic>? extra}) {
   }
 }
 
+/// Materialises any buffered streaming reasoning into a [_EntryKind.thinking]
+/// block and clears the buffer. Called at every transition where thinking
+/// gives way to something else: assistant text, a tool call, or the end of
+/// the turn.
+void _flushThinking(App app) {
+  if (app._streamingThinking.isEmpty) return;
+  app._blocks.add(_ConversationEntry.thinking(app._streamingThinking));
+  app._streamingThinking = '';
+}
+
 void _startAgentImpl(
   App app,
   String displayMessage, {
@@ -20,6 +30,7 @@ void _startAgentImpl(
   app._mode = AppMode.streaming;
   app._startSpinner();
   app._streamingText = '';
+  app._streamingThinking = '';
   app._subagentGroups.clear();
   app._render();
 
@@ -63,12 +74,20 @@ void _startAgentImpl(
 void _handleAgentEventImpl(App app, AgentEvent event) {
   switch (event) {
     case AgentTextDelta(:final delta):
+      // Thinking → answer transition: materialise the reasoning block
+      // before any user-visible answer text starts streaming.
+      _flushThinking(app);
       app._streamingText += delta;
       app._render();
 
+    case AgentThinkingDelta(:final delta):
+      app._streamingThinking += delta;
+      app._render();
+
     case AgentToolCallPending(:final id, :final name):
-      // Flush any accumulated assistant text so the ordering in _blocks
-      // matches the actual conversation flow.
+      // Flush any accumulated reasoning + assistant text so the ordering
+      // in _blocks matches the actual conversation flow.
+      _flushThinking(app);
       if (app._streamingText.isNotEmpty) {
         app._sessionManager
             .logEvent('assistant_message', {'text': app._streamingText});
@@ -133,6 +152,7 @@ void _handleAgentEventImpl(App app, AgentEvent event) {
       app._render();
 
     case AgentToolCall(:final call):
+      _flushThinking(app);
       final uiState = app._toolUi[call.id];
       if (uiState != null) {
         uiState.args = call.arguments;
@@ -202,6 +222,7 @@ void _handleAgentEventImpl(App app, AgentEvent event) {
       );
 
     case AgentDone():
+      _flushThinking(app);
       if (app._streamingText.isNotEmpty) {
         app._ensureSessionStore();
         app._sessionManager

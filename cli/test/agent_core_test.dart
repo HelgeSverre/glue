@@ -102,7 +102,30 @@ void main() {
     expect(agent.conversation[1].text, 'Hi there');
   });
 
-  test('UsageInfo increments tokenCount', () async {
+  test('forwards ThinkingDelta as AgentThinkingDelta and never appends '
+      'thinking to assistantText', () async {
+    mockLlm.responses.add([
+      ThinkingDelta('reasoning step '),
+      ThinkingDelta('two'),
+      TextDelta('the answer'),
+    ]);
+
+    final events = await agent.run('hi').toList();
+    expect(
+      events.whereType<AgentThinkingDelta>().map((e) => e.delta).toList(),
+      ['reasoning step ', 'two'],
+    );
+    expect(
+      events.whereType<AgentTextDelta>().map((e) => e.delta).toList(),
+      ['the answer'],
+    );
+    // Thinking content must NOT leak into the assistant message that
+    // gets sent back to the model on the next turn.
+    final assistant = agent.conversation.last;
+    expect(assistant.text, 'the answer');
+  });
+
+  test('UsageInfo updates stats.totalTokens', () async {
     mockLlm.responses.add([
       TextDelta('ok'),
       UsageInfo(inputTokens: 10, outputTokens: 5),
@@ -110,23 +133,27 @@ void main() {
 
     await agent.run('count').toList();
 
-    expect(agent.tokenCount, 15);
+    expect(agent.stats.totalTokens, 15);
   });
 
-  test('multiple UsageInfo chunks accumulate', () async {
+  test('multiple UsageInfo chunks accumulate including cache buckets',
+      () async {
     mockLlm.responses.add([
-      UsageInfo(inputTokens: 3, outputTokens: 2),
+      UsageInfo(inputTokens: 3, outputTokens: 2, cacheReadTokens: 100),
     ]);
 
     await agent.run('a').toList();
 
     mockLlm.responses.add([
-      UsageInfo(inputTokens: 7, outputTokens: 8),
+      UsageInfo(inputTokens: 7, outputTokens: 8, cacheCreationTokens: 50),
     ]);
 
     await agent.run('b').toList();
 
-    expect(agent.tokenCount, 20);
+    // 3 + 2 + 100 + 7 + 8 + 50
+    expect(agent.stats.totalTokens, 170);
+    // Sanity: input + output only is 20, distinct from totalTokens.
+    expect(agent.stats.inputTokens + agent.stats.outputTokens, 20);
   });
 
   test('tool call flow: ToolCallComplete → completeToolCall → re-calls LLM',

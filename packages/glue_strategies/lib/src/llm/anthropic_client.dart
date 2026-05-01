@@ -148,6 +148,14 @@ class AnthropicClient implements LlmClient {
 
           if (deltaType == 'text_delta') {
             yield TextDelta(delta['text'] as String);
+          } else if (deltaType == 'thinking_delta') {
+            // Extended-thinking blocks. `redacted_thinking` blocks (base64
+            // signed payloads for safety-sensitive reasoning) carry no
+            // human-readable content and are intentionally ignored here.
+            final thinking = delta['thinking'];
+            if (thinking is String && thinking.isNotEmpty) {
+              yield ThinkingDelta(thinking);
+            }
           } else if (deltaType == 'input_json_delta') {
             toolBuffers[index]?.buffer.write(delta['partial_json'] as String);
           }

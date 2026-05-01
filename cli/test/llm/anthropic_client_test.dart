@@ -188,6 +188,68 @@ void main() {
       expect(startIdx, lessThan(deltaIdx));
     });
 
+    test('emits ThinkingDelta for extended-thinking content_block_delta',
+        () async {
+      final events = Stream.fromIterable([
+        _sseData({
+          'type': 'message_start',
+          'message': {
+            'id': 'm1',
+            'usage': {'input_tokens': 10, 'output_tokens': 0},
+          },
+        }),
+        _sseData({
+          'type': 'content_block_start',
+          'index': 0,
+          'content_block': {'type': 'thinking', 'thinking': ''},
+        }),
+        _sseData({
+          'type': 'content_block_delta',
+          'index': 0,
+          'delta': {'type': 'thinking_delta', 'thinking': 'Let me think...'},
+        }),
+        _sseData({
+          'type': 'content_block_delta',
+          'index': 0,
+          'delta': {'type': 'thinking_delta', 'thinking': ' carefully.'},
+        }),
+        _sseData({'type': 'content_block_stop', 'index': 0}),
+        _sseData({
+          'type': 'content_block_start',
+          'index': 1,
+          'content_block': {'type': 'text', 'text': ''},
+        }),
+        _sseData({
+          'type': 'content_block_delta',
+          'index': 1,
+          'delta': {'type': 'text_delta', 'text': 'The answer is 42.'},
+        }),
+        _sseData({'type': 'content_block_stop', 'index': 1}),
+        _sseData({'type': 'message_stop'}),
+      ]);
+
+      final chunks = await AnthropicClient.parseStreamEvents(events).toList();
+      final thinking =
+          chunks.whereType<ThinkingDelta>().map((c) => c.text).toList();
+      final text = chunks.whereType<TextDelta>().map((c) => c.text).toList();
+      expect(thinking, ['Let me think...', ' carefully.']);
+      expect(text, ['The answer is 42.']);
+    });
+
+    test('ignores redacted_thinking blocks (no human-readable content)',
+        () async {
+      final events = Stream.fromIterable([
+        _sseData({
+          'type': 'content_block_delta',
+          'index': 0,
+          'delta': {'type': 'redacted_thinking', 'data': 'base64-blob'},
+        }),
+        _sseData({'type': 'message_stop'}),
+      ]);
+      final chunks = await AnthropicClient.parseStreamEvents(events).toList();
+      expect(chunks.whereType<ThinkingDelta>(), isEmpty);
+    });
+
     test('surfaces cache_read and cache_creation tokens from message_start',
         () async {
       final events = [

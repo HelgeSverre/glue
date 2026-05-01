@@ -200,8 +200,7 @@ void main() {
       expect(((sent.single['error']! as Map)['code'] as num).toInt(), -32001);
     });
 
-    test('session/usage_summary returns the delegate report as JSON',
-        () async {
+    test('session/usage_summary returns the delegate report as JSON', () async {
       final delegate = _FakeDelegate(scripted: const []);
       delegate.usageSummaryAnswer = (sessionId) => buildUsageReport(
             sessionId: sessionId,

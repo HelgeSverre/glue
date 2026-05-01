@@ -3,6 +3,7 @@ part of 'package:glue/src/app.dart';
 enum _EntryKind {
   user,
   assistant,
+  thinking,
   toolCall,
   toolCallRef,
   toolResult,
@@ -29,6 +30,9 @@ class _ConversationEntry {
 
   factory _ConversationEntry.assistant(String text) =>
       _ConversationEntry._(_EntryKind.assistant, text);
+
+  factory _ConversationEntry.thinking(String text) =>
+      _ConversationEntry._(_EntryKind.thinking, text);
 
   factory _ConversationEntry.toolCall(
     String name,

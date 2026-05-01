@@ -168,6 +168,7 @@ String _resumeSessionImpl(App app, SessionMeta session) {
   app._blocks.clear();
   app._toolUi.clear();
   app._streamingText = '';
+  app._streamingThinking = '';
   app._subagentGroups.clear();
   app._outputLineGroups.clear();
   app._titleInitialRequested = session.title != null;

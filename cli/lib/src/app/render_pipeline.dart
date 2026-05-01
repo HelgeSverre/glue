@@ -53,6 +53,7 @@ void _doRenderImpl(App app) {
     final text = switch (block.kind) {
       _EntryKind.user => renderer.renderUser(block.text),
       _EntryKind.assistant => renderer.renderAssistant(block.text),
+      _EntryKind.thinking => renderer.renderThinking(block.text),
       _EntryKind.toolCall => renderer.renderToolCall(block.text, block.args),
       _EntryKind.toolCallRef => renderer.renderToolCallRef(
           app._toolUi[ToolCallId(block.text)]?.toRenderState(),
@@ -78,6 +79,14 @@ void _doRenderImpl(App app) {
     app._outputLineGroups.add(null);
     outputLines.addAll(lines);
     outputLines.add('');
+  }
+
+  // If streaming reasoning, render it above the (still-empty) assistant
+  // text — when both buffers are non-empty (Anthropic interleaves them in
+  // edge cases) the user sees thinking "above" the conclusion.
+  if (app._streamingThinking.isNotEmpty) {
+    outputLines
+        .addAll(renderer.renderThinking(app._streamingThinking).split('\n'));
   }
 
   // If streaming, add the partial text.
@@ -187,7 +196,7 @@ void _doRenderImpl(App app) {
     modeLabel,
     ansiTruncate(shortCwd, 30),
     if (scrollSeg != null) scrollSeg,
-    '${_formatTokens(app.agent.tokenCount)} tokens',
+    '${_formatTokens(app.agent.stats.totalTokens)} tokens',
   ];
   final statusRight = ' ${rightSegs.join(sep)} ';
   app.layout.paintStatus(statusLeft, statusRight);

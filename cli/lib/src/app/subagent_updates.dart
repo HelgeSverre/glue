@@ -46,6 +46,10 @@ void _handleSubagentUpdateImpl(App app, SubagentUpdate update) {
       break;
     case AgentTextDelta():
       break;
+    case AgentThinkingDelta():
+      // Subagent reasoning isn't rendered in the parent's live UI;
+      // matches the AgentRunner policy of dropping it for headless flows.
+      break;
     case AgentUsage():
       // Subagent usage is rolled up by AgentManager and persisted via
       // onSubagentUsage. The transient render path doesn't display it.
