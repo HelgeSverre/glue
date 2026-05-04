@@ -15,9 +15,10 @@ analyze:
 format:
     dart format .
 
-# Run unit tests
+# Run unit tests. No-op when `test/` is absent — strategies has no
+# package-local tests yet; provider coverage lives in cli/test/.
 test *args:
-    dart test {{args}}
+    @if [ -d test ]; then dart test {{args}}; else echo "glue_strategies: no test/ directory, skipping."; fi
 
 # Quality gate: analyze + test
 check: analyze test
