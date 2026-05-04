@@ -90,6 +90,7 @@ void main() {
       String Function(List<String> args)? sessionAction,
       String Function(List<String> args)? shareAction,
       String Function()? usageReport,
+      void Function()? copyLastResponse,
     }) {
       return BuiltinCommands.create(
         openHelpPanel: () {},
@@ -114,8 +115,16 @@ void main() {
         openGlueTarget: openGlueTarget ?? (_) => '',
         configAction: configAction ?? (_) => '',
         renameSession: (_) => '',
+        copyLastResponse: copyLastResponse ?? () {},
       );
     }
+
+    test('/copy invokes the copyLastResponse callback', () {
+      var called = 0;
+      final registry = createRegistry(copyLastResponse: () => called++);
+      registry.execute('/copy');
+      expect(called, 1);
+    });
 
     test('/models is an alias for /model and opens picker', () {
       var opened = 0;

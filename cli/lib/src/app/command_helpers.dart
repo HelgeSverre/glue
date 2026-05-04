@@ -10,6 +10,43 @@ String _clearConversationImpl(App app) {
   return 'Cleared.';
 }
 
+void _copyLastResponseImpl(App app) {
+  // Walk the rendered transcript backwards. We copy the most recent
+  // assistant block — including any in-flight streaming text the user
+  // currently sees — rather than reaching into agent.conversation,
+  // because what's on screen is what they expect /copy to grab.
+  String? text;
+  if (app._streamingText.isNotEmpty) {
+    text = app._streamingText;
+  } else {
+    for (var i = app._blocks.length - 1; i >= 0; i--) {
+      final entry = app._blocks[i];
+      if (entry.kind == _EntryKind.assistant && entry.text.isNotEmpty) {
+        text = entry.text;
+        break;
+      }
+    }
+  }
+
+  if (text == null) {
+    app._addSystemMessage('No assistant response to copy yet.');
+    app._render();
+    return;
+  }
+
+  final payload = text;
+  unawaited(
+    copyToClipboard(payload).then((ok) {
+      app._addSystemMessage(
+        ok
+            ? 'Copied last response to clipboard (${payload.length} chars).'
+            : 'Could not access clipboard.',
+      );
+      app._render();
+    }),
+  );
+}
+
 String _switchModelByQueryImpl(App app, String query) {
   final config = app._config;
   if (config == null) return 'Config not ready.';
