@@ -9,7 +9,7 @@ const ModelCatalog bundledCatalog = ModelCatalog(
   version: 1,
   updatedAt: '2026-04-25',
   defaults: DefaultsConfig(
-    model: 'anthropic/claude-sonnet-4-7',
+    model: 'anthropic/claude-sonnet-4-6',
     smallModel: 'openai/gpt-5.4-mini',
     localModel: 'ollama/qwen2.5-coder:32b',
   ),
