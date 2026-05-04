@@ -1,8 +1,12 @@
 # Harness Layers — Architecture & Migration Plan
 
-**Status:** proposed
+**Status:** ✅ landed in PR #29 (squash-merge `bfefc83`, 2026-05-04)
 **Date:** 2026-04-29
-**Branch:** `claude/architect-harness-layers-maSVJ`
+
+This document is now the canonical architecture reference for Glue's
+four-layer split (`surface → harness → strategies → core`). The migration
+sequence below is mostly historical; the current package layout under
+`packages/` reflects the target state.
 
 ## Why this document exists
 
