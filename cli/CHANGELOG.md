@@ -4,8 +4,58 @@ All notable changes to Glue CLI will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-04
+
 ### Added
 
+- **Harness-layers architecture** — Glue is now a four-layer
+  monorepo: `cli/` (surface) → `packages/glue_harness/` (orchestration)
+  → `packages/glue_strategies/` (provider/shell/web adapters) →
+  `packages/glue_core/` (pure data types). A separate
+  `packages/glue_server/` ships the ACP-over-stdio/WS daemon. See
+  `docs/plans/2026-04-29-harness-layers.md` for the full split.
+- **`glue serve`** — ACP (Agent Client Protocol) server with stdio
+  and WebSocket transports (`--stdio`, `--port N`). Typed content
+  blocks, resource_links, diff support, image inputs, OAuth device
+  flow, and `session/usage_summary`.
+- **Prompt caching across Anthropic + OpenAI + OpenRouter** — the
+  adapters now opt into provider-specific cache directives, surfaced
+  via `/usage` and the OTel spans.
+- **End-to-end token usage tracking** — main agent, subagents, and
+  title generator each report into `UsageStats`; `/usage` shows the
+  per-role breakdown; resume carries totals over instead of restarting
+  at zero.
+- **Thinking-token streaming** for reasoning-mode models (Anthropic
+  thinking, OpenAI o-series).
+- **Native Gemini provider** — first-class `GeminiProvider` adapter
+  in `packages/glue_strategies/` talking to the Gemini Developer API
+  (`generativelanguage.googleapis.com`) via `streamGenerateContent`
+  SSE. Function calling, image `inlineData`, system prompts, and
+  thinking-mode `thoughtSignature` round-trip are all wired in. Auth
+  via `GEMINI_API_KEY` only (Vertex / Google-account login
+  intentionally out of scope).
+- **Two-press SIGINT in `--print` / `--json` mode** — first Ctrl+C
+  cancels the in-flight agent stream so the JSON envelope can include
+  `cancelled: true` and the OTel span records the cancellation; the
+  process exits 130. A second Ctrl+C during teardown hard-exits 130.
+  Replaces the previous loop with `StreamIterator` so cancellation
+  flows from the SIGINT handler into the agent's `async*` generator.
+  See `docs/reference/sigint-handling.md`.
+- **`/copy` slash command** — copies the most recent assistant block
+  to the system clipboard via the existing fallback chain (`pbcopy` /
+  `clip` / `wl-copy` / `xclip` / `xsel`). Reports byte count on
+  success; mid-turn `/copy` qualifies the message as "partial
+  in-flight response".
+- **`/model` aliases `/models`** — single command surface; both names
+  open the picker, and `/model <query>` switches directly.
+- **Catalog refresh (2026-04)** — adds OpenAI o3 and o4-mini
+  reasoning models, Mistral magistral-medium-latest plus a Small 4
+  promotion, Groq Llama 4 Scout (default) and Maverick, Ollama
+  qwen3-coder-next:80b, Ollama llama4:8b, and a new "reasoning"
+  profile.
+- **`enabled` flag on `ModelDef`** — surfaces that aren't yet wired
+  up at runtime can hide entries via the picker without removing them
+  from the catalog.
 - **Native `OllamaAdapter`** — Ollama now has a dedicated
   `ProviderAdapter` + `OllamaClient` that talks to `/api/chat` directly
   instead of riding the OpenAI-compat adapter at `/v1/chat/completions`.
