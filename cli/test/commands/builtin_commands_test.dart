@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/glue.dart';
 import 'package:test/test.dart';
 
@@ -87,6 +88,7 @@ void main() {
       String Function(List<String> args)? configAction,
       String Function(List<String> args)? sessionAction,
       String Function(List<String> args)? shareAction,
+      String Function()? usageReport,
     }) {
       return BuiltinCommands.create(
         openHelpPanel: () {},
@@ -96,6 +98,7 @@ void main() {
         switchModelByQuery: (_) => '',
         sessionAction: sessionAction ?? (_) => '',
         shareAction: shareAction ?? (_) => '',
+        usageReport: usageReport ?? () => '',
         listTools: () => '',
         openHistoryPanel: openHistoryPanel ?? () {},
         historyActionByQuery: historyActionByQuery ?? (_) => '',
@@ -388,7 +391,7 @@ void main() {
 
     test('bare --resume opens the resume panel on startup', () async {
       final meta = SessionMeta(
-        id: 'resume-target',
+        id: const SessionId('resume-target'),
         cwd: environment.cwd,
         modelRef: 'anthropic/claude-sonnet-4.6',
         startTime: DateTime.now(),
@@ -424,7 +427,7 @@ void main() {
     test('resume with startup prompt submits the prompt after resuming',
         () async {
       final meta = SessionMeta(
-        id: 'resume-target',
+        id: const SessionId('resume-target'),
         cwd: environment.cwd,
         modelRef: 'anthropic/claude-sonnet-4.6',
         startTime: DateTime.now(),

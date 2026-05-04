@@ -3,7 +3,7 @@
 Status: proposed
 Owner: implementation agent
 Date: 2026-04-19
-Last revised: 2026-04-19 (consolidated with archived docker-sandbox plan; VibeKit alignment)
+Last revised: 2026-04-30 (re-spec'd against the four-layer harness/strategies/core split landed in `claude/architect-harness-layers-maSVJ`)
 
 ## Goal
 
@@ -18,19 +18,37 @@ Do not over-abstract prematurely. Use the existing host/Docker implementation
 as the concrete base, then extract only the parts needed for the first remote
 runtime.
 
+## How this plan relates to the harness layers
+
+After the harness extraction (see `2026-04-29-harness-layers.md`), the
+runtime story has a clear home:
+
+- **Strategy interfaces** (`packages/glue_strategies/`) own
+  `CommandExecutor`, `BrowserEndpointProvider`, and the future
+  `ExecutionRuntime`. These are pluggable contracts.
+- **Harness** (`packages/glue_harness/`) owns the agent loop, tool registry,
+  session log, and `ShellJobManager` — the consumers that talk to a runtime
+  through strategy interfaces only.
+- **Surfaces** (`cli/`, `glue_server/`) never reach into runtime internals;
+  they observe lifecycle through `SessionEvent`s.
+
+Consequence: every type the runtime layer exposes to the outside world is a
+strategy contract or a `glue_core` data type. New cloud runtimes ship as
+separate packages depending only on `glue_strategies` + `glue_core`.
+
 ## Historical Context — Docker Sandbox (shipped)
 
 The docker sandbox work originally tracked in
 `docs/plans/done/2026-02-27-docker-sandbox.md` is complete. Current state, as
-of 2026-04-19:
+of 2026-04-30:
 
-- `DockerConfig` + `MountEntry` data model — `cli/lib/src/shell/docker_config.dart`
-- `DockerExecutor` with cidfile-based container lifecycle — `cli/lib/src/shell/docker_executor.dart`
-- `ExecutorFactory` with host-fallback logic — `cli/lib/src/shell/executor_factory.dart`
-- `SessionState` persisting per-session mount whitelist — `cli/lib/src/storage/session_state.dart`
+- `DockerConfig` + `MountEntry` data model — `packages/glue_strategies/lib/src/shell/docker_config.dart`
+- `DockerExecutor` with cidfile-based container lifecycle — `packages/glue_strategies/lib/src/shell/docker_executor.dart`
+- `ExecutorFactory` with host-fallback logic — `packages/glue_strategies/lib/src/shell/executor_factory.dart`
+- `SessionState` persisting per-session mount whitelist — `packages/glue_harness/lib/src/storage/session_state.dart`
 - `docker.*` config parsed from YAML + env (`GLUE_DOCKER_ENABLED`, `GLUE_DOCKER_IMAGE`, `GLUE_DOCKER_SHELL`, `GLUE_DOCKER_MOUNTS`)
-- Wired through `ServiceLocator.create()` (`cli/lib/src/core/service_locator.dart`)
-- Barrel exports in `cli/lib/glue.dart`
+- Wired through `ServiceLocator.create()` (`packages/glue_harness/lib/src/core/service_locator.dart`)
+- Barrel exports in `packages/glue_strategies/lib/glue_strategies.dart`
 - `runtime-capabilities.yaml` marks `host` and `docker` as `status: shipping`
 
 The remaining work is the boundary-hardening described below, not new sandbox
@@ -38,22 +56,22 @@ functionality.
 
 ## Current Code Context
 
-Relevant files:
+Relevant files (post-extraction paths):
 
-- `cli/lib/src/shell/command_executor.dart`
-- `cli/lib/src/shell/host_executor.dart`
-- `cli/lib/src/shell/docker_executor.dart`
-- `cli/lib/src/shell/executor_factory.dart`
-- `cli/lib/src/shell/docker_config.dart`
-- `cli/lib/src/shell/shell_job_manager.dart`
-- `cli/lib/src/web/browser/browser_manager.dart`
-- `cli/lib/src/web/browser/browser_endpoint.dart`
-- `cli/lib/src/web/browser/providers/docker_browser_provider.dart`
-- `cli/lib/src/web/browser/providers/browserbase_provider.dart`
-- `cli/lib/src/web/browser/providers/browserless_provider.dart`
-- `cli/lib/src/web/browser/providers/steel_provider.dart`
-- `cli/lib/src/core/service_locator.dart`
-- `cli/lib/src/storage/session_state.dart`
+- `packages/glue_strategies/lib/src/shell/command_executor.dart`
+- `packages/glue_strategies/lib/src/shell/host_executor.dart`
+- `packages/glue_strategies/lib/src/shell/docker_executor.dart`
+- `packages/glue_strategies/lib/src/shell/executor_factory.dart`
+- `packages/glue_strategies/lib/src/shell/docker_config.dart`
+- `packages/glue_harness/lib/src/agent/shell_job_manager.dart` (data-driven service, lives in harness — see harness-layers step #5)
+- `packages/glue_strategies/lib/src/web/browser/browser_manager.dart`
+- `packages/glue_strategies/lib/src/web/browser/browser_endpoint.dart`
+- `packages/glue_strategies/lib/src/web/browser/providers/docker_browser_provider.dart`
+- `packages/glue_strategies/lib/src/web/browser/providers/browserbase_provider.dart`
+- `packages/glue_strategies/lib/src/web/browser/providers/browserless_provider.dart`
+- `packages/glue_strategies/lib/src/web/browser/providers/steel_provider.dart`
+- `packages/glue_harness/lib/src/core/service_locator.dart`
+- `packages/glue_harness/lib/src/storage/session_state.dart`
 - `docs/design/docker-sandbox.md`
 - `docs/reference/runtime-capabilities.yaml`
 
@@ -98,17 +116,20 @@ user's working tree is exposed at the container/VM path **`/workspace`**.
   branching on backend.
 
 This aligns with VibeKit, E2B, Daytona, and Sprites defaults. Migration
-landed 2026-04-19: see `cli/lib/src/shell/docker_executor.dart` +
+landed 2026-04-19: see
+`packages/glue_strategies/lib/src/shell/docker_executor.dart` +
 `docs/design/docker-sandbox.md`.
 
 ## Boundary Shape
 
 Keep `CommandExecutor` for now, but plan toward a broader `Runtime` contract.
 
-Possible future interface (design target; do not implement until a second
-remote runtime needs it):
+Possible future strategy interface (design target; do not implement until a
+second remote runtime needs it). It lives in `glue_strategies` and depends
+only on `glue_core` data types:
 
 ```dart
+// packages/glue_strategies/lib/src/runtime/execution_runtime.dart (future)
 abstract class ExecutionRuntime {
   String get id;
   RuntimeCapabilities get capabilities;
@@ -133,6 +154,10 @@ The `getHost(port)` method is lifted from VibeKit: the runtime returns a
 reachable URL for any TCP port running inside the sandbox. Lets agents spawn
 dev servers / preview apps without leaking backend-specific plumbing.
 
+The harness consumes `ExecutionRuntime` through `ServiceLocator`; tools see
+only `RuntimeSession`. No surface code (CLI, ACP server) imports this
+interface.
+
 ## Immediate Cleanup Before Cloud Runtimes
 
 ### 1. Decouple Background Jobs From `Process`
@@ -140,9 +165,10 @@ dev servers / preview apps without leaking backend-specific plumbing.
 `ShellJob` currently stores `Process`. That makes remote command handles
 awkward.
 
-Introduce:
+Introduce a `glue_core` data type and a strategy-side handle:
 
 ```dart
+// packages/glue_core/lib/src/running_command.dart (future)
 abstract class RunningCommandHandle {
   Stream<List<int>> get stdout;
   Stream<List<int>> get stderr;
@@ -151,37 +177,40 @@ abstract class RunningCommandHandle {
 }
 ```
 
-`RunningCommand` can implement this for local/Docker process-backed commands.
-`ShellJob` should store `RunningCommandHandle`, not `Process`.
+`HostExecutor` and `DockerExecutor` (in `glue_strategies`) implement this for
+process-backed commands. `ShellJob` (in `glue_harness/agent/`) stores the
+abstract handle, not `Process`.
 
 Tracked as **task-26.1**.
 
-### 2. Emit Runtime Events To Session JSONL
+### 2. Emit Runtime Events As `SessionEvent`s
 
-Command and container lifecycle should write events:
+Command and container lifecycle should be `SessionEvent` variants in
+`glue_core/session_event.dart`, not bespoke JSONL rows:
 
-- `runtime.command.started`
-- `runtime.command.output`
-- `runtime.command.completed`
-- `runtime.command.failed`
-- `runtime.command.cancelled`
-- `runtime.container.started`
-- `runtime.container.stopped`
+- `RuntimeCommandStartedEvent`
+- `RuntimeCommandOutputEvent`
+- `RuntimeCommandCompletedEvent`
+- `RuntimeCommandFailedEvent`
+- `RuntimeCommandCancelledEvent`
+- `RuntimeContainerStartedEvent`
+- `RuntimeContainerStoppedEvent`
 
-Each event carries: `runtime_id` (host/docker/<cloud>), `session_id`,
-`workspace_mapping` (host cwd ↔ runtime cwd), `command` (truncated),
-`exit_code`, `duration_ms`.
+Each event carries: `runtimeId` (host/docker/<cloud>), `sessionId`,
+`workspaceMapping` (host cwd ↔ runtime cwd), `command` (truncated),
+`exitCode`, `durationMs`. Inheriting `SessionEvent` gets persistence + ACP
+forwarding for free.
 
-This makes local, Docker, and remote behavior replayable. Tracked as
-**task-26.3** (needs to be created — not yet on disk; referenced by
-task-26 AC #3).
+This makes local, Docker, and remote behavior replayable across surfaces.
+Tracked as **task-26.3**.
 
 ### 3. Normalize Workspace Mapping
 
 Today Docker mounts cwd at `/workspace` (universal path — see section
-above). Codify this as a first-class type used by every executor:
+above). Codify this as a first-class type in `glue_core`:
 
 ```dart
+// packages/glue_core/lib/src/workspace_mapping.dart (future)
 class WorkspaceMapping {
   final String hostCwd;        // e.g. /Users/helge/code/glue
   final String runtimeCwd;     // always /workspace
@@ -204,9 +233,10 @@ Browser providers currently provision CDP endpoints. That is fine, but cloud
 execution runtimes may also offer browsers (E2B `browser` template, hopx
 Chrome, Daytona Computer Use).
 
-Keep `BrowserEndpointProvider`, but allow a runtime session to provide one
-too via a `BrowserEndpointSource` union/abstraction. The browser tool should
-not care whether the endpoint came from local, Docker-browser, Browserbase,
+Keep `BrowserEndpointProvider` as a strategy interface, but allow a
+`RuntimeSession` to provide one too via a `BrowserEndpointSource` union.
+The browser tool (`glue_harness/tools/web_browser_tool.dart`) should not
+care whether the endpoint came from local, Docker-browser, Browserbase,
 Steel, or a future runtime. Tracked as **task-26.4**.
 
 ## VibeKit Patterns To Adopt
@@ -218,8 +248,9 @@ now, during boundary work, not later:
 
 VibeKit's `executeCommand` returns `{ sandboxId, stdout, stderr, exitCode }`.
 The `sandboxId` lets a client always reattach to the warm sandbox. For Glue:
-add `runtimeId` and `sessionId` fields to `CaptureResult`. Trivial, opens the
-door to session-pinned commands later.
+add `runtimeId` and `sessionId` fields to `CaptureResult` (in
+`glue_strategies/shell/command_executor.dart`). Trivial, opens the door to
+session-pinned commands later.
 
 ### `getHost(port)` as the escape hatch
 
@@ -251,12 +282,13 @@ this as a runtime-independent toggle so host/Docker/cloud all honor it via
 the `CommandExecutor` layer (surface as a pre-command predicate that blocks
 write-ish commands). Scope: small spike after task-26.1 lands.
 
-### Provider factories in separate packages (later)
+### Provider factories in separate packages
 
 When cloud runtimes land, ship each adapter as a separate pub package
-(`glue_e2b`, `glue_daytona`, etc.) depending only on the boundary interface.
-Keeps the CLI core free of cloud SDK dependencies. Mentioned here so we
-design task-26.1–26.5 with that endpoint in mind.
+(`glue_e2b`, `glue_daytona`, etc.) depending only on `glue_strategies` +
+`glue_core`. Keeps `glue_harness` and `cli/` free of cloud SDK
+dependencies — and matches the strategy-package pattern already used by
+`glue_strategies` itself.
 
 ## Runtime Capabilities
 
@@ -340,30 +372,45 @@ work.
 
 ## Implementation Plan
 
-1. Change `ShellJob` to store a `RunningCommandHandle` interface instead of
+1. Change `ShellJob` (in `glue_harness/agent/shell_job_manager.dart`) to
+   store a `RunningCommandHandle` interface from `glue_core` instead of
    `Process`. (task-26.1)
-2. Keep `CommandExecutor` as the concrete command API for host/Docker.
-   Add `runtimeId` and `sessionId` fields to `CaptureResult`.
-3. Add runtime/session metadata to session JSONL command events.
-   (task-26.3 — needs creation)
+2. Keep `CommandExecutor` (in `glue_strategies/shell/`) as the concrete
+   command API for host/Docker. Add `runtimeId` and `sessionId` fields to
+   `CaptureResult`.
+3. Promote runtime/session metadata to typed `SessionEvent` variants in
+   `glue_core/session_event.dart`. (task-26.3)
 4. Document path mapping for Docker in the Docker sandbox docs; introduce
-   `WorkspaceMapping` type. (task-26.2)
+   `WorkspaceMapping` type in `glue_core`. (task-26.2)
 5. Make browser endpoint acquisition runtime-aware without breaking existing
-   browser providers (`BrowserEndpointSource`). (task-26.4)
+   browser providers (`BrowserEndpointSource` in `glue_strategies/web/`).
+   (task-26.4)
 6. Add a runtime capability table to docs and website. (task-26.5)
-7. Add read-only Ask Mode flag honored by host and Docker executors.
-   (new scope — follow-up task)
+7. Add read-only Ask Mode flag honored by host and Docker executors at the
+   `CommandExecutor` boundary. (new scope — follow-up task)
 8. When implementing the first remote runtime, extract `ExecutionRuntime`
-   from real duplication. (cloud runtimes plan)
+   into `glue_strategies/runtime/` from real duplication. (cloud runtimes
+   plan)
 
 ## Tests
+
+Test files live alongside their owning package:
+
+- `packages/glue_strategies/test/shell/...` for executor + handle behavior
+- `packages/glue_harness/test/agent/shell_job_manager_test.dart` for
+  background-job kill semantics
+- `packages/glue_core/test/session_event_test.dart` for new runtime event
+  shapes
+- `packages/glue_strategies/test/web/browser/...` for browser endpoint
+  source unification
 
 Add tests for:
 
 - background job kill calls the handle's `kill`, not raw process kill
 - Docker path mapping is stable (`$cwd → /workspace`, paths outside cwd
   rejected)
-- command events include runtime ID and cwd mapping
+- runtime command lifecycle emits typed `SessionEvent`s with runtime ID and
+  cwd mapping
 - runtime output is bounded and artifacted when long
 - Docker cleanup runs on cancel and timeout
 - browser endpoint can come from provider or runtime
@@ -373,16 +420,20 @@ Add tests for:
 
 - Host and Docker behavior remain unchanged (except `/workspace` path).
 - Background jobs no longer depend directly on `Process`.
-- JSONL records where commands ran.
+- Typed `SessionEvent`s record where commands ran and stream uniformly to
+  all surfaces (CLI + ACP server).
 - Docker sandbox docs accurately describe isolation limits.
-- First remote runtime can be added without rewriting app/tool code.
+- First remote runtime can be added as a separate package depending only on
+  `glue_strategies` + `glue_core`, without changes to `glue_harness` or
+  `cli/`.
 
 ## Open Questions
 
 - Should remote runtimes sync the full workspace, only selected files, or use
   a mounted git checkout? → Leading: Option D from Cloud Runtimes Plan
   (git-first + persistence opt-in).
-- Should cloud runtime credentials share the provider credential store?
+- Should cloud runtime credentials share `CredentialStore` (in
+  `glue_strategies/credentials/`)?
 - Should runtime selection be per-session, per-tool, or global config?
 - Should browser sessions be owned by runtime sessions or remain independent?
 - Should Ask Mode be session-wide, per-command, or both?

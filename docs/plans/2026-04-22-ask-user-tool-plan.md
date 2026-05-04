@@ -1,6 +1,7 @@
 # Ask User Tool Plan
 
 > Status: design / planning only. No code changes in this plan.
+> Re-spec'd 2026-04-30 against the harness/strategies/core split.
 
 ## Goal
 
@@ -10,68 +11,72 @@ Unlike a normal assistant message that asks a question in plain chat, `ask_user`
 
 1. be exposed to the model as a normal tool
 2. suspend autonomous execution when invoked
-3. switch the app into a dedicated “waiting for structured user reply” state
-4. collect the reply via the TUI
+3. switch the surface into a dedicated "waiting for structured user reply" state
+4. collect the reply via the surface (CLI inline, ACP `session/request_user_input`)
 5. feed that reply back into the transcript as the tool result for that specific tool call
 6. resume the same in-flight agent turn
 
 This gives Glue the same basic control-flow shape as a synchronous human-input syscall inside the current turn.
 
+## How this plan relates to the harness layers
+
+`ask_user` looks like an interactive UI feature, but architecturally it's almost entirely a harness contract: the agent loop pauses on a typed event and waits for a typed command. That's exactly the same shape as `PermissionRequestedEvent` / `ResolvePermissionCommand`, which already landed in `glue_core/session_event.dart` and `session_command.dart`.
+
+Layer placement:
+
+- **`glue_core`**: two new typed types in `session_event.dart` /
+  `session_command.dart`:
+  - `UserInputRequestedEvent`
+  - `ResolveUserInputCommand`
+  Both keyed by `ToolCallId` (typed wrapper from `glue_core/ids.dart`).
+- **`glue_harness`**:
+  - the `AskUserTool` registration (it is a real `Tool` so the model sees a schema, but its `execute()` is intercepted before normal dispatch)
+  - an `AskUserGate` (analogous to `PermissionGate`, ~50 lines) that
+    converts the agent's tool call into a `UserInputRequestedEvent` and
+    waits for `ResolveUserInputCommand` to complete the call.
+  - special-casing in `AgentRunner` (headless) and the `AgentManager`
+    subagent path to fail fast.
+  - prompt guidance update (`prompts.dart`).
+- **Surfaces** (`cli`, `glue_server`):
+  - CLI shows an inline prompt panel and dispatches `ResolveUserInputCommand` on submit.
+  - ACP server maps `UserInputRequestedEvent` → ACP `session/request_user_input` (mirroring how it already maps `PermissionRequestedEvent` → `session/request_permission`).
+
+The bottom line: there is **one harness contract**, and surfaces implement
+the UI in their own native idiom.
+
 ## Why this is useful in Glue
 
 Glue already has a strong tool-driven ReAct loop:
 
-- model streams text and tool calls via `AgentCore`
-- the app executes tools or asks for approval in `app/agent_orchestration.dart`
+- model streams text and tool calls via `AgentCore` (in `glue_harness`)
+- the surface decides how to handle each tool call (gate via
+  `PermissionGate`, then dispatch)
 - tool results are injected back into the same conversation turn
 - the loop resumes without starting a new top-level user turn
 
 That architecture is already very close to what `ask_user` needs.
 
-Today, when the model needs clarification, it has to fall back to one of two weaker patterns:
+Today, when the model needs clarification, it has to fall back to:
 
 1. ask in plain assistant text and implicitly hope the user replies in a way that restarts the task correctly
 2. guess and continue autonomously
 
-Both are worse than a blocking tool because they lose explicit control-flow semantics.
-
-`ask_user` would let the model pause mid-task for one missing decision without collapsing the current turn.
+`ask_user` lets the model pause mid-task for one missing decision without collapsing the current turn — and works identically for CLI and ACP clients.
 
 ## User-facing behavior
 
-The intended behavior is:
+The intended behavior, from the agent's perspective, is:
 
 1. user starts a task
 2. model begins working
 3. model emits `ask_user({ question, choices?, allow_freeform? })`
-4. Glue renders a structured prompt in the TUI
-5. the current turn pauses
-6. the user picks an option or enters text
-7. Glue completes that tool call with the selected/typed answer as the tool result
+4. harness emits a `UserInputRequestedEvent`
+5. surface renders a structured prompt
+6. surface dispatches `ResolveUserInputCommand` with the answer
+7. harness completes the tool call with the answer as the tool result
 8. the model resumes the same task
 
-Conceptually:
-
-```text
-User: "ship the release"
-
-Assistant -> tool call:
-ask_user({
-  question: "Which release action do you want?",
-  choices: ["tag only", "tag and publish notes", "dry run"],
-  allow_freeform: false,
-})
-
-Tool result:
-"tag and publish notes"
-
-Assistant:
-"Got it — I’ll prepare the tag and release notes..."
-```
-
 ## Proposed tool contract
-
-The tool contract should match the shape described in the prompt, with one small Glue-specific clarification around result content.
 
 ### Input schema
 
@@ -85,13 +90,9 @@ The tool contract should match the shape described in the prompt, with one small
 
 ### Parameters
 
-- `question: string` — required
-  - one focused clarification question
-- `choices?: string[]` — optional
-  - quick-pick labels rendered by the UI
+- `question: string` — required, non-empty after trim
+- `choices?: string[]` — optional quick-pick labels
 - `allow_freeform?: boolean` — optional, default `true`
-  - when `true`, user may pick a choice or type another answer
-  - when `false`, user must pick one of the provided choices
 
 ### Validation rules
 
@@ -100,58 +101,73 @@ Glue should enforce these invariants before presenting the prompt:
 1. `question` must be non-empty after trim
 2. `choices`, if present, must not be empty strings
 3. if `allow_freeform == false`, then `choices` must be non-empty
-4. optionally cap the number of choices shown in TUI, e.g. 2–9 for ergonomic key selection
-5. optionally cap maximum question/choice length for rendering sanity
+4. cap the number of choices for ergonomic key selection (2–9)
+5. cap maximum question/choice length for rendering sanity
 
-Invalid arguments should produce a normal failed tool result, not a runtime crash.
+Invalid arguments produce a normal failed `ToolResult`, not a runtime crash. Validation lives in the harness's `AskUserGate` so all surfaces share the contract.
 
 ### Result payload
 
-For the first iteration, the tool result returned to the model should be the final answer text only.
-
-Examples:
+For the first iteration, the tool result returned to the model is the final answer text only. Examples:
 
 - selected choice: `"tag and publish notes"`
 - typed freeform answer: `"Use the existing changelog draft, but bump to v0.1.1"`
 
-That fits Glue’s current `ToolResult.content: String` contract cleanly.
+That fits Glue's current `ToolResult.content: String` contract (`glue_core/tool.dart`) cleanly.
 
 ### Optional future structured result
 
-A future version could return structured metadata in `ToolResult.metadata`, for example:
-
-- `source: choice | freeform`
-- `choice_index`
-- `cancelled: true`
-
-But the LLM-facing `content` should still stay simple text.
+A future version could attach metadata via `ToolResult.metadata`: `source: choice | freeform`, `choice_index`, `cancelled: true`. The LLM-facing `content` stays simple text.
 
 ## Mental model
-
-The cleanest mental model is:
 
 ```text
 ask_user = blocking tool that obtains one human decision and resumes the same turn
 ```
 
-It is not a slash command.
-It is not a top-level CLI command.
-It is not equivalent to the assistant emitting plain prose.
+It is not a slash command. It is not a top-level CLI command. It is not equivalent to the assistant emitting plain prose. It is a tool-mediated pause inside the existing turn, mediated by a typed harness contract.
 
-It is a tool-mediated pause inside the existing turn.
+## Harness contract — typed event + command
 
-## How this fits Glue’s current architecture
+In `packages/glue_core/lib/src/session_event.dart`:
 
-Glue already has the right mechanical pieces.
+```dart
+class UserInputRequestedEvent extends SessionEvent {
+  final ToolCallId callId;
+  final String question;
+  final List<String> choices;
+  final bool allowFreeform;
+  // ... base fields: turnId, sequence, timestamp
+  const UserInputRequestedEvent({...});
+}
+```
 
-### Existing loop
+In `packages/glue_core/lib/src/session_command.dart`:
 
-In `cli/lib/src/agent/agent_core.dart`:
+```dart
+class ResolveUserInputCommand extends SessionCommand {
+  final ToolCallId callId;
+  final String? answer;          // null when cancelled
+  final bool cancelled;
+  const ResolveUserInputCommand({
+    required this.callId,
+    this.answer,
+    this.cancelled = false,
+  });
+}
+```
+
+This mirrors the `PermissionRequestedEvent` / `ResolvePermissionCommand`
+pair that already exists. Surfaces just need to listen and dispatch.
+
+## How this fits Glue's current architecture
+
+### Existing loop (in `packages/glue_harness/lib/src/agent/agent_core.dart`)
 
 1. `AgentCore.run()` sends conversation to the model
 2. streamed tool calls yield `AgentToolCall`
-3. app decides how to handle the tool call
-4. app eventually calls `agent.completeToolCall(result)`
+3. surface decides how to handle the tool call
+4. surface eventually calls `agent.completeToolCall(result)`
 5. `AgentCore` appends a `Message.toolResult(...)`
 6. loop continues
 
@@ -159,41 +175,40 @@ That is exactly the shape needed for `ask_user`.
 
 ### Key implication
 
-`ask_user` does **not** require a special new transcript primitive.
-
-At the conversation level it can remain:
+`ask_user` does **not** require a special new transcript primitive. At the
+conversation level it remains:
 
 1. assistant message with tool call
 2. tool result message with answer text
 
 The main work is in:
 
-- tool definition
-- agent/app suspension semantics
-- TUI state/input routing
-- headless/subagent policy
-- session replay/rendering
+- tool definition (harness)
+- `AskUserGate` to translate agent tool call ↔ surface event/command (harness)
+- typed event/command pair (core)
+- surface UI for collecting input (CLI + ACP server, independently)
+- headless/subagent policy (harness)
+- session replay/rendering (mostly free, since the underlying tool_call/tool_result is already persisted)
 
 ## Proposed runtime state machine
-
-Glue should model this explicitly.
 
 ```text
 RUNNING
   -> model emits ask_user tool call
-  -> app recognizes ask_user as interactive blocking tool
 
-ASKING_USER
-  -> render question + options UI
-  -> stop spinner / mark turn paused
+ASKING_USER (harness state)
+  -> AskUserGate validates args
+  -> emit UserInputRequestedEvent on session.events()
+  -> harness keeps the tool's Completer<ToolResult> open
 
-WAITING_FOR_REPLY
-  -> user selects a choice or submits freeform text
+WAITING_FOR_REPLY (surface state)
+  -> CLI: render inline prompt panel, route input
+  -> ACP: forward as session/request_user_input
 
 RESUMING
-  -> app constructs ToolResult(content: answer)
-  -> app calls agent.completeToolCall(result)
-  -> ask UI is dismissed
+  -> surface dispatches ResolveUserInputCommand
+  -> AskUserGate completes the tool call with the answer
+  -> harness resumes the streaming loop
 
 RUNNING
   -> same agent turn continues
@@ -201,200 +216,110 @@ RUNNING
 
 ### Cancel path
 
-Cancel behavior should be specified explicitly because Glue already supports user cancellation during streaming/tool execution.
+`ResolveUserInputCommand(cancelled: true)`:
 
-Recommended v1 behavior:
+- harness completes the tool call with a synthetic failed `ToolResult` (`success: false`, `content: '[cancelled by user]'`) so the transcript stays structurally valid
+- harness then cancels the in-flight turn (same path as today's `InterruptCommand`)
+- surface returns to idle
 
-- `Esc` while the ask panel is active cancels the entire in-flight agent turn
-- the pending `ask_user` tool call receives a synthetic failed result, e.g. `"[cancelled by user]"`
-- app exits asking state and returns to idle
-
-Alternative behavior would be “stay blocked until answered,” but that is awkward in a terminal app and inconsistent with existing cancel affordances.
+This matches Glue's current cancel mental model. CLI binds Esc to dispatch `ResolveUserInputCommand(cancelled: true)`; ACP exposes the same as a documented response.
 
 ## Proposed implementation shape
 
-## 1. Add a real `AskUserTool`
+### 1. Add a real `AskUserTool`
 
-Add a tool class alongside the built-in tools.
-
-Likely file:
-
-- `cli/lib/src/tools/ask_user_tool.dart`
+**File:** `packages/glue_harness/lib/src/tools/ask_user_tool.dart`
 
 It should:
 
-- expose schema/name/description to the model
-- **not** actually block inside `execute()` in the normal interactive app path
+- expose schema/name/description to the model (so the model sees it like any other tool)
+- **not** actually block inside `execute()` — that path is the safety net for misuse only
 
-Important: Glue’s tool execution model currently assumes tools are callable through `agent.executeTool(call)`, but `ask_user` is different from filesystem/web/shell tools. It should be intercepted by orchestration before normal tool execution.
+`execute()` returns an error like:
 
-### Recommendation
+```
+Error: ask_user must be handled by interactive orchestration
+```
 
-Still define it as a normal `Tool` so it appears in provider tool schemas, but do not rely on its `execute()` implementation in the interactive TUI path.
+This makes accidental misuse in unsupported contexts obvious.
 
-A safe stub implementation could return an error like:
+### 2. Register the tool
 
-- `Error: ask_user must be handled by interactive orchestration`
+**File:** `packages/glue_harness/lib/src/core/service_locator.dart`
 
-That makes accidental misuse in unsupported contexts obvious.
+Add `'ask_user': AskUserTool()` to the registry.
 
-## 2. Register the tool in `ServiceLocator`
+### 3. Add `AskUserGate` in the harness
 
-In `cli/lib/src/core/service_locator.dart`, add:
+**File:** `packages/glue_harness/lib/src/orchestrator/ask_user_gate.dart` (new)
 
-- `'ask_user': AskUserTool()`
+Sibling of `permission_gate.dart`. ~50 lines. Responsibilities:
 
-This makes it available to the main agent and, by default, subagents unless filtered later.
+- detect `call.name == 'ask_user'` before normal permission/dispatch
+- validate arguments
+- emit `UserInputRequestedEvent` on the harness's event sink
+- park the tool's completer keyed by `ToolCallId`
+- on `ResolveUserInputCommand`, complete the parked completer with a `ToolResult`
 
-## 3. Add dedicated app mode for asking
+This is the only harness code that needs to know about ask-user semantics.
+Everything else just observes events.
 
-Current `AppMode` values are:
+### 4. Update `AgentCore` to route ask-user calls through the gate
 
-- `idle`
-- `streaming`
-- `toolRunning`
-- `confirming`
-- `bashRunning`
+**File:** `packages/glue_harness/lib/src/agent/agent_core.dart`
 
-Add:
+Where `AgentToolCall` is currently dispatched, branch on `call.name == 'ask_user'` before the permission gate. Hand off to `AskUserGate.handle(call)`.
 
-- `askingUser`
+`ask_user` **bypasses** `PermissionGate` — it is itself a user-input mechanism, not a capability escalation.
 
-This is important because `ask_user` is neither generic confirmation nor normal idle input.
+### 5. Surface implementation — CLI
 
-It has different semantics:
+**Files:**
 
-- the turn is mid-flight
-- only the answer UI should consume input
-- the bottom editor should not accidentally submit a fresh top-level message
+- `cli/lib/src/app/agent_orchestration.dart` — observe `UserInputRequestedEvent` from `session.events()`, switch to `AppMode.askingUser`, build `_AskUserUiState`
+- `cli/lib/src/app.dart` — add `AppMode.askingUser`
+- `cli/lib/src/app/models.dart` — add `_AskUserUiState`, add `_ToolPhase.awaitingUserInput`
+- `cli/lib/src/app/terminal_event_router.dart` — route keyboard input for ask-user mode (Up/Down/Enter/Esc/typed chars)
+- `cli/lib/src/app/render_pipeline.dart` — render active ask-user prompt
+- `cli/lib/src/rendering/block_renderer.dart` — render tool phase label for awaiting user input
 
-## 4. Add dedicated UI state for ask-user prompts
-
-Add an app-owned state object for the active prompt.
-
-Likely in `cli/lib/src/app/models.dart`:
+`_AskUserUiState`:
 
 ```dart
 class _AskUserUiState {
-  final String callId;
+  final ToolCallId callId;
   final String question;
   final List<String> choices;
   final bool allowFreeform;
   int selectedIndex;
-  final TextAreaEditor freeformEditor;
+  final TextAreaEditor freeformEditor;  // dedicated, not main editor
 }
 ```
 
-A simpler version could reuse the main editor buffer, but a dedicated editor is cleaner because it avoids clobbering the user’s partially typed draft in the normal input area.
+CLI dispatches `ResolveUserInputCommand` on submit/cancel. No CLI code calls `agent.completeToolCall` directly — that's the harness's job, triggered by the command.
 
-Recommendation: keep a dedicated temporary editor for the ask flow.
+Minimal v1 UI behavior:
 
-## 5. Intercept `ask_user` in `agent_orchestration.dart`
+- if `choices.isNotEmpty`:
+  - Up/Down: choose highlighted option
+  - Enter: submits highlighted option when freeform buffer is empty
+  - any typed character: enters freeform mode when `allow_freeform == true`
+  - Enter: submits freeform buffer if it contains text
+- if no choices: freeform-only prompt using the dedicated editor
+- Esc: dispatch `ResolveUserInputCommand(cancelled: true)`
 
-This is the main integration point.
+### 6. Surface implementation — ACP server
 
-In `_handleAgentEventImpl`, under `case AgentToolCall(:final call):`
+**Files:**
 
-before permission-gate logic, branch on:
+- `packages/glue_server/lib/src/acp/event_mapper.dart` (or equivalent) — map `UserInputRequestedEvent` → ACP `session/request_user_input` notification
+- `packages/glue_server/lib/src/acp/command_mapper.dart` — map ACP `session/respond_user_input` → `ResolveUserInputCommand`
 
-- `call.name == 'ask_user'`
+The ACP-side schema mirrors the existing `session/request_permission` flow.
 
-Then:
+### 7. Render the ask-user prompt inline (CLI)
 
-1. parse/validate arguments
-2. create `_AskUserUiState`
-3. set tool UI phase to a new waiting state
-4. stop spinner
-5. set `app._mode = AppMode.askingUser`
-6. render dedicated prompt UI
-7. return without calling `_approveTool`, `_denyTool`, or `_executeAndCompleteTool`
-
-This preserves the existing pending `Completer<ToolResult>` inside `AgentCore` until the user replies.
-
-### Why intercept here
-
-This is where Glue already handles special tool-call control flow:
-
-- permission-gated tools
-- modal approvals
-- execution dispatch
-
-`ask_user` belongs in the same orchestration layer because it is a runtime/UI decision, not a pure tool execution detail.
-
-## 6. Extend tool UI phases for blocking human input
-
-Current `_ToolPhase` values are:
-
-- `preparing`
-- `awaitingApproval`
-- `running`
-- `done`
-- `denied`
-- `cancelled`
-- `error`
-
-Add something like:
-
-- `awaitingUserInput`
-
-This lets the transcript render clearly:
-
-- `▶ Tool: ask_user (waiting for reply)`
-
-This also keeps tool lifecycle semantics consistent with the rest of the UI.
-
-Matching renderer updates are needed in:
-
-- `cli/lib/src/app/models.dart`
-- `cli/lib/src/rendering/block_renderer.dart`
-
-## 7. Add ask-user input handling in terminal routing
-
-`cli/lib/src/app/terminal_event_router.dart` currently routes input to:
-
-- panel modal
-- confirm modal
-- docked panels
-- streaming-input handler
-- autocomplete/editor
-
-Add an early branch for `AppMode.askingUser`.
-
-Desired behavior:
-
-- Up/Down: move selected choice if choices exist
-- Enter:
-  - if freeform buffer non-empty and freeform allowed, submit freeform text
-  - else if choices exist, submit selected choice
-- Tab: maybe switch between choice list and freeform input, if needed
-- Esc: cancel ask flow / cancel turn
-- typed chars: go to dedicated freeform editor when freeform is enabled
-
-For a minimal v1 UI, we can avoid focus switching complexity:
-
-### Simple ergonomic design
-
-If `choices.isNotEmpty`:
-
-- Up/Down choose highlighted option
-- Enter submits highlighted option when freeform buffer is empty
-- any typed character enters freeform mode when `allow_freeform == true`
-- Enter submits freeform buffer if it contains text
-
-If no choices:
-
-- freeform-only prompt using the dedicated editor
-
-This minimizes new UI machinery.
-
-## 8. Render the ask-user prompt inline in the conversation area
-
-Recommended v1 rendering approach:
-
-- keep the normal transcript block for the tool call
-- additionally render an active prompt panel near the input area or as a special inline block at the bottom
-
-A minimal version could render an inline system block such as:
+Recommended v1 rendering: keep the normal transcript block for the tool call; additionally render an active prompt panel near the input area as a special inline block:
 
 ```text
 ? Clarification needed
@@ -406,123 +331,31 @@ A minimal version could render an inline system block such as:
   Or type your answer...
 ```
 
-This can likely be done in `render_pipeline.dart` without introducing a brand-new modal type.
-
-### Why not reuse `ConfirmModal`
-
-`ConfirmModal` is too narrow:
-
-- assumes fixed yes/no-ish choices
-- no freeform editor
-- conceptually tied to approval
-
-`ask_user` needs dedicated semantics and rendering.
-
-## 9. Complete the tool call when the user replies
-
-Add a method in app orchestration, conceptually:
-
-```dart
-void _submitAskUserResponse(String answer)
-```
-
-It should:
-
-1. mark the `ask_user` tool UI state as done
-2. log a session event for the reply
-3. call `agent.completeToolCall(ToolResult(callId: ..., content: answer))`
-4. clear active ask state
-5. switch mode back to `streaming`
-6. restart spinner
-7. re-render
-
-That is the key resume step.
-
-## 10. Handle cancellation explicitly
-
-Add a companion method, conceptually:
-
-```dart
-void _cancelAskUser()
-```
-
-Recommended behavior for v1:
-
-1. mark tool phase as cancelled
-2. call `agent.completeToolCall(ToolResult(
-     callId: ...,
-     success: false,
-     content: '[cancelled by user]',
-   ))`
-3. cancel the whole agent turn via existing `_cancelAgent()` or a narrower path
-
-There are two plausible strategies.
-
-### Strategy A: complete tool result, let model see cancellation
-
-- tool gets a failed result
-- model could theoretically respond to cancellation
-- but UI semantics become odd because the user intended to abort
-
-### Strategy B: treat Esc as turn abort
-
-- complete the tool result so transcript remains structurally valid
-- then cancel the stream and return to idle
-
-Recommendation: use Strategy B for v1 because it matches Glue’s current cancel mental model better.
+Done in `cli/lib/src/app/render_pipeline.dart` without introducing a brand-new modal type. `ConfirmModal` is too narrow (assumes yes/no, no freeform editor).
 
 ## Headless and subagent behavior
 
-This needs an explicit policy.
+`AgentRunner` and subagents are headless by design. A blocking human-input tool cannot work unchanged there.
 
-## Main concern
-
-`AgentRunner` and subagents are headless by design:
-
-- no interactive TUI
-- tool calls are either auto-approved or denied
-- they run to completion autonomously
-
-A blocking human-input tool cannot work unchanged there.
-
-## Recommended policy for v1
-
-### In headless `AgentRunner`
+### Headless `AgentRunner` (in `glue_harness`)
 
 If the model calls `ask_user`:
 
 - do **not** block forever
-- return a denied/unsupported tool result, e.g.
+- return a denied/unsupported `ToolResult`:
   - `"ask_user is unavailable in headless mode; proceed without clarification"`
-  - or `"User input is unavailable in this runtime"`
 
-This should be implemented as a special case in `AgentRunner._handleToolCall()`.
+Implemented as a special case in `AgentRunner._handleToolCall()`.
 
-### In subagents
+### Subagents (in `glue_harness/lib/src/agent/agent_manager.dart`)
 
-Same policy initially:
+Same policy initially: return a failed `ToolResult` with content `"User input is unavailable in subagents"`.
 
-- subagents should not pause the parent UI waiting on human input
-- return a failed tool result saying interactive clarification is unavailable in subagents
-
-This keeps execution predictable and avoids nested human-input control flow.
-
-### Why not bubble subagent questions up to the parent UI in v1
-
-That is possible eventually, but it adds substantial orchestration complexity:
-
-- which agent owns the question?
-- how is the parent transcript updated?
-- how are concurrent subagent questions serialized?
-- how is cancellation handled?
-
-That is too much for the first iteration.
+Bubbling subagent questions up to the parent UI is possible eventually but adds substantial orchestration complexity. Phase 2.
 
 ## Prompting / usage guidance for models
 
-Adding the tool alone is not enough; the system prompt should teach the model when to use it.
-
-Update the agent prompt instructions so models know:
+Update `packages/glue_harness/lib/src/agent/prompts.dart` so the model knows:
 
 - use `ask_user` when one missing decision blocks progress
 - ask one focused question at a time
@@ -530,352 +363,221 @@ Update the agent prompt instructions so models know:
 - set `allow_freeform: false` when the reply must be constrained
 - avoid asking questions that can be answered by reading the repo/config
 - do not use `ask_user` for ordinary narration or status updates
-
-Likely file:
-
-- `cli/lib/src/agent/prompts.dart`
-
-### Suggested instruction shape
-
-Something like:
-
-```text
-If you cannot continue safely or correctly because one specific user decision is missing,
-use the ask_user tool instead of asking in plain assistant text. Ask one focused question.
-Prefer choices when the decision is bounded. Do not use ask_user when the answer can be
-found from files, tool output, or prior conversation context.
-```
+- only one `ask_user` call may be pending at a time
 
 ## Session persistence and replay
 
-Glue already logs:
+Glue already logs `tool_call` and `tool_result` as `SessionEvent` variants
+in `glue_core`. `ask_user` mostly fits existing session machinery — the
+extra `UserInputRequestedEvent` is just session state that surfaces
+observe; it doesn't need to re-derive the answer on resume because the
+final `ToolResult` already encodes it.
 
-- `tool_call`
-- `tool_result`
+### Optional enhancement
 
-That is good news: `ask_user` mostly fits existing session machinery.
-
-## What should be logged
-
-When `ask_user` is invoked:
-
-- existing `tool_call` event with question/choices/allow_freeform args
-
-When answered:
-
-- existing `tool_result` event with content set to the answer text
-
-This may already work without session schema changes.
-
-## Optional enhancement
-
-If we want replay/UI fidelity later, add a dedicated session event type like:
-
-- `ask_user_reply`
-
-But this is not required for transcript correctness because replay already reconstructs tool call + tool result.
+For replay/UI fidelity, persist `UserInputRequestedEvent` and a future
+`UserInputResolvedEvent` so the rendered transcript can distinguish
+ask-user replies from other tool results visually. Not required for
+transcript correctness.
 
 ## Message mapping implications
 
-No fundamental provider protocol changes should be required.
-
-Glue already maps:
-
-- assistant tool calls to provider-specific tool-use structures
-- tool results back to provider-specific tool-result structures
-
-Since `ask_user` is still “just a tool call plus tool result,” these files should require little or no logic change:
-
-- `cli/lib/src/llm/message_mapper.dart`
-- `cli/lib/src/llm/tool_schema.dart`
-
-The only change is that the `ask_user` tool now appears in the advertised tool list.
+No fundamental provider protocol changes required. `glue_strategies/llm/message_mapper.dart` already maps assistant tool calls and tool results to provider-specific structures. The only change is that the `ask_user` tool now appears in the advertised tool list.
 
 ## Suggested file-by-file changes
 
-## Core tool definition
+### Core (`glue_core`)
 
-### New
+#### New
+- (extend existing files; no new files)
 
-- `cli/lib/src/tools/ask_user_tool.dart`
+#### Modified
+- `packages/glue_core/lib/src/session_event.dart` — add `UserInputRequestedEvent`
+- `packages/glue_core/lib/src/session_command.dart` — add `ResolveUserInputCommand`
 
-### Modified
+### Harness (`glue_harness`)
 
-- `cli/lib/src/core/service_locator.dart`
-  - register `ask_user`
+#### New
+- `packages/glue_harness/lib/src/tools/ask_user_tool.dart`
+- `packages/glue_harness/lib/src/orchestrator/ask_user_gate.dart`
 
-## App orchestration and state
+#### Modified
+- `packages/glue_harness/lib/src/core/service_locator.dart` — register tool + gate
+- `packages/glue_harness/lib/src/agent/agent_core.dart` — route ask-user calls through gate before permission gate
+- `packages/glue_harness/lib/src/agent/agent_runner.dart` — special-case `ask_user` as unsupported in headless mode
+- `packages/glue_harness/lib/src/agent/agent_manager.dart` — same for subagents
+- `packages/glue_harness/lib/src/agent/prompts.dart` — usage guidance
+- `packages/glue_harness/lib/glue_harness.dart` — barrel exports for new types
 
-### Modified
+### CLI surface (`cli/`)
 
-- `cli/lib/src/app.dart`
-  - add `AppMode.askingUser`
-  - add ask-user state fields and helper methods
+#### Modified
+- `cli/lib/src/app.dart` — add `AppMode.askingUser`
+- `cli/lib/src/app/models.dart` — `_AskUserUiState`, `_ToolPhase.awaitingUserInput`
+- `cli/lib/src/app/agent_orchestration.dart` — observe event, dispatch command
+- `cli/lib/src/app/terminal_event_router.dart` — keyboard routing
+- `cli/lib/src/app/render_pipeline.dart` — render prompt panel
+- `cli/lib/src/rendering/block_renderer.dart` — tool phase label
 
-- `cli/lib/src/app/models.dart`
-  - add `_AskUserUiState`
-  - add `_ToolPhase.awaitingUserInput`
+### ACP server (`glue_server/`)
 
-- `cli/lib/src/app/agent_orchestration.dart`
-  - intercept `ask_user`
-  - start ask flow
-  - submit answer / cancel
-
-- `cli/lib/src/app/terminal_event_router.dart`
-  - route keyboard input for ask-user mode
-
-- `cli/lib/src/app/render_pipeline.dart`
-  - render active ask-user prompt and current selection/editor
-
-- `cli/lib/src/rendering/block_renderer.dart`
-  - render tool phase label for awaiting user input
-
-## Prompting
-
-### Modified
-
-- `cli/lib/src/agent/prompts.dart`
-  - document when to use `ask_user`
-
-## Headless runtime
-
-### Modified
-
-- `cli/lib/src/agent/agent_runner.dart`
-  - special-case `ask_user` as unsupported in headless mode
-
-Potentially also:
-
-- `cli/lib/src/agent/agent_manager.dart`
-- `cli/lib/src/tools/subagent_tools.dart`
-
-if additional tool filtering or behavior guards are needed for subagents.
+#### Modified
+- `packages/glue_server/lib/src/acp/` — map event ↔ ACP request, document the schema; mirror existing `session/request_permission` plumbing
 
 ## Tests
 
-### New/modified likely areas
+### Core
 
-- `cli/test/agent_core_test.dart`
-- `cli/test/agent/agent_runner_test.dart`
-- new app-level orchestration tests if present
-- new terminal routing tests if present
-- session replay tests if needed
+- `packages/glue_core/test/session_event_test.dart` — `UserInputRequestedEvent` round-trips JSON
+- `packages/glue_core/test/session_command_test.dart` — `ResolveUserInputCommand` shape
 
-## Detailed behavior recommendations
+### Harness
 
-## Tool schema description
+- `packages/glue_harness/test/orchestrator/ask_user_gate_test.dart` —
+  - emits `UserInputRequestedEvent` with correct fields
+  - completes tool call on `ResolveUserInputCommand`
+  - completes tool call as cancelled on `cancelled: true`
+  - rejects malformed args with a failed `ToolResult`
+  - rejects multiple concurrent ask-user calls deterministically
+- `packages/glue_harness/test/agent/agent_core_test.dart` — `ask_user` bypasses `PermissionGate`
+- `packages/glue_harness/test/agent/agent_runner_test.dart` — headless returns unsupported result, does not hang
+- `packages/glue_harness/test/agent/agent_manager_test.dart` — subagent same policy
 
-The tool description should be explicit that this is for clarification only.
+### CLI surface
 
-Suggested description:
+- `cli/test/app/ask_user_orchestration_test.dart` — observes event → switches mode; dispatches command on submit/cancel
+- `cli/test/app/terminal_event_router_test.dart` — keys behave per spec
+- `cli/test/rendering/block_renderer_test.dart` — awaiting-user-input phase rendering
 
-```text
-Pause execution and ask the user one focused clarification question.
-Use this when one missing decision blocks progress and cannot be inferred safely.
-Optionally provide choices for quick selection.
-```
+### ACP server
 
-## Choice handling
+- `packages/glue_server/test/acp/user_input_mapping_test.dart` — event → ACP notification, ACP response → command
 
-When choices are present and the user selects one:
+### Integration
 
-- return the selected string label as `ToolResult.content`
-
-Do not return an index in v1.
-
-This aligns with the intended UX and is easier for the model to consume.
-
-## Freeform handling
-
-If `allow_freeform == true` and the user typed text:
-
-- submit the exact typed text after trim
-- if trimmed text is empty, fall back to selected choice if available
-- if no choice and no text, keep waiting
-
-If `allow_freeform == false`:
-
-- typing should either be ignored or produce a subtle UI hint
-- simplest v1 behavior: ignore character input and only allow choice navigation
-
-## Approval interaction
-
-`ask_user` should bypass the normal permission gate.
-
-Reason:
-
-- it is already a user-input tool
-- asking permission to ask the user would be redundant and awkward
-- it is not a filesystem/network/shell capability escalation
-
-So in `agent_orchestration.dart`, handle it before calling `_permissionGate.resolve(call)`.
-
-## Observability
-
-Existing tool spans may be sufficient, but `ask_user` has a useful extra metric:
-
-- human wait duration
-
-Recommended enhancement:
-
-- capture the timestamp when `ask_user` becomes active
-- on submit/cancel, log metadata such as:
-  - `ask_user.wait_ms`
-  - `ask_user.choice_count`
-  - `ask_user.allow_freeform`
-  - `ask_user.answer_source`
-
-This is optional for v1, but a good fit for Glue’s existing observability model.
-
-## Risks and edge cases
-
-## 1. Draft preservation
-
-If the user already has text typed into the main editor while the agent is running or before the ask prompt appears, the ask flow must not overwrite that draft.
-
-Mitigation:
-
-- use a dedicated ask-user editor state, not `app.editor`
-
-## 2. Multiple concurrent `ask_user` calls
-
-The current loop can theoretically emit multiple tool calls in one assistant turn.
-
-For `ask_user`, Glue should not attempt to present multiple simultaneous human prompts.
-
-Recommendation:
-
-- support only one active `ask_user` at a time
-- if the model emits multiple `ask_user` tool calls in the same batch, process the first and fail the rest with a deterministic error result like:
-  - `"Only one ask_user call may be pending at a time"`
-
-This should also be documented in the prompt guidance.
-
-## 3. Interaction with normal assistant text
-
-A model may emit explanatory text and then `ask_user` in the same assistant response.
-
-That should work naturally because Glue already flushes accumulated assistant text before rendering tool UI.
-
-## 4. Resume/fork correctness
-
-Because the transcript remains standard assistant tool call + tool result, resume/fork should remain structurally valid.
-
-Need to ensure only that cancelled ask-user flows also leave behind matching tool results, as existing cancellation repair already does for generic tools.
-
-## 5. Provider differences
-
-No major provider-specific issues are expected as long as the tool schema stays simple JSON and tool result content is plain text.
-
-## Suggested phased implementation
-
-## Phase 1 — Interactive main-agent support
-
-1. add `AskUserTool`
-2. register it in `ServiceLocator`
-3. add `AppMode.askingUser`
-4. add `_AskUserUiState`
-5. intercept `ask_user` in orchestration
-6. implement minimal TUI for:
-   - question
-   - optional choice navigation
-   - optional freeform input
-   - submit/cancel
-7. add tool phase rendering
-8. update prompts to encourage use
-
-### Acceptance criteria
-
-- model can call `ask_user`
-- TUI pauses current turn and shows question
-- user can answer with choice or text as allowed
-- answer is injected as tool result
-- same turn resumes and completes
-
-## Phase 2 — Headless and subagent policy hardening
-
-1. make `AgentRunner` explicitly reject `ask_user`
-2. verify subagents do not hang on it
-3. document unsupported contexts
-
-### Acceptance criteria
-
-- headless runs never block forever on `ask_user`
-- subagents receive deterministic failure behavior
-
-## Phase 3 — UX refinement
-
-1. improve rendering polish
-2. add optional answer-source metadata / observability
-3. add better cancel messaging
-4. consider replay labels that distinguish ask-user replies from ordinary tool results
-
-## Test plan
-
-## Unit tests
-
-### Tool schema tests
-
-- `ask_user` schema includes required `question`
-- `choices` is optional array
-- `allow_freeform` is optional boolean
-
-### Orchestration tests
-
-- `AgentToolCall(name: ask_user)` enters asking state instead of permission flow
-- answer submission calls `agent.completeToolCall(...)` with expected content
-- cancellation marks tool as cancelled and exits cleanly
-
-### AgentRunner tests
-
-- headless runner returns unsupported result for `ask_user`
-- runner does not hang waiting for human input
-
-### Rendering/state tests
-
-- tool call shows awaiting-user-input phase
-- choice selection updates correctly
-- freeform submission takes precedence over highlighted choice when non-empty
-
-## Integration tests
-
-Add at least one scripted app-level test covering:
+At least one scripted CLI-level test covering:
 
 1. model emits text + `ask_user`
 2. user selects a choice
 3. model receives tool result and continues
-4. final transcript order is:
-   - user
-   - assistant text
-   - assistant tool call
-   - tool result
-   - assistant continuation
+4. final transcript order: user → assistant text → assistant tool call → tool result → assistant continuation
+
+## Detailed behavior recommendations
+
+### Tool schema description
+
+```text
+Pause execution and ask the user one focused clarification question.
+Use this when one missing decision blocks progress and cannot be inferred
+safely. Optionally provide choices for quick selection.
+```
+
+### Choice handling
+
+When choices are present and user selects one, return the selected string label as `ToolResult.content`. Do not return an index in v1.
+
+### Freeform handling
+
+If `allow_freeform == true` and user typed text:
+
+- submit exact typed text after trim
+- if trimmed text is empty, fall back to selected choice if available
+- if no choice and no text, keep waiting
+
+If `allow_freeform == false`: ignore character input; only allow choice navigation.
+
+### Approval interaction
+
+`ask_user` bypasses `PermissionGate`. It is itself a user-input mechanism; asking permission to ask the user would be redundant. Handle in the harness, before the permission gate.
+
+### Observability
+
+`AskUserGate` should emit a `tool.ask_user` span via `ObservabilityHub` capturing:
+
+- `ask_user.wait_ms`
+- `ask_user.choice_count`
+- `ask_user.allow_freeform`
+- `ask_user.answer_source` (choice / freeform / cancelled)
+
+Optional for v1, fits Glue's existing observability model.
+
+## Risks and edge cases
+
+### 1. Draft preservation
+
+Use a dedicated ask-user editor state, not `app.editor`. Don't clobber the user's main draft.
+
+### 2. Multiple concurrent `ask_user` calls
+
+Support only one active `ask_user` at a time. If the model emits multiple `ask_user` calls in the same batch, `AskUserGate` processes the first and fails the rest with `"Only one ask_user call may be pending at a time"`. Document in prompt guidance.
+
+### 3. Interaction with normal assistant text
+
+A model may emit explanatory text and then `ask_user` in the same assistant response. Works naturally because Glue already flushes accumulated assistant text before rendering tool UI.
+
+### 4. Resume/fork correctness
+
+Transcript remains standard assistant tool call + tool result; resume/fork stays structurally valid. Cancelled ask-user flows leave behind matching tool results (existing cancellation repair handles this).
+
+### 5. Provider differences
+
+No major provider-specific issues expected.
+
+## Suggested phased implementation
+
+### Phase 1 — Interactive main-agent support
+
+1. Add typed `UserInputRequestedEvent` / `ResolveUserInputCommand` in `glue_core`.
+2. Add `AskUserTool` and `AskUserGate` in `glue_harness`.
+3. Route in `AgentCore`.
+4. Implement CLI surface (mode, state, routing, rendering).
+5. Update prompt guidance.
+
+#### Acceptance criteria
+
+- model can call `ask_user`
+- CLI pauses current turn and shows question
+- user can answer with choice or text as allowed
+- answer is injected as tool result
+- same turn resumes and completes
+
+### Phase 2 — Headless, subagent, ACP
+
+1. Make `AgentRunner` explicitly reject `ask_user`.
+2. Make subagents reject `ask_user`.
+3. Map `UserInputRequestedEvent` ↔ ACP in `glue_server`.
+
+#### Acceptance criteria
+
+- headless runs never block forever on `ask_user`
+- subagents receive deterministic failure behavior
+- ACP clients can drive ask-user flows end-to-end
+
+### Phase 3 — UX refinement
+
+1. Rendering polish.
+2. Optional answer-source metadata / observability.
+3. Better cancel messaging.
+4. Distinguish ask-user replies from ordinary tool results in replay/transcript views.
 
 ## Open questions
 
-1. **Should `ask_user` be available to subagents eventually?**
-   - Recommendation: not in v1.
-
-2. **Should cancel return a tool result to the model, or hard-abort without resume?**
-   - Recommendation: create a matching tool result for transcript validity, then abort the turn.
-
-3. **Should freeform input be allowed when choices exist by default?**
-   - Recommendation: yes, controlled by `allow_freeform`.
-
-4. **Should the result be plain text or JSON?**
-   - Recommendation: plain text in `content`, optional metadata later.
-
-5. **Should `ask_user` use modal UI or inline UI?**
-   - Recommendation: inline or lightweight dedicated prompt region first; avoid modal complexity unless needed.
+1. **Should `ask_user` be available to subagents eventually?** — Recommendation: not in v1.
+2. **Should cancel return a tool result to the model, or hard-abort without resume?** — Recommendation: create matching failed `ToolResult`, then abort the turn.
+3. **Should freeform input be allowed when choices exist by default?** — Recommendation: yes, controlled by `allow_freeform`.
+4. **Should the result be plain text or JSON?** — Recommendation: plain text in `content`, optional metadata later.
+5. **Should `ask_user` use modal UI or inline UI?** — Recommendation: inline / lightweight dedicated prompt region first.
 
 ## Acceptance criteria summary
 
 This plan is complete when:
 
-1. `ask_user` is exposed as a built-in tool
-2. the interactive TUI pauses and waits for a structured answer when it is called
-3. the answer is returned as the tool result for that tool call
-4. the same agent turn resumes afterward
-5. `ask_user` bypasses normal permission approval flow
-6. headless/subagent contexts fail deterministically instead of hanging
-7. session transcripts remain structurally valid across submit, cancel, resume, and replay
+1. `ask_user` is exposed as a built-in tool in `glue_harness`
+2. `glue_core` defines typed `UserInputRequestedEvent` + `ResolveUserInputCommand`
+3. CLI pauses and waits for a structured answer when `ask_user` is called
+4. ACP clients see a `session/request_user_input` notification with the same shape
+5. The answer is returned as the `ToolResult` for that tool call
+6. The same agent turn resumes afterward
+7. `ask_user` bypasses normal permission approval flow
+8. Headless/subagent contexts fail deterministically instead of hanging
+9. Session transcripts remain structurally valid across submit, cancel, resume, and replay

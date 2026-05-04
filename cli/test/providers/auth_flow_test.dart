@@ -1,4 +1,5 @@
-import 'package:glue/src/providers/auth_flow.dart';
+import 'package:glue_strategies/glue_strategies.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -88,6 +89,87 @@ void main() {
         };
         expect(label, isNotEmpty);
       }
+    });
+  });
+
+  group('typed-event bridges', () {
+    test('DeviceCodeFlow.toRequestEvent populates the typed contract', () {
+      final fixedNow = DateTime.utc(2026, 4, 29, 12, 0);
+      final flow = DeviceCodeFlow(
+        providerId: 'copilot',
+        providerName: 'GitHub Copilot',
+        verificationUri: 'https://github.com/login/device',
+        userCode: 'ABCD-1234',
+        pollInterval: const Duration(seconds: 5),
+        expiresAt: fixedNow.add(const Duration(minutes: 15)),
+        progress: const Stream.empty(),
+      );
+
+      final event = flow.toRequestEvent(
+        turnId: const TurnId('turn-1'),
+        sequence: 3,
+        timestamp: fixedNow,
+      );
+
+      expect(event.code, 'ABCD-1234');
+      expect(event.verificationUrl, 'https://github.com/login/device');
+      expect(event.expiresIn, const Duration(minutes: 15));
+      expect(event.turnId.value, 'turn-1');
+      expect(event.sequence, 3);
+      expect(event.timestamp, fixedNow);
+    });
+
+    test('expiresIn clamps to zero when expiresAt is already past', () {
+      final fixedNow = DateTime.utc(2026, 4, 29, 12, 0);
+      final flow = DeviceCodeFlow(
+        providerId: 'copilot',
+        providerName: 'GitHub Copilot',
+        verificationUri: 'https://github.com/login/device',
+        userCode: 'ABCD-1234',
+        pollInterval: const Duration(seconds: 5),
+        expiresAt: fixedNow.subtract(const Duration(minutes: 1)),
+        progress: const Stream.empty(),
+      );
+
+      final event = flow.toRequestEvent(
+        turnId: const TurnId('t'),
+        sequence: 0,
+        timestamp: fixedNow,
+      );
+      expect(event.expiresIn, Duration.zero);
+    });
+
+    test('AuthFlowPolling.toResolvedEvent returns null', () {
+      const progress = AuthFlowPolling();
+      final event = progress.toResolvedEvent(
+        turnId: const TurnId('t'),
+        sequence: 0,
+      );
+      expect(event, isNull);
+    });
+
+    test('AuthFlowSucceeded.toResolvedEvent reports success', () {
+      const progress = AuthFlowSucceeded(fields: {'github_token': 'gho_x'});
+      final fixedNow = DateTime.utc(2026, 4, 29, 12, 0);
+      final event = progress.toResolvedEvent(
+        turnId: const TurnId('turn-1'),
+        sequence: 5,
+        timestamp: fixedNow,
+      )!;
+      expect(event.success, isTrue);
+      expect(event.errorMessage, isNull);
+      expect(event.sequence, 5);
+      expect(event.timestamp, fixedNow);
+    });
+
+    test('AuthFlowFailed.toResolvedEvent carries the reason', () {
+      const progress = AuthFlowFailed(reason: 'access denied');
+      final event = progress.toResolvedEvent(
+        turnId: const TurnId('turn-1'),
+        sequence: 5,
+      )!;
+      expect(event.success, isFalse);
+      expect(event.errorMessage, 'access denied');
     });
   });
 }

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:glue/src/llm/sse.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:test/test.dart';
 
 void main() {

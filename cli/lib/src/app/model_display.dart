@@ -10,8 +10,7 @@
 /// the case where no active model is known yet (pre-config bootstrap).
 library;
 
-import 'package:glue/src/catalog/model_catalog.dart';
-import 'package:glue/src/catalog/model_ref.dart';
+import 'package:glue_core/glue_core.dart';
 
 /// Compact one-line label for the status bar. Returns [fallback] when no
 /// ref is available (e.g. before config finishes loading).

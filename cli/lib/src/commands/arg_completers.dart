@@ -8,9 +8,9 @@
 /// production without spinning up a full `App`.
 library;
 
-import 'package:glue/src/catalog/model_catalog.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/commands/slash_commands.dart';
-import 'package:glue/src/skills/skill_parser.dart';
+import 'package:glue_harness/glue_harness.dart';
 
 const Map<String, String> openTargets = {
   'home': r'$GLUE_HOME',

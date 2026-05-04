@@ -1,9 +1,5 @@
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/agent_manager.dart';
-import 'package:glue/src/agent/agent_runner.dart';
-import 'package:glue/src/agent/tools.dart';
-import 'package:glue/src/catalog/model_ref.dart';
-import 'package:glue/src/llm/llm_factory.dart';
+import 'package:glue_core/glue_core.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
 
 import '../_helpers/test_config.dart';
@@ -22,7 +18,7 @@ class _MockLlm implements LlmClient {
       yield TextDelta('I\'ll read that file. ');
       yield ToolCallComplete(
         ToolCall(
-          id: 'tc_$_calls',
+          id: ToolCallId('tc_$_calls'),
           name: 'read_file',
           arguments: {'path': 'pubspec.yaml'},
         ),
@@ -58,7 +54,7 @@ void main() {
       );
       final result = await runner.runToCompletion('Please read pubspec.yaml');
       expect(result, contains('Done with the task'));
-      expect(core.tokenCount, greaterThan(0));
+      expect(core.stats.totalTokens, greaterThan(0));
     });
 
     test('AgentManager spawns parallel subagents', () async {

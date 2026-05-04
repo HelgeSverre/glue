@@ -1,8 +1,6 @@
 import 'dart:convert';
 
-import 'package:glue/src/observability/observability.dart';
-import 'package:glue/src/observability/observability_config.dart';
-import 'package:glue/src/observability/otlp_http_trace_sink.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 

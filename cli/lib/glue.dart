@@ -22,6 +22,7 @@
 ///   pluggable [ObservabilitySink]s (OpenTelemetry, Langfuse, file).
 library;
 
+// Surface — owned by this (cli) package.
 export 'src/app.dart' show App, AppMode;
 export 'src/terminal/terminal.dart'
     show
@@ -37,61 +38,7 @@ export 'src/terminal/terminal.dart'
 export 'src/terminal/layout.dart' show Layout;
 export 'src/input/line_editor.dart' show LineEditor, InputAction;
 export 'src/input/text_area_editor.dart' show TextAreaEditor;
-export 'src/agent/agent_core.dart'
-    show
-        AgentCore,
-        LlmClient,
-        LlmChunk,
-        TextDelta,
-        ToolCallComplete,
-        UsageInfo,
-        ToolCall,
-        Message;
-export 'src/agent/content_part.dart' show ContentPart, TextPart, ImagePart;
-export 'src/agent/tools.dart'
-    show
-        Tool,
-        ToolTrust,
-        ToolResult,
-        ForwardingTool,
-        ToolParameter,
-        ReadFileTool,
-        WriteFileTool,
-        EditFileTool,
-        BashTool,
-        GrepTool,
-        ListDirectoryTool;
-export 'src/config/build_info.dart' show BuildInfo;
-export 'src/config/constants.dart' show AppConstants;
-export 'src/config/glue_config.dart'
-    show GlueConfig, CatalogSourceConfig, ConfigError, splitPathList;
-export 'src/config/approval_mode.dart' show ApprovalMode, ApprovalModeExt;
-export 'src/catalog/model_catalog.dart'
-    show ModelCatalog, ProviderDef, ModelDef, AuthSpec, AuthKind, Capability;
-export 'src/catalog/model_ref.dart' show ModelRef, ModelRefParseException;
-export 'src/catalog/catalog_loader.dart' show loadCatalog;
-export 'src/catalog/catalog_parser.dart'
-    show parseCatalogYaml, CatalogParseException;
-export 'src/catalog/models_generated.dart' show bundledCatalog;
-export 'src/credentials/credential_ref.dart'
-    show
-        CredentialRef,
-        EnvCredential,
-        StoredCredential,
-        InlineCredential,
-        NoCredential;
-export 'src/credentials/credential_store.dart' show CredentialStore;
-export 'src/providers/provider_adapter.dart'
-    show ProviderAdapter, AdapterRegistry, ProviderHealth, DiscoveredModel;
-export 'src/providers/resolved.dart' show ResolvedProvider, ResolvedModel;
-export 'src/providers/compatibility_profile.dart' show CompatibilityProfile;
-export 'src/providers/anthropic_adapter.dart' show AnthropicAdapter;
-export 'src/providers/openai_compatible_adapter.dart'
-    show OpenAiCompatibleAdapter;
-export 'src/llm/llm_factory.dart' show LlmClientFactory;
-export 'src/agent/agent_runner.dart' show AgentRunner, ToolApprovalPolicy;
-export 'src/agent/agent_manager.dart' show AgentManager;
-export 'src/agent/prompts.dart' show Prompts;
+export 'src/input/file_expander.dart' show expandFileRefs, extractFileRefs;
 export 'src/rendering/ansi_utils.dart'
     show
         osc8Link,
@@ -112,29 +59,6 @@ export 'src/commands/slash_commands.dart'
         SlashCommand,
         SlashCommandRegistry;
 export 'src/commands/builtin_commands.dart' show BuiltinCommands;
-export 'src/ui/modal.dart' show ConfirmModal, ModalChoice;
-export 'src/ui/box.dart' show Box;
-export 'src/ui/panel_modal.dart'
-    show
-        PanelModal,
-        PanelStyle,
-        PanelOverlay,
-        BarrierStyle,
-        PanelSize,
-        PanelFixed,
-        PanelFluid;
-export 'src/ui/panel_controller.dart' show PanelController, HistoryPanelEntry;
-export 'src/ui/split_panel_modal.dart' show SplitPanelModal;
-export 'src/skills/skill_parser.dart'
-    show SkillMeta, SkillSource, SkillParseError;
-export 'src/skills/skill_registry.dart' show SkillRegistry;
-export 'src/skills/skill_runtime.dart' show SkillRuntime, SkillPathsProvider;
-export 'src/skills/skill_tool.dart' show SkillTool;
-export 'src/core/environment.dart' show Environment;
-export 'src/core/path_opener.dart' show openInFileManager;
-export 'src/core/service_locator.dart' show ServiceLocator, AppServices;
-export 'src/core/where_report.dart' show buildWhereReport;
-export 'src/config/config_template.dart' show buildConfigTemplate;
 export 'src/commands/config_command.dart'
     show
         ConfigInitResult,
@@ -150,42 +74,144 @@ export 'src/doctor/doctor.dart'
         DoctorSeverity,
         renderDoctorReport,
         runDoctor;
-export 'src/orchestrator/permission_gate.dart'
-    show PermissionGate, PermissionDecision;
-export 'src/session/session_manager.dart'
+export 'src/ui/modal.dart' show ConfirmModal, ModalChoice;
+export 'src/ui/box.dart' show Box;
+export 'src/ui/panel_modal.dart'
     show
+        PanelModal,
+        PanelStyle,
+        PanelOverlay,
+        BarrierStyle,
+        PanelSize,
+        PanelFixed,
+        PanelFluid;
+export 'src/ui/panel_controller.dart' show PanelController, HistoryPanelEntry;
+export 'src/ui/split_panel_modal.dart' show SplitPanelModal;
+export 'src/ui/at_file_hint.dart' show AtFileHint;
+export 'src/ui/autocomplete_overlay.dart'
+    show AutocompleteOverlay, AcceptResult;
+
+// Core data types — re-exported from glue_core so consumers of the cli
+// barrel can keep their existing import path.
+export 'package:glue_core/glue_core.dart'
+    show
+        AppConstants,
+        AuthKind,
+        AuthSpec,
+        Capability,
+        ContentPart,
+        ImagePart,
+        LlmChunk,
+        LlmClient,
+        Message,
+        ModelCatalog,
+        ModelDef,
+        ModelRef,
+        ModelRefParseException,
+        ProviderDef,
+        TextDelta,
+        TextPart,
+        ToolCall,
+        ToolCallComplete,
+        UsageInfo;
+
+// Strategy implementations.
+export 'package:glue_strategies/glue_strategies.dart'
+    show
+        AdapterRegistry,
+        AnthropicAdapter,
+        CaptureResult,
+        CommandExecutor,
+        CompatibilityProfile,
+        CredentialRef,
+        CredentialStore,
+        DiscoveredModel,
+        DockerConfig,
+        DockerExecutor,
+        EnvCredential,
+        ExecutorFactory,
+        HostExecutor,
+        InlineCredential,
+        LineRingBuffer,
+        MountEntry,
+        MountMode,
+        NoCredential,
+        OpenAiCompatibleAdapter,
+        ProviderAdapter,
+        ProviderHealth,
+        ResolvedModel,
+        ResolvedProvider,
+        RunningCommand,
+        ShellConfig,
+        ShellMode,
+        StoredCredential;
+
+// Harness orchestration.
+export 'package:glue_harness/glue_harness.dart'
+    show
+        AgentCore,
+        AgentManager,
+        AgentRunner,
+        AppServices,
+        BuildInfo,
+        CatalogSourceConfig,
+        ConfigError,
+        ConfigStore,
+        DebugController,
+        EditFileTool,
+        Environment,
+        FileSink,
+        ForwardingTool,
+        GlueConfig,
+        JobError,
+        JobEvent,
+        JobExited,
+        JobStarted,
+        JobStatus,
+        LlmClientFactory,
+        Observability,
+        ObservabilityConfig,
+        ObservabilitySink,
+        ObservabilitySpan,
+        PermissionDecision,
+        PermissionGate,
+        Prompts,
+        ReadFileTool,
+        ServiceLocator,
+        SessionForkResult,
         SessionManager,
+        SessionMeta,
         SessionReplay,
         SessionReplayEntry,
         SessionReplayKind,
         SessionResumeResult,
-        SessionForkResult;
-export 'src/storage/session_store.dart' show SessionStore, SessionMeta;
-export 'src/observability/observability.dart'
-    show Observability, ObservabilitySink, ObservabilitySpan;
-export 'src/observability/debug_controller.dart' show DebugController;
-export 'src/observability/file_sink.dart' show FileSink;
-export 'src/observability/observability_config.dart' show ObservabilityConfig;
-export 'src/storage/config_store.dart' show ConfigStore;
-export 'src/input/file_expander.dart' show expandFileRefs, extractFileRefs;
-export 'src/ui/at_file_hint.dart' show AtFileHint;
-export 'src/ui/autocomplete_overlay.dart'
-    show AutocompleteOverlay, AcceptResult;
-export 'src/shell/command_executor.dart'
-    show CommandExecutor, CaptureResult, RunningCommand;
-export 'src/shell/docker_config.dart' show DockerConfig, MountEntry, MountMode;
-export 'src/shell/docker_executor.dart' show DockerExecutor;
-export 'src/shell/executor_factory.dart' show ExecutorFactory;
-export 'src/shell/host_executor.dart' show HostExecutor;
-export 'src/shell/shell_config.dart' show ShellConfig, ShellMode;
-export 'src/storage/session_state.dart' show SessionState;
-export 'src/shell/line_ring_buffer.dart' show LineRingBuffer;
-export 'src/shell/shell_job_manager.dart'
-    show
-        ShellJobManager,
+        SessionState,
+        SessionStore,
         ShellJob,
-        JobStatus,
-        JobEvent,
-        JobStarted,
-        JobExited,
-        JobError;
+        ShellJobManager,
+        SkillMeta,
+        SkillParseError,
+        SkillPathsProvider,
+        SkillRegistry,
+        SkillRuntime,
+        SkillSource,
+        SkillTool,
+        Tool,
+        ToolApprovalPolicy,
+        ToolParameter,
+        ToolResult,
+        ToolTrust,
+        ApprovalMode,
+        ApprovalModeExt,
+        BashTool,
+        GrepTool,
+        ListDirectoryTool,
+        WriteFileTool,
+        bundledCatalog,
+        buildConfigTemplate,
+        buildWhereReport,
+        loadCatalog,
+        openInFileManager,
+        parseCatalogYaml,
+        CatalogParseException,
+        splitPathList;

@@ -1,8 +1,7 @@
 import 'dart:convert';
 
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/content_part.dart';
-import 'package:glue/src/llm/ollama_client.dart';
+import 'package:glue_core/glue_core.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 
@@ -49,10 +48,11 @@ void main() {
       final messages = [
         Message.user('hi'),
         Message.assistant(toolCalls: [
-          ToolCall(id: 'tc1', name: 'web_browser', arguments: {}),
+          ToolCall(
+              id: const ToolCallId('tc1'), name: 'web_browser', arguments: {}),
         ]),
         Message.toolResult(
-          callId: 'tc1',
+          callId: const ToolCallId('tc1'),
           content: 'Screenshot captured.',
           toolName: 'web_browser',
           contentParts: [
@@ -87,10 +87,10 @@ void main() {
       final messages = [
         Message.user('hi'),
         Message.assistant(toolCalls: [
-          ToolCall(id: 'tc1', name: 'bash', arguments: {}),
+          ToolCall(id: const ToolCallId('tc1'), name: 'bash', arguments: {}),
         ]),
         Message.toolResult(
-          callId: 'tc1',
+          callId: const ToolCallId('tc1'),
           content: 'output',
           toolName: 'bash',
         ),
@@ -112,10 +112,11 @@ void main() {
       final messages = [
         Message.user('hi'),
         Message.assistant(toolCalls: [
-          ToolCall(id: 'tc1', name: 'read_file', arguments: {}),
+          ToolCall(
+              id: const ToolCallId('tc1'), name: 'read_file', arguments: {}),
         ]),
         Message.toolResult(
-          callId: 'tc1',
+          callId: const ToolCallId('tc1'),
           content: 'fallback',
           toolName: 'read_file',
           contentParts: [

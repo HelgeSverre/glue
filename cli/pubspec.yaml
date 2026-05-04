@@ -7,6 +7,11 @@ documentation: https://www.getglue.dev/docs/getting-started/installation
 issue_tracker: https://github.com/HelgeSverre/glue/issues
 topics: [ cli, ai, llm, agent, terminal ]
 
+# Distribution is via the AOT-compiled binary, not pub. Suppresses the
+# "publishable packages can't have path dependencies" warning so we can
+# depend on the in-repo glue_core package without conflict.
+publish_to: none
+
 executables:
   glue: glue
 
@@ -16,6 +21,14 @@ environment:
 dependencies:
   args: ^2.7.0
   cli_completion: ^0.5.1
+  glue_core:
+    path: ../packages/glue_core
+  glue_harness:
+    path: ../packages/glue_harness
+  glue_server:
+    path: ../packages/glue_server
+  glue_strategies:
+    path: ../packages/glue_strategies
   html: ^0.15.5
   http: ^1.6.0
   markdown: ^7.3.1

@@ -1,4 +1,4 @@
-import 'package:glue/src/web/fetch/html_to_markdown.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:test/test.dart';
 
 void main() {

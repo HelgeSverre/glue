@@ -1,9 +1,8 @@
 import 'dart:io';
 
-import 'package:glue/src/catalog/model_ref.dart';
-import 'package:glue/src/config/glue_config.dart';
-import 'package:glue/src/core/environment.dart';
-import 'package:glue/src/web/browser/browser_config.dart';
+import 'package:glue_core/glue_core.dart';
+import 'package:glue_harness/glue_harness.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:test/test.dart';
 
 Directory _scratch() =>
@@ -230,7 +229,8 @@ observability:
       );
     });
 
-    test('OTEL_SDK_DISABLED disables exporter auto-enable from environment', () {
+    test('OTEL_SDK_DISABLED disables exporter auto-enable from environment',
+        () {
       final home = _scratch();
       addTearDown(() => home.deleteSync(recursive: true));
       final config = GlueConfig.load(
@@ -333,6 +333,44 @@ title_generation_enabled: false
         ),
       );
       expect(config.titleGenerationEnabled, isTrue);
+    });
+  });
+
+  group('GlueConfig.anthropicPromptCache', () {
+    test('defaults to true when nothing sets it', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      final config = GlueConfig.load(environment: _envWith(home: home));
+      expect(config.anthropicPromptCache, isTrue);
+    });
+
+    test('YAML anthropic_prompt_cache: false disables it', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      Directory('${home.path}/.glue').createSync();
+      File('${home.path}/.glue/config.yaml').writeAsStringSync('''
+active_model: anthropic/claude-sonnet-4.6
+anthropic_prompt_cache: false
+''');
+      final config = GlueConfig.load(environment: _envWith(home: home));
+      expect(config.anthropicPromptCache, isFalse);
+    });
+
+    test('env GLUE_ANTHROPIC_PROMPT_CACHE=false overrides YAML=true', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      Directory('${home.path}/.glue').createSync();
+      File('${home.path}/.glue/config.yaml').writeAsStringSync('''
+active_model: anthropic/claude-sonnet-4.6
+anthropic_prompt_cache: true
+''');
+      final config = GlueConfig.load(
+        environment: _envWith(
+          home: home,
+          vars: {'GLUE_ANTHROPIC_PROMPT_CACHE': 'false'},
+        ),
+      );
+      expect(config.anthropicPromptCache, isFalse);
     });
   });
 

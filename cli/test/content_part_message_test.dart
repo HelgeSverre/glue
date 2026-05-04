@@ -1,6 +1,4 @@
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/content_part.dart';
-import 'package:glue/src/agent/tools.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -11,7 +9,7 @@ void main() {
         const ImagePart(bytes: [1, 2, 3], mimeType: 'image/png'),
       ];
       final result = ToolResult(
-        callId: 'c1',
+        callId: const ToolCallId('c1'),
         content: 'hello',
         contentParts: parts,
       );
@@ -20,12 +18,13 @@ void main() {
     });
 
     test('has null contentParts when not provided', () {
-      final result = ToolResult(callId: 'c2', content: 'text');
+      final result =
+          ToolResult(callId: const ToolCallId('c2'), content: 'text');
       expect(result.contentParts, isNull);
     });
 
     test('denied has null contentParts', () {
-      final result = ToolResult.denied('c3');
+      final result = ToolResult.denied(const ToolCallId('c3'));
       expect(result.contentParts, isNull);
       expect(result.success, isFalse);
     });
@@ -38,7 +37,7 @@ void main() {
         const ImagePart(bytes: [4, 5], mimeType: 'image/jpeg'),
       ];
       final msg = Message.toolResult(
-        callId: 'c4',
+        callId: const ToolCallId('c4'),
         content: 'output',
         toolName: 'screenshot',
         contentParts: parts,
@@ -50,7 +49,7 @@ void main() {
 
     test('has null contentParts when not provided', () {
       final msg = Message.toolResult(
-        callId: 'c5',
+        callId: const ToolCallId('c5'),
         content: 'plain text',
       );
       expect(msg.contentParts, isNull);

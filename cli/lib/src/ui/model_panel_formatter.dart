@@ -1,6 +1,5 @@
-import 'package:glue/src/catalog/model_catalog.dart';
-import 'package:glue/src/catalog/model_ref.dart';
-import 'package:glue/src/providers/ollama_discovery.dart';
+import 'package:glue_core/glue_core.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:glue/src/terminal/styled.dart';
 import 'package:glue/src/ui/responsive_table.dart';
 import 'package:glue/src/ui/table_formatter.dart';

@@ -1,7 +1,7 @@
 @Tags(['integration'])
 library;
 
-import 'package:glue/src/web/search/providers/duckduckgo_provider.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:test/test.dart';
 
 void main() {

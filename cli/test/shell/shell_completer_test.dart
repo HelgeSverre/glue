@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:glue/src/shell/shell_completer.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:test/test.dart';
 
 void main() {

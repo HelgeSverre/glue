@@ -1,6 +1,6 @@
-import 'package:glue/src/config/constants.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
-import 'package:glue/src/shell/shell_completer.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:glue/src/ui/autocomplete_overlay.dart';
 
 /// Controls shell mode tab-completion overlay state.

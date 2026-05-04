@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:glue/src/core/path_opener.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
 
 void main() {

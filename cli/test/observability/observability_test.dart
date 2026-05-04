@@ -1,5 +1,4 @@
-import 'package:glue/src/observability/debug_controller.dart';
-import 'package:glue/src/observability/observability.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
 
 class _MockSink extends ObservabilitySink {

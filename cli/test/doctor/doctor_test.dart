@@ -128,8 +128,8 @@ observability:
         isTrue,
       );
       expect(
-        report.findings.any((finding) =>
-            finding.message.contains('super-secret')),
+        report.findings
+            .any((finding) => finding.message.contains('super-secret')),
         isFalse,
       );
     });

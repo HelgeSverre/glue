@@ -5,8 +5,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:glue/src/credentials/credential_store.dart';
-import 'package:glue/src/providers/copilot_token_manager.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 

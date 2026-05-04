@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:glue/src/catalog/remote_catalog_sanitizer.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
 
 void main() {

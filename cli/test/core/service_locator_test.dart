@@ -1,8 +1,7 @@
 import 'dart:io';
 
-import 'package:glue/src/core/environment.dart';
-import 'package:glue/src/core/service_locator.dart';
-import 'package:glue/src/storage/session_store.dart';
+import 'package:glue_core/glue_core.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -23,7 +22,7 @@ void main() {
 
       // Represents the user's real work they want to resume.
       final realMeta = SessionMeta(
-        id: 'pre-existing-session',
+        id: const SessionId('pre-existing-session'),
         cwd: env.cwd,
         modelRef: 'anthropic/claude-sonnet-4-6',
         startTime: DateTime.now().subtract(const Duration(hours: 1)),

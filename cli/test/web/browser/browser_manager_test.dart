@@ -1,5 +1,4 @@
-import 'package:glue/src/web/browser/browser_endpoint.dart';
-import 'package:glue/src/web/browser/browser_manager.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:test/test.dart';
 
 class _MockProvider implements BrowserEndpointProvider {

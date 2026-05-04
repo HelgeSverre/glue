@@ -5,8 +5,7 @@ library;
 import 'dart:async';
 import 'dart:io';
 
-import 'package:glue/src/catalog/catalog_refresh_service.dart';
-import 'package:glue/src/catalog/remote_catalog_fetcher.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
 
 class _StubFetcher implements RemoteCatalogFetcher {

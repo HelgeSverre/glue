@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:glue/src/storage/session_store.dart';
+import 'package:glue_core/glue_core.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
@@ -14,7 +15,7 @@ void main() {
     tempDir = Directory.systemTemp.createTempSync('session_store_test_');
     sessionDir = p.join(tempDir.path, 'session-001');
     meta = SessionMeta(
-      id: 'session-001',
+      id: const SessionId('session-001'),
       cwd: '/tmp/project',
       modelRef: 'anthropic/claude-sonnet-4.6',
       startTime: DateTime.utc(2026, 2, 27, 10, 0),

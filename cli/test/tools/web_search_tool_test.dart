@@ -1,7 +1,5 @@
-import 'package:glue/src/tools/web_search_tool.dart';
-import 'package:glue/src/web/search/models.dart';
-import 'package:glue/src/web/search/provider.dart';
-import 'package:glue/src/web/search/search_router.dart';
+import 'package:glue_harness/glue_harness.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:test/test.dart';
 
 class _MockProvider implements WebSearchProvider {

@@ -5,13 +5,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/catalog/model_catalog.dart';
-import 'package:glue/src/credentials/credential_store.dart';
-import 'package:glue/src/providers/auth_flow.dart';
-import 'package:glue/src/providers/copilot_adapter.dart';
-import 'package:glue/src/providers/copilot_token_manager.dart';
-import 'package:glue/src/providers/resolved.dart';
+import 'package:glue_core/glue_core.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 

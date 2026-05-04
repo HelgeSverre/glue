@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:glue/src/web/search/providers/brave_provider.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:test/test.dart';
 
 void main() {

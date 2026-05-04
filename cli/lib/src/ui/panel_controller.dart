@@ -3,16 +3,12 @@ import 'dart:math' as math;
 
 import 'package:meta/meta.dart';
 
-import 'package:glue/src/catalog/model_catalog.dart';
-import 'package:glue/src/catalog/model_ref.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/commands/slash_commands.dart';
-import 'package:glue/src/config/glue_config.dart';
-import 'package:glue/src/core/clipboard.dart' as shared_clipboard;
-import 'package:glue/src/providers/auth_flow.dart';
-import 'package:glue/src/providers/ollama_discovery.dart';
-import 'package:glue/src/providers/provider_adapter.dart';
+import 'package:glue_harness/glue_harness.dart';
+import 'package:glue_harness/glue_harness.dart' as shared_clipboard;
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
-import 'package:glue/src/storage/session_store.dart';
 import 'package:glue/src/terminal/styled.dart';
 import 'package:glue/src/ui/api_key_prompt_panel.dart';
 import 'package:glue/src/ui/device_code_panel.dart';
@@ -125,7 +121,7 @@ class PanelController {
       gap: ' ',
       includeHeaderInWidth: true,
       getValues: (s) {
-        final displayId = s.title ?? s.id;
+        final displayId = s.title ?? s.id.value;
         return {
           'fork': s.forkedFrom != null ? '[F]'.styled.cyan.toString() : '',
           'id': displayId.styled.cyan.toString(),

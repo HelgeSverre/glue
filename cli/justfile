@@ -60,8 +60,13 @@ gen-check:
     dart run tool/gen_models.dart --check
     dart run tool/gen_version.dart --check
 
-# Analyze + test + codegen freshness
-check: gen-check analyze test
+# Layer-import linter (strict — see docs/plans/2026-04-29-harness-layers.md)
+# Enforces the full four-layer architecture: surface → harness → strategies → core.
+check-layers *args:
+    dart run tool/check_layers.dart --strict {{args}}
+
+# Analyze + test + codegen freshness + layer hygiene
+check: gen-check analyze test check-layers
 
 # Get dependencies
 deps:

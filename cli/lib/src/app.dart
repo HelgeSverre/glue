@@ -2,55 +2,25 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/terminal/terminal.dart';
 import 'package:glue/src/terminal/layout.dart';
 import 'package:glue/src/input/line_editor.dart' show InputAction;
 import 'package:glue/src/input/text_area_editor.dart';
 import 'package:glue/src/input/streaming_input_handler.dart';
 import 'package:glue/src/input/file_expander.dart';
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/agent_manager.dart';
-import 'package:glue/src/agent/tools.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:glue/src/commands/arg_completers.dart' as arg_completers;
 import 'package:glue/src/commands/builtin_commands.dart';
 import 'package:glue/src/commands/config_command.dart';
 import 'package:glue/src/commands/slash_commands.dart';
+import 'package:glue/src/commands/usage_report.dart';
 import 'package:glue/src/app/model_display.dart';
-import 'package:glue/src/catalog/model_catalog.dart';
-import 'package:glue/src/catalog/model_ref.dart';
-import 'package:glue/src/catalog/model_resolver.dart';
-import 'package:glue/src/config/constants.dart';
-import 'package:glue/src/config/glue_config.dart';
-import 'package:glue/src/core/clipboard.dart';
-import 'package:glue/src/core/environment.dart';
-import 'package:glue/src/core/path_opener.dart';
-import 'package:glue/src/core/url_launcher.dart';
-import 'package:glue/src/core/where_report.dart';
-import 'package:glue/src/providers/ollama_discovery.dart';
-import 'package:glue/src/providers/provider_adapter.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:glue/src/ui/model_panel_formatter.dart'
     show CatalogRow, ModelAvailability;
-import 'package:glue/src/core/service_locator.dart';
-import 'package:glue/src/config/approval_mode.dart';
-import 'package:glue/src/llm/llm_factory.dart';
-import 'package:glue/src/llm/title_generator.dart';
-import 'package:glue/src/orchestrator/permission_gate.dart';
-import 'package:glue/src/orchestrator/tool_permissions.dart';
 import 'package:glue/src/rendering/block_renderer.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
-import 'package:glue/src/shell/command_executor.dart';
-import 'package:glue/src/shell/host_executor.dart';
-import 'package:glue/src/shell/shell_config.dart';
-import 'package:glue/src/shell/shell_job_manager.dart';
-import 'package:glue/src/shell/shell_completer.dart';
-import 'package:glue/src/session/session_manager.dart';
-import 'package:glue/src/share/gist_publisher.dart';
-import 'package:glue/src/share/session_share_exporter.dart';
-import 'package:glue/src/storage/config_store.dart';
-import 'package:glue/src/storage/session_store.dart';
-import 'package:glue/src/skills/skill_registry.dart';
-import 'package:glue/src/skills/skill_activation.dart';
-import 'package:glue/src/skills/skill_runtime.dart';
 import 'package:glue/src/ui/modal.dart';
 import 'package:glue/src/ui/dock_manager.dart';
 import 'package:glue/src/ui/panel_modal.dart';
@@ -60,9 +30,6 @@ import 'package:glue/src/ui/at_file_hint.dart';
 import 'package:glue/src/ui/autocomplete_overlay.dart';
 import 'package:glue/src/ui/shell_autocomplete.dart';
 import 'package:glue/src/ui/slash_autocomplete.dart';
-import 'package:glue/src/observability/debug_controller.dart';
-import 'package:glue/src/observability/observability.dart';
-import 'package:glue/src/observability/redaction.dart';
 
 part 'app/event_router.dart';
 part 'app/agent_orchestration.dart';
@@ -122,7 +89,7 @@ class App {
 
   AppMode _mode = AppMode.idle;
   final List<_ConversationEntry> _blocks = [];
-  final Map<String, _ToolCallUiState> _toolUi = {};
+  final Map<ToolCallId, _ToolCallUiState> _toolUi = {};
   int _scrollOffset = 0;
 
   static const _spinnerFrames = [
@@ -140,6 +107,7 @@ class App {
   int _spinnerFrame = 0;
   Timer? _spinnerTimer;
   String _streamingText = '';
+  String _streamingThinking = '';
   StreamSubscription<AgentEvent>? _agentSub;
   StreamSubscription<SubagentUpdate>? _subagentSub;
   final _exitCompleter = Completer<void>();
@@ -189,7 +157,7 @@ class App {
   final DebugController? _debugController;
   late final SkillRuntime _skillRuntime;
   ApprovalMode _approvalMode;
-  final Set<String> _earlyApprovedIds = {};
+  final Set<ToolCallId> _earlyApprovedIds = {};
 
   App({
     required this.terminal,
@@ -240,6 +208,12 @@ class App {
       sessionStore: sessionStore,
       observability: obs,
     );
+    _manager?.onPersistEvent = (type, data) {
+      _sessionManager.logEvent(type, data);
+    };
+    _manager?.onSubagentUsage = (stats) {
+      _sessionManager.recordUsage(stats, role: 'subagent');
+    };
     _shareExporter = SessionShareExporter();
     _gistPublisher = SessionGistPublisher();
     _panels = PanelController(
@@ -281,10 +255,17 @@ class App {
   }) async {
     final services = await ServiceLocator.create(model: model, debug: debug);
 
+    // Surface objects (terminal/layout/editor) are constructed here, not
+    // by the harness. ServiceLocator deliberately does not bundle them so
+    // that core/ can stay below surface/ in the layered architecture.
+    final terminal = Terminal();
+    final layout = Layout(terminal);
+    final editor = TextAreaEditor();
+
     return App(
-      terminal: services.terminal,
-      layout: services.layout,
-      editor: services.editor,
+      terminal: terminal,
+      layout: layout,
+      editor: editor,
       agent: services.agent,
       modelId: services.config.activeModel.modelId,
       manager: services.manager,
@@ -366,7 +347,8 @@ class App {
         _openResumePanel();
         _render();
       } else {
-        final match = sessions.where((s) => s.id == _resumeSessionId).toList();
+        final match =
+            sessions.where((s) => s.id.value == _resumeSessionId).toList();
         if (match.isNotEmpty) {
           final result = _resumeSession(match.first);
           if (result.isNotEmpty) {
@@ -456,6 +438,7 @@ class App {
       switchModelByQuery: _switchModelByQuery,
       sessionAction: _sessionAction,
       shareAction: _shareAction,
+      usageReport: _usageReport,
       listTools: _buildToolsOutput,
       openHistoryPanel: _openHistoryPanel,
       historyActionByQuery: _historyFromCommand,
@@ -558,6 +541,17 @@ class App {
 
   String _sessionAction(List<String> args) {
     return _sessionActionImpl(this, args);
+  }
+
+  String _usageReport() {
+    final store = _sessionManager.currentStore;
+    if (store == null) return 'No active session yet — nothing to report.';
+    final report = buildUsageReport(
+      usageEvents: SessionStore.loadConversation(store.sessionDir),
+      modelLabel: store.meta.modelRef,
+      sessionId: store.meta.id.value,
+    );
+    return formatUsageReport(report);
   }
 
   String _shareAction(List<String> args) {

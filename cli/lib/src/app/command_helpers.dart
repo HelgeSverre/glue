@@ -4,6 +4,7 @@ String _clearConversationImpl(App app) {
   app._blocks.clear();
   app._scrollOffset = 0;
   app._streamingText = '';
+  app._streamingThinking = '';
   app.terminal.clearScreen();
   app.layout.apply();
   return 'Cleared.';
@@ -82,7 +83,7 @@ String _buildSessionInfoImpl(App app) {
   buf.writeln('  Model:        $displayModel');
   buf.writeln('  Directory:    $shortCwd');
   buf.writeln('  Started:      $startedLabel');
-  buf.writeln('  Tokens used:  ${app.agent.tokenCount}');
+  buf.writeln('  Tokens used:  ${app.agent.stats.totalTokens}');
   buf.writeln('  Messages:     ${app.agent.conversation.length}');
   buf.writeln('  Tools:        ${app.agent.tools.length} registered');
   buf.writeln(
@@ -101,10 +102,10 @@ String _sessionActionImpl(App app, List<String> args) {
         return 'No active session yet — nothing to copy.';
       }
       unawaited(
-        copyToClipboard(sessionId).then((ok) {
+        copyToClipboard(sessionId.value).then((ok) {
           app._addSystemMessage(
             ok
-                ? 'Session ID copied to clipboard.\n  $sessionId'
+                ? 'Session ID copied to clipboard.\n  ${sessionId.value}'
                 : 'Could not access clipboard. Session ID:\n  $sessionId',
           );
           app._render();
@@ -275,7 +276,7 @@ String _resumeSessionFromCommandImpl(App app, String query) {
   final sessions = app._sessionManager.listSessions();
   if (sessions.isEmpty) return 'No saved sessions found.';
 
-  final exactId = sessions.where((s) => s.id == normalized).toList();
+  final exactId = sessions.where((s) => s.id.value == normalized).toList();
   if (exactId.length == 1) {
     return app._resumeSession(exactId.first);
   }
@@ -284,7 +285,7 @@ String _resumeSessionFromCommandImpl(App app, String query) {
   final matches = sessions.where((s) {
     final title = (s.title ?? '').toLowerCase();
     final cwd = s.cwd.toLowerCase();
-    return s.id.toLowerCase().contains(needle) ||
+    return s.id.value.toLowerCase().contains(needle) ||
         title.contains(needle) ||
         cwd.contains(needle);
   }).toList();

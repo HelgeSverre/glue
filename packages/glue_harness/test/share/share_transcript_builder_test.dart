@@ -1,0 +1,264 @@
+import 'package:glue_harness/glue_harness.dart';
+import 'package:test/test.dart';
+
+void main() {
+  group('ShareTranscriptBuilder', () {
+    test('builds transcript entries from visible session events', () {
+      final builder = ShareTranscriptBuilder();
+
+      final transcript = builder.build([
+        {'type': 'user_message', 'text': 'hello'},
+        {'type': 'assistant_message', 'text': 'hi'},
+        {
+          'type': 'tool_call',
+          'name': 'read_file',
+          'arguments': {'path': 'README.md'},
+        },
+        {'type': 'tool_result', 'content': 'contents'},
+      ]);
+
+      expect(transcript.entries.map((e) => e.kind), [
+        ShareEntryKind.user,
+        ShareEntryKind.assistant,
+        ShareEntryKind.toolCall,
+        ShareEntryKind.toolResult,
+      ]);
+      expect(transcript.entries.map((e) => e.index), [1, 2, 3, 4]);
+      expect(transcript.entries[2].toolName, 'read_file');
+      expect(transcript.entries[2].toolArguments, {'path': 'README.md'});
+      expect(transcript.entries[3].text, 'contents');
+    });
+
+    test('ignores non-visual title lifecycle events', () {
+      final builder = ShareTranscriptBuilder();
+
+      final transcript = builder.build([
+        {'type': 'title_generated', 'title': 'foo'},
+        {'type': 'user_message', 'text': 'hello'},
+        {'type': 'title_reevaluated', 'title': 'bar'},
+      ]);
+
+      expect(transcript.entries, hasLength(1));
+      expect(transcript.entries.single.kind, ShareEntryKind.user);
+      expect(transcript.entries.single.text, 'hello');
+    });
+
+    test('prefers tool result summary over content', () {
+      final builder = ShareTranscriptBuilder();
+
+      final transcript = builder.build([
+        {
+          'type': 'tool_result',
+          'summary': '2 files changed',
+          'content': 'long detailed output',
+        },
+      ]);
+
+      expect(transcript.entries.single.kind, ShareEntryKind.toolResult);
+      expect(transcript.entries.single.text, '2 files changed');
+    });
+
+    test('ignores unknown event types', () {
+      final builder = ShareTranscriptBuilder();
+
+      final transcript = builder.build([
+        {'type': 'subagent_message', 'text': 'old fictional type'},
+        {'type': 'user_message', 'text': 'hello'},
+      ]);
+
+      expect(transcript.entries, hasLength(1));
+      expect(transcript.entries.single.kind, ShareEntryKind.user);
+      expect(transcript.entries.single.text, 'hello');
+    });
+
+    test('builds a subagent group from spawned/event/completed rows', () {
+      final builder = ShareTranscriptBuilder();
+
+      final transcript = builder.build([
+        {'type': 'user_message', 'text': 'analyze repo'},
+        {
+          'type': 'subagent_spawned',
+          'subagent_id': 'sub-1',
+          'task': 'docs-research',
+          'depth': 0,
+        },
+        {
+          'type': 'subagent_event',
+          'subagent_id': 'sub-1',
+          'inner': {
+            'type': 'tool_call',
+            'name': 'read_file',
+            'arguments': {'path': 'README.md'},
+          },
+        },
+        {
+          'type': 'subagent_event',
+          'subagent_id': 'sub-1',
+          'inner': {'type': 'tool_result', 'content': 'contents'},
+        },
+        {'type': 'subagent_completed', 'subagent_id': 'sub-1'},
+        {'type': 'assistant_message', 'text': 'done'},
+      ]);
+
+      expect(
+        transcript.entries.map((e) => e.kind).toList(),
+        [
+          ShareEntryKind.user,
+          ShareEntryKind.subagentGroup,
+          ShareEntryKind.assistant,
+        ],
+      );
+      final group = transcript.entries[1];
+      expect(group.subagentId, 'sub-1');
+      expect(group.text, 'docs-research');
+      expect(group.children, hasLength(2));
+      expect(group.children[0].kind, ShareEntryKind.toolCall);
+      expect(group.children[0].toolName, 'read_file');
+      expect(group.children[1].kind, ShareEntryKind.toolResult);
+      expect(group.children[1].text, 'contents');
+    });
+
+    test('builds two parallel subagent groups', () {
+      final builder = ShareTranscriptBuilder();
+
+      final transcript = builder.build([
+        {
+          'type': 'subagent_spawned',
+          'subagent_id': 'sub-a',
+          'task': 'first',
+          'index': 0,
+          'total': 2,
+        },
+        {
+          'type': 'subagent_event',
+          'subagent_id': 'sub-a',
+          'inner': {'type': 'assistant_message', 'text': 'progress a'},
+        },
+        {'type': 'subagent_completed', 'subagent_id': 'sub-a'},
+        {
+          'type': 'subagent_spawned',
+          'subagent_id': 'sub-b',
+          'task': 'second',
+          'index': 1,
+          'total': 2,
+        },
+        {
+          'type': 'subagent_event',
+          'subagent_id': 'sub-b',
+          'inner': {'type': 'assistant_message', 'text': 'progress b'},
+        },
+        {'type': 'subagent_completed', 'subagent_id': 'sub-b'},
+      ]);
+
+      final groups = transcript.entries
+          .where((e) => e.kind == ShareEntryKind.subagentGroup)
+          .toList();
+      expect(groups, hasLength(2));
+      expect(groups.map((g) => g.subagentId), ['sub-a', 'sub-b']);
+      expect(groups[0].children.single.text, 'progress a');
+      expect(groups[1].children.single.text, 'progress b');
+    });
+
+    test('handles a nested subagent that spawns its own subagent', () {
+      final builder = ShareTranscriptBuilder();
+
+      final transcript = builder.build([
+        {
+          'type': 'subagent_spawned',
+          'subagent_id': 'parent',
+          'task': 'parent-task',
+        },
+        {
+          'type': 'subagent_event',
+          'subagent_id': 'parent',
+          'inner': {'type': 'assistant_message', 'text': 'parent says hi'},
+        },
+        {
+          'type': 'subagent_spawned',
+          'subagent_id': 'child',
+          'task': 'child-task',
+          'depth': 1,
+        },
+        {
+          'type': 'subagent_event',
+          'subagent_id': 'child',
+          'inner': {'type': 'assistant_message', 'text': 'child works'},
+        },
+        {'type': 'subagent_completed', 'subagent_id': 'child'},
+        {'type': 'subagent_completed', 'subagent_id': 'parent'},
+      ]);
+
+      expect(transcript.entries, hasLength(1));
+      final parent = transcript.entries.single;
+      expect(parent.kind, ShareEntryKind.subagentGroup);
+      expect(parent.subagentId, 'parent');
+      expect(parent.children, hasLength(2));
+      expect(parent.children[0].kind, ShareEntryKind.subagentMessage);
+      expect(parent.children[0].text, 'parent says hi');
+      expect(parent.children[1].kind, ShareEntryKind.subagentGroup);
+      expect(parent.children[1].subagentId, 'child');
+      expect(parent.children[1].children.single.text, 'child works');
+    });
+
+    test('skips orphaned subagent events without a matching open group', () {
+      final builder = ShareTranscriptBuilder();
+
+      final transcript = builder.build([
+        {
+          'type': 'subagent_event',
+          'subagent_id': 'never-spawned',
+          'inner': {'type': 'assistant_message', 'text': 'orphan'},
+        },
+        {'type': 'user_message', 'text': 'hello'},
+      ]);
+
+      expect(transcript.entries, hasLength(1));
+      expect(transcript.entries.single.kind, ShareEntryKind.user);
+    });
+
+    test('supports nested subagent fixture entries', () {
+      final builder = ShareTranscriptBuilder();
+
+      final transcript = builder.fromEntries([
+        const ShareEntry(
+          index: 1,
+          kind: ShareEntryKind.subagentGroup,
+          text: 'docs-research',
+          subagentId: 'sub-1',
+          children: [
+            ShareEntry(
+              index: 2,
+              kind: ShareEntryKind.subagentMessage,
+              text: 'checking template packages',
+              subagentId: 'sub-1',
+              nestingLevel: 1,
+            ),
+            ShareEntry(
+              index: 3,
+              kind: ShareEntryKind.subagentGroup,
+              text: 'html-safety-review',
+              subagentId: 'sub-2',
+              nestingLevel: 1,
+              children: [
+                ShareEntry(
+                  index: 4,
+                  kind: ShareEntryKind.subagentMessage,
+                  text: 'review raw HTML policy',
+                  subagentId: 'sub-2',
+                  nestingLevel: 2,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ]);
+
+      expect(transcript.entries.single.kind, ShareEntryKind.subagentGroup);
+      expect(transcript.entries.single.children, hasLength(2));
+      expect(
+        transcript.entries.single.children[1].children.single.text,
+        'review raw HTML policy',
+      );
+    });
+  });
+}

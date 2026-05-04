@@ -1,8 +1,7 @@
 import 'dart:async';
 
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/agent_runner.dart';
-import 'package:glue/src/agent/tools.dart';
+import 'package:glue_core/glue_core.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
 
 /// Minimal LLM that returns text only (no tool calls).
@@ -29,9 +28,9 @@ class _ToolCallLlm implements LlmClient {
     _callCount++;
     if (_callCount == 1) {
       yield TextDelta('Let me check. ');
-      yield ToolCallStart(id: 'tc1', name: 'list_directory');
+      yield ToolCallStart(id: const ToolCallId('tc1'), name: 'list_directory');
       yield ToolCallComplete(ToolCall(
-        id: 'tc1',
+        id: const ToolCallId('tc1'),
         name: 'list_directory',
         arguments: {'path': '.'},
       ));
@@ -119,7 +118,10 @@ void main() {
       core.addMessage(Message.assistant(
         text: 'Sure',
         toolCalls: [
-          ToolCall(id: 'tc1', name: 'write_file', arguments: {'path': 'a.txt'}),
+          ToolCall(
+              id: const ToolCallId('tc1'),
+              name: 'write_file',
+              arguments: {'path': 'a.txt'}),
         ],
       ));
       // No tool_result — simulates cancel mid-execution.
@@ -142,11 +144,12 @@ void main() {
       core.addMessage(Message.assistant(
         text: 'Sure',
         toolCalls: [
-          ToolCall(id: 'tc1', name: 'write_file', arguments: {}),
+          ToolCall(
+              id: const ToolCallId('tc1'), name: 'write_file', arguments: {}),
         ],
       ));
       core.addMessage(Message.toolResult(
-        callId: 'tc1',
+        callId: const ToolCallId('tc1'),
         content: 'done',
         toolName: 'write_file',
       ));
@@ -168,13 +171,15 @@ void main() {
       core.addMessage(Message.assistant(
         text: 'Sure',
         toolCalls: [
-          ToolCall(id: 'tc1', name: 'read_file', arguments: {}),
-          ToolCall(id: 'tc2', name: 'write_file', arguments: {}),
+          ToolCall(
+              id: const ToolCallId('tc1'), name: 'read_file', arguments: {}),
+          ToolCall(
+              id: const ToolCallId('tc2'), name: 'write_file', arguments: {}),
         ],
       ));
       // Only tc1 got a result before cancel.
       core.addMessage(Message.toolResult(
-        callId: 'tc1',
+        callId: const ToolCallId('tc1'),
         content: 'file contents',
         toolName: 'read_file',
       ));

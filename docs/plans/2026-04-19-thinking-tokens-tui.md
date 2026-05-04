@@ -1,18 +1,39 @@
 # Thinking Tokens in the TUI — Implementation Plan
 
+> **Status:** proposed (re-spec'd 2026-04-30 against the harness/strategies/core split)
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` or `superpowers:subagent-driven-development` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Surface streaming reasoning/"thinking" traces from reasoning-capable models (Claude extended thinking, OpenAI gpt-5/o-series, DeepSeek R1 via Ollama) in the Glue TUI as a distinct, visually muted block inline with the conversation.
 
-**Architecture:** Add a `ThinkingDelta` variant to the existing `LlmChunk` sealed union, flow it through `AgentCore` as an `AgentThinkingDelta` event, render it in a dedicated conversation block kind using dim/italic ANSI styling. Parser changes are additive and provider-specific (Anthropic `thinking_delta`, OpenAI `delta.reasoning`, Ollama `message.thinking`). Enablement on the request side (Anthropic's `thinking: {budget_tokens}`, OpenAI's `reasoning_effort`) is phase 2 — phase 1 only surfaces what providers already emit.
+**Architecture:** Add a `ThinkingDelta` variant to the existing sealed `LlmChunk` union in `glue_core`, flow it through `AgentCore` (in `glue_harness`) as an `AgentThinkingDelta` event, render it in a dedicated conversation block kind in the CLI surface using dim/italic ANSI styling. Parser changes are additive and provider-specific (Anthropic `thinking_delta`, OpenAI `delta.reasoning`, Ollama `message.thinking`) and live in `glue_strategies/llm/`. Enablement on the request side (Anthropic's `thinking: {budget_tokens}`, OpenAI's `reasoning_effort`) is phase 2 — phase 1 only surfaces what providers already emit.
 
-**Tech Stack:** Dart, existing SSE/NDJSON parsers, existing sealed `LlmChunk`/`AgentEvent` unions, existing `BlockRenderer` + 60fps coalesced render loop.
+**Tech Stack:** Dart, existing SSE/NDJSON parsers in `glue_strategies`, sealed `LlmChunk`/`AgentEvent` unions in `glue_core`, existing `BlockRenderer` + 60fps coalesced render loop in `cli/`.
+
+---
+
+## Layer placement at a glance
+
+| Concern | Layer | Package |
+|---|---|---|
+| `ThinkingDelta` chunk variant | core | `glue_core/lib/src/message.dart` |
+| `AgentThinkingDelta` event variant | core | `glue_core/lib/src/agent_event.dart` |
+| Provider parsers (Anthropic/OpenAI/Ollama) | strategies | `glue_strategies/lib/src/llm/*` |
+| `AgentCore` chunk→event routing | harness | `glue_harness/lib/src/agent/agent_core.dart` |
+| `AgentRunner` headless noop | harness | `glue_harness/lib/src/agent/agent_runner.dart` |
+| Conversation entry kind | surface | `cli/lib/src/app/models.dart` |
+| Streaming buffer + flush | surface | `cli/lib/src/app/agent_orchestration.dart` |
+| Block renderer | surface | `cli/lib/src/rendering/block_renderer.dart` |
+| Keybinding | surface | `cli/lib/src/app/terminal_event_router.dart` |
+| `showReasoning` config | harness | `glue_harness/lib/src/config/glue_config.dart` |
+
+The cross-package wiring forces a clean order of operations: core changes
+must land first because every other layer imports from them.
 
 ---
 
 ## Context
 
-Reasoning-capable models (Claude 4.x with extended thinking, GPT-5/o-series, DeepSeek R1, QwQ, etc.) emit a structured "thinking" stream alongside or before their final answer. Today Glue silently drops these tokens at every provider parser — `anthropic_client.dart:120-124` ignores `thinking_delta`, `openai_client.dart:128-131` ignores `delta.reasoning`, `ollama_client.dart:134-140` ignores `message.thinking`. The model catalog already tags these models with the `reasoning` capability (`model_catalog.dart:21`), so the UX gap is visible.
+Reasoning-capable models (Claude 4.x with extended thinking, GPT-5/o-series, DeepSeek R1, QwQ, etc.) emit a structured "thinking" stream alongside or before their final answer. Today Glue silently drops these tokens at every provider parser — `glue_strategies/llm/anthropic_client.dart` ignores `thinking_delta`, `glue_strategies/llm/openai_client.dart` ignores `delta.reasoning`, `glue_strategies/llm/ollama_client.dart` ignores `message.thinking`. The model catalog already tags these models with the `reasoning` capability (`glue_core/lib/src/model_catalog.dart`), so the UX gap is visible.
 
 Users want to see the reasoning trace for three reasons: debugging prompts, trusting tool choices (especially destructive ones), and general transparency. Showing it dim + italic inline keeps the signal (final answer stands out) while making the reasoning legible if the user cares.
 
@@ -29,32 +50,35 @@ Users want to see the reasoning trace for three reasons: debugging prompts, trus
 - **Enabling** thinking on providers that require opt-in (Anthropic extended thinking, OpenAI `reasoning_effort`) — tracked in Phase 2 below, out of scope for this plan's task list.
 - Redacted-thinking handling for Anthropic (signed, encrypted blocks) — phase 2.
 - Thinking token counting in `UsageInfo` (separate billing concern) — phase 2.
-- ACP/WebUI surfaces — `docs/plans/2026-02-27-acp-webui.md` already references `agent_thought_chunk`; this plan keeps the TUI path clean so ACP can mirror it later.
+- ACP/WebUI surfaces — `docs/plans/2026-02-27-acp-webui.md` already references `agent_thought_chunk`; this plan keeps the TUI path clean so the ACP server (`packages/glue_server/`) can mirror it later by translating `AgentThinkingDelta` to ACP `agent_thought_chunk` notifications.
 
 ## File Structure
 
 **Modify:**
 
-- `cli/lib/src/agent/agent_core.dart` — add `ThinkingDelta` to `LlmChunk`, add `AgentThinkingDelta` to `AgentEvent`, route in `run()` switch.
-- `cli/lib/src/agent/agent_runner.dart` — noop-handle `AgentThinkingDelta` (headless discards).
-- `cli/lib/src/llm/anthropic_client.dart` — parse `content_block_start` with `type: thinking` and `content_block_delta` with `delta.type: thinking_delta`.
-- `cli/lib/src/llm/openai_client.dart` — parse `delta.reasoning` and `delta.reasoning_content` fallbacks.
-- `cli/lib/src/llm/ollama_client.dart` — parse `message.thinking`.
-- `cli/lib/src/app/models.dart` (or wherever `_EntryKind`/`_ConversationEntry` lives — see `render_pipeline.dart:49-86` imports) — add `_EntryKind.thinking` and `_ConversationEntry.thinking(text)`.
+- `packages/glue_core/lib/src/message.dart` — add `ThinkingDelta` to the sealed `LlmChunk` union (alongside `TextDelta`, `UsageInfo`).
+- `packages/glue_core/lib/src/agent_event.dart` — add `AgentThinkingDelta` to the sealed `AgentEvent` union (alongside `AgentTextDelta`, `AgentToolCallPending`, `AgentDone`).
+- `packages/glue_harness/lib/src/agent/agent_core.dart` — route `ThinkingDelta` → `AgentThinkingDelta` in `run()`'s `switch (chunk)` block.
+- `packages/glue_harness/lib/src/agent/agent_runner.dart` — noop-handle `AgentThinkingDelta` (headless discards).
+- `packages/glue_strategies/lib/src/llm/anthropic_client.dart` — parse `content_block_start` with `type: thinking` and `content_block_delta` with `delta.type: thinking_delta`.
+- `packages/glue_strategies/lib/src/llm/openai_client.dart` — parse `delta.reasoning` and `delta.reasoning_content` fallbacks.
+- `packages/glue_strategies/lib/src/llm/ollama_client.dart` — parse `message.thinking`.
+- `cli/lib/src/app/models.dart` — add `_EntryKind.thinking` and `_ConversationEntry.thinking(text)`.
 - `cli/lib/src/app.dart` — add `_streamingThinking` buffer alongside `_streamingText`.
 - `cli/lib/src/app/agent_orchestration.dart` — handle `AgentThinkingDelta`, flush thinking on transition to text/tool/done.
 - `cli/lib/src/app/render_pipeline.dart` — render `_streamingThinking` in output zone, render `_EntryKind.thinking` blocks.
 - `cli/lib/src/rendering/block_renderer.dart` — add `renderThinking(String text)`.
 - `cli/lib/src/app/terminal_event_router.dart` — add keybinding for toggle (proposed: `Ctrl+T`).
-- `cli/lib/src/config/glue_config.dart` — add `showReasoning` bool (default `true`), resolve from CLI arg → env `GLUE_SHOW_REASONING` → config file.
+- `packages/glue_harness/lib/src/config/glue_config.dart` — add `showReasoning` bool (default `true`), resolve from CLI arg → env `GLUE_SHOW_REASONING` → config file.
 
 **Create tests:**
 
-- `cli/test/llm/anthropic_client_test.dart` — add thinking-delta case (modify existing file).
-- `cli/test/llm/openai_client_test.dart` — add reasoning case (modify existing file).
-- `cli/test/llm/ollama_client_test.dart` — add thinking case (modify existing file).
-- `cli/test/agent_core_test.dart` — add chunk→event routing case.
-- `cli/test/block_renderer_test.dart` — add `renderThinking` case.
+- `packages/glue_core/test/message_test.dart` — pattern-match exhaustiveness for `LlmChunk`.
+- `packages/glue_strategies/test/llm/anthropic_client_test.dart` — add thinking-delta case.
+- `packages/glue_strategies/test/llm/openai_client_test.dart` — add reasoning case.
+- `packages/glue_strategies/test/llm/ollama_client_test.dart` — add thinking case.
+- `packages/glue_harness/test/agent/agent_core_test.dart` — add chunk→event routing case.
+- `cli/test/rendering/block_renderer_test.dart` — add `renderThinking` case.
 - `cli/test/app/` — (optional) integration test for flush ordering.
 
 ## Wire Format Reference
@@ -72,7 +96,7 @@ Keep this in front of you when implementing parsers — no guessing, these are t
 {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"The answer is..."}}
 ```
 
-Anthropic also emits `redacted_thinking` blocks (base64 signed payloads for safety-sensitive reasoning). **Ignore these in phase 1** — they carry no human-readable content. The relevant hook is `anthropic_client.dart:115-124` (the `content_block_delta` switch).
+Anthropic also emits `redacted_thinking` blocks (base64 signed payloads for safety-sensitive reasoning). **Ignore these in phase 1** — they carry no human-readable content. The relevant hook is the `content_block_delta` switch in `glue_strategies/lib/src/llm/anthropic_client.dart`.
 
 ### OpenAI Chat Completions (SSE, `choices[0].delta`)
 
@@ -82,7 +106,7 @@ Anthropic also emits `redacted_thinking` blocks (base64 signed payloads for safe
 {"choices":[{"delta":{"content":"Here's the answer..."}}]}
 ```
 
-Some gateways/proxies use `reasoning_content` instead of `reasoning` (DeepSeek-style). Handle both. The hook is `openai_client.dart:128-153` (the delta-dispatch block).
+Some gateways/proxies use `reasoning_content` instead of `reasoning` (DeepSeek-style). Handle both. The hook is the delta-dispatch block in `glue_strategies/lib/src/llm/openai_client.dart`.
 
 ### Ollama (NDJSON)
 
@@ -91,21 +115,21 @@ Some gateways/proxies use `reasoning_content` instead of `reasoning` (DeepSeek-s
 {"model":"deepseek-r1","message":{"role":"assistant","content":"Here's the answer..."},"done":false}
 ```
 
-Field is `message.thinking`. Hook is `ollama_client.dart:134-140`.
+Field is `message.thinking`. Hook is the message-handling block in `glue_strategies/lib/src/llm/ollama_client.dart`.
 
 ---
 
 ## Task Breakdown
 
-### Task 1: Add `ThinkingDelta` to `LlmChunk`
+### Task 1: Add `ThinkingDelta` to the sealed `LlmChunk` in glue_core
 
 **Files:**
 
-- Modify: `cli/lib/src/agent/agent_core.dart:60-95`
+- Modify: `packages/glue_core/lib/src/message.dart`
 
 - [ ] **Step 1: Write the failing test**
 
-Open `cli/test/agent_core_test.dart` and add:
+In `packages/glue_core/test/message_test.dart`:
 
 ```dart
 test('ThinkingDelta is a distinct LlmChunk variant', () {
@@ -117,12 +141,11 @@ test('ThinkingDelta is a distinct LlmChunk variant', () {
 
 - [ ] **Step 2: Verify RED**
 
-Run: `dart test test/agent_core_test.dart --name "ThinkingDelta is a distinct"`
-Expected: FAIL — "Undefined name 'ThinkingDelta'".
+`(cd packages/glue_core && dart test --name "ThinkingDelta is a distinct")` — should FAIL with "Undefined name 'ThinkingDelta'".
 
 - [ ] **Step 3: Implement**
 
-Add to `cli/lib/src/agent/agent_core.dart` immediately after the `TextDelta` class (~line 68):
+Add to `packages/glue_core/lib/src/message.dart`, immediately after `TextDelta`:
 
 ```dart
 /// A delta of streaming reasoning / "thinking" content. Distinct from
@@ -130,39 +153,45 @@ Add to `cli/lib/src/agent/agent_core.dart` immediately after the `TextDelta` cla
 /// Not every provider emits this — only reasoning-capable models.
 class ThinkingDelta extends LlmChunk {
   final String text;
-  ThinkingDelta(this.text);
+  const ThinkingDelta(this.text);
 }
 ```
 
-- [ ] **Step 4: Verify GREEN**
+- [ ] **Step 4: Verify GREEN** + run downstream analyze to surface any non-exhaustive switch sites:
 
-Run: `dart test test/agent_core_test.dart --name "ThinkingDelta is a distinct"`
-Expected: PASS.
+```sh
+cd packages/glue_core && dart test
+cd ../glue_strategies && dart analyze --fatal-infos
+cd ../glue_harness && dart analyze --fatal-infos
+cd ../../cli && dart analyze --fatal-infos
+```
+
+Pattern-matching warnings here will tell you exactly which switches need updating in later tasks.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add cli/lib/src/agent/agent_core.dart cli/test/agent_core_test.dart
-git commit -m "feat(agent): add ThinkingDelta LlmChunk variant"
+git add packages/glue_core
+git commit -m "feat(core): add ThinkingDelta LlmChunk variant"
 ```
 
 ---
 
-### Task 2: Route `ThinkingDelta` → `AgentThinkingDelta`
+### Task 2: Add `AgentThinkingDelta` and route in `AgentCore`
 
 **Files:**
 
-- Modify: `cli/lib/src/agent/agent_core.dart:139-174` (AgentEvent union)
-- Modify: `cli/lib/src/agent/agent_core.dart:235-254` (run() switch)
-- Modify: `cli/lib/src/agent/agent_runner.dart:42-65` (headless switch)
+- Modify: `packages/glue_core/lib/src/agent_event.dart` (AgentEvent union)
+- Modify: `packages/glue_harness/lib/src/agent/agent_core.dart` (`run()` switch)
+- Modify: `packages/glue_harness/lib/src/agent/agent_runner.dart` (headless switch)
 
 - [ ] **Step 1: Write failing test**
 
-In `cli/test/agent_core_test.dart`:
+In `packages/glue_harness/test/agent/agent_core_test.dart`:
 
 ```dart
 test('AgentCore forwards ThinkingDelta as AgentThinkingDelta', () async {
-  final llm = _StubLlm(chunks: [ThinkingDelta('reasoning...'), TextDelta('answer')]);
+  final llm = _StubLlm(chunks: [const ThinkingDelta('reasoning...'), const TextDelta('answer')]);
   final core = AgentCore(llm: llm, tools: const {});
   final events = await core.run('hi').toList();
   expect(
@@ -176,29 +205,28 @@ test('AgentCore forwards ThinkingDelta as AgentThinkingDelta', () async {
 });
 ```
 
-(`_StubLlm` exists in the file already — if not, copy the pattern from the EchoLlm stub in `test/tools/subagent_tools_test.dart`.)
+`_StubLlm` should already exist in the file — copy from existing test patterns if not.
 
 - [ ] **Step 2: Verify RED**
 
-Run: `dart test test/agent_core_test.dart --name "forwards ThinkingDelta"`
-Expected: FAIL — "Undefined name 'AgentThinkingDelta'".
+`(cd packages/glue_harness && dart test --name "forwards ThinkingDelta")` — FAIL with "Undefined name 'AgentThinkingDelta'".
 
-- [ ] **Step 3: Add AgentThinkingDelta**
+- [ ] **Step 3: Add AgentThinkingDelta to glue_core**
 
-In `cli/lib/src/agent/agent_core.dart` after `AgentTextDelta` (~line 143):
+In `packages/glue_core/lib/src/agent_event.dart`, after `AgentTextDelta`:
 
 ```dart
 /// A delta of streaming reasoning/thinking content forwarded to the UI.
 /// Renderers should style this distinctly from [AgentTextDelta].
 class AgentThinkingDelta extends AgentEvent {
   final String delta;
-  AgentThinkingDelta(this.delta);
+  const AgentThinkingDelta(this.delta);
 }
 ```
 
-- [ ] **Step 4: Route in `run()`**
+- [ ] **Step 4: Route in `AgentCore.run()`**
 
-In the `switch (chunk)` block in `AgentCore.run()` (~line 240), add a case above `TextDelta`:
+In the `switch (chunk)` block, add a case above `TextDelta`:
 
 ```dart
 case ThinkingDelta(:final text):
@@ -209,7 +237,7 @@ Do **not** append to `assistantText` — thinking does not go into the assistant
 
 - [ ] **Step 5: Handle in AgentRunner**
 
-In `cli/lib/src/agent/agent_runner.dart` runToCompletion switch (~line 50), add a no-op case:
+In `agent_runner.dart`'s switch, add a no-op case:
 
 ```dart
 case AgentThinkingDelta():
@@ -218,14 +246,15 @@ case AgentThinkingDelta():
 
 - [ ] **Step 6: Verify GREEN + existing tests**
 
-Run: `dart test test/agent_core_test.dart test/agent`
-Expected: PASS (all).
+```sh
+cd packages/glue_harness && dart test
+```
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add cli/lib/src/agent cli/test/agent_core_test.dart
-git commit -m "feat(agent): forward ThinkingDelta as AgentThinkingDelta event"
+git add packages/glue_core packages/glue_harness
+git commit -m "feat(harness): forward ThinkingDelta as AgentThinkingDelta event"
 ```
 
 ---
@@ -234,12 +263,10 @@ git commit -m "feat(agent): forward ThinkingDelta as AgentThinkingDelta event"
 
 **Files:**
 
-- Modify: `cli/lib/src/llm/anthropic_client.dart:115-124`
-- Modify: `cli/test/llm/anthropic_client_test.dart`
+- Modify: `packages/glue_strategies/lib/src/llm/anthropic_client.dart`
+- Modify: `packages/glue_strategies/test/llm/anthropic_client_test.dart`
 
 - [ ] **Step 1: Write failing test**
-
-Add to `cli/test/llm/anthropic_client_test.dart`:
 
 ```dart
 test('emits ThinkingDelta for thinking_delta events', () async {
@@ -261,12 +288,9 @@ test('emits ThinkingDelta for thinking_delta events', () async {
 
 - [ ] **Step 2: Verify RED**
 
-Run: `dart test test/llm/anthropic_client_test.dart --name "thinking_delta"`
-Expected: FAIL — thinking list empty.
-
 - [ ] **Step 3: Implement**
 
-In `cli/lib/src/llm/anthropic_client.dart`, inside the `content_block_delta` branch (~line 115-124), extend the switch on `deltaType`:
+In `anthropic_client.dart`, inside the `content_block_delta` branch, extend the switch on `deltaType`:
 
 ```dart
 } else if (deltaType == 'thinking_delta') {
@@ -277,18 +301,15 @@ In `cli/lib/src/llm/anthropic_client.dart`, inside the `content_block_delta` bra
 }
 ```
 
-(Do not handle `redacted_thinking` — it carries a base64 `data` field, not human-readable content.)
+(Do not handle `redacted_thinking` — base64 `data` field, not human-readable.)
 
 - [ ] **Step 4: Verify GREEN**
-
-Run: `dart test test/llm/anthropic_client_test.dart`
-Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add cli/lib/src/llm/anthropic_client.dart cli/test/llm/anthropic_client_test.dart
-git commit -m "feat(llm/anthropic): emit ThinkingDelta for extended-thinking blocks"
+git add packages/glue_strategies
+git commit -m "feat(strategies/llm/anthropic): emit ThinkingDelta for extended-thinking blocks"
 ```
 
 ---
@@ -297,12 +318,10 @@ git commit -m "feat(llm/anthropic): emit ThinkingDelta for extended-thinking blo
 
 **Files:**
 
-- Modify: `cli/lib/src/llm/openai_client.dart:128-153`
-- Modify: `cli/test/llm/openai_client_test.dart`
+- Modify: `packages/glue_strategies/lib/src/llm/openai_client.dart`
+- Modify: `packages/glue_strategies/test/llm/openai_client_test.dart`
 
 - [ ] **Step 1: Write failing test**
-
-Add two cases — one for `reasoning`, one for `reasoning_content` (gateway variant):
 
 ```dart
 test('emits ThinkingDelta for delta.reasoning', () async {
@@ -330,12 +349,9 @@ test('emits ThinkingDelta for delta.reasoning_content (proxy variant)', () async
 
 - [ ] **Step 2: Verify RED**
 
-Run: `dart test test/llm/openai_client_test.dart --name "reasoning"`
-Expected: FAIL.
-
 - [ ] **Step 3: Implement**
 
-In `cli/lib/src/llm/openai_client.dart`, inside the delta handling block (~line 128), before the `content` check, add:
+In `openai_client.dart`, inside the delta handling block, before the `content` check:
 
 ```dart
 final reasoning = delta['reasoning'] ?? delta['reasoning_content'];
@@ -344,18 +360,15 @@ if (reasoning is String && reasoning.isNotEmpty) {
 }
 ```
 
-Keep the existing `content` handling intact — a single delta object may contain both.
+Keep existing `content` handling intact — a single delta object may contain both.
 
 - [ ] **Step 4: Verify GREEN**
-
-Run: `dart test test/llm/openai_client_test.dart`
-Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add cli/lib/src/llm/openai_client.dart cli/test/llm/openai_client_test.dart
-git commit -m "feat(llm/openai): emit ThinkingDelta for reasoning deltas"
+git add packages/glue_strategies
+git commit -m "feat(strategies/llm/openai): emit ThinkingDelta for reasoning deltas"
 ```
 
 ---
@@ -364,8 +377,8 @@ git commit -m "feat(llm/openai): emit ThinkingDelta for reasoning deltas"
 
 **Files:**
 
-- Modify: `cli/lib/src/llm/ollama_client.dart:134-140`
-- Modify: `cli/test/llm/ollama_client_test.dart`
+- Modify: `packages/glue_strategies/lib/src/llm/ollama_client.dart`
+- Modify: `packages/glue_strategies/test/llm/ollama_client_test.dart`
 
 - [ ] **Step 1: Write failing test**
 
@@ -386,12 +399,9 @@ test('emits ThinkingDelta for message.thinking', () async {
 
 - [ ] **Step 2: Verify RED**
 
-Run: `dart test test/llm/ollama_client_test.dart --name "thinking"`
-Expected: FAIL.
-
 - [ ] **Step 3: Implement**
 
-In `cli/lib/src/llm/ollama_client.dart` (~line 134), before the existing `content` check inside the message handling:
+In `ollama_client.dart`, before the existing `content` check inside message handling:
 
 ```dart
 final thinking = message['thinking'];
@@ -402,24 +412,22 @@ if (thinking is String && thinking.isNotEmpty) {
 
 - [ ] **Step 4: Verify GREEN**
 
-Run: `dart test test/llm/ollama_client_test.dart`
-Expected: PASS.
-
 - [ ] **Step 5: Commit**
 
 ```bash
-git add cli/lib/src/llm/ollama_client.dart cli/test/llm/ollama_client_test.dart
-git commit -m "feat(llm/ollama): emit ThinkingDelta for message.thinking"
+git add packages/glue_strategies
+git commit -m "feat(strategies/llm/ollama): emit ThinkingDelta for message.thinking"
 ```
+
 
 ---
 
-### Task 6: `renderThinking` on BlockRenderer
+### Task 6: `renderThinking` on BlockRenderer (CLI surface)
 
 **Files:**
 
 - Modify: `cli/lib/src/rendering/block_renderer.dart`
-- Modify: `cli/test/block_renderer_test.dart`
+- Modify: `cli/test/rendering/block_renderer_test.dart`
 
 - [ ] **Step 1: Write failing test**
 
@@ -436,12 +444,9 @@ test('renderThinking renders with dim+italic style and distinct header', () {
 
 - [ ] **Step 2: Verify RED**
 
-Run: `dart test test/block_renderer_test.dart --name "renderThinking"`
-Expected: FAIL — method doesn't exist.
-
 - [ ] **Step 3: Implement**
 
-In `cli/lib/src/rendering/block_renderer.dart`, near `renderAssistant`:
+In `block_renderer.dart`, near `renderAssistant`:
 
 ```dart
 String renderThinking(String text) {
@@ -456,18 +461,15 @@ String renderThinking(String text) {
 }
 ```
 
-Rationale for style choice: dim + italic on the body reads as "aside/annotation" without being hard to read; gray header with `▸` visually subordinates the block to user/assistant headers (which use `❯`/`◆`).
+Style choice: dim + italic on body reads as "aside/annotation" without being hard to read; gray header with `▸` visually subordinates the block to user/assistant headers (which use `❯`/`◆`).
 
 - [ ] **Step 4: Verify GREEN**
-
-Run: `dart test test/block_renderer_test.dart`
-Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add cli/lib/src/rendering/block_renderer.dart cli/test/block_renderer_test.dart
-git commit -m "feat(rendering): add renderThinking for reasoning traces"
+git add cli/lib/src/rendering cli/test/rendering
+git commit -m "feat(cli/rendering): add renderThinking for reasoning traces"
 ```
 
 ---
@@ -476,12 +478,12 @@ git commit -m "feat(rendering): add renderThinking for reasoning traces"
 
 **Files:**
 
-- Modify: `cli/lib/src/app/models.dart` (or the file that defines `_EntryKind` — search for `enum _EntryKind`)
-- Modify: `cli/lib/src/app.dart` (add `_streamingThinking` field)
+- Modify: `cli/lib/src/app/models.dart`
+- Modify: `cli/lib/src/app.dart`
 
 - [ ] **Step 1: Add entry kind**
 
-Locate the enum (likely `cli/lib/src/app/models.dart`). Add:
+In `cli/lib/src/app/models.dart`:
 
 ```dart
 enum _EntryKind {
@@ -492,7 +494,6 @@ enum _EntryKind {
   toolResult,
   error,
   system,
-  // ... existing variants preserved
 }
 ```
 
@@ -515,7 +516,7 @@ String _streamingThinking = '';
 
 ```bash
 git add cli/lib/src/app
-git commit -m "refactor(app): add thinking entry kind and streaming buffer"
+git commit -m "refactor(cli/app): add thinking entry kind and streaming buffer"
 ```
 
 ---
@@ -524,22 +525,20 @@ git commit -m "refactor(app): add thinking entry kind and streaming buffer"
 
 **Files:**
 
-- Modify: `cli/lib/src/app/agent_orchestration.dart:56-193`
+- Modify: `cli/lib/src/app/agent_orchestration.dart`
 
 - [ ] **Step 1: Add case in `_handleAgentEventImpl` switch**
 
 ```dart
 case AgentThinkingDelta(:final delta):
   if (!app._config.showReasoning) {
-    return; // respect toggle, don't even buffer
+    return;
   }
   app._streamingThinking += delta;
   app._render();
 ```
 
 - [ ] **Step 2: Flush thinking on transitions**
-
-Add a helper at the top of the file or inline:
 
 ```dart
 void _flushThinking(App app) {
@@ -560,7 +559,7 @@ Call `_flushThinking(app)` at the top of:
 
 ```bash
 git add cli/lib/src/app/agent_orchestration.dart
-git commit -m "feat(app): flush thinking buffer on transitions, respect toggle"
+git commit -m "feat(cli/app): flush thinking buffer on transitions, respect toggle"
 ```
 
 ---
@@ -569,11 +568,11 @@ git commit -m "feat(app): flush thinking buffer on transitions, respect toggle"
 
 **Files:**
 
-- Modify: `cli/lib/src/app/render_pipeline.dart:49-86`
+- Modify: `cli/lib/src/app/render_pipeline.dart`
 
 - [ ] **Step 1: Render finalized blocks**
 
-In the block iteration (~line 49-86), add a case:
+In the block iteration, add a case:
 
 ```dart
 case _EntryKind.thinking:
@@ -582,7 +581,7 @@ case _EntryKind.thinking:
 
 - [ ] **Step 2: Render streaming thinking buffer**
 
-Near the `_streamingText` render (~line 83-86), before it:
+Near the `_streamingText` render, before it:
 
 ```dart
 if (app._streamingThinking.isNotEmpty) {
@@ -591,13 +590,13 @@ if (app._streamingThinking.isNotEmpty) {
 }
 ```
 
-Rationale for ordering: thinking appears _before_ streaming assistant text in the output buffer so that when both are active (rare — thinking has usually finished before text arrives, but Anthropic interleaves text and thinking in edge cases), the user sees the reasoning "above" the conclusion.
+Ordering rationale: thinking appears _before_ streaming assistant text in the output buffer so when both are active (rare — Anthropic interleaves text and thinking in edge cases), the user sees reasoning "above" the conclusion.
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git add cli/lib/src/app/render_pipeline.dart
-git commit -m "feat(app): render streaming and finalized thinking blocks"
+git commit -m "feat(cli/app): render streaming and finalized thinking blocks"
 ```
 
 ---
@@ -606,12 +605,12 @@ git commit -m "feat(app): render streaming and finalized thinking blocks"
 
 **Files:**
 
-- Modify: `cli/lib/src/config/glue_config.dart:61-530`
+- Modify: `packages/glue_harness/lib/src/config/glue_config.dart`
 - Modify: `cli/lib/src/app/terminal_event_router.dart`
 
 - [ ] **Step 1: Write failing config test**
 
-Extend an existing glue_config test file:
+In `packages/glue_harness/test/config/glue_config_test.dart`:
 
 ```dart
 test('showReasoning defaults to true and reads GLUE_SHOW_REASONING', () {
@@ -628,9 +627,6 @@ test('showReasoning defaults to true and reads GLUE_SHOW_REASONING', () {
 
 - [ ] **Step 2: Verify RED**
 
-Run: `dart test test/config/glue_config_test.dart --name "showReasoning"`
-Expected: FAIL — field doesn't exist.
-
 - [ ] **Step 3: Add field + resolver**
 
 In `GlueConfig`:
@@ -639,7 +635,7 @@ In `GlueConfig`:
 final bool showReasoning;
 ```
 
-Add to constructor, add to resolver (model the resolution after `titleGenerationEnabled` which has an identical shape):
+Resolve following the `titleGenerationEnabled` pattern:
 
 ```dart
 final showReasoningStr =
@@ -661,18 +657,15 @@ if (event case KeyEvent(key: Key.t, ctrl: true)) {
 }
 ```
 
-Store `_showReasoningOverride` on App as nullable bool; `agent_orchestration.dart` then reads `app._showReasoningOverride ?? app._config.showReasoning` instead of `app._config.showReasoning` directly. Update the read in Task 8 accordingly if implementing this task.
+Store `_showReasoningOverride` on App as nullable bool; `agent_orchestration.dart` then reads `app._showReasoningOverride ?? app._config.showReasoning` instead of `app._config.showReasoning` directly. Update Task 8's read accordingly.
 
 - [ ] **Step 5: Verify GREEN**
-
-Run: `dart test test/config/glue_config_test.dart`
-Expected: PASS.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add cli/lib/src/config/glue_config.dart cli/lib/src/app/terminal_event_router.dart cli/lib/src/app.dart cli/test/config
-git commit -m "feat(app): add show_reasoning config + Ctrl+T runtime toggle"
+git add packages/glue_harness cli/lib/src/app
+git commit -m "feat(cli/app): add show_reasoning config + Ctrl+T runtime toggle"
 ```
 
 ---
@@ -683,7 +676,7 @@ git commit -m "feat(app): add show_reasoning config + Ctrl+T runtime toggle"
 
 ```bash
 ollama pull deepseek-r1:8b
-dart run bin/glue.dart --model ollama/deepseek-r1:8b
+cd cli && dart run bin/glue.dart --model ollama/deepseek-r1:8b
 # Prompt: "What's 17 * 23? Think step by step."
 # Expect: dim italic "▸ Thinking" block with reasoning, then final answer.
 ```
@@ -691,20 +684,20 @@ dart run bin/glue.dart --model ollama/deepseek-r1:8b
 - [ ] **Step 2: OpenAI gpt-5 reasoning** (emits `delta.reasoning` by default on reasoning-eligible models)
 
 ```bash
-dart run bin/glue.dart --model openai/gpt-5.4-mini
+cd cli && dart run bin/glue.dart --model openai/gpt-5.4-mini
 # Prompt: any non-trivial reasoning question
 # Expect: same as above
 ```
 
-- [ ] **Step 3: Toggle** — press `Ctrl+T`, verify the thinking block stops appearing on the next turn.
+- [ ] **Step 3: Toggle** — press `Ctrl+T`, verify thinking stops appearing on next turn.
 
-- [ ] **Step 4: Full quality gate**
+- [ ] **Step 4: Full quality gate (monorepo)**
 
 ```bash
-cd cli && dart format --set-exit-if-changed . && dart analyze --fatal-infos && dart test
+just check
 ```
 
-All should pass.
+All packages should pass formatting, analyze, and tests.
 
 ---
 
@@ -712,33 +705,34 @@ All should pass.
 
 These are deliberately deferred to keep phase 1 shippable:
 
-1. **Anthropic request-side enablement** — Anthropic emits no thinking tokens unless you send `thinking: {type: 'enabled', budget_tokens: N}` in the request body. Requires: plumbing a per-model thinking budget through `ProviderAdapter.createClient()`, extending `ResolvedModel` or `GlueConfig`. Catalog already flags eligible models with the `reasoning` capability (`model_catalog.dart:21`).
+1. **Anthropic request-side enablement** — Anthropic emits no thinking tokens unless `thinking: {type: 'enabled', budget_tokens: N}` is in the request body. Requires plumbing a per-model thinking budget through `ProviderAdapter.createClient()` (in `glue_strategies/providers/`), extending `ResolvedModel` or `GlueConfig`. Catalog already flags eligible models with the `reasoning` capability.
 
 2. **OpenAI `reasoning_effort`** — `low | medium | high` knob for gpt-5/o-series. Same plumbing path as Anthropic's budget.
 
-3. **Redacted thinking** — Anthropic's `redacted_thinking` blocks contain base64-encoded `data`. Render as a placeholder (`[redacted reasoning]`) rather than nothing, so users know content was suppressed.
+3. **Redacted thinking** — Anthropic's `redacted_thinking` blocks contain base64 `data`. Render as a placeholder (`[redacted reasoning]`) rather than nothing, so users know content was suppressed.
 
-4. **Thinking tokens in `UsageInfo`** — Anthropic returns a `thinking_tokens` field in final usage; billed separately. Extend `UsageInfo` with an optional `thinkingTokens` field and surface in the status bar.
+4. **Thinking tokens in `UsageInfo`** — Anthropic returns a `thinking_tokens` field in final usage; billed separately. Extend `UsageInfo` (in `glue_core/message.dart`) with an optional `thinkingTokens` field and surface in the status bar.
 
-5. **ACP/WebUI parity** — `docs/plans/2026-02-27-acp-webui.md` already anticipates `agent_thought_chunk`. Once phase 1 lands, port the same rendering convention to ACP.
+5. **ACP/WebUI parity** — `docs/plans/2026-02-27-acp-webui.md` anticipates `agent_thought_chunk`. Once phase 1 lands, port the same convention by translating `AgentThinkingDelta` → ACP notification in `glue_server`'s update mapper.
 
-6. **Session resume** — Ensure `_ConversationEntry.thinking` blocks serialize into the session JSONL and rehydrate on `/resume`. Check `cli/lib/src/storage/` conventions.
+6. **Session resume** — Ensure `_ConversationEntry.thinking` blocks persist via `SessionStore` (`glue_harness/storage/`) and rehydrate on `/resume`. The cleanest path is a new `AssistantThinkingEvent` in `glue_core/session_event.dart`, but that's phase 2 once the live UX is settled.
 
 ## Open Questions
 
-- **Collapsible by default?** Claude Code and Cursor show thinking inline by default; other tools collapse. This plan ships inline-visible; we can add collapse-on-complete as a follow-up if users ask.
+- **Collapsible by default?** Claude Code and Cursor show thinking inline by default; other tools collapse. This plan ships inline-visible; collapse-on-complete is a follow-up if users ask.
 - **Should thinking be persisted to the on-disk transcript?** Cheaper to yes than to find out we needed it later — Task 7's `_ConversationEntry.thinking` naturally feeds the existing storage path. Verify in Phase 2.5 when session resume gets attention.
 
 ## Verification Commands
 
 ```bash
 # Focused (fastest feedback loop while implementing):
-cd cli && dart test test/llm/ test/agent_core_test.dart test/block_renderer_test.dart
+cd packages/glue_core && dart test
+cd packages/glue_strategies && dart test test/llm/
+cd packages/glue_harness && dart test test/agent/
+cd cli && dart test test/rendering test/app/
 
-# Before PR:
-cd cli && dart format --set-exit-if-changed .
-cd cli && dart analyze --fatal-infos
-cd cli && dart test
+# Before PR (monorepo gate):
+just check
 
 # End-to-end with a reasoning model:
 cd cli && dart run bin/glue.dart --model ollama/deepseek-r1:8b
@@ -746,19 +740,19 @@ cd cli && dart run bin/glue.dart --model ollama/deepseek-r1:8b
 
 ## Files Summary
 
-| Concern          | File                                         | Nature                                 |
-| ---------------- | -------------------------------------------- | -------------------------------------- |
-| Chunk union      | `cli/lib/src/agent/agent_core.dart`          | add `ThinkingDelta`                    |
-| Event union      | `cli/lib/src/agent/agent_core.dart`          | add `AgentThinkingDelta`               |
-| Chunk→Event      | `cli/lib/src/agent/agent_core.dart` run()    | new switch case                        |
-| Headless         | `cli/lib/src/agent/agent_runner.dart`        | noop case                              |
-| Anthropic parser | `cli/lib/src/llm/anthropic_client.dart`      | handle `thinking_delta`                |
-| OpenAI parser    | `cli/lib/src/llm/openai_client.dart`         | handle `reasoning`/`reasoning_content` |
-| Ollama parser    | `cli/lib/src/llm/ollama_client.dart`         | handle `message.thinking`              |
-| Entry kind       | `cli/lib/src/app/models.dart`                | `_EntryKind.thinking`                  |
-| App buffer       | `cli/lib/src/app.dart`                       | `_streamingThinking`                   |
-| Orchestration    | `cli/lib/src/app/agent_orchestration.dart`   | handle event + flush                   |
-| Render pipeline  | `cli/lib/src/app/render_pipeline.dart`       | emit thinking lines                    |
-| Block renderer   | `cli/lib/src/rendering/block_renderer.dart`  | `renderThinking`                       |
-| Keybinding       | `cli/lib/src/app/terminal_event_router.dart` | Ctrl+T toggle                          |
-| Config           | `cli/lib/src/config/glue_config.dart`        | `showReasoning`                        |
+| Concern          | File                                                                | Nature                                 |
+| ---------------- | ------------------------------------------------------------------- | -------------------------------------- |
+| Chunk union      | `packages/glue_core/lib/src/message.dart`                           | add `ThinkingDelta`                    |
+| Event union      | `packages/glue_core/lib/src/agent_event.dart`                       | add `AgentThinkingDelta`               |
+| Chunk→Event      | `packages/glue_harness/lib/src/agent/agent_core.dart` `run()`       | new switch case                        |
+| Headless         | `packages/glue_harness/lib/src/agent/agent_runner.dart`             | noop case                              |
+| Anthropic parser | `packages/glue_strategies/lib/src/llm/anthropic_client.dart`        | handle `thinking_delta`                |
+| OpenAI parser    | `packages/glue_strategies/lib/src/llm/openai_client.dart`           | handle `reasoning`/`reasoning_content` |
+| Ollama parser    | `packages/glue_strategies/lib/src/llm/ollama_client.dart`           | handle `message.thinking`              |
+| Entry kind       | `cli/lib/src/app/models.dart`                                       | `_EntryKind.thinking`                  |
+| App buffer       | `cli/lib/src/app.dart`                                              | `_streamingThinking`                   |
+| Orchestration    | `cli/lib/src/app/agent_orchestration.dart`                          | handle event + flush                   |
+| Render pipeline  | `cli/lib/src/app/render_pipeline.dart`                              | emit thinking lines                    |
+| Block renderer   | `cli/lib/src/rendering/block_renderer.dart`                         | `renderThinking`                       |
+| Keybinding       | `cli/lib/src/app/terminal_event_router.dart`                        | Ctrl+T toggle                          |
+| Config           | `packages/glue_harness/lib/src/config/glue_config.dart`             | `showReasoning`                        |

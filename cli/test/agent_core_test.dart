@@ -1,14 +1,7 @@
 import 'dart:async';
 
+import 'package:glue_core/glue_core.dart';
 import 'package:glue/glue.dart';
-import 'package:glue/src/agent/agent_core.dart'
-    show
-        AgentEvent,
-        AgentTextDelta,
-        AgentToolCall,
-        AgentToolResult,
-        AgentDone,
-        Role;
 import 'package:test/test.dart';
 
 // ---------------------------------------------------------------------------
@@ -109,7 +102,30 @@ void main() {
     expect(agent.conversation[1].text, 'Hi there');
   });
 
-  test('UsageInfo increments tokenCount', () async {
+  test('forwards ThinkingDelta as AgentThinkingDelta and never appends '
+      'thinking to assistantText', () async {
+    mockLlm.responses.add([
+      ThinkingDelta('reasoning step '),
+      ThinkingDelta('two'),
+      TextDelta('the answer'),
+    ]);
+
+    final events = await agent.run('hi').toList();
+    expect(
+      events.whereType<AgentThinkingDelta>().map((e) => e.delta).toList(),
+      ['reasoning step ', 'two'],
+    );
+    expect(
+      events.whereType<AgentTextDelta>().map((e) => e.delta).toList(),
+      ['the answer'],
+    );
+    // Thinking content must NOT leak into the assistant message that
+    // gets sent back to the model on the next turn.
+    final assistant = agent.conversation.last;
+    expect(assistant.text, 'the answer');
+  });
+
+  test('UsageInfo updates stats.totalTokens', () async {
     mockLlm.responses.add([
       TextDelta('ok'),
       UsageInfo(inputTokens: 10, outputTokens: 5),
@@ -117,29 +133,33 @@ void main() {
 
     await agent.run('count').toList();
 
-    expect(agent.tokenCount, 15);
+    expect(agent.stats.totalTokens, 15);
   });
 
-  test('multiple UsageInfo chunks accumulate', () async {
+  test('multiple UsageInfo chunks accumulate including cache buckets',
+      () async {
     mockLlm.responses.add([
-      UsageInfo(inputTokens: 3, outputTokens: 2),
+      UsageInfo(inputTokens: 3, outputTokens: 2, cacheReadTokens: 100),
     ]);
 
     await agent.run('a').toList();
 
     mockLlm.responses.add([
-      UsageInfo(inputTokens: 7, outputTokens: 8),
+      UsageInfo(inputTokens: 7, outputTokens: 8, cacheCreationTokens: 50),
     ]);
 
     await agent.run('b').toList();
 
-    expect(agent.tokenCount, 20);
+    // 3 + 2 + 100 + 7 + 8 + 50
+    expect(agent.stats.totalTokens, 170);
+    // Sanity: input + output only is 20, distinct from totalTokens.
+    expect(agent.stats.inputTokens + agent.stats.outputTokens, 20);
   });
 
   test('tool call flow: ToolCallComplete → completeToolCall → re-calls LLM',
       () async {
     final toolCall = ToolCall(
-      id: 'call_1',
+      id: const ToolCallId('call_1'),
       name: 'test_tool',
       arguments: {},
     );
@@ -174,7 +194,8 @@ void main() {
   });
 
   test('executeTool with known tool returns successful result', () async {
-    final call = ToolCall(id: 'c1', name: 'test_tool', arguments: {});
+    final call =
+        ToolCall(id: const ToolCallId('c1'), name: 'test_tool', arguments: {});
 
     final result = await agent.executeTool(call);
 
@@ -184,7 +205,8 @@ void main() {
   });
 
   test('executeTool with unknown tool returns error result', () async {
-    final call = ToolCall(id: 'c2', name: 'no_such_tool', arguments: {});
+    final call = ToolCall(
+        id: const ToolCallId('c2'), name: 'no_such_tool', arguments: {});
 
     final result = await agent.executeTool(call);
 
@@ -200,7 +222,8 @@ void main() {
       tools: {throwingTool.name: throwingTool},
     );
 
-    final call = ToolCall(id: 'c3', name: 'throwing_tool', arguments: {});
+    final call = ToolCall(
+        id: const ToolCallId('c3'), name: 'throwing_tool', arguments: {});
     final result = await agentWithThrowing.executeTool(call);
 
     expect(result.callId, 'c3');
@@ -237,7 +260,7 @@ void main() {
 
   test('tool result denied still feeds back to LLM', () async {
     final toolCall = ToolCall(
-      id: 'call_denied',
+      id: const ToolCallId('call_denied'),
       name: 'test_tool',
       arguments: {},
     );
@@ -273,12 +296,12 @@ void main() {
 
   test('emits all tool calls before awaiting results (parallel)', () async {
     final toolCall1 = ToolCall(
-      id: 'tc1',
+      id: const ToolCallId('tc1'),
       name: 'test_tool',
       arguments: {'path': 'a.txt'},
     );
     final toolCall2 = ToolCall(
-      id: 'tc2',
+      id: const ToolCallId('tc2'),
       name: 'test_tool',
       arguments: {'path': 'b.txt'},
     );

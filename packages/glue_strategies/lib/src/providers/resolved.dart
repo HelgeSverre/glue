@@ -1,0 +1,48 @@
+/// Glue-native value types that bundle a [ProviderDef] / [ModelDef] with
+/// runtime-resolved data (credential, compatibility profile).
+///
+/// Adapters consume these and never read the environment or credential store
+/// directly, so the credential boundary stays single-hop.
+library;
+
+import 'package:glue_core/glue_core.dart';
+
+class ResolvedProvider {
+  const ResolvedProvider({
+    required this.def,
+    this.apiKey,
+    this.credentials = const {},
+  });
+
+  final ProviderDef def;
+
+  /// The resolved api-key value (env > stored) for [AuthKind.apiKey]
+  /// providers. Null for oauth/none kinds.
+  final String? apiKey;
+
+  /// All stored credential fields for this provider. Used by OAuth adapters
+  /// (`github_token`, `copilot_token`, `copilot_token_expires_at`) and by
+  /// multi-field API-key providers in the future. For plain api-key
+  /// providers this is `{api_key: <value>}` when stored, empty otherwise.
+  final Map<String, String> credentials;
+
+  String get id => def.id;
+  String get adapter => def.adapter;
+  String? get baseUrl => def.baseUrl;
+  Map<String, String> get requestHeaders => def.requestHeaders;
+
+  /// When the catalog omits `compatibility`, default to the adapter id.
+  /// This keeps vanilla OpenAI the default; provider quirks opt in by name.
+  String get compatibility => def.compatibility ?? def.adapter;
+}
+
+class ResolvedModel {
+  const ResolvedModel({required this.def, required this.provider});
+
+  final ModelDef def;
+  final ProviderDef provider;
+
+  String get id => def.id;
+  String get name => def.name;
+  String get apiId => def.apiId;
+}

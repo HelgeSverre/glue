@@ -1,15 +1,9 @@
 /// Builds a minimal valid [GlueConfig] for tests without touching disk or env.
 library;
 
-import 'package:glue/src/catalog/model_catalog.dart';
-import 'package:glue/src/catalog/model_ref.dart';
-import 'package:glue/src/catalog/models_generated.dart';
-import 'package:glue/src/config/glue_config.dart';
-import 'package:glue/src/credentials/credential_store.dart';
-import 'package:glue/src/providers/anthropic_adapter.dart';
-import 'package:glue/src/providers/ollama_adapter.dart';
-import 'package:glue/src/providers/openai_compatible_adapter.dart';
-import 'package:glue/src/providers/provider_adapter.dart';
+import 'package:glue_core/glue_core.dart';
+import 'package:glue_harness/glue_harness.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 
 GlueConfig testConfig({
   ModelRef? activeModel,

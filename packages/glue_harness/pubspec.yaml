@@ -1,0 +1,23 @@
+name: glue_harness
+description: Glue's harness — orchestrates the agent loop, sessions, permissions, observability, catalog, and tools above the strategy layer.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  glue_core:
+    path: ../glue_core
+  glue_strategies:
+    path: ../glue_strategies
+  http: ^1.6.0
+  markdown: ^7.3.1
+  meta: ^1.15.0
+  path: ^1.9.1
+  puppeteer: ^3.20.0
+  yaml: ^3.1.3
+
+dev_dependencies:
+  test: ^1.30.0
+  lints: ^6.1.0

@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/llm/ollama_client.dart';
+import 'package:glue_core/glue_core.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -89,7 +89,7 @@ void main() {
   group('Ollama message mapping', () {
     test('tool result uses tool name not call ID', () {
       final msg = Message.toolResult(
-        callId: 'ollama_tc_1',
+        callId: const ToolCallId('ollama_tc_1'),
         content: 'file contents',
         toolName: 'read_file',
       );
@@ -157,6 +157,35 @@ void main() {
       expect(completes[0].toolCall.arguments['path'], 'a.dart');
       expect(completes[1].toolCall.arguments['path'], 'b.dart');
       // Arguments did not cross-contaminate across the two calls.
+    });
+
+    test('emits ThinkingDelta for message.thinking (DeepSeek R1 / QwQ)',
+        () async {
+      final events = [
+        {
+          'message': {'role': 'assistant', 'thinking': 'step 1'},
+          'done': false,
+        },
+        {
+          'message': {'role': 'assistant', 'thinking': ' step 2'},
+          'done': false,
+        },
+        {
+          'message': {'role': 'assistant', 'content': 'done'},
+          'done': true,
+        },
+      ];
+      final chunks = await OllamaClient.parseStreamEvents(
+        Stream.fromIterable(events),
+      ).toList();
+      expect(
+        chunks.whereType<ThinkingDelta>().map((c) => c.text),
+        ['step 1', ' step 2'],
+      );
+      expect(
+        chunks.whereType<TextDelta>().map((c) => c.text),
+        ['done'],
+      );
     });
   });
 }

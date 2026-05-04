@@ -1,6 +1,5 @@
-import 'package:glue/src/catalog/catalog_loader.dart';
-import 'package:glue/src/catalog/catalog_parser.dart';
-import 'package:glue/src/catalog/model_catalog.dart';
+import 'package:glue_harness/glue_harness.dart';
+import 'package:glue_core/glue_core.dart';
 import 'package:test/test.dart';
 
 ModelCatalog _catalog(String yaml) => parseCatalogYaml(yaml);

@@ -10,6 +10,7 @@ class BuiltinCommands {
     required String Function(String query) switchModelByQuery,
     required String Function(List<String> args) sessionAction,
     required String Function(List<String> args) shareAction,
+    required String Function() usageReport,
     required String Function() listTools,
     required void Function() openHistoryPanel,
     required String Function(String query) historyActionByQuery,
@@ -90,6 +91,13 @@ class BuiltinCommands {
       name: 'share',
       description: 'Export the current session as html, markdown, or gist',
       execute: shareAction,
+    ));
+
+    commands.register(SlashCommand(
+      name: 'usage',
+      description:
+          'Show token usage for this session (per role: main, subagent, title)',
+      execute: (_) => usageReport(),
     ));
 
     commands.register(SlashCommand(

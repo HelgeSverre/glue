@@ -9,7 +9,8 @@ Future<void> _runPrintModeImpl(App app) async {
       return;
     }
     final sessions = app._sessionManager.listSessions();
-    final match = sessions.where((s) => s.id == app._resumeSessionId).toList();
+    final match =
+        sessions.where((s) => s.id.value == app._resumeSessionId).toList();
     if (match.isEmpty) {
       stderr.writeln('Session ${app._resumeSessionId} not found.');
       return;
@@ -68,6 +69,13 @@ Future<void> _runPrintModeImpl(App app) async {
         case AgentTextDelta(:final delta):
           assistantText.write(delta);
           if (!app._jsonMode) stdout.write(delta);
+
+        case AgentUsage(:final usage):
+          // Print mode also persists, so attribute the usage.
+          app._sessionManager.recordUsage(
+            UsageStats()..record(usage),
+            role: 'main',
+          );
 
         case AgentToolCall(:final call):
           conversationLog.add({
@@ -160,6 +168,7 @@ String _resumeSessionImpl(App app, SessionMeta session) {
   app._blocks.clear();
   app._toolUi.clear();
   app._streamingText = '';
+  app._streamingThinking = '';
   app._subagentGroups.clear();
   app._outputLineGroups.clear();
   app._titleInitialRequested = session.title != null;
@@ -175,6 +184,24 @@ String _resumeSessionImpl(App app, SessionMeta session) {
 
   if (!result.hasConversation) {
     return 'Session ${session.id} has no conversation data.';
+  }
+
+  // Show a one-line token-usage summary for this session so resume
+  // surfaces cost continuity instead of pretending the counter restarts
+  // at zero. Skipped on Ollama / pre-recordUsage sessions where no
+  // usage rows were ever persisted.
+  final usage = result.replay.totalUsage;
+  if (usage.totalCalls > 0) {
+    final summary =
+        StringBuffer('Carry-over: ${_formatTokens(usage.totalTokens)} tokens '
+            'over ${usage.totalCalls} call${usage.totalCalls == 1 ? '' : 's'}');
+    final hit = usage.cacheHitRate;
+    if (hit != null &&
+        (usage.totalCacheRead > 0 || usage.totalCacheWrite > 0)) {
+      summary.write(' · ${(hit * 100).toStringAsFixed(0)}% cached');
+    }
+    summary.write('. Run /usage for the per-role breakdown.');
+    app._blocks.add(_ConversationEntry.system(summary.toString()));
   }
 
   app._appendSessionReplayEntries(result.replay.entries);
@@ -196,7 +223,13 @@ void _generateTitleImpl(App app, String userMessage) {
   final llmClient = app._createTitleLlmClient();
   if (llmClient == null) return;
 
-  final generator = TitleGenerator(llmClient: llmClient);
+  final generator = TitleGenerator(
+    llmClient: llmClient,
+    onUsage: (usage) => app._sessionManager.recordUsage(
+      UsageStats()..record(usage),
+      role: 'title',
+    ),
+  );
   unawaited(app._sessionManager.generateTitle(
     userMessage: userMessage,
     generate: generator.generate,
@@ -251,7 +284,13 @@ void _reevaluateTitleImpl(App app) {
   final llmClient = app._createTitleLlmClient();
   if (llmClient == null) return;
   app._titleReevaluationRequested = true;
-  final generator = TitleGenerator(llmClient: llmClient);
+  final generator = TitleGenerator(
+    llmClient: llmClient,
+    onUsage: (usage) => app._sessionManager.recordUsage(
+      UsageStats()..record(usage),
+      role: 'title',
+    ),
+  );
   unawaited(app._sessionManager.reevaluateTitle(
     context: TitleContext(
       firstUserMessage: firstUserMessage,
@@ -305,6 +344,12 @@ void _appendSessionReplayEntriesImpl(
   App app,
   List<SessionReplayEntry> entries,
 ) {
+  // Subagent groups are reconstructed on the fly: spawn opens a group keyed
+  // by subagent_id; subsequent events append to that group; completion just
+  // marks it done. Activity that arrives without a matching open group is
+  // skipped to avoid silent shape drift.
+  final openGroups = <String, _SubagentGroup>{};
+
   for (final entry in entries) {
     switch (entry.kind) {
       case SessionReplayKind.user:
@@ -318,6 +363,68 @@ void _appendSessionReplayEntriesImpl(
         ));
       case SessionReplayKind.toolResult:
         app._blocks.add(_ConversationEntry.toolResult(entry.text));
+
+      case SessionReplayKind.subagentSpawned:
+        final id = entry.subagentId!;
+        final group = _SubagentGroup(
+          task: entry.text,
+          index: entry.subagentIndex,
+          total: entry.subagentTotal,
+        );
+        openGroups[id] = group;
+        app._subagentGroups['${entry.text}:${entry.subagentIndex ?? 0}'] =
+            group;
+        app._blocks.add(_ConversationEntry.subagentGroup(group));
+
+      case SessionReplayKind.subagentEvent:
+        final id = entry.subagentId;
+        final group = id == null ? null : openGroups[id];
+        if (group == null) continue;
+        final inner = entry.subagentInner;
+        if (inner == null) continue;
+        final prefix = group.index != null
+            ? '↳ [${group.index! + 1}/${group.total}]'
+            : '↳';
+        switch (inner.kind) {
+          case SessionReplayKind.toolCall:
+            final argsPreview =
+                (inner.toolArguments ?? const <String, dynamic>{})
+                    .entries
+                    .take(2)
+                    .map((e) => '${e.key}: ${e.value}')
+                    .join(', ');
+            group.entries.add(_SubagentEntry(
+              '$prefix ▶ ${inner.toolName ?? inner.text}  $argsPreview',
+            ));
+          case SessionReplayKind.toolResult:
+            final display = inner.text.length > 80
+                ? '${inner.text.substring(0, 80)}…'
+                : inner.text;
+            group.entries.add(_SubagentEntry(
+              '$prefix ✓ ${display.replaceAll('\n', ' ')}',
+              rawContent: inner.text.length > 80 ? inner.text : null,
+            ));
+          default:
+            // Assistant text and other inner kinds render as plain lines.
+            final display = inner.text.length > 80
+                ? '${inner.text.substring(0, 80)}…'
+                : inner.text;
+            group.entries.add(
+                _SubagentEntry('$prefix · ${display.replaceAll('\n', ' ')}'));
+        }
+
+      case SessionReplayKind.subagentCompleted:
+        final id = entry.subagentId;
+        final group = id == null ? null : openGroups.remove(id);
+        if (group == null) continue;
+        group.done = true;
+        if (entry.subagentError != null) {
+          final prefix = group.index != null
+              ? '↳ [${group.index! + 1}/${group.total}]'
+              : '↳';
+          group.entries
+              .add(_SubagentEntry('$prefix ✗ Error: ${entry.subagentError}'));
+        }
     }
   }
 }

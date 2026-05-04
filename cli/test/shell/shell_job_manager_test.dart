@@ -1,8 +1,5 @@
-import 'package:glue/src/shell/host_executor.dart';
-import 'package:glue/src/shell/shell_config.dart';
-import 'package:glue/src/shell/shell_job_manager.dart';
-import 'package:glue/src/observability/debug_controller.dart';
-import 'package:glue/src/observability/observability.dart';
+import 'package:glue_strategies/glue_strategies.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
 
 class _RecordingSink extends ObservabilitySink {

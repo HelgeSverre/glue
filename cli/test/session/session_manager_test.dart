@@ -1,13 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:glue/src/agent/agent_core.dart';
-import 'package:glue/src/agent/tools.dart';
-import 'package:glue/src/core/environment.dart';
-import 'package:glue/src/observability/debug_controller.dart';
-import 'package:glue/src/observability/observability.dart';
-import 'package:glue/src/session/session_manager.dart';
-import 'package:glue/src/storage/session_store.dart';
+import 'package:glue_core/glue_core.dart';
+import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
 
 class _NoopLlm implements LlmClient {
@@ -75,7 +70,7 @@ void main() {
     final manager =
         SessionManager(environment: environment, observability: obs);
     final meta = SessionMeta(
-      id: 'resume-1',
+      id: const SessionId('resume-1'),
       cwd: environment.cwd,
       modelRef: 'anthropic/claude-sonnet-4.6',
       startTime: DateTime.now(),
@@ -113,7 +108,7 @@ void main() {
     final manager =
         SessionManager(environment: environment, observability: obs);
     final meta = SessionMeta(
-      id: 'resume-summary',
+      id: const SessionId('resume-summary'),
       cwd: environment.cwd,
       modelRef: 'anthropic/claude-sonnet-4.6',
       startTime: DateTime.now(),
@@ -149,7 +144,7 @@ void main() {
     final manager =
         SessionManager(environment: environment, observability: obs);
     final meta = SessionMeta(
-      id: 'resume-empty',
+      id: const SessionId('resume-empty'),
       cwd: environment.cwd,
       modelRef: 'anthropic/claude-sonnet-4.6',
       startTime: DateTime.now(),
@@ -264,6 +259,74 @@ void main() {
     final span =
         sink.spans.lastWhere((span) => span.name == 'session.title.rename');
     expect(span.attributes['title.renamed'], isTrue);
+  });
+
+  test('recordUsage updates SessionMeta totals and writes a usage row',
+      () async {
+    final manager =
+        SessionManager(environment: environment, observability: obs);
+    final store = manager.ensureSessionStore(
+      cwd: environment.cwd,
+      modelRef: 'anthropic/claude-sonnet-4.6',
+    );
+
+    manager.recordUsage(
+      UsageStats(
+        inputTokens: 100,
+        outputTokens: 50,
+        cacheReadTokens: 800,
+        cacheCreationTokens: 200,
+        turnCount: 1,
+      ),
+      role: 'main',
+    );
+    manager.recordUsage(
+      UsageStats(inputTokens: 5, outputTokens: 3, turnCount: 1),
+      role: 'subagent',
+    );
+    manager.recordUsage(
+      UsageStats(inputTokens: 30, outputTokens: 6, turnCount: 1),
+      role: 'title',
+    );
+
+    // Totals fold every billable bucket on the meta.
+    expect(store.meta.tokenCount, 100 + 50 + 800 + 200 + 5 + 3 + 30 + 6);
+    expect(store.meta.cacheReadTokens, 800);
+    expect(store.meta.cacheCreationTokens, 200);
+
+    // The conversation log records per-role usage rows.
+    final convPath =
+        '${environment.sessionDir(store.meta.id)}/conversation.jsonl';
+    final lines = await File(convPath).readAsLines();
+    final usageEvents = lines
+        .map((l) => jsonDecode(l) as Map<String, dynamic>)
+        .where((e) => e['type'] == 'usage')
+        .toList();
+    expect(usageEvents.map((e) => e['role']), ['main', 'subagent', 'title']);
+    expect(usageEvents.first['cache_read_tokens'], 800);
+  });
+
+  test('recordUsage is a no-op when no session store is active', () {
+    final manager =
+        SessionManager(environment: environment, observability: obs);
+    expect(
+      () => manager.recordUsage(
+        UsageStats(inputTokens: 1, outputTokens: 1, turnCount: 1),
+        role: 'main',
+      ),
+      returnsNormally,
+    );
+  });
+
+  test('recordUsage skips empty stats', () {
+    final manager =
+        SessionManager(environment: environment, observability: obs);
+    final store = manager.ensureSessionStore(
+      cwd: environment.cwd,
+      modelRef: 'anthropic/claude-sonnet-4.6',
+    );
+    manager.recordUsage(UsageStats(), role: 'main');
+    expect(store.meta.tokenCount, isNull);
   });
 
   test('reevaluateTitle promotes provisional auto title to stable', () async {
