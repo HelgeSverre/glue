@@ -56,7 +56,13 @@ jobs:
 
       - name: Run glue_strategies tests
         working-directory: packages/glue_strategies
-        run: dart test
+        # No package-local tests yet — provider coverage lives in cli/test/.
+        run: |
+          if [ -d test ]; then
+            dart test
+          else
+            echo "glue_strategies: no test/ directory, skipping."
+          fi
 
       - name: Run glue_harness tests
         working-directory: packages/glue_harness
