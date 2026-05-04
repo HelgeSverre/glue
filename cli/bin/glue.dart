@@ -189,13 +189,19 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
       debug: debug,
     );
 
-    final sigintSub =
-        ProcessSignal.sigint.watch().listen((_) => app.requestExit());
+    // Interactive mode owns SIGINT here. Print mode installs its own
+    // two-press handler in session_runtime.dart and drives cancellation
+    // via the agent stream iterator — installing this global handler in
+    // print mode would just be a benign no-op (it completes a future
+    // nothing awaits) and confuses the cancellation chain.
+    final sigintSub = printMode
+        ? null
+        : ProcessSignal.sigint.watch().listen((_) => app.requestExit());
 
     try {
       await app.run();
     } finally {
-      await sigintSub.cancel();
+      await sigintSub?.cancel();
     }
   }
 }

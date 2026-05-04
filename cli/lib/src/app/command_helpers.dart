@@ -16,8 +16,10 @@ void _copyLastResponseImpl(App app) {
   // currently sees — rather than reaching into agent.conversation,
   // because what's on screen is what they expect /copy to grab.
   String? text;
+  bool partial = false;
   if (app._streamingText.isNotEmpty) {
     text = app._streamingText;
+    partial = true;
   } else {
     for (var i = app._blocks.length - 1; i >= 0; i--) {
       final entry = app._blocks[i];
@@ -35,11 +37,12 @@ void _copyLastResponseImpl(App app) {
   }
 
   final payload = text;
+  final qualifier = partial ? 'partial in-flight response' : 'last response';
   unawaited(
     copyToClipboard(payload).then((ok) {
       app._addSystemMessage(
         ok
-            ? 'Copied last response to clipboard (${payload.length} chars).'
+            ? 'Copied $qualifier to clipboard (${payload.length} chars).'
             : 'Could not access clipboard.',
       );
       app._render();
