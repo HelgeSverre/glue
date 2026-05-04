@@ -62,6 +62,22 @@
     "notes": "Most capable Claude model — agentic coding and long-horizon work."
   },
   {
+    "id": "gpt-5.5",
+    "provider": "openai",
+    "name": "GPT-5.5",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "files",
+      "json",
+      "reasoning",
+      "coding"
+    ],
+    "notes": "Frontier general-purpose and agentic coding model."
+  },
+  {
     "id": "gpt-5.4",
     "provider": "openai",
     "name": "GPT-5.4",
@@ -75,7 +91,7 @@
       "reasoning",
       "coding"
     ],
-    "notes": "Frontier general-purpose and agentic coding model."
+    "notes": "Prior frontier model — kept for pinned configs."
   },
   {
     "id": "gpt-5.4-mini",
@@ -92,9 +108,37 @@
     "notes": "Default small_model candidate."
   },
   {
-    "id": "gemini-pro-latest",
+    "id": "o3",
+    "provider": "openai",
+    "name": "o3",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "json",
+      "reasoning",
+      "coding"
+    ],
+    "notes": "Reasoning-specialized flagship. State of the art on Codeforces / SWE-bench / MMMU; use for hard debugging, proofs, and multi-step planning."
+  },
+  {
+    "id": "o4-mini",
+    "provider": "openai",
+    "name": "o4-mini",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "json",
+      "reasoning",
+      "coding"
+    ],
+    "notes": "Small + fast reasoning model. Best price/quality point for iterative coding with structured thinking."
+  },
+  {
+    "id": "gemini-3.1-pro-preview",
     "provider": "gemini",
-    "name": "Gemini Pro Latest",
+    "name": "Gemini 3.1 Pro Preview",
     "recommended": true,
     "capabilities": [
       "chat",
@@ -105,12 +149,12 @@
       "reasoning",
       "coding"
     ],
-    "notes": "Stable alias for the current Pro-class Gemini model."
+    "notes": "Current Pro-class preview. Strongest Gemini model for complex reasoning, coding, and research."
   },
   {
-    "id": "gemini-flash-latest",
+    "id": "gemini-3-flash-preview",
     "provider": "gemini",
-    "name": "Gemini Flash Latest",
+    "name": "Gemini 3 Flash Preview",
     "recommended": true,
     "capabilities": [
       "chat",
@@ -120,7 +164,7 @@
       "json",
       "coding"
     ],
-    "notes": "Fast model for summarization, extraction, and browser-heavy work."
+    "notes": "Fast, balanced, multimodal. ~78% SWE-bench Verified — strong agentic-coding candidate."
   },
   {
     "id": "devstral-latest",
@@ -150,19 +194,6 @@
     "notes": "Flagship multimodal general-purpose model."
   },
   {
-    "id": "mistral-medium-latest",
-    "provider": "mistral",
-    "name": "Mistral Medium Latest",
-    "recommended": true,
-    "capabilities": [
-      "chat",
-      "tools",
-      "vision",
-      "json"
-    ],
-    "notes": "Balanced cost/quality option."
-  },
-  {
     "id": "mistral-small-latest",
     "provider": "mistral",
     "name": "Mistral Small Latest",
@@ -172,9 +203,51 @@
       "tools",
       "vision",
       "json",
+      "reasoning",
+      "coding"
+    ],
+    "notes": "Unified reasoning + coding + vision (Small 4, March 2026). Strong small-model default; cheaper than Medium with better agentic behavior."
+  },
+  {
+    "id": "magistral-medium-latest",
+    "provider": "mistral",
+    "name": "Magistral Medium Latest",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "json",
       "reasoning"
     ],
-    "notes": "Fast with reasoning toggle; good for quick tasks."
+    "notes": "Pure reasoning model. Use when you need explicit long-chain thinking; not a general chat pick."
+  },
+  {
+    "id": "llama-4-scout-17b-16e-instruct",
+    "provider": "groq",
+    "name": "Llama 4 Scout (17B active / 109B MoE)",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "json",
+      "coding"
+    ],
+    "notes": "Native multimodal MoE in production on Groq. Strong speed/quality default as of 2026-04."
+  },
+  {
+    "id": "llama-4-maverick-17b-128e-instruct",
+    "provider": "groq",
+    "name": "Llama 4 Maverick (17B active / 400B MoE)",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "json",
+      "coding"
+    ],
+    "notes": "Larger Llama 4 variant — more capable, still Groq-fast."
   },
   {
     "id": "gpt-oss-120b",
@@ -188,7 +261,7 @@
       "reasoning",
       "coding"
     ],
-    "notes": "Groq's flagship reasoning + coding model. 120B weights at Groq speed."
+    "notes": "OpenAI's open-weight reasoning + coding model. 120B weights at Groq speed."
   },
   {
     "id": "gpt-oss-20b",
@@ -204,18 +277,6 @@
     "notes": "Coding-optimized, faster/cheaper than 120B."
   },
   {
-    "id": "llama-3.3-70b-versatile",
-    "provider": "groq",
-    "name": "Llama 3.3 70B Versatile",
-    "recommended": true,
-    "capabilities": [
-      "chat",
-      "tools",
-      "json"
-    ],
-    "notes": "General-purpose alternative. No reasoning mode."
-  },
-  {
     "id": "qwen3-coder:30b",
     "provider": "ollama",
     "name": "Qwen3 Coder 30B (MoE)",
@@ -228,6 +289,34 @@
       "local"
     ],
     "notes": "Consensus local coding agent. 30B/3.3B MoE. ~20 GB VRAM at Q4_K_M."
+  },
+  {
+    "id": "qwen3-coder-next:80b",
+    "provider": "ollama",
+    "name": "Qwen3 Coder Next 80B (MoE)",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "json",
+      "coding",
+      "local"
+    ],
+    "notes": "2026-04 flagship local coder. 3B/80B MoE; ~48 GB at Q4_K_M so needs a workstation GPU or Mac Studio. ~58% SWE-bench Verified."
+  },
+  {
+    "id": "llama4:8b",
+    "provider": "ollama",
+    "name": "Llama 4 8B",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "json",
+      "local"
+    ],
+    "notes": "Massive (1M+) context with native multimodal and parallel tool calls. ~6 GB at Q4_K_M; fits laptops. Good general assistant, not a code specialist."
   },
   {
     "id": "qwen3.6:35b",
