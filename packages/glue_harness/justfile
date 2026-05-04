@@ -3,19 +3,25 @@ set dotenv-load
 default:
     @just --list
 
+# Get dependencies
 deps:
     dart pub get
 
+# Static analysis
 analyze:
     dart analyze --fatal-infos
 
+# Format all Dart files
 format:
     dart format .
 
+# Run unit tests
 test *args:
     dart test {{args}}
 
+# Quality gate: analyze + test
 check: analyze test
 
+# Cleanup generated artefacts
 clean:
     rm -rf .dart_tool
