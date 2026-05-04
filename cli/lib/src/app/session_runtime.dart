@@ -62,56 +62,92 @@ Future<void> _runPrintModeImpl(App app) async {
   );
   if (turnSpan != null) app._obs!.activeSpan = turnSpan;
 
-  try {
-    final stream = app.agent.run(expanded);
-    await for (final event in stream) {
-      switch (event) {
-        case AgentTextDelta(:final delta):
-          assistantText.write(delta);
-          if (!app._jsonMode) stdout.write(delta);
+  // Two-press SIGINT: first press cancels the in-flight agent stream so we
+  // can emit a clean JSON envelope (or a [cancelled] marker) and exit 130;
+  // a second press during teardown hard-exits with 130. See
+  // docs/reference/sigint-handling.md for the design.
+  var cancelled = false;
+  var sigintCount = 0;
+  StreamSubscription<AgentEvent>? agentSub;
+  StreamSubscription<ProcessSignal>? sigintSub;
+  final loopDone = Completer<void>();
+  Object? loopError;
 
-        case AgentUsage(:final usage):
-          // Print mode also persists, so attribute the usage.
-          app._sessionManager.recordUsage(
-            UsageStats()..record(usage),
-            role: 'main',
-          );
-
-        case AgentToolCall(:final call):
-          conversationLog.add({
-            'type': 'tool_call',
-            'name': call.name,
-            'arguments': call.arguments,
-          });
-          try {
-            final result = await app.agent.executeTool(call);
-            app.agent.completeToolCall(result);
-          } catch (e) {
-            app.agent.completeToolCall(ToolResult(
-              callId: call.id,
-              content: 'Tool error: $e',
-              success: false,
-            ));
-          }
-
-        case AgentDone():
-          break;
-
-        case AgentError(:final error):
-          if (turnSpan != null && turnSpan.endTime == null) {
-            app._obs!.endSpan(turnSpan, extra: {
-              'error': true,
-              'error.type': error.runtimeType.toString(),
-              'error.message': error.toString(),
-            });
-          }
-          stderr.writeln(error);
-          return;
-
-        default:
-          break;
-      }
+  sigintSub = ProcessSignal.sigint.watch().listen((_) {
+    sigintCount++;
+    if (sigintCount == 1) {
+      stderr.writeln('\nCancelling… press Ctrl+C again to force quit.');
+      cancelled = true;
+      agentSub?.cancel();
+      if (!loopDone.isCompleted) loopDone.complete();
+    } else {
+      sigintSub?.cancel();
+      exit(130);
     }
+  });
+
+  try {
+    agentSub = app.agent.run(expanded).listen(
+      (event) async {
+        if (cancelled) return;
+        switch (event) {
+          case AgentTextDelta(:final delta):
+            assistantText.write(delta);
+            if (!app._jsonMode) stdout.write(delta);
+
+          case AgentUsage(:final usage):
+            // Print mode also persists, so attribute the usage.
+            app._sessionManager.recordUsage(
+              UsageStats()..record(usage),
+              role: 'main',
+            );
+
+          case AgentToolCall(:final call):
+            conversationLog.add({
+              'type': 'tool_call',
+              'name': call.name,
+              'arguments': call.arguments,
+            });
+            try {
+              final result = await app.agent.executeTool(call);
+              app.agent.completeToolCall(result);
+            } catch (e) {
+              app.agent.completeToolCall(ToolResult(
+                callId: call.id,
+                content: 'Tool error: $e',
+                success: false,
+              ));
+            }
+
+          case AgentDone():
+            break;
+
+          case AgentError(:final error):
+            if (turnSpan != null && turnSpan.endTime == null) {
+              app._obs!.endSpan(turnSpan, extra: {
+                'error': true,
+                'error.type': error.runtimeType.toString(),
+                'error.message': error.toString(),
+              });
+            }
+            stderr.writeln(error);
+            if (!loopDone.isCompleted) loopDone.complete();
+
+          default:
+            break;
+        }
+      },
+      onError: (Object e) {
+        loopError = e;
+        if (!loopDone.isCompleted) loopDone.complete();
+      },
+      onDone: () {
+        if (!loopDone.isCompleted) loopDone.complete();
+      },
+    );
+
+    await loopDone.future;
+    if (loopError != null) throw loopError!;
   } catch (e) {
     if (turnSpan != null) {
       app._obs!.endSpan(turnSpan, extra: {
@@ -123,12 +159,15 @@ Future<void> _runPrintModeImpl(App app) async {
     stderr.writeln('Error: $e');
     return;
   } finally {
+    await agentSub?.cancel();
+    await sigintSub.cancel();
     if (turnSpan != null) {
       final obs = app._obs!;
       if (turnSpan.endTime == null) {
         obs.endSpan(turnSpan, extra: {
           'output.value': redactBody(assistantText.toString()),
           'output.length': assistantText.length,
+          if (cancelled) 'cancelled': true,
         });
       }
       if (obs.activeSpan == turnSpan) obs.activeSpan = null;
@@ -157,9 +196,12 @@ Future<void> _runPrintModeImpl(App app) async {
       'session_id': sessionId,
       'model': app._modelId,
       'conversation': conversationLog,
+      if (cancelled) 'cancelled': true,
     };
     stdout.writeln(const JsonEncoder.withIndent('  ').convert(output));
   }
+
+  if (cancelled) exitCode = 130;
 }
 
 String _resumeSessionImpl(App app, SessionMeta session) {
