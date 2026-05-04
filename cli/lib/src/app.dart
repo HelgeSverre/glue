@@ -453,6 +453,7 @@ class App {
       openGlueTarget: _openGlueTarget,
       configAction: _configAction,
       renameSession: _renameSession,
+      copyLastResponse: () => _copyLastResponseImpl(this),
     );
 
     // Argument autocomplete — attached here (not plumbed through

@@ -25,6 +25,7 @@ class BuiltinCommands {
     required String Function(List<String> args) openGlueTarget,
     required String Function(List<String> args) configAction,
     required String Function(String title) renameSession,
+    required void Function() copyLastResponse,
   }) {
     final commands = SlashCommandRegistry();
 
@@ -41,6 +42,15 @@ class BuiltinCommands {
       name: 'clear',
       description: 'Clear conversation history',
       execute: (_) => clearConversation(),
+    ));
+
+    commands.register(SlashCommand(
+      name: 'copy',
+      description: 'Copy the last assistant response to the clipboard',
+      execute: (_) {
+        copyLastResponse();
+        return '';
+      },
     ));
 
     commands.register(SlashCommand(

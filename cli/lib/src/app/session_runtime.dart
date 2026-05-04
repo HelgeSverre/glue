@@ -1,70 +1,106 @@
 part of 'package:glue/src/app.dart';
 
 Future<void> _runPrintModeImpl(App app) async {
-  // Optionally resume a previous session into the agent conversation.
-  if (app._resumeSessionId != null) {
-    if (app._resumeSessionId.isEmpty) {
-      stderr.writeln(
-          'Error: --print does not support bare --resume; pass a session ID.');
-      return;
+  // Two-press SIGINT installed early so it covers stdin draining and any
+  // setup work below. First press cancels the in-flight agent stream so we
+  // can emit a clean JSON envelope (or a [cancelled] marker) and exit 130;
+  // a second press during teardown calls exit(130) directly — that bypasses
+  // the finally block intentionally (force-quit semantics, even at the cost
+  // of a half-flushed otel span). See docs/reference/sigint-handling.md.
+  var cancelled = false;
+  var sigintCount = 0;
+  StreamIterator<AgentEvent>? agentIter;
+  late final StreamSubscription<ProcessSignal> sigintSub;
+
+  sigintSub = ProcessSignal.sigint.watch().listen((_) {
+    sigintCount++;
+    if (sigintCount == 1) {
+      stderr.writeln('\nCancelling… press Ctrl+C again to force quit.');
+      cancelled = true;
+      // Cancel the iterator so the next moveNext() resolves to false and
+      // the loop exits. The agent's `async*` generator unwinds via its
+      // finally blocks (closing the upstream HTTP socket).
+      unawaited(agentIter?.cancel());
+    } else {
+      sigintSub.cancel();
+      exit(130);
     }
-    final sessions = app._sessionManager.listSessions();
-    final match =
-        sessions.where((s) => s.id.value == app._resumeSessionId).toList();
-    if (match.isEmpty) {
-      stderr.writeln('Session ${app._resumeSessionId} not found.');
-      return;
-    }
-    app._sessionManager.resumeSession(session: match.first, agent: app.agent);
-  }
+  });
 
-  // Read piped stdin if available (e.g. `cat file | glue -p "summarize"`).
-  String? stdinContent;
-  if (!stdin.hasTerminal) {
-    try {
-      final buf = StringBuffer();
-      String? line;
-      while ((line = stdin.readLineSync()) != null) {
-        buf.writeln(line);
-      }
-      final content = buf.toString().trimRight();
-      if (content.isNotEmpty) stdinContent = content;
-    } catch (_) {
-      // Ignore stdin read errors.
-    }
-  }
-
-  final prompt = app._startupPrompt;
-  if ((prompt == null || prompt.isEmpty) && stdinContent == null) {
-    stderr.writeln('Error: --print requires a prompt.');
-    return;
-  }
-
-  final fullPrompt =
-      App.buildPrintPrompt(prompt: prompt, stdinContent: stdinContent);
-  final expanded = expandFileRefs(fullPrompt);
-
-  app._sessionManager.logEvent('user_message', {'text': expanded});
-
+  // State that the finally block + post-loop output read.
   final assistantText = StringBuffer();
   final conversationLog = <Map<String, dynamic>>[];
-  final turnSpan = app._obs?.startSpan(
-    'agent.turn',
-    kind: 'agent',
-    attributes: {
-      'openinference.span.kind': 'AGENT',
-      'session.id': app._sessionManager.currentSessionId ?? '',
-      'llm.model_name': app._modelId,
-      'process.command': 'print',
-      'user.message_length': expanded.length,
-      'input.value': redactBody(expanded),
-    },
-  );
-  if (turnSpan != null) app._obs!.activeSpan = turnSpan;
+  ObservabilitySpan? turnSpan;
+  String expanded = '';
 
   try {
-    final stream = app.agent.run(expanded);
-    await for (final event in stream) {
+    // Optionally resume a previous session into the agent conversation.
+    if (app._resumeSessionId != null) {
+      if (app._resumeSessionId.isEmpty) {
+        stderr.writeln(
+            'Error: --print does not support bare --resume; pass a session ID.');
+        return;
+      }
+      final sessions = app._sessionManager.listSessions();
+      final match =
+          sessions.where((s) => s.id.value == app._resumeSessionId).toList();
+      if (match.isEmpty) {
+        stderr.writeln('Session ${app._resumeSessionId} not found.');
+        return;
+      }
+      app._sessionManager.resumeSession(session: match.first, agent: app.agent);
+    }
+
+    // Read piped stdin if available (e.g. `cat file | glue -p "summarize"`).
+    String? stdinContent;
+    if (!stdin.hasTerminal) {
+      try {
+        final buf = StringBuffer();
+        String? line;
+        while ((line = stdin.readLineSync()) != null) {
+          buf.writeln(line);
+        }
+        final content = buf.toString().trimRight();
+        if (content.isNotEmpty) stdinContent = content;
+      } catch (_) {
+        // Ignore stdin read errors.
+      }
+    }
+
+    final prompt = app._startupPrompt;
+    if ((prompt == null || prompt.isEmpty) && stdinContent == null) {
+      stderr.writeln('Error: --print requires a prompt.');
+      return;
+    }
+
+    final fullPrompt =
+        App.buildPrintPrompt(prompt: prompt, stdinContent: stdinContent);
+    expanded = expandFileRefs(fullPrompt);
+
+    app._sessionManager.logEvent('user_message', {'text': expanded});
+
+    turnSpan = app._obs?.startSpan(
+      'agent.turn',
+      kind: 'agent',
+      attributes: {
+        'openinference.span.kind': 'AGENT',
+        'session.id': app._sessionManager.currentSessionId ?? '',
+        'llm.model_name': app._modelId,
+        'process.command': 'print',
+        'user.message_length': expanded.length,
+        'input.value': redactBody(expanded),
+      },
+    );
+    if (turnSpan != null) app._obs!.activeSpan = turnSpan;
+
+    // StreamIterator consumes the agent stream serially: each await
+    // completes before the next event is delivered. That preserves the
+    // tool-call → tool-result ordering invariant the agent loop relies on.
+    // Cancellation flows from the SIGINT handler via iter.cancel().
+    agentIter = StreamIterator(app.agent.run(expanded));
+    loop:
+    while (await agentIter.moveNext()) {
+      final event = agentIter.current;
       switch (event) {
         case AgentTextDelta(:final delta):
           assistantText.write(delta);
@@ -95,7 +131,7 @@ Future<void> _runPrintModeImpl(App app) async {
           }
 
         case AgentDone():
-          break;
+          break loop;
 
         case AgentError(:final error):
           if (turnSpan != null && turnSpan.endTime == null) {
@@ -104,6 +140,7 @@ Future<void> _runPrintModeImpl(App app) async {
               'error.type': error.runtimeType.toString(),
               'error.message': error.toString(),
             });
+            turnSpan = null;
           }
           stderr.writeln(error);
           return;
@@ -112,23 +149,46 @@ Future<void> _runPrintModeImpl(App app) async {
           break;
       }
     }
+
+    // Post-loop output (success path or graceful cancellation).
+    final text = assistantText.toString();
+    if (!app._jsonMode && !text.endsWith('\n')) stdout.writeln();
+
+    app._sessionManager.logEvent('assistant_message', {'text': text});
+
+    if (app._jsonMode) {
+      final sessionId = app._sessionManager.currentSessionId;
+      conversationLog.insert(0, {'type': 'user_message', 'text': expanded});
+      conversationLog.add({'type': 'assistant_message', 'text': text});
+
+      final output = {
+        'session_id': sessionId,
+        'model': app._modelId,
+        'conversation': conversationLog,
+        if (cancelled) 'cancelled': true,
+      };
+      stdout.writeln(const JsonEncoder.withIndent('  ').convert(output));
+    }
   } catch (e) {
-    if (turnSpan != null) {
+    if (turnSpan != null && turnSpan.endTime == null) {
       app._obs!.endSpan(turnSpan, extra: {
         'error': true,
         'error.type': e.runtimeType.toString(),
         'error.message': e.toString(),
       });
+      turnSpan = null;
     }
     stderr.writeln('Error: $e');
-    return;
   } finally {
+    await agentIter?.cancel();
+    await sigintSub.cancel();
     if (turnSpan != null) {
       final obs = app._obs!;
       if (turnSpan.endTime == null) {
         obs.endSpan(turnSpan, extra: {
           'output.value': redactBody(assistantText.toString()),
           'output.length': assistantText.length,
+          if (cancelled) 'cancelled': true,
         });
       }
       if (obs.activeSpan == turnSpan) obs.activeSpan = null;
@@ -141,24 +201,7 @@ Future<void> _runPrintModeImpl(App app) async {
     await app._obs?.flush();
     await app._obs?.close();
     await app._sessionManager.closeCurrent();
-  }
-
-  final text = assistantText.toString();
-  if (!app._jsonMode && !text.endsWith('\n')) stdout.writeln();
-
-  app._sessionManager.logEvent('assistant_message', {'text': text});
-
-  if (app._jsonMode) {
-    final sessionId = app._sessionManager.currentSessionId;
-    conversationLog.insert(0, {'type': 'user_message', 'text': expanded});
-    conversationLog.add({'type': 'assistant_message', 'text': text});
-
-    final output = {
-      'session_id': sessionId,
-      'model': app._modelId,
-      'conversation': conversationLog,
-    };
-    stdout.writeln(const JsonEncoder.withIndent('  ').convert(output));
+    if (cancelled) exitCode = 130;
   }
 }
 
