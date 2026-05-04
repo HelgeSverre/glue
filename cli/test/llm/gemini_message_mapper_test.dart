@@ -55,6 +55,51 @@ void main() {
       });
     });
 
+    test('echoes thoughtSignature on the functionCall part when present', () {
+      final result = mapper.mapMessages(
+        [
+          Message.user('q'),
+          Message.assistant(toolCalls: [
+            ToolCall(
+              id: const ToolCallId('tc1'),
+              name: 'web_search',
+              arguments: {'query': 'q'},
+              thoughtSignature: 'sig-from-prev-turn',
+            ),
+          ]),
+        ],
+        systemPrompt: '',
+      );
+
+      final assistant = result.messages[1];
+      final parts = assistant['parts'] as List;
+      expect(parts, hasLength(1));
+      expect(parts.first, {
+        'functionCall': {
+          'name': 'web_search',
+          'args': {'query': 'q'},
+        },
+        'thoughtSignature': 'sig-from-prev-turn',
+      });
+    });
+
+    test('omits thoughtSignature key when ToolCall does not carry one', () {
+      final result = mapper.mapMessages(
+        [
+          Message.user('q'),
+          Message.assistant(toolCalls: [
+            ToolCall(id: const ToolCallId('tc1'), name: 'read_file', arguments: {'path': 'x'}),
+          ]),
+        ],
+        systemPrompt: '',
+      );
+
+      final assistant = result.messages[1];
+      final parts = assistant['parts'] as List;
+      final part = parts.first as Map<String, dynamic>;
+      expect(part.containsKey('thoughtSignature'), isFalse);
+    });
+
     test('maps tool result as role: user / functionResponse part', () {
       final result = mapper.mapMessages(
         [

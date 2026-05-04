@@ -165,6 +165,14 @@ class GeminiProvider extends ProviderAdapter implements LlmClient {
                   : (rawArgs is Map
                       ? Map<String, dynamic>.from(rawArgs)
                       : <String, dynamic>{});
+              // Capture the opaque thoughtSignature emitted by thinking-mode
+              // Gemini models. The next request must echo it back on the
+              // same functionCall part or the API rejects with HTTP 400.
+              // The field can live either on the part itself or under the
+              // functionCall — accept both shapes.
+              final thoughtSig = (part['thoughtSignature'] ??
+                      fc['thoughtSignature'])
+                  ?.toString();
               callCounter++;
               final id = ToolCallId('gemini-call-$callCounter');
               yield ToolCallStart(id: id, name: name);
@@ -172,6 +180,7 @@ class GeminiProvider extends ProviderAdapter implements LlmClient {
                 id: id,
                 name: name,
                 arguments: args,
+                thoughtSignature: thoughtSig,
               ));
             }
           }

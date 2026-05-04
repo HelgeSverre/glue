@@ -178,6 +178,96 @@ void main() {
       expect(startIdx, lessThan(completeIdx));
     });
 
+    test('captures thoughtSignature from a thinking-mode functionCall part',
+        () async {
+      final events = [
+        {
+          'candidates': [
+            {
+              'content': {
+                'role': 'model',
+                'parts': [
+                  {
+                    'functionCall': {
+                      'name': 'web_search',
+                      'args': {'query': 'who is Necati Özmen'},
+                    },
+                    'thoughtSignature': 'opaque-token-abc123',
+                  }
+                ],
+              },
+              'finishReason': 'STOP',
+            }
+          ],
+        },
+      ];
+      final chunks = await GeminiProvider.parseStreamEvents(
+        Stream.fromIterable(events),
+      ).toList();
+      final completes = chunks.whereType<ToolCallComplete>().toList();
+      expect(completes, hasLength(1));
+      expect(completes.first.toolCall.thoughtSignature, 'opaque-token-abc123');
+    });
+
+    test('captures thoughtSignature when nested under functionCall (alt shape)',
+        () async {
+      final events = [
+        {
+          'candidates': [
+            {
+              'content': {
+                'role': 'model',
+                'parts': [
+                  {
+                    'functionCall': {
+                      'name': 'web_search',
+                      'args': {'query': 'q'},
+                      'thoughtSignature': 'nested-token-xyz',
+                    },
+                  }
+                ],
+              },
+              'finishReason': 'STOP',
+            }
+          ],
+        },
+      ];
+      final chunks = await GeminiProvider.parseStreamEvents(
+        Stream.fromIterable(events),
+      ).toList();
+      final completes = chunks.whereType<ToolCallComplete>().toList();
+      expect(completes.first.toolCall.thoughtSignature, 'nested-token-xyz');
+    });
+
+    test('thoughtSignature is null when the field is absent', () async {
+      final events = [
+        {
+          'candidates': [
+            {
+              'content': {
+                'role': 'model',
+                'parts': [
+                  {
+                    'functionCall': {
+                      'name': 'read_file',
+                      'args': {'path': 'x.dart'},
+                    },
+                  }
+                ],
+              },
+              'finishReason': 'STOP',
+            }
+          ],
+        },
+      ];
+      final chunks = await GeminiProvider.parseStreamEvents(
+        Stream.fromIterable(events),
+      ).toList();
+      expect(
+          chunks.whereType<ToolCallComplete>().single.toolCall.thoughtSignature,
+          isNull);
+    });
+
     test('always emits a UsageInfo even when usageMetadata is absent',
         () async {
       final events = <Map<String, dynamic>>[

@@ -194,12 +194,18 @@ class GeminiMessageMapper extends MessageMapper {
             parts.add({'text': msg.text});
           }
           for (final tc in msg.toolCalls) {
-            parts.add({
-              'functionCall': {
-                'name': tc.name,
-                'args': tc.arguments,
-              },
-            });
+            final fc = <String, dynamic>{
+              'name': tc.name,
+              'args': tc.arguments,
+            };
+            final part = <String, dynamic>{'functionCall': fc};
+            // Echo back the opaque thoughtSignature captured from the
+            // previous response. Required for thinking-mode Gemini models —
+            // see https://ai.google.dev/gemini-api/docs/thought-signatures.
+            if (tc.thoughtSignature != null) {
+              part['thoughtSignature'] = tc.thoughtSignature;
+            }
+            parts.add(part);
           }
           appendOrCoalesce('model', parts);
         case Role.toolResult:

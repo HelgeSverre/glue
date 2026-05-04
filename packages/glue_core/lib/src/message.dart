@@ -157,10 +157,17 @@ class ToolCall {
   final Map<String, dynamic> arguments;
   final String description;
 
+  /// Provider-specific opaque token that must be echoed back on the next
+  /// request. Currently set only by the Gemini provider when the model is in
+  /// thinking mode; null for all other providers. See
+  /// https://ai.google.dev/gemini-api/docs/thought-signatures.
+  final String? thoughtSignature;
+
   ToolCall({
     required this.id,
     required this.name,
     required this.arguments,
     this.description = '',
+    this.thoughtSignature,
   });
 }
