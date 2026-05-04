@@ -239,6 +239,7 @@ ModelDef _parseModel(String id, Object? node, {required String providerId}) {
     apiId: node['api_id']?.toString(),
     recommended: _asBool(node['recommended']),
     isDefault: _asBool(node['default']),
+    enabled: _asBool(node['enabled'], defaultValue: true),
     capabilities: capabilities,
     contextWindow: _asInt(node['context_window']),
     maxOutputTokens: _asInt(node['max_output_tokens']),

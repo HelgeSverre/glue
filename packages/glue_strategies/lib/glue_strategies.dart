@@ -22,6 +22,7 @@ export 'package:glue_strategies/src/providers/auth_flow.dart';
 export 'package:glue_strategies/src/providers/compatibility_profile.dart';
 export 'package:glue_strategies/src/providers/copilot_adapter.dart';
 export 'package:glue_strategies/src/providers/copilot_token_manager.dart';
+export 'package:glue_strategies/src/providers/gemini_provider.dart';
 export 'package:glue_strategies/src/providers/ollama_adapter.dart';
 export 'package:glue_strategies/src/providers/ollama_discovery.dart';
 export 'package:glue_strategies/src/providers/openai_compatible_adapter.dart';

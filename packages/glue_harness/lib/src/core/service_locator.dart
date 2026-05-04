@@ -94,6 +94,7 @@ class ServiceLocator {
         client: mkHttp('llm.copilot.auth'),
         requestClientFactory: () => mkHttp('llm.copilot'),
       ),
+      GeminiProvider(requestClientFactory: () => mkHttp('llm.gemini')),
     ]);
 
     final llmFactory = LlmClientFactory(config);
