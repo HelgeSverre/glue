@@ -15,8 +15,9 @@ class AnthropicToolEncoder extends ToolSchemaEncoder {
   const AnthropicToolEncoder();
 
   @override
-  List<Map<String, dynamic>> encodeAll(List<Tool> tools) =>
-      [for (final t in tools) t.toSchema()];
+  List<Map<String, dynamic>> encodeAll(List<Tool> tools) {
+    return tools.map((t) => t.toSchema()).toList();
+  }
 }
 
 /// Gemini Developer API tool format.
@@ -32,25 +33,22 @@ class GeminiToolEncoder extends ToolSchemaEncoder {
   List<Map<String, dynamic>> encodeAll(List<Tool> tools) {
     return [
       {
-        'functionDeclarations': [
-          for (final t in tools)
-            {
-              'name': t.name,
-              'description': t.description,
-              'parameters': {
-                'type': 'OBJECT',
-                'properties': {
-                  for (final p in t.parameters)
-                    p.name: _upperType(p.toSchema()),
-                },
-                'required': [
-                  for (final p in t.parameters)
-                    if (p.required) p.name,
-                ],
-              },
-            }
-        ],
-      }
+        'functionDeclarations': tools.map((t) {
+          return {
+            'name': t.name,
+            'description': t.description,
+            'parameters': {
+              'type': 'OBJECT',
+              'properties': Map.fromEntries(
+                t.parameters.map(
+                  (p) => MapEntry(p.name, _upperType(p.toSchema())),
+                ),
+              ),
+              'required': t.requiredParameters.map((p) => p.name).toList(),
+            },
+          };
+        }).toList(),
+      },
     ];
   }
 
@@ -75,24 +73,22 @@ class OpenAiToolEncoder extends ToolSchemaEncoder {
   const OpenAiToolEncoder();
 
   @override
-  List<Map<String, dynamic>> encodeAll(List<Tool> tools) => [
-        for (final t in tools)
-          {
-            'type': 'function',
-            'function': {
-              'name': t.name,
-              'description': t.description,
-              'parameters': {
-                'type': 'object',
-                'properties': {
-                  for (final p in t.parameters) p.name: p.toSchema(),
-                },
-                'required': [
-                  for (final p in t.parameters)
-                    if (p.required) p.name,
-                ],
-              },
-            },
-          }
-      ];
+  List<Map<String, dynamic>> encodeAll(List<Tool> tools) {
+    return tools.map((t) {
+      return {
+        'type': 'function',
+        'function': {
+          'name': t.name,
+          'description': t.description,
+          'parameters': {
+            'type': 'object',
+            'properties': Map.fromEntries(
+              t.parameters.map((p) => MapEntry(p.name, p.toSchema())),
+            ),
+            'required': t.requiredParameters.map((p) => p.name).toList(),
+          },
+        },
+      };
+    }).toList();
+  }
 }

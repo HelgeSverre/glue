@@ -34,11 +34,13 @@ class ToolParameter {
     this.items,
   });
 
-  Map<String, dynamic> toSchema() => {
-        'type': type,
-        'description': description,
-        if (items != null) 'items': items,
-      };
+  Map<String, dynamic> toSchema() {
+    return {
+      'type': type,
+      'description': description,
+      if (items != null) 'items': items,
+    };
+  }
 }
 
 /// How much trust a tool requires from the permission system.
@@ -140,6 +142,10 @@ abstract class Tool {
   /// Parameter definitions used to build the JSON schema sent to the LLM.
   List<ToolParameter> get parameters;
 
+  /// Subset of [parameters] where [ToolParameter.required] is true.
+  List<ToolParameter> get requiredParameters =>
+      parameters.where((p) => p.required).toList();
+
   /// Executes this tool with the given [args] and returns a [ToolResult].
   ///
   /// Implementations should leave [ToolResult.callId] as its default
@@ -157,20 +163,21 @@ abstract class Tool {
   Future<void> dispose() async {}
 
   /// Builds the JSON schema representation for this tool.
-  Map<String, dynamic> toSchema() => {
-        'name': name,
-        'description': description,
-        'input_schema': {
-          'type': 'object',
-          'properties': {
-            for (final p in parameters) p.name: p.toSchema(),
-          },
-          'required': [
-            for (final p in parameters)
-              if (p.required) p.name,
-          ],
-        },
-      };
+  Map<String, dynamic> toSchema() {
+    return {
+      'name': name,
+      'description': description,
+      'input_schema': {
+        'type': 'object',
+        'properties': Map.fromEntries(
+          parameters.map(
+            (p) => MapEntry(p.name, p.toSchema()),
+          ),
+        ),
+        'required': requiredParameters.map((p) => p.name).toList(),
+      },
+    };
+  }
 }
 
 /// Base class for tool decorators. Forwards all methods to [inner].
@@ -180,22 +187,30 @@ abstract class Tool {
 /// inherit the forwarding automatically.
 class ForwardingTool extends Tool {
   final Tool inner;
+
   ForwardingTool(this.inner);
 
   @override
   String get name => inner.name;
+
   @override
   String get description => inner.description;
+
   @override
   List<ToolParameter> get parameters => inner.parameters;
+
   @override
   Future<ToolResult> execute(Map<String, dynamic> args) => inner.execute(args);
+
   @override
   ToolTrust get trust => inner.trust;
+
   @override
   bool get isMutating => inner.isMutating;
+
   @override
   Future<void> dispose() => inner.dispose();
+
   @override
   Map<String, dynamic> toSchema() => inner.toSchema();
 }
