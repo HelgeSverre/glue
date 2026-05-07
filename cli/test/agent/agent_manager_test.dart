@@ -133,6 +133,37 @@ void main() {
       expect(manager.subagentStats.outputTokens, 15);
     });
 
+    test('coalesces streaming text deltas into a single assistant_message row',
+        () async {
+      // Without buffering, every TextDelta would be persisted as its own
+      // `subagent_event` row, bloating the session log and the rendered
+      // share transcript by ~28× on real sessions. The fix coalesces a
+      // run of deltas into one row whose text is the concatenation.
+      final coalescingManager = AgentManager(
+        tools: {'read_file': ReadFileTool()},
+        llmFactory: _MultiDeltaFactory(),
+        config: testConfig(env: {'ANTHROPIC_API_KEY': 'sk-test'}),
+        systemPrompt: 'You are a test agent.',
+      );
+      final persisted = <Map<String, dynamic>>[];
+      coalescingManager.onPersistEvent =
+          (type, data) => persisted.add({'type': type, ...data});
+
+      await coalescingManager.spawnSubagent(task: 'streaming test');
+
+      final assistantRows = persisted
+          .where((e) =>
+              e['type'] == 'subagent_event' &&
+              (e['inner'] as Map)['type'] == 'assistant_message')
+          .toList();
+
+      expect(assistantRows, hasLength(1),
+          reason:
+              'three TextDelta chunks should coalesce into one persisted row');
+      expect((assistantRows.single['inner'] as Map)['text'],
+          'Hello streaming world.');
+    });
+
     test('always emits subagent_completed even when the LLM errors', () async {
       // AgentRunner internally captures provider errors and returns a string
       // result rather than rethrowing, so this test asserts the persistence
@@ -168,5 +199,25 @@ class _ThrowingLlm implements LlmClient {
   @override
   Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
     throw Exception('boom');
+  }
+}
+
+class _MultiDeltaFactory implements LlmClientFactory {
+  @override
+  LlmClient createFor(ModelRef ref, {required String systemPrompt}) =>
+      _MultiDeltaLlm();
+
+  @override
+  LlmClient createFromConfig({required String systemPrompt}) =>
+      _MultiDeltaLlm();
+}
+
+class _MultiDeltaLlm implements LlmClient {
+  @override
+  Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
+    yield TextDelta('Hello ');
+    yield TextDelta('streaming ');
+    yield TextDelta('world.');
+    yield UsageInfo(inputTokens: 5, outputTokens: 5);
   }
 }

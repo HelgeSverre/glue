@@ -166,26 +166,61 @@ class AgentManager {
       traceParent: span,
     );
 
+    // Streaming text/thinking deltas are coalesced into one persisted row
+    // per logical message instead of one row per token. Without this, a
+    // subagent that streams thousands of token chunks would produce
+    // thousands of `subagent_event` JSONL rows, bloating the session log
+    // and the rendered share transcript. The live UI feed below still
+    // receives every event unchanged.
+    final textBuf = StringBuffer();
+    final thinkingBuf = StringBuffer();
+
+    void flushPendingMessages() {
+      if (textBuf.isNotEmpty) {
+        onPersistEvent?.call('subagent_event', {
+          'subagent_id': subagentId.value,
+          'inner': {'type': 'assistant_message', 'text': textBuf.toString()},
+        });
+        textBuf.clear();
+      }
+      if (thinkingBuf.isNotEmpty) {
+        onPersistEvent?.call('subagent_event', {
+          'subagent_id': subagentId.value,
+          'inner': {'type': 'assistant_thinking', 'text': thinkingBuf.toString()},
+        });
+        thinkingBuf.clear();
+      }
+    }
+
     final runner = AgentRunner(
       core: core,
       policy: ToolApprovalPolicy.allowlist,
       allowedTools: allowedSubagentTools,
       onEvent: (event) {
-        onPersistEvent?.call('subagent_event', {
-          'subagent_id': subagentId.value,
-          'inner': serializeAgentEvent(event),
-        });
         _updateController.add(SubagentUpdate(
           task: task,
           index: index,
           total: total,
           event: event,
         ));
+        switch (event) {
+          case AgentTextDelta(:final delta):
+            textBuf.write(delta);
+          case AgentThinkingDelta(:final delta):
+            thinkingBuf.write(delta);
+          default:
+            flushPendingMessages();
+            onPersistEvent?.call('subagent_event', {
+              'subagent_id': subagentId.value,
+              'inner': serializeAgentEvent(event),
+            });
+        }
       },
     );
 
     try {
       final result = await runner.runToCompletion(task);
+      flushPendingMessages();
       _finaliseSubagentUsage(subagentId, runner.stats);
       onPersistEvent?.call('subagent_completed', {
         'subagent_id': subagentId.value,
@@ -193,6 +228,7 @@ class AgentManager {
       if (span != null) obs!.endSpan(span);
       return result;
     } catch (e) {
+      flushPendingMessages();
       _finaliseSubagentUsage(subagentId, runner.stats);
       onPersistEvent?.call('subagent_completed', {
         'subagent_id': subagentId.value,
