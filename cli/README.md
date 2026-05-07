@@ -51,6 +51,14 @@ glue --help                             # show all options
 | `--resume`   | `-r`  | Open session picker, or resume a session when given an ID / query |
 | `--continue` |       | Resume most recent session                                         |
 
+#### `--print` and stdin
+
+In `--print` mode, glue reads piped stdin until EOF (so `cat file | glue -p "summarize"` works). When stdin is non-terminal but never closes — e.g. glue spawned by another process via `Process.start` without `process.stdin.close()`, or invoked from a background shell that inherits stdin — glue will block forever waiting for EOF that doesn't come. If you don't need to feed stdin, redirect it explicitly:
+
+```bash
+glue -p "..." < /dev/null
+```
+
 ### Shell completions
 
 ```bash
