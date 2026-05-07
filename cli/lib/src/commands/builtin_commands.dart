@@ -1,198 +1,54 @@
+import 'package:glue/src/commands/slash/approve.dart';
+import 'package:glue/src/commands/slash/clear.dart';
+import 'package:glue/src/commands/slash/config.dart';
+import 'package:glue/src/commands/slash/copy.dart';
+import 'package:glue/src/commands/slash/debug.dart';
+import 'package:glue/src/commands/slash/exit.dart';
+import 'package:glue/src/commands/slash/help.dart';
+import 'package:glue/src/commands/slash/history.dart';
+import 'package:glue/src/commands/slash/model.dart';
+import 'package:glue/src/commands/slash/open.dart';
+import 'package:glue/src/commands/slash/paths.dart';
+import 'package:glue/src/commands/slash/provider.dart';
+import 'package:glue/src/commands/slash/recap.dart';
+import 'package:glue/src/commands/slash/rename.dart';
+import 'package:glue/src/commands/slash/resume.dart';
+import 'package:glue/src/commands/slash/session.dart';
+import 'package:glue/src/commands/slash/share.dart';
+import 'package:glue/src/commands/slash/skills.dart';
+import 'package:glue/src/commands/slash/tools.dart';
+import 'package:glue/src/commands/slash/usage.dart';
+import 'package:glue/src/commands/slash_command_context.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 
-/// Registration point for built-in slash commands.
+/// Registration point for the built-in slash commands.
+///
+/// Every command is class-based and depends only on [SlashCommandContext].
+/// Adding a command means writing a new class and one line here.
 class BuiltinCommands {
-  static SlashCommandRegistry create({
-    required void Function() openHelpPanel,
-    required String Function() clearConversation,
-    required void Function() requestExit,
-    required void Function() openModelPanel,
-    required String Function(String query) switchModelByQuery,
-    required String Function(List<String> args) sessionAction,
-    required String Function(List<String> args) shareAction,
-    required String Function() usageReport,
-    required String Function() listTools,
-    required void Function() openHistoryPanel,
-    required String Function(String query) historyActionByQuery,
-    required void Function() openResumePanel,
-    required String Function(String query) resumeSessionByQuery,
-    required String Function() toggleDebug,
-    required void Function() openSkillsPanel,
-    required String Function(String skillName) activateSkillByName,
-    required String Function() toggleApproval,
-    required String Function(List<String> args) runProviderCommand,
-    required String Function() pathsReport,
-    required String Function(List<String> args) openGlueTarget,
-    required String Function(List<String> args) configAction,
-    required String Function(String title) renameSession,
-    required void Function() copyLastResponse,
-    required String Function(List<String> args) recapAction,
-  }) {
-    final commands = SlashCommandRegistry();
-
-    commands.register(SlashCommand(
-      name: 'help',
-      description: 'Show available commands and keybindings',
-      execute: (_) {
-        openHelpPanel();
-        return '';
-      },
-    ));
-
-    commands.register(SlashCommand(
-      name: 'clear',
-      description: 'Clear conversation history',
-      execute: (_) => clearConversation(),
-    ));
-
-    commands.register(SlashCommand(
-      name: 'copy',
-      description: 'Copy the last assistant response to the clipboard',
-      execute: (_) {
-        copyLastResponse();
-        return '';
-      },
-    ));
-
-    commands.register(SlashCommand(
-      name: 'exit',
-      description: 'Exit Glue',
-      aliases: ['quit'],
-      hiddenAliases: ['q'],
-      execute: (_) {
-        requestExit();
-        return '';
-      },
-    ));
-
-    commands.register(SlashCommand(
-      name: 'model',
-      description:
-          'Switch model (no args = picker, with arg = switch directly)',
-      aliases: ['models'],
-      execute: (args) {
-        if (args.isEmpty) {
-          openModelPanel();
-          return '';
-        }
-        return switchModelByQuery(args.join(' '));
-      },
-    ));
-
-    commands.register(SlashCommand(
-      name: 'session',
-      description: 'Show current session info, or /session copy to copy ID',
-      execute: sessionAction,
-    ));
-
-    commands.register(SlashCommand(
-      name: 'tools',
-      description: 'List available tools',
-      execute: (_) => listTools(),
-    ));
-
-    commands.register(SlashCommand(
-      name: 'share',
-      description: 'Export the current session as html, markdown, or gist',
-      execute: shareAction,
-    ));
-
-    commands.register(SlashCommand(
-      name: 'usage',
-      description:
-          'Show token usage for this session (per role: main, subagent, title)',
-      execute: (_) => usageReport(),
-    ));
-
-    commands.register(SlashCommand(
-      name: 'recap',
-      description: 'Summarize the current session in one line',
-      aliases: ['summary'],
-      execute: recapAction,
-    ));
-
-    commands.register(SlashCommand(
-      name: 'history',
-      description: 'Browse history or fork by index/query',
-      execute: (args) {
-        if (args.isEmpty) {
-          openHistoryPanel();
-          return '';
-        }
-        return historyActionByQuery(args.join(' '));
-      },
-    ));
-
-    commands.register(SlashCommand(
-      name: 'resume',
-      description: 'Resume a session (panel or by ID/query)',
-      execute: (args) {
-        if (args.isEmpty) {
-          openResumePanel();
-          return '';
-        }
-        return resumeSessionByQuery(args.join(' '));
-      },
-    ));
-
-    commands.register(SlashCommand(
-      name: 'debug',
-      description: 'Toggle debug mode (verbose logging)',
-      execute: (_) => toggleDebug(),
-    ));
-
-    commands.register(SlashCommand(
-      name: 'skills',
-      description: 'Browse skills or activate one by name',
-      execute: (args) {
-        if (args.isEmpty) {
-          openSkillsPanel();
-          return '';
-        }
-        return activateSkillByName(args.join(' '));
-      },
-    ));
-
-    commands.register(SlashCommand(
-      name: 'approve',
-      description: 'Toggle approval mode (confirm ↔ auto)',
-      execute: (_) => toggleApproval(),
-    ));
-
-    commands.register(SlashCommand(
-      name: 'provider',
-      description: 'Manage providers (list, add, remove, test)',
-      execute: runProviderCommand,
-    ));
-
-    commands.register(SlashCommand(
-      name: 'paths',
-      description:
-          'Show Glue data paths (config, sessions, logs, skills, plans, cache)',
-      hiddenAliases: ['where'],
-      execute: (_) => pathsReport(),
-    ));
-
-    commands.register(SlashCommand(
-      name: 'config',
-      description:
-          'Open config.yaml in \$EDITOR, or initialize it with /config init',
-      execute: configAction,
-    ));
-
-    commands.register(SlashCommand(
-      name: 'open',
-      description: 'Open a Glue directory in your file manager '
-          '(home, session, sessions, logs, skills, plans, cache)',
-      execute: openGlueTarget,
-    ));
-
-    commands.register(SlashCommand(
-      name: 'rename',
-      description: 'Rename the current session',
-      execute: (args) => renameSession(args.join(' ')),
-    ));
-
-    return commands;
+  static SlashCommandRegistry create(SlashCommandContext ctx) {
+    return SlashCommandRegistry()
+      ..registerAll([
+        HelpCommand(ctx),
+        ClearCommand(ctx),
+        CopyCommand(ctx),
+        ExitCommand(ctx),
+        ToolsCommand(ctx),
+        UsageCommand(ctx),
+        DebugCommand(ctx),
+        ApproveCommand(ctx),
+        PathsCommand(ctx),
+        RecapCommand(ctx),
+        ShareCommand(ctx),
+        SkillsCommand(ctx),
+        ConfigCommand(ctx),
+        OpenCommand(ctx),
+        HistoryCommand(ctx),
+        ResumeCommand(ctx),
+        SessionCommand(ctx),
+        RenameCommand(ctx),
+        ModelCommand(ctx),
+        ProviderCommand(ctx),
+      ]);
   }
 }

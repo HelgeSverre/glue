@@ -63,8 +63,8 @@ void main() {
         onUsage: received.add,
       );
 
-      final recap = await generator.generateFromContext(
-          const TitleContext(firstUserMessage: 'go'));
+      final recap = await generator
+          .generateFromContext(const TitleContext(firstUserMessage: 'go'));
 
       expect(recap, 'Did the thing.');
       expect(received, hasLength(1));
@@ -77,8 +77,8 @@ void main() {
       final generator = RecapGenerator(llmClient: llm);
 
       expect(
-        await generator.generateFromContext(
-            const TitleContext(firstUserMessage: 'go')),
+        await generator
+            .generateFromContext(const TitleContext(firstUserMessage: 'go')),
         isNull,
       );
     });
@@ -88,8 +88,8 @@ void main() {
       final generator = RecapGenerator(llmClient: llm);
 
       expect(
-        await generator.generateFromContext(
-            const TitleContext(firstUserMessage: 'go')),
+        await generator
+            .generateFromContext(const TitleContext(firstUserMessage: 'go')),
         isNull,
       );
     });

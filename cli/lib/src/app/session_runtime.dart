@@ -20,7 +20,7 @@ Future<void> _runPrintModeImpl(App app) async {
       // Cancel the iterator so the next moveNext() resolves to false and
       // the loop exits. The agent's `async*` generator unwinds via its
       // finally blocks (closing the upstream HTTP socket).
-      unawaited(agentIter?.cancel());
+      agentIter?.cancel();
     } else {
       sigintSub.cancel();
       exit(130);
@@ -214,15 +214,16 @@ String _resumeSessionImpl(App app, SessionMeta session) {
   app._streamingThinking = '';
   app._subagentGroups.clear();
   app._outputLineGroups.clear();
-  app._titleInitialRequested = session.title != null;
-  app._titleReevaluationRequested =
+  app._sessionManager.titleInitialRequested = session.title != null;
+  app._sessionManager.titleReevaluationRequested =
       session.titleState == SessionTitleState.stable ||
           (session.titleGenerationCount >= 2);
-  app._titleManuallyOverridden = session.titleSource == SessionTitleSource.user;
+  app._sessionManager.titleManuallyOverridden =
+      session.titleSource == SessionTitleSource.user;
 
-  app._blocks.add(_ConversationEntry.system(
+  app._blocks.add(ConversationEntry.system(
     'Resuming session ${session.id} '
-    '(${session.modelRef}, ${App._timeAgo(session.startTime)})',
+    '(${session.modelRef}, ${session.startTime.timeAgo})',
   ));
 
   if (!result.hasConversation) {
@@ -244,18 +245,18 @@ String _resumeSessionImpl(App app, SessionMeta session) {
       summary.write(' · ${(hit * 100).toStringAsFixed(0)}% cached');
     }
     summary.write('. Run /usage for the per-role breakdown.');
-    app._blocks.add(_ConversationEntry.system(summary.toString()));
+    app._blocks.add(ConversationEntry.system(summary.toString()));
   }
 
   app._appendSessionReplayEntries(result.replay.entries);
 
   // Backfill title for resumed sessions that lack one.
   final firstUserMessage = result.replay.firstUserMessage;
-  if (!app._titleInitialRequested &&
-      !app._titleManuallyOverridden &&
+  if (!app._sessionManager.titleInitialRequested &&
+      !app._sessionManager.titleManuallyOverridden &&
       firstUserMessage != null &&
       firstUserMessage.isNotEmpty) {
-    app._titleInitialRequested = true;
+    app._sessionManager.titleInitialRequested = true;
     app._generateTitle(firstUserMessage);
   }
 
@@ -273,14 +274,17 @@ void _generateTitleImpl(App app, String userMessage) {
       role: 'title',
     ),
   );
-  unawaited(app._sessionManager.generateTitle(
+  app._sessionManager.generateTitle(
     userMessage: userMessage,
     generate: generator.generate,
-  ));
+  );
 }
 
 void _reevaluateTitleImpl(App app) {
-  if (app._titleReevaluationRequested || app._titleManuallyOverridden) return;
+  if (app._sessionManager.titleReevaluationRequested ||
+      app._sessionManager.titleManuallyOverridden) {
+    return;
+  }
   final store = app._sessionManager.currentStore;
   final meta = store?.meta;
   if (meta == null ||
@@ -326,7 +330,7 @@ void _reevaluateTitleImpl(App app) {
 
   final llmClient = app._createTitleLlmClient();
   if (llmClient == null) return;
-  app._titleReevaluationRequested = true;
+  app._sessionManager.titleReevaluationRequested = true;
   final generator = TitleGenerator(
     llmClient: llmClient,
     onUsage: (usage) => app._sessionManager.recordUsage(
@@ -334,7 +338,7 @@ void _reevaluateTitleImpl(App app) {
       role: 'title',
     ),
   );
-  unawaited(app._sessionManager.reevaluateTitle(
+  app._sessionManager.reevaluateTitle(
     context: TitleContext(
       firstUserMessage: firstUserMessage,
       latestUserMessage: latestUserMessage,
@@ -344,7 +348,7 @@ void _reevaluateTitleImpl(App app) {
       cwdBasename: app._cwd.split(Platform.pathSeparator).last,
     ),
     generate: generator.generateFromContext,
-  ));
+  );
 }
 
 LlmClient? _createTitleLlmClientImpl(App app) {
@@ -391,25 +395,25 @@ void _appendSessionReplayEntriesImpl(
   // by subagent_id; subsequent events append to that group; completion just
   // marks it done. Activity that arrives without a matching open group is
   // skipped to avoid silent shape drift.
-  final openGroups = <String, _SubagentGroup>{};
+  final openGroups = <String, SubagentGroup>{};
 
   for (final entry in entries) {
     switch (entry.kind) {
       case SessionReplayKind.user:
-        app._blocks.add(_ConversationEntry.user(entry.text));
+        app._blocks.add(ConversationEntry.user(entry.text));
       case SessionReplayKind.assistant:
-        app._blocks.add(_ConversationEntry.assistant(entry.text));
+        app._blocks.add(ConversationEntry.assistant(entry.text));
       case SessionReplayKind.toolCall:
-        app._blocks.add(_ConversationEntry.toolCall(
+        app._blocks.add(ConversationEntry.toolCall(
           entry.toolName ?? entry.text,
           entry.toolArguments ?? const <String, dynamic>{},
         ));
       case SessionReplayKind.toolResult:
-        app._blocks.add(_ConversationEntry.toolResult(entry.text));
+        app._blocks.add(ConversationEntry.toolResult(entry.text));
 
       case SessionReplayKind.subagentSpawned:
         final id = entry.subagentId!;
-        final group = _SubagentGroup(
+        final group = SubagentGroup(
           task: entry.text,
           index: entry.subagentIndex,
           total: entry.subagentTotal,
@@ -417,7 +421,7 @@ void _appendSessionReplayEntriesImpl(
         openGroups[id] = group;
         app._subagentGroups['${entry.text}:${entry.subagentIndex ?? 0}'] =
             group;
-        app._blocks.add(_ConversationEntry.subagentGroup(group));
+        app._blocks.add(ConversationEntry.subagentGroup(group));
 
       case SessionReplayKind.subagentEvent:
         final id = entry.subagentId;
@@ -436,14 +440,14 @@ void _appendSessionReplayEntriesImpl(
                     .take(2)
                     .map((e) => '${e.key}: ${e.value}')
                     .join(', ');
-            group.entries.add(_SubagentEntry(
+            group.entries.add(SubagentEntry(
               '$prefix ▶ ${inner.toolName ?? inner.text}  $argsPreview',
             ));
           case SessionReplayKind.toolResult:
             final display = inner.text.length > 80
                 ? '${inner.text.substring(0, 80)}…'
                 : inner.text;
-            group.entries.add(_SubagentEntry(
+            group.entries.add(SubagentEntry(
               '$prefix ✓ ${display.replaceAll('\n', ' ')}',
               rawContent: inner.text.length > 80 ? inner.text : null,
             ));
@@ -453,7 +457,7 @@ void _appendSessionReplayEntriesImpl(
                 ? '${inner.text.substring(0, 80)}…'
                 : inner.text;
             group.entries.add(
-                _SubagentEntry('$prefix · ${display.replaceAll('\n', ' ')}'));
+                SubagentEntry('$prefix · ${display.replaceAll('\n', ' ')}'));
         }
 
       case SessionReplayKind.subagentCompleted:
@@ -466,7 +470,7 @@ void _appendSessionReplayEntriesImpl(
               ? '↳ [${group.index! + 1}/${group.total}]'
               : '↳';
           group.entries
-              .add(_SubagentEntry('$prefix ✗ Error: ${entry.subagentError}'));
+              .add(SubagentEntry('$prefix ✗ Error: ${entry.subagentError}'));
         }
     }
   }

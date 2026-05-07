@@ -130,7 +130,7 @@ class SlashAutocomplete implements AutocompleteOverlay {
   }) {
     // Trailing space only when the command expects args — preserves the
     // Enter-on-exact-match submit behavior for arg-less commands.
-    final continues = cmd.completeArg != null;
+    final continues = cmd.argCompleter != null;
     return _Candidate(
       display: '/$displayName',
       description: descriptionOverride ?? cmd.description,
@@ -141,7 +141,7 @@ class SlashAutocomplete implements AutocompleteOverlay {
 
   void _updateArgMode(String cmdName, List<String> parts, String buffer) {
     final cmd = _registry.findByName(cmdName);
-    final completer = cmd?.completeArg;
+    final completer = cmd?.argCompleter;
     if (completer == null) {
       dismiss();
       return;

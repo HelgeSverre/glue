@@ -25,8 +25,10 @@ linter:
     throw_in_finally: true
     unnecessary_statements: true
 
-    # Async safety — flag forgotten awaits that cause silent failures
-    unawaited_futures: true
+    # Async safety — `unawaited_futures` was on, but the resulting
+    # `unawaited(...)` wrappers added noise to fire-and-forget call sites
+    # without catching real bugs in this codebase. Off by preference.
+    unawaited_futures: false
 
     # Type safety
     avoid_dynamic_calls: true

@@ -48,7 +48,7 @@ class DeviceCodePanel implements PanelOverlay {
     // browser — our TUI claims the terminal in raw mode, so ordinary
     // text-selection is blocked and they'd otherwise have to transcribe
     // ABCD-1234 by hand.
-    unawaited(_copyUserCode());
+    _copyUserCode();
   }
 
   final DeviceCodeFlow flow;
@@ -99,11 +99,11 @@ class DeviceCodePanel implements PanelOverlay {
       case KeyEvent(key: Key.enter):
         // Fire-and-forget: if the launcher fails the user still has the URL
         // on screen (with OSC-8 hyperlink on supporting terminals).
-        unawaited(openInBrowser(flow.verificationUri));
+        openInBrowser(flow.verificationUri);
         return true;
       case CharEvent(char: 'c', alt: false):
       case CharEvent(char: 'C', alt: false):
-        unawaited(_copyUserCode());
+        _copyUserCode();
         return true;
       default:
         return true;

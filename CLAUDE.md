@@ -102,6 +102,9 @@ Glue is a terminal-native coding agent. Source lives under `cli/lib/src/`. The m
 - **Tool interface**: `abstract class Tool` with `execute(Map<String, dynamic>) → Future<String>`.
 - **Tests**: Mirror `lib/src/` structure in `test/`. E2E tests tagged `@Tags(['e2e'])` and network-backed integration tests tagged `@Tags(['integration'])` are both skipped by default — run explicitly with `just e2e` / `just integration`.
 - **Linting**: Based on `package:lints/recommended.yaml` with strict additions (see `analysis_options.yaml`).
+- **Functional over imperative**: Prefer `.where(...)`, `.map(...)`, `.toList()`, `.join('\n')`, `Map.fromEntries(...)` and small extensions like `sortBy` over `for`/`if` collection literals or `StringBuffer` loops when the code is a pure filter, transform, or aggregate. Mutation-heavy or multi-stage logic stays imperative.
+- **Inline the chain**: When building a structured map literal, inline the `.map(...)` / `Map.fromEntries(...)` call directly at the value position rather than extracting `final properties = ...` / `final required = ...` locals — the literal stays the structural shape, and the chains read top-to-bottom alongside the keys they belong to.
+- **Block body for map builders**: Methods that return a multi-key map literal (e.g. `toSchema`, `toJson`) should use a block body with `return { ... };` rather than an arrow expression body. The block makes intermediate steps and the literal's shape easier to scan.
 
 ## CI
 

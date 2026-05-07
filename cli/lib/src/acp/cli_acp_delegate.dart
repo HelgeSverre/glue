@@ -175,7 +175,7 @@ class CliAcpDelegate extends AcpServerDelegate {
     final session = _sessions[sessionId];
     final controller = session?.activeController;
     if (controller != null && !controller.isClosed) {
-      unawaited(controller.close());
+      controller.close();
     }
   }
 

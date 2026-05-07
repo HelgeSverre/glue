@@ -19,7 +19,7 @@ void _confirmAndPullOllamaModelImpl(
   required OllamaDiscovery discovery,
   required void Function() onPull,
 }) {
-  unawaited(() async {
+  () async {
     final installed = await discovery.listInstalled();
     final isPresent = installed.any((m) => m.tag == tag);
     if (installed.isEmpty || isPresent) {
@@ -92,5 +92,5 @@ void _confirmAndPullOllamaModelImpl(
 
     discovery.invalidateCache();
     onPull();
-  }());
+  }();
 }

@@ -178,6 +178,17 @@ class SessionManager {
   final Observability? _obs;
   SessionStore? _store;
 
+  // Title-state coordination. Folded in here (rather than living on the App)
+  // so non-TUI surfaces can drive title generation through the same flags.
+  // ---------------------------------------------------------------------------
+  // Title state — small flag soup that coordinates background title generation
+  // across initial request, post-turn re-evaluation, and explicit /rename.
+  // ---------------------------------------------------------------------------
+
+  bool titleInitialRequested = false;
+  bool titleReevaluationRequested = false;
+  bool titleManuallyOverridden = false;
+
   SessionManager({
     required this.environment,
     SessionStore? sessionStore,
@@ -187,6 +198,15 @@ class SessionManager {
 
   SessionStore? get currentStore => _store;
   SessionId? get currentSessionId => _store?.meta.id;
+
+  /// Marks the session as manually renamed (e.g., from `/rename`). Sets all
+  /// three flags so background title generation does not overwrite the
+  /// user-chosen title.
+  void markManuallyRenamed() {
+    titleInitialRequested = true;
+    titleReevaluationRequested = true;
+    titleManuallyOverridden = true;
+  }
 
   List<SessionMeta> listSessions() =>
       SessionStore.listSessions(environment.sessionsDir);

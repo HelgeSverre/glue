@@ -7,6 +7,8 @@
 //   dart run tool/e2e_parallel_subagents.dart
 //
 // Requires Ollama running locally with `gemma4:latest` pulled.
+//
+// ignore_for_file: avoid_print, prefer_const_constructors
 
 import 'dart:convert';
 import 'dart:io';

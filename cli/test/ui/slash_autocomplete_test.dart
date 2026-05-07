@@ -12,7 +12,7 @@ void main() {
       // Register 12 commands whose names all start with "cmd" so a single
       // prefix query produces a long match list.
       for (var i = 0; i < 12; i++) {
-        registry.register(SlashCommand(
+        registry.register(SlashCommand.inline(
           name: 'cmd${i.toString().padLeft(2, '0')}',
           description: 'command number $i',
           execute: (_) => '',

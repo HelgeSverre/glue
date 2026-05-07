@@ -25,27 +25,64 @@ typedef SlashArgCompleter = List<SlashArgCandidate> Function(
   String partial,
 );
 
-/// A registered slash command.
-class SlashCommand {
+/// Base type for a registered slash command.
+///
+/// Class-based commands (those owning their domain logic) extend this and
+/// override `name`, `description`, `execute`, and optionally `aliases`,
+/// `hiddenAliases`, `argCompleter`. Legacy inline registrations use
+/// [SlashCommand.inline] to construct an anonymous subclass.
+abstract class SlashCommand {
+  String get name;
+  String get description;
+  List<String> get aliases => const [];
+  List<String> get hiddenAliases => const [];
+
+  /// Returns inline output. `''` for async paths (the command later posts
+  /// results via `ctx.conversation.notify`).
+  String execute(List<String> args);
+
+  /// Optional argument autocomplete. Override to expose suggestions; default
+  /// returns no completions.
+  SlashArgCompleter? get argCompleter => null;
+
+  SlashCommand();
+
+  /// Convenience constructor for legacy registrations that don't yet have a
+  /// dedicated class. Prefer subclassing for new commands.
+  factory SlashCommand.inline({
+    required String name,
+    required String description,
+    List<String> aliases,
+    List<String> hiddenAliases,
+    required String Function(List<String> args) execute,
+    SlashArgCompleter? argCompleter,
+  }) = _InlineSlashCommand;
+}
+
+class _InlineSlashCommand extends SlashCommand {
+  @override
   final String name;
+  @override
   final String description;
+  @override
   final List<String> aliases;
+  @override
   final List<String> hiddenAliases;
-  final String Function(List<String> args) execute;
+  final String Function(List<String> args) _execute;
+  @override
+  final SlashArgCompleter? argCompleter;
 
-  /// Optional arg-completer attached after registration via
-  /// [SlashCommandRegistry.attachArgCompleter]. `null` means the command
-  /// does not participate in argument autocomplete.
-  SlashArgCompleter? completeArg;
-
-  SlashCommand({
+  _InlineSlashCommand({
     required this.name,
     required this.description,
     this.aliases = const [],
     this.hiddenAliases = const [],
-    required this.execute,
-    this.completeArg,
-  });
+    required String Function(List<String> args) execute,
+    this.argCompleter,
+  }) : _execute = execute;
+
+  @override
+  String execute(List<String> args) => _execute(args);
 }
 
 /// Registry of all slash commands.
@@ -53,6 +90,9 @@ class SlashCommandRegistry {
   final List<SlashCommand> _commands = [];
 
   void register(SlashCommand command) => _commands.add(command);
+
+  void registerAll(Iterable<SlashCommand> commands) =>
+      _commands.addAll(commands);
 
   /// Parse and execute a slash command string.
   /// Returns the output text, or null if not found.
@@ -86,16 +126,5 @@ class SlashCommandRegistry {
       }
     }
     return null;
-  }
-
-  /// Attach an argument completer to a previously-registered command.
-  /// Resolves by primary name or any alias/hidden alias.
-  /// Throws [StateError] if no command matches.
-  void attachArgCompleter(String name, SlashArgCompleter completer) {
-    final command = findByName(name);
-    if (command == null) {
-      throw StateError('No slash command registered for "$name"');
-    }
-    command.completeArg = completer;
   }
 }

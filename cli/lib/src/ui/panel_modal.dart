@@ -266,7 +266,7 @@ class PanelModal implements PanelOverlay {
         return true;
       case KeyEvent(key: Key.ctrlE):
         if (onOpenInEditor != null) {
-          unawaited(Future.sync(onOpenInEditor!));
+          Future.sync(onOpenInEditor!);
         }
         return true;
       case KeyEvent(key: Key.up):
@@ -308,7 +308,7 @@ class PanelModal implements PanelOverlay {
         return true;
       case CharEvent(char: 'e', alt: false):
         if (onOpenInEditor != null) {
-          unawaited(Future.sync(onOpenInEditor!));
+          Future.sync(onOpenInEditor!);
         }
         return true;
       default:

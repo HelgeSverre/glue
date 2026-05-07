@@ -10,7 +10,7 @@ void main() {
 
   group('SlashCommandRegistry', () {
     test('registered commands appear in commands list', () {
-      final cmd = SlashCommand(
+      final cmd = SlashCommand.inline(
         name: 'help',
         description: 'Show help',
         execute: (_) => 'help output',
@@ -22,7 +22,7 @@ void main() {
     });
 
     test('execute by name', () {
-      registry.register(SlashCommand(
+      registry.register(SlashCommand.inline(
         name: 'help',
         description: 'Show help',
         execute: (_) => 'Help text',
@@ -32,7 +32,7 @@ void main() {
     });
 
     test('execute with args', () {
-      registry.register(SlashCommand(
+      registry.register(SlashCommand.inline(
         name: 'model',
         description: 'Set model',
         execute: (args) => 'model=${args.join(",")}',
@@ -42,7 +42,7 @@ void main() {
     });
 
     test('aliases respond to aliased names', () {
-      registry.register(SlashCommand(
+      registry.register(SlashCommand.inline(
         name: 'exit',
         description: 'Exit',
         aliases: ['quit', 'q'],
@@ -55,7 +55,7 @@ void main() {
     });
 
     test('hidden aliases respond to aliased names', () {
-      registry.register(SlashCommand(
+      registry.register(SlashCommand.inline(
         name: 'exit',
         description: 'Exit',
         hiddenAliases: ['q'],
@@ -74,7 +74,7 @@ void main() {
     });
 
     test('case insensitivity', () {
-      registry.register(SlashCommand(
+      registry.register(SlashCommand.inline(
         name: 'help',
         description: 'Show help',
         execute: (_) => 'Help text',
@@ -84,7 +84,7 @@ void main() {
     });
 
     test('no slash prefix returns null', () {
-      registry.register(SlashCommand(
+      registry.register(SlashCommand.inline(
         name: 'help',
         description: 'Show help',
         execute: (_) => 'Help text',
@@ -98,7 +98,7 @@ void main() {
     });
 
     test('multiple whitespace parsed correctly', () {
-      registry.register(SlashCommand(
+      registry.register(SlashCommand.inline(
         name: 'cmd',
         description: 'A command',
         execute: (args) => args.join('|'),
@@ -108,17 +108,17 @@ void main() {
     });
 
     test('multiple commands execute independently', () {
-      registry.register(SlashCommand(
+      registry.register(SlashCommand.inline(
         name: 'alpha',
         description: 'Alpha',
         execute: (_) => 'a',
       ));
-      registry.register(SlashCommand(
+      registry.register(SlashCommand.inline(
         name: 'beta',
         description: 'Beta',
         execute: (_) => 'b',
       ));
-      registry.register(SlashCommand(
+      registry.register(SlashCommand.inline(
         name: 'gamma',
         description: 'Gamma',
         execute: (_) => 'g',
@@ -131,7 +131,7 @@ void main() {
     });
 
     test('findByName returns registered command by primary name', () {
-      final cmd = SlashCommand(
+      final cmd = SlashCommand.inline(
         name: 'open',
         description: 'Open something',
         execute: (_) => '',
@@ -142,7 +142,7 @@ void main() {
     });
 
     test('findByName resolves through aliases and hidden aliases', () {
-      final cmd = SlashCommand(
+      final cmd = SlashCommand.inline(
         name: 'exit',
         description: 'Exit',
         aliases: ['quit'],
@@ -169,59 +169,30 @@ void main() {
     });
   });
 
-  group('attachArgCompleter', () {
-    test('sets the completer on the target command', () {
-      final cmd = SlashCommand(
+  group('argCompleter on SlashCommand.inline', () {
+    test('exposes the completer passed at construction', () {
+      final cmd = SlashCommand.inline(
         name: 'open',
         description: 'Open',
         execute: (_) => '',
+        argCompleter: (_, __) => const [SlashArgCandidate(value: 'home')],
       );
       registry.register(cmd);
+      expect(cmd.argCompleter, isNotNull);
 
-      expect(cmd.completeArg, isNull);
-      registry.attachArgCompleter(
-        'open',
-        (_, __) => const [SlashArgCandidate(value: 'home')],
-      );
-      expect(cmd.completeArg, isNotNull);
-
-      final out = cmd.completeArg!(const [], '');
+      final out = cmd.argCompleter!(const [], '');
       expect(out, hasLength(1));
       expect(out.first.value, 'home');
     });
 
-    test('resolves through aliases and hidden aliases', () {
-      final cmd = SlashCommand(
-        name: 'exit',
-        description: 'Exit',
-        aliases: ['quit'],
-        hiddenAliases: ['q'],
-        execute: (_) => '',
-      );
-      registry.register(cmd);
-
-      registry.attachArgCompleter(
-        'q',
-        (_, __) => const [SlashArgCandidate(value: 'now')],
-      );
-      expect(cmd.completeArg, isNotNull);
-    });
-
-    test('throws StateError on unknown command name', () {
-      expect(
-        () => registry.attachArgCompleter('nope', (_, __) => const []),
-        throwsStateError,
-      );
-    });
-
     test('command without completer still executes normally', () {
-      registry.register(SlashCommand(
+      registry.register(SlashCommand.inline(
         name: 'simple',
         description: 'Simple',
         execute: (_) => 'ran',
       ));
       expect(registry.execute('/simple'), 'ran');
-      expect(registry.findByName('simple')!.completeArg, isNull);
+      expect(registry.findByName('simple')!.argCompleter, isNull);
     });
   });
 }

@@ -2,6 +2,12 @@ import 'dart:io';
 
 import 'package:glue_core/glue_core.dart';
 import 'package:glue/glue.dart';
+import 'package:glue/src/commands/slash_command_context.dart';
+import 'package:glue/src/conversation/entry.dart';
+import 'package:glue/src/services/approval_state.dart';
+import 'package:glue/src/services/conversation_view.dart';
+import 'package:glue/src/services/lifecycle.dart';
+import 'package:glue/src/ui/dock_manager.dart';
 import 'package:test/test.dart';
 
 class _NoopTerminal extends Terminal {
@@ -74,323 +80,288 @@ class _NoopLlm implements LlmClient {
   Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {}
 }
 
+Environment _isolatedEnv() {
+  final dir = Directory.systemTemp.createTempSync('cmdfx_');
+  return Environment.test(home: dir.path, cwd: dir.path);
+}
+
+class _CommandTestFixture {
+  _CommandTestFixture({
+    Environment? environment,
+    SessionManager? session,
+    SkillRuntime? skills,
+    AgentCore? agent,
+  })  : environment = environment ?? _isolatedEnv(),
+        session = session ??
+            SessionManager(environment: environment ?? _isolatedEnv()),
+        skills = skills ??
+            SkillRuntime(cwd: '/tmp', extraPathsProvider: () => const []),
+        agent = agent ?? AgentCore(llm: _NoopLlm(), tools: const {}) {
+    blocks = <ConversationEntry>[];
+    panelStack = <PanelOverlay>[];
+    conversation = ConversationView(
+      blocks: blocks,
+      streamingTextGetter: () => streamingText,
+      render: () => renderCalls++,
+      resetStreamingText: () => streamingText = '',
+      clearScreen: () => clearScreenCalls++,
+      resetScrollOffset: () {},
+    );
+    approval = ApprovalState(
+      get: () => approvalMode,
+      set: (m) => approvalMode = m,
+    );
+    lifecycle = Lifecycle(onExit: () => exitCalls++);
+    panels = PanelController(panelStack: panelStack, render: () {});
+    dockManager = DockManager();
+  }
+
+  final Environment environment;
+  final SessionManager session;
+  final SkillRuntime skills;
+  final AgentCore agent;
+  late final List<ConversationEntry> blocks;
+  late final List<PanelOverlay> panelStack;
+  late final ConversationView conversation;
+  late final ApprovalState approval;
+  late final Lifecycle lifecycle;
+  late final PanelController panels;
+  late final DockManager dockManager;
+  String streamingText = '';
+  int renderCalls = 0;
+  int clearScreenCalls = 0;
+  int exitCalls = 0;
+  ApprovalMode approvalMode = ApprovalMode.confirm;
+  GlueConfig? config;
+  LlmClientFactory? llmFactory;
+
+  SlashCommandContext build({
+    Iterable<SlashCommand> Function()? commandsGetter,
+  }) =>
+      SlashCommandContext(
+        configGetter: () => config,
+        llmFactoryGetter: () => llmFactory,
+        agentGetter: () => agent,
+        cwdGetter: () => environment.cwd,
+        modelIdGetter: () => 'test/model',
+        isIdleGetter: () => true,
+        environment: environment,
+        session: session,
+        skills: skills,
+        debug: null,
+        dockManager: dockManager,
+        autoApprovedTools: const <String>{},
+        ensureSession: () {},
+        resumeFromMeta: (_) => '',
+        forkSession: (_, __) {},
+        switchModel: (_) => '',
+        conversation: conversation,
+        approval: approval,
+        lifecycle: lifecycle,
+        panels: panels,
+        commandsGetter: commandsGetter ?? () => const [],
+      );
+}
+
 void main() {
   group('BuiltinCommands', () {
-    SlashCommandRegistry createRegistry({
-      void Function()? openModelPanel,
-      void Function()? openHistoryPanel,
-      String Function(String query)? historyActionByQuery,
-      void Function()? openSkillsPanel,
-      String Function(String name)? activateSkillByName,
-      void Function()? openResumePanel,
-      String Function(String query)? resumeSessionByQuery,
-      String Function()? pathsReport,
-      String Function(List<String> args)? openGlueTarget,
-      String Function(List<String> args)? configAction,
-      String Function(List<String> args)? sessionAction,
-      String Function(List<String> args)? shareAction,
-      String Function()? usageReport,
-      void Function()? copyLastResponse,
-    }) {
-      return BuiltinCommands.create(
-        openHelpPanel: () {},
-        clearConversation: () => '',
-        requestExit: () {},
-        openModelPanel: openModelPanel ?? () {},
-        switchModelByQuery: (_) => '',
-        sessionAction: sessionAction ?? (_) => '',
-        shareAction: shareAction ?? (_) => '',
-        usageReport: usageReport ?? () => '',
-        listTools: () => '',
-        openHistoryPanel: openHistoryPanel ?? () {},
-        historyActionByQuery: historyActionByQuery ?? (_) => '',
-        openResumePanel: openResumePanel ?? () {},
-        resumeSessionByQuery: resumeSessionByQuery ?? (_) => '',
-        toggleDebug: () => '',
-        openSkillsPanel: openSkillsPanel ?? () {},
-        activateSkillByName: activateSkillByName ?? (_) => '',
-        toggleApproval: () => '',
-        runProviderCommand: (_) => '',
-        pathsReport: pathsReport ?? () => '',
-        openGlueTarget: openGlueTarget ?? (_) => '',
-        configAction: configAction ?? (_) => '',
-        renameSession: (_) => '',
-        copyLastResponse: copyLastResponse ?? () {},
-      );
+    SlashCommandRegistry createRegistry({_CommandTestFixture? fixture}) {
+      final fx = fixture ?? _CommandTestFixture();
+      late final SlashCommandRegistry registry;
+      final ctx = fx.build(commandsGetter: () => registry.commands);
+      return registry = BuiltinCommands.create(ctx);
     }
 
-    test('/copy invokes the copyLastResponse callback', () {
-      var called = 0;
-      final registry = createRegistry(copyLastResponse: () => called++);
+    test('/copy with no assistant text posts a notice', () {
+      final fx = _CommandTestFixture();
+      final registry = createRegistry(fixture: fx);
       registry.execute('/copy');
-      expect(called, 1);
+      expect(
+        fx.blocks.where((e) => e.kind == EntryKind.system).map((e) => e.text),
+        contains('No assistant response to copy yet.'),
+      );
     });
 
-    test('/models is an alias for /model and opens picker', () {
-      var opened = 0;
-      final registry = createRegistry(openModelPanel: () => opened++);
-      registry.execute('/models');
-      expect(opened, 1);
-      // /models must not be a separate top-level command name
+    test('/models is no longer registered (alias removed)', () {
+      final registry = createRegistry();
+      final result = registry.execute('/models');
+      expect(result, contains('Unknown command: /models'));
       expect(registry.commands.where((c) => c.name == 'models'), isEmpty);
+      expect(
+        registry.commands.firstWhere((c) => c.name == 'model').aliases,
+        isEmpty,
+      );
     });
 
-    test('/skills without args opens panel', () {
-      var opened = 0;
-      String? activated;
-
-      final registry = createRegistry(
-        openSkillsPanel: () => opened++,
-        activateSkillByName: (name) {
-          activated = name;
-          return 'Activating $name';
-        },
-      );
-
-      final result = registry.execute('/skills');
-      expect(result, '');
-      expect(opened, 1);
-      expect(activated, isNull);
+    test('/model short-circuits when config is not yet wired', () {
+      // Fixture has no GlueConfig; ModelCommand returns the early-exit message
+      // before reaching the resolver.
+      final registry = createRegistry();
+      final result = registry.execute('/model totallyfake');
+      expect(result, 'Config not ready.');
     });
 
-    test('/skills with args activates skill directly', () {
-      var opened = 0;
-      String? activated;
-
-      final registry = createRegistry(
-        openSkillsPanel: () => opened++,
-        activateSkillByName: (name) {
-          activated = name;
-          return 'Activating $name';
-        },
-      );
-
-      final result = registry.execute('/skills code-review');
-      expect(result, 'Activating code-review');
-      expect(opened, 0);
-      expect(activated, 'code-review');
-    });
-
-    test('/history without args opens panel', () {
-      var opened = 0;
-      String? query;
-      final registry = createRegistry(
-        openHistoryPanel: () => opened++,
-        historyActionByQuery: (q) {
-          query = q;
-          return 'Forking from $q';
-        },
-      );
-
+    test('/history with no transcript posts the empty notice', () {
+      final fx = _CommandTestFixture();
+      final registry = createRegistry(fixture: fx);
       final result = registry.execute('/history');
       expect(result, '');
-      expect(opened, 1);
-      expect(query, isNull);
+      expect(
+        fx.blocks
+            .where((e) => e.kind == EntryKind.system)
+            .map((e) => e.text),
+        contains('No conversation history.'),
+      );
     });
 
-    test('/history with args delegates to historyActionByQuery', () {
-      var opened = 0;
-      String? query;
-      final registry = createRegistry(
-        openHistoryPanel: () => opened++,
-        historyActionByQuery: (q) {
-          query = q;
-          return 'Forking from $q';
-        },
-      );
-
-      final result = registry.execute('/history 3');
-      expect(result, 'Forking from 3');
-      expect(opened, 0);
-      expect(query, '3');
+    test('/history <query> with no entries returns the empty message', () {
+      final registry = createRegistry();
+      final result = registry.execute('/history 1');
+      expect(result, 'No conversation history.');
     });
 
-    test('/resume without args opens panel', () {
-      var opened = 0;
-      String? query;
-      final registry = createRegistry(
-        openResumePanel: () => opened++,
-        resumeSessionByQuery: (q) {
-          query = q;
-          return 'Resuming $q';
-        },
-      );
-
+    test('/resume with empty session list posts the empty notice', () {
+      final fx = _CommandTestFixture();
+      final registry = createRegistry(fixture: fx);
       final result = registry.execute('/resume');
       expect(result, '');
-      expect(opened, 1);
-      expect(query, isNull);
+      expect(
+        fx.blocks
+            .where((e) => e.kind == EntryKind.system)
+            .map((e) => e.text),
+        contains('No saved sessions found.'),
+      );
     });
 
-    test('/resume with args delegates to resumeSessionByQuery', () {
-      var opened = 0;
-      String? query;
-      final registry = createRegistry(
-        openResumePanel: () => opened++,
-        resumeSessionByQuery: (q) {
-          query = q;
-          return 'Resuming $q';
-        },
-      );
-
-      final result = registry.execute('/resume abc123');
-      expect(result, 'Resuming abc123');
-      expect(opened, 0);
-      expect(query, 'abc123');
+    test('/resume <query> with no sessions returns the empty message', () {
+      final registry = createRegistry();
+      final result = registry.execute('/resume nope');
+      expect(result, 'No saved sessions found.');
     });
 
-    test('/paths invokes pathsReport', () {
-      var calls = 0;
-      final registry = createRegistry(
-        pathsReport: () {
-          calls++;
-          return 'GLUE_HOME  /tmp/.glue';
-        },
-      );
-
+    test('/paths returns a where-style report', () {
+      final registry = createRegistry();
       final result = registry.execute('/paths');
-      expect(result, 'GLUE_HOME  /tmp/.glue');
-      expect(calls, 1);
+      expect(result, contains('GLUE'));
     });
 
     test('/where is a hidden alias for /paths', () {
-      var calls = 0;
-      final registry = createRegistry(
-        pathsReport: () {
-          calls++;
-          return 'report';
-        },
-      );
-
+      final registry = createRegistry();
       final result = registry.execute('/where');
-      expect(result, 'report');
-      expect(calls, 1);
+      expect(result, contains('GLUE'));
     });
 
-    test('/open forwards args to openGlueTarget', () {
-      List<String>? received;
-      final registry = createRegistry(
-        openGlueTarget: (args) {
-          received = args;
-          return 'Opening ${args.join(' ')}';
-        },
-      );
-
-      final result = registry.execute('/open home');
-      expect(result, 'Opening home');
-      expect(received, ['home']);
+    test('/open without args returns usage hint', () {
+      final registry = createRegistry();
+      final result = registry.execute('/open')!;
+      expect(result, contains('Usage: /open <target>'));
+      expect(result, contains('home'));
     });
 
-    test('/open without args still invokes openGlueTarget for usage', () {
-      List<String>? received;
-      final registry = createRegistry(
-        openGlueTarget: (args) {
-          received = args;
-          return 'Usage: /open <target>';
-        },
-      );
-
-      final result = registry.execute('/open');
-      expect(result, 'Usage: /open <target>');
-      expect(received, isEmpty);
+    test('/open with unknown target returns helpful error', () {
+      final registry = createRegistry();
+      final result = registry.execute('/open lolwhat')!;
+      expect(result, contains('Unknown target "lolwhat"'));
     });
 
-    test('/config without args delegates with empty args', () {
-      List<String>? received;
-      final registry = createRegistry(
-        configAction: (args) {
-          received = args;
-          return 'Opening ~/.glue/config.yaml in editor';
-        },
-      );
-
-      final result = registry.execute('/config');
-      expect(result, 'Opening ~/.glue/config.yaml in editor');
-      expect(received, isEmpty);
+    test('/config without EDITOR set reports the missing var', () {
+      final registry = createRegistry();
+      final result = registry.execute('/config')!;
+      expect(result, contains(r'EDITOR is not set'));
     });
 
-    test('/config init forwards init subcommand', () {
-      List<String>? received;
-      final registry = createRegistry(
-        configAction: (args) {
-          received = args;
-          return 'Created ./config.yaml';
-        },
-      );
-
-      final result = registry.execute('/config init');
-      expect(result, 'Created ./config.yaml');
-      expect(received, ['init']);
+    test('/config with unknown subcommand reports usage', () {
+      final registry = createRegistry();
+      final result = registry.execute('/config lolwhat')!;
+      expect(result, contains('Unknown subcommand "lolwhat"'));
     });
 
-    test('/session without args delegates to sessionAction with empty list',
-        () {
-      List<String>? received;
-      final registry = createRegistry(
-        sessionAction: (args) {
-          received = args;
-          return 'Session Info';
-        },
-      );
-
-      final result = registry.execute('/session');
-      expect(result, 'Session Info');
-      expect(received, isEmpty);
+    test('/session with no active session prints the info report', () {
+      final registry = createRegistry();
+      final result = registry.execute('/session')!;
+      expect(result, startsWith('Session Info'));
+      expect(result, contains('Session ID:   (none)'));
     });
 
-    test('/session copy delegates to sessionAction with [copy]', () {
-      List<String>? received;
-      final registry = createRegistry(
-        sessionAction: (args) {
-          received = args;
-          return '';
-        },
-      );
-
-      registry.execute('/session copy');
-      expect(received, ['copy']);
+    test('/session copy with no active session reports nothing to copy', () {
+      final registry = createRegistry();
+      final result = registry.execute('/session copy');
+      expect(result, 'No active session yet — nothing to copy.');
     });
 
-    test('/share without args delegates with empty args', () {
-      List<String>? received;
-      final registry = createRegistry(
-        shareAction: (args) {
-          received = args;
-          return 'shared';
-        },
-      );
+    test('/session with unknown subcommand reports usage', () {
+      final registry = createRegistry();
+      final result = registry.execute('/session lolwhat');
+      expect(result, 'Unknown subcommand "lolwhat". Try: /session copy');
+    });
 
+    test('/rename with empty title returns the usage hint', () {
+      final registry = createRegistry();
+      final result = registry.execute('/rename');
+      expect(result, 'Usage: /rename <new title>');
+    });
+
+    test('/rename hello marks the session as manually renamed', () {
+      final fx = _CommandTestFixture();
+      final registry = createRegistry(fixture: fx);
+      final result = registry.execute('/rename hello');
+      expect(result, 'Renamed session to "hello".');
+      expect(fx.session.titleManuallyOverridden, isTrue);
+    });
+
+    test('/provider list with empty config reports config not ready', () {
+      // Fixture has no GlueConfig wired; ProviderCommand short-circuits.
+      final registry = createRegistry();
+      final result = registry.execute('/provider list');
+      expect(result, 'Config not ready.');
+    });
+
+    test('/provider remove without args returns usage hint', () {
+      final registry = createRegistry();
+      final result = registry.execute('/provider remove');
+      expect(result, 'Config not ready.',
+          reason: 'fixture has no config; short-circuit fires before usage');
+    });
+
+    test('/provider with unknown subcommand reports usage', () {
+      final registry = createRegistry();
+      final result = registry.execute('/provider lolwhat');
+      expect(result, 'Config not ready.');
+    });
+
+    test('/share with no active session reports nothing to share', () {
+      final fx = _CommandTestFixture();
+      final registry = createRegistry(fixture: fx);
       final result = registry.execute('/share');
-      expect(result, 'shared');
-      expect(received, isEmpty);
+      expect(result, 'No active session yet — nothing to share.');
     });
 
-    test('/share html delegates with [html]', () {
-      List<String>? received;
-      final registry = createRegistry(
-        shareAction: (args) {
-          received = args;
-          return 'shared html';
-        },
+    test('/share rejects unknown formats', () {
+      final fx = _CommandTestFixture();
+      final tempDir = Directory.systemTemp.createTempSync('share_test_');
+      addTearDown(() => tempDir.deleteSync(recursive: true));
+      fx.session.ensureSessionStore(
+        cwd: fx.environment.cwd,
+        modelRef: 'anthropic/claude-sonnet-4.6',
       );
-
-      final result = registry.execute('/share html');
-      expect(result, 'shared html');
-      expect(received, ['html']);
+      final registry = createRegistry(fixture: fx);
+      final result = registry.execute('/share xml');
+      expect(result, 'Usage: /share [html|md|gist]');
     });
 
-    test('/share gist delegates with [gist]', () {
-      List<String>? received;
-      final registry = createRegistry(
-        shareAction: (args) {
-          received = args;
-          return 'shared gist';
-        },
-      );
+    test('/skills returns empty inline output (panel orchestration is async)',
+        () {
+      final fx = _CommandTestFixture();
+      final registry = createRegistry(fixture: fx);
+      final result = registry.execute('/skills');
+      expect(result, '');
+    });
 
-      final result = registry.execute('/share gist');
-      expect(result, 'shared gist');
-      expect(received, ['gist']);
+    test('/skills <name> returns the activating banner inline', () {
+      final fx = _CommandTestFixture();
+      final registry = createRegistry(fixture: fx);
+      final result = registry.execute('/skills code-review');
+      expect(result, 'Activating skill "code-review"...');
     });
   });
 

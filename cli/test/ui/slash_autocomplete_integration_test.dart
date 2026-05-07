@@ -11,26 +11,26 @@ import 'package:test/test.dart';
 
 SlashAutocomplete _setup() {
   final registry = SlashCommandRegistry();
-  registry.register(SlashCommand(
+  registry.register(SlashCommand.inline(
     name: 'open',
     description: 'Open a Glue directory',
     execute: (_) => '',
+    argCompleter: openArgCandidates,
   ));
-  registry.register(SlashCommand(
+  registry.register(SlashCommand.inline(
     name: 'provider',
     description: 'Manage providers',
     execute: (_) => '',
+    argCompleter: (prior, partial) {
+      if (prior.isEmpty) return providerSubcommandCandidates(partial);
+      return const [];
+    },
   ));
-  registry.register(SlashCommand(
+  registry.register(SlashCommand.inline(
     name: 'help',
     description: 'Show help',
     execute: (_) => '',
   ));
-  registry.attachArgCompleter('open', openArgCandidates);
-  registry.attachArgCompleter('provider', (prior, partial) {
-    if (prior.isEmpty) return providerSubcommandCandidates(partial);
-    return const [];
-  });
   return SlashAutocomplete(registry);
 }
 

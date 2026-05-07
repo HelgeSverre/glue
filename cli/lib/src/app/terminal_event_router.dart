@@ -85,7 +85,7 @@ void _handleTerminalEventImpl(App app, TerminalEvent event) {
           commands: app._commands,
         );
         if (result.commandOutput != null && result.commandOutput!.isNotEmpty) {
-          app._blocks.add(_ConversationEntry.system(result.commandOutput!));
+          app._blocks.add(ConversationEntry.system(result.commandOutput!));
         }
         switch (result.action) {
           case StreamingAction.render:
@@ -171,7 +171,7 @@ void _handleTerminalEventImpl(App app, TerminalEvent event) {
           } else {
             app._lastCtrlC = now;
             app._blocks
-                .add(_ConversationEntry.system('Press Ctrl+C again to exit.'));
+                .add(ConversationEntry.system('Press Ctrl+C again to exit.'));
             app._render();
           }
         case InputAction.changed:

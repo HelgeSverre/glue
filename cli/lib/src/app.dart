@@ -10,11 +10,14 @@ import 'package:glue/src/input/text_area_editor.dart';
 import 'package:glue/src/input/streaming_input_handler.dart';
 import 'package:glue/src/input/file_expander.dart';
 import 'package:glue_harness/glue_harness.dart';
-import 'package:glue/src/commands/arg_completers.dart' as arg_completers;
 import 'package:glue/src/commands/builtin_commands.dart';
-import 'package:glue/src/commands/config_command.dart';
+import 'package:glue/src/commands/slash_command_context.dart';
 import 'package:glue/src/commands/slash_commands.dart';
-import 'package:glue/src/commands/usage_report.dart';
+import 'package:glue/src/conversation/entry.dart';
+import 'package:glue/src/extensions/time_ago.dart';
+import 'package:glue/src/services/approval_state.dart';
+import 'package:glue/src/services/conversation_view.dart';
+import 'package:glue/src/services/lifecycle.dart';
 import 'package:glue/src/app/model_display.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 import 'package:glue/src/ui/model_panel_formatter.dart'
@@ -25,7 +28,6 @@ import 'package:glue/src/ui/modal.dart';
 import 'package:glue/src/ui/dock_manager.dart';
 import 'package:glue/src/ui/panel_modal.dart';
 import 'package:glue/src/ui/panel_controller.dart';
-import 'package:glue/src/ui/skills_docked_panel.dart';
 import 'package:glue/src/ui/at_file_hint.dart';
 import 'package:glue/src/ui/autocomplete_overlay.dart';
 import 'package:glue/src/ui/shell_autocomplete.dart';
@@ -88,7 +90,7 @@ class App {
   final _events = StreamController<AppEvent>.broadcast();
 
   AppMode _mode = AppMode.idle;
-  final List<_ConversationEntry> _blocks = [];
+  final List<ConversationEntry> _blocks = [];
   final Map<ToolCallId, _ToolCallUiState> _toolUi = {};
   int _scrollOffset = 0;
 
@@ -134,18 +136,17 @@ class App {
   late final AtFileHint _atHint;
   late final ShellAutocomplete _shellComplete;
   late final SessionManager _sessionManager;
-  late final SessionShareExporter _shareExporter;
-  late final SessionGistPublisher _gistPublisher;
-  bool _titleInitialRequested = false;
-  bool _titleReevaluationRequested = false;
-  bool _titleManuallyOverridden = false;
+  late final ConversationView _conversation;
+  late final ApprovalState _approvalState;
+  late final Lifecycle _lifecycle;
+  late final SlashCommandContext _slashContext;
   bool _bashMode = false;
   Process? _bashRunProcess;
   ObservabilitySpan? _bashSpan;
   DateTime? _lastCtrlC;
 
-  final Map<String, _SubagentGroup> _subagentGroups = {};
-  final List<_SubagentGroup?> _outputLineGroups = [];
+  final Map<String, SubagentGroup> _subagentGroups = {};
+  final List<SubagentGroup?> _outputLineGroups = [];
 
   final bool _startupContinue;
   final String? _startupPrompt;
@@ -214,8 +215,6 @@ class App {
     _manager?.onSubagentUsage = (stats) {
       _sessionManager.recordUsage(stats, role: 'subagent');
     };
-    _shareExporter = SessionShareExporter();
-    _gistPublisher = SessionGistPublisher();
     _panels = PanelController(
       panelStack: _panelStack,
       render: _render,
@@ -297,13 +296,6 @@ class App {
     ].join('\n\n');
   }
 
-  String _shortenPath(String path) {
-    final home = _environment.home;
-    if (home.isNotEmpty && path.startsWith(home)) {
-      return '~${path.substring(home.length)}';
-    }
-    return path;
-  }
 
   /// Request a clean exit. Can be called from signal handlers.
   void requestExit() {
@@ -328,9 +320,9 @@ class App {
     terminal.clearScreen();
     layout.apply();
 
-    _blocks.add(_ConversationEntry.system(
+    _blocks.add(ConversationEntry.system(
       '\x1b[33m◆\x1b[0m Glue v${AppConstants.version} — $_modelId\n'
-      'Working directory: ${_shortenPath(_cwd)}\n'
+      'Working directory: ${_environment.shortenPath(_cwd)}\n'
       'Type /help for commands.',
     ));
 
@@ -344,7 +336,7 @@ class App {
     if (_resumeSessionId != null) {
       final sessions = _sessionManager.listSessions();
       if (_resumeSessionId.isEmpty) {
-        _openResumePanel();
+        _commands.execute('/resume');
         _render();
       } else {
         final match =
@@ -352,11 +344,11 @@ class App {
         if (match.isNotEmpty) {
           final result = _resumeSession(match.first);
           if (result.isNotEmpty) {
-            _blocks.add(_ConversationEntry.system(result));
+            _blocks.add(ConversationEntry.system(result));
           }
           _render();
         } else {
-          _blocks.add(_ConversationEntry.system(
+          _blocks.add(ConversationEntry.system(
             'Session $_resumeSessionId not found.',
           ));
           _render();
@@ -367,11 +359,11 @@ class App {
       if (sessions.isNotEmpty) {
         final result = _resumeSession(sessions.first);
         if (result.isNotEmpty) {
-          _blocks.add(_ConversationEntry.system(result));
+          _blocks.add(ConversationEntry.system(result));
         }
         _render();
       } else {
-        _blocks.add(_ConversationEntry.system('No sessions to continue.'));
+        _blocks.add(ConversationEntry.system('No sessions to continue.'));
         _render();
       }
     }
@@ -430,154 +422,50 @@ class App {
   // ── Slash commands ──────────────────────────────────────────────────────
 
   void _initCommands() {
-    _commands = BuiltinCommands.create(
-      openHelpPanel: _openHelpPanel,
-      clearConversation: _clearConversation,
-      requestExit: requestExit,
-      openModelPanel: _openModelPanel,
-      switchModelByQuery: _switchModelByQuery,
-      sessionAction: _sessionAction,
-      shareAction: _shareAction,
-      usageReport: _usageReport,
-      listTools: _buildToolsOutput,
-      openHistoryPanel: _openHistoryPanel,
-      historyActionByQuery: _historyFromCommand,
-      openResumePanel: _openResumePanel,
-      resumeSessionByQuery: _resumeSessionFromCommand,
-      toggleDebug: _toggleDebugMode,
-      openSkillsPanel: _openSkillsPanel,
-      activateSkillByName: _activateSkillFromCommand,
-      toggleApproval: _toggleApproval,
-      runProviderCommand: _runProviderCommand,
-      pathsReport: _buildPathsReport,
-      openGlueTarget: _openGlueTarget,
-      configAction: _configAction,
-      renameSession: _renameSession,
-      copyLastResponse: () => _copyLastResponseImpl(this),
-      recapAction: _recapAction,
+    _conversation = ConversationView(
+      blocks: _blocks,
+      streamingTextGetter: () => _streamingText,
+      render: _render,
+      resetStreamingText: () {
+        _streamingText = '';
+        _streamingThinking = '';
+      },
+      clearScreen: terminal.clearScreen,
+      resetScrollOffset: () => _scrollOffset = 0,
+    );
+    _approvalState = ApprovalState(
+      get: () => _approvalMode,
+      set: (m) => _approvalMode = m,
+    );
+    _lifecycle = Lifecycle(onExit: requestExit);
+
+    late final SlashCommandRegistry registry;
+    _slashContext = SlashCommandContext(
+      configGetter: () => _config,
+      llmFactoryGetter: () => _llmFactory,
+      agentGetter: () => agent,
+      cwdGetter: () => _cwd,
+      modelIdGetter: () => _modelId,
+      isIdleGetter: () => _mode == AppMode.idle,
+      environment: _environment,
+      session: _sessionManager,
+      skills: _skillRuntime,
+      debug: _debugController,
+      dockManager: _dockManager,
+      autoApprovedTools: _autoApprovedTools,
+      ensureSession: _ensureSessionStore,
+      resumeFromMeta: _resumeSession,
+      forkSession: _forkSession,
+      switchModel: _switchToModelRow,
+      conversation: _conversation,
+      approval: _approvalState,
+      lifecycle: _lifecycle,
+      panels: _panels,
+      commandsGetter: () => registry.commands,
     );
 
-    // Argument autocomplete — attached here (not plumbed through
-    // BuiltinCommands.create) so closures can read live app state.
-    _commands.attachArgCompleter('open', _openArgCandidates);
-    _commands.attachArgCompleter('provider', _providerArgCandidates);
-    _commands.attachArgCompleter('model', _modelArgCandidates);
-    _commands.attachArgCompleter('skills', _skillsArgCandidates);
-    _commands.attachArgCompleter('session', _sessionArgCandidates);
-    _commands.attachArgCompleter('share', _shareArgCandidates);
-  }
-
-  String _buildPathsReport() => buildWhereReport(_environment);
-
-  String _configAction(List<String> args) => _configActionImpl(this, args);
-
-  String _recapAction(List<String> args) => _recapActionImpl(this, args);
-
-  String _openGlueTarget(List<String> args) => _openGlueTargetImpl(this, args);
-
-  List<SlashArgCandidate> _openArgCandidates(
-    List<String> prior,
-    String partial,
-  ) =>
-      arg_completers.openArgCandidates(prior, partial);
-
-  List<SlashArgCandidate> _providerArgCandidates(
-    List<String> prior,
-    String partial,
-  ) {
-    if (prior.isEmpty) {
-      return arg_completers.providerSubcommandCandidates(partial);
-    }
-    if (prior.length == 1 && {'add', 'remove', 'test'}.contains(prior.first)) {
-      final config = _config;
-      if (config == null) return const [];
-      return arg_completers.providerIdCandidates(
-        config.catalogData.providers,
-        partial,
-      );
-    }
-    return const [];
-  }
-
-  List<SlashArgCandidate> _modelArgCandidates(
-    List<String> prior,
-    String partial,
-  ) {
-    if (prior.isNotEmpty) return const [];
-    final config = _config;
-    if (config == null) return const [];
-    return arg_completers.modelRefCandidates(
-      config.catalogData.providers,
-      partial,
-    );
-  }
-
-  List<SlashArgCandidate> _skillsArgCandidates(
-    List<String> prior,
-    String partial,
-  ) {
-    if (prior.isNotEmpty) return const [];
-    return arg_completers.skillCandidates(_skillRuntime.list(), partial);
-  }
-
-  List<SlashArgCandidate> _shareArgCandidates(
-    List<String> prior,
-    String partial,
-  ) =>
-      arg_completers.shareArgCandidates(prior, partial);
-
-  String _runProviderCommand(List<String> args) =>
-      _runProviderCommandImpl(this, args);
-
-  String _toggleApproval() {
-    _approvalMode = _approvalMode.toggle;
-    _render();
-    return 'Approval: ${_approvalMode.label}';
-  }
-
-  String _clearConversation() {
-    return _clearConversationImpl(this);
-  }
-
-  String _switchModelByQuery(String query) {
-    return _switchModelByQueryImpl(this, query);
-  }
-
-  String _sessionAction(List<String> args) {
-    return _sessionActionImpl(this, args);
-  }
-
-  String _usageReport() {
-    final store = _sessionManager.currentStore;
-    if (store == null) return 'No active session yet — nothing to report.';
-    final report = buildUsageReport(
-      usageEvents: SessionStore.loadConversation(store.sessionDir),
-      modelLabel: store.meta.modelRef,
-      sessionId: store.meta.id.value,
-    );
-    return formatUsageReport(report);
-  }
-
-  String _shareAction(List<String> args) {
-    return _shareActionImpl(this, args);
-  }
-
-  List<SlashArgCandidate> _sessionArgCandidates(
-    List<String> prior,
-    String partial,
-  ) =>
-      arg_completers.sessionArgCandidates(prior, partial);
-
-  String _buildToolsOutput() {
-    return _buildToolsOutputImpl(this);
-  }
-
-  String _renameSession(String title) {
-    return _renameSessionImpl(this, title);
-  }
-
-  String _toggleDebugMode() {
-    return _toggleDebugModeImpl(this);
+    registry = BuiltinCommands.create(_slashContext);
+    _commands = registry;
   }
 
   void _addSystemMessage(String message) {
@@ -601,10 +489,6 @@ class App {
     return _resolveTitleTargetImpl(config);
   }
 
-  static String _timeAgo(DateTime time) {
-    return _timeAgoImpl(time);
-  }
-
   void _ensureSessionStore() {
     _ensureSessionStoreImpl(this);
   }
@@ -613,133 +497,59 @@ class App {
     _appendSessionReplayEntriesImpl(this, entries);
   }
 
-  SkillRegistry _discoverSkills() {
-    return _skillRuntime.refresh();
-  }
-
-  void _openHelpPanel() {
-    _panels.openHelp(commands: _commands.commands);
-  }
-
-  void _openResumePanel() {
-    _panels.openResume(
-      sessions: _sessionManager.listSessions(),
-      timeAgo: _timeAgo,
-      shortenPath: _shortenPath,
-      onResume: _resumeSession,
-      addSystemMessage: _addSystemMessage,
-    );
-  }
-
-  void _openHistoryPanel() {
-    final entries = <HistoryPanelEntry>[];
-    var userIndex = 0;
-    for (final block in _blocks) {
-      if (block.kind == _EntryKind.user) {
-        entries.add(HistoryPanelEntry(
-          userMessageIndex: userIndex,
-          text: block.text,
-        ));
-        userIndex++;
-      }
-    }
-
-    _panels.openHistory(
-      entries: entries,
-      onFork: _forkSession,
-      addSystemMessage: _addSystemMessage,
-    );
-  }
-
   void _forkSession(int userMessageIndex, String messageText) {
     _forkSessionImpl(this, userMessageIndex, messageText);
   }
 
-  void _openModelPanel() {
-    final config = _config;
-    if (config == null) return;
-
-    // Attach Ollama discovery only when the provider is enabled in the
-    // catalog — keeps the picker honest without adding startup work.
-    final ollamaProvider = config.catalogData.providers['ollama'];
-    final discovery = (ollamaProvider != null && ollamaProvider.enabled)
-        ? OllamaDiscovery(
-            baseUrl: Uri.parse(
-              ollamaProvider.baseUrl ?? 'http://localhost:11434',
-            ),
-          )
-        : null;
-
-    unawaited(_panels.openModel(
-      config: config,
-      currentRef: config.activeModel,
-      onModelSelected: _switchToModelRow,
-      addSystemMessage: _addSystemMessage,
-      isSelectionEnabled: () => true,
-      ollamaDiscovery: discovery,
-    ));
-  }
-
-  void _openSkillsPanel() {
-    final registry = _discoverSkills();
-    if (registry.isEmpty) {
-      _addSystemMessage('No skills found.\n\n${skillDiscoveryHelpText()}');
-      _render();
-      return;
-    }
-
-    var panel = _findSkillsDockedPanel();
-    if (panel == null) {
-      panel = SkillsDockedPanel(skills: registry.list());
-      _dockManager.add(panel);
-    } else {
-      panel.updateSkills(registry.list());
-    }
-
-    if (panel.visible) {
-      panel.dismiss();
-      _render();
-      return;
-    }
-
-    panel.show();
-    unawaited(panel.selection.then((skillName) async {
-      if (skillName != null) {
-        await _activateSkillFromUi(skillName);
-      }
-      _render();
-    }));
-    _render();
-  }
-
-  SkillsDockedPanel? _findSkillsDockedPanel() {
-    for (final panel in _dockManager.panels) {
-      if (panel is SkillsDockedPanel) return panel;
-    }
-    return null;
-  }
-
-  Future<void> _activateSkillFromUi(String skillName) async {
-    await _activateSkillFromUiImpl(this, skillName);
-  }
-
-  String _activateSkillFromCommand(String skillName) {
-    final normalized = skillName.trim();
-    if (normalized.isEmpty) return 'Usage: /skills [skill-name]';
-    unawaited(_activateSkillFromUi(normalized).then((_) => _render()));
-    return 'Activating skill "$normalized"...';
-  }
-
-  String _resumeSessionFromCommand(String query) {
-    return _resumeSessionFromCommandImpl(this, query);
-  }
-
-  String _historyFromCommand(String query) {
-    return _historyFromCommandImpl(this, query);
-  }
-
+  /// Apply a model switch from a [CatalogRow]. Handles the Ollama
+  /// pull-confirm flow when an unpulled tag is selected, then mutates
+  /// `agent.llm`, `_config`, `_modelId`, and persists the active model on
+  /// the session store.
+  ///
+  /// Returns an inline message for synchronous switches; returns `''` when
+  /// an async confirm is pending (the pull flow posts the result via
+  /// `_addSystemMessage`).
   String _switchToModelRow(CatalogRow row) {
-    return _switchToModelRowImpl(this, row);
+    if (row.providerId == 'ollama' &&
+        row.availability != ModelAvailability.installed &&
+        row.availability != ModelAvailability.installedOnly) {
+      final config = _config;
+      if (config != null) {
+        final provider = config.catalogData.providers['ollama'];
+        if (provider != null) {
+          final discovery = OllamaDiscovery(
+            baseUrl: Uri.parse(provider.baseUrl ?? 'http://localhost:11434'),
+          );
+          _confirmAndPullOllamaModelImpl(
+            this,
+            tag: row.model.id,
+            discovery: discovery,
+            onPull: () {
+              final message = _applyModelSwitch(row);
+              _addSystemMessage(message);
+              _render();
+            },
+          );
+          return '';
+        }
+      }
+    }
+    return _applyModelSwitch(row);
+  }
+
+  String _applyModelSwitch(CatalogRow row) {
+    final factory = _llmFactory;
+    final config = _config;
+    final prompt = _systemPrompt;
+    final ref = ModelRef(providerId: row.providerId, modelId: row.model.id);
+    if (factory != null && config != null && prompt != null) {
+      final llm = factory.createFor(ref, systemPrompt: prompt);
+      agent.llm = llm;
+      _config = config.copyWith(activeModel: ref);
+    }
+    _modelId = ref.modelId;
+    _sessionManager.updateSessionModel(modelRef: ref.toString());
+    return 'Switched to ${row.model.name}';
   }
 
   // ── Terminal event handling ─────────────────────────────────────────────

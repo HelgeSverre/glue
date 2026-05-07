@@ -12,7 +12,7 @@ void main() {
     test('a registry with /provider resolves correctly', () {
       final registry = SlashCommandRegistry();
       registry.register(
-        SlashCommand(
+        SlashCommand.inline(
           name: 'provider',
           description: 'Manage providers',
           execute: (args) => 'ran: ${args.join(" ")}',

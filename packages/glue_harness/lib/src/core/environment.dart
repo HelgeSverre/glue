@@ -74,6 +74,15 @@ class Environment {
   String sessionDir(SessionId sessionId) =>
       p.join(sessionsDir, sessionId.value);
 
+  /// Replace a leading [home] with `~` for compact display. Returns [path]
+  /// unchanged when [home] is empty or [path] doesn't sit beneath it.
+  String shortenPath(String path) {
+    if (home.isNotEmpty && path.startsWith(home)) {
+      return '~${path.substring(home.length)}';
+    }
+    return path;
+  }
+
   void ensureDirectories() {
     Directory(sessionsDir).createSync(recursive: true);
     Directory(logsDir).createSync(recursive: true);

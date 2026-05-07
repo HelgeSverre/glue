@@ -4,27 +4,13 @@ import 'package:test/test.dart';
 
 SlashCommandRegistry _makeRegistry() {
   final reg = SlashCommandRegistry();
-  reg.register(SlashCommand(
-    name: 'help',
-    description: 'Show available commands',
-    execute: (_) => '',
-  ));
-  reg.register(SlashCommand(
-    name: 'clear',
-    description: 'Clear conversation history',
-    execute: (_) => '',
-  ));
-  reg.register(SlashCommand(
-    name: 'compact',
-    description: 'Toggle compact mode',
-    execute: (_) => '',
-  ));
-  reg.register(SlashCommand(
+  registerBaseCommands(reg);
+  reg.register(SlashCommand.inline(
     name: 'model',
     description: 'Show or change model',
     execute: (_) => '',
   ));
-  reg.register(SlashCommand(
+  reg.register(SlashCommand.inline(
     name: 'exit',
     description: 'Exit the application',
     aliases: ['quit'],
@@ -32,6 +18,34 @@ SlashCommandRegistry _makeRegistry() {
     execute: (_) => '',
   ));
   return reg;
+}
+
+void registerBaseCommands(
+  SlashCommandRegistry reg, {
+  bool includeModel = false,
+}) {
+  reg.register(SlashCommand.inline(
+    name: 'help',
+    description: 'Show available commands',
+    execute: (_) => '',
+  ));
+  reg.register(SlashCommand.inline(
+    name: 'clear',
+    description: 'Clear conversation history',
+    execute: (_) => '',
+  ));
+  reg.register(SlashCommand.inline(
+    name: 'compact',
+    description: 'Toggle compact mode',
+    execute: (_) => '',
+  ));
+  if (includeModel) {
+    reg.register(SlashCommand.inline(
+      name: 'model',
+      description: 'Show or change model',
+      execute: (_) => '',
+    ));
+  }
 }
 
 void main() {
@@ -178,29 +192,39 @@ void main() {
     late SlashAutocomplete ac;
 
     setUp(() {
-      registry = _makeRegistry();
-      // Attach a completer to /model with 3 static candidates.
-      registry.attachArgCompleter('model', (prior, partial) {
-        if (prior.isNotEmpty) return const [];
-        const values = ['sonnet', 'opus', 'haiku'];
-        return values
-            .where((v) => v.startsWith(partial))
-            .map((v) => SlashArgCandidate(value: v, description: 'Claude $v'))
-            .toList();
-      });
-      // Attach a 2-level completer to /exit (nonsensical semantically, but
-      // proves alias lookup works — /q should hit this completer too).
-      registry.attachArgCompleter('exit', (prior, partial) {
-        const subs = ['now', 'later'];
-        return subs
-            .where((v) => v.startsWith(partial))
-            .map((v) => SlashArgCandidate(
-                  value: v,
-                  description: 'Exit $v',
-                  continues: v == 'later',
-                ))
-            .toList();
-      });
+      registry = SlashCommandRegistry();
+      registerBaseCommands(registry);
+      registry.register(SlashCommand.inline(
+        name: 'model',
+        description: 'Show or change model',
+        execute: (_) => '',
+        argCompleter: (prior, partial) {
+          if (prior.isNotEmpty) return const [];
+          const values = ['sonnet', 'opus', 'haiku'];
+          return values
+              .where((v) => v.startsWith(partial))
+              .map((v) => SlashArgCandidate(value: v, description: 'Claude $v'))
+              .toList();
+        },
+      ));
+      registry.register(SlashCommand.inline(
+        name: 'exit',
+        description: 'Exit the application',
+        aliases: ['quit'],
+        hiddenAliases: ['q'],
+        execute: (_) => '',
+        argCompleter: (prior, partial) {
+          const subs = ['now', 'later'];
+          return subs
+              .where((v) => v.startsWith(partial))
+              .map((v) => SlashArgCandidate(
+                    value: v,
+                    description: 'Exit $v',
+                    continues: v == 'later',
+                  ))
+              .toList();
+        },
+      ));
       ac = SlashAutocomplete(registry);
     });
 
@@ -283,14 +307,19 @@ void main() {
     });
 
     test('nested args: priorArgs populated correctly', () {
-      // Use a completer that inspects prior args.
-      registry.attachArgCompleter('clear', (prior, partial) {
-        // Only offers candidates when prior is ['all'].
-        if (prior.length == 1 && prior[0] == 'all') {
-          return const [SlashArgCandidate(value: 'confirmed')];
-        }
-        return const [];
-      });
+      final reg = SlashCommandRegistry()
+        ..register(SlashCommand.inline(
+          name: 'clear',
+          description: 'clear',
+          execute: (_) => '',
+          argCompleter: (prior, partial) {
+            if (prior.length == 1 && prior[0] == 'all') {
+              return const [SlashArgCandidate(value: 'confirmed')];
+            }
+            return const [];
+          },
+        ));
+      final ac = SlashAutocomplete(reg);
 
       ac.update('/clear all ', 11);
       expect(ac.active, isTrue);
@@ -303,11 +332,14 @@ void main() {
     late SlashAutocomplete ac;
 
     setUp(() {
-      final registry = _makeRegistry();
-      registry.attachArgCompleter(
-        'model',
-        (_, __) => const [SlashArgCandidate(value: 'sonnet')],
-      );
+      final registry = SlashCommandRegistry();
+      registerBaseCommands(registry, includeModel: false);
+      registry.register(SlashCommand.inline(
+        name: 'model',
+        description: 'Show or change model',
+        execute: (_) => '',
+        argCompleter: (_, __) => const [SlashArgCandidate(value: 'sonnet')],
+      ));
       ac = SlashAutocomplete(registry);
     });
 

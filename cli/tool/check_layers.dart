@@ -29,9 +29,12 @@ const _subsystemLayers = <String, _Layer>{
   'acp': _Layer.surface,
   'app': _Layer.surface,
   'commands': _Layer.surface,
+  'conversation': _Layer.surface,
   'doctor': _Layer.surface,
+  'extensions': _Layer.surface,
   'input': _Layer.surface,
   'rendering': _Layer.surface,
+  'services': _Layer.surface,
   'terminal': _Layer.surface,
   'ui': _Layer.surface,
 

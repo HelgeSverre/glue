@@ -51,28 +51,28 @@ void _doRenderImpl(App app) {
   app._outputLineGroups.clear();
   for (final block in app._blocks) {
     final text = switch (block.kind) {
-      _EntryKind.user => renderer.renderUser(block.text),
-      _EntryKind.assistant => renderer.renderAssistant(block.text),
-      _EntryKind.thinking => renderer.renderThinking(block.text),
-      _EntryKind.toolCall => renderer.renderToolCall(block.text, block.args),
-      _EntryKind.toolCallRef => renderer.renderToolCallRef(
+      EntryKind.user => renderer.renderUser(block.text),
+      EntryKind.assistant => renderer.renderAssistant(block.text),
+      EntryKind.thinking => renderer.renderThinking(block.text),
+      EntryKind.toolCall => renderer.renderToolCall(block.text, block.args),
+      EntryKind.toolCallRef => renderer.renderToolCallRef(
           app._toolUi[ToolCallId(block.text)]?.toRenderState(),
         ),
-      _EntryKind.toolResult => renderer.renderToolResult(block.text),
-      _EntryKind.error => renderer.renderError(block.text),
-      _EntryKind.subagent => renderer.renderSubagent(block.text),
-      _EntryKind.subagentGroup => renderer.renderSubagent(block.group!.expanded
+      EntryKind.toolResult => renderer.renderToolResult(block.text),
+      EntryKind.error => renderer.renderError(block.text),
+      EntryKind.subagent => renderer.renderSubagent(block.text),
+      EntryKind.subagentGroup => renderer.renderSubagent(block.group!.expanded
           ? '${block.group!.summary}\n${block.group!.entries.map((e) => e.render(expanded: true)).join('\n')}'
           : block.group!.summary),
-      _EntryKind.system => renderer.renderSystem(block.text),
-      _EntryKind.bash => renderer.renderBash(
+      EntryKind.system => renderer.renderSystem(block.text),
+      EntryKind.bash => renderer.renderBash(
           block.expandedText ?? 'shell',
           block.text,
           maxLines: app._config?.bashMaxLines ?? 50,
         ),
     };
     final lines = text.split('\n');
-    final group = block.kind == _EntryKind.subagentGroup ? block.group : null;
+    final group = block.kind == EntryKind.subagentGroup ? block.group : null;
     for (var j = 0; j < lines.length; j++) {
       app._outputLineGroups.add(group);
     }
@@ -185,7 +185,7 @@ void _doRenderImpl(App app) {
     AppMode.confirming => '? Approve',
     AppMode.bashRunning => '! Running',
   };
-  final shortCwd = app._shortenPath(app._cwd);
+  final shortCwd = app._environment.shortenPath(app._cwd);
   final modeLabel = '[${app._approvalMode.label}]';
   final statusLeft = ' \x1b[1m$modeIndicator\x1b[22m ';
 

@@ -85,7 +85,7 @@ export 'src/ui/panel_modal.dart'
         PanelSize,
         PanelFixed,
         PanelFluid;
-export 'src/ui/panel_controller.dart' show PanelController, HistoryPanelEntry;
+export 'src/ui/panel_controller.dart' show PanelController;
 export 'src/ui/split_panel_modal.dart' show SplitPanelModal;
 export 'src/ui/at_file_hint.dart' show AtFileHint;
 export 'src/ui/autocomplete_overlay.dart'
