@@ -14,6 +14,8 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:glue_harness/glue_harness.dart';
+
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
@@ -679,7 +681,7 @@ List<Map<String, dynamic>> _generateSidebar(
     if (files == null || files.isEmpty) continue;
 
     // Sort files alphabetically.
-    files.sort((a, b) => a.stem.compareTo(b.stem));
+    files.sortBy((f) => f.stem);
 
     final items = <Map<String, dynamic>>[];
     for (final f in files) {
@@ -700,7 +702,7 @@ List<Map<String, dynamic>> _generateSidebar(
   for (final mod in modules.keys) {
     if (_moduleOrder.contains(mod)) continue;
     final files = modules[mod]!;
-    files.sort((a, b) => a.stem.compareTo(b.stem));
+    files.sortBy((f) => f.stem);
     final items = files
         .map((f) => {
               'text': f.primaryName,
@@ -736,7 +738,7 @@ String _generateIndex(Map<String, List<DartFile>> modules) {
 
   String linkForModule(String mod) {
     final files = modules[mod]!;
-    files.sort((a, b) => a.stem.compareTo(b.stem));
+    files.sortBy((f) => f.stem);
     return '/api/$mod/${files.first.kebab}';
   }
 
