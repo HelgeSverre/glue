@@ -26,6 +26,7 @@ class BuiltinCommands {
     required String Function(List<String> args) configAction,
     required String Function(String title) renameSession,
     required void Function() copyLastResponse,
+    required String Function(List<String> args) recapAction,
   }) {
     final commands = SlashCommandRegistry();
 
@@ -101,6 +102,13 @@ class BuiltinCommands {
       description:
           'Show token usage for this session (per role: main, subagent, title)',
       execute: (_) => usageReport(),
+    ));
+
+    commands.register(SlashCommand(
+      name: 'recap',
+      description: 'Summarize the current session in one line',
+      aliases: ['summary'],
+      execute: recapAction,
     ));
 
     commands.register(SlashCommand(

@@ -172,6 +172,96 @@ String _renameSessionImpl(App app, String title) {
   return 'Renamed session to "$normalized".';
 }
 
+String _recapActionImpl(App app, List<String> args) {
+  if (args.isNotEmpty) {
+    return 'Usage: /recap';
+  }
+  final conversation = app.agent.conversation;
+  final hasUser = conversation.any((m) => m.role == Role.user);
+  final hasAssistant = conversation.any((m) => m.role == Role.assistant);
+  if (!hasUser || !hasAssistant) {
+    return 'Not enough conversation yet to summarize.';
+  }
+
+  final llm = _createRecapLlmClientImpl(app);
+  if (llm == null) {
+    return 'Recap unavailable: no model configured for summarization.';
+  }
+
+  final context = _buildRecapContextImpl(app);
+  unawaited(() async {
+    final generator = RecapGenerator(
+      llmClient: llm,
+      onUsage: (usage) => app._sessionManager.recordUsage(
+        UsageStats()..record(usage),
+        role: 'recap',
+      ),
+    );
+    final summary = await generator.generateFromContext(context);
+    if (summary == null || summary.isEmpty) {
+      app._addSystemMessage('Could not generate recap.');
+    } else {
+      app._addSystemMessage('Recap: $summary');
+    }
+    app._render();
+  }());
+  return '';
+}
+
+LlmClient? _createRecapLlmClientImpl(App app) {
+  final config = app._config;
+  final factory = app._llmFactory;
+  if (config == null || factory == null) return null;
+
+  final ref = config.smallModel ?? config.activeModel;
+  try {
+    return factory.createFor(
+      ref,
+      systemPrompt: RecapGenerator.systemPrompt,
+    );
+  } on ConfigError {
+    return null;
+  }
+}
+
+TitleContext _buildRecapContextImpl(App app) {
+  String? firstUser;
+  String? latestUser;
+  String? firstAssistant;
+  String? latestAssistant;
+  final tools = <String>{};
+
+  for (final msg in app.agent.conversation) {
+    final text = msg.text?.trim();
+    switch (msg.role) {
+      case Role.user:
+        if (text != null && text.isNotEmpty) {
+          firstUser ??= text;
+          latestUser = text;
+        }
+      case Role.assistant:
+        if (text != null && text.isNotEmpty) {
+          firstAssistant ??= text;
+          latestAssistant = text;
+        }
+        for (final call in msg.toolCalls) {
+          tools.add(call.name);
+        }
+      case Role.toolResult:
+        break;
+    }
+  }
+
+  return TitleContext(
+    firstUserMessage: firstUser,
+    latestUserMessage: latestUser,
+    firstAssistantMessage: firstAssistant,
+    latestAssistantMessage: latestAssistant,
+    toolNames: tools.toList(),
+    cwdBasename: app._cwd.split(Platform.pathSeparator).last,
+  );
+}
+
 String _shareActionImpl(App app, List<String> args) {
   if (app._mode != AppMode.idle) {
     return 'Wait for the current turn to finish before sharing.';

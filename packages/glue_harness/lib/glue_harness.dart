@@ -15,6 +15,7 @@ export 'package:glue_harness/src/agent/agent_manager.dart';
 export 'package:glue_harness/src/agent/agent_runner.dart';
 export 'package:glue_harness/src/agent/llm_factory.dart';
 export 'package:glue_harness/src/agent/prompts.dart';
+export 'package:glue_harness/src/agent/recap_generator.dart';
 export 'package:glue_harness/src/agent/shell_job_manager.dart';
 export 'package:glue_harness/src/agent/title_generator.dart';
 export 'package:glue_harness/src/agent/tools.dart';

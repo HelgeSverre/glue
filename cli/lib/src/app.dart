@@ -454,6 +454,7 @@ class App {
       configAction: _configAction,
       renameSession: _renameSession,
       copyLastResponse: () => _copyLastResponseImpl(this),
+      recapAction: _recapAction,
     );
 
     // Argument autocomplete — attached here (not plumbed through
@@ -469,6 +470,8 @@ class App {
   String _buildPathsReport() => buildWhereReport(_environment);
 
   String _configAction(List<String> args) => _configActionImpl(this, args);
+
+  String _recapAction(List<String> args) => _recapActionImpl(this, args);
 
   String _openGlueTarget(List<String> args) => _openGlueTargetImpl(this, args);
 
