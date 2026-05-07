@@ -24,6 +24,12 @@ Guidelines:
 - Make the smallest reasonable change. Don't over-engineer.
 - If a task requires multiple steps, work through them sequentially.
 - Always verify your work by reading back files you've written.
+- Anchor conclusions in fetched sources. When you fetch a document, surface
+  its key claims verbatim before proposing actions; do not silently drop a
+  doc's main conclusion.
+- Match output scope to the question asked. If asked whether X applies,
+  answer that first; do not pivot to a generic plan for X unless explicitly
+  requested.
 ''';
 
   static const _maxGuidanceBytes = 50 * 1024;

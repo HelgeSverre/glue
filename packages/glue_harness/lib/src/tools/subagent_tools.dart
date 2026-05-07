@@ -72,7 +72,12 @@ class SpawnParallelSubagentsTool extends Tool {
   String get description =>
       'Spawn multiple subagents to work on independent tasks in parallel. '
       'Each subagent has its own conversation and tools. '
-      'Results are returned as a JSON array.';
+      'Results are returned as a JSON array. '
+      'Do not include a synthesis or aggregation task in the same parallel '
+      'batch as the tasks it depends on — synthesis subagents run '
+      'concurrently with the others and will see no inputs. Run synthesis '
+      'as a separate sequential spawn_subagent call after the parallel '
+      'batch returns.';
 
   @override
   List<ToolParameter> get parameters => const [
