@@ -7,17 +7,17 @@ import 'package:test/test.dart';
 
 SlashCommandRegistry _makeRegistry() {
   final reg = SlashCommandRegistry();
-  reg.register(SlashCommand(
+  reg.register(SlashCommand.inline(
     name: 'help',
     description: 'Show available commands',
     execute: (_) => 'Help output',
   ));
-  reg.register(SlashCommand(
+  reg.register(SlashCommand.inline(
     name: 'clear',
     description: 'Clear conversation history',
     execute: (_) => 'Cleared.',
   ));
-  reg.register(SlashCommand(
+  reg.register(SlashCommand.inline(
     name: 'info',
     description: 'Show session info',
     aliases: ['status'],

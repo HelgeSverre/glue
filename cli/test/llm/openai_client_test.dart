@@ -168,17 +168,26 @@ void main() {
       final events = [
         {
           'choices': [
-            {'index': 0, 'delta': {'reasoning': 'reasoning step 1'}}
+            {
+              'index': 0,
+              'delta': {'reasoning': 'reasoning step 1'}
+            }
           ]
         },
         {
           'choices': [
-            {'index': 0, 'delta': {'reasoning': ' step 2'}}
+            {
+              'index': 0,
+              'delta': {'reasoning': ' step 2'}
+            }
           ]
         },
         {
           'choices': [
-            {'index': 0, 'delta': {'content': 'final answer'}}
+            {
+              'index': 0,
+              'delta': {'content': 'final answer'}
+            }
           ]
         },
         {
@@ -208,7 +217,10 @@ void main() {
       final events = [
         {
           'choices': [
-            {'index': 0, 'delta': {'reasoning_content': 'hmm'}}
+            {
+              'index': 0,
+              'delta': {'reasoning_content': 'hmm'}
+            }
           ]
         },
       ];

@@ -36,7 +36,9 @@ void main() {
           Message.user('read foo'),
           Message.assistant(text: 'ok', toolCalls: [
             ToolCall(
-                id: const ToolCallId('tc1'), name: 'read_file', arguments: {'path': 'f.txt'}),
+                id: const ToolCallId('tc1'),
+                name: 'read_file',
+                arguments: {'path': 'f.txt'}),
           ]),
         ],
         systemPrompt: '',
@@ -88,7 +90,10 @@ void main() {
         [
           Message.user('q'),
           Message.assistant(toolCalls: [
-            ToolCall(id: const ToolCallId('tc1'), name: 'read_file', arguments: {'path': 'x'}),
+            ToolCall(
+                id: const ToolCallId('tc1'),
+                name: 'read_file',
+                arguments: {'path': 'x'}),
           ]),
         ],
         systemPrompt: '',
@@ -106,7 +111,9 @@ void main() {
           Message.user('read foo'),
           Message.assistant(toolCalls: [
             ToolCall(
-                id: const ToolCallId('tc1'), name: 'read_file', arguments: {'path': 'f.txt'}),
+                id: const ToolCallId('tc1'),
+                name: 'read_file',
+                arguments: {'path': 'f.txt'}),
           ]),
           Message.toolResult(
             callId: const ToolCallId('tc1'),
@@ -168,7 +175,8 @@ void main() {
       final result = mapper.mapMessages(
         [
           Message.assistant(toolCalls: [
-            ToolCall(id: const ToolCallId('tc1'), name: 'screenshot', arguments: {}),
+            ToolCall(
+                id: const ToolCallId('tc1'), name: 'screenshot', arguments: {}),
           ]),
           Message.toolResult(
             callId: const ToolCallId('tc1'),

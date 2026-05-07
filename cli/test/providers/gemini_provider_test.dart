@@ -76,8 +76,7 @@ void main() {
 
     test('uppercases nested array item types', () {
       final encoded = const GeminiToolEncoder().encodeAll([_ArrayTool()]);
-      final decl =
-          (encoded.first['functionDeclarations'] as List).first as Map;
+      final decl = (encoded.first['functionDeclarations'] as List).first as Map;
       final params = decl['parameters'] as Map<String, dynamic>;
       final props = params['properties'] as Map<String, dynamic>;
       final tagsSchema = props['tags'] as Map;

@@ -102,7 +102,8 @@ void main() {
     expect(agent.conversation[1].text, 'Hi there');
   });
 
-  test('forwards ThinkingDelta as AgentThinkingDelta and never appends '
+  test(
+      'forwards ThinkingDelta as AgentThinkingDelta and never appends '
       'thinking to assistantText', () async {
     mockLlm.responses.add([
       ThinkingDelta('reasoning step '),
