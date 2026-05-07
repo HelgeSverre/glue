@@ -391,9 +391,9 @@ class App {
           await tool.dispose();
         } catch (_) {}
       }
+      await _sessionManager.closeCurrent();
       await _obs?.flush();
       await _obs?.close();
-      await _sessionManager.closeCurrent();
       await jobSub.cancel();
       await _jobManager.shutdown();
       await termSub.cancel();

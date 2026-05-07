@@ -198,9 +198,9 @@ Future<void> _runPrintModeImpl(App app) async {
         await tool.dispose();
       } catch (_) {}
     }
+    await app._sessionManager.closeCurrent();
     await app._obs?.flush();
     await app._obs?.close();
-    await app._sessionManager.closeCurrent();
     if (cancelled) exitCode = 130;
   }
 }

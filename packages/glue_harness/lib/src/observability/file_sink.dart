@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 
 class FileSink extends ObservabilitySink {
   final IOSink _sink;
+  bool _closed = false;
 
   FileSink({required String logsDir})
       : _sink = (File(p.join(
@@ -17,15 +18,21 @@ class FileSink extends ObservabilitySink {
 
   @override
   void onSpan(ObservabilitySpan span) {
+    if (_closed) return;
     _sink.writeln(jsonEncode(span.toMap()));
   }
 
   @override
-  Future<void> flush() => _sink.flush();
+  Future<void> flush() async {
+    if (_closed) return;
+    await _sink.flush();
+  }
 
   @override
   Future<void> close() async {
+    if (_closed) return;
     await _sink.flush();
     await _sink.close();
+    _closed = true;
   }
 }
