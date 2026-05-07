@@ -79,6 +79,12 @@ class MarkdownRenderer {
 
       // Headings — wrap raw text first, then style each line so
       // continuation lines retain bold+yellow.
+      if (line.startsWith('#### ')) {
+        final wrapped = ansiWrap(line.substring(5), width);
+        output.addAll(
+            wrapped.split('\n').map((l) => l.styled.bold.yellow.toString()));
+        continue;
+      }
       if (line.startsWith('### ')) {
         final wrapped = ansiWrap(line.substring(4), width);
         output.addAll(
