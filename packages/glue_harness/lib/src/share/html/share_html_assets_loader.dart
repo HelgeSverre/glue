@@ -1,31 +1,9 @@
-import 'dart:io';
-
-import 'package:path/path.dart' as p;
+import 'package:glue_harness/src/share/html/share_assets_generated.dart';
 
 class ShareHtmlAssetsLoader {
   const ShareHtmlAssetsLoader();
 
-  String loadTemplate() => _loadAsset('share_page_template.html');
+  String loadTemplate() => sharePageTemplate;
 
-  String loadStylesheet() => _loadAsset('share_page.css');
-
-  String _loadAsset(String fileName) {
-    // Candidates ordered by likely cwd: package self, monorepo root,
-    // cli/ (legacy), then ../packages/glue_harness/lib/... (cli/ cwd).
-    final candidates = [
-      p.join('lib', 'src', 'share', 'html', fileName),
-      p.join(
-          'packages', 'glue_harness', 'lib', 'src', 'share', 'html', fileName),
-      p.join('cli', 'lib', 'src', 'share', 'html', fileName),
-      p.join('..', 'packages', 'glue_harness', 'lib', 'src', 'share', 'html',
-          fileName),
-    ];
-
-    for (final path in candidates) {
-      final file = File(path);
-      if (file.existsSync()) return file.readAsStringSync();
-    }
-
-    throw StateError('Share HTML asset not found: $fileName');
-  }
+  String loadStylesheet() => sharePageStylesheet;
 }

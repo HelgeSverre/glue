@@ -54,11 +54,13 @@ format:
 gen:
     dart run tool/gen_models.dart
     dart run tool/gen_version.dart
+    dart run tool/gen_share_assets.dart
 
 # Fail if any generated file is out of date
 gen-check:
     dart run tool/gen_models.dart --check
     dart run tool/gen_version.dart --check
+    dart run tool/gen_share_assets.dart --check
 
 # Layer-import linter (strict — see docs/plans/2026-04-29-harness-layers.md)
 # Enforces the full four-layer architecture: surface → harness → strategies → core.

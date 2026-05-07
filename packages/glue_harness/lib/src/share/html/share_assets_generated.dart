@@ -1,3 +1,44 @@
+// GENERATED — DO NOT EDIT.
+// Source: packages/glue_harness/lib/src/share/html/share_page_template.html
+//         packages/glue_harness/lib/src/share/html/share_page.css
+// Regenerate with: dart run tool/gen_share_assets.dart
+// ignore_for_file: lines_longer_than_80_chars
+
+const String sharePageTemplate = r'''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{page_title}}</title>
+  <style>
+{{styles}}
+  </style>
+</head>
+<body>
+<div class="share-page">
+  {{header}}
+  <div class="share-layout">
+    <main class="share-shell">
+      <div class="share-transcript">
+        <div class="share-intro">
+          <div class="share-intro-title">{{page_title}}</div>
+          <div>{{intro_text}}</div>
+        </div>
+{{transcript_entries}}
+      </div>
+    </main>
+    <aside class="share-outline">
+      <div class="share-outline-title">outline</div>
+{{outline_entries}}
+    </aside>
+  </div>
+</div>
+</body>
+</html>
+''';
+
+const String sharePageStylesheet = r'''
 :root {
   --bg: #0d0d0f;
   --fg: #e8e8ea;
@@ -290,3 +331,4 @@ code, pre {
     padding: 12px 0 0;
   }
 }
+''';
