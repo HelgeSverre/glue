@@ -103,12 +103,18 @@ class AgentManager {
   /// Optionally override [modelOverride] to switch model for this subagent.
   /// [currentDepth] tracks recursion to prevent infinite nesting.
   /// [index] and [total] are set when spawned as part of a parallel batch.
+  /// [parentSubagentId] is the id of the subagent that initiated this spawn
+  /// (null when spawned by the top-level agent). Persisted on the
+  /// `subagent_spawned` row so transcript reconstruction can attach the new
+  /// group to the correct parent even when sibling subagents run in
+  /// parallel and emit interleaved events.
   Future<String> spawnSubagent({
     required String task,
     ModelRef? modelOverride,
     int currentDepth = 0,
     int? index,
     int? total,
+    String? parentSubagentId,
   }) async {
     if (currentDepth >= config.maxSubagentDepth) {
       throw Exception(
@@ -120,16 +126,25 @@ class AgentManager {
     final ref = modelOverride ?? config.activeModel;
     final llm = llmFactory.createFor(ref, systemPrompt: systemPrompt);
 
+    final subagentId = _mintSubagentId();
+
     final subagentTools = Map<String, Tool>.from(tools);
 
     // Give subagents depth-incremented spawning tools if they haven't
-    // reached the maximum depth yet.
+    // reached the maximum depth yet. The spawn tools carry this subagent's
+    // id forward as the parent id for any further spawns it makes.
     final nextDepth = currentDepth + 1;
     if (nextDepth < config.maxSubagentDepth) {
-      subagentTools['spawn_subagent'] =
-          SpawnSubagentTool(this, depth: nextDepth);
-      subagentTools['spawn_parallel_subagents'] =
-          SpawnParallelSubagentsTool(this, depth: nextDepth);
+      subagentTools['spawn_subagent'] = SpawnSubagentTool(
+        this,
+        depth: nextDepth,
+        parentSubagentId: subagentId.value,
+      );
+      subagentTools['spawn_parallel_subagents'] = SpawnParallelSubagentsTool(
+        this,
+        depth: nextDepth,
+        parentSubagentId: subagentId.value,
+      );
     } else {
       subagentTools.removeWhere((name, _) =>
           name == 'spawn_subagent' || name == 'spawn_parallel_subagents');
@@ -148,9 +163,9 @@ class AgentManager {
       },
     );
 
-    final subagentId = _mintSubagentId();
     onPersistEvent?.call('subagent_spawned', {
       'subagent_id': subagentId.value,
+      if (parentSubagentId != null) 'parent_subagent_id': parentSubagentId,
       'task': task,
       'depth': currentDepth,
       if (index != null) 'index': index,
@@ -186,7 +201,10 @@ class AgentManager {
       if (thinkingBuf.isNotEmpty) {
         onPersistEvent?.call('subagent_event', {
           'subagent_id': subagentId.value,
-          'inner': {'type': 'assistant_thinking', 'text': thinkingBuf.toString()},
+          'inner': {
+            'type': 'assistant_thinking',
+            'text': thinkingBuf.toString()
+          },
         });
         thinkingBuf.clear();
       }
@@ -260,6 +278,7 @@ class AgentManager {
     required List<String> tasks,
     ModelRef? modelOverride,
     int currentDepth = 0,
+    String? parentSubagentId,
   }) async {
     return Future.wait([
       for (var i = 0; i < tasks.length; i++)
@@ -269,6 +288,7 @@ class AgentManager {
           currentDepth: currentDepth,
           index: i,
           total: tasks.length,
+          parentSubagentId: parentSubagentId,
         ),
     ]);
   }

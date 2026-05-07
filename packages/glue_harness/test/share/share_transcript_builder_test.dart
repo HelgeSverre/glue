@@ -118,7 +118,7 @@ void main() {
       expect(group.children[1].text, 'contents');
     });
 
-    test('builds two parallel subagent groups', () {
+    test('builds two sequential subagent groups', () {
       final builder = ShareTranscriptBuilder();
 
       final transcript = builder.build([
@@ -157,6 +157,171 @@ void main() {
       expect(groups.map((g) => g.subagentId), ['sub-a', 'sub-b']);
       expect(groups[0].children.single.text, 'progress a');
       expect(groups[1].children.single.text, 'progress b');
+    });
+
+    test('three parallel subagents with interleaved events render as siblings',
+        () {
+      final builder = ShareTranscriptBuilder();
+
+      final transcript = builder.build([
+        {'type': 'user_message', 'text': 'go'},
+        {
+          'type': 'subagent_spawned',
+          'subagent_id': 'sub-a',
+          'task': 'task-a',
+          'depth': 0,
+          'index': 0,
+          'total': 3,
+        },
+        {
+          'type': 'subagent_spawned',
+          'subagent_id': 'sub-b',
+          'task': 'task-b',
+          'depth': 0,
+          'index': 1,
+          'total': 3,
+        },
+        {
+          'type': 'subagent_spawned',
+          'subagent_id': 'sub-c',
+          'task': 'task-c',
+          'depth': 0,
+          'index': 2,
+          'total': 3,
+        },
+        {
+          'type': 'subagent_event',
+          'subagent_id': 'sub-a',
+          'inner': {'type': 'assistant_message', 'text': 'a-progress'},
+        },
+        {
+          'type': 'subagent_event',
+          'subagent_id': 'sub-b',
+          'inner': {'type': 'assistant_message', 'text': 'b-progress'},
+        },
+        {
+          'type': 'subagent_event',
+          'subagent_id': 'sub-c',
+          'inner': {'type': 'assistant_message', 'text': 'c-progress'},
+        },
+        {'type': 'subagent_completed', 'subagent_id': 'sub-a'},
+        {'type': 'subagent_completed', 'subagent_id': 'sub-b'},
+        {'type': 'subagent_completed', 'subagent_id': 'sub-c'},
+        {'type': 'assistant_message', 'text': 'all done'},
+      ]);
+
+      expect(
+        transcript.entries.map((e) => e.kind).toList(),
+        [
+          ShareEntryKind.user,
+          ShareEntryKind.subagentGroup,
+          ShareEntryKind.subagentGroup,
+          ShareEntryKind.subagentGroup,
+          ShareEntryKind.assistant,
+        ],
+        reason:
+            'parallel subagents must render as siblings, not nested under each '
+            'other, and the trailing assistant message must stay top-level',
+      );
+      final groups = transcript.entries
+          .where((e) => e.kind == ShareEntryKind.subagentGroup)
+          .toList();
+      expect(groups.map((g) => g.subagentId), ['sub-a', 'sub-b', 'sub-c']);
+      for (final g in groups) {
+        expect(g.nestingLevel, 0);
+      }
+      expect(groups[0].children.single.text, 'a-progress');
+      expect(groups[1].children.single.text, 'b-progress');
+      expect(groups[2].children.single.text, 'c-progress');
+    });
+
+    test(
+        'parallel subagents completing out of spawn order still render as '
+        'siblings', () {
+      final builder = ShareTranscriptBuilder();
+
+      final transcript = builder.build([
+        {
+          'type': 'subagent_spawned',
+          'subagent_id': 'sub-a',
+          'task': 'a',
+          'depth': 0,
+        },
+        {
+          'type': 'subagent_spawned',
+          'subagent_id': 'sub-b',
+          'task': 'b',
+          'depth': 0,
+        },
+        {
+          'type': 'subagent_event',
+          'subagent_id': 'sub-a',
+          'inner': {'type': 'assistant_message', 'text': 'a says'},
+        },
+        {
+          'type': 'subagent_event',
+          'subagent_id': 'sub-b',
+          'inner': {'type': 'assistant_message', 'text': 'b says'},
+        },
+        {'type': 'subagent_completed', 'subagent_id': 'sub-b'},
+        {'type': 'subagent_completed', 'subagent_id': 'sub-a'},
+        {'type': 'user_message', 'text': 'next'},
+      ]);
+
+      expect(transcript.entries.map((e) => e.kind).toList(), [
+        ShareEntryKind.subagentGroup,
+        ShareEntryKind.subagentGroup,
+        ShareEntryKind.user,
+      ]);
+      expect(transcript.entries[0].subagentId, 'sub-a');
+      expect(transcript.entries[1].subagentId, 'sub-b');
+      expect(transcript.entries[0].children.single.text, 'a says');
+      expect(transcript.entries[1].children.single.text, 'b says');
+    });
+
+    test(
+        'parallel sibling that spawns its own nested child via parent_subagent_id',
+        () {
+      final builder = ShareTranscriptBuilder();
+
+      final transcript = builder.build([
+        {
+          'type': 'subagent_spawned',
+          'subagent_id': 'sub-a',
+          'task': 'a',
+          'depth': 0,
+        },
+        {
+          'type': 'subagent_spawned',
+          'subagent_id': 'sub-b',
+          'task': 'b',
+          'depth': 0,
+        },
+        {
+          'type': 'subagent_spawned',
+          'subagent_id': 'sub-a-child',
+          'task': 'a-child',
+          'depth': 1,
+          'parent_subagent_id': 'sub-a',
+        },
+        {
+          'type': 'subagent_event',
+          'subagent_id': 'sub-a-child',
+          'inner': {'type': 'assistant_message', 'text': 'child of a'},
+        },
+        {'type': 'subagent_completed', 'subagent_id': 'sub-a-child'},
+        {'type': 'subagent_completed', 'subagent_id': 'sub-a'},
+        {'type': 'subagent_completed', 'subagent_id': 'sub-b'},
+      ]);
+
+      expect(transcript.entries.map((e) => e.subagentId).toList(),
+          ['sub-a', 'sub-b']);
+      final a = transcript.entries[0];
+      expect(a.children, hasLength(1));
+      expect(a.children.single.kind, ShareEntryKind.subagentGroup);
+      expect(a.children.single.subagentId, 'sub-a-child');
+      expect(a.children.single.children.single.text, 'child of a');
+      expect(transcript.entries[1].children, isEmpty);
     });
 
     test('handles a nested subagent that spawns its own subagent', () {
@@ -214,6 +379,30 @@ void main() {
 
       expect(transcript.entries, hasLength(1));
       expect(transcript.entries.single.kind, ShareEntryKind.user);
+    });
+
+    test('normalizer carries parent_subagent_id through subagent_spawned', () {
+      final spawned = normalizeSessionEvent({
+        'type': 'subagent_spawned',
+        'subagent_id': 'child',
+        'parent_subagent_id': 'parent',
+        'task': 'do thing',
+        'depth': 1,
+      });
+
+      expect(spawned, isNotNull);
+      expect(spawned!.kind, NormalizedSessionEventKind.subagentSpawned);
+      expect(spawned.subagentId, 'child');
+      expect(spawned.parentSubagentId, 'parent');
+
+      // Missing/empty parent_subagent_id stays null (top-level spawn case).
+      final topLevel = normalizeSessionEvent({
+        'type': 'subagent_spawned',
+        'subagent_id': 'top',
+        'task': 'top task',
+        'depth': 0,
+      });
+      expect(topLevel!.parentSubagentId, isNull);
     });
 
     test('supports nested subagent fixture entries', () {

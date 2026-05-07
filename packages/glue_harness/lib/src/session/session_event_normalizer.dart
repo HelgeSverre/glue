@@ -18,6 +18,7 @@ class NormalizedSessionEvent {
 
   // Subagent-specific fields. Populated on subagent* kinds; null otherwise.
   final String? subagentId;
+  final String? parentSubagentId;
   final int? subagentIndex;
   final int? subagentTotal;
   final int? subagentDepth;
@@ -32,6 +33,7 @@ class NormalizedSessionEvent {
     this.toolArguments,
     this.toolResultSummary,
     this.subagentId,
+    this.parentSubagentId,
     this.subagentIndex,
     this.subagentTotal,
     this.subagentDepth,
@@ -76,6 +78,7 @@ class NormalizedSessionEvent {
   factory NormalizedSessionEvent.subagentSpawned({
     required String subagentId,
     required String task,
+    String? parentSubagentId,
     int? index,
     int? total,
     int? depth,
@@ -84,6 +87,7 @@ class NormalizedSessionEvent {
         kind: NormalizedSessionEventKind.subagentSpawned,
         text: task,
         subagentId: subagentId,
+        parentSubagentId: parentSubagentId,
         subagentIndex: index,
         subagentTotal: total,
         subagentDepth: depth,
@@ -162,9 +166,11 @@ NormalizedSessionEvent? normalizeSessionEvent(Map<String, dynamic> event) {
       final id = (event['subagent_id'] as String? ?? '').trim();
       final task = (event['task'] as String? ?? '').trim();
       if (id.isEmpty || task.isEmpty) return null;
+      final parent = (event['parent_subagent_id'] as String?)?.trim();
       return NormalizedSessionEvent.subagentSpawned(
         subagentId: id,
         task: task,
+        parentSubagentId: (parent == null || parent.isEmpty) ? null : parent,
         index: event['index'] as int?,
         total: event['total'] as int?,
         depth: event['depth'] as int?,

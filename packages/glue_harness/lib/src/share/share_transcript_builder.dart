@@ -10,6 +10,10 @@ class ShareTranscriptBuilder {
   /// child [ShareEntryKind.subagentMessage] / [ShareEntryKind.toolCall] /
   /// [ShareEntryKind.toolResult] under the group.
   ///
+  /// Open groups are tracked in a [Map] keyed by `subagent_id` (not a stack)
+  /// so parallel siblings render as siblings, every event is routed to the
+  /// matching group, and completions in any order pop the right group.
+  ///
   /// Subagent events that arrive without a matching open group (rare —
   /// truncated or malformed sessions) are skipped rather than promoted to
   /// the top level, so the transcript shape never silently inflates.
@@ -17,70 +21,83 @@ class ShareTranscriptBuilder {
     final entries = <ShareEntry>[];
     var nextIndex = 1;
 
-    // Stack of open subagent groups. Each frame holds the group's mutable
-    // children buffer plus the nesting level for new children.
-    final stack = <_OpenGroup>[];
+    // Open groups keyed by subagent_id. The default Dart `Map` literal is
+    // a `LinkedHashMap`, so reverse-order iteration gives "most recently
+    // opened first" — used to find a parent group when the spawn event has
+    // no `parent_subagent_id` (legacy sessions).
+    final openGroups = <String, _OpenGroup>{};
 
-    void appendEntry(ShareEntry entry) {
-      if (stack.isEmpty) {
-        entries.add(entry);
-      } else {
-        stack.last.children.add(entry);
+    _OpenGroup? resolveParent(NormalizedSessionEvent event) {
+      final explicitParent = event.parentSubagentId;
+      if (explicitParent != null && explicitParent.isNotEmpty) {
+        final match = openGroups[explicitParent];
+        if (match != null) return match;
       }
+      // Fallback: pick the most recently opened group whose depth is one
+      // shallower than this spawn. Works for legacy `.jsonl` files that
+      // predate `parent_subagent_id`.
+      final spawnDepth = event.subagentDepth;
+      if (spawnDepth != null && spawnDepth > 0) {
+        for (final group in openGroups.values.toList().reversed) {
+          if (group.depth == spawnDepth - 1) return group;
+        }
+      }
+      return null;
     }
-
-    int nestingLevel() => stack.isEmpty ? 0 : stack.last.nestingLevel + 1;
 
     for (final event in normalizeSessionEvents(events)) {
       switch (event.kind) {
         case NormalizedSessionEventKind.user:
-          appendEntry(ShareEntry(
-            index: nextIndex++,
-            kind: ShareEntryKind.user,
-            text: event.visibleText,
-            nestingLevel: nestingLevel(),
-          ));
         case NormalizedSessionEventKind.assistant:
-          appendEntry(ShareEntry(
-            index: nextIndex++,
-            kind: ShareEntryKind.assistant,
-            text: event.visibleText,
-            nestingLevel: nestingLevel(),
-          ));
         case NormalizedSessionEventKind.toolCall:
-          appendEntry(ShareEntry(
+        case NormalizedSessionEventKind.toolResult:
+          // Top-level events are always appended at the transcript root.
+          // Subagents emit their activity via `subagent_event`, so reaching
+          // this branch means the event came from the parent agent — even
+          // while subagents are mid-flight.
+          entries.add(ShareEntry(
             index: nextIndex++,
-            kind: ShareEntryKind.toolCall,
+            kind: switch (event.kind) {
+              NormalizedSessionEventKind.user => ShareEntryKind.user,
+              NormalizedSessionEventKind.assistant => ShareEntryKind.assistant,
+              NormalizedSessionEventKind.toolCall => ShareEntryKind.toolCall,
+              NormalizedSessionEventKind.toolResult =>
+                ShareEntryKind.toolResult,
+              _ => ShareEntryKind.assistant,
+            },
             text: event.visibleText,
             toolName: event.toolName,
-            toolArguments: event.toolArguments ?? const <String, dynamic>{},
-            nestingLevel: nestingLevel(),
-          ));
-        case NormalizedSessionEventKind.toolResult:
-          appendEntry(ShareEntry(
-            index: nextIndex++,
-            kind: ShareEntryKind.toolResult,
-            text: event.visibleText,
-            nestingLevel: nestingLevel(),
+            toolArguments: event.kind == NormalizedSessionEventKind.toolCall
+                ? (event.toolArguments ?? const <String, dynamic>{})
+                : null,
+            nestingLevel: 0,
           ));
         case NormalizedSessionEventKind.subagentSpawned:
+          final parent = resolveParent(event);
           final children = <ShareEntry>[];
+          final nestingLevel = parent == null ? 0 : parent.nestingLevel + 1;
           final group = ShareEntry(
             index: nextIndex++,
             kind: ShareEntryKind.subagentGroup,
             text: event.text,
             subagentId: event.subagentId,
-            nestingLevel: nestingLevel(),
+            nestingLevel: nestingLevel,
             children: children,
           );
-          appendEntry(group);
-          stack.add(_OpenGroup(
+          if (parent == null) {
+            entries.add(group);
+          } else {
+            parent.children.add(group);
+          }
+          openGroups[event.subagentId!] = _OpenGroup(
             subagentId: event.subagentId!,
             children: children,
-            nestingLevel: group.nestingLevel,
-          ));
+            nestingLevel: nestingLevel,
+            depth: event.subagentDepth ?? 0,
+          );
         case NormalizedSessionEventKind.subagentEvent:
-          if (stack.isEmpty || stack.last.subagentId != event.subagentId) {
+          final group = openGroups[event.subagentId];
+          if (group == null) {
             // Forwarded event without a matching open group — skip safely.
             continue;
           }
@@ -90,19 +107,17 @@ class ShareTranscriptBuilder {
             NormalizedSessionEventKind.toolResult => ShareEntryKind.toolResult,
             _ => ShareEntryKind.subagentMessage,
           };
-          stack.last.children.add(ShareEntry(
+          group.children.add(ShareEntry(
             index: nextIndex++,
             kind: childKind,
             text: inner.visibleText,
             toolName: inner.toolName,
             toolArguments: inner.toolArguments,
             subagentId: event.subagentId,
-            nestingLevel: stack.last.nestingLevel + 1,
+            nestingLevel: group.nestingLevel + 1,
           ));
         case NormalizedSessionEventKind.subagentCompleted:
-          if (stack.isNotEmpty && stack.last.subagentId == event.subagentId) {
-            stack.removeLast();
-          }
+          openGroups.remove(event.subagentId);
       }
     }
 
@@ -122,10 +137,12 @@ class _OpenGroup {
   final String subagentId;
   final List<ShareEntry> children;
   final int nestingLevel;
+  final int depth;
 
   _OpenGroup({
     required this.subagentId,
     required this.children,
     required this.nestingLevel,
+    required this.depth,
   });
 }
