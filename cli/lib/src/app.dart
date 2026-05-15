@@ -398,6 +398,7 @@ class App {
     final appSub = _events.stream.listen(_handleAppEvent);
     _subagentSub = _manager?.updates.listen(_handleSubagentUpdate);
     final jobSub = _jobManager.events.listen(_handleJobEvent);
+    final mcpSub = _mcpPool.events.listen(_handleMcpEvent);
 
     _render();
 
@@ -456,6 +457,8 @@ class App {
       await _jobManager.shutdown();
       await termSub.cancel();
       await appSub.cancel();
+      await mcpSub.cancel();
+      await _mcpPool.close();
       await _agentSub?.cancel();
       await _subagentSub?.cancel();
       await _events.close();
@@ -868,12 +871,15 @@ class App {
 
     const sep = ' · ';
     final scrollSeg = _scrollOffset > 0 ? '↑$_scrollOffset' : null;
+    final mcpUnhealthy = _mcpPool.unhealthyCount;
+    final mcpSeg = mcpUnhealthy > 0 ? 'MCP:$mcpUnhealthy⚠' : null;
     final rightSegs = [
       formatStatusModelLabel(
           _config?.activeModel, _config?.catalogData, _modelId),
       modeLabel,
       ansiTruncate(shortCwd, 30),
       if (scrollSeg != null) scrollSeg,
+      if (mcpSeg != null) mcpSeg,
       '${formatCompactTokens(agent.stats.totalTokens)} tokens',
     ];
     final statusRight = ' ${rightSegs.join(sep)} ';
@@ -2039,6 +2045,46 @@ class App {
         _blocks.add(ConversationEntry.system('↳ Job #$id error: $error'));
         _render();
     }
+  }
+
+  // ── MCP pool events ────────────────────────────────────────────────────
+
+  void _handleMcpEvent(McpPoolEvent event) {
+    switch (event) {
+      case McpPoolServerConnectedEvent(
+          :final serverId,
+          :final serverName,
+          :final toolNames,
+        ):
+        final count = toolNames.length;
+        _addSystemMessage(
+          '↳ MCP connected: $serverId ($serverName, $count tool${count == 1 ? '' : 's'})',
+        );
+      case McpPoolServerDisconnectedEvent(:final serverId, :final reason):
+        _addSystemMessage('↳ MCP disconnected: $serverId — ${reason.name}');
+      case McpPoolServerErrorEvent(:final serverId, :final message):
+        _addSystemMessage('↳ MCP error ($serverId): $message');
+      case McpPoolServerAuthRequiredEvent(
+          :final serverId,
+          :final reauthCommand,
+        ):
+        _addSystemMessage(
+          '↳ MCP re-auth required ($serverId). Run: $reauthCommand',
+        );
+      case McpPoolToolListChangedEvent(
+          :final serverId,
+          :final added,
+          :final removed,
+        ):
+        final changes = <String>[
+          if (added.isNotEmpty) '+${added.length}',
+          if (removed.isNotEmpty) '-${removed.length}',
+        ];
+        _addSystemMessage(
+          '↳ MCP tools changed ($serverId): ${changes.join(' ')}',
+        );
+    }
+    _render();
   }
 
   // ── Subagent updates ───────────────────────────────────────────────────

@@ -96,15 +96,16 @@ class _Fixture {
 
 void main() {
   group('McpSlashCommand', () {
-    test('no servers configured → friendly empty message', () {
+    test('no servers configured → /mcp list prints friendly empty message',
+        () {
       final fx = _Fixture();
       final cmd = McpSlashCommand(fx.ctx);
-      final result = cmd.execute(const []);
+      final result = cmd.execute(['list']);
       expect(result, contains('No MCP servers configured'));
       expect(result, contains('mcp.servers'));
     });
 
-    test('lists configured servers in disconnected state', () {
+    test('/mcp list emits text rows for each configured server', () {
       final tmp = Directory.systemTemp.createTempSync('mcp_slash_test_');
       final env = Environment.test(home: tmp.path, cwd: tmp.path);
       final pool = McpClientPool(
@@ -120,11 +121,32 @@ void main() {
       final fx = _Fixture(pool: pool);
       final cmd = McpSlashCommand(fx.ctx);
 
-      final result = cmd.execute(const []);
+      final result = cmd.execute(['list']);
       expect(result, contains('MCP servers:'));
       expect(result, contains('fs'));
       expect(result, contains('db'));
       expect(result, contains('disconnected'));
+    });
+
+    test('/mcp with no args opens a panel (returns empty)', () {
+      final tmp = Directory.systemTemp.createTempSync('mcp_slash_test_');
+      final env = Environment.test(home: tmp.path, cwd: tmp.path);
+      final pool = McpClientPool(
+        config: const McpConfig(servers: [
+          McpStdioServerSpec(id: 'fs', command: 'fake'),
+        ]),
+        credentials: CredentialStore(
+          path: '${env.glueDir}/credentials.json',
+          env: const {},
+        ),
+      );
+      final fx = _Fixture(pool: pool);
+      final cmd = McpSlashCommand(fx.ctx);
+
+      final result = cmd.execute(const []);
+      expect(result, isEmpty,
+          reason: 'panel mode returns empty; the panel is pushed instead');
+      expect(fx.panelStack, hasLength(1));
     });
 
     test('unknown subcommand → usage hint', () {
