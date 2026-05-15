@@ -26,6 +26,7 @@ export 'package:glue_strategies/src/mcp_client/protocol.dart';
 export 'package:glue_strategies/src/mcp_client/tool_factory.dart';
 export 'package:glue_strategies/src/mcp_client/transport/http_sse.dart';
 export 'package:glue_strategies/src/mcp_client/transport/stdio.dart';
+export 'package:glue_strategies/src/mcp_client/transport/websocket.dart';
 export 'package:glue_strategies/src/providers/anthropic_adapter.dart';
 export 'package:glue_strategies/src/providers/auth_flow.dart';
 export 'package:glue_strategies/src/providers/compatibility_profile.dart';
