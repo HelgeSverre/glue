@@ -22,6 +22,7 @@ import 'package:glue_strategies/src/mcp_client/config.dart';
 import 'package:glue_strategies/src/mcp_client/connection_state.dart';
 import 'package:glue_strategies/src/mcp_client/protocol.dart';
 import 'package:glue_strategies/src/mcp_client/tool_factory.dart';
+import 'package:glue_strategies/src/mcp_client/transport/http_sse.dart';
 import 'package:glue_strategies/src/mcp_client/transport/stdio.dart';
 
 // ─── Pool events (App-consumable shape) ────────────────────────────────────
@@ -108,9 +109,13 @@ Future<McpClient> defaultMcpClientFactory(
         );
         return McpClient(transport: transport);
       }(),
-    McpHttpServerSpec() => throw UnimplementedError(
-        'HTTP+SSE transport lands in B5',
-      ),
+    McpHttpServerSpec(:final url, :final auth) => () async {
+        final transport = McpHttpTransport(
+          endpoint: url,
+          bearerToken: resolveMcpBearerToken(auth, credentials, spec.id),
+        );
+        return McpClient(transport: transport);
+      }(),
     McpWebSocketServerSpec() => throw UnimplementedError(
         'WebSocket transport lands in B8',
       ),
