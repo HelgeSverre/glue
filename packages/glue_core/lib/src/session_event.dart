@@ -415,6 +415,156 @@ class ErrorEvent extends SessionEvent {
 }
 
 // ---------------------------------------------------------------------------
+// MCP events (one per configured server-side state change)
+// ---------------------------------------------------------------------------
+
+/// Why an MCP server disconnected. Drives the surface message and the
+/// reconnection state machine.
+enum McpDisconnectReason {
+  /// Wire-level drop (stdout EOF, SSE close, WebSocket non-1000, etc.).
+  dropped,
+
+  /// We initiated the shutdown (process exit, `/mcp disable`, etc.).
+  shutdown,
+
+  /// Spawned/reconnected ≥5 times in 60s — marked `dead` for the session.
+  crashLoop,
+
+  /// Reconnect attempts exhausted and the server is parked.
+  dead,
+}
+
+/// What flavour of error fired for [McpServerErrorEvent].
+enum McpServerErrorKind {
+  /// Server's `protocolVersion` is older than our minimum-supported.
+  protocolTooOld,
+
+  /// Server's `serverCapabilities` advertise a capability we don't
+  /// support and a tool descriptor requires it (e.g. `sampling`).
+  unsupportedCapability,
+
+  /// Bearer token or OAuth refresh failed in a non-recoverable way.
+  authFailed,
+
+  /// We couldn't even start the subprocess (stdio transport).
+  spawnFailed,
+
+  /// Generic transport-level error reaching the server.
+  transportError,
+
+  /// Server returned malformed responses we couldn't parse.
+  protocolViolation,
+}
+
+/// An MCP server completed the `initialize` handshake and its tools are
+/// available to the agent.
+class McpServerConnectedEvent extends SessionEvent {
+  const McpServerConnectedEvent({
+    required super.turnId,
+    required super.timestamp,
+    required super.sequence,
+    required this.serverId,
+    required this.serverName,
+    required this.serverVersion,
+    required this.toolNames,
+  });
+
+  /// Local config id for the server (the user's chosen name).
+  final String serverId;
+
+  /// Server-reported name (from `initialize` → `serverInfo.name`).
+  final String serverName;
+
+  /// Server-reported version.
+  final String serverVersion;
+
+  /// Namespaced tool names registered with the agent (`<serverId>.<tool>`).
+  final List<String> toolNames;
+}
+
+/// An MCP server's connection has dropped — possibly transiently. If
+/// [reconnectAttempt] is `> 0` the pool is retrying after
+/// [nextAttemptIn]. If [reason] is [McpDisconnectReason.dead], the pool
+/// has given up.
+class McpServerDisconnectedEvent extends SessionEvent {
+  const McpServerDisconnectedEvent({
+    required super.turnId,
+    required super.timestamp,
+    required super.sequence,
+    required this.serverId,
+    required this.reason,
+    this.reconnectAttempt = 0,
+    this.nextAttemptIn = Duration.zero,
+  });
+
+  final String serverId;
+  final McpDisconnectReason reason;
+
+  /// 0 when not retrying (e.g. clean shutdown or dead).
+  final int reconnectAttempt;
+
+  /// `Duration.zero` when not retrying.
+  final Duration nextAttemptIn;
+}
+
+/// An error specific to the MCP server lifecycle (not a tool-call error,
+/// which surfaces as [ToolCallCompletedEvent] with an error snapshot).
+class McpServerErrorEvent extends SessionEvent {
+  const McpServerErrorEvent({
+    required super.turnId,
+    required super.timestamp,
+    required super.sequence,
+    required this.serverId,
+    required this.kind,
+    required this.message,
+  });
+
+  final String serverId;
+  final McpServerErrorKind kind;
+  final String message;
+}
+
+/// The server needs the user to re-authorise (OAuth refresh failed or
+/// bearer was rejected). The surface should display [reauthCommand] and
+/// pause the server until [reauthCommand] (or equivalent) completes.
+class McpServerAuthRequiredEvent extends SessionEvent {
+  const McpServerAuthRequiredEvent({
+    required super.turnId,
+    required super.timestamp,
+    required super.sequence,
+    required this.serverId,
+    required this.reauthCommand,
+  });
+
+  final String serverId;
+
+  /// Shell command the user should run (or that the TUI can trigger
+  /// via a modal-confirmed action). e.g. `glue mcp auth login notion`.
+  final String reauthCommand;
+}
+
+/// The server's tool list changed mid-session (via the
+/// `notifications/tools/list_changed` protocol message).
+class McpToolListChangedEvent extends SessionEvent {
+  const McpToolListChangedEvent({
+    required super.turnId,
+    required super.timestamp,
+    required super.sequence,
+    required this.serverId,
+    required this.added,
+    required this.removed,
+  });
+
+  final String serverId;
+
+  /// Namespaced tool names that appeared since the last `tools/list`.
+  final List<String> added;
+
+  /// Namespaced tool names that disappeared.
+  final List<String> removed;
+}
+
+// ---------------------------------------------------------------------------
 // Supporting value types
 // ---------------------------------------------------------------------------
 

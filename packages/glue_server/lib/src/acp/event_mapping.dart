@@ -58,6 +58,14 @@ SessionUpdate? sessionEventToAcpUpdate(SessionEvent event) {
     TitleGeneratedEvent() => null,
     MetricsUpdatedEvent() => null,
     ErrorEvent() => null, // server emits a JSON-RPC error
+    // MCP lifecycle events: B7 will route these as a Glue-extension
+    // `glue_mcp_status` session/update payload + a session/request_permission
+    // for the auth-required variant. v1 (this bundle) drops them.
+    McpServerConnectedEvent() => null,
+    McpServerDisconnectedEvent() => null,
+    McpServerErrorEvent() => null,
+    McpServerAuthRequiredEvent() => null,
+    McpToolListChangedEvent() => null,
   };
 }
 

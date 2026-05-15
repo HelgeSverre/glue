@@ -3,9 +3,15 @@
 ///
 /// Pure data + a pure function. The state-transition logic itself lives
 /// in `client.dart` and `pool.dart`.
+///
+/// [McpDisconnectReason] re-exports from `glue_core` so the wire enum
+/// stays single-sourced — the same value flows through events and the
+/// state machine.
 library;
 
 import 'dart:math';
+
+export 'package:glue_core/glue_core.dart' show McpDisconnectReason;
 
 sealed class McpConnectionState {
   const McpConnectionState();
@@ -47,15 +53,6 @@ class McpReconnecting extends McpConnectionState {
 class McpDead extends McpConnectionState {
   const McpDead({required this.reason});
   final String reason;
-}
-
-/// Why a server disconnected. Surfaced on
-/// `McpServerDisconnectedEvent.reason`.
-enum McpDisconnectReason {
-  dropped,
-  shutdown,
-  crashLoop,
-  dead,
 }
 
 /// Backoff delay for reconnection attempts, with jitter.

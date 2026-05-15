@@ -56,6 +56,11 @@ void main() {
             TitleGeneratedEvent() => 'TitleGeneratedEvent',
             MetricsUpdatedEvent() => 'MetricsUpdatedEvent',
             ErrorEvent() => 'ErrorEvent',
+            McpServerConnectedEvent() => 'McpServerConnectedEvent',
+            McpServerDisconnectedEvent() => 'McpServerDisconnectedEvent',
+            McpServerErrorEvent() => 'McpServerErrorEvent',
+            McpServerAuthRequiredEvent() => 'McpServerAuthRequiredEvent',
+            McpToolListChangedEvent() => 'McpToolListChangedEvent',
           };
 
       const turn = TurnId('t1');

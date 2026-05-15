@@ -8,6 +8,7 @@ import 'package:glue_core/glue_core.dart';
 import 'package:glue_harness/src/catalog/model_resolver.dart';
 import 'package:glue_harness/src/catalog/models_generated.dart';
 import 'package:glue_harness/src/config/approval_mode.dart';
+import 'package:glue_harness/src/config/mcp_config.dart';
 import 'package:glue_harness/src/core/environment.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 import 'package:glue_harness/src/observability/observability_config.dart';
@@ -67,6 +68,7 @@ class GlueConfig {
     this.approvalMode = ApprovalMode.confirm,
     this.titleGenerationEnabled = true,
     this.anthropicPromptCache = true,
+    this.mcp = const McpConfig(),
   })  : shellConfig = shellConfig ?? const ShellConfig(),
         dockerConfig = dockerConfig ?? const DockerConfig(),
         webConfig = webConfig ?? const WebConfig();
@@ -122,6 +124,10 @@ class GlueConfig {
   /// Caching is GA on Claude 4.x and silently no-op on older Anthropic
   /// models. The flag has no effect on non-Anthropic providers.
   final bool anthropicPromptCache;
+
+  /// MCP (Model Context Protocol) configuration — list of configured
+  /// servers, tool policy, reconnect defaults. Empty by default.
+  final McpConfig mcp;
 
   /// Resolve [ref] against the loaded catalog and credential store.
   ///
@@ -213,6 +219,7 @@ class GlueConfig {
       approvalMode: approvalMode,
       titleGenerationEnabled: titleGenerationEnabled,
       anthropicPromptCache: anthropicPromptCache,
+      mcp: mcp,
     );
   }
 
@@ -572,6 +579,11 @@ class GlueConfig {
         ? (cacheEnabledEnv.toLowerCase() == 'true' || cacheEnabledEnv == '1')
         : (cacheEnabledYaml ?? true);
 
+    // MCP servers. Env-var expansion happens at parse time so missing
+    // ${VAR}s fail loudly with the server name + field, not at session
+    // start.
+    final mcp = parseMcpConfig(fileConfig?['mcp'], env);
+
     // Skill paths.
     final skillPaths = <String>[];
     final envSkillPaths = env['GLUE_SKILLS_PATHS'];
@@ -603,6 +615,7 @@ class GlueConfig {
       approvalMode: approvalMode,
       titleGenerationEnabled: titleGenerationEnabled,
       anthropicPromptCache: anthropicPromptCache,
+      mcp: mcp,
     );
   }
 }
