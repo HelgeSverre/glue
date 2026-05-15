@@ -211,25 +211,6 @@ export default defineConfig({
     pageData.frontmatter.head = head;
   },
 
-  // TODO: the API doc generator (cli/tool/generate_website_api.dart)
-  // walks only cli/lib/src/. Pages that moved into glue_harness /
-  // glue_strategies (agent/, tools/, shell/, web/, skills/, llm/,
-  // session/, storage/, config/, observability/) no longer get
-  // emitted, so links to them from the long-form docs are dead.
-  // Skip them at build time until the generator catches up.
-  ignoreDeadLinks: [
-    /^\/api\/agent\//,
-    /^\/api\/tools\//,
-    /^\/api\/shell\//,
-    /^\/api\/web\//,
-    /^\/api\/skills\//,
-    /^\/api\/llm\//,
-    /^\/api\/session\//,
-    /^\/api\/storage\//,
-    /^\/api\/config\//,
-    /^\/api\/observability\//,
-  ],
-
   themeConfig: {
     siteTitle: "Glue",
     logo: { src: "/brand/symbol-yellow.svg", alt: "Glue" },

@@ -37,5 +37,5 @@ Use background jobs for long-running tasks like compilation or test suites so yo
 ## See also
 
 - [HostExecutor](/api/shell/host-executor)
-- [ShellJobManager](/api/shell/shell-job-manager)
+- [ShellJobManager](/api/agent/shell-job-manager)
 - [ShellConfig](/api/shell/shell-config)

@@ -57,7 +57,7 @@ Drop a `models.yaml` into `~/.glue/` with your provider/model entry — it merge
 ## See also
 
 - [Configuration](/docs/getting-started/configuration) — credentials and config keys
-- [LlmFactory](/api/llm/llm-factory) — adapter dispatch
+- [LlmFactory](/api/agent/llm-factory) — adapter dispatch
 - [AnthropicClient](/api/llm/anthropic-client)
 - [OpenAiClient](/api/llm/openai-client)
 - [OllamaClient](/api/llm/ollama-client)

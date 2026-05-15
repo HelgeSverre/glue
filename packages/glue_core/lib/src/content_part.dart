@@ -36,8 +36,9 @@ sealed class ContentPart {
 
   /// Concatenates [parts] as text, rendering each variant in a way the
   /// LLM can read: text passes through; resource_link renders as a
-  /// `[name](uri)` markdown link; image parts are skipped (they need
-  /// to flow through a separate image-content channel).
+  /// markdown link (`[name]` followed by the uri in parens); image
+  /// parts are skipped (they need to flow through a separate
+  /// image-content channel).
   static String textWithLinks(List<ContentPart> parts) {
     final buf = StringBuffer();
     for (final part in parts) {
@@ -73,7 +74,7 @@ class ImagePart extends ContentPart {
 /// pointing the user at — e.g. a URL fetched, a file written, a
 /// repository link.
 ///
-/// LLM message mappers render this as a textual "[name](uri)" snippet
+/// LLM message mappers render this as a textual markdown-link snippet
 /// so the model sees something useful. ACP message mappers emit a
 /// dedicated `resource_link` content block so editors / web UIs can
 /// render it as an inline link with metadata.
@@ -89,7 +90,7 @@ class ResourceLinkPart extends ContentPart {
   final String uri;
 
   /// Display name for the link (e.g. the page title, the basename).
-  /// Falls back to [uri] in textual rendering when null.
+  /// Falls back to `uri` in textual rendering when null.
   final String? name;
 
   /// Optional human-readable hover/preview text.

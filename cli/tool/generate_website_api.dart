@@ -62,8 +62,26 @@ const _moduleDescriptions = <String, String>{
   'commands': 'Slash commands and CLI handlers',
 };
 
-const _githubBase =
-    'https://github.com/helgesverre/glue/blob/main/cli/lib/src/';
+const _githubRepoBase = 'https://github.com/helgesverre/glue/blob/main/';
+
+/// Source roots the generator walks, in the order they're processed.
+///
+/// Each entry is `(directoryRelativeToCliCwd, githubPathPrefix)`. The
+/// prefix is concatenated with the file's path-within-lib/src and the
+/// repo URL to produce the "Source: …" link on each API page.
+///
+/// Adding a new package: append a new entry. The module-bucketing logic
+/// uses the first path segment under `lib/src/`, so e.g. a file at
+/// `packages/glue_foo/lib/src/agent/bar.dart` lands in the existing
+/// `agent` module group alongside the harness's `agent/` files.
+const _sourceRoots = <(String, String)>[
+  ('lib/src', 'cli/lib/src/'),
+  ('../packages/glue_core/lib/src', 'packages/glue_core/lib/src/'),
+  ('../packages/glue_strategies/lib/src',
+      'packages/glue_strategies/lib/src/'),
+  ('../packages/glue_harness/lib/src', 'packages/glue_harness/lib/src/'),
+  ('../packages/glue_server/lib/src', 'packages/glue_server/lib/src/'),
+];
 
 // ---------------------------------------------------------------------------
 // Regex patterns
@@ -100,6 +118,12 @@ class DartFile {
   final String relativePath; // e.g. agent/agent_core.dart
   final String module; // e.g. agent
   final String content;
+
+  /// GitHub-URL prefix for this file's source link (e.g.
+  /// `cli/lib/src/` or `packages/glue_harness/lib/src/`). Combined with
+  /// [relativePath] and [_githubRepoBase] in the markdown emitter.
+  final String githubPrefix;
+
   final String? libraryDoc;
   final String? category;
   final List<DartClass> classes;
@@ -111,6 +135,7 @@ class DartFile {
     required this.relativePath,
     required this.module,
     required this.content,
+    required this.githubPrefix,
     this.libraryDoc,
     this.category,
     required this.classes,
@@ -381,7 +406,12 @@ List<DartMember> _extractMembers(String classBody, String className) {
 }
 
 /// Parse a single Dart file into a [DartFile].
-DartFile _parseFile(File file, String relativePath, String module) {
+DartFile _parseFile(
+  File file,
+  String relativePath,
+  String module,
+  String githubPrefix,
+) {
   final source = file.readAsStringSync();
 
   // Library-level doc comment (before any import/class).
@@ -499,6 +529,7 @@ DartFile _parseFile(File file, String relativePath, String module) {
     relativePath: relativePath,
     module: module,
     content: source,
+    githubPrefix: githubPrefix,
     libraryDoc: libraryDoc,
     category: category,
     classes: classes,
@@ -533,7 +564,8 @@ String _generateMarkdown(DartFile df) {
   // Source link.
   final githubPath = df.relativePath;
   final filename = df.relativePath.split('/').last;
-  buf.writeln('*Source: [$filename]($_githubBase$githubPath)*');
+  buf.writeln(
+      '*Source: [$filename]($_githubRepoBase${df.githubPrefix}$githubPath)*');
   buf.writeln();
 
   // Library doc.
@@ -792,15 +824,9 @@ String _escapeAngleBrackets(String s) {
 
 void main() {
   final cliDir = Directory.current;
-  final srcDir = Directory('${cliDir.path}/lib/src');
   final siteDir = Directory('${cliDir.path}/../website');
   final apiDir = Directory('${siteDir.path}/api');
   final sidebarFile = File('${siteDir.path}/.vitepress/sidebar.json');
-
-  if (!srcDir.existsSync()) {
-    print('Error: ${srcDir.path} not found. Run from the cli/ directory.');
-    exit(1);
-  }
 
   // Remove stale generated docs so deleted source files do not linger in
   // the VitePress tree.
@@ -809,25 +835,53 @@ void main() {
   }
   apiDir.createSync(recursive: true);
 
-  // Collect all Dart files.
-  final dartFiles = srcDir
-      .listSync(recursive: true)
-      .whereType<File>()
-      .where((f) => f.path.endsWith('.dart'))
-      .where((f) {
-    final name = f.uri.pathSegments.last;
-    return !name.startsWith('_');
-  }).toList();
-
-  print('Found ${dartFiles.length} Dart files in lib/src/');
-
-  // Parse all files.
+  // Walk every configured source root. Files whose first lib/src/
+  // segment is the same module land in the same `api/<module>/`
+  // directory — the surface and the harness can both contribute
+  // `agent` pages, for example.
   final parsed = <DartFile>[];
-  for (final file in dartFiles) {
-    final relative = file.path.replaceFirst('${srcDir.path}/', '');
-    final parts = relative.split('/');
-    final module = parts.length > 1 ? parts.first : 'core';
-    parsed.add(_parseFile(file, relative, module));
+  for (final (relativeDir, githubPrefix) in _sourceRoots) {
+    final srcDir = Directory('${cliDir.path}/$relativeDir');
+    if (!srcDir.existsSync()) {
+      print('Warning: ${srcDir.path} not found — skipping.');
+      continue;
+    }
+    final dartFiles = srcDir
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.dart'))
+        .where((f) {
+      final name = f.uri.pathSegments.last;
+      // Skip part-of files (named with a leading underscore) and
+      // generated files (`*_generated.dart`).
+      if (name.startsWith('_')) return false;
+      if (name.endsWith('_generated.dart')) return false;
+      return true;
+    }).toList();
+
+    for (final file in dartFiles) {
+      final relative = file.path.replaceFirst('${srcDir.path}/', '');
+      final parts = relative.split('/');
+      final module = parts.length > 1 ? parts.first : 'core';
+      parsed.add(_parseFile(file, relative, module, githubPrefix));
+    }
+    print('  $githubPrefix → ${dartFiles.length} files');
+  }
+
+  // Filename collisions across packages would silently overwrite. Detect
+  // and fail loudly so the conflict gets resolved at the source.
+  final byOutputPath = <String, DartFile>{};
+  for (final df in parsed) {
+    final key = '${df.module}/${df.kebab}.md';
+    final prior = byOutputPath[key];
+    if (prior != null) {
+      print('Error: API page collision at $key');
+      print('  - ${prior.githubPrefix}${prior.relativePath}');
+      print('  - ${df.githubPrefix}${df.relativePath}');
+      print('Rename one of the source files or split the module.');
+      exit(1);
+    }
+    byOutputPath[key] = df;
   }
 
   // Group by module.
