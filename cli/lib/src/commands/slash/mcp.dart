@@ -32,8 +32,135 @@ class McpSlashCommand extends SlashCommand {
       _openPanel();
       return '';
     }
-    if (args.first == 'list') return _textList();
-    return 'Unknown /mcp subcommand "${args.first}". Try `/mcp` or `/mcp list`.';
+    switch (args.first) {
+      case 'list':
+        return _textList();
+      case 'auth':
+        return _auth(args.skip(1).toList());
+      default:
+        return 'Unknown /mcp subcommand "${args.first}". '
+            'Try `/mcp`, `/mcp list`, or `/mcp auth login <server>`.';
+    }
+  }
+
+  // ── auth subcommands ───────────────────────────────────────────────────
+
+  String _auth(List<String> args) {
+    if (args.isEmpty) {
+      return 'Usage: /mcp auth login <server> | /mcp auth logout <server>';
+    }
+    switch (args.first) {
+      case 'login':
+        return _authLogin(args.skip(1).toList());
+      case 'logout':
+        return _authLogout(args.skip(1).toList());
+      default:
+        return 'Unknown /mcp auth subcommand "${args.first}". '
+            'Try `login` or `logout`.';
+    }
+  }
+
+  String _authLogin(List<String> args) {
+    if (args.length != 1) return 'Usage: /mcp auth login <server>';
+    final serverId = args.single;
+    final snapshot = ctx.mcpPool.server(serverId);
+    if (snapshot == null) {
+      return 'Server "$serverId" is not in your config.';
+    }
+    final spec = snapshot.spec;
+    if (spec is! McpHttpServerSpec && spec is! McpWebSocketServerSpec) {
+      return 'OAuth is only supported for HTTP/WS servers. "$serverId" is stdio.';
+    }
+    final baseUrl = spec is McpHttpServerSpec
+        ? spec.url
+        : (spec as McpWebSocketServerSpec).url;
+
+    final config = ctx.config;
+    if (config == null) return 'Config not loaded.';
+
+    // Run the flow asynchronously and surface progress as system messages.
+    _runLoginFlow(serverId, baseUrl, config.credentials);
+    return 'Starting OAuth flow for "$serverId" — watch for the browser URL above.';
+  }
+
+  void _runLoginFlow(
+    String serverId,
+    Uri baseUrl,
+    CredentialStore credentials,
+  ) {
+    () async {
+      try {
+        ctx.conversation.notify('Discovering OAuth metadata…');
+        final endpoints = await discoverOAuthEndpoints(baseUrl);
+
+        OAuthClient client;
+        final existingClientId = credentials.getField(
+          'mcp:$serverId',
+          McpOAuthFields.clientId,
+        );
+        if (existingClientId != null) {
+          client = OAuthClient(
+            clientId: existingClientId,
+            clientSecret: credentials.getField(
+              'mcp:$serverId',
+              McpOAuthFields.clientSecret,
+            ),
+          );
+        } else if (endpoints.registrationEndpoint != null) {
+          ctx.conversation.notify('Registering OAuth client (DCR)…');
+          client = await registerOAuthClient(
+            registrationEndpoint: endpoints.registrationEndpoint!,
+            redirectUri: Uri.parse('http://127.0.0.1/callback'),
+            clientName: 'glue',
+          );
+        } else {
+          ctx.conversation.notify(
+            'OAuth login failed: no registration_endpoint and no client_id stored.',
+          );
+          return;
+        }
+
+        final tokens = await runOAuthAuthorizationCodeFlow(
+          endpoints: endpoints,
+          client: client,
+          onAuthUrl: (url) {
+            ctx.conversation.notify('Open in your browser: $url');
+          },
+        );
+
+        storeMcpOAuthTokens(
+          serverId: serverId,
+          client: client,
+          tokens: tokens,
+          credentials: credentials,
+        );
+        ctx.conversation.notify(
+          'Stored OAuth tokens for "$serverId". '
+          'Reconnect via `/mcp reconnect $serverId` once that command lands.',
+        );
+      } on Exception catch (e) {
+        ctx.conversation.notify('OAuth login failed for "$serverId": $e');
+      }
+    }();
+  }
+
+  String _authLogout(List<String> args) {
+    if (args.length != 1) return 'Usage: /mcp auth logout <server>';
+    final serverId = args.single;
+    final config = ctx.config;
+    if (config == null) return 'Config not loaded.';
+    clearMcpOAuthTokens(
+      serverId: serverId,
+      credentials: config.credentials,
+    );
+    final providerId = 'mcp:$serverId';
+    final existing = config.credentials.getFields(providerId);
+    final cleaned = <String, String>{
+      for (final e in existing.entries)
+        if (e.key != 'bearer') e.key: e.value,
+    };
+    config.credentials.setFields(providerId, cleaned);
+    return 'Forgot credentials for "$serverId".';
   }
 
   // ── panel form ─────────────────────────────────────────────────────────

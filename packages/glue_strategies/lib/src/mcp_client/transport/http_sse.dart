@@ -170,20 +170,25 @@ class McpHttpTransportError implements Exception {
 
 // ─── Auth resolution ───────────────────────────────────────────────────────
 
-/// Resolves the bearer token for an MCP server, honouring the priority
-/// order from the design doc:
-///   1. Literal token in the [McpBearerAuth.token] field (already
-///      env-var-expanded at config parse time).
-///   2. [CredentialStore] key `mcp:<server-id>:bearer`.
+/// Resolves the bearer token for an MCP server, honouring:
+///   • [McpBearerAuth] — literal token from config, falling back to
+///     `mcp:<server-id>:bearer` in the credential store.
+///   • [McpOAuthAuth] — current `oauth_access` field from the credential
+///     store (populated by `glue mcp auth login <server>`).
+///   • [McpNoAuth] — null (no Authorization header).
 ///
-/// Returns `null` when neither source has a token. Callers handle that
-/// (HTTP transport sends no Authorization header — the server can 401).
+/// Returns `null` when no token is available. Callers send no header
+/// in that case; the server may 401, which the pool surfaces as
+/// `McpServerAuthRequiredEvent` so the user knows to log in.
 String? resolveMcpBearerToken(
   McpAuthSpec auth,
   CredentialStore credentials,
   String serverId,
 ) {
-  if (auth is! McpBearerAuth) return null;
-  if (auth.token != null) return auth.token;
-  return credentials.getField('mcp:$serverId', 'bearer');
+  return switch (auth) {
+    McpBearerAuth(:final token) =>
+      token ?? credentials.getField('mcp:$serverId', 'bearer'),
+    McpOAuthAuth() => credentials.getField('mcp:$serverId', 'oauth_access'),
+    McpNoAuth() => null,
+  };
 }

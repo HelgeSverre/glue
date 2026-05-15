@@ -20,6 +20,7 @@ export 'package:glue_strategies/src/llm/tool_schema.dart';
 export 'package:glue_strategies/src/mcp_client/client.dart';
 export 'package:glue_strategies/src/mcp_client/config.dart';
 export 'package:glue_strategies/src/mcp_client/connection_state.dart';
+export 'package:glue_strategies/src/mcp_client/oauth.dart';
 export 'package:glue_strategies/src/mcp_client/pool.dart';
 export 'package:glue_strategies/src/mcp_client/protocol.dart';
 export 'package:glue_strategies/src/mcp_client/tool_factory.dart';

@@ -11,6 +11,7 @@ dependencies:
     path: ../glue_core
   glue_server:
     path: ../glue_server
+  crypto: ^3.0.0
   html: ^0.15.5
   http: ^1.6.0
   path: ^1.9.1

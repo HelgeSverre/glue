@@ -6,10 +6,12 @@
 /// these but show live pool state because they run inside the TUI.
 library;
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:glue_harness/glue_harness.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 
 import 'package:glue/src/commands/config_command.dart' show userConfigPath;
 
@@ -77,6 +79,8 @@ class McpListCommand extends Command<int> {
 class McpAuthCommand extends Command<int> {
   McpAuthCommand() {
     addSubcommand(McpAuthSetCommand());
+    addSubcommand(McpAuthLoginCommand());
+    addSubcommand(McpAuthLogoutCommand());
   }
 
   @override
@@ -153,6 +157,145 @@ class McpAuthSetCommand extends Command<int> {
   }
 }
 
+class McpAuthLoginCommand extends Command<int> {
+  @override
+  String get name => 'login';
+
+  @override
+  String get description =>
+      'Run the OAuth flow for an MCP server (opens your browser).';
+
+  @override
+  String get invocation => 'glue mcp auth login <server>';
+
+  @override
+  Future<int> run() async {
+    final argResults = this.argResults!;
+    if (argResults.rest.length != 1) {
+      stderr.writeln('Usage: glue mcp auth login <server>');
+      return 1;
+    }
+    final serverId = argResults.rest.single;
+
+    final config = _safeLoadConfig();
+    if (config == null) return 1;
+
+    final spec = config.mcp.servers.firstWhere(
+      (s) => s.id == serverId,
+      orElse: () => throw StateError(''),
+    );
+    if (spec is! McpHttpServerSpec && spec is! McpWebSocketServerSpec) {
+      stderr.writeln(
+        'OAuth is only supported for HTTP/WS servers. "$serverId" is stdio.',
+      );
+      return 1;
+    }
+    final baseUrl =
+        spec is McpHttpServerSpec ? spec.url : (spec as McpWebSocketServerSpec).url;
+
+    try {
+      stdout.writeln('Discovering OAuth metadata for $serverId…');
+      final endpoints = await discoverOAuthEndpoints(baseUrl);
+
+      OAuthClient client;
+      final existingClientId =
+          config.credentials.getField('mcp:$serverId', McpOAuthFields.clientId);
+      if (existingClientId != null) {
+        client = OAuthClient(
+          clientId: existingClientId,
+          clientSecret: config.credentials
+              .getField('mcp:$serverId', McpOAuthFields.clientSecret),
+        );
+        stdout.writeln('Reusing registered client_id.');
+      } else if (endpoints.registrationEndpoint != null) {
+        stdout.writeln('Registering OAuth client (DCR)…');
+        // Loopback URI here is a stub for registration; the actual
+        // redirect URI is bound at flow time. Many servers accept
+        // multiple URIs at registration, so register a wildcard-shaped
+        // localhost one.
+        client = await registerOAuthClient(
+          registrationEndpoint: endpoints.registrationEndpoint!,
+          redirectUri: Uri.parse('http://127.0.0.1/callback'),
+          clientName: 'glue',
+        );
+      } else {
+        stderr.writeln(
+          'No registration_endpoint advertised and no client_id stored '
+          'for "$serverId". Pre-register a client out-of-band, then set '
+          '`oauth_client_id` via `glue mcp auth set <server>` (not yet '
+          'supported for non-DCR servers).',
+        );
+        return 1;
+      }
+
+      stdout.writeln('Opening browser…');
+      final tokens = await runOAuthAuthorizationCodeFlow(
+        endpoints: endpoints,
+        client: client,
+        onAuthUrl: (url) {
+          stdout.writeln('Browse to: $url');
+          unawaited(_openBrowser(url));
+        },
+      );
+
+      storeMcpOAuthTokens(
+        serverId: serverId,
+        client: client,
+        tokens: tokens,
+        credentials: config.credentials,
+      );
+      stdout.writeln('Stored OAuth tokens for "$serverId".');
+      return 0;
+    } on StateError {
+      stderr.writeln(
+        'Server "$serverId" is not in your config. '
+        'Known: ${config.mcp.servers.map((s) => s.id).join(", ")}.',
+      );
+      return 1;
+    } on Exception catch (e) {
+      stderr.writeln('OAuth login failed: $e');
+      return 1;
+    }
+  }
+}
+
+class McpAuthLogoutCommand extends Command<int> {
+  @override
+  String get name => 'logout';
+
+  @override
+  String get description =>
+      'Forget stored credentials for an MCP server.';
+
+  @override
+  String get invocation => 'glue mcp auth logout <server>';
+
+  @override
+  Future<int> run() async {
+    final argResults = this.argResults!;
+    if (argResults.rest.length != 1) {
+      stderr.writeln('Usage: glue mcp auth logout <server>');
+      return 1;
+    }
+    final serverId = argResults.rest.single;
+
+    final config = _safeLoadConfig();
+    if (config == null) return 1;
+
+    // Forget both flavours: OAuth tokens and bearer token.
+    clearMcpOAuthTokens(serverId: serverId, credentials: config.credentials);
+    final providerId = McpCredentialKeys.providerId(serverId);
+    final existing = config.credentials.getFields(providerId);
+    final cleaned = <String, String>{
+      for (final e in existing.entries)
+        if (e.key != McpCredentialKeys.bearer) e.key: e.value,
+    };
+    config.credentials.setFields(providerId, cleaned);
+    stdout.writeln('Forgot credentials for "$serverId".');
+    return 0;
+  }
+}
+
 // ─── helpers ───────────────────────────────────────────────────────────────
 
 GlueConfig? _safeLoadConfig() {
@@ -161,6 +304,22 @@ GlueConfig? _safeLoadConfig() {
   } on ConfigError catch (e) {
     stderr.writeln('Failed to load config: ${e.message}');
     return null;
+  }
+}
+
+Future<void> _openBrowser(String url) async {
+  try {
+    if (Platform.isMacOS) {
+      await Process.start('open', [url], mode: ProcessStartMode.detached);
+    } else if (Platform.isLinux) {
+      await Process.start('xdg-open', [url],
+          mode: ProcessStartMode.detached);
+    } else if (Platform.isWindows) {
+      await Process.start('rundll32', ['url.dll,FileProtocolHandler', url],
+          mode: ProcessStartMode.detached);
+    }
+  } catch (_) {
+    // User can copy-paste — we already printed the URL.
   }
 }
 
