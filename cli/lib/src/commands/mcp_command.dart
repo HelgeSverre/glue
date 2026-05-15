@@ -28,6 +28,7 @@ abstract final class McpCredentialKeys {
 class McpCommand extends Command<int> {
   McpCommand() {
     addSubcommand(McpListCommand());
+    addSubcommand(McpToolsCommand());
     addSubcommand(McpAuthCommand());
   }
 
@@ -36,6 +37,81 @@ class McpCommand extends Command<int> {
 
   @override
   String get description => 'Manage Model Context Protocol (MCP) servers.';
+}
+
+class McpToolsCommand extends Command<int> {
+  @override
+  String get name => 'tools';
+
+  @override
+  String get description =>
+      'Connect to an MCP server and list its tools (one-shot).';
+
+  @override
+  String get invocation => 'glue mcp tools <server>';
+
+  @override
+  Future<int> run() async {
+    final argResults = this.argResults!;
+    if (argResults.rest.length != 1) {
+      stderr.writeln('Usage: glue mcp tools <server>');
+      return 1;
+    }
+    final serverId = argResults.rest.single;
+
+    final config = _safeLoadConfig();
+    if (config == null) return 1;
+
+    final spec = config.mcp.servers
+        .where((s) => s.id == serverId)
+        .firstOrNull;
+    if (spec == null) {
+      stderr.writeln(
+        'Server "$serverId" is not in your config. Known: '
+        '${config.mcp.servers.map((s) => s.id).join(", ")}.',
+      );
+      return 1;
+    }
+
+    // Spin up a transient pool of just this server, wait briefly, print.
+    final pool = McpClientPool(
+      config: McpConfig(servers: [spec]),
+      credentials: config.credentials,
+    );
+    pool.connectAll();
+
+    try {
+      await pool.events
+          .where((e) =>
+              e is McpPoolServerConnectedEvent ||
+              e is McpPoolServerErrorEvent)
+          .first
+          .timeout(const Duration(seconds: 10));
+    } on TimeoutException {
+      stderr.writeln('Timed out waiting for "$serverId" to respond.');
+      await pool.close();
+      return 1;
+    }
+
+    final snapshot = pool.server(serverId);
+    if (snapshot == null || snapshot.tools.isEmpty) {
+      stderr.writeln(
+        'Server "$serverId" advertised no tools (state: '
+        '${snapshot?.state.runtimeType ?? 'unknown'}).',
+      );
+      if (snapshot?.lastError != null) {
+        stderr.writeln('Last error: ${snapshot!.lastError}');
+      }
+      await pool.close();
+      return 1;
+    }
+    for (final t in snapshot.tools) {
+      final desc = t.description.isEmpty ? '' : ' — ${t.description}';
+      stdout.writeln('  ${t.name}$desc');
+    }
+    await pool.close();
+    return 0;
+  }
 }
 
 class McpListCommand extends Command<int> {
@@ -81,6 +157,7 @@ class McpAuthCommand extends Command<int> {
     addSubcommand(McpAuthSetCommand());
     addSubcommand(McpAuthLoginCommand());
     addSubcommand(McpAuthLogoutCommand());
+    addSubcommand(McpAuthStatusCommand());
   }
 
   @override
@@ -88,6 +165,48 @@ class McpAuthCommand extends Command<int> {
 
   @override
   String get description => 'Manage credentials for MCP servers.';
+}
+
+class McpAuthStatusCommand extends Command<int> {
+  @override
+  String get name => 'status';
+
+  @override
+  String get description =>
+      'Print what credentials are stored for each MCP server.';
+
+  @override
+  Future<int> run() async {
+    final config = _safeLoadConfig();
+    if (config == null) return 1;
+
+    final servers = config.mcp.servers;
+    if (servers.isEmpty) {
+      stdout.writeln('No MCP servers configured.');
+      return 0;
+    }
+    for (final spec in servers) {
+      final fields =
+          config.credentials.getFields(McpCredentialKeys.providerId(spec.id));
+      final hasBearer = fields.containsKey(McpCredentialKeys.bearer);
+      final hasOAuth = fields.containsKey(McpOAuthFields.accessToken);
+      final authKind = spec is McpHttpServerSpec
+          ? spec.auth
+          : spec is McpWebSocketServerSpec
+              ? spec.auth
+              : const McpNoAuth();
+      final tag = switch (authKind) {
+        McpBearerAuth() =>
+          hasBearer ? 'bearer (stored)' : 'bearer (missing)',
+        McpOAuthAuth() => hasOAuth
+            ? 'oauth (access token stored)'
+            : 'oauth (not logged in)',
+        McpNoAuth() => 'none',
+      };
+      stdout.writeln('  ${spec.id.padRight(20)} $tag');
+    }
+    return 0;
+  }
 }
 
 class McpAuthSetCommand extends Command<int> {

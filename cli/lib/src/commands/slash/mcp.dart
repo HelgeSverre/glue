@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:glue_strategies/glue_strategies.dart';
 
 import 'package:glue/src/commands/slash_command_context.dart';
@@ -35,29 +37,110 @@ class McpSlashCommand extends SlashCommand {
     switch (args.first) {
       case 'list':
         return _textList();
+      case 'tools':
+        return _tools(args.skip(1).toList());
+      case 'reconnect':
+        return _reconnect(args.skip(1).toList());
+      case 'toggle':
+        return _toggle(args.skip(1).toList());
       case 'auth':
         return _auth(args.skip(1).toList());
       default:
         return 'Unknown /mcp subcommand "${args.first}". '
-            'Try `/mcp`, `/mcp list`, or `/mcp auth login <server>`.';
+            'Try `/mcp`, `/mcp list`, `/mcp tools <server>`, '
+            '`/mcp reconnect <server>`, `/mcp toggle <server>`, '
+            'or `/mcp auth login|logout|status <server>`.';
     }
+  }
+
+  // ── tools / reconnect / toggle ─────────────────────────────────────────
+
+  String _tools(List<String> args) {
+    if (args.length != 1) return 'Usage: /mcp tools <server>';
+    final s = ctx.mcpPool.server(args.single);
+    if (s == null) return 'Server "${args.single}" is not in your config.';
+    if (s.tools.isEmpty) {
+      return s.state is McpConnected
+          ? 'Server "${s.id}" advertises no tools.'
+          : 'Server "${s.id}" is not connected; tools unknown.';
+    }
+    final lines = <String>['Tools for ${s.id}:'];
+    for (final t in s.tools) {
+      final desc = t.description.isEmpty ? '' : ' — ${t.description}';
+      lines.add('  ${t.name}$desc');
+    }
+    return lines.join('\n');
+  }
+
+  String _reconnect(List<String> args) {
+    if (args.length != 1) return 'Usage: /mcp reconnect <server>';
+    final s = ctx.mcpPool.server(args.single);
+    if (s == null) return 'Server "${args.single}" is not in your config.';
+    unawaited(ctx.mcpPool.reconnect(s.id));
+    return 'Reconnecting "${s.id}"…';
+  }
+
+  String _toggle(List<String> args) {
+    if (args.length != 1) return 'Usage: /mcp toggle <server>';
+    final s = ctx.mcpPool.server(args.single);
+    if (s == null) return 'Server "${args.single}" is not in your config.';
+    final wasEnabled = s.enabled;
+    unawaited(ctx.mcpPool.toggle(s.id));
+    return wasEnabled
+        ? 'Disabling "${s.id}" for this session…'
+        : 'Enabling "${s.id}" and connecting…';
   }
 
   // ── auth subcommands ───────────────────────────────────────────────────
 
   String _auth(List<String> args) {
     if (args.isEmpty) {
-      return 'Usage: /mcp auth login <server> | /mcp auth logout <server>';
+      return 'Usage: /mcp auth login <server> | logout <server> | status';
     }
     switch (args.first) {
       case 'login':
         return _authLogin(args.skip(1).toList());
       case 'logout':
         return _authLogout(args.skip(1).toList());
+      case 'status':
+        return _authStatus();
       default:
         return 'Unknown /mcp auth subcommand "${args.first}". '
-            'Try `login` or `logout`.';
+            'Try `login`, `logout`, or `status`.';
     }
+  }
+
+  String _authStatus() {
+    final config = ctx.config;
+    if (config == null) return 'Config not loaded.';
+    final servers = ctx.mcpPool.servers.toList();
+    if (servers.isEmpty) return 'No MCP servers configured.';
+    final lines = <String>['MCP credentials:'];
+    for (final s in servers) {
+      final providerId = 'mcp:${s.id}';
+      final fields = config.credentials.getFields(providerId);
+      final tag = _credentialTag(s.spec, fields);
+      lines.add('  ${s.id.padRight(20)} $tag');
+    }
+    return lines.join('\n');
+  }
+
+  String _credentialTag(McpServerSpec spec, Map<String, String> fields) {
+    final hasBearer = fields.containsKey('bearer');
+    final hasOAuth = fields.containsKey(McpOAuthFields.accessToken);
+    final authKind = spec is McpHttpServerSpec
+        ? spec.auth
+        : spec is McpWebSocketServerSpec
+            ? spec.auth
+            : const McpNoAuth();
+    return switch (authKind) {
+      McpBearerAuth() =>
+        hasBearer ? 'bearer (stored)' : 'bearer (missing)',
+      McpOAuthAuth() => hasOAuth
+          ? 'oauth (access token stored)'
+          : 'oauth (not logged in)',
+      McpNoAuth() => 'none',
+    };
   }
 
   String _authLogin(List<String> args) {

@@ -32,6 +32,13 @@ class CliAcpDelegate extends AcpServerDelegate {
     // Build a tool registry using the locator's executor + shared
     // services. Subagent tools are intentionally omitted in v1 — they
     // need their own permission flow per spawned child.
+    //
+    // TODO(mcp): `params.mcpServers` is currently ignored. Honouring it
+    // means parsing each map into an [McpServerSpec], spinning up a
+    // per-session [McpClientPool], waiting for tools, and adding them
+    // to `tools`. Plus event routing into ACP's `session/update` as
+    // a `glue_mcp_status` extension payload. See
+    // `docs/plans/2026-05-15-mcp-implementation.md` § B7 ACP.
     final tools = <String, Tool>{
       'read_file': ReadFileTool(),
       'write_file': WriteFileTool(),
