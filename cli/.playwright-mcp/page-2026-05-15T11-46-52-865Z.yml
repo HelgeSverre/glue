@@ -1,0 +1,370 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic "Power" [ref=e3] [cursor=pointer]: ⏻
+    - table [ref=e4]:
+      - rowgroup [ref=e9]:
+        - 'row "HELGE SVERRE All-stack Developer Bergen, Norway • v13.0 est. 2012 | 300+ repos | 4000+ contributions Tools | Theme: KDE" [ref=e10]':
+          - 'cell "HELGE SVERRE All-stack Developer Bergen, Norway • v13.0 est. 2012 | 300+ repos | 4000+ contributions Tools | Theme: KDE" [ref=e11]':
+            - table [ref=e12]:
+              - rowgroup [ref=e13]:
+                - 'row "HELGE SVERRE All-stack Developer Bergen, Norway • v13.0 est. 2012 | 300+ repos | 4000+ contributions Tools | Theme: KDE" [ref=e14]':
+                  - cell "HELGE SVERRE All-stack Developer Bergen, Norway • v13.0" [ref=e15]:
+                    - table [ref=e16]:
+                      - rowgroup [ref=e17]:
+                        - row "HELGE SVERRE All-stack Developer Bergen, Norway • v13.0" [ref=e18]:
+                          - cell "HELGE SVERRE" [ref=e19]:
+                            - link "HELGE SVERRE" [ref=e20] [cursor=pointer]:
+                              - /url: /
+                          - cell [ref=e21]
+                          - cell "All-stack Developer Bergen, Norway • v13.0" [ref=e22]:
+                            - text: All-stack Developer
+                            - text: Bergen, Norway • v13.0
+                  - 'cell "est. 2012 | 300+ repos | 4000+ contributions Tools | Theme: KDE" [ref=e23]':
+                    - text: est. 2012 | 300+ repos | 4000+ contributions
+                    - generic [ref=e24]:
+                      - generic [ref=e25]: Tools
+                      - text: "| Theme:"
+                      - combobox [ref=e26]:
+                        - option "Midnight"
+                        - option "Matrix"
+                        - option "Ocean"
+                        - option "Ember"
+                        - option "Cartoon"
+                        - option "Aqua"
+                        - option "Sakura"
+                        - option "Amber"
+                        - option "Y2K"
+                        - option "Barbie"
+                        - option "BSOD"
+                        - option "Cyberpunk"
+                        - option "Under Construction"
+                        - option "Soviet"
+                        - option "Flying Toasters"
+                        - option "Windows XP"
+                        - option "Windows 95"
+                        - option "KDE" [selected]
+                        - option "KDE Dark"
+                        - option "Winamp"
+                        - option "Steria"
+                        - option "Riksknivkasting"
+                        - option "REMA 1000"
+        - row "Home About Projects Articles WebToys ▾ Misc ▾" [ref=e27]:
+          - cell "Home About Projects Articles WebToys ▾ Misc ▾" [ref=e28]:
+            - table [ref=e29]:
+              - rowgroup [ref=e30]:
+                - row "Home About Projects Articles WebToys ▾ Misc ▾" [ref=e31]:
+                  - cell "Home" [ref=e32]:
+                    - link "Home" [ref=e33] [cursor=pointer]:
+                      - /url: /
+                  - cell "About" [ref=e34]:
+                    - link "About" [ref=e35] [cursor=pointer]:
+                      - /url: /about
+                  - cell "Projects" [ref=e36]:
+                    - link "Projects" [ref=e37] [cursor=pointer]:
+                      - /url: /projects
+                  - cell "Articles" [ref=e38]:
+                    - link "Articles" [ref=e39] [cursor=pointer]:
+                      - /url: /articles
+                  - cell "WebToys ▾" [ref=e40] [cursor=pointer]
+                  - cell "Misc ▾" [ref=e41] [cursor=pointer]
+                  - cell [ref=e42]
+        - row [ref=e43]:
+          - cell [ref=e44]
+        - row [ref=e45]:
+          - cell [ref=e46]:
+            - generic [ref=e47]: All-stack Developer, Workaholic, Compulsive side-hustler.
+            - table [ref=e48]:
+              - rowgroup [ref=e49]:
+                - 'row "Experienced developer located in Bergen, Norway with over 14 years of professional experience. Passionate about building web apps with Laravel and the TALL-stack. Launched multiple side-projects and worked in startups, corporates, and web agencies. Currently VP of Engineering at Crescat AS, building collaborative event management software. Also Partner at Coded AS and Owner of Liseth Solutions AS. Laravel Vue.js Livewire Filament Flutter AWS Svelte Tailwind Docker Quick Stats Location: Bergen, NO Experience: 14+ years Companies: 3 active GitHub: 169+ repos Side projects: too many" [ref=e50]':
+                  - cell "Experienced developer located in Bergen, Norway with over 14 years of professional experience. Passionate about building web apps with Laravel and the TALL-stack. Launched multiple side-projects and worked in startups, corporates, and web agencies. Currently VP of Engineering at Crescat AS, building collaborative event management software. Also Partner at Coded AS and Owner of Liseth Solutions AS. Laravel Vue.js Livewire Filament Flutter AWS Svelte Tailwind Docker" [ref=e51]:
+                    - text: Experienced developer located in Bergen, Norway with over 14 years of professional experience. Passionate about building web apps with Laravel and the TALL-stack. Launched multiple
+                    - link "side-projects" [ref=e52] [cursor=pointer]:
+                      - /url: /projects
+                    - text: and worked in startups, corporates, and web agencies.
+                    - text: Currently VP of Engineering at
+                    - link "Crescat AS" [ref=e53] [cursor=pointer]:
+                      - /url: https://crescat.io/
+                    - text: ", building collaborative event management software. Also Partner at"
+                    - link "Coded AS" [ref=e54] [cursor=pointer]:
+                      - /url: https://coded.no
+                    - text: and Owner of Liseth Solutions AS.
+                    - table [ref=e55]:
+                      - rowgroup [ref=e56]:
+                        - row "Laravel Vue.js Livewire" [ref=e57]:
+                          - cell "Laravel" [ref=e58]
+                          - cell "Vue.js" [ref=e59]
+                          - cell "Livewire" [ref=e60]
+                        - row "Filament Flutter AWS" [ref=e61]:
+                          - cell "Filament" [ref=e62]
+                          - cell "Flutter" [ref=e63]
+                          - cell "AWS" [ref=e64]
+                        - row "Svelte Tailwind Docker" [ref=e65]:
+                          - cell "Svelte" [ref=e66]
+                          - cell "Tailwind" [ref=e67]
+                          - cell "Docker" [ref=e68]
+                  - cell [ref=e69]
+                  - 'cell "Quick Stats Location: Bergen, NO Experience: 14+ years Companies: 3 active GitHub: 169+ repos Side projects: too many" [ref=e70]':
+                    - text: Quick Stats
+                    - separator [ref=e71]
+                    - text: "Location:"
+                    - text: Bergen, NO
+                    - text: "Experience:"
+                    - text: 14+ years
+                    - text: "Companies:"
+                    - text: 3 active
+                    - text: "GitHub:"
+                    - text: 169+ repos
+                    - text: "Side projects:"
+                    - text: too many
+            - generic [ref=e72]: Recent Articles
+            - table [ref=e73]:
+              - rowgroup [ref=e74]:
+                - row "2026-04-16 The Subsidy Window For $200/month I mass-produced open source across six languages. The code stays. The economics won't." [ref=e75]:
+                  - cell "2026-04-16" [ref=e76]
+                  - cell "The Subsidy Window For $200/month I mass-produced open source across six languages. The code stays. The economics won't." [ref=e77]:
+                    - link "The Subsidy Window" [ref=e78] [cursor=pointer]:
+                      - /url: /articles/the-subsidy-window
+                    - text: For $200/month I mass-produced open source across six languages. The code stays. The economics won't.
+                - row "2026-04-01 curl drew a picture The accidental ASCII art that appeared when curl's progress bar lost its terminal." [ref=e79]:
+                  - cell "2026-04-01" [ref=e80]
+                  - cell "curl drew a picture The accidental ASCII art that appeared when curl's progress bar lost its terminal." [ref=e81]:
+                    - link "curl drew a picture" [ref=e82] [cursor=pointer]:
+                      - /url: /articles/curl-progress-art
+                    - text: The accidental ASCII art that appeared when curl's progress bar lost its terminal.
+                - row "2026-04-01 Don't Upload PDFs of Your Passport Publicly A lost blog post from 2014 about how a PDF compression site accidentally exposed users' passports and sensitive documents through directory listing." [ref=e83]:
+                  - cell "2026-04-01" [ref=e84]
+                  - cell "Don't Upload PDFs of Your Passport Publicly A lost blog post from 2014 about how a PDF compression site accidentally exposed users' passports and sensitive documents through directory listing." [ref=e85]:
+                    - link "Don't Upload PDFs of Your Passport Publicly" [ref=e86] [cursor=pointer]:
+                      - /url: /articles/dont-upload-passport-pdfs-publicly
+                    - text: A lost blog post from 2014 about how a PDF compression site accidentally exposed users' passports and sensitive documents through directory listing.
+                - row "2026-03-30 ELIZA's Grandchildren In 1966, Weizenbaum's secretary asked to be left alone with a chatbot she knew was fake. Sixty years later, the emotional circuitry that made her do it is being industrialized — and expertise is no shield." [ref=e87]:
+                  - cell "2026-03-30" [ref=e88]
+                  - cell "ELIZA's Grandchildren In 1966, Weizenbaum's secretary asked to be left alone with a chatbot she knew was fake. Sixty years later, the emotional circuitry that made her do it is being industrialized — and expertise is no shield." [ref=e89]:
+                    - link "ELIZA's Grandchildren" [ref=e90] [cursor=pointer]:
+                      - /url: /articles/elizas-grandchildren
+                    - text: In 1966, Weizenbaum's secretary asked to be left alone with a chatbot she knew was fake. Sixty years later, the emotional circuitry that made her do it is being industrialized — and expertise is no shield.
+                - 'row "2026-03-30 Running LLMs in PHP with ONNX Runtime: Offline AI Text Generation Without Python I got IBM''s Granite 3.0 2B model running entirely in PHP using ONNX Runtime FFI bindings. No Python runtime, no API calls, no external services. Here''s how it works and what I learned." [ref=e91]':
+                  - cell "2026-03-30" [ref=e92]
+                  - 'cell "Running LLMs in PHP with ONNX Runtime: Offline AI Text Generation Without Python I got IBM''s Granite 3.0 2B model running entirely in PHP using ONNX Runtime FFI bindings. No Python runtime, no API calls, no external services. Here''s how it works and what I learned." [ref=e93]':
+                    - 'link "Running LLMs in PHP with ONNX Runtime: Offline AI Text Generation Without Python" [ref=e94] [cursor=pointer]':
+                      - /url: /articles/running-llms-in-php-with-onnx-runtime
+                    - text: I got IBM's Granite 3.0 2B model running entirely in PHP using ONNX Runtime FFI bindings. No Python runtime, no API calls, no external services. Here's how it works and what I learned.
+                - row "+ more View all articles →" [ref=e95]:
+                  - cell "+ more" [ref=e96]
+                  - cell "View all articles →" [ref=e97]:
+                    - link "View all articles →" [ref=e98] [cursor=pointer]:
+                      - /url: /articles
+            - generic [ref=e99]: Work History
+            - table [ref=e100]:
+              - rowgroup [ref=e101]:
+                - row "Period Company Role Details" [ref=e102]:
+                  - cell "Period" [ref=e103]
+                  - cell "Company" [ref=e104]
+                  - cell "Role" [ref=e105]
+                  - cell "Details" [ref=e106]
+                - row "2023 — Now Crescat AS VP of Engineering Event management software for venues and festivals." [ref=e107]:
+                  - cell "2023 — Now" [ref=e108]
+                  - cell "Crescat AS" [ref=e109]:
+                    - link "Crescat AS" [ref=e110] [cursor=pointer]:
+                      - /url: https://crescat.io/
+                  - cell "VP of Engineering" [ref=e111]
+                  - cell "Event management software for venues and festivals." [ref=e112]
+                - 'row "2021 — Now Coded AS Partner B2B SaaS: BoatFlow & Reflow." [ref=e113]':
+                  - cell "2021 — Now" [ref=e114]
+                  - cell "Coded AS" [ref=e115]:
+                    - link "Coded AS" [ref=e116] [cursor=pointer]:
+                      - /url: https://coded.no
+                  - cell "Partner" [ref=e117]
+                  - 'cell "B2B SaaS: BoatFlow & Reflow." [ref=e118]'
+                - row "2020 — Now Liseth Solutions Owner ChatFlow, Kassal.app." [ref=e119]:
+                  - cell "2020 — Now" [ref=e120]
+                  - cell "Liseth Solutions" [ref=e121]:
+                    - link "Liseth Solutions" [ref=e122] [cursor=pointer]:
+                      - /url: https://lisethsolutions.no
+                  - cell "Owner" [ref=e123]
+                  - cell "ChatFlow, Kassal.app." [ref=e124]
+                - row "2020 — 2023 Tjommi CTO Price monitoring, web scrapers, Chrome extension." [ref=e125]:
+                  - cell "2020 — 2023" [ref=e126]
+                  - cell "Tjommi" [ref=e127]:
+                    - link "Tjommi" [ref=e128] [cursor=pointer]:
+                      - /url: https://tjommi.app
+                  - cell "CTO" [ref=e129]
+                  - cell "Price monitoring, web scrapers, Chrome extension." [ref=e130]
+                - row "2019 — 2020 Guilty AS Partner & Lead Dev Flutter, Laravel, VueJS & Craft CMS." [ref=e131]:
+                  - cell "2019 — 2020" [ref=e132]
+                  - cell "Guilty AS" [ref=e133]:
+                    - link "Guilty AS" [ref=e134] [cursor=pointer]:
+                      - /url: https://guilty.no
+                  - cell "Partner & Lead Dev" [ref=e135]
+                  - cell "Flutter, Laravel, VueJS & Craft CMS." [ref=e136]
+                - row "2017 — 2019 Guilty AS Partner & System Dev Laravel, VueJS, CraftCMS." [ref=e137]:
+                  - cell "2017 — 2019" [ref=e138]
+                  - cell "Guilty AS" [ref=e139]:
+                    - link "Guilty AS" [ref=e140] [cursor=pointer]:
+                      - /url: https://guilty.no
+                  - cell "Partner & System Dev" [ref=e141]
+                  - cell "Laravel, VueJS, CraftCMS." [ref=e142]
+                - row "2016 — 2017 ProffBit Partner & System Dev Business SaaS with PHP, Laravel, VueJS." [ref=e143]:
+                  - cell "2016 — 2017" [ref=e144]
+                  - cell "ProffBit" [ref=e145]
+                  - cell "Partner & System Dev" [ref=e146]
+                  - cell "Business SaaS with PHP, Laravel, VueJS." [ref=e147]
+                - row "2016 — 2017 Experis Norge System Dev (Contract) Consultant at Guilty via Experis IT." [ref=e148]:
+                  - cell "2016 — 2017" [ref=e149]
+                  - cell "Experis Norge" [ref=e150]:
+                    - link "Experis Norge" [ref=e151] [cursor=pointer]:
+                      - /url: https://experis.no
+                  - cell "System Dev (Contract)" [ref=e152]
+                  - cell "Consultant at Guilty via Experis IT." [ref=e153]
+                - row "2015 — 2016 ABAX System Developer C#/.NET, CQRS, EventSourcing, Microservices." [ref=e154]:
+                  - cell "2015 — 2016" [ref=e155]
+                  - cell "ABAX" [ref=e156]:
+                    - link "ABAX" [ref=e157] [cursor=pointer]:
+                      - /url: https://abax.no
+                  - cell "System Developer" [ref=e158]
+                  - cell "C#/.NET, CQRS, EventSourcing, Microservices." [ref=e159]
+                - row "2014 — 2015 FrontTek AS Web Developer Joomla SaaS for construction. Acquired by ABAX." [ref=e160]:
+                  - cell "2014 — 2015" [ref=e161]
+                  - cell "FrontTek AS" [ref=e162]
+                  - cell "Web Developer" [ref=e163]
+                  - cell "Joomla SaaS for construction. Acquired by ABAX." [ref=e164]
+                - row "2012 — 2014 Elkem Bremanger IT Apprentice IT apprenticeship. Where it all began." [ref=e165]:
+                  - cell "2012 — 2014" [ref=e166]
+                  - cell "Elkem Bremanger" [ref=e167]:
+                    - link "Elkem Bremanger" [ref=e168] [cursor=pointer]:
+                      - /url: https://elkem.com
+                  - cell "IT Apprentice" [ref=e169]
+                  - cell "IT apprenticeship. Where it all began." [ref=e170]
+          - cell [ref=e171]
+          - cell [ref=e172]:
+            - generic [ref=e173]:
+              - generic [ref=e174] [cursor=pointer]:
+                - text: Profile
+                - generic [ref=e175]: ▾
+              - generic [ref=e176]:
+                - img "Helge Sverre" [ref=e178] [cursor=pointer]
+                - separator [ref=e179]
+                - text: Helge Sverre
+                - text: Hessevik Liseth
+                - text: VP of Engineering
+                - text: "@ Crescat AS"
+                - text: Bergen, Norway
+            - generic [ref=e180]:
+              - generic [ref=e181] [cursor=pointer]:
+                - text: Products
+                - generic [ref=e182]: ▾
+              - generic [ref=e183]:
+                - generic [ref=e184]:
+                  - link "Kassal.app" [ref=e185] [cursor=pointer]:
+                    - /url: https://kassal.app
+                  - generic [ref=e186]: Compare grocery prices across Norwegian stores. Track spending, scan receipts, and get price drop alerts.
+                - generic [ref=e187]:
+                  - link "ChatFlow.no" [ref=e188] [cursor=pointer]:
+                    - /url: https://chatflow.no
+                  - generic [ref=e189]: Turn your website into a knowledge base and deploy an AI chatbot for customer support. Embeds in minutes.
+                - generic [ref=e190]:
+                  - link "Reflow.no" [ref=e191] [cursor=pointer]:
+                    - /url: https://reflow.no
+                  - generic [ref=e192]: All-in-one project management, work orders, invoicing, and CRM for Norwegian businesses.
+            - generic [ref=e193]:
+              - generic [ref=e194] [cursor=pointer]:
+                - text: Latest
+                - generic [ref=e195]: HOT
+                - generic [ref=e196]: ▾
+              - generic [ref=e197]:
+                - generic [ref=e198]:
+                  - link "Glue" [ref=e199] [cursor=pointer]:
+                    - /url: https://getglue.dev
+                    - img [ref=e200]
+                    - text: Glue
+                  - generic [ref=e202]: Local-first AI agent built for deep web interaction and browser automation.
+                - generic [ref=e203]:
+                  - link "helpshell" [ref=e204] [cursor=pointer]:
+                    - /url: https://github.com/helgesverre/helpshell
+                  - generic [ref=e205]: Searchable Web UI and AI-explainer for your shell's aliases and functions.
+                - generic [ref=e206]:
+                  - link "Sema" [ref=e207] [cursor=pointer]:
+                    - /url: https://sema-lang.com
+                  - generic [ref=e208]: LLM-first Lisp in Rust
+                - generic [ref=e209]:
+                  - link "Token" [ref=e210] [cursor=pointer]:
+                    - /url: https://github.com/helgesverre/token
+                  - generic [ref=e211]: Text editor in Rust
+                - generic [ref=e212]:
+                  - link "sql-splitter" [ref=e213] [cursor=pointer]:
+                    - /url: https://github.com/helgesverre/sql-splitter
+                  - generic [ref=e214]: SQL dump splitter
+                - generic [ref=e215]:
+                  - link "dbdump" [ref=e216] [cursor=pointer]:
+                    - /url: https://github.com/helgesverre/dbdump
+                  - generic [ref=e217]: MySQL dump tool
+            - generic [ref=e218]:
+              - generic [ref=e219] [cursor=pointer]:
+                - text: Links
+                - generic [ref=e220]: ▾
+              - generic [ref=e221]:
+                - link "GitHub" [ref=e222] [cursor=pointer]:
+                  - /url: https://github.com/helgesverre
+                - link "Twitter / X" [ref=e223] [cursor=pointer]:
+                  - /url: https://twitter.com/helgesverre
+                - link "LinkedIn" [ref=e224] [cursor=pointer]:
+                  - /url: https://linkedin.com/in/helgesverre/
+                - link "helgesver.re" [ref=e225] [cursor=pointer]:
+                  - /url: https://helgesver.re
+                - link "Articles" [ref=e226] [cursor=pointer]:
+                  - /url: /articles
+            - generic [ref=e227]:
+              - generic [ref=e228] [cursor=pointer]:
+                - text: GitHub Stats
+                - generic [ref=e229]: ▾
+              - generic [ref=e230]:
+                - table [ref=e231]:
+                  - rowgroup [ref=e232]:
+                    - row "Public repos 169+" [ref=e233]:
+                      - cell "Public repos" [ref=e234]
+                      - cell "169+" [ref=e235]
+                    - row "GitHub stars 2,179" [ref=e236]:
+                      - cell "GitHub stars" [ref=e237]
+                      - cell "2,179" [ref=e238]
+                    - row "Contributions '26 8,848" [ref=e239]:
+                      - cell "Contributions '26" [ref=e240]
+                      - cell "8,848" [ref=e241]
+                    - row "Followers 258" [ref=e242]:
+                      - cell "Followers" [ref=e243]
+                      - cell "258" [ref=e244]
+                    - row "Member since 2011" [ref=e245]:
+                      - cell "Member since" [ref=e246]
+                      - cell "2011" [ref=e247]
+                - generic [ref=e248]:
+                  - text: Best viewed at 800x600
+                  - text: Made with <table> tags
+        - row "Home | About | Projects | Articles | [Random] | RSS Feed © 2012–2026 Helge Sverre. A few rights reserved." [ref=e249]:
+          - cell "Home | About | Projects | Articles | [Random] | RSS Feed © 2012–2026 Helge Sverre. A few rights reserved." [ref=e250]:
+            - table [ref=e251]:
+              - rowgroup [ref=e252]:
+                - row "Home | About | Projects | Articles | [Random] | RSS Feed © 2012–2026 Helge Sverre. A few rights reserved." [ref=e253]:
+                  - cell "Home | About | Projects | Articles | [Random] | RSS Feed" [ref=e254]:
+                    - generic [ref=e255]:
+                      - link "Home" [ref=e256] [cursor=pointer]:
+                        - /url: /
+                      - text: "|"
+                    - generic [ref=e257]:
+                      - link "About" [ref=e258] [cursor=pointer]:
+                        - /url: /about
+                      - text: "|"
+                    - generic [ref=e259]:
+                      - link "Projects" [ref=e260] [cursor=pointer]:
+                        - /url: /projects
+                      - text: "|"
+                    - link "Articles" [ref=e262] [cursor=pointer]:
+                      - /url: /articles
+                    - text: "| [Random] |"
+                    - link "RSS Feed" [ref=e263] [cursor=pointer]:
+                      - /url: /rss/feed.xml
+                      - img [ref=e264]
+                  - cell "© 2012–2026 Helge Sverre. A few rights reserved." [ref=e269]
+    - table [ref=e270]:
+      - rowgroup [ref=e271]:
+        - row "<!-- generated with nested tables and zero regrets -->" [ref=e272]:
+          - cell "<!-- generated with nested tables and zero regrets -->" [ref=e273]
+  - alert [ref=e274]

@@ -45,13 +45,26 @@ class McpSlashCommand extends SlashCommand {
         return _toggle(args.skip(1).toList());
       case 'auth':
         return _auth(args.skip(1).toList());
+      case 'help':
+      case '--help':
+      case '-h':
+        return _help();
       default:
         return 'Unknown /mcp subcommand "${args.first}". '
-            'Try `/mcp`, `/mcp list`, `/mcp tools <server>`, '
-            '`/mcp reconnect <server>`, `/mcp toggle <server>`, '
-            'or `/mcp auth login|logout|status <server>`.';
+            'Try `/mcp help`.';
     }
   }
+
+  String _help() => [
+        '/mcp                            Open the status panel.',
+        '/mcp list                       Print a text table inline.',
+        '/mcp tools <server>             List the server\'s tools.',
+        '/mcp reconnect <server>         Retry a dead/reconnecting server.',
+        '/mcp toggle <server>            Session-scoped enable/disable.',
+        '/mcp auth login <server>        Run the OAuth flow (HTTP/WS only).',
+        '/mcp auth logout <server>       Forget stored credentials.',
+        '/mcp auth status                Show credential state per server.',
+      ].join('\n');
 
   // ── tools / reconnect / toggle ─────────────────────────────────────────
 

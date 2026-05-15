@@ -15,9 +15,13 @@ import 'package:glue_strategies/src/mcp_client/protocol.dart';
 /// Wraps a single MCP tool descriptor.
 ///
 /// [bareName] is the server-side tool name (sent to `tools/call`).
-/// [name] is the namespaced surface (`<serverId>.<bareName>`) — that's
+/// [name] is the namespaced surface (`<serverId>-<bareName>`) — that's
 /// what shows up in autocomplete, permission prompts, and the agent's
 /// tool registry.
+///
+/// The separator is `-` rather than `.` because OpenAI's function-name
+/// validator only allows `^[a-zA-Z0-9_-]+$`. MCP tool names use
+/// snake_case so `-` is unambiguously the namespace boundary.
 class McpTool extends Tool {
   McpTool({
     required this.client,
@@ -33,7 +37,7 @@ class McpTool extends Tool {
   final List<ToolParameter> _parameters;
 
   @override
-  String get name => '$serverId.$bareName';
+  String get name => '$serverId-$bareName';
 
   @override
   String get description => descriptor.description;

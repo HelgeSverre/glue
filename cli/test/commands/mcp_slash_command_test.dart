@@ -149,12 +149,21 @@ void main() {
       expect(fx.panelStack, hasLength(1));
     });
 
-    test('unknown subcommand → usage hint', () {
+    test('unknown subcommand → usage hint pointing at /mcp help', () {
       final fx = _Fixture();
       final cmd = McpSlashCommand(fx.ctx);
       final result = cmd.execute(['something']);
       expect(result, contains('Unknown'));
+      expect(result, contains('/mcp help'));
+    });
+
+    test('/mcp help lists the subcommands', () {
+      final fx = _Fixture();
+      final cmd = McpSlashCommand(fx.ctx);
+      final result = cmd.execute(['help']);
       expect(result, contains('/mcp list'));
+      expect(result, contains('/mcp tools'));
+      expect(result, contains('/mcp auth'));
     });
   });
 }

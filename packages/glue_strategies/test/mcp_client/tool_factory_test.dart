@@ -123,7 +123,7 @@ void main() {
           ),
         ],
       );
-      expect(tools.map((t) => t.name), ['fs.read_file', 'fs.list_directory']);
+      expect(tools.map((t) => t.name), ['fs-read_file', 'fs-list_directory']);
       client.close();
     });
 
