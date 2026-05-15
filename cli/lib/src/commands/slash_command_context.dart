@@ -1,4 +1,5 @@
 import 'package:glue_harness/glue_harness.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/input/text_area_editor.dart';
@@ -31,6 +32,7 @@ class SlashCommandContext {
     required this.debug,
     required this.dockManager,
     required this.editor,
+    required this.mcpPool,
     required this.autoApprovedTools,
     required this.ensureSession,
     required this.backfillTitle,
@@ -81,6 +83,10 @@ class SlashCommandContext {
   /// The textarea backing the input prompt. Commands that seed the prompt
   /// (e.g., `/history` after a fork) write to this directly.
   final TextAreaEditor editor;
+
+  /// Pool of connected MCP servers. Always present (empty when no
+  /// servers configured). Used by `/mcp …` slash commands.
+  final McpClientPool mcpPool;
 
   /// Live reference to the auto-approved tool name set. Contents may be
   /// mutated by approval flows; readers see the current set on each access.

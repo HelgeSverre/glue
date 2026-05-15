@@ -8,6 +8,7 @@ import 'package:cli_completion/installer.dart';
 import 'package:cli_completion/parser.dart';
 import 'package:glue/glue.dart';
 import 'package:glue/src/acp/cli_acp_delegate.dart';
+import 'package:glue/src/commands/mcp_command.dart';
 import 'package:glue_server/glue_server.dart';
 import 'package:path/path.dart' as p;
 
@@ -96,6 +97,7 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
     addCommand(CompletionsCommand());
     addCommand(ConfigCommand());
     addCommand(DoctorCommand());
+    addCommand(McpCommand());
     addCommand(ServeCommand());
   }
 

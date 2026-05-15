@@ -1,16 +1,14 @@
-import 'package:glue_harness/glue_harness.dart';
+import 'dart:io';
+
+import 'package:glue/glue.dart';
 import 'package:glue_strategies/glue_strategies.dart';
-import 'package:glue/src/commands/slash/recap.dart';
+import 'package:glue/src/commands/slash/mcp.dart';
 import 'package:glue/src/commands/slash_command_context.dart';
-import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/conversation/entry.dart';
-import 'package:glue/src/input/text_area_editor.dart';
 import 'package:glue/src/services/approval_state.dart';
 import 'package:glue/src/services/conversation_view.dart';
 import 'package:glue/src/services/lifecycle.dart';
 import 'package:glue/src/ui/dock_manager.dart';
-import 'package:glue/src/ui/modal_surface.dart';
-import 'package:glue/src/ui/panel_modal.dart';
 import 'package:test/test.dart';
 
 class _NoopLlm implements LlmClient {
@@ -19,11 +17,11 @@ class _NoopLlm implements LlmClient {
 }
 
 class _Fixture {
-  _Fixture() {
-    final env = Environment.test(home: '/tmp', cwd: '/tmp/project');
-    environment = env;
-    session = SessionManager(environment: env);
-    skills = SkillRuntime(cwd: env.cwd, extraPathsProvider: () => const []);
+  _Fixture({McpClientPool? pool}) {
+    final tmp = Directory.systemTemp.createTempSync('mcp_slash_test_');
+    environment = Environment.test(home: tmp.path, cwd: tmp.path);
+    session = SessionManager(environment: environment);
+    skills = SkillRuntime(cwd: tmp.path, extraPathsProvider: () => const []);
     agent = AgentCore(llm: _NoopLlm(), tools: const {});
     blocks = <ConversationEntry>[];
     panelStack = <PanelOverlay>[];
@@ -40,20 +38,19 @@ class _Fixture {
       clearToolUi: () {},
       clearSubagentGroups: () => subagentGroups.clear(),
     );
-    approval = ApprovalState(
-      get: () => ApprovalMode.confirm,
-      set: (_) {},
-    );
+    approval =
+        ApprovalState(get: () => ApprovalMode.confirm, set: (_) {});
     lifecycle = Lifecycle(onExit: () {});
     panels = ModalSurface(panelStack: panelStack, render: () {});
     dockManager = DockManager();
-    mcpPool = McpClientPool(
-      config: const McpConfig(),
-      credentials: CredentialStore(
-        path: '${environment.glueDir}/credentials.json',
-        env: const {},
-      ),
-    );
+    mcpPool = pool ??
+        McpClientPool(
+          config: const McpConfig(),
+          credentials: CredentialStore(
+            path: '${environment.glueDir}/credentials.json',
+            env: const {},
+          ),
+        );
   }
 
   late final Environment environment;
@@ -71,12 +68,9 @@ class _Fixture {
   late final DockManager dockManager;
   late final McpClientPool mcpPool;
 
-  GlueConfig? config;
-  LlmClientFactory? factory;
-
   SlashCommandContext get ctx => SlashCommandContext(
-        configGetter: () => config,
-        llmFactoryGetter: () => factory,
+        configGetter: () => null,
+        llmFactoryGetter: () => null,
         agentGetter: () => agent,
         cwdGetter: () => environment.cwd,
         modelIdGetter: () => 'test/model',
@@ -101,28 +95,44 @@ class _Fixture {
 }
 
 void main() {
-  group('RecapCommand', () {
-    test('rejects extra args', () {
+  group('McpSlashCommand', () {
+    test('no servers configured → friendly empty message', () {
       final fx = _Fixture();
-      final cmd = RecapCommand(fx.ctx);
-      expect(cmd.execute(['extra']), 'Usage: /recap');
+      final cmd = McpSlashCommand(fx.ctx);
+      final result = cmd.execute(const []);
+      expect(result, contains('No MCP servers configured'));
+      expect(result, contains('mcp.servers'));
     });
 
-    test('refuses when the conversation lacks a user/assistant pair', () {
-      final fx = _Fixture();
-      final cmd = RecapCommand(fx.ctx);
-      expect(
-          cmd.execute(const []), 'Not enough conversation yet to summarize.');
+    test('lists configured servers in disconnected state', () {
+      final tmp = Directory.systemTemp.createTempSync('mcp_slash_test_');
+      final env = Environment.test(home: tmp.path, cwd: tmp.path);
+      final pool = McpClientPool(
+        config: const McpConfig(servers: [
+          McpStdioServerSpec(id: 'fs', command: 'fake'),
+          McpStdioServerSpec(id: 'db', command: 'fake', enabled: false),
+        ]),
+        credentials: CredentialStore(
+          path: '${env.glueDir}/credentials.json',
+          env: const {},
+        ),
+      );
+      final fx = _Fixture(pool: pool);
+      final cmd = McpSlashCommand(fx.ctx);
+
+      final result = cmd.execute(const []);
+      expect(result, contains('MCP servers:'));
+      expect(result, contains('fs'));
+      expect(result, contains('db'));
+      expect(result, contains('disconnected'));
     });
 
-    test('reports unavailability when no LLM factory is configured', () {
+    test('unknown subcommand → usage hint', () {
       final fx = _Fixture();
-      fx.agent.addMessage(Message.user('hello'));
-      fx.agent.addMessage(Message.assistant(text: 'hi'));
-      // No GlueConfig and no LlmClientFactory → llm resolution short-circuits.
-      final cmd = RecapCommand(fx.ctx);
-      expect(cmd.execute(const []),
-          'Recap unavailable: no model configured for summarization.');
+      final cmd = McpSlashCommand(fx.ctx);
+      final result = cmd.execute(['something']);
+      expect(result, contains('Unknown'));
+      expect(result, contains('/mcp list'));
     });
   });
 }

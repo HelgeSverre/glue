@@ -6,6 +6,7 @@ import 'package:glue/src/commands/slash/debug.dart';
 import 'package:glue/src/commands/slash/exit.dart';
 import 'package:glue/src/commands/slash/help.dart';
 import 'package:glue/src/commands/slash/history.dart';
+import 'package:glue/src/commands/slash/mcp.dart';
 import 'package:glue/src/commands/slash/model.dart';
 import 'package:glue/src/commands/slash/open.dart';
 import 'package:glue/src/commands/slash/paths.dart';
@@ -49,6 +50,7 @@ class BuiltinCommands {
         RenameCommand(ctx),
         ModelCommand(ctx),
         ProviderCommand(ctx),
+        McpSlashCommand(ctx),
       ]);
   }
 }

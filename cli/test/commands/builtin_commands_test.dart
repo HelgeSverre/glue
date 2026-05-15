@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:glue_core/glue_core.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:glue/glue.dart';
 import 'package:glue/src/commands/slash_command_context.dart';
 import 'package:glue/src/conversation/entry.dart';
@@ -119,6 +120,13 @@ class _CommandTestFixture {
     lifecycle = Lifecycle(onExit: () => exitCalls++);
     panels = ModalSurface(panelStack: panelStack, render: () {});
     dockManager = DockManager();
+    mcpPool = McpClientPool(
+      config: const McpConfig(),
+      credentials: CredentialStore(
+        path: '${this.environment.glueDir}/credentials.json',
+        env: const {},
+      ),
+    );
   }
 
   final Environment environment;
@@ -134,6 +142,7 @@ class _CommandTestFixture {
   late final Lifecycle lifecycle;
   late final ModalSurface panels;
   late final DockManager dockManager;
+  late final McpClientPool mcpPool;
   String streamingText = '';
   int renderCalls = 0;
   int clearScreenCalls = 0;
@@ -158,6 +167,7 @@ class _CommandTestFixture {
         debug: null,
         dockManager: dockManager,
         editor: editor,
+        mcpPool: mcpPool,
         autoApprovedTools: const <String>{},
         ensureSession: () {},
         backfillTitle: (_) {},

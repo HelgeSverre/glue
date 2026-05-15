@@ -188,6 +188,7 @@ class App {
     ...ToolPermissions.defaultTrustedTools,
   };
   final AgentManager? _manager;
+  final McpClientPool _mcpPool;
   final LlmClientFactory? _llmFactory;
   GlueConfig? _config;
   final String? _systemPrompt;
@@ -231,6 +232,7 @@ class App {
     required this.agent,
     required String modelId,
     AgentManager? manager,
+    McpClientPool? mcpPool,
     LlmClientFactory? llmFactory,
     GlueConfig? config,
     String? systemPrompt,
@@ -250,6 +252,12 @@ class App {
   })  : _modelId = modelId,
         _environment = environment ?? Environment.detect(),
         _manager = manager,
+        _mcpPool = mcpPool ??
+            McpClientPool(
+              config: const McpConfig(),
+              credentials: config?.credentials ??
+                  CredentialStore(path: '/dev/null', env: const {}),
+            ),
         _llmFactory = llmFactory,
         _config = config,
         _systemPrompt = systemPrompt,
@@ -332,6 +340,7 @@ class App {
       agent: services.agent,
       modelId: services.config.activeModel.modelId,
       manager: services.manager,
+      mcpPool: services.mcpPool,
       llmFactory: services.llmFactory,
       config: services.config,
       systemPrompt: services.systemPrompt,
@@ -511,6 +520,7 @@ class App {
       debug: _debugController,
       dockManager: _dockManager,
       editor: editor,
+      mcpPool: _mcpPool,
       autoApprovedTools: _autoApprovedTools,
       ensureSession: _ensureSessionStore,
       backfillTitle: _generateTitle,

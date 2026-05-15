@@ -193,6 +193,51 @@ class ServiceLocator {
     tools['spawn_subagent'] = SpawnSubagentTool(manager);
     tools['spawn_parallel_subagents'] = SpawnParallelSubagentsTool(manager);
 
+    // MCP pool — eager non-blocking connect. As each server completes
+    // its handshake the pool emits a connected event; we mutate the
+    // agent's tools map so subsequent turns see the new entries.
+    // Native names are reserved (the snapshot is taken now, before the
+    // pool subscribes, so MCP tools never overwrite a built-in).
+    final reservedNames = tools.keys.toSet();
+    final mcpPool = McpClientPool(
+      config: config.mcp,
+      credentials: config.credentials,
+      reservedToolNames: reservedNames,
+    );
+    mcpPool.events.listen((event) {
+      switch (event) {
+        case McpPoolServerConnectedEvent(:final serverId):
+          final server = mcpPool.server(serverId);
+          if (server == null) return;
+          for (final tool in server.tools) {
+            tools[tool.name] = tool;
+          }
+        case McpPoolServerDisconnectedEvent(:final serverId):
+          tools.removeWhere(
+            (_, t) => t is McpTool && t.serverId == serverId,
+          );
+        case McpPoolToolListChangedEvent(:final serverId):
+          final server = mcpPool.server(serverId);
+          tools.removeWhere(
+            (_, t) => t is McpTool && t.serverId == serverId,
+          );
+          if (server != null) {
+            for (final tool in server.tools) {
+              tools[tool.name] = tool;
+            }
+          }
+        case McpPoolServerErrorEvent():
+        case McpPoolServerAuthRequiredEvent():
+          // Surface concerns — App listens to the same stream to render
+          // system messages. The harness side just keeps the tools map
+          // honest.
+          break;
+      }
+    });
+    if (config.mcp.hasAnyServer) {
+      mcpPool.connectAll();
+    }
+
     return AppServices(
       environment: resolvedEnv,
       config: config,
@@ -206,6 +251,7 @@ class ServiceLocator {
       obs: obs,
       debugController: debugController,
       skillRuntime: skillRuntime,
+      mcpPool: mcpPool,
     );
   }
 }
@@ -234,6 +280,11 @@ class AppServices {
   final DebugController debugController;
   final SkillRuntime skillRuntime;
 
+  /// Pool of connected MCP servers. Always present (empty when no
+  /// servers are configured). App subscribes to [McpClientPool.events]
+  /// for status messages; commands call into it for `/mcp list` etc.
+  final McpClientPool mcpPool;
+
   const AppServices({
     required this.environment,
     required this.config,
@@ -248,5 +299,6 @@ class AppServices {
     required this.obs,
     required this.debugController,
     required this.skillRuntime,
+    required this.mcpPool,
   });
 }

@@ -1,182 +1,35 @@
-/// Typed configuration for MCP (Model Context Protocol) servers.
+/// YAML→config parser for MCP servers.
 ///
-/// Parsed from the `mcp:` section of `~/.glue/config.yaml`. Env-var
-/// interpolation (`${VAR}`) happens at load — missing vars fail loudly
-/// with the offending server name and var name, so users don't find out
-/// at session start.
-///
-/// See `docs/plans/2026-04-29-mcp-client.md` for the wire-config shape.
+/// The typed config classes themselves live in
+/// `glue_strategies/src/mcp_client/config.dart` so the pool (in
+/// strategies) can consume them without crossing the layer boundary.
+/// This file is the harness-side adapter: YAML + ConfigError +
+/// env-var expansion.
 library;
 
 import 'package:glue_harness/src/config/glue_config.dart' show ConfigError;
+import 'package:glue_strategies/glue_strategies.dart';
 
-/// Where the server lives and how to talk to it.
-sealed class McpServerSpec {
-  const McpServerSpec({
-    required this.id,
-    this.enabled = true,
-    this.callTimeoutSeconds,
-  });
-
-  /// User-chosen local id (the YAML key). Used for namespacing tools
-  /// (`<id>.<tool>`) and as the credential-store namespace.
-  final String id;
-
-  /// `false` parks the server without removing it from config.
-  final bool enabled;
-
-  /// Per-server override of [McpConfig.callTimeoutSeconds].
-  final int? callTimeoutSeconds;
-}
-
-class McpStdioServerSpec extends McpServerSpec {
-  const McpStdioServerSpec({
-    required super.id,
-    required this.command,
-    this.args = const [],
-    this.env = const {},
-    this.workingDirectory,
-    super.enabled,
-    super.callTimeoutSeconds,
-  });
-
-  final String command;
-  final List<String> args;
-
-  /// Server-config env keys (after `${VAR}` expansion) added to the
-  /// scrubbed child environment.
-  final Map<String, String> env;
-
-  final String? workingDirectory;
-}
-
-class McpHttpServerSpec extends McpServerSpec {
-  const McpHttpServerSpec({
-    required super.id,
-    required this.url,
-    this.auth = const McpNoAuth(),
-    super.enabled,
-    super.callTimeoutSeconds,
-  });
-
-  final Uri url;
-  final McpAuthSpec auth;
-}
-
-class McpWebSocketServerSpec extends McpServerSpec {
-  const McpWebSocketServerSpec({
-    required super.id,
-    required this.url,
-    this.auth = const McpNoAuth(),
-    super.enabled,
-    super.callTimeoutSeconds,
-  });
-
-  final Uri url;
-  final McpAuthSpec auth;
-}
-
-// ─── Auth ──────────────────────────────────────────────────────────────────
-
-sealed class McpAuthSpec {
-  const McpAuthSpec();
-}
-
-/// No auth header. Stdio servers default to this; HTTP servers can opt in.
-class McpNoAuth extends McpAuthSpec {
-  const McpNoAuth();
-}
-
-/// Bearer token. [token] is `null` when the value comes from the
-/// credential store at session start (`mcp:<id>:bearer`). When non-null
-/// it's the literal token (post env-var expansion).
-class McpBearerAuth extends McpAuthSpec {
-  const McpBearerAuth({this.token});
-  final String? token;
-}
-
-/// OAuth 2.1 with PKCE + DCR. Credentials live in the credential store
-/// under `mcp:<id>:oauth.*` — config carries no secrets.
-class McpOAuthAuth extends McpAuthSpec {
-  const McpOAuthAuth();
-}
-
-// ─── Tool policy ───────────────────────────────────────────────────────────
-
-class McpToolPolicy {
-  const McpToolPolicy({
-    this.autoApprove = const [],
-    this.deny = const [],
-  });
-
-  /// Namespaced names or glob patterns (`*.read_file`).
-  final List<String> autoApprove;
-
-  /// Namespaced names or glob patterns (`*.delete_file`).
-  final List<String> deny;
-
-  /// Returns `true` if [namespacedName] matches any [autoApprove] pattern.
-  bool isAutoApproved(String namespacedName) =>
-      autoApprove.any((p) => _globMatch(p, namespacedName));
-
-  /// Returns `true` if [namespacedName] matches any [deny] pattern.
-  bool isDenied(String namespacedName) =>
-      deny.any((p) => _globMatch(p, namespacedName));
-}
-
-// ─── Reconnect policy ──────────────────────────────────────────────────────
-
-class McpReconnectPolicy {
-  const McpReconnectPolicy({
-    this.enabled = true,
-    this.initialDelayMs = 500,
-    this.maxDelayMs = 30000,
-    this.maxAttempts = 10,
-  });
-
-  final bool enabled;
-  final int initialDelayMs;
-  final int maxDelayMs;
-  final int maxAttempts;
-}
-
-// ─── Top-level config ──────────────────────────────────────────────────────
-
-class McpConfig {
-  const McpConfig({
-    this.servers = const [],
-    this.toolPolicy = const McpToolPolicy(),
-    this.reconnect = const McpReconnectPolicy(),
-    this.callTimeoutSeconds = 30,
-    this.subprocessEnv = McpSubprocessEnvMode.allowlist,
-  });
-
-  /// All configured servers, in YAML order.
-  final List<McpServerSpec> servers;
-
-  final McpToolPolicy toolPolicy;
-  final McpReconnectPolicy reconnect;
-
-  /// Default per-call timeout. May be overridden per server.
-  final int callTimeoutSeconds;
-
-  /// `allowlist` (default) scrubs the parent env for stdio subprocesses;
-  /// `full` inherits everything (matches Claude Desktop's behaviour).
-  final McpSubprocessEnvMode subprocessEnv;
-
-  bool get hasAnyServer => servers.isNotEmpty;
-}
-
-enum McpSubprocessEnvMode { allowlist, full }
-
-// ─── Parser ────────────────────────────────────────────────────────────────
+export 'package:glue_strategies/glue_strategies.dart'
+    show
+        McpAuthSpec,
+        McpBearerAuth,
+        McpConfig,
+        McpHttpServerSpec,
+        McpNoAuth,
+        McpOAuthAuth,
+        McpReconnectPolicy,
+        McpServerSpec,
+        McpStdioServerSpec,
+        McpSubprocessEnvMode,
+        McpToolPolicy,
+        McpWebSocketServerSpec;
 
 /// Parses the `mcp:` section of a YAML config map. Returns the default
 /// (empty) [McpConfig] when [section] is null.
 ///
 /// Throws [ConfigError] for malformed shapes or unresolved `${VAR}`
-/// interpolations. The error message names the offending server and key
-/// so the user can fix it without digging.
+/// interpolations. The error message names the offending server and key.
 McpConfig parseMcpConfig(Object? section, Map<String, String> env) {
   if (section == null) return const McpConfig();
   if (section is! Map) {
@@ -204,17 +57,12 @@ McpConfig parseMcpConfig(Object? section, Map<String, String> env) {
     }
   }
 
-  final toolPolicy = _parseToolPolicy(root['tool_policy']);
-  final reconnect = _parseReconnect(root['reconnect']);
-  final callTimeoutSeconds = (root['call_timeout_seconds'] as int?) ?? 30;
-  final subprocessEnv = _parseEnvMode(root['subprocess_env']);
-
   return McpConfig(
     servers: servers,
-    toolPolicy: toolPolicy,
-    reconnect: reconnect,
-    callTimeoutSeconds: callTimeoutSeconds,
-    subprocessEnv: subprocessEnv,
+    toolPolicy: _parseToolPolicy(root['tool_policy']),
+    reconnect: _parseReconnect(root['reconnect']),
+    callTimeoutSeconds: (root['call_timeout_seconds'] as int?) ?? 30,
+    subprocessEnv: _parseEnvMode(root['subprocess_env']),
   );
 }
 
@@ -266,7 +114,8 @@ McpServerSpec _parseServer(
     final parsed = Uri.tryParse(expandedUrl);
     if (parsed == null) {
       throw ConfigError(
-          '`mcp.servers.$id.url` is not a valid URI: "$expandedUrl".');
+        '`mcp.servers.$id.url` is not a valid URI: "$expandedUrl".',
+      );
     }
     final isWebSocket = parsed.scheme == 'ws' || parsed.scheme == 'wss';
     if (isWebSocket) {
@@ -306,7 +155,8 @@ McpAuthSpec _parseAuth(
     case 'bearer':
       final rawToken = raw['token'] as String?;
       final token = rawToken != null
-          ? _expandEnvVars(rawToken, env, server: serverId, field: 'auth.token')
+          ? _expandEnvVars(rawToken, env,
+              server: serverId, field: 'auth.token')
           : null;
       return McpBearerAuth(token: token);
     case 'oauth':
@@ -327,10 +177,11 @@ McpToolPolicy _parseToolPolicy(Object? raw) {
   if (raw is! Map) {
     throw ConfigError('`mcp.tool_policy` must be a mapping.');
   }
-  final auto =
-      (raw['auto_approve'] as List?)?.cast<String>() ?? const <String>[];
-  final deny = (raw['deny'] as List?)?.cast<String>() ?? const <String>[];
-  return McpToolPolicy(autoApprove: auto, deny: deny);
+  return McpToolPolicy(
+    autoApprove:
+        (raw['auto_approve'] as List?)?.cast<String>() ?? const <String>[],
+    deny: (raw['deny'] as List?)?.cast<String>() ?? const <String>[],
+  );
 }
 
 McpReconnectPolicy _parseReconnect(Object? raw) {
@@ -362,12 +213,6 @@ McpSubprocessEnvMode _parseEnvMode(Object? raw) {
 
 final _envVarPattern = RegExp(r'\$\{([A-Za-z_][A-Za-z0-9_]*)\}');
 
-/// Expands `${VAR}` references in [input] against [env]. Empty strings
-/// are treated as missing (matches the design doc's intent — if you
-/// `unset VAR` the resolution should be the same as never setting it).
-///
-/// Unresolved vars fail loudly with the server id + field name so users
-/// don't discover the problem at session start.
 String _expandEnvVars(
   String input,
   Map<String, String> env, {
@@ -385,45 +230,4 @@ String _expandEnvVars(
     }
     return value;
   });
-}
-
-// ─── glob matcher ──────────────────────────────────────────────────────────
-
-/// Minimal glob matcher: `*` matches any sequence (including empty),
-/// `?` matches one character. Used for `tool_policy.auto_approve` /
-/// `deny` patterns.
-bool _globMatch(String pattern, String value) {
-  // Quick paths.
-  if (pattern == value) return true;
-  if (pattern == '*') return true;
-
-  // Convert glob to RegExp.
-  final buf = StringBuffer('^');
-  for (final ch in pattern.runes) {
-    final c = String.fromCharCode(ch);
-    switch (c) {
-      case '*':
-        buf.write('.*');
-      case '?':
-        buf.write('.');
-      // RegExp metacharacters that need escaping.
-      case '.':
-      case '\\':
-      case '+':
-      case '(':
-      case ')':
-      case '[':
-      case ']':
-      case '{':
-      case '}':
-      case '^':
-      case r'$':
-      case '|':
-        buf.write('\\$c');
-      default:
-        buf.write(c);
-    }
-  }
-  buf.write(r'$');
-  return RegExp(buf.toString()).hasMatch(value);
 }
