@@ -55,7 +55,7 @@ class DeviceCodePanel implements PanelOverlay {
 
   /// Called when the panel's render state has changed outside the normal
   /// event-driven render cycle (async clipboard completion, stream events).
-  /// Supplied by [PanelController] so the frame refreshes without a keypress.
+  /// Supplied by [ModalSurface] so the frame refreshes without a keypress.
   final void Function()? onNeedsRender;
 
   final PanelSize _width;

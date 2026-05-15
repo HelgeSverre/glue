@@ -3,6 +3,7 @@ import 'package:glue_harness/glue_harness.dart';
 import 'package:glue/src/commands/slash_command_context.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/extensions/time_ago.dart';
+import 'package:glue/src/extensions/token_format.dart';
 import 'package:glue/src/terminal/styled.dart';
 import 'package:glue/src/ui/panel_modal.dart';
 import 'package:glue/src/ui/responsive_table.dart';
@@ -99,7 +100,7 @@ class ResumeCommand extends SlashCommand {
     panel.selection.then((session) {
       ctx.panels.dismiss(panel);
       if (session == null) return;
-      final result = ctx.resumeFromMeta(session);
+      final result = _resume(session);
       if (result.isNotEmpty) ctx.conversation.notify(result);
     });
   }
@@ -112,7 +113,7 @@ class ResumeCommand extends SlashCommand {
     if (sessions.isEmpty) return 'No saved sessions found.';
 
     final exactId = sessions.where((s) => s.id.value == normalized).toList();
-    if (exactId.length == 1) return ctx.resumeFromMeta(exactId.first);
+    if (exactId.length == 1) return _resume(exactId.first);
 
     final needle = normalized.toLowerCase();
     final matches = sessions.where((s) {
@@ -139,6 +140,59 @@ class ResumeCommand extends SlashCommand {
           'Use a more specific session ID.';
     }
 
-    return ctx.resumeFromMeta(matches.first);
+    return _resume(matches.first);
+  }
+
+  /// Resume [meta] into the live app. Composes session-state mutation,
+  /// transcript reset, replay, and optional title backfill via [ctx]
+  /// primitives. Returns the user-visible result message.
+  String _resume(SessionMeta meta) {
+    final result = ctx.session.resumeSession(session: meta, agent: ctx.agent);
+    ctx.conversation.resetForReplay();
+    ctx.session
+      ..titleInitialRequested = meta.title != null
+      ..titleReevaluationRequested =
+          meta.titleState == SessionTitleState.stable ||
+              meta.titleGenerationCount >= 2
+      ..titleManuallyOverridden = meta.titleSource == SessionTitleSource.user;
+
+    ctx.conversation.notify(
+      'Resuming session ${meta.id} '
+      '(${meta.modelRef}, ${meta.startTime.timeAgo})',
+    );
+
+    if (!result.hasConversation) {
+      return 'Session ${meta.id} has no conversation data.';
+    }
+
+    // Carry-over summary surfaces cost continuity instead of pretending the
+    // counter restarts at zero. Skipped on Ollama / pre-recordUsage sessions
+    // where no usage rows were ever persisted.
+    final usage = result.replay.totalUsage;
+    if (usage.totalCalls > 0) {
+      final summary = StringBuffer(
+          'Carry-over: ${formatCompactTokens(usage.totalTokens)} tokens '
+          'over ${usage.totalCalls} call${usage.totalCalls == 1 ? '' : 's'}');
+      final hit = usage.cacheHitRate;
+      if (hit != null &&
+          (usage.totalCacheRead > 0 || usage.totalCacheWrite > 0)) {
+        summary.write(' · ${(hit * 100).toStringAsFixed(0)}% cached');
+      }
+      summary.write('. Run /usage for the per-role breakdown.');
+      ctx.conversation.notify(summary.toString());
+    }
+
+    ctx.conversation.appendReplayEntries(result.replay.entries);
+
+    final firstUserMessage = result.replay.firstUserMessage;
+    if (!ctx.session.titleInitialRequested &&
+        !ctx.session.titleManuallyOverridden &&
+        firstUserMessage != null &&
+        firstUserMessage.isNotEmpty) {
+      ctx.session.titleInitialRequested = true;
+      ctx.backfillTitle(firstUserMessage);
+    }
+
+    return result.message;
   }
 }

@@ -3,11 +3,12 @@ import 'package:glue/src/commands/slash/recap.dart';
 import 'package:glue/src/commands/slash_command_context.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/conversation/entry.dart';
+import 'package:glue/src/input/text_area_editor.dart';
 import 'package:glue/src/services/approval_state.dart';
 import 'package:glue/src/services/conversation_view.dart';
 import 'package:glue/src/services/lifecycle.dart';
 import 'package:glue/src/ui/dock_manager.dart';
-import 'package:glue/src/ui/panel_controller.dart';
+import 'package:glue/src/ui/modal_surface.dart';
 import 'package:glue/src/ui/panel_modal.dart';
 import 'package:test/test.dart';
 
@@ -25,20 +26,25 @@ class _Fixture {
     agent = AgentCore(llm: _NoopLlm(), tools: const {});
     blocks = <ConversationEntry>[];
     panelStack = <PanelOverlay>[];
+    subagentGroups = <String, SubagentGroup>{};
+    editor = TextAreaEditor();
     conversation = ConversationView(
       blocks: blocks,
+      subagentGroups: subagentGroups,
       streamingTextGetter: () => '',
       render: () {},
       resetStreamingText: () {},
       clearScreen: () {},
       resetScrollOffset: () {},
+      clearToolUi: () {},
+      clearSubagentGroups: () => subagentGroups.clear(),
     );
     approval = ApprovalState(
       get: () => ApprovalMode.confirm,
       set: (_) {},
     );
     lifecycle = Lifecycle(onExit: () {});
-    panels = PanelController(panelStack: panelStack, render: () {});
+    panels = ModalSurface(panelStack: panelStack, render: () {});
     dockManager = DockManager();
   }
 
@@ -48,10 +54,12 @@ class _Fixture {
   late final AgentCore agent;
   late final List<ConversationEntry> blocks;
   late final List<PanelOverlay> panelStack;
+  late final Map<String, SubagentGroup> subagentGroups;
+  late final TextAreaEditor editor;
   late final ConversationView conversation;
   late final ApprovalState approval;
   late final Lifecycle lifecycle;
-  late final PanelController panels;
+  late final ModalSurface panels;
   late final DockManager dockManager;
 
   GlueConfig? config;
@@ -69,10 +77,10 @@ class _Fixture {
         skills: skills,
         debug: null,
         dockManager: dockManager,
+        editor: editor,
         autoApprovedTools: const <String>{},
         ensureSession: () {},
-        resumeFromMeta: (_) => '',
-        forkSession: (_, __) {},
+        backfillTitle: (_) {},
         switchModel: (_) => '',
         conversation: conversation,
         approval: approval,

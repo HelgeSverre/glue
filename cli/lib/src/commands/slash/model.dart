@@ -127,8 +127,7 @@ class ModelCommand extends SlashCommand {
     final outcome = resolveModelInput(query, config.catalogData);
     switch (outcome) {
       case ResolvedExact():
-        final provider =
-            config.catalogData.providers[outcome.ref.providerId]!;
+        final provider = config.catalogData.providers[outcome.ref.providerId]!;
         return ctx.switchModel((
           providerId: provider.id,
           providerName: provider.name,
@@ -140,8 +139,7 @@ class ModelCommand extends SlashCommand {
           return 'Unknown provider "${outcome.ref.providerId}". '
               'Run `/model` to pick a model.';
         }
-        final provider =
-            config.catalogData.providers[outcome.ref.providerId]!;
+        final provider = config.catalogData.providers[outcome.ref.providerId]!;
         final synthetic = ModelDef(
           id: outcome.ref.modelId,
           name: outcome.ref.modelId,

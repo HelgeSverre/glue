@@ -1,12 +1,13 @@
 import 'package:glue_harness/glue_harness.dart';
 
 import 'package:glue/src/commands/slash_commands.dart';
+import 'package:glue/src/input/text_area_editor.dart';
 import 'package:glue/src/services/approval_state.dart';
 import 'package:glue/src/services/conversation_view.dart';
 import 'package:glue/src/services/lifecycle.dart';
 import 'package:glue/src/ui/dock_manager.dart';
 import 'package:glue/src/ui/model_panel_formatter.dart' show CatalogRow;
-import 'package:glue/src/ui/panel_controller.dart';
+import 'package:glue/src/ui/modal_surface.dart';
 
 /// Single dependency surface every slash command receives.
 ///
@@ -29,10 +30,10 @@ class SlashCommandContext {
     required this.skills,
     required this.debug,
     required this.dockManager,
+    required this.editor,
     required this.autoApprovedTools,
     required this.ensureSession,
-    required this.resumeFromMeta,
-    required this.forkSession,
+    required this.backfillTitle,
     required this.switchModel,
     // Services
     required this.conversation,
@@ -77,6 +78,10 @@ class SlashCommandContext {
   final DebugController? debug;
   final DockManager dockManager;
 
+  /// The textarea backing the input prompt. Commands that seed the prompt
+  /// (e.g., `/history` after a fork) write to this directly.
+  final TextAreaEditor editor;
+
   /// Live reference to the auto-approved tool name set. Contents may be
   /// mutated by approval flows; readers see the current set on each access.
   final Set<String> autoApprovedTools;
@@ -86,23 +91,10 @@ class SlashCommandContext {
   /// touching `session.logEvent` / `session.currentStore`.
   final void Function() ensureSession;
 
-  /// Resumes a saved session into the running app. Backed by App-internal
-  /// orchestration that clears UI state, replays the transcript, and
-  /// triggers title backfill. Returns the user-visible result message.
-  ///
-  /// This is a temporary seam: the session-mutation half lives on
-  /// `SessionManager.resumeSession` already; once `ConversationView`
-  /// grows `resetForReplay()` and `appendReplayEntries()`, the App-side
-  /// part can be inlined into the resume command itself and this callback
-  /// removed.
-  final String Function(SessionMeta) resumeFromMeta;
-
-  /// Forks the current session at the user message at [userMessageIndex].
-  /// Backed by App-internal orchestration that clears the transcript,
-  /// replays up to the fork point, and seeds the editor with [messageText].
-  ///
-  /// Same temporary-seam status as [resumeFromMeta].
-  final void Function(int userMessageIndex, String messageText) forkSession;
+  /// Asynchronously generate a title for the current session given an early
+  /// user message. Used by `/resume` to backfill titles for sessions that
+  /// were saved before titling existed.
+  final void Function(String firstUserMessage) backfillTitle;
 
   /// Apply a model switch: handles the Ollama pull-confirm flow (interactive
   /// `ConfirmModal`) when needed and otherwise mutates `agent.llm`,
@@ -110,7 +102,9 @@ class SlashCommandContext {
   /// model on the session store. Returns an inline result message for
   /// synchronous switches; returns `''` when an async confirm is pending.
   ///
-  /// Same temporary-seam status as [resumeFromMeta] / [forkSession].
+  /// Temporary seam: the Ollama confirm flow couples to App-mode state
+  /// (`_mode = AppMode.confirming`, `_activeModal`). Decomposing it requires
+  /// a larger design pass — left as a callback for now.
   final String Function(CatalogRow row) switchModel;
 
   final ConversationView conversation;
@@ -119,9 +113,8 @@ class SlashCommandContext {
 
   /// The existing TUI panel host. Today this still carries domain-specific
   /// openers (`openHelp`, `openModel`, etc.). Long-term plan is to slim it
-  /// down to generic primitives and move panel-assembly into commands; see
-  /// `~/.claude/plans/investigate-how-recap-feature-radiant-snowglobe.md`.
-  final PanelController panels;
+  /// down to generic primitives and move panel-assembly into commands.
+  final ModalSurface panels;
 
   final GlueConfig? Function() _config;
   final LlmClientFactory? Function() _llmFactory;

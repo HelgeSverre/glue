@@ -3,8 +3,8 @@ import 'package:glue/src/ui/panel_modal.dart';
 /// Thin host for the modal/panel stack. Commands push and dismiss panels
 /// directly; domain-specific picker/action assembly lives in the command
 /// classes themselves.
-class PanelController {
-  PanelController({
+class ModalSurface {
+  ModalSurface({
     required List<PanelOverlay> panelStack,
     required void Function() render,
   })  : _panelStack = panelStack,

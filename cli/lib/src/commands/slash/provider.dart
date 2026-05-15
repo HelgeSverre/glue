@@ -178,8 +178,7 @@ class ProviderCommand extends SlashCommand {
         adapter != null && adapter.isConnected(provider, config.credentials);
     final isLocal = provider.auth.kind == AuthKind.none;
 
-    final actions =
-        _providerActionsFor(connected: connected, isLocal: isLocal);
+    final actions = _providerActionsFor(connected: connected, isLocal: isLocal);
     final lines = actions.map((a) => a.label).toList();
 
     final actionPanel = PanelModal(
@@ -213,8 +212,7 @@ class ProviderCommand extends SlashCommand {
           }
         case _ProviderAction.test:
           if (adapter == null) {
-            ctx.conversation
-                .notify('No adapter for "${provider.adapter}".');
+            ctx.conversation.notify('No adapter for "${provider.adapter}".');
             return;
           }
           if (isLocal) {
@@ -307,8 +305,7 @@ class ProviderCommand extends SlashCommand {
       store: config.credentials,
     );
     if (flow == null) {
-      ctx.conversation
-          .notify('${provider.name} needs no interactive setup.');
+      ctx.conversation.notify('${provider.name} needs no interactive setup.');
       return;
     }
 
@@ -359,7 +356,8 @@ class ProviderCommand extends SlashCommand {
     ProviderDef provider,
     DeviceCodeFlow flow,
   ) async {
-    final panel = DeviceCodePanel(flow: flow, onNeedsRender: ctx.conversation.render);
+    final panel =
+        DeviceCodePanel(flow: flow, onNeedsRender: ctx.conversation.render);
     ctx.panels.push(panel);
     final fields = await panel.result;
     ctx.panels.dismiss(panel);

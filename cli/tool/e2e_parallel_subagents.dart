@@ -23,8 +23,7 @@ const _ollamaUrl = 'http://localhost:11434';
 
 void main() async {
   final tmpRoot = Directory.systemTemp.createTempSync('glue-parallel-e2e-');
-  final fixturesDir = Directory(p.join(tmpRoot.path, 'fixtures'))
-    ..createSync();
+  final fixturesDir = Directory(p.join(tmpRoot.path, 'fixtures'))..createSync();
   for (final colour in ['red', 'green', 'blue']) {
     final dir = Directory(p.join(fixturesDir.path, colour))..createSync();
     File(p.join(dir.path, 'note.txt')).writeAsStringSync('$colour content\n');
@@ -83,8 +82,7 @@ void main() async {
   final lines = File(jsonlPath).readAsLinesSync();
   final events = [
     for (final line in lines)
-      if (line.trim().isNotEmpty)
-        jsonDecode(line) as Map<String, dynamic>,
+      if (line.trim().isNotEmpty) jsonDecode(line) as Map<String, dynamic>,
   ];
 
   final spawned = events.where((e) => e['type'] == 'subagent_spawned').toList();

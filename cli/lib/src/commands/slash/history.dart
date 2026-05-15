@@ -129,7 +129,7 @@ class HistoryCommand extends SlashCommand {
       if (idx == null) return;
       switch (idx) {
         case 0:
-          ctx.forkSession(entry.userMessageIndex, entry.text);
+          _fork(entry.userMessageIndex, entry.text);
         case 1:
           copyToClipboard(entry.text).then((ok) {
             ctx.conversation.notify(
@@ -140,6 +140,19 @@ class HistoryCommand extends SlashCommand {
           });
       }
     });
+  }
+
+  void _fork(int userMessageIndex, String messageText) {
+    final result = ctx.session.forkSession(
+      userMessageIndex: userMessageIndex,
+      messageText: messageText,
+      agent: ctx.agent,
+    );
+    if (result == null) return;
+    ctx.conversation.resetForReplay();
+    ctx.conversation.notify(result.message);
+    ctx.conversation.appendReplayEntries(result.replay.entries);
+    ctx.editor.setText(result.draftText);
   }
 
   String _resolveByQuery(String query, List<_HistoryEntry> entries) {
@@ -154,7 +167,7 @@ class HistoryCommand extends SlashCommand {
         return 'History index out of range: $numeric (1-${entries.length}).';
       }
       final entry = entries[position];
-      ctx.forkSession(entry.userMessageIndex, entry.text);
+      _fork(entry.userMessageIndex, entry.text);
       return '';
     }
 
@@ -190,7 +203,7 @@ class HistoryCommand extends SlashCommand {
     }
 
     final entry = matches.first;
-    ctx.forkSession(entry.userMessageIndex, entry.text);
+    _fork(entry.userMessageIndex, entry.text);
     return '';
   }
 }

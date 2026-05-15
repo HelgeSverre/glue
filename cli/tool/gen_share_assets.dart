@@ -17,8 +17,7 @@ import 'dart:io';
 
 const _templatePath =
     '../packages/glue_harness/lib/src/share/html/share_page_template.html';
-const _cssPath =
-    '../packages/glue_harness/lib/src/share/html/share_page.css';
+const _cssPath = '../packages/glue_harness/lib/src/share/html/share_page.css';
 const _outPath =
     '../packages/glue_harness/lib/src/share/html/share_assets_generated.dart';
 

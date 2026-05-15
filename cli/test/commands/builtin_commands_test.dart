@@ -99,20 +99,25 @@ class _CommandTestFixture {
         agent = agent ?? AgentCore(llm: _NoopLlm(), tools: const {}) {
     blocks = <ConversationEntry>[];
     panelStack = <PanelOverlay>[];
+    subagentGroups = <String, SubagentGroup>{};
+    editor = TextAreaEditor();
     conversation = ConversationView(
       blocks: blocks,
+      subagentGroups: subagentGroups,
       streamingTextGetter: () => streamingText,
       render: () => renderCalls++,
       resetStreamingText: () => streamingText = '',
       clearScreen: () => clearScreenCalls++,
       resetScrollOffset: () {},
+      clearToolUi: () {},
+      clearSubagentGroups: () => subagentGroups.clear(),
     );
     approval = ApprovalState(
       get: () => approvalMode,
       set: (m) => approvalMode = m,
     );
     lifecycle = Lifecycle(onExit: () => exitCalls++);
-    panels = PanelController(panelStack: panelStack, render: () {});
+    panels = ModalSurface(panelStack: panelStack, render: () {});
     dockManager = DockManager();
   }
 
@@ -122,10 +127,12 @@ class _CommandTestFixture {
   final AgentCore agent;
   late final List<ConversationEntry> blocks;
   late final List<PanelOverlay> panelStack;
+  late final Map<String, SubagentGroup> subagentGroups;
+  late final TextAreaEditor editor;
   late final ConversationView conversation;
   late final ApprovalState approval;
   late final Lifecycle lifecycle;
-  late final PanelController panels;
+  late final ModalSurface panels;
   late final DockManager dockManager;
   String streamingText = '';
   int renderCalls = 0;
@@ -150,10 +157,10 @@ class _CommandTestFixture {
         skills: skills,
         debug: null,
         dockManager: dockManager,
+        editor: editor,
         autoApprovedTools: const <String>{},
         ensureSession: () {},
-        resumeFromMeta: (_) => '',
-        forkSession: (_, __) {},
+        backfillTitle: (_) {},
         switchModel: (_) => '',
         conversation: conversation,
         approval: approval,
@@ -207,9 +214,7 @@ void main() {
       final result = registry.execute('/history');
       expect(result, '');
       expect(
-        fx.blocks
-            .where((e) => e.kind == EntryKind.system)
-            .map((e) => e.text),
+        fx.blocks.where((e) => e.kind == EntryKind.system).map((e) => e.text),
         contains('No conversation history.'),
       );
     });
@@ -226,9 +231,7 @@ void main() {
       final result = registry.execute('/resume');
       expect(result, '');
       expect(
-        fx.blocks
-            .where((e) => e.kind == EntryKind.system)
-            .map((e) => e.text),
+        fx.blocks.where((e) => e.kind == EntryKind.system).map((e) => e.text),
         contains('No saved sessions found.'),
       );
     });
