@@ -125,7 +125,7 @@ Every feature carries a status —
 <h3>MCP integration</h3>
 <FeatureStatus status="shipping" />
 </div>
-<p>Talk to any MCP server as a tool source. Editor integration, external search providers, custom tool backends.</p>
+<p>Talk to any MCP server as a tool source. stdio, HTTP+SSE, and WebSocket transports. Bearer and OAuth 2.1 auth, namespaced tools, live status in the TUI.</p>
 </article>
 
 </div>

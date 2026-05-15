@@ -31,7 +31,14 @@ Each tool has one of three approval levels:
 Tools that are independent of each other run in parallel automatically. For example, the agent can read multiple files or search across different directories at the same time.
 :::
 
+## MCP-sourced tools
+
+In addition to the built-ins above, any tool advertised by a configured [MCP server](../advanced/mcp.md) becomes part of the same agent loop. They appear in the registry as `<server-id>__<tool-name>` (for example, `playwright__browser_navigate` for the Playwright MCP server), route through the same permission gate, and emit the same observability spans.
+
+Native tool names always win on conflict — an MCP server advertising `read_file` is silently superseded by the built-in. Use the server-namespaced form to address the MCP version explicitly.
+
 ## See also
 
+- [MCP Servers](../advanced/mcp.md) — configure third-party servers as tool sources
 - [AgentCore](/api/agent/agent-core)
 - [Tools](/api/agent/tools)

@@ -4,6 +4,52 @@ All notable changes to Glue CLI will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-15
+
+### Added
+
+- **MCP (Model Context Protocol) client** — connect to any MCP server
+  and surface its tools to the agent alongside Glue's built-ins.
+  - **stdio transport** with scrubbed environment (allowlist + explicit
+    `env:` only) so user secrets don't leak into spawned servers.
+  - **Streamable HTTP transport** (`2025-03-26` spec): single POST,
+    server picks JSON vs SSE response. Bearer auth, captured
+    `Mcp-Session-Id` echoed back on subsequent calls.
+  - **WebSocket transport** for `ws://` / `wss://` servers.
+  - **OAuth 2.1** with discovery (RFC 8414), Dynamic Client
+    Registration (RFC 7591), PKCE, loopback redirect. Tokens stored
+    encrypted in `CredentialStore`. Run `glue mcp auth login <server>`.
+  - **`McpClientPool`** with eager non-blocking connect, exponential
+    backoff with jitter for reconnect, crash-loop detection, and live
+    `tools/list_changed` reactivity.
+  - **Namespaced tools**: `<serverId>__<bareName>` (e.g.
+    `playwright__browser_navigate`). Native tool names always win on
+    conflict.
+- **`glue mcp` CLI** — `list`, `tools <server>`, `auth set --bearer`,
+  `auth login`, `auth logout`, `auth status`.
+- **`/mcp` slash commands** — status panel, `list`, `tools <server>`,
+  `reconnect <server>`, `toggle <server>`, `auth login|logout|status`,
+  `help`. Status bar shows an `MCP:N⚠` badge when servers are
+  unhealthy.
+- **`tool_policy` for MCP** — glob `auto_approve` / `deny` patterns
+  scoped to the namespaced tool name; routes through the same
+  `PermissionGate` as native tools.
+
+### Changed
+
+- **App decomposition** — the `cli/lib/src/app/` part-of split has
+  been collapsed back into a single `app.dart`. The part-of files
+  were cosmetic (extension methods on `App` with full access to its
+  private state), so the split was hiding coupling rather than
+  reducing it. `app.dart` is now one honest 2100-line class.
+- **Slash command refactor finished** — `SlashCommandContext` lost the
+  last domain-leaking callbacks (`forkSession`, `resumeFromMeta`).
+  `HistoryCommand` and `ResumeCommand` now compose primitives through
+  `ctx.session.fork/resume` + `ctx.conversation.resetForReplay()` +
+  `appendReplayEntries(...)` directly. New `ConversationView.resetForReplay`
+  and `appendReplayEntries` methods own the transcript-shape state.
+- **`PanelController` renamed to `ModalSurface`** across the codebase.
+
 ## [0.2.0] - 2026-05-04
 
 ### Added
