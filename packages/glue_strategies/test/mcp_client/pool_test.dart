@@ -101,8 +101,8 @@ void main() {
 
       expect(pool.unhealthyCount, 0);
       expect(pool.allTools.map((t) => t.name).toSet(), {
-        'fs-read_file',
-        'db-query',
+        'fs__read_file',
+        'db__query',
       });
       expect(
         captured.whereType<McpPoolServerConnectedEvent>().length,
@@ -186,7 +186,7 @@ void main() {
       pool.connectAll();
       await Future<void>.delayed(const Duration(milliseconds: 20));
 
-      expect(pool.allTools.map((t) => t.name), ['ok-works']);
+      expect(pool.allTools.map((t) => t.name), ['ok__works']);
       expect(pool.unhealthyCount, 1);
 
       await pool.close();
@@ -221,7 +221,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 20));
 
       // read_file was reserved; list_directory makes it through namespaced.
-      expect(pool.allTools.map((t) => t.name), ['fs-list_directory']);
+      expect(pool.allTools.map((t) => t.name), ['fs__list_directory']);
       await pool.close();
     });
   });

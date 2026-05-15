@@ -168,29 +168,29 @@ mcp:
 mcp:
   tool_policy:
     auto_approve:
-      - filesystem-read_file
-      - filesystem-list_directory
+      - filesystem__read_file
+      - filesystem__list_directory
     deny:
-      - "*-delete_file"
+      - "*__delete_file"
 ''');
       expect(cfg.toolPolicy.autoApprove, [
-        'filesystem-read_file',
-        'filesystem-list_directory',
+        'filesystem__read_file',
+        'filesystem__list_directory',
       ]);
-      expect(cfg.toolPolicy.deny, ['*-delete_file']);
+      expect(cfg.toolPolicy.deny, ['*__delete_file']);
     });
 
-    test('glob matching: exact, *-suffix, prefix-*', () {
+    test('glob matching: exact, *__suffix, prefix__*', () {
       const policy = McpToolPolicy(
-        autoApprove: ['filesystem-read_file', '*-search'],
-        deny: ['*-delete_file'],
+        autoApprove: ['filesystem__read_file', '*__search'],
+        deny: ['*__delete_file'],
       );
-      expect(policy.isAutoApproved('filesystem-read_file'), isTrue);
-      expect(policy.isAutoApproved('github-search'), isTrue);
-      expect(policy.isAutoApproved('github-delete_file'), isFalse);
-      expect(policy.isDenied('filesystem-delete_file'), isTrue);
-      expect(policy.isDenied('github-delete_file'), isTrue);
-      expect(policy.isDenied('filesystem-read_file'), isFalse);
+      expect(policy.isAutoApproved('filesystem__read_file'), isTrue);
+      expect(policy.isAutoApproved('github__search'), isTrue);
+      expect(policy.isAutoApproved('github__delete_file'), isFalse);
+      expect(policy.isDenied('filesystem__delete_file'), isTrue);
+      expect(policy.isDenied('github__delete_file'), isTrue);
+      expect(policy.isDenied('filesystem__read_file'), isFalse);
     });
   });
 
