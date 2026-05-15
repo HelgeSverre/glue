@@ -1,4 +1,5 @@
 .local-chrome/
+.playwright-mcp/
 /glue
 
 diagrams/*

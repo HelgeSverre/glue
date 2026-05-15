@@ -42,6 +42,8 @@ test-results/
 cli/.local-chrome
 cli/.worktrees
 cli/.junie
+cli/.playwright-mcp
+.playwright-mcp/
 
 # DevDocs (generated)
 website/api/
