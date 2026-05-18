@@ -2,4 +2,4 @@
 // Source: pubspec.yaml
 // Regenerate with: dart run tool/gen_version.dart
 
-const String packageVersion = '0.3.0';
+const String packageVersion = '0.4.0';
