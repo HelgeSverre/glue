@@ -62,9 +62,7 @@ class McpToolsCommand extends Command<int> {
     final config = _safeLoadConfig();
     if (config == null) return 1;
 
-    final spec = config.mcp.servers
-        .where((s) => s.id == serverId)
-        .firstOrNull;
+    final spec = config.mcp.servers.where((s) => s.id == serverId).firstOrNull;
     if (spec == null) {
       stderr.writeln(
         'Server "$serverId" is not in your config. Known: '
@@ -83,8 +81,7 @@ class McpToolsCommand extends Command<int> {
     try {
       await pool.events
           .where((e) =>
-              e is McpPoolServerConnectedEvent ||
-              e is McpPoolServerErrorEvent)
+              e is McpPoolServerConnectedEvent || e is McpPoolServerErrorEvent)
           .first
           .timeout(const Duration(seconds: 10));
     } on TimeoutException {
@@ -129,8 +126,7 @@ class McpListCommand extends Command<int> {
     final servers = config.mcp.servers;
     if (servers.isEmpty) {
       stdout.writeln('No MCP servers configured.');
-      stdout.writeln(
-          'Add a server under `mcp.servers:` in '
+      stdout.writeln('Add a server under `mcp.servers:` in '
           '${userConfigPath(Environment.detect())}.');
       return 0;
     }
@@ -145,7 +141,8 @@ class McpListCommand extends Command<int> {
       stdout.writeln('  ${spec.id.padRight(20)} $kind  $state');
     }
     stdout.writeln('');
-    stdout.writeln('Use `/mcp` inside a Glue session for live connection state.');
+    stdout
+        .writeln('Use `/mcp` inside a Glue session for live connection state.');
     return 0;
   }
 }
@@ -196,11 +193,9 @@ class McpAuthStatusCommand extends Command<int> {
               ? spec.auth
               : const McpNoAuth();
       final tag = switch (authKind) {
-        McpBearerAuth() =>
-          hasBearer ? 'bearer (stored)' : 'bearer (missing)',
-        McpOAuthAuth() => hasOAuth
-            ? 'oauth (access token stored)'
-            : 'oauth (not logged in)',
+        McpBearerAuth() => hasBearer ? 'bearer (stored)' : 'bearer (missing)',
+        McpOAuthAuth() =>
+          hasOAuth ? 'oauth (access token stored)' : 'oauth (not logged in)',
         McpNoAuth() => 'none',
       };
       stdout.writeln('  ${spec.id.padRight(20)} $tag');
@@ -309,8 +304,9 @@ class McpAuthLoginCommand extends Command<int> {
       );
       return 1;
     }
-    final baseUrl =
-        spec is McpHttpServerSpec ? spec.url : (spec as McpWebSocketServerSpec).url;
+    final baseUrl = spec is McpHttpServerSpec
+        ? spec.url
+        : (spec as McpWebSocketServerSpec).url;
 
     try {
       stdout.writeln('Discovering OAuth metadata for $serverId…');
@@ -383,8 +379,7 @@ class McpAuthLogoutCommand extends Command<int> {
   String get name => 'logout';
 
   @override
-  String get description =>
-      'Forget stored credentials for an MCP server.';
+  String get description => 'Forget stored credentials for an MCP server.';
 
   @override
   String get invocation => 'glue mcp auth logout <server>';
@@ -431,8 +426,7 @@ Future<void> _openBrowser(String url) async {
     if (Platform.isMacOS) {
       await Process.start('open', [url], mode: ProcessStartMode.detached);
     } else if (Platform.isLinux) {
-      await Process.start('xdg-open', [url],
-          mode: ProcessStartMode.detached);
+      await Process.start('xdg-open', [url], mode: ProcessStartMode.detached);
     } else if (Platform.isWindows) {
       await Process.start('rundll32', ['url.dll,FileProtocolHandler', url],
           mode: ProcessStartMode.detached);

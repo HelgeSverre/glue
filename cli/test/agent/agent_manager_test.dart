@@ -28,7 +28,7 @@ void main() {
 
     setUp(() {
       manager = AgentManager(
-        tools: {'read_file': ReadFileTool()},
+        tools: {'read_file': ReadFileTool(testWorkspace())},
         llmFactory: _EchoFactory(),
         config: testConfig(env: {'ANTHROPIC_API_KEY': 'sk-test'}),
         systemPrompt: 'You are a test agent.',
@@ -140,7 +140,7 @@ void main() {
       // share transcript by ~28× on real sessions. The fix coalesces a
       // run of deltas into one row whose text is the concatenation.
       final coalescingManager = AgentManager(
-        tools: {'read_file': ReadFileTool()},
+        tools: {'read_file': ReadFileTool(testWorkspace())},
         llmFactory: _MultiDeltaFactory(),
         config: testConfig(env: {'ANTHROPIC_API_KEY': 'sk-test'}),
         systemPrompt: 'You are a test agent.',

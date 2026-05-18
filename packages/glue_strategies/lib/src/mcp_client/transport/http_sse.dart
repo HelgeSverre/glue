@@ -119,8 +119,7 @@ class McpHttpTransport implements JsonRpcTransport {
       return;
     }
 
-    final contentType =
-        (streamed.headers['content-type'] ?? '').toLowerCase();
+    final contentType = (streamed.headers['content-type'] ?? '').toLowerCase();
 
     if (contentType.contains('text/event-stream')) {
       // One or more messages over SSE.

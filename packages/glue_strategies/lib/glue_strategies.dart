@@ -10,6 +10,8 @@ library;
 
 export 'package:glue_strategies/src/credentials/credential_ref.dart';
 export 'package:glue_strategies/src/credentials/credential_store.dart';
+export 'package:glue_strategies/src/fs/local_workspace.dart';
+export 'package:glue_strategies/src/fs/workspace.dart';
 export 'package:glue_strategies/src/llm/anthropic_client.dart';
 export 'package:glue_strategies/src/llm/message_mapper.dart';
 export 'package:glue_strategies/src/llm/ndjson.dart';
@@ -38,6 +40,7 @@ export 'package:glue_strategies/src/providers/ollama_discovery.dart';
 export 'package:glue_strategies/src/providers/openai_compatible_adapter.dart';
 export 'package:glue_strategies/src/providers/provider_adapter.dart';
 export 'package:glue_strategies/src/providers/resolved.dart';
+export 'package:glue_strategies/src/runtime/runtime_factory.dart';
 export 'package:glue_strategies/src/shell/command_executor.dart';
 export 'package:glue_strategies/src/shell/docker_config.dart';
 export 'package:glue_strategies/src/shell/docker_executor.dart';

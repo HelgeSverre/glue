@@ -1,3 +1,4 @@
+import 'package:glue_core/glue_core.dart';
 import 'package:glue_harness/glue_harness.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 import 'package:test/test.dart';
@@ -25,7 +26,7 @@ class _ArrayParamTool extends Tool {
 }
 
 void main() {
-  final tool = ReadFileTool();
+  final tool = ReadFileTool(LocalWorkspace(WorkspaceMapping.host('/')));
 
   group('AnthropicToolEncoder', () {
     test('produces Anthropic-native schema', () {

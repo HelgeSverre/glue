@@ -147,11 +147,9 @@ class McpSlashCommand extends SlashCommand {
             ? spec.auth
             : const McpNoAuth();
     return switch (authKind) {
-      McpBearerAuth() =>
-        hasBearer ? 'bearer (stored)' : 'bearer (missing)',
-      McpOAuthAuth() => hasOAuth
-          ? 'oauth (access token stored)'
-          : 'oauth (not logged in)',
+      McpBearerAuth() => hasBearer ? 'bearer (stored)' : 'bearer (missing)',
+      McpOAuthAuth() =>
+        hasOAuth ? 'oauth (access token stored)' : 'oauth (not logged in)',
       McpNoAuth() => 'none',
     };
   }

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:glue_core/glue_core.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:glue_strategies/src/shell/command_executor.dart';
@@ -92,6 +93,7 @@ class DockerExecutor implements CommandExecutor {
         exitCode: exitCode,
         stdout: await stdoutFuture,
         stderr: await stderrFuture,
+        runtimeId: 'docker',
       );
     } finally {
       _cleanupCidfile(cidfile);
@@ -99,7 +101,7 @@ class DockerExecutor implements CommandExecutor {
   }
 
   @override
-  Future<RunningCommand> startStreaming(String command) async {
+  Future<RunningCommandHandle> startStreaming(String command) async {
     final cidfile = _tempCidfile();
     final args = buildDockerArgs(command, cidfile.path);
     final process = await Process.start('docker', args);
@@ -160,14 +162,18 @@ class DockerRunningCommand extends RunningCommand {
   }
 
   @override
-  Future<void> kill() async {
+  Future<void> kill({bool force = false}) async {
     try {
       final cid = await _readCidWithRetry(_cidfile);
       if (cid != null && cid.isNotEmpty) {
-        await Process.run('docker', ['stop', '-t', '5', cid]);
+        // `docker stop` sends SIGTERM then SIGKILL after the timeout.
+        // With force=true we drop the grace period for a faster kill.
+        final args =
+            force ? ['stop', '-t', '0', cid] : ['stop', '-t', '5', cid];
+        await Process.run('docker', args);
       }
     } catch (_) {}
-    await super.kill();
+    await super.kill(force: force);
     try {
       if (_cidfile.existsSync()) _cidfile.deleteSync();
     } catch (_) {}

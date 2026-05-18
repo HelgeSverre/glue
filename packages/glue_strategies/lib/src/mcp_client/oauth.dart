@@ -208,8 +208,7 @@ Future<OAuthTokens> runOAuthAuthorizationCodeFlow({
 
   final server =
       await HttpServer.bind(InternetAddress.loopbackIPv4, redirectPort);
-  final redirectUri =
-      Uri.parse('http://127.0.0.1:${server.port}/callback');
+  final redirectUri = Uri.parse('http://127.0.0.1:${server.port}/callback');
 
   // Build authorization URL.
   final authUri = endpoints.authorizationEndpoint.replace(

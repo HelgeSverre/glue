@@ -1,6 +1,7 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:io' show SystemEncoding;
 
+import 'package:glue_core/glue_core.dart';
 import 'package:glue_harness/src/observability/observability.dart';
 import 'package:glue_harness/src/observability/redaction.dart';
 import 'package:glue_strategies/glue_strategies.dart';
@@ -43,7 +44,7 @@ class ShellJob {
   final int id;
   final String command;
   final DateTime startTime;
-  final Process process;
+  final RunningCommandHandle handle;
 
   /// Interleaved stdout and stderr output, capped by the ring buffer limits.
   final LineRingBuffer output;
@@ -56,7 +57,7 @@ class ShellJob {
     required this.id,
     required this.command,
     required this.startTime,
-    required this.process,
+    required this.handle,
     required this.output,
     this.traceSpan,
   });
@@ -100,30 +101,29 @@ class ShellJobManager {
       },
     );
     try {
-      final running = await executor.startStreaming(command);
-      final process = running.process;
+      final handle = await executor.startStreaming(command);
 
       final job = ShellJob(
         id: id,
         command: command,
         startTime: DateTime.now(),
-        process: process,
+        handle: handle,
         output: LineRingBuffer(maxLines: 2000, maxBytes: 256 * 1024),
         traceSpan: span,
       );
       _jobs[id] = job;
       _events.add(JobStarted(id, command));
 
-      process.stdout.transform(const SystemEncoding().decoder).listen(
+      handle.stdout.transform(const SystemEncoding().decoder).listen(
             job.output.addText,
           );
-      process.stderr.transform(const SystemEncoding().decoder).listen(
+      handle.stderr.transform(const SystemEncoding().decoder).listen(
             job.output.addText,
           );
 
       unawaited(() async {
         try {
-          final code = await process.exitCode;
+          final code = await handle.exitCode;
           job.exitCode = code;
           if (job.status == JobStatus.killed) return;
           job.status = code == 0 ? JobStatus.exited : JobStatus.failed;
@@ -176,7 +176,7 @@ class ShellJobManager {
       'cancelled': true,
       'shell.job.output_lines': job.output.lineCount,
     });
-    job.process.kill(ProcessSignal.sigterm);
+    unawaited(job.handle.kill());
   }
 
   /// Tears down the manager, stopping all running jobs.
@@ -194,13 +194,13 @@ class ShellJobManager {
         'cancelled': true,
         'shell.job.output_lines': j.output.lineCount,
       });
-      j.process.kill(ProcessSignal.sigterm);
+      unawaited(j.handle.kill());
     }
     if (running.isNotEmpty) {
       await Future.delayed(const Duration(milliseconds: 800));
       for (final j in running) {
         try {
-          j.process.kill(ProcessSignal.sigkill);
+          await j.handle.kill(force: true);
         } catch (_) {}
       }
     }

@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
 import 'package:glue_harness/glue_harness.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:glue/src/commands/config_command.dart';
 import 'package:glue/src/terminal/styled.dart';
 
@@ -106,6 +107,7 @@ DoctorReport runDoctor(Environment environment) {
   );
   _checkConfigValidation(findings, environment);
   _checkObservability(findings, environment);
+  _checkRuntime(findings, environment);
   _checkSessions(findings, environment.sessionsDir);
   _checkTmpFiles(findings, environment.glueDir);
 
@@ -422,6 +424,188 @@ void _checkObservability(
         ? 'Redaction: enabled'
         : 'Redaction: disabled — debug logs may contain secrets',
   ));
+}
+
+void _checkRuntime(
+  List<DoctorFinding> findings,
+  Environment environment,
+) {
+  const section = 'Runtime';
+
+  GlueConfig? config;
+  try {
+    config = GlueConfig.load(environment: environment);
+  } on Object catch (e) {
+    findings.add(DoctorFinding(
+      severity: DoctorSeverity.warning,
+      section: section,
+      message: 'Could not load config to determine runtime: $e',
+    ));
+    return;
+  }
+
+  final selected = config.effectiveRuntime;
+  findings.add(DoctorFinding(
+    severity: DoctorSeverity.ok,
+    section: section,
+    message: 'Active runtime: $selected',
+  ));
+
+  final registered = RuntimeFactory.registeredAdapters().toList();
+  if (registered.isNotEmpty) {
+    findings.add(DoctorFinding(
+      severity: DoctorSeverity.info,
+      section: section,
+      message: 'Registered cloud adapters: ${registered.join(', ')}',
+    ));
+  }
+
+  switch (selected) {
+    case 'host':
+      findings.add(const DoctorFinding(
+        severity: DoctorSeverity.info,
+        section: section,
+        message: 'Commands run on the host shell (no isolation).',
+      ));
+    case 'docker':
+      findings.add(DoctorFinding(
+        severity: DoctorSeverity.info,
+        section: section,
+        message:
+            'Docker image: ${config.dockerConfig.image} (shell: ${config.dockerConfig.shell})',
+      ));
+    case 'daytona':
+      final hasKey =
+          (environment.vars['DAYTONA_API_KEY']?.isNotEmpty ?? false) ||
+              (config.runtimeOptions['api_key'] as String?)?.isNotEmpty == true;
+      findings.add(DoctorFinding(
+        severity: hasKey ? DoctorSeverity.ok : DoctorSeverity.error,
+        section: section,
+        message: hasKey
+            ? 'DAYTONA_API_KEY: present'
+            : 'DAYTONA_API_KEY missing — set the env var or daytona.api_key in config',
+      ));
+      final snapshot =
+          (config.runtimeOptions['snapshot'] as String?) ??
+              environment.vars['DAYTONA_SNAPSHOT'];
+      findings.add(DoctorFinding(
+        severity: DoctorSeverity.info,
+        section: section,
+        message: snapshot == null
+            ? 'Daytona: default sandbox shape (2 vCPU / 4 GiB / 8 GiB)'
+            : 'Daytona snapshot: $snapshot',
+      ));
+    case 'modal':
+      // Modal exposes sandboxes only via its Python SDK; glue ships
+      // a Python sidecar that drives it. The readiness check is
+      // "the configured python interpreter can import modal".
+      final cliPath = (config.runtimeOptions['modal_cli'] as String?) ??
+          environment.vars['MODAL_CLI'] ??
+          'modal';
+      String? python;
+      String? failureReason;
+      try {
+        final which = Process.runSync('which', [cliPath]);
+        if (which.exitCode != 0) {
+          failureReason = '`$cliPath` not found on PATH — '
+              '`uv tool install modal` (or `pipx install modal`)';
+        } else {
+          final modalPath = (which.stdout as String).trim();
+          // Follow the shebang to find the venv python.
+          final firstLine =
+              File(modalPath).readAsStringSync().split('\n').first;
+          if (firstLine.startsWith('#!')) {
+            python = firstLine.substring(2).trim().split(' ').first;
+          }
+          python ??= (config.runtimeOptions['python_path'] as String?) ??
+              environment.vars['MODAL_PYTHON'] ??
+              'python3';
+          final import = Process.runSync(
+            python,
+            ['-c', 'import modal; print(modal.__version__)'],
+          );
+          if (import.exitCode != 0) {
+            failureReason =
+                'python at $python cannot import modal — install the package '
+                'into that interpreter, or set MODAL_PYTHON / modal.python_path';
+          }
+        }
+      } on ProcessException {
+        failureReason = 'failed to probe modal — check $cliPath is executable';
+      }
+      findings.add(DoctorFinding(
+        severity:
+            failureReason == null ? DoctorSeverity.ok : DoctorSeverity.error,
+        section: section,
+        message: failureReason == null
+            ? 'modal CLI + python ($python) ready'
+            : 'modal: $failureReason',
+      ));
+      // Auth check: `modal profile current` exits 0 when logged in.
+      try {
+        final auth = Process.runSync(cliPath, ['profile', 'current']);
+        findings.add(DoctorFinding(
+          severity:
+              auth.exitCode == 0 ? DoctorSeverity.ok : DoctorSeverity.error,
+          section: section,
+          message: auth.exitCode == 0
+              ? 'modal profile: ${(auth.stdout as String).trim()}'
+              : 'modal not authenticated — run `modal token set`',
+        ));
+      } on ProcessException {/* already covered */}
+      final appName = (config.runtimeOptions['app_name'] as String?) ??
+          environment.vars['MODAL_APP'] ??
+          'glue';
+      findings.add(DoctorFinding(
+        severity: DoctorSeverity.info,
+        section: section,
+        message: 'modal app: $appName',
+      ));
+    case 'sprites':
+      // Glue wraps the official `sprite` CLI (the API's wire protocol
+      // is in RC flux and there's no stable /filesystem REST endpoint
+      // today), so the readiness check is "binary on PATH, user is
+      // logged in".
+      final cliPath = (config.runtimeOptions['sprite_cli'] as String?) ??
+          environment.vars['SPRITES_CLI'] ??
+          'sprite';
+      String? failureReason;
+      try {
+        final res = Process.runSync(cliPath, ['list']);
+        if (res.exitCode != 0) {
+          failureReason = 'not authenticated — run `sprite login`';
+        }
+      } on ProcessException {
+        failureReason = 'not found on PATH';
+      }
+      findings.add(DoctorFinding(
+        severity:
+            failureReason == null ? DoctorSeverity.ok : DoctorSeverity.error,
+        section: section,
+        message: failureReason == null
+            ? '`$cliPath` CLI installed and authenticated'
+            : '`$cliPath` CLI: $failureReason',
+      ));
+      final spriteName =
+          (config.runtimeOptions['sprite_name'] as String?) ??
+              environment.vars['SPRITES_NAME'];
+      findings.add(DoctorFinding(
+        severity: DoctorSeverity.info,
+        section: section,
+        message: spriteName == null
+            ? 'Sprite name: auto (a fresh sprite per session)'
+            : 'Sprite name: $spriteName (resumes on each session)',
+      ));
+    default:
+      if (!registered.contains(selected)) {
+        findings.add(DoctorFinding(
+          severity: DoctorSeverity.error,
+          section: section,
+          message: 'Runtime "$selected" is not host/docker and no '
+              'registered cloud adapter matches.',
+        ));
+      }
+  }
 }
 
 /// Returns the absolute path of the most recently modified file in [dir]

@@ -23,3 +23,11 @@ GlueConfig testConfig({
     ]),
   );
 }
+
+/// A pass-through workspace for tests that need to construct file tools.
+///
+/// Uses an identity [WorkspaceMapping] so paths handed in by the test
+/// flow straight to `dart:io` without translation — exactly what tests
+/// using `Directory.systemTemp` fixtures want.
+Workspace testWorkspace([String cwd = '/']) =>
+    LocalWorkspace(WorkspaceMapping.host(cwd));

@@ -56,8 +56,10 @@ void main() async {
   );
   final manager = AgentManager(
     tools: {
-      'list_directory': ListDirectoryTool(),
-      'read_file': ReadFileTool(),
+      'list_directory': ListDirectoryTool(
+          LocalWorkspace(WorkspaceMapping.host(fixturesDir.path))),
+      'read_file':
+          ReadFileTool(LocalWorkspace(WorkspaceMapping.host(fixturesDir.path))),
     },
     llmFactory: llmFactory,
     config: config,

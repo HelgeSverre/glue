@@ -1,5 +1,9 @@
+import 'package:glue_core/glue_core.dart';
 import 'package:glue_harness/glue_harness.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:test/test.dart';
+
+Workspace _testWorkspace() => LocalWorkspace(WorkspaceMapping.host('/'));
 
 class _StubTool extends Tool {
   final String _name;
@@ -27,31 +31,31 @@ class _StubTool extends Tool {
 void main() {
   group('ToolTrust', () {
     test('ReadFileTool is safe', () {
-      final tool = ReadFileTool();
+      final tool = ReadFileTool(_testWorkspace());
       expect(tool.trust, ToolTrust.safe);
       expect(tool.isMutating, isFalse);
     });
 
     test('ListDirectoryTool is safe', () {
-      final tool = ListDirectoryTool();
+      final tool = ListDirectoryTool(_testWorkspace());
       expect(tool.trust, ToolTrust.safe);
       expect(tool.isMutating, isFalse);
     });
 
     test('GrepTool is safe', () {
-      final tool = GrepTool();
+      final tool = GrepTool(HostExecutor(const ShellConfig()));
       expect(tool.trust, ToolTrust.safe);
       expect(tool.isMutating, isFalse);
     });
 
     test('WriteFileTool is fileEdit', () {
-      final tool = WriteFileTool();
+      final tool = WriteFileTool(_testWorkspace());
       expect(tool.trust, ToolTrust.fileEdit);
       expect(tool.isMutating, isTrue);
     });
 
     test('EditFileTool is fileEdit', () {
-      final tool = EditFileTool();
+      final tool = EditFileTool(_testWorkspace());
       expect(tool.trust, ToolTrust.fileEdit);
       expect(tool.isMutating, isTrue);
     });

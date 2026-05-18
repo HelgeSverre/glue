@@ -1,0 +1,18 @@
+name: glue_runtimes
+description: Cloud runtime adapters for Glue. Bundles Daytona and Sprites (sprites.dev) adapters into a single package with per-provider barrels.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  glue_core:
+    path: ../glue_core
+  glue_strategies:
+    path: ../glue_strategies
+  http: ^1.6.0
+
+dev_dependencies:
+  test: ^1.30.0
+  lints: ^6.1.0

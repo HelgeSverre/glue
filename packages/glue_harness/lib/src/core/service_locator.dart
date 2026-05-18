@@ -102,11 +102,15 @@ class ServiceLocator {
 
     final configStore = ConfigStore(resolvedEnv.configPath);
 
-    final executor = await ExecutorFactory.create(
+    final runtimeSession = await RuntimeFactory.create(
+      runtime: config.effectiveRuntime,
       shellConfig: config.shellConfig,
       dockerConfig: config.dockerConfig,
       cwd: resolvedEnv.cwd,
+      runtimeOptions: config.runtimeOptions,
     );
+    final executor = runtimeSession.executor;
+    final workspace = runtimeSession.workspace;
 
     SearchRouter? searchRouter;
     SearchRouter getSearchRouter() => searchRouter ??= SearchRouter([
@@ -161,12 +165,12 @@ class ServiceLocator {
         );
 
     final tools = <String, Tool>{
-      'read_file': ReadFileTool(),
-      'write_file': WriteFileTool(),
-      'edit_file': EditFileTool(),
+      'read_file': ReadFileTool(workspace),
+      'write_file': WriteFileTool(workspace),
+      'edit_file': EditFileTool(workspace),
       'bash': BashTool(executor),
-      'grep': GrepTool(),
-      'list_directory': ListDirectoryTool(),
+      'grep': GrepTool(executor),
+      'list_directory': ListDirectoryTool(workspace),
       'web_fetch': WebFetchTool(
         config.webConfig.fetch,
         pdfConfig: config.webConfig.pdf,
@@ -247,6 +251,8 @@ class ServiceLocator {
       systemPrompt: systemPrompt,
       trustedTools: configStore.trustedTools.toSet(),
       executor: executor,
+      workspace: workspace,
+      runtimeSession: runtimeSession,
       jobManager: ShellJobManager(executor, obs: obs),
       obs: obs,
       debugController: debugController,
@@ -275,6 +281,18 @@ class AppServices {
   /// either on resume, or when the user sends their first message.
   final SessionStore? sessionStore;
   final CommandExecutor executor;
+
+  /// Filesystem handle for file tools. Routes through `dart:io` for
+  /// host/Docker (where the host filesystem is authoritative) and
+  /// through the runtime's FS API for cloud runtimes.
+  final Workspace workspace;
+
+  /// The active runtime session. Surfaces call [RuntimeSession.close]
+  /// on session shutdown so cloud sandboxes don't leak; the slash
+  /// command + doctor read [RuntimeSession.sandboxId] /
+  /// [RuntimeSession.bootstrapSha] for display.
+  final RuntimeSession runtimeSession;
+
   final ShellJobManager jobManager;
   final Observability obs;
   final DebugController debugController;
@@ -295,6 +313,8 @@ class AppServices {
     required this.trustedTools,
     this.sessionStore,
     required this.executor,
+    required this.workspace,
+    required this.runtimeSession,
     required this.jobManager,
     required this.obs,
     required this.debugController,

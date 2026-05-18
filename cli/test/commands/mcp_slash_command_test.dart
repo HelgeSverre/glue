@@ -38,8 +38,7 @@ class _Fixture {
       clearToolUi: () {},
       clearSubagentGroups: () => subagentGroups.clear(),
     );
-    approval =
-        ApprovalState(get: () => ApprovalMode.confirm, set: (_) {});
+    approval = ApprovalState(get: () => ApprovalMode.confirm, set: (_) {});
     lifecycle = Lifecycle(onExit: () {});
     panels = ModalSurface(panelStack: panelStack, render: () {});
     dockManager = DockManager();
@@ -96,8 +95,7 @@ class _Fixture {
 
 void main() {
   group('McpSlashCommand', () {
-    test('no servers configured → /mcp list prints friendly empty message',
-        () {
+    test('no servers configured → /mcp list prints friendly empty message', () {
       final fx = _Fixture();
       final cmd = McpSlashCommand(fx.ctx);
       final result = cmd.execute(['list']);

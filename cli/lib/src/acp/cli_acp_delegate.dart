@@ -40,12 +40,12 @@ class CliAcpDelegate extends AcpServerDelegate {
     // a `glue_mcp_status` extension payload. See
     // `docs/plans/2026-05-15-mcp-implementation.md` § B7 ACP.
     final tools = <String, Tool>{
-      'read_file': ReadFileTool(),
-      'write_file': WriteFileTool(),
-      'edit_file': EditFileTool(),
+      'read_file': ReadFileTool(services.workspace),
+      'write_file': WriteFileTool(services.workspace),
+      'edit_file': EditFileTool(services.workspace),
       'bash': BashTool(services.executor),
-      'grep': GrepTool(),
-      'list_directory': ListDirectoryTool(),
+      'grep': GrepTool(services.executor),
+      'list_directory': ListDirectoryTool(services.workspace),
     };
 
     final llm = services.llmFactory.createFromConfig(

@@ -69,9 +69,12 @@ class GlueConfig {
     this.titleGenerationEnabled = true,
     this.anthropicPromptCache = true,
     this.mcp = const McpConfig(),
+    this.runtime,
+    Map<String, Object?>? runtimeOptions,
   })  : shellConfig = shellConfig ?? const ShellConfig(),
         dockerConfig = dockerConfig ?? const DockerConfig(),
-        webConfig = webConfig ?? const WebConfig();
+        webConfig = webConfig ?? const WebConfig(),
+        runtimeOptions = runtimeOptions ?? const {};
 
   /// Primary model used for agent conversations.
   final ModelRef activeModel;
@@ -128,6 +131,30 @@ class GlueConfig {
   /// MCP (Model Context Protocol) configuration — list of configured
   /// servers, tool policy, reconnect defaults. Empty by default.
   final McpConfig mcp;
+
+  /// Selected runtime adapter: `'host'`, `'docker'`, or the name of a
+  /// registered cloud adapter (e.g. `'daytona'`). When null, resolution
+  /// falls back to legacy behaviour — Docker if `dockerConfig.enabled`,
+  /// host otherwise — so existing configs keep working unchanged.
+  ///
+  /// Resolution order: `GLUE_RUNTIME` env var → `runtime:` YAML key →
+  /// legacy fallback above.
+  final String? runtime;
+
+  /// Per-runtime options keyed by runtime id. For example, when
+  /// `runtime: daytona` is selected the `daytona` key holds
+  /// `{api_key, base_url, image}` — adapters parse this on startup.
+  ///
+  /// Stored as untyped JSON-ish data here to keep `glue_harness` free
+  /// of dependencies on cloud-adapter packages.
+  final Map<String, Object?> runtimeOptions;
+
+  /// Resolves the effective runtime name from [runtime] and the legacy
+  /// `docker.enabled` flag.
+  String get effectiveRuntime {
+    if (runtime != null && runtime!.isNotEmpty) return runtime!;
+    return dockerConfig.enabled ? 'docker' : 'host';
+  }
 
   /// Resolve [ref] against the loaded catalog and credential store.
   ///
@@ -584,6 +611,28 @@ class GlueConfig {
     // start.
     final mcp = parseMcpConfig(fileConfig?['mcp'], env);
 
+    // Runtime adapter selector. `GLUE_RUNTIME` overrides the YAML
+    // `runtime:` key, which overrides the legacy `docker.enabled`
+    // fallback. Cloud-runtime-specific options are pulled from the
+    // matching top-level YAML section (e.g. `daytona:`). Env-var
+    // overrides land as Object? values, so adapters can pull them out
+    // without the harness having to know cloud-specific keys.
+    final runtimeName =
+        env['GLUE_RUNTIME'] ?? fileConfig?['runtime'] as String?;
+    final runtimeOptions = <String, Object?>{};
+    if (runtimeName != null && runtimeName.isNotEmpty) {
+      final section = fileConfig?[runtimeName] as Map?;
+      if (section != null) {
+        for (final entry in section.entries) {
+          runtimeOptions[entry.key.toString()] = entry.value;
+        }
+      }
+      // Cloud adapters can read shared env vars too (e.g.
+      // DAYTONA_API_KEY). Adapters call DaytonaConfig.fromMap with
+      // both [runtimeOptions] and the process env, so we don't try to
+      // enumerate cloud-specific env vars here.
+    }
+
     // Skill paths.
     final skillPaths = <String>[];
     final envSkillPaths = env['GLUE_SKILLS_PATHS'];
@@ -616,6 +665,8 @@ class GlueConfig {
       titleGenerationEnabled: titleGenerationEnabled,
       anthropicPromptCache: anthropicPromptCache,
       mcp: mcp,
+      runtime: runtimeName,
+      runtimeOptions: runtimeOptions,
     );
   }
 }

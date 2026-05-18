@@ -376,6 +376,18 @@ void main() {
       final result = registry.execute('/skills code-review');
       expect(result, 'Activating skill "code-review"...');
     });
+
+    test('/runtime short-circuits when config is not wired', () {
+      final registry = createRegistry();
+      final result = registry.execute('/runtime');
+      expect(result, contains('No active config'));
+    });
+
+    test('/runtime is registered and exposes a description', () {
+      final registry = createRegistry();
+      final cmd = registry.commands.firstWhere((c) => c.name == 'runtime');
+      expect(cmd.description, contains('execution runtime'));
+    });
   });
 
   group('App startup resume behavior', () {

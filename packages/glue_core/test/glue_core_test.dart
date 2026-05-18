@@ -61,6 +61,13 @@ void main() {
             McpServerErrorEvent() => 'McpServerErrorEvent',
             McpServerAuthRequiredEvent() => 'McpServerAuthRequiredEvent',
             McpToolListChangedEvent() => 'McpToolListChangedEvent',
+            RuntimeCommandStartedEvent() => 'RuntimeCommandStartedEvent',
+            RuntimeCommandOutputEvent() => 'RuntimeCommandOutputEvent',
+            RuntimeCommandCompletedEvent() => 'RuntimeCommandCompletedEvent',
+            RuntimeCommandFailedEvent() => 'RuntimeCommandFailedEvent',
+            RuntimeCommandCancelledEvent() => 'RuntimeCommandCancelledEvent',
+            RuntimeContainerStartedEvent() => 'RuntimeContainerStartedEvent',
+            RuntimeContainerStoppedEvent() => 'RuntimeContainerStoppedEvent',
           };
 
       const turn = TurnId('t1');
@@ -85,6 +92,92 @@ void main() {
         usage: usage,
       );
       expect(name(completed), equals('TurnCompletedEvent'));
+    });
+
+    test('runtime command lifecycle variants carry the expected fields', () {
+      const turn = TurnId('t');
+      final ts = DateTime(2026);
+
+      final started = RuntimeCommandStartedEvent(
+        turnId: turn,
+        timestamp: ts,
+        sequence: 0,
+        runtimeId: 'daytona',
+        commandId: 'c-1',
+        command: 'ls /workspace',
+        runtimeCwd: '/workspace',
+        sessionScopedId: 'sb-abc',
+      );
+      expect(started.runtimeId, 'daytona');
+      expect(started.commandId, 'c-1');
+      expect(started.command, 'ls /workspace');
+      expect(started.runtimeCwd, '/workspace');
+      expect(started.sessionScopedId, 'sb-abc');
+
+      final output = RuntimeCommandOutputEvent(
+        turnId: turn,
+        timestamp: ts,
+        sequence: 1,
+        commandId: 'c-1',
+        stream: RuntimeOutputStream.stdout,
+        text: 'pubspec.yaml\n',
+      );
+      expect(output.stream, RuntimeOutputStream.stdout);
+
+      final completed = RuntimeCommandCompletedEvent(
+        turnId: turn,
+        timestamp: ts,
+        sequence: 2,
+        commandId: 'c-1',
+        exitCode: 0,
+        duration: const Duration(milliseconds: 42),
+      );
+      expect(completed.exitCode, 0);
+      expect(completed.duration, const Duration(milliseconds: 42));
+
+      final failed = RuntimeCommandFailedEvent(
+        turnId: turn,
+        timestamp: ts,
+        sequence: 3,
+        commandId: 'c-2',
+        errorType: 'HttpException',
+        message: 'connection reset',
+      );
+      expect(failed.errorType, 'HttpException');
+
+      final cancelled = RuntimeCommandCancelledEvent(
+        turnId: turn,
+        timestamp: ts,
+        sequence: 4,
+        commandId: 'c-3',
+        reason: RuntimeCancelReason.userCancelled,
+      );
+      expect(cancelled.reason, RuntimeCancelReason.userCancelled);
+    });
+
+    test('runtime container lifecycle variants carry expected fields', () {
+      const turn = TurnId('t');
+      final ts = DateTime(2026);
+
+      final started = RuntimeContainerStartedEvent(
+        turnId: turn,
+        timestamp: ts,
+        sequence: 0,
+        runtimeId: 'docker',
+        containerId: 'abc123',
+        image: 'ubuntu:24.04',
+      );
+      expect(started.image, 'ubuntu:24.04');
+
+      final stopped = RuntimeContainerStoppedEvent(
+        turnId: turn,
+        timestamp: ts,
+        sequence: 1,
+        runtimeId: 'docker',
+        containerId: 'abc123',
+        reason: RuntimeContainerStopReason.sessionEnded,
+      );
+      expect(stopped.reason, RuntimeContainerStopReason.sessionEnded);
     });
 
     test('sequence numbers establish ordering', () {

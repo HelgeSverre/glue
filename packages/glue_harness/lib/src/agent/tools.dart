@@ -1,6 +1,3 @@
-import 'dart:async';
-import 'dart:io';
-
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 
@@ -17,6 +14,10 @@ export 'package:glue_core/src/tool.dart';
 
 /// A tool that reads file contents from disk.
 class ReadFileTool extends Tool {
+  final Workspace workspace;
+
+  ReadFileTool(this.workspace);
+
   @override
   String get name => 'read_file';
 
@@ -41,30 +42,29 @@ class ReadFileTool extends Tool {
         content: 'Error: no path provided',
       );
     }
-    final file = File(path);
-    if (!await file.exists()) {
+    if (!await workspace.exists(path)) {
       return ToolResult(
         success: false,
         content: 'Error: file not found: $path',
         metadata: {'path': path},
       );
     }
-    final stat = await file.stat();
-    if (stat.size > 1024 * 1024) {
+    final size = await workspace.sizeOf(path);
+    if (size > 1024 * 1024) {
       return ToolResult(
         success: false,
-        content: 'Error: file too large (${stat.size} bytes, max 1MB): $path',
-        metadata: {'path': path, 'bytes': stat.size},
+        content: 'Error: file too large ($size bytes, max 1MB): $path',
+        metadata: {'path': path, 'bytes': size},
       );
     }
-    final text = await file.readAsString();
+    final text = await workspace.readFileAsString(path);
     final lineCount = _countLines(text);
     return ToolResult(
       content: text,
-      summary: 'Read $path ($lineCount lines, ${stat.size} bytes)',
+      summary: 'Read $path ($lineCount lines, $size bytes)',
       metadata: {
         'path': path,
-        'bytes': stat.size,
+        'bytes': size,
         'line_count': lineCount,
       },
     );
@@ -81,6 +81,10 @@ int _countLines(String s) {
 
 /// A tool that writes content to a file on disk.
 class WriteFileTool extends Tool {
+  final Workspace workspace;
+
+  WriteFileTool(this.workspace);
+
   @override
   String get name => 'write_file';
 
@@ -121,11 +125,9 @@ class WriteFileTool extends Tool {
         content: 'Error: no content provided',
       );
     }
-    final file = File(path);
-    final isNew = !await file.exists();
-    final oldText = isNew ? '' : await file.readAsString();
-    await file.parent.create(recursive: true);
-    await file.writeAsString(content);
+    final isNew = !await workspace.exists(path);
+    final oldText = isNew ? '' : await workspace.readFileAsString(path);
+    await workspace.writeFileAsString(path, content);
     final lineCount = _countLines(content);
     return ToolResult(
       content: 'Wrote ${content.length} bytes to $path',
@@ -235,6 +237,10 @@ String _snippet(String s, {int max = 40}) {
 
 /// A tool that searches for patterns in files using ripgrep-style semantics.
 class GrepTool extends Tool {
+  final CommandExecutor executor;
+
+  GrepTool(this.executor);
+
   @override
   String get name => 'grep';
 
@@ -269,41 +275,22 @@ class GrepTool extends Tool {
     final path = args['path'];
     final dir = (path is String && path.isNotEmpty) ? path : '.';
 
-    // Try ripgrep first, fall back to grep.
-    final executable = await _which('rg') != null ? 'rg' : 'grep';
+    // Discover rg or fall back to grep inside the runtime, then run the
+    // search. Quoting via single quotes protects against shell injection
+    // in [pattern] and [dir] — both are user-controlled.
+    final p = _shQuote(pattern);
+    final d = _shQuote(dir);
+    final shellCmd = 'if command -v rg >/dev/null 2>&1; then '
+        'rg --line-number --no-heading $p $d; '
+        'else grep -rn $p $d; fi';
 
-    final arguments = executable == 'rg'
-        ? ['--line-number', '--no-heading', pattern, dir]
-        : ['-rn', pattern, dir];
+    final result = await executor.runCapture(
+      shellCmd,
+      timeout: const Duration(seconds: AppConstants.grepTimeoutSeconds),
+    );
 
-    try {
-      final result = await Process.run(executable, arguments)
-          .timeout(const Duration(seconds: AppConstants.grepTimeoutSeconds));
-      final output = result.stdout as String;
-      if (output.isEmpty) {
-        return ToolResult(
-          content: 'No matches found.',
-          summary: 'grep "$pattern": 0 matches',
-          metadata: {
-            'pattern': pattern,
-            'path': dir,
-            'match_count': 0,
-          },
-        );
-      }
-      final matchCount =
-          '\n'.allMatches(output).length + (output.endsWith('\n') ? 0 : 1);
-      return ToolResult(
-        content: output,
-        summary:
-            'grep "$pattern": $matchCount match${matchCount == 1 ? '' : 'es'}',
-        metadata: {
-          'pattern': pattern,
-          'path': dir,
-          'match_count': matchCount,
-        },
-      );
-    } on TimeoutException {
+    // The executor returns -1 on timeout (see CommandExecutor contract).
+    if (result.exitCode == -1) {
       return ToolResult(
         success: false,
         content:
@@ -316,20 +303,44 @@ class GrepTool extends Tool {
         },
       );
     }
+
+    final output = result.stdout;
+    if (output.isEmpty) {
+      return ToolResult(
+        content: 'No matches found.',
+        summary: 'grep "$pattern": 0 matches',
+        metadata: {
+          'pattern': pattern,
+          'path': dir,
+          'match_count': 0,
+        },
+      );
+    }
+    final matchCount =
+        '\n'.allMatches(output).length + (output.endsWith('\n') ? 0 : 1);
+    return ToolResult(
+      content: output,
+      summary:
+          'grep "$pattern": $matchCount match${matchCount == 1 ? '' : 'es'}',
+      metadata: {
+        'pattern': pattern,
+        'path': dir,
+        'match_count': matchCount,
+      },
+    );
   }
 
-  Future<String?> _which(String cmd) async {
-    try {
-      final result = await Process.run('which', [cmd]);
-      return result.exitCode == 0 ? (result.stdout as String).trim() : null;
-    } catch (_) {
-      return null;
-    }
-  }
+  /// Wraps [s] in single quotes for safe inclusion in a shell command,
+  /// escaping any embedded single quotes via the standard `'\''` trick.
+  static String _shQuote(String s) => "'${s.replaceAll("'", r"'\''")}'";
 }
 
 /// A tool that edits files by replacing exact string matches.
 class EditFileTool extends Tool {
+  final Workspace workspace;
+
+  EditFileTool(this.workspace);
+
   @override
   String get name => 'edit_file';
 
@@ -376,14 +387,11 @@ class EditFileTool extends Tool {
     final oldString = args['old_string'] as String? ?? '';
     final newString = args['new_string'] as String? ?? '';
 
-    final file = File(path);
-
     if (oldString.isEmpty) {
-      await file.parent.create(recursive: true);
-      await file.writeAsString(newString);
+      await workspace.writeFileAsString(path, newString);
       final newLines = _countLines(newString);
       return ToolResult(
-        content: 'Created ${file.path} (${newString.length} bytes)',
+        content: 'Created $path (${newString.length} bytes)',
         summary: 'Created $path ($newLines lines)',
         metadata: {
           'path': path,
@@ -396,7 +404,7 @@ class EditFileTool extends Tool {
       );
     }
 
-    if (!await file.exists()) {
+    if (!await workspace.exists(path)) {
       return ToolResult(
         success: false,
         content: 'Error: file not found: $path',
@@ -404,7 +412,7 @@ class EditFileTool extends Tool {
       );
     }
 
-    final content = await file.readAsString();
+    final content = await workspace.readFileAsString(path);
 
     final firstIndex = content.indexOf(oldString);
     if (firstIndex == -1) {
@@ -431,7 +439,7 @@ class EditFileTool extends Tool {
         newString +
         content.substring(firstIndex + oldString.length);
 
-    await file.writeAsString(newContent);
+    await workspace.writeFileAsString(path, newContent);
 
     final oldLines = oldString.split('\n').length;
     final newLines = newString.split('\n').length;
@@ -452,6 +460,10 @@ class EditFileTool extends Tool {
 
 /// A tool that lists directory contents.
 class ListDirectoryTool extends Tool {
+  final Workspace workspace;
+
+  ListDirectoryTool(this.workspace);
+
   @override
   String get name => 'list_directory';
 
@@ -476,18 +488,18 @@ class ListDirectoryTool extends Tool {
         content: 'Error: no path provided',
       );
     }
-    final dir = Directory(path);
-    if (!await dir.exists()) {
+    if (!await workspace.isDirectory(path)) {
       return ToolResult(
         success: false,
         content: 'Error: directory not found: $path',
         metadata: {'path': path},
       );
     }
-    final entries = await dir.list().take(AppConstants.globMaxEntries).toList();
+    final all = await workspace.list(path);
+    final entries = all.take(AppConstants.globMaxEntries).toList();
     final buf = StringBuffer();
     for (final entry in entries) {
-      final suffix = entry is Directory ? '/' : '';
+      final suffix = entry.isDirectory ? '/' : '';
       buf.writeln('${entry.path}$suffix');
     }
     final capped = entries.length == AppConstants.globMaxEntries;

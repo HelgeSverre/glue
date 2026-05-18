@@ -45,7 +45,7 @@ void main() {
     test('AgentRunner completes a tool-using conversation', () async {
       final core = AgentCore(
         llm: _MockLlm(),
-        tools: {'read_file': ReadFileTool()},
+        tools: {'read_file': ReadFileTool(testWorkspace())},
         modelId: 'test-model',
       );
       final runner = AgentRunner(
@@ -59,7 +59,7 @@ void main() {
 
     test('AgentManager spawns parallel subagents', () async {
       final manager = AgentManager(
-        tools: {'read_file': ReadFileTool()},
+        tools: {'read_file': ReadFileTool(testWorkspace())},
         llmFactory: _MockFactory(),
         config: testConfig(env: {'ANTHROPIC_API_KEY': 'sk-test'}),
         systemPrompt: 'test',

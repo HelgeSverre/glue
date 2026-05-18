@@ -3,6 +3,7 @@ library;
 
 import 'dart:io';
 
+import 'package:glue_core/glue_core.dart';
 import 'package:glue_harness/glue_harness.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 import 'package:http/http.dart' as http;
@@ -102,7 +103,7 @@ void main() {
       }
       await retryTest(() async {
         final agent = makeAgent(tools: {
-          'read_file': ReadFileTool(),
+          'read_file': ReadFileTool(LocalWorkspace(WorkspaceMapping.host('/'))),
         });
         final runner = makeRunner(agent);
         final result = await runner.runToCompletion(
@@ -122,7 +123,8 @@ void main() {
       }
       await retryTest(() async {
         final agent = makeAgent(tools: {
-          'list_directory': ListDirectoryTool(),
+          'list_directory':
+              ListDirectoryTool(LocalWorkspace(WorkspaceMapping.host('/'))),
         });
         final runner = makeRunner(agent);
         final result = await runner.runToCompletion(
@@ -144,7 +146,7 @@ void main() {
       }
       await retryTest(() async {
         final agent = makeAgent(tools: {
-          'grep': GrepTool(),
+          'grep': GrepTool(HostExecutor(const ShellConfig())),
         });
         final runner = makeRunner(agent);
         final result = await runner.runToCompletion(

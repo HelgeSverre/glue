@@ -1,0 +1,53 @@
+set dotenv-load
+
+default:
+    @just --list
+
+# Get dependencies
+deps:
+    dart pub get
+
+# Static analysis
+analyze:
+    dart analyze --fatal-infos
+
+# Format all Dart files
+format:
+    dart format .
+
+# Run unit tests.
+test *args:
+    @if [ -d test ]; then dart test {{args}}; else echo "glue_runtimes: no test/ directory, skipping."; fi
+
+# Run the opt-in live Daytona integration suite (requires DAYTONA_API_KEY).
+daytona:
+    dart test --run-skipped -t cloud-daytona test/daytona
+
+# Run the opt-in live Sprites integration suite (requires SPRITES_TOKEN).
+sprites:
+    dart test --run-skipped -t cloud-sprites test/sprites
+
+# Run the opt-in live Modal integration suite (requires `modal` CLI + login).
+modal:
+    dart test --run-skipped -t cloud-modal test/modal
+
+# Regenerate sidecar_source.g.dart from modal_sidecar.py.
+gen:
+    dart run tool/gen_modal_sidecar.dart
+
+# Check that the generated sidecar source is up to date.
+gen-check:
+    @before=$(cat lib/src/modal/sidecar_source.g.dart); \
+     dart run tool/gen_modal_sidecar.dart >/dev/null; \
+     after=$(cat lib/src/modal/sidecar_source.g.dart); \
+     if [ "$before" != "$after" ]; then \
+       echo 'ERROR: sidecar_source.g.dart out of date — run `just glue_runtimes::gen`'; \
+       exit 1; \
+     fi
+
+# Quality gate: gen-check + analyze + test
+check: gen-check analyze test
+
+# Cleanup
+clean:
+    rm -rf .dart_tool

@@ -193,6 +193,7 @@ class App {
   GlueConfig? _config;
   final String? _systemPrompt;
   final CommandExecutor _executor;
+  final Future<void> Function()? _runtimeClose;
   final ShellJobManager _jobManager;
   late final SlashAutocomplete _autocomplete;
   late final AtFileHint _atHint;
@@ -203,7 +204,7 @@ class App {
   late final Lifecycle _lifecycle;
   late final SlashCommandContext _slashContext;
   bool _bashMode = false;
-  Process? _bashRunProcess;
+  RunningCommandHandle? _bashRunHandle;
   ObservabilitySpan? _bashSpan;
   DateTime? _lastCtrlC;
 
@@ -239,6 +240,7 @@ class App {
     Set<String>? extraTrustedTools,
     SessionStore? sessionStore,
     CommandExecutor? executor,
+    Future<void> Function()? runtimeClose,
     ShellJobManager? jobManager,
     bool startupContinue = false,
     String? startupPrompt,
@@ -262,6 +264,7 @@ class App {
         _config = config,
         _systemPrompt = systemPrompt,
         _executor = executor ?? HostExecutor(const ShellConfig()),
+        _runtimeClose = runtimeClose,
         _jobManager = jobManager ??
             ShellJobManager(
               executor ?? HostExecutor(const ShellConfig()),
@@ -347,6 +350,7 @@ class App {
       extraTrustedTools: services.trustedTools,
       sessionStore: services.sessionStore,
       executor: services.executor,
+      runtimeClose: services.runtimeSession.close,
       jobManager: services.jobManager,
       startupContinue: startupContinue,
       startupPrompt: prompt,
@@ -455,6 +459,14 @@ class App {
       await _obs?.close();
       await jobSub.cancel();
       await _jobManager.shutdown();
+      // Tear down the active runtime (e.g. stop a cloud sandbox so the
+      // user isn't billed for an idle session). For host/docker this
+      // is a no-op.
+      if (_runtimeClose != null) {
+        try {
+          await _runtimeClose();
+        } catch (_) {}
+      }
       await termSub.cancel();
       await appSub.cancel();
       await mcpSub.cancel();
@@ -1747,6 +1759,13 @@ class App {
       await _sessionManager.closeCurrent();
       await _obs?.flush();
       await _obs?.close();
+      // Tear down the active runtime (cloud sandboxes need this so the
+      // user isn't billed for an orphaned sandbox after --print exits).
+      if (_runtimeClose != null) {
+        try {
+          await _runtimeClose();
+        } catch (_) {}
+      }
       if (cancelled) exitCode = 130;
     }
   }
@@ -1953,7 +1972,7 @@ class App {
     _bashSpan = span;
     try {
       final running = await _executor.startStreaming(command);
-      _bashRunProcess = running.process;
+      _bashRunHandle = running;
 
       final stdoutFuture =
           running.stdout.transform(const SystemEncoding().decoder).join();
@@ -1961,7 +1980,7 @@ class App {
           running.stderr.transform(const SystemEncoding().decoder).join();
 
       final exitCode = await running.exitCode;
-      _bashRunProcess = null;
+      _bashRunHandle = null;
 
       final stdout = await stdoutFuture;
       final stderr = await stderrFuture;
@@ -1985,7 +2004,7 @@ class App {
         });
       }
     } catch (e) {
-      _bashRunProcess = null;
+      _bashRunHandle = null;
       _blocks.add(ConversationEntry.error('Bash error: $e'));
       if (span != null && _obs != null && span.endTime == null) {
         _obs.endSpan(span, extra: {
@@ -2008,8 +2027,9 @@ class App {
       });
     }
     _bashSpan = null;
-    _bashRunProcess?.kill(ProcessSignal.sigterm);
-    _bashRunProcess = null;
+    final handle = _bashRunHandle;
+    _bashRunHandle = null;
+    if (handle != null) unawaited(handle.kill());
     // Mirror the agent-cancel contract: every transition back to idle also
     // stops the spinner, even if this particular path didn't start it.
     _stopSpinner();

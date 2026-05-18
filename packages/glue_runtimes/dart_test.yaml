@@ -1,0 +1,16 @@
+tags:
+  cloud-daytona:
+    skip: >-
+      Live Daytona integration test; opt in with
+      `dart test --run-skipped -t cloud-daytona`
+      (requires DAYTONA_API_KEY).
+  cloud-sprites:
+    skip: >-
+      Live Sprites integration test; opt in with
+      `dart test --run-skipped -t cloud-sprites`
+      (requires SPRITES_TOKEN).
+  cloud-modal:
+    skip: >-
+      Live Modal integration test; opt in with
+      `dart test --run-skipped -t cloud-modal`
+      (requires `modal` CLI on PATH + `modal token set`).

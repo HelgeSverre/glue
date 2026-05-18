@@ -155,8 +155,7 @@ McpAuthSpec _parseAuth(
     case 'bearer':
       final rawToken = raw['token'] as String?;
       final token = rawToken != null
-          ? _expandEnvVars(rawToken, env,
-              server: serverId, field: 'auth.token')
+          ? _expandEnvVars(rawToken, env, server: serverId, field: 'auth.token')
           : null;
       return McpBearerAuth(token: token);
     case 'oauth':

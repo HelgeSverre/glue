@@ -14,6 +14,7 @@ import 'package:glue/src/commands/slash/provider.dart';
 import 'package:glue/src/commands/slash/recap.dart';
 import 'package:glue/src/commands/slash/rename.dart';
 import 'package:glue/src/commands/slash/resume.dart';
+import 'package:glue/src/commands/slash/runtime.dart';
 import 'package:glue/src/commands/slash/session.dart';
 import 'package:glue/src/commands/slash/share.dart';
 import 'package:glue/src/commands/slash/skills.dart';
@@ -50,6 +51,7 @@ class BuiltinCommands {
         RenameCommand(ctx),
         ModelCommand(ctx),
         ProviderCommand(ctx),
+        RuntimeCommand(ctx),
         McpSlashCommand(ctx),
       ]);
   }

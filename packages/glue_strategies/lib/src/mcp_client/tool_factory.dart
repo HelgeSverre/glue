@@ -30,7 +30,7 @@ class McpTool extends Tool {
     required this.serverId,
     required this.bareName,
     required this.descriptor,
-  })  : _parameters = _parametersFromInputSchema(descriptor.inputSchema);
+  }) : _parameters = _parametersFromInputSchema(descriptor.inputSchema);
 
   final McpClient client;
   final String serverId;

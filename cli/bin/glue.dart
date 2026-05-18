@@ -9,6 +9,9 @@ import 'package:cli_completion/parser.dart';
 import 'package:glue/glue.dart';
 import 'package:glue/src/acp/cli_acp_delegate.dart';
 import 'package:glue/src/commands/mcp_command.dart';
+import 'package:glue_runtimes/daytona.dart';
+import 'package:glue_runtimes/modal.dart';
+import 'package:glue_runtimes/sprites.dart';
 import 'package:glue_server/glue_server.dart';
 import 'package:path/path.dart' as p;
 
@@ -38,6 +41,14 @@ List<String> normalizeCliArgs(List<String> args) {
 bool _looksLikeOption(String arg) => arg.startsWith('-');
 
 void main(List<String> args) async {
+  // Register cloud runtime adapters with RuntimeFactory before any
+  // ServiceLocator.create() call. Each adapter package's registration
+  // helper is a no-op when its runtime isn't selected, so listing them
+  // here is safe regardless of config.
+  registerDaytonaRuntime();
+  registerModalRuntime();
+  registerSpritesRuntime();
+
   final runner = GlueCommandRunner();
   try {
     final exitCode = await runner.run(normalizeCliArgs(args)) ?? 0;

@@ -23,6 +23,8 @@ dependencies:
   cli_completion: ^0.5.1
   glue_core:
     path: ../packages/glue_core
+  glue_runtimes:
+    path: ../packages/glue_runtimes
   glue_harness:
     path: ../packages/glue_harness
   glue_server:

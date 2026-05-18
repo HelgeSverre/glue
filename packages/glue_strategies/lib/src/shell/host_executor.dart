@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:glue_core/glue_core.dart';
 import 'package:glue_strategies/src/shell/command_executor.dart';
 import 'package:glue_strategies/src/shell/shell_config.dart';
 
@@ -39,11 +40,12 @@ class HostExecutor implements CommandExecutor {
       exitCode: exitCode,
       stdout: await stdoutFuture,
       stderr: await stderrFuture,
+      runtimeId: 'host',
     );
   }
 
   @override
-  Future<RunningCommand> startStreaming(String command) async {
+  Future<RunningCommandHandle> startStreaming(String command) async {
     final args = shellConfig.buildArgs(command);
     final exe = args.first;
     final rest = args.sublist(1);

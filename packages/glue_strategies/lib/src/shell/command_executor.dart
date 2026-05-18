@@ -1,15 +1,30 @@
 import 'dart:io';
 
+import 'package:glue_core/glue_core.dart';
+
 /// The captured output of a completed shell command.
 class CaptureResult {
   final int exitCode;
   final String stdout;
   final String stderr;
 
+  /// Identifier of the runtime that ran this command (e.g. `'host'`,
+  /// `'docker'`, `'daytona'`). Used by the SessionEvent layer to label
+  /// runtime command events. Defaults to `'host'` so existing call sites
+  /// that don't yet thread this through still work.
+  final String runtimeId;
+
+  /// Session this command was associated with, if known. Optional in V1;
+  /// populated by the harness in later work so runtime events can be
+  /// correlated with a session.
+  final String? sessionId;
+
   CaptureResult({
     required this.exitCode,
     required this.stdout,
     required this.stderr,
+    this.runtimeId = 'host',
+    this.sessionId,
   });
 }
 
@@ -17,24 +32,32 @@ class CaptureResult {
 ///
 /// {@category Shell Execution}
 ///
-/// Provides direct access to [stdout], [stderr], and [exitCode] without
-/// going through the underlying [Process]. Subclassed by `DockerRunningCommand`
-/// to add container cleanup on kill.
-class RunningCommand {
+/// Implements [RunningCommandHandle] so harness consumers (e.g.
+/// `ShellJobManager`) can manage background jobs uniformly across
+/// runtimes. Subclassed by `DockerRunningCommand` to add container
+/// cleanup on kill.
+class RunningCommand implements RunningCommandHandle {
   final Process process;
 
   RunningCommand(this.process);
 
+  @override
   Stream<List<int>> get stdout => process.stdout;
+
+  @override
   Stream<List<int>> get stderr => process.stderr;
+
+  @override
   Future<int> get exitCode => process.exitCode;
 
-  /// Gracefully terminates the process with SIGTERM.
+  /// Terminates the underlying process.
   ///
-  /// Override this to perform additional cleanup (e.g. stopping a Docker
-  /// container) before or after sending the signal.
-  Future<void> kill() async {
-    process.kill(ProcessSignal.sigterm);
+  /// With `force: false` (default) sends SIGTERM; with `force: true`
+  /// sends SIGKILL. Overrides may perform additional cleanup (e.g.
+  /// stopping a Docker container) before signalling.
+  @override
+  Future<void> kill({bool force = false}) async {
+    process.kill(force ? ProcessSignal.sigkill : ProcessSignal.sigterm);
   }
 }
 
@@ -53,6 +76,8 @@ abstract class CommandExecutor {
   /// Starts [command] and returns a handle for streaming its output.
   ///
   /// Prefer this over [runCapture] for long-running or interactive processes
-  /// where you want to consume stdout/stderr incrementally.
-  Future<RunningCommand> startStreaming(String command);
+  /// where you want to consume stdout/stderr incrementally. Implementations
+  /// return their own [RunningCommandHandle] subtype (e.g. [RunningCommand]
+  /// for host/Docker, an HTTP-backed handle for cloud runtimes).
+  Future<RunningCommandHandle> startStreaming(String command);
 }

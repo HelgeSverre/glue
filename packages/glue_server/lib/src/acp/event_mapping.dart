@@ -66,6 +66,17 @@ SessionUpdate? sessionEventToAcpUpdate(SessionEvent event) {
     McpServerErrorEvent() => null,
     McpServerAuthRequiredEvent() => null,
     McpToolListChangedEvent() => null,
+    // Runtime lifecycle events: declared in glue_core for the cloud
+    // runtime work, but not yet routed to ACP. PR 4/5 of the cloud
+    // runtimes plan will translate them into a `glue_runtime_status`
+    // extension update once the session bus emits them.
+    RuntimeCommandStartedEvent() => null,
+    RuntimeCommandOutputEvent() => null,
+    RuntimeCommandCompletedEvent() => null,
+    RuntimeCommandFailedEvent() => null,
+    RuntimeCommandCancelledEvent() => null,
+    RuntimeContainerStartedEvent() => null,
+    RuntimeContainerStoppedEvent() => null,
   };
 }
 

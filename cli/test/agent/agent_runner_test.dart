@@ -4,6 +4,8 @@ import 'package:glue_core/glue_core.dart';
 import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
 
+import '../_helpers/test_config.dart';
+
 /// Minimal LLM that returns text only (no tool calls).
 class _TextOnlyLlm implements LlmClient {
   final String response;
@@ -60,7 +62,7 @@ void main() {
     test('auto-approves tool calls in headless mode', () async {
       final core = AgentCore(
         llm: _ToolCallLlm(),
-        tools: {'list_directory': ListDirectoryTool()},
+        tools: {'list_directory': ListDirectoryTool(testWorkspace())},
       );
       final runner = AgentRunner(
         core: core,
@@ -74,7 +76,7 @@ void main() {
       final events = <AgentEvent>[];
       final core = AgentCore(
         llm: _ToolCallLlm(),
-        tools: {'list_directory': ListDirectoryTool()},
+        tools: {'list_directory': ListDirectoryTool(testWorkspace())},
       );
       final runner = AgentRunner(
         core: core,
@@ -96,7 +98,7 @@ void main() {
     test('denies tool calls in denyAll mode', () async {
       final core = AgentCore(
         llm: _ToolCallLlm(),
-        tools: {'list_directory': ListDirectoryTool()},
+        tools: {'list_directory': ListDirectoryTool(testWorkspace())},
       );
       final runner = AgentRunner(
         core: core,

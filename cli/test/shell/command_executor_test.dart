@@ -9,5 +9,23 @@ void main() {
       expect(r.stdout, 'ok\n');
       expect(r.stderr, '');
     });
+
+    test('defaults runtimeId to host when omitted', () {
+      final r = CaptureResult(exitCode: 0, stdout: '', stderr: '');
+      expect(r.runtimeId, 'host');
+      expect(r.sessionId, isNull);
+    });
+
+    test('carries explicit runtimeId and sessionId when provided', () {
+      final r = CaptureResult(
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        runtimeId: 'docker',
+        sessionId: 's-123',
+      );
+      expect(r.runtimeId, 'docker');
+      expect(r.sessionId, 's-123');
+    });
   });
 }

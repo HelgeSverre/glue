@@ -77,8 +77,7 @@ const _githubRepoBase = 'https://github.com/helgesverre/glue/blob/main/';
 const _sourceRoots = <(String, String)>[
   ('lib/src', 'cli/lib/src/'),
   ('../packages/glue_core/lib/src', 'packages/glue_core/lib/src/'),
-  ('../packages/glue_strategies/lib/src',
-      'packages/glue_strategies/lib/src/'),
+  ('../packages/glue_strategies/lib/src', 'packages/glue_strategies/lib/src/'),
   ('../packages/glue_harness/lib/src', 'packages/glue_harness/lib/src/'),
   ('../packages/glue_server/lib/src', 'packages/glue_server/lib/src/'),
 ];

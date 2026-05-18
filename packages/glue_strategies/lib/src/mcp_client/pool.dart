@@ -184,8 +184,7 @@ class McpClientPool {
 
   /// All tools advertised by all currently-connected servers.
   /// Namespaced names; safe to add directly to an agent's tool registry.
-  Iterable<McpTool> get allTools =>
-      _servers.values.expand((s) => s.tools);
+  Iterable<McpTool> get allTools => _servers.values.expand((s) => s.tools);
 
   /// Count of servers in `reconnecting` or `dead` state. Drives the
   /// status-bar "MCP: 2 dead, 1 reconnecting" badge.

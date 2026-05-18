@@ -565,6 +565,197 @@ class McpToolListChangedEvent extends SessionEvent {
 }
 
 // ---------------------------------------------------------------------------
+// Runtime (shell / sandbox) lifecycle events
+// ---------------------------------------------------------------------------
+//
+// These describe commands and containers executing inside a runtime
+// (host / Docker / cloud sandboxes). The vocabulary is uniform across
+// runtimes so surfaces (CLI, ACP server) can render them without
+// knowing which backend produced them.
+//
+// **Emission status:** declared, not yet emitted. The session-bus
+// integration that supplies `turnId` + `sequence` is part of
+// `docs/plans/2026-04-29-harness-layers.md` and is partially complete;
+// today's executors emit lower-level events (cf. `McpPoolEvent` in
+// `glue_strategies/mcp_client/pool.dart`). Cloud runtime work (PR 4)
+// will add a thin adapter from executor events to these SessionEvent
+// variants when the session bus is ready.
+
+/// A command has been dispatched to a runtime and is starting.
+class RuntimeCommandStartedEvent extends SessionEvent {
+  const RuntimeCommandStartedEvent({
+    required super.turnId,
+    required super.timestamp,
+    required super.sequence,
+    required this.runtimeId,
+    required this.commandId,
+    required this.command,
+    required this.runtimeCwd,
+    this.sessionScopedId,
+  });
+
+  /// Identifier of the runtime running this command: `'host'`,
+  /// `'docker'`, `'daytona'`, …
+  final String runtimeId;
+
+  /// Per-session-unique id for correlating this event with later
+  /// progress / completion / cancellation events. Distinct from
+  /// [SessionEvent.sequence], which is monotonic across the whole
+  /// session.
+  final String commandId;
+
+  /// The command line as dispatched (may be redacted/truncated by the
+  /// emitter — surfaces should treat it as a display string, not a
+  /// fully reconstructible value).
+  final String command;
+
+  /// The directory inside the runtime where the command will execute
+  /// (e.g. `/workspace` for Docker / cloud, or the host cwd otherwise).
+  final String runtimeCwd;
+
+  /// Cloud-side session id (e.g. a Daytona sandboxId), when relevant.
+  final String? sessionScopedId;
+}
+
+/// Streamed output bytes from a running runtime command.
+///
+/// Optional/high-volume — emitters may suppress this for short
+/// commands or gate it behind a debug flag.
+class RuntimeCommandOutputEvent extends SessionEvent {
+  const RuntimeCommandOutputEvent({
+    required super.turnId,
+    required super.timestamp,
+    required super.sequence,
+    required this.commandId,
+    required this.stream,
+    required this.text,
+  });
+
+  final String commandId;
+  final RuntimeOutputStream stream;
+  final String text;
+}
+
+/// A runtime command finished normally with an [exitCode]. Non-zero
+/// exit codes are *not* errors — they're the program's own failure
+/// signal. Use [RuntimeCommandFailedEvent] for transport-level errors.
+class RuntimeCommandCompletedEvent extends SessionEvent {
+  const RuntimeCommandCompletedEvent({
+    required super.turnId,
+    required super.timestamp,
+    required super.sequence,
+    required this.commandId,
+    required this.exitCode,
+    required this.duration,
+    this.stdoutBytes,
+    this.stderrBytes,
+  });
+
+  final String commandId;
+  final int exitCode;
+  final Duration duration;
+
+  /// Total bytes emitted on stdout, when known. Useful for surfaces
+  /// that want to elide huge outputs.
+  final int? stdoutBytes;
+  final int? stderrBytes;
+}
+
+/// A runtime command failed at the transport or runtime layer (i.e.
+/// the runtime couldn't run it at all, or lost connection). Distinct
+/// from a non-zero exit code, which is [RuntimeCommandCompletedEvent].
+class RuntimeCommandFailedEvent extends SessionEvent {
+  const RuntimeCommandFailedEvent({
+    required super.turnId,
+    required super.timestamp,
+    required super.sequence,
+    required this.commandId,
+    required this.errorType,
+    required this.message,
+  });
+
+  final String commandId;
+  final String errorType;
+  final String message;
+}
+
+/// A runtime command was cancelled by the harness (timeout, /cancel,
+/// shutdown) before it finished.
+class RuntimeCommandCancelledEvent extends SessionEvent {
+  const RuntimeCommandCancelledEvent({
+    required super.turnId,
+    required super.timestamp,
+    required super.sequence,
+    required this.commandId,
+    required this.reason,
+  });
+
+  final String commandId;
+  final RuntimeCancelReason reason;
+}
+
+/// A runtime container (Docker / cloud sandbox) was started for the
+/// session. Host runtimes don't emit this — there's no container.
+class RuntimeContainerStartedEvent extends SessionEvent {
+  const RuntimeContainerStartedEvent({
+    required super.turnId,
+    required super.timestamp,
+    required super.sequence,
+    required this.runtimeId,
+    required this.containerId,
+    this.image,
+  });
+
+  final String runtimeId;
+  final String containerId;
+  final String? image;
+}
+
+/// A runtime container was stopped (either normally on session end, or
+/// because of a failure / cancellation).
+class RuntimeContainerStoppedEvent extends SessionEvent {
+  const RuntimeContainerStoppedEvent({
+    required super.turnId,
+    required super.timestamp,
+    required super.sequence,
+    required this.runtimeId,
+    required this.containerId,
+    required this.reason,
+  });
+
+  final String runtimeId;
+  final String containerId;
+  final RuntimeContainerStopReason reason;
+}
+
+enum RuntimeOutputStream { stdout, stderr }
+
+enum RuntimeCancelReason {
+  /// User pressed Ctrl-C / cancelled the turn.
+  userCancelled,
+
+  /// The command exceeded its timeout.
+  timeout,
+
+  /// Session shutdown forced termination.
+  shutdown,
+}
+
+enum RuntimeContainerStopReason {
+  /// Normal end-of-session shutdown.
+  sessionEnded,
+
+  /// User cancelled the session.
+  userCancelled,
+
+  /// The runtime itself errored.
+  runtimeError,
+
+  /// External (e.g. an idle auto-stop by the cloud provider).
+  external,
+}
+
+// ---------------------------------------------------------------------------
 // Supporting value types
 // ---------------------------------------------------------------------------
 
