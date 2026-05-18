@@ -52,6 +52,14 @@ abstract class RuntimeSession {
   /// runtimes return immediately; cloud runtimes stop the sandbox
   /// (or leave it to auto-sleep when `delete_on_close: false`).
   Future<void> close();
+
+  /// Returns the unified-diff patch of all changes made inside the
+  /// sandbox workspace since [bootstrapSha], or `null` when no diff
+  /// can be produced (host/docker, no bootstrap SHA, or the diff
+  /// command failed). Callers typically invoke this just before
+  /// [close] so they can persist the patch alongside the session
+  /// log.
+  Future<String?> diffSinceBootstrap() async => null;
 }
 
 /// Builds a [RuntimeSession] for `runtime: <name>` from config.
@@ -158,6 +166,9 @@ class _BuiltinRuntimeSession implements RuntimeSession {
 
   @override
   Future<void> close() async {}
+
+  @override
+  Future<String?> diffSinceBootstrap() async => null;
 }
 
 /// Signature a cloud runtime adapter must implement. [options] is the

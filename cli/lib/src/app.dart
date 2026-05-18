@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
+
 import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/terminal/terminal.dart';
 import 'package:glue/src/terminal/layout.dart';
@@ -194,6 +196,7 @@ class App {
   final String? _systemPrompt;
   final CommandExecutor _executor;
   final Future<void> Function()? _runtimeClose;
+  final Future<String?> Function()? _runtimeDiff;
   final ShellJobManager _jobManager;
   late final SlashAutocomplete _autocomplete;
   late final AtFileHint _atHint;
@@ -241,6 +244,7 @@ class App {
     SessionStore? sessionStore,
     CommandExecutor? executor,
     Future<void> Function()? runtimeClose,
+    Future<String?> Function()? runtimeDiff,
     ShellJobManager? jobManager,
     bool startupContinue = false,
     String? startupPrompt,
@@ -265,6 +269,7 @@ class App {
         _systemPrompt = systemPrompt,
         _executor = executor ?? HostExecutor(const ShellConfig()),
         _runtimeClose = runtimeClose,
+        _runtimeDiff = runtimeDiff,
         _jobManager = jobManager ??
             ShellJobManager(
               executor ?? HostExecutor(const ShellConfig()),
@@ -351,6 +356,7 @@ class App {
       sessionStore: services.sessionStore,
       executor: services.executor,
       runtimeClose: services.runtimeSession.close,
+      runtimeDiff: services.runtimeSession.diffSinceBootstrap,
       jobManager: services.jobManager,
       startupContinue: startupContinue,
       startupPrompt: prompt,
@@ -377,6 +383,29 @@ class App {
   void requestExit() {
     _activeModal?.cancel();
     if (!_exitCompleter.isCompleted) _exitCompleter.complete();
+  }
+
+  /// Captures the cloud runtime's workspace diff before shutdown and
+  /// writes it to `<session-dir>/runtime.patch`. No-op for host/docker
+  /// (the runtime returns `null` from `diffSinceBootstrap`) and when
+  /// the diff is empty (no changes inside the sandbox). Failures are
+  /// swallowed so shutdown never blocks on diff capture.
+  Future<void> _captureRuntimePatch() async {
+    final diff = _runtimeDiff;
+    final sessionId = _sessionManager.currentSessionId;
+    if (diff == null || sessionId == null) return;
+    try {
+      final patch = await diff();
+      if (patch == null || patch.isEmpty) return;
+      final patchPath = p.join(
+        _environment.sessionDir(sessionId),
+        'runtime.patch',
+      );
+      File(patchPath).writeAsStringSync(patch);
+      stderr.writeln(
+        '\n\x1b[36m◆\x1b[0m Runtime workspace diff saved to $patchPath',
+      );
+    } catch (_) {/* shutdown must not block on diff failure */}
   }
 
   /// Run the application event loop.
@@ -454,6 +483,7 @@ class App {
           await tool.dispose();
         } catch (_) {}
       }
+      await _captureRuntimePatch();
       await _sessionManager.closeCurrent();
       await _obs?.flush();
       await _obs?.close();

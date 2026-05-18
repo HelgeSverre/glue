@@ -1,6 +1,7 @@
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 
+import 'package:glue_runtimes/src/common/diff.dart';
 import 'package:glue_runtimes/src/sprites/bootstrap.dart';
 import 'package:glue_runtimes/src/sprites/cli.dart';
 import 'package:glue_runtimes/src/sprites/config.dart';
@@ -124,4 +125,11 @@ class SpritesRuntime implements RuntimeSession {
       await _cli.deleteSprite(spriteName);
     }
   }
+
+  @override
+  Future<String?> diffSinceBootstrap() => captureWorkspaceDiff(
+        executor: executor,
+        runtimeCwd: workspace.mapping.runtimeCwd,
+        bootstrapSha: bootstrapSha,
+      );
 }

@@ -4,6 +4,20 @@ All notable changes to Glue CLI will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Runtime command events** — every executor (host / docker / daytona
+  / sprites / modal) now emits `RuntimeCommandStarted` /
+  `RuntimeCommandCompleted` / `RuntimeCommandFailed` /
+  `RuntimeCommandCancelled` when constructed with a `RuntimeEventSink`.
+  Threaded through `RuntimeFactory.create({eventSink})`. Opt-in — null
+  sink is free.
+- **End-of-session workspace diff for cloud runtimes** — cloud
+  `RuntimeSession`s implement `diffSinceBootstrap()` by running
+  `git -C /workspace diff <bootstrapSha>` inside the sandbox on session
+  shutdown; the result is saved to `<session-dir>/runtime.patch` so
+  the user can review (or apply) the agent's edits after a cloud run.
+
 ## [0.4.0] - 2026-05-18
 
 ### Added

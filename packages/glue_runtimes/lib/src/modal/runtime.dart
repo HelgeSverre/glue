@@ -1,6 +1,7 @@
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 
+import 'package:glue_runtimes/src/common/diff.dart';
 import 'package:glue_runtimes/src/modal/bootstrap.dart';
 import 'package:glue_runtimes/src/modal/config.dart';
 import 'package:glue_runtimes/src/modal/executor.dart';
@@ -104,4 +105,11 @@ class ModalRuntime implements RuntimeSession {
       await _sidecar.shutdown();
     }
   }
+
+  @override
+  Future<String?> diffSinceBootstrap() => captureWorkspaceDiff(
+        executor: executor,
+        runtimeCwd: workspace.mapping.runtimeCwd,
+        bootstrapSha: bootstrapSha,
+      );
 }
