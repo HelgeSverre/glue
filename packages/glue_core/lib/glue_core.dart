@@ -26,6 +26,7 @@ export 'package:glue_core/src/message.dart';
 export 'package:glue_core/src/model_catalog.dart';
 export 'package:glue_core/src/model_ref.dart';
 export 'package:glue_core/src/running_command_handle.dart';
+export 'package:glue_core/src/runtime_event.dart';
 export 'package:glue_core/src/session_command.dart';
 export 'package:glue_core/src/session_event.dart';
 export 'package:glue_core/src/tool.dart';

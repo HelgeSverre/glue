@@ -54,6 +54,7 @@ class DaytonaRuntime implements RuntimeSession {
     required String hostCwd,
     String runtimeCwd = '/workspace',
     http.Client? httpClient,
+    RuntimeEventSink? eventSink,
   }) async {
     if (config.apiKey.isEmpty) {
       throw StateError(
@@ -77,7 +78,11 @@ class DaytonaRuntime implements RuntimeSession {
         hostCwd: hostCwd,
         runtimeCwd: runtimeCwd,
       );
-      final executor = DaytonaExecutor(client: client, sandbox: sandbox);
+      final executor = DaytonaExecutor(
+        client: client,
+        sandbox: sandbox,
+        eventSink: eventSink,
+      );
       final workspace = TransportWorkspace(
         fs: DaytonaFsTransport(client: client, sandbox: sandbox),
         mapping: mapping,

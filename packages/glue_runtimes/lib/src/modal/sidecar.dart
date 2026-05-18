@@ -150,7 +150,7 @@ class ModalSidecar implements ModalSidecarBase {
         .transform(const LineSplitter())
         .listen((line) => stderr.writeln('[modal sidecar] $line'));
 
-    unawaited(_proc!.exitCode.then((code) {
+    _proc!.exitCode.then((code) {
       // Process exited; complete any outstanding requests with an
       // error so callers don't hang forever.
       if (_shuttingDown) return;
@@ -163,7 +163,7 @@ class ModalSidecar implements ModalSidecarBase {
         if (!c.isCompleted) c.completeError(err);
       }
       _pending.clear();
-    }));
+    });
 
     // Wait for the `ready` envelope before returning so callers can
     // start sending exec requests immediately.
@@ -366,7 +366,7 @@ class ModalSidecar implements ModalSidecarBase {
       } catch (_) {/* fallthrough to forced cleanup */}
     } finally {
       try {
-        unawaited(_proc!.stdin.close());
+        _proc!.stdin.close();
       } catch (_) {}
       await _stdoutSub?.cancel();
       await _stderrSub?.cancel();

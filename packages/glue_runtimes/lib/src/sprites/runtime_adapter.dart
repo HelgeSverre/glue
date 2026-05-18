@@ -31,9 +31,13 @@ SpritesConfig spritesConfigFromOptions(
 void registerSpritesRuntime() {
   RuntimeFactory.register(
     'sprites',
-    ({required cwd, required options}) async {
+    ({required cwd, required options, eventSink}) async {
       final spritesConfig = spritesConfigFromOptions(options);
-      return SpritesRuntime.start(config: spritesConfig, hostCwd: cwd);
+      return SpritesRuntime.start(
+        config: spritesConfig,
+        hostCwd: cwd,
+        eventSink: eventSink,
+      );
     },
   );
 }

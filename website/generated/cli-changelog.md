@@ -4,6 +4,8 @@ All notable changes to Glue CLI will be documented in this file.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-18
+
 ### Added
 
 - **Cloud runtimes** — three remote sandbox adapters, transparent to the

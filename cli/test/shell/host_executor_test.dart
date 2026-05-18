@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:glue_core/glue_core.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 import 'package:test/test.dart';
 
@@ -42,6 +43,35 @@ void main() {
       final code = await cmd.exitCode;
       expect(output.trim(), 'streaming');
       expect(code, 0);
+    });
+
+    test('emits Started → Completed when given an event sink', () async {
+      final events = <RuntimeEvent>[];
+      final executor =
+          HostExecutor(const ShellConfig(executable: 'sh'), eventSink: events.add);
+      final result = await executor.runCapture('echo hi');
+      expect(result.exitCode, 0);
+      expect(events, hasLength(2));
+      final started = events.first as RuntimeCommandStarted;
+      expect(started.runtimeId, 'host');
+      expect(started.command, 'echo hi');
+      final completed = events.last as RuntimeCommandCompleted;
+      expect(completed.commandId, started.commandId);
+      expect(completed.exitCode, 0);
+      expect(completed.stdoutBytes, greaterThan(0));
+    });
+
+    test('emits Cancelled when runCapture times out', () async {
+      final events = <RuntimeEvent>[];
+      final executor =
+          HostExecutor(const ShellConfig(executable: 'sh'), eventSink: events.add);
+      final result = await executor.runCapture(
+        'sleep 10',
+        timeout: const Duration(milliseconds: 50),
+      );
+      expect(result.exitCode, -1);
+      expect(events.last, isA<RuntimeCommandCancelled>());
+      expect((events.last as RuntimeCommandCancelled).reason, 'timeout');
     });
   });
 }

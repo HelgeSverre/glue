@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:glue_core/glue_core.dart';
 import 'package:glue_strategies/src/shell/command_executor.dart';
 import 'package:glue_strategies/src/shell/docker_config.dart';
 import 'package:glue_strategies/src/shell/docker_executor.dart';
@@ -20,15 +21,16 @@ class ExecutorFactory {
     required String cwd,
     List<MountEntry> sessionMounts = const [],
     bool? dockerAvailable,
+    RuntimeEventSink? eventSink,
   }) async {
     if (!dockerConfig.enabled) {
-      return HostExecutor(shellConfig);
+      return HostExecutor(shellConfig, eventSink: eventSink);
     }
 
     final available = dockerAvailable ?? await _checkDocker();
     if (!available) {
       if (dockerConfig.fallbackToHost) {
-        return HostExecutor(shellConfig);
+        return HostExecutor(shellConfig, eventSink: eventSink);
       }
       throw StateError('Docker is required but not available');
     }
@@ -39,6 +41,7 @@ class ExecutorFactory {
       config: dockerConfig,
       cwd: cwd,
       mounts: allMounts,
+      eventSink: eventSink,
     );
   }
 

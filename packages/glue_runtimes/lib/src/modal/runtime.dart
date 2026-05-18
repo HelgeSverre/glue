@@ -49,6 +49,7 @@ class ModalRuntime implements RuntimeSession {
     required String hostCwd,
     String runtimeCwd = '/workspace',
     ModalSidecarBase? sidecarOverride,
+    RuntimeEventSink? eventSink,
   }) async {
     final sidecar = sidecarOverride ?? ModalSidecar(config);
     try {
@@ -65,7 +66,11 @@ class ModalRuntime implements RuntimeSession {
         hostCwd: hostCwd,
         runtimeCwd: runtimeCwd,
       );
-      final executor = ModalExecutor(sidecar: sidecar, sandboxId: sandboxId);
+      final executor = ModalExecutor(
+        sidecar: sidecar,
+        sandboxId: sandboxId,
+        eventSink: eventSink,
+      );
       final workspace = TransportWorkspace(
         fs: ModalFsTransport(sidecar: sidecar),
         mapping: mapping,

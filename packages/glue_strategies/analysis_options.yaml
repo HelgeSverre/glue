@@ -18,7 +18,11 @@ linter:
     test_types_in_equals: true
     throw_in_finally: true
     unnecessary_statements: true
-    unawaited_futures: true
+    # `unawaited_futures` was on, but the resulting `unawaited(...)`
+    # wrappers added noise to fire-and-forget call sites (executor event
+    # emission, process exit propagation) without catching real bugs.
+    # Off by preference. Mirrors cli/analysis_options.yaml.
+    unawaited_futures: false
     avoid_dynamic_calls: true
     unnecessary_nullable_for_final_variable_declarations: true
     avoid_print: true

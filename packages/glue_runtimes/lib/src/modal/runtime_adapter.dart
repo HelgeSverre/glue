@@ -34,9 +34,13 @@ ModalConfig modalConfigFromOptions(
 void registerModalRuntime() {
   RuntimeFactory.register(
     'modal',
-    ({required cwd, required options}) async {
+    ({required cwd, required options, eventSink}) async {
       final config = modalConfigFromOptions(options);
-      return ModalRuntime.start(config: config, hostCwd: cwd);
+      return ModalRuntime.start(
+        config: config,
+        hostCwd: cwd,
+        eventSink: eventSink,
+      );
     },
   );
 }

@@ -54,6 +54,7 @@ class SpritesRuntime implements RuntimeSession {
     required String hostCwd,
     String runtimeCwd = '/workspace',
     SpritesCliBase? cliOverride,
+    RuntimeEventSink? eventSink,
   }) async {
     final cli = cliOverride ?? SpritesCli(config);
     if (!await cli.isAvailable()) {
@@ -84,7 +85,11 @@ class SpritesRuntime implements RuntimeSession {
         hostCwd: hostCwd,
         runtimeCwd: runtimeCwd,
       );
-      final executor = SpritesExecutor(cli: cli, spriteName: name);
+      final executor = SpritesExecutor(
+        cli: cli,
+        spriteName: name,
+        eventSink: eventSink,
+      );
       final workspace = TransportWorkspace(
         fs: SpritesFsTransport(cli: cli, spriteName: name),
         mapping: mapping,

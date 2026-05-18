@@ -47,11 +47,15 @@ DaytonaConfig daytonaConfigFromOptions(
 void registerDaytonaRuntime() {
   RuntimeFactory.register(
     'daytona',
-    ({required cwd, required options}) async {
+    ({required cwd, required options, eventSink}) async {
       final daytonaConfig = daytonaConfigFromOptions(options);
       // DaytonaRuntime implements RuntimeSession directly, so the
       // adapter just constructs and returns it.
-      return DaytonaRuntime.start(config: daytonaConfig, hostCwd: cwd);
+      return DaytonaRuntime.start(
+        config: daytonaConfig,
+        hostCwd: cwd,
+        eventSink: eventSink,
+      );
     },
   );
 }

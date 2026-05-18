@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:test/test.dart';
 
+import 'package:glue_core/glue_core.dart';
 import 'package:glue_runtimes/daytona.dart';
 import 'package:glue_runtimes/src/daytona/client.dart';
 import 'package:glue_runtimes/src/daytona/executor.dart';
@@ -51,6 +52,42 @@ void main() {
           jsonDecode((captured! as http.Request).body) as Map<String, dynamic>;
       expect(body['timeout'], 2000,
           reason: 'Daytona expects milliseconds, not seconds');
+    });
+
+    test('emits Started → Completed when given an event sink', () async {
+      final mock = MockClient((_) async => http.Response(
+            jsonEncode({'result': 'hi\n', 'exitCode': 0}),
+            200,
+          ));
+      final events = <RuntimeEvent>[];
+      final client = DaytonaClient(config: config, httpClient: mock);
+      final executor = DaytonaExecutor(
+        client: client,
+        sandbox: sandbox,
+        eventSink: events.add,
+      );
+      await executor.runCapture('echo hi');
+      expect(events, hasLength(2));
+      final started = events.first as RuntimeCommandStarted;
+      expect(started.runtimeId, 'daytona');
+      expect(started.sandboxId, 'sb-abc');
+      expect(started.runtimeCwd, '/workspace');
+      final completed = events.last as RuntimeCommandCompleted;
+      expect(completed.commandId, started.commandId);
+      expect(completed.exitCode, 0);
+    });
+
+    test('emits Failed when the API call throws', () async {
+      final mock = MockClient((_) async => http.Response('boom', 500));
+      final events = <RuntimeEvent>[];
+      final client = DaytonaClient(config: config, httpClient: mock);
+      final executor = DaytonaExecutor(
+        client: client,
+        sandbox: sandbox,
+        eventSink: events.add,
+      );
+      await expectLater(executor.runCapture('echo hi'), throwsException);
+      expect(events.last, isA<RuntimeCommandFailed>());
     });
   });
 }

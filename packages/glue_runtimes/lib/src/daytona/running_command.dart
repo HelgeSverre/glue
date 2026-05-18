@@ -45,7 +45,7 @@ class DaytonaRunningCommand implements RunningCommandHandle {
   })  : _client = client,
         _sandbox = sandbox,
         _command = command {
-    unawaited(_pump());
+    _pump();
   }
 
   @override

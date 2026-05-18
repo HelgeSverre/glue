@@ -66,6 +66,11 @@ class RunningCommand implements RunningCommandHandle {
 /// See [HostExecutor] for local execution and [DockerExecutor] for sandboxed
 /// Docker execution. Use [ExecutorFactory.create] to pick the right one based
 /// on the current [DockerConfig].
+///
+/// Implementations may accept an optional [RuntimeEventSink] to emit
+/// [RuntimeCommandStarted] / [RuntimeCommandCompleted] / [RuntimeCommandFailed]
+/// / [RuntimeCommandCancelled] events around each command. Emission is
+/// guarded so a `null` sink is free.
 abstract class CommandExecutor {
   /// Runs [command] and returns the captured stdout, stderr, and exit code.
   ///
@@ -80,4 +85,12 @@ abstract class CommandExecutor {
   /// return their own [RunningCommandHandle] subtype (e.g. [RunningCommand]
   /// for host/Docker, an HTTP-backed handle for cloud runtimes).
   Future<RunningCommandHandle> startStreaming(String command);
+}
+
+/// Generates a short opaque command id used to correlate runtime events
+/// emitted around a single executor invocation. Format is `cmd-<rand>` —
+/// not stable across processes, not a secret.
+String generateRuntimeCommandId() {
+  final n = DateTime.now().microsecondsSinceEpoch;
+  return 'cmd-${n.toRadixString(36)}';
 }

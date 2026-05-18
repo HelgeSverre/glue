@@ -95,6 +95,7 @@ class RuntimeFactory {
     Map<String, Object?> runtimeOptions = const {},
     List<MountEntry> sessionMounts = const [],
     bool? dockerAvailable,
+    RuntimeEventSink? eventSink,
   }) async {
     if (runtime == 'host' || runtime == 'docker') {
       // Force-disable docker when runtime=host even if `docker.enabled`
@@ -108,6 +109,7 @@ class RuntimeFactory {
         cwd: cwd,
         sessionMounts: sessionMounts,
         dockerAvailable: dockerAvailable,
+        eventSink: eventSink,
       );
       final mapping = WorkspaceMapping.host(cwd);
       return _BuiltinRuntimeSession(
@@ -125,7 +127,7 @@ class RuntimeFactory {
         'before ServiceLocator.create.',
       );
     }
-    return adapter(cwd: cwd, options: runtimeOptions);
+    return adapter(cwd: cwd, options: runtimeOptions, eventSink: eventSink);
   }
 }
 
@@ -164,4 +166,5 @@ class _BuiltinRuntimeSession implements RuntimeSession {
 typedef RuntimeAdapter = Future<RuntimeSession> Function({
   required String cwd,
   required Map<String, Object?> options,
+  RuntimeEventSink? eventSink,
 });
