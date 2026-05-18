@@ -126,7 +126,7 @@ doesn't touch your host:
 | --------------------------------- | ----------------------------------------------------------------- |
 | Develop an automation quickly     | `host` runtime + `local` browser (`headed: true`)                 |
 | Untrusted site inspection         | `docker` runtime + `docker` browser                               |
-| High-volume scraping              | <FeatureStatus status="planned" /> cloud runtime + cloud browser  |
+| High-volume scraping              | `daytona` / `sprites` / `modal` runtime + `steel` / `browserbase` browser |
 | Agent-driven multi-step workflows | Any runtime + `steel`, `browserbase`, `anchor`, or `hyperbrowser` |
 
 ## Providers we're evaluating

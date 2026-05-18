@@ -40,9 +40,11 @@ The shape is clear; the work isn't in main yet.
 - **Provider adapter contract.** `ProviderAdapter` + `ProviderConfig` +
   `ModelConfig` + `CredentialStore`. Custom providers via
   `adapter: openai` + `compatibility: <profile>`. <FeatureStatus status="planned" />
-- **Runtime boundary.** `RunningCommandHandle` interface, runtime events
-  in session logs, workspace path mapping docs. Prep work for cloud
-  runtimes. <FeatureStatus status="planned" />
+- **Cloud runtime polish.** End-of-session diff-out, cloud-provided
+  browser CDP, cloud-side artifact retrieval, in-session
+  `/runtime switch <name>`, runtime event emission in session logs.
+  Daytona / Sprites / Modal already ship — this is the followup.
+  <FeatureStatus status="planned" />
 - **Docker sandbox polish.** Mount ergonomics, background job handling,
   state preservation across sessions. <FeatureStatus status="experimental" />
 - **Web extraction flows.** First-class pipelines for page → structured
@@ -52,9 +54,9 @@ The shape is clear; the work isn't in main yet.
 
 Directions we want to head once the foundations land.
 
-- **Cloud runtimes.** E2B, Modal, Daytona, custom SSH or container
-  workers. Same `CommandExecutor` surface; different backends.
-  <FeatureStatus status="planned" />
+- **More cloud runtimes.** E2B, hopx, Northflank, custom SSH or container
+  workers — same `RuntimeFactory.register` adapter pattern proven by
+  Daytona, Sprites, and Modal. <FeatureStatus status="planned" />
 - **Replay UI.** A dedicated surface that reads `conversation.jsonl`
   and renders it step-by-step with diffs, tool-call collapse, and
   time scrubbing. <FeatureStatus status="planned" />

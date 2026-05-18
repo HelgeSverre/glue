@@ -60,6 +60,11 @@ commented out.
 #   executable: zsh
 #   mode: non_interactive        # non_interactive | interactive | login
 
+# Runtime adapter selection. Defaults to host. Set to docker, daytona,
+# sprites, or modal to route command + filesystem work elsewhere.
+# Overridden by GLUE_RUNTIME.
+# runtime: host
+
 # docker:
 #   enabled: false
 #   image: ubuntu:24.04
@@ -68,6 +73,25 @@ commented out.
 #   mounts:
 #     - /absolute/path
 #     - /absolute/path:ro
+
+# daytona:
+#   api_key: env:DAYTONA_API_KEY
+#   api_base_url: https://app.daytona.io/api    # US default; EU: https://app-eu.daytona.io/api
+#   # toolbox_base_url: https://proxy.staging   # proxy override; usually omit
+#   # snapshot: my-snapshot-id                  # org default if omitted
+
+# sprites:
+#   sprite_cli: sprite                          # path to the `sprite` binary
+#   # sprite_name: my-sandbox                   # reuse a named sprite across sessions
+#   delete_on_close: true                       # auto-sleep + delete on session end
+
+# modal:
+#   app_name: glue                              # Modal App that hosts the sandbox
+#   # python_path: /opt/venvs/glue/bin/python   # interpreter with `modal` importable
+#   modal_cli: modal                            # used only for `glue doctor` auth check
+#   # image: python:3.12-slim                   # registry tag; default is Modal's Debian base
+#   sandbox_timeout_seconds: 1800               # hard cap; sandbox terminates after this
+#   delete_on_close: true                       # terminate on session end
 
 # web:
 #   fetch:
@@ -147,11 +171,25 @@ commented out.
 | `bash.max_lines`                     | integer                       | none                                |
 | `shell.executable`                   | string                        | `GLUE_SHELL`, then `SHELL` fallback |
 | `shell.mode`                         | string                        | `GLUE_SHELL_MODE`                   |
+| `runtime`                            | string                        | `GLUE_RUNTIME`                      |
 | `docker.enabled`                     | boolean                       | `GLUE_DOCKER_ENABLED=1`             |
 | `docker.image`                       | string                        | `GLUE_DOCKER_IMAGE`                 |
 | `docker.shell`                       | string                        | `GLUE_DOCKER_SHELL`                 |
 | `docker.fallback_to_host`            | boolean                       | none                                |
 | `docker.mounts`                      | list of strings               | `GLUE_DOCKER_MOUNTS`                |
+| `daytona.api_key`                    | string                        | `DAYTONA_API_KEY`                   |
+| `daytona.api_base_url`               | string                        | `DAYTONA_API_BASE_URL`              |
+| `daytona.toolbox_base_url`           | string                        | `DAYTONA_TOOLBOX_BASE_URL`          |
+| `daytona.snapshot`                   | string                        | `DAYTONA_SNAPSHOT`                  |
+| `sprites.sprite_cli`                 | string                        | `SPRITES_CLI`                       |
+| `sprites.sprite_name`                | string                        | `SPRITES_NAME`                      |
+| `sprites.delete_on_close`            | boolean                       | `SPRITES_DELETE_ON_CLOSE`           |
+| `modal.python_path`                  | string                        | `MODAL_PYTHON`                      |
+| `modal.modal_cli`                    | string                        | `MODAL_CLI`                         |
+| `modal.app_name`                     | string                        | `MODAL_APP`                         |
+| `modal.image`                        | string                        | `MODAL_IMAGE`                       |
+| `modal.sandbox_timeout_seconds`      | integer                       | `MODAL_SANDBOX_TIMEOUT`             |
+| `modal.delete_on_close`              | boolean                       | `MODAL_DELETE_ON_CLOSE`             |
 | `web.fetch.jina_api_key`             | string                        | `JINA_API_KEY`                      |
 | `web.fetch.allow_jina_fallback`      | boolean                       | none                                |
 | `web.fetch.timeout_seconds`          | integer                       | none                                |

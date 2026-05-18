@@ -458,11 +458,10 @@ The `SessionStore` logs conversation events to disk for session resume:
       {"type": "tool_call", "name": "...", "arguments": {...}}
 ```
 
-> **Note:** All pending branches remove the Docker sandbox and `CommandExecutor`
-> abstraction (`DockerExecutor`, `ExecutorFactory`, `ShellConfig`, `SessionState`).
-> Bash commands run directly via `Process.start('sh', ['-c', command])`.
-> The `state.json` file and `SessionState` class are removed. `App.create()`
-> becomes a synchronous `factory` constructor (no longer `async`).
+> **Note:** The `CommandExecutor` abstraction is now load-bearing — it
+> powers the host/docker/daytona/sprites/modal runtimes through
+> `RuntimeFactory`. Bash commands route through `RuntimeSession.executor`
+> selected per session (see `packages/glue_strategies/lib/src/runtime/runtime_factory.dart`).
 
 Resume flow: `/resume` → PanelModal listing → select session → `_resumeSession()` → replay events into `AgentCore._conversation` and `_blocks`.
 

@@ -64,35 +64,44 @@ just cli::test      # CLI tests only
 
 ## Architecture
 
-Glue is a terminal-native coding agent. Source lives under `cli/lib/src/`. The main layers:
+Glue is a terminal-native coding agent. The codebase is a Dart monorepo:
 
-**Agent loop** (`agent/`): `AgentCore` runs the LLM↔tool ReAct loop, streaming `AgentEvent`s (sealed class — use switch/case pattern matching). `AgentRunner` executes agents headlessly. `AgentManager` spawns subagents. `ContentPart` models multimodal message parts.
+- `packages/glue_core/` — pure data types and contracts shared everywhere (`SessionEvent`, `ContentPart`, `WorkspaceMapping`, `RunningCommandHandle`).
+- `packages/glue_strategies/` — strategy interfaces and built-in implementations (`CommandExecutor` + `HostExecutor` + `DockerExecutor`, `Workspace` + `LocalWorkspace`, `RuntimeFactory` + `RuntimeSession`, web search/browser providers).
+- `packages/glue_runtimes/` — cloud runtime adapters (`daytona/`, `sprites/`, `modal/`) registered with `RuntimeFactory` from the cli surface. Shared bootstrap + FS transport live under `src/common/`.
+- `packages/glue_harness/` — agent loop and supporting machinery: `AgentCore`/`AgentRunner`/`AgentManager`, `LlmClient` impls (`anthropic/`, `openai/`, `ollama/`) + `LlmFactory`, provider adapters (`AnthropicAdapter`, `OpenAiCompatibleAdapter`, `CopilotAdapter`), model catalog, tool implementations, `ServiceLocator`, MCP client, observability.
+- `packages/glue_server/` — ACP server + `event_mapping` from `SessionEvent` to ACP updates.
+- `cli/` — the user-facing binary (`bin/glue.dart`) and surface-only code: `lib/src/app.dart` (App controller), `lib/src/terminal/` + `lib/src/rendering/` + `lib/src/ui/` (TUI), `lib/src/input/` (LineEditor, file-ref expansion), `lib/src/commands/` (subcommands + slash registry), `lib/src/doctor/`, `lib/src/conversation/`.
 
-**App controller** (`app.dart` + `app/` part files): Event-driven architecture merging terminal input and agent events into a single stream. 60fps async rendering with scroll regions. Never blocks.
+Cross-cutting layers:
 
-**LLM clients** (`llm/`): `LlmClient` interface with implementations for Anthropic (SSE), OpenAI/Mistral (SSE), and Ollama (NDJSON). `LlmFactory` creates clients from config. `MessageMapper` bridges Glue's internal message shape to each provider wire format.
+**Agent loop** (`glue_harness/agent/`): `AgentCore` runs the LLM↔tool ReAct loop, streaming `AgentEvent`s (sealed class — use switch/case pattern matching). `AgentRunner` executes agents headlessly. `AgentManager` spawns subagents.
 
-**Provider adapters** (`providers/`): Higher-level provider abstraction layered on top of `llm/`. Handles auth (API key, OAuth device code for Copilot), model resolution, and compatibility quirks per provider (`AnthropicAdapter`, `OpenAiCompatibleAdapter`, `CopilotAdapter`, `CopilotTokenManager`).
+**App controller** (`cli/lib/src/app.dart`): Event-driven architecture merging terminal input and agent events into a single stream. 60fps async rendering with scroll regions. Never blocks.
 
-**Model catalog** (`catalog/`): Parses `docs/reference/models.yaml` into an in-memory catalog. `models_generated.dart` is the bundled snapshot regenerated via `just gen` (checked by `just gen-check`). `RemoteCatalogFetcher` + `CatalogRefreshService` can pull updates at runtime.
+**LLM clients** (`glue_harness/llm/`): `LlmClient` interface with implementations for Anthropic (SSE), OpenAI/Mistral (SSE), and Ollama (NDJSON). `LlmFactory` creates clients from config. `MessageMapper` bridges Glue's internal message shape to each provider wire format.
 
-**Shell execution** (`shell/`): `CommandExecutor` abstraction — `HostExecutor` (runs via user's `$SHELL`) and `DockerExecutor` (ephemeral containers). `ExecutorFactory` selects with auto-fallback.
+**Provider adapters** (`glue_harness/providers/`): Higher-level provider abstraction layered on top of `llm/`. Handles auth (API key, OAuth device code for Copilot), model resolution, and compatibility quirks per provider.
 
-**Config & storage** (`config/`, `storage/`, `credentials/`, `session/`, `core/`): `GlueConfig` resolves CLI args → env vars → `~/.glue/config.yaml` → defaults. `CredentialStore` holds API keys/tokens. `SessionStore`/`SessionManager` persist conversation sessions. `core/environment.dart` centralizes GLUE_HOME path resolution.
+**Model catalog** (`glue_harness/catalog/`): Parses `docs/reference/models.yaml` into an in-memory catalog. `models_generated.dart` is the bundled snapshot regenerated via `just gen` (checked by `just gen-check`).
 
-**Rendering** (`terminal/` + `rendering/` + `ui/`): Raw terminal I/O and ANSI rendering; layout with output/overlay/status/input zones; markdown renderer. `ui/` holds higher-level interactive components — modals, docked panels, autocomplete overlays (slash, `@file`, shell), responsive tables, theme tokens/recipes.
+**Runtimes** (`glue_strategies/shell/` + `glue_strategies/fs/` + `glue_strategies/runtime/` + `glue_runtimes/`): `CommandExecutor` + `Workspace` + `RuntimeSession` contracts in `glue_strategies`; built-in `host`/`docker` adapters there; `daytona`/`sprites`/`modal` adapters in `glue_runtimes` registered at startup from `cli/bin/glue.dart` via `register*Runtime()`. `RuntimeFactory.create` resolves the active runtime per session.
 
-**Input** (`input/`): `LineEditor`, `TextAreaEditor`, file-reference expansion (`@file`), and streaming input handling.
+**Config & storage** (`glue_harness/config/`, `storage/`, `credentials/`, `session/`, `core/`): `GlueConfig` resolves CLI args → env vars → `~/.glue/config.yaml` → defaults. `CredentialStore` holds API keys/tokens. `SessionStore`/`SessionManager` persist conversation sessions. `core/environment.dart` centralizes GLUE_HOME path resolution.
 
-**Commands** (`commands/`): Top-level CLI subcommands (`ConfigCommand`, `DoctorCommand`), slash-command registry and completions.
+**Rendering** (`cli/lib/src/terminal/` + `rendering/` + `ui/`): Raw terminal I/O and ANSI rendering; layout with output/overlay/status/input zones; markdown renderer. `ui/` holds higher-level interactive components — modals, docked panels, autocomplete overlays, responsive tables, theme tokens/recipes.
 
-**Orchestration** (`orchestrator/`): Permission gating for tool execution (approval modes, allow/deny lists).
+**Input** (`cli/lib/src/input/`): `LineEditor`, `TextAreaEditor`, file-reference expansion (`@file`), and streaming input handling.
 
-**Web** (`web/`): Split into `web/search/` (providers: Brave, DuckDuckGo, Firecrawl, Tavily — routed via `SearchRouter`) and `web/browser/` (local + remote providers: Anchor, Browserbase, Browserless, Docker, Hyperbrowser, Steel) plus `web/fetch/` (HTML→markdown, Jina reader, PDF/OCR extraction, truncation).
+**Commands** (`cli/lib/src/commands/`): Top-level CLI subcommands (`ConfigCommand`, `DoctorCommand`, `McpCommand`), slash-command registry, completions, and per-slash command classes (`/model`, `/runtime`, `/mcp`, …).
 
-**Doctor** (`doctor/`): Installation and config health checks surfaced by `glue doctor`.
+**Orchestration** (`glue_harness/orchestrator/`): Permission gating for tool execution (approval modes, allow/deny lists).
 
-**Other key modules**: `skills/` (skill discovery and execution), `tools/` (web/subagent tools), `observability/` (tracing, OTEL, Langfuse).
+**Web** (`glue_harness/web/`): Split into `web/search/` (providers: Brave, DuckDuckGo, Firecrawl, Tavily) and `web/browser/` (local + remote providers: Anchor, Browserbase, Browserless, Docker, Hyperbrowser, Steel) plus `web/fetch/` (HTML→markdown, Jina reader, PDF/OCR, truncation).
+
+**Doctor** (`cli/lib/src/doctor/`): Installation and config health checks surfaced by `glue doctor`, including a per-runtime block (host / docker / daytona / sprites / modal).
+
+**Other key modules**: `glue_harness/skills/` (skill discovery and execution), `glue_harness/tools/` (web/subagent tools), `glue_harness/observability/` (tracing, OTEL).
 
 ## Code Conventions
 

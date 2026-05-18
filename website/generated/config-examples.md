@@ -31,6 +31,11 @@ the source file, not this one.
 #   executable: zsh
 #   mode: non_interactive        # non_interactive | interactive | login
 
+# Runtime adapter selection. Defaults to host. Set to docker, daytona,
+# sprites, or modal to route command + filesystem work elsewhere.
+# Overridden by GLUE_RUNTIME.
+# runtime: host
+
 # docker:
 #   enabled: false
 #   image: ubuntu:24.04
@@ -39,6 +44,25 @@ the source file, not this one.
 #   mounts:
 #     - /absolute/path
 #     - /absolute/path:ro
+
+# daytona:
+#   api_key: env:DAYTONA_API_KEY
+#   api_base_url: https://app.daytona.io/api    # US default; EU: https://app-eu.daytona.io/api
+#   # toolbox_base_url: https://proxy.staging   # proxy override; usually omit
+#   # snapshot: my-snapshot-id                  # org default if omitted
+
+# sprites:
+#   sprite_cli: sprite                          # path to the `sprite` binary
+#   # sprite_name: my-sandbox                   # reuse a named sprite across sessions
+#   delete_on_close: true                       # auto-sleep + delete on session end
+
+# modal:
+#   app_name: glue                              # Modal App that hosts the sandbox
+#   # python_path: /opt/venvs/glue/bin/python   # interpreter with `modal` importable
+#   modal_cli: modal                            # used only for `glue doctor` auth check
+#   # image: python:3.12-slim                   # registry tag; default is Modal's Debian base
+#   sandbox_timeout_seconds: 1800               # hard cap; sandbox terminates after this
+#   delete_on_close: true                       # terminate on session end
 
 # web:
 #   fetch:

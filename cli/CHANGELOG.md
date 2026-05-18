@@ -4,6 +4,58 @@ All notable changes to Glue CLI will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Cloud runtimes** — three remote sandbox adapters, transparent to the
+  agent (same `bash`, file tools, background jobs as host/Docker).
+  - **Daytona** (`runtime: daytona`) — REST over the control plane;
+    per-sandbox `toolboxProxyUrl` discovered automatically; US + EU
+    regions. Workspace bootstrapped via git clone or tarball into
+    `/workspace`. `DAYTONA_API_KEY` for auth.
+  - **Sprites** (`runtime: sprites`) — persistent Fly.io sandbox via
+    the `sprite` CLI. Resumes by name; auto-sleeps when idle.
+    Authenticates through `sprite login`.
+  - **Modal** (`runtime: modal`) — Modal sandbox via an embedded
+    Python sidecar speaking JSON-RPC over stdin/stdout (Modal's
+    sandbox primitive is Python-SDK-only). Sandbox auto-terminates
+    on `sandbox_timeout_seconds` to cap runaway billing.
+- **Runtime selection** via `runtime:` YAML key or `GLUE_RUNTIME` env
+  var (precedence: env → YAML → legacy `docker.enabled` fallback).
+- **`/runtime` slash command** — shows the active runtime, its key
+  config (image / sandbox name / API base URL), and registered cloud
+  adapters.
+- **`glue doctor` runtime checks** — per-runtime block for
+  host / docker / daytona / sprites / modal; reports API-key presence,
+  CLI install/auth status, and config sanity.
+- **`RuntimeFactory.register(name, adapter)`** — pluggable cloud
+  adapter registration. `cli/bin/glue.dart` registers daytona / sprites
+  / modal at startup; downstream forks can register their own.
+- **`RuntimeSession`** umbrella type — bundles `executor` + `workspace`
+  + sandbox metadata (`id`, `sandboxId`, `bootstrapSha`, `resumed`) +
+  `close()` lifecycle hook used to stop cloud sandboxes on session end.
+
+### Changed
+
+- **Architecture refactor** to support cloud runtimes:
+  - File tools (`ReadFileTool`, `WriteFileTool`, `EditFileTool`,
+    `ListDirectoryTool`) now route through `Workspace` instead of
+    `dart:io`. `GrepTool` routes through `CommandExecutor`.
+  - `ShellJobManager` operates on `RunningCommandHandle` instead of
+    `dart:io.Process` directly, so background jobs work uniformly
+    across runtimes.
+  - New shared `TransportWorkspace` + `RuntimeFsTransport` lets each
+    cloud adapter implement just a thin transport — workspace logic
+    (path translation, `WorkspaceAccessError`, list anchoring) is
+    centralized.
+  - Workspace bootstrap (git clone or tarball + SHA recording) lives
+    in shared `WorkspaceBootstrap` used by all three cloud adapters.
+- **Monorepo split**: `glue_runtimes/` package houses the cloud
+  adapters and shared cloud-runtime utilities. The cli depends on it
+  only for `register*Runtime()` — no cloud SDK leaks into `glue_harness`.
+- **`RuntimeApiException`** unified the previous per-adapter
+  `*ApiException` classes; carries `runtimeId` + `endpoint` for
+  observability.
+
 ## [0.3.0] - 2026-05-15
 
 ### Added

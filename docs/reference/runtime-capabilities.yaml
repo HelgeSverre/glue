@@ -9,8 +9,8 @@
 #
 # When adding a runtime, also add an entry to feature-status.yaml.
 
-version: 1
-updated_at: 2026-04-19
+version: 2
+updated_at: 2026-05-18
 
 capabilities:
   command_capture: Run a command and capture its stdout/stderr/exit code.
@@ -61,19 +61,53 @@ runtimes:
       internet: yes
       gpu: partial
 
-  cloud:
-    status: planned
-    notes: Remote runtimes — E2B, Modal, Daytona, custom SSH or container workers.
+  daytona:
+    status: shipping
+    notes: Remote Daytona sandbox over REST; workspace bootstrapped via git clone or tarball into /workspace.
     capabilities:
-      command_capture: planned
-      command_streaming: planned
-      background_jobs: planned
-      filesystem_read: planned
-      filesystem_write: planned
+      command_capture: yes
+      command_streaming: yes
+      background_jobs: yes
+      filesystem_read: yes
+      filesystem_write: yes
       mount_host_paths: no
       browser_cdp: planned
       artifacts: planned
-      secrets: planned
-      snapshots: planned
-      internet: planned
+      secrets: no
+      snapshots: yes
+      internet: yes
+      gpu: planned
+
+  sprites:
+    status: shipping
+    notes: Persistent Fly.io sprite via the `sprite` CLI; auto-sleeps when idle, resumes by name.
+    capabilities:
+      command_capture: yes
+      command_streaming: yes
+      background_jobs: yes
+      filesystem_read: yes
+      filesystem_write: yes
+      mount_host_paths: no
+      browser_cdp: planned
+      artifacts: planned
+      secrets: no
+      snapshots: yes
+      internet: yes
+      gpu: planned
+
+  modal:
+    status: shipping
+    notes: Modal sandbox via an embedded Python sidecar over JSON-RPC; sandbox auto-terminates on the configured timeout.
+    capabilities:
+      command_capture: yes
+      command_streaming: yes
+      background_jobs: yes
+      filesystem_read: yes
+      filesystem_write: yes
+      mount_host_paths: no
+      browser_cdp: planned
+      artifacts: planned
+      secrets: no
+      snapshots: no
+      internet: yes
       gpu: planned

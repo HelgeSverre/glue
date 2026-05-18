@@ -12,8 +12,8 @@
 #   experimental  — in the binary but rough, incomplete, or behind a flag.
 #   planned       — described somewhere but not implemented yet.
 
-version: 1
-updated_at: 2026-04-19
+version: 2
+updated_at: 2026-05-18
 
 features:
   # Core agent
@@ -25,7 +25,11 @@ features:
   runtime-host: { status: shipping, name: "Host runtime" }
   runtime-docker: { status: shipping, name: "Docker runtime" }
   runtime-docker-polish: { status: experimental, name: "Docker sandbox polish" }
-  runtime-cloud: { status: planned, name: "Cloud runtimes" }
+  runtime-daytona: { status: shipping, name: "Daytona runtime" }
+  runtime-sprites: { status: shipping, name: "Sprites runtime" }
+  runtime-modal: { status: shipping, name: "Modal runtime" }
+  runtime-cloud-browser: { status: planned, name: "Cloud-provided browser CDP" }
+  runtime-cloud-artifacts: { status: planned, name: "Cloud session artifacts" }
 
   # Models / providers
   model-catalog-curated: { status: shipping, name: "Curated model catalog" }

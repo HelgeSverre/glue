@@ -281,6 +281,9 @@ export default defineConfig({
             { text: "Bash Mode", link: "/docs/using-glue/bash-mode" },
             { text: "Worktrees", link: "/docs/using-glue/worktrees" },
             { text: "Docker Sandbox", link: "/docs/using-glue/docker-sandbox" },
+            { text: "Daytona", link: "/docs/using-glue/daytona" },
+            { text: "Sprites", link: "/docs/using-glue/sprites" },
+            { text: "Modal", link: "/docs/using-glue/modal" },
           ],
         },
         {
