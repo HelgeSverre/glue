@@ -4,6 +4,8 @@ All notable changes to Glue CLI will be documented in this file.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-05-19
+
 ### Added
 
 - **Bootstrap error classification** — `BootstrapException` now
