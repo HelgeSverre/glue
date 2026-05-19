@@ -205,6 +205,13 @@ async function main() {
         const pngPath = path.join(BADGES_DIR, `${fileBase}.png`);
         await writeFile(pngPath, pngBuffer);
 
+        // Pull width/height from the rendered SVG so the manifest can
+        // surface real pixel dimensions on the /badges page (instead
+        // of the page clamping every preview to a single height).
+        const dims = svg.match(/width="(\d+)" height="(\d+)"/);
+        const width = dims ? Number(dims[1]) : undefined;
+        const height = dims ? Number(dims[2]) : undefined;
+
         jsonBadges.push({
           id: fileBase,
           file: `${fileBase}.svg`,
@@ -219,6 +226,8 @@ async function main() {
           style,
           variant: variant.name,
           cornerRadius: variant.cornerRadius,
+          width,
+          height,
         });
 
         console.log(`  → ${fileBase}.svg + .png`);

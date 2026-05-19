@@ -15,6 +15,7 @@ outline: false
     const copySuccess = ref(null)
     const selectedStyle = ref('sm')
     const selectedVariant = ref('square')
+    const selectedFormat = ref('markdown')
 
     const BADGE_URL_BASE = 'https://getglue.dev/badges'
 
@@ -23,20 +24,33 @@ outline: false
         badges.value = await res.json()
     })
 
-    function copyMarkdown(badge) {
+    function formatSnippet(badge) {
         const url = `${BADGE_URL_BASE}/${badge.file}`
-        const md = `[![${badge.label}](${url})](https://getglue.dev)`
-        navigator.clipboard.writeText(md)
+        const alt = `${badge.label} ${badge.message}`
+        switch (selectedFormat.value) {
+            case 'html':
+                return `<a href="https://getglue.dev"><img src="${url}" alt="${alt}"></a>`
+            case 'url':
+                return url
+            case 'img':
+                return `<img src="${url}" alt="${alt}">`
+            case 'markdown':
+            default:
+                return `[![${badge.label}](${url})](https://getglue.dev)`
+        }
+    }
+
+    function copyBadge(badge) {
+        navigator.clipboard.writeText(formatSnippet(badge))
         copySuccess.value = badge.id
         setTimeout(() => copySuccess.value = null, 1500)
     }
 
-    const categories = ['status', 'brand', 'reverse', 'meme']
+    const categories = ['status', 'brand', 'reverse']
     const categoryLabels = {
         status: 'Status',
         brand: 'Brand',
         reverse: 'Reverse',
-        meme: 'meme 😅'
     }
 
     const styleLabels = {
@@ -48,6 +62,13 @@ outline: false
     const variantLabels = {
         square: 'square',
         rounded: 'rounded (4px)'
+    }
+
+    const formatLabels = {
+        markdown: 'Markdown',
+        html: 'HTML',
+        url: 'URL',
+        img: '<img>'
     }
 
     const filteredBadges = computed(() => {
@@ -67,26 +88,39 @@ outline: false
 
 Glue badges for your projects. Click to copy.
 
-<div class="style-tabs">
-    <button
-            v-for="style in ['sm', 'md', 'lg']"
-            :key="style"
-            :class="{ active: selectedStyle === style }"
-            @click="selectedStyle = style"
-    >
-        {{ styleLabels[style] }}
-    </button>
-</div>
+<div class="toolbar">
+    <div class="tab-group" role="group" aria-label="Size">
+        <button
+                v-for="style in ['sm', 'md', 'lg']"
+                :key="style"
+                :class="{ active: selectedStyle === style }"
+                @click="selectedStyle = style"
+        >
+            {{ styleLabels[style] }}
+        </button>
+    </div>
 
-<div class="style-tabs">
-    <button
-            v-for="variant in ['square', 'rounded']"
-            :key="variant"
-            :class="{ active: selectedVariant === variant }"
-            @click="selectedVariant = variant"
-    >
-        {{ variantLabels[variant] }}
-    </button>
+    <div class="tab-group" role="group" aria-label="Shape">
+        <button
+                v-for="variant in ['square', 'rounded']"
+                :key="variant"
+                :class="{ active: selectedVariant === variant }"
+                @click="selectedVariant = variant"
+        >
+            {{ variantLabels[variant] }}
+        </button>
+    </div>
+
+    <div class="tab-group" role="group" aria-label="Copy format">
+        <button
+                v-for="fmt in ['markdown', 'html', 'url', 'img']"
+                :key="fmt"
+                :class="{ active: selectedFormat === fmt }"
+                @click="selectedFormat = fmt"
+        >
+            {{ formatLabels[fmt] }}
+        </button>
+    </div>
 </div>
 
 <div class="badges-section" v-for="cat in categories" :key="cat">
@@ -97,31 +131,38 @@ Glue badges for your projects. Click to copy.
                 :key="badge.id"
                 class="badge-card"
                 :class="{ copied: copySuccess === badge.id }"
-                @click="copyMarkdown(badge)"
+                @click="copyBadge(badge)"
         >
             <div class="badge-row">
-                <div class="preview" :style="{ background: '#0A0A0B' }">
-                    <img :src="`/badges/${badge.file}`" :alt="badge.label + ' ' + badge.message" />
+                <div class="preview preview-dark">
+                    <img :src="`/badges/${badge.file}`" :alt="badge.label + ' ' + badge.message" :width="badge.width" :height="badge.height" />
                 </div>
-                <div class="preview" :style="{ background: '#FFFFFF' }">
-                    <img :src="`/badges/${badge.file}`" :alt="badge.label + ' ' + badge.message" />
+                <div class="preview preview-light">
+                    <img :src="`/badges/${badge.file}`" :alt="badge.label + ' ' + badge.message" :width="badge.width" :height="badge.height" />
                 </div>
             </div>
             <div class="badge-footer">
                 <code>{{ badge.file }}</code>
+                <span v-if="badge.width && badge.height" class="dims">{{ badge.width }}×{{ badge.height }}</span>
             </div>
         </div>
     </div>
 </div>
 
 <style scoped>
-    .style-tabs {
+    .toolbar {
         display: flex;
-        gap: 8px;
+        flex-wrap: wrap;
+        gap: 1.5rem;
         margin: 1.5rem 0;
     }
 
-    .style-tabs button {
+    .tab-group {
+        display: flex;
+        gap: 8px;
+    }
+
+    .tab-group button {
         background: var(--vp-c-bg-soft);
         border: 1px solid var(--vp-c-divider);
         border-radius: 6px;
@@ -133,11 +174,11 @@ Glue badges for your projects. Click to copy.
         transition: all 0.15s;
     }
 
-    .style-tabs button:hover {
+    .tab-group button:hover {
         border-color: #FACC15;
     }
 
-    .style-tabs button.active {
+    .tab-group button.active {
         background: #FACC15;
         border-color: #FACC15;
         color: #0A0A0B;
@@ -158,7 +199,11 @@ Glue badges for your projects. Click to copy.
     .badge-grid {
         display: grid;
         gap: 8px;
-        grid-template-columns: repeat(4, 1fr);
+        /* auto-fill cards so narrow badges pack tight and wide ones
+           get the room they need — the previous repeat(4, 1fr)
+           stretched every card to the same column width regardless
+           of badge size. */
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     }
 
     .badge-card {
@@ -188,38 +233,61 @@ Glue badges for your projects. Click to copy.
     }
 
     .preview {
-        padding: 8px 6px;
+        padding: 12px 12px;
         display: flex;
         align-items: center;
         justify-content: center;
     }
 
+    .preview-dark {
+        background: #333;
+    }
+
+    .preview-light {
+        background: #FFFFFF;
+    }
+
     .preview img {
-        height: 18px;
+        /* Render at native pixel dimensions — the previous
+           `height: 18px` clamped every size to 18px tall, which made
+           md/lg badges look 25%/44% smaller than the tabs claimed
+           and hid the real width differences between configs. */
         width: auto;
+        height: auto;
         display: block;
+        /* Keep PNG previews crisp at native resolution. */
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
     }
 
     .badge-footer {
         padding: 6px 8px;
         border-top: 1px solid var(--vp-c-divider);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
     }
 
     .badge-footer code {
         font-size: 0.5625rem;
         color: var(--vp-c-text-3);
         font-family: var(--vp-font-family-mono);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
-    @media (max-width: 768px) {
-        .badge-grid {
-            grid-template-columns: repeat(3, 1fr);
-        }
+    .badge-footer .dims {
+        font-size: 0.5625rem;
+        color: var(--vp-c-text-3);
+        font-family: var(--vp-font-family-mono);
+        flex-shrink: 0;
     }
 
     @media (max-width: 640px) {
         .badge-grid {
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: 1fr;
         }
     }
 </style>
