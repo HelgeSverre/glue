@@ -4,12 +4,18 @@
  * @module badges/generate
  */
 
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Resvg } from "@resvg/resvg-js";
 
-import { COLORS, SYMBOL_PATH, FONT_FAMILY, LAYOUT } from "./design-tokens.mjs";
+import {
+  COLORS,
+  SYMBOL_PATH,
+  SYMBOL_VIEWBOX,
+  FONT_FAMILY,
+  LAYOUT,
+} from "./design-tokens.mjs";
 import { BADGE_CONFIGS, STYLES } from "./config.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -43,6 +49,41 @@ function esc(str) {
  * @param {string} style - 'sm', 'md', or 'lg'
  * @returns {string}
  */
+/**
+ * Derives badge geometry from the per-style [LAYOUT] constants.
+ *
+ *   labelTextX   = showIcon ? iconVisualRight + iconTextGap : textPadX
+ *   labelWidth   = ceil(labelTextX + labelTextWidth + textPadX)
+ *   messageTextX = labelWidth + textPadX
+ *   messageWidth = ceil(textPadX + messageTextWidth + textPadX)
+ *
+ * Replaces the previous hard-coded `+ 26` / `text x="26"` formulas
+ * which sized everything to the sm icon and broke as the icon
+ * scaled up — md squeezed the icon-text gap to 5px, lg overlapped
+ * text into the icon by 2.7px, every size had zero right padding on
+ * the label.
+ */
+function deriveGeometry(layout, label, message, showIcon) {
+  const iconVisualRight =
+    layout.iconX +
+    (SYMBOL_VIEWBOX.xMin + SYMBOL_VIEWBOX.width) * layout.iconScale;
+  const labelTextX = showIcon
+    ? iconVisualRight + layout.iconTextGap
+    : layout.textPadX;
+
+  const labelTextWidth = label.length * layout.charWidth;
+  // Ceil so a wide-glyph string never clips by a sub-pixel.
+  const labelWidth = Math.ceil(labelTextX + labelTextWidth + layout.textPadX);
+
+  const messageTextX = labelWidth + layout.textPadX;
+  const messageTextWidth = message.length * layout.charWidth;
+  const messageWidth = Math.ceil(
+    layout.textPadX + messageTextWidth + layout.textPadX,
+  );
+
+  return { labelTextX, labelWidth, messageTextX, messageWidth };
+}
+
 function generateSvg(
   {
     label,
@@ -56,12 +97,8 @@ function generateSvg(
   style,
 ) {
   const layout = LAYOUT[style];
-  const charWidth = layout.charWidth;
-
-  const labelWidth = showIcon
-    ? label.length * charWidth + 26
-    : label.length * charWidth + 14;
-  const messageWidth = message.length * charWidth + 16;
+  const { labelTextX, labelWidth, messageTextX, messageWidth } =
+    deriveGeometry(layout, label, message, showIcon);
   const svgWidth = labelWidth + messageWidth;
   const height = layout.height;
 
@@ -83,8 +120,8 @@ function generateSvg(
     <rect x="${labelWidth}" width="${messageWidth}" height="${height}" fill="${messageBg}"/>
     <rect x="${labelWidth}" width="${layout.dividerWidth}" height="${height}" fill="${COLORS.divider}" opacity="0.65"/>
     ${iconGroup}
-    <text x="${showIcon ? 26 : 7}" y="${layout.textY}" fill="${labelColor || COLORS.text}" font-family="${FONT_FAMILY}" font-size="${layout.fontSize}" font-weight="${layout.fontWeight}" text-rendering="geometricPrecision">${esc(label)}</text>
-    <text x="${labelWidth + 8}" y="${layout.textY}" fill="${messageColor || COLORS.surface}" font-family="${FONT_FAMILY}" font-size="${layout.fontSize}" font-weight="${layout.fontWeight}" text-rendering="geometricPrecision">${esc(message)}</text>
+    <text x="${labelTextX}" y="${layout.textY}" fill="${labelColor || COLORS.text}" font-family="${FONT_FAMILY}" font-size="${layout.fontSize}" font-weight="${layout.fontWeight}" text-rendering="geometricPrecision">${esc(label)}</text>
+    <text x="${messageTextX}" y="${layout.textY}" fill="${messageColor || COLORS.surface}" font-family="${FONT_FAMILY}" font-size="${layout.fontSize}" font-weight="${layout.fontWeight}" text-rendering="geometricPrecision">${esc(message)}</text>
   </g>
 </svg>`;
 }
