@@ -4,6 +4,22 @@ All notable changes to Glue CLI will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Cloud runtime bootstrap captures the host working tree** via a
+  git bundle, replacing the clone-from-remote-only path that lost
+  uncommitted edits, unpushed commits, untracked files, and locked
+  out non-git workspaces entirely. New host-side helper builds a
+  single-commit bundle in a temp `--git-dir` overlay (host's actual
+  `.git` is never touched), uploads it to the sandbox via the
+  runtime's existing writeFile primitive, and clones from the bundle
+  inside. Bundle SHA becomes the `bootstrapSha` so the diff layer is
+  unchanged. Per-runtime upload caps: Daytona 200 MB, Modal 30 MB,
+  Sprites 3 MB. Hosts without git, or bundles exceeding the cap, fall
+  back to clone-from-remote. Resolves W1–W5, T1–T4, A1–A4 from the
+  correctness plan + Q4 default (no `.glueignore`, respect host
+  `.gitignore` via `git add -A`).
+
 ### Changed
 
 - **Runtime workspace diff is now an mbox** (`runtime.mbox`, not

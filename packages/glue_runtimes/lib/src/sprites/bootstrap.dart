@@ -5,21 +5,30 @@ import 'package:glue_runtimes/src/sprites/cli.dart';
 export 'package:glue_runtimes/src/common/bootstrap.dart' show BootstrapResult;
 
 /// Sprites-specific glue around the shared [WorkspaceBootstrap]:
-/// adapts [SpritesCliBase] to the [BootstrapExec] contract. Sprites
-/// run as root and `/workspace` is auto-writable, so no prep step
-/// is needed.
+/// adapts [SpritesCliBase] to the [BootstrapBundleTransport] contract.
+/// Sprites uploads bytes via base64 over `sprite exec`, which has a
+/// practical cap of a few MB before WebSocket framing overhead and
+/// shell-arg limits start to break things — so the bundle path is
+/// only chosen for small repos. Larger repos fall back to
+/// clone-from-remote (which requires a reachable origin).
 class SpritesBootstrap {
   final SpritesCliBase cli;
   final String spriteName;
+  final String sessionId;
 
-  SpritesBootstrap({required this.cli, required this.spriteName});
+  SpritesBootstrap({
+    required this.cli,
+    required this.spriteName,
+    required this.sessionId,
+  });
 
   Future<BootstrapResult> bootstrap({
     required String hostCwd,
     required String runtimeCwd,
   }) async {
     final ws = WorkspaceBootstrap(
-      exec: _SpritesBootstrapExec(cli: cli, spriteName: spriteName),
+      exec: _SpritesBootstrapTransport(cli: cli, spriteName: spriteName),
+      sessionId: sessionId,
     );
     try {
       return await ws.bootstrap(hostCwd: hostCwd, runtimeCwd: runtimeCwd);
@@ -35,10 +44,10 @@ class SpritesBootstrap {
   }
 }
 
-class _SpritesBootstrapExec implements BootstrapExec {
+class _SpritesBootstrapTransport implements BootstrapBundleTransport {
   final SpritesCliBase cli;
   final String spriteName;
-  _SpritesBootstrapExec({required this.cli, required this.spriteName});
+  _SpritesBootstrapTransport({required this.cli, required this.spriteName});
 
   @override
   Future<BootstrapExecResult> run(String shellCommand) async {
@@ -48,4 +57,15 @@ class _SpritesBootstrapExec implements BootstrapExec {
       output: '${r.stdout}${r.stderr}',
     );
   }
+
+  @override
+  Future<void> uploadBytes(String runtimePath, List<int> bytes) =>
+      cli.writeFileBytes(spriteName, runtimePath, bytes);
+
+  // base64-over-shell exec is the bottleneck — the entire payload
+  // goes through `sprite exec` as a single argv string, and the CLI's
+  // WebSocket framing starts to break around a few MB. Pick a tight
+  // cap; the fallback path covers larger repos via clone-from-remote.
+  @override
+  int get bundleSizeCapBytes => 3 * 1024 * 1024;
 }

@@ -2,6 +2,7 @@ import 'package:glue_core/glue_core.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 
 import 'package:glue_runtimes/src/common/diff.dart';
+import 'package:glue_runtimes/src/common/host_bundle.dart' show generateSessionId;
 import 'package:glue_runtimes/src/sprites/bootstrap.dart';
 import 'package:glue_runtimes/src/sprites/cli.dart';
 import 'package:glue_runtimes/src/sprites/config.dart';
@@ -76,7 +77,11 @@ class SpritesRuntime implements RuntimeSession {
         createdHere = true;
       }
 
-      final bootstrap = SpritesBootstrap(cli: cli, spriteName: name);
+      final bootstrap = SpritesBootstrap(
+        cli: cli,
+        spriteName: name,
+        sessionId: generateSessionId(),
+      );
       final result = await bootstrap.bootstrap(
         hostCwd: hostCwd,
         runtimeCwd: runtimeCwd,

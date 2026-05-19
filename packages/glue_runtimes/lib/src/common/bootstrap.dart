@@ -1,5 +1,9 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
+
+import 'package:glue_runtimes/src/common/host_bundle.dart';
+
 /// Result of a successful workspace bootstrap.
 class BootstrapResult {
   /// Commit SHA the sandbox was bootstrapped from (when the host cwd
@@ -22,6 +26,28 @@ abstract class BootstrapExec {
   /// semantics. Returns `exitCode` and the (possibly combined)
   /// `output` for error reporting.
   Future<BootstrapExecResult> run(String shellCommand);
+}
+
+/// Extended transport contract for the bundle bootstrap path —
+/// adapters that want to support uploading a host-built git bundle
+/// implement this. Adapters that only implement [BootstrapExec] fall
+/// back to the clone-from-remote strategy.
+abstract class BootstrapBundleTransport implements BootstrapExec {
+  /// Uploads [bytes] to [runtimePath] inside the sandbox. Caller
+  /// guarantees the parent directory will be created (via [run] or
+  /// the adapter's own semantics). Errors are wrapped in
+  /// [BootstrapException(stage: 'upload')].
+  Future<void> uploadBytes(String runtimePath, List<int> bytes);
+
+  /// Per-runtime cap on what [uploadBytes] can practically handle in
+  /// a single call. Used by [WorkspaceBootstrap] to decide whether to
+  /// take the bundle path or fall back to clone-from-remote.
+  ///
+  /// Verified caps (see cloud-runtimes-correctness-plan §Phase 2):
+  /// - Daytona multipart upload: ~200 MB
+  /// - Modal sidecar base64-in-JSON: ~30 MB
+  /// - Sprites base64-over-shell: ~3 MB
+  int get bundleSizeCapBytes;
 }
 
 class BootstrapExecResult {
@@ -72,8 +98,28 @@ class WorkspaceBootstrap {
   final BootstrapExec exec;
   final String? prepCommand;
 
-  WorkspaceBootstrap({required this.exec, this.prepCommand});
+  /// Session identifier, used to namespace the host-built bundle
+  /// under `~/.glue/sessions/<id>/bootstrap.bundle` and as the
+  /// synthetic commit message inside it.
+  final String sessionId;
 
+  WorkspaceBootstrap({
+    required this.exec,
+    required this.sessionId,
+    this.prepCommand,
+  });
+
+  /// Strategy preference (Phase 2 of cloud-runtimes-correctness-plan):
+  ///
+  /// 1. **resume** — `<runtimeCwd>/.git` already exists; skip clone.
+  /// 2. **bundle** — host has git; build a single-commit bundle of
+  ///    the working tree (respects .gitignore, captures uncommitted,
+  ///    works on non-git workspaces, works with no remote, bypasses
+  ///    sandbox-side auth). Requires [exec] to implement
+  ///    [BootstrapBundleTransport] AND bundle size ≤ runtime cap.
+  /// 3. **clone-from-remote** — fall back when bundle isn't an option
+  ///    (no upload transport, or bundle exceeds cap). Requires
+  ///    remote.origin.url + committed HEAD reachable on the remote.
   Future<BootstrapResult> bootstrap({
     required String hostCwd,
     required String runtimeCwd,
@@ -81,17 +127,6 @@ class WorkspaceBootstrap {
     final probe = await exec.run('test -d $runtimeCwd/.git');
     if (probe.exitCode == 0) {
       return const BootstrapResult(resumed: true);
-    }
-
-    final remoteUrl = await _gitRemoteUrl(hostCwd);
-    final sha = await _gitHeadSha(hostCwd);
-    if (remoteUrl == null || sha == null) {
-      throw UnimplementedError(
-        'Tarball bootstrap not yet implemented. The working directory '
-        'must be a git repo with a reachable remote and a committed '
-        'HEAD. Push your changes (even to a scratch branch) before '
-        'running with a cloud runtime.',
-      );
     }
 
     if (prepCommand != null) {
@@ -104,6 +139,106 @@ class WorkspaceBootstrap {
           output: prep.output,
         );
       }
+    }
+
+    // Strategy: prefer bundle if transport supports it AND bundle
+    // fits in the runtime's upload cap. Falls back to clone-from-
+    // remote otherwise — and falls back further to a clear error
+    // explaining what to set up.
+    final transport = exec;
+    if (transport is BootstrapBundleTransport) {
+      try {
+        return await _bootstrapViaBundle(
+          transport: transport,
+          hostCwd: hostCwd,
+          runtimeCwd: runtimeCwd,
+        );
+      } on _BundleSkipped catch (skip) {
+        // Bundle exceeds runtime cap or host has no git — try
+        // clone-from-remote next.
+        stderr.writeln('[glue bootstrap] bundle path unavailable '
+            '(${skip.reason}); falling back to clone-from-remote');
+      }
+    }
+
+    return _bootstrapViaClone(hostCwd: hostCwd, runtimeCwd: runtimeCwd);
+  }
+
+  Future<BootstrapResult> _bootstrapViaBundle({
+    required BootstrapBundleTransport transport,
+    required String hostCwd,
+    required String runtimeCwd,
+  }) async {
+    final HostBundle bundle;
+    try {
+      bundle = await buildHostBundle(
+        hostCwd: hostCwd,
+        sessionId: sessionId,
+      );
+    } on HostBundleException catch (e) {
+      throw _BundleSkipped('host git unavailable (${e.stage}: ${e.message})');
+    }
+
+    if (bundle.sizeBytes > transport.bundleSizeCapBytes) {
+      throw _BundleSkipped(
+        'bundle is ${bundle.sizeBytes} bytes, exceeds runtime cap of '
+        '${transport.bundleSizeCapBytes}',
+      );
+    }
+
+    final runtimeBundlePath = p.posix.join('/tmp', 'glue-bootstrap.bundle');
+    try {
+      await transport.uploadBytes(
+        runtimeBundlePath,
+        await bundle.path.readAsBytes(),
+      );
+    } catch (e) {
+      throw BootstrapException(
+        stage: 'upload',
+        message: 'bundle upload to $runtimeBundlePath failed',
+        output: e.toString(),
+      );
+    }
+
+    final clone = await exec.run(
+      'git clone $runtimeBundlePath $runtimeCwd '
+      '&& cd $runtimeCwd && git remote remove origin 2>/dev/null || true',
+    );
+    if (clone.exitCode != 0) {
+      throw BootstrapException(
+        stage: 'clone-bundle',
+        message: 'sandbox failed to clone uploaded bundle at $runtimeBundlePath',
+        exitCode: clone.exitCode,
+        output: clone.output,
+      );
+    }
+
+    // Bundle has been consumed; remove it to free sandbox disk.
+    await exec.run('rm -f $runtimeBundlePath');
+
+    // Best-effort: delete the host-side bundle (keep the tempGitDir
+    // for diagnostics). Failures are non-fatal.
+    try {
+      await bundle.path.delete();
+    } catch (_) {}
+
+    return BootstrapResult(resumed: false, bootstrapSha: bundle.bundleSha);
+  }
+
+  Future<BootstrapResult> _bootstrapViaClone({
+    required String hostCwd,
+    required String runtimeCwd,
+  }) async {
+    final remoteUrl = await _gitRemoteUrl(hostCwd);
+    final sha = await _gitHeadSha(hostCwd);
+    if (remoteUrl == null || sha == null) {
+      throw const BootstrapException(
+        stage: 'clone',
+        message: 'no bundle transport AND host is not a git repo with '
+            'a reachable remote. Either: (a) use a runtime adapter that '
+            'supports bundle bootstrap, or (b) push your changes to a '
+            'reachable remote first.',
+      );
     }
 
     final cloneUrl = _toHttpsCloneUrl(remoteUrl);
@@ -162,4 +297,12 @@ class WorkspaceBootstrap {
     final sha = (result.stdout as String).trim();
     return sha.isEmpty ? null : sha;
   }
+}
+
+/// Internal signal from `_bootstrapViaBundle` to its caller that the
+/// bundle path isn't viable (host has no git, bundle exceeds runtime
+/// cap, etc.) — caller falls back to clone-from-remote.
+class _BundleSkipped implements Exception {
+  final String reason;
+  _BundleSkipped(this.reason);
 }

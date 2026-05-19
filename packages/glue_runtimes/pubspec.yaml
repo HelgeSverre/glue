@@ -12,6 +12,7 @@ dependencies:
   glue_strategies:
     path: ../glue_strategies
   http: ^1.6.0
+  path: ^1.9.0
 
 dev_dependencies:
   test: ^1.30.0

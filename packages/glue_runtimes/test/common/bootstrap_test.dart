@@ -26,7 +26,7 @@ void main() {
         'test -d /workspace/.git':
             const BootstrapExecResult(exitCode: 0, output: ''),
       });
-      final ws = WorkspaceBootstrap(exec: exec);
+      final ws = WorkspaceBootstrap(exec: exec, sessionId: 'test');
       // Bootstrap targets the glue repo (it has a remote + HEAD)
       // but resume should short-circuit before reaching the clone.
       final result = await ws.bootstrap(
@@ -47,6 +47,7 @@ void main() {
             const BootstrapExecResult(exitCode: 1, output: ''),
       });
       final ws = WorkspaceBootstrap(
+        sessionId: 'test',
         exec: exec,
         prepCommand: 'sudo mkdir -p /workspace',
       );
@@ -70,7 +71,7 @@ void main() {
         'test -d /workspace/.git':
             const BootstrapExecResult(exitCode: 1, output: ''),
       });
-      final ws = WorkspaceBootstrap(exec: exec);
+      final ws = WorkspaceBootstrap(exec: exec, sessionId: 'test');
       await ws.bootstrap(
         hostCwd: Directory.current.path,
         runtimeCwd: '/workspace',
@@ -80,8 +81,7 @@ void main() {
       expect(exec.calls[1], startsWith('git clone '));
     });
 
-    test('prep failure surfaces as BootstrapException(stage: prep)',
-        () async {
+    test('prep failure surfaces as BootstrapException(stage: prep)', () async {
       final exec = _RecordingExec({
         'test -d /workspace/.git':
             const BootstrapExecResult(exitCode: 1, output: ''),
@@ -89,6 +89,7 @@ void main() {
             const BootstrapExecResult(exitCode: 2, output: 'sudo: bad-cmd'),
       });
       final ws = WorkspaceBootstrap(
+        sessionId: 'test',
         exec: exec,
         prepCommand: 'sudo bad-cmd',
       );
@@ -97,8 +98,8 @@ void main() {
           hostCwd: Directory.current.path,
           runtimeCwd: '/workspace',
         ),
-        throwsA(isA<BootstrapException>()
-            .having((e) => e.stage, 'stage', 'prep')),
+        throwsA(
+            isA<BootstrapException>().having((e) => e.stage, 'stage', 'prep')),
       );
     });
 
@@ -121,7 +122,7 @@ void main() {
         ),
       });
       scripted.clear();
-      final ws = WorkspaceBootstrap(exec: exec);
+      final ws = WorkspaceBootstrap(exec: exec, sessionId: 'test');
       await expectLater(
         ws.bootstrap(
           hostCwd: Directory.current.path,
@@ -133,20 +134,27 @@ void main() {
       );
     });
 
-    test('non-git cwd throws UnimplementedError (tarball deferred)',
+    test(
+        'non-git cwd + non-bundle transport throws BootstrapException(clone)',
         () async {
-      // /tmp is unlikely to be a git repo. If it happens to be one,
-      // this test will spuriously fail — guard with a precondition.
+      // Phase 2: a non-git cwd is no longer a hard error when the
+      // transport supports bundles — the host-side temp git-dir
+      // synthesizes a baseline commit. But for adapters that only
+      // implement BootstrapExec (no upload) we fall through to
+      // clone-from-remote and that requires a real remote.
       final tmp = Directory.systemTemp.createTempSync('glue-bs-');
       addTearDown(() => tmp.deleteSync(recursive: true));
       final exec = _RecordingExec({
         'test -d /workspace/.git':
             const BootstrapExecResult(exitCode: 1, output: ''),
       });
-      final ws = WorkspaceBootstrap(exec: exec);
+      final ws = WorkspaceBootstrap(exec: exec, sessionId: 'test');
       await expectLater(
         ws.bootstrap(hostCwd: tmp.path, runtimeCwd: '/workspace'),
-        throwsA(isA<UnimplementedError>()),
+        throwsA(isA<BootstrapException>()
+            .having((e) => e.stage, 'stage', 'clone')
+            .having((e) => e.message, 'message',
+                contains('no bundle transport'))),
       );
     });
   });
