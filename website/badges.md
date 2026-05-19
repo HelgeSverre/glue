@@ -9,41 +9,77 @@ outline: false
 
 
 <script setup>
-    import {ref, computed, onMounted} from 'vue'
+    import {ref, computed, onMounted, watch} from 'vue'
+
+    const BADGE_URL_BASE = 'https://getglue.dev/badges'
+    const LINK_TARGET = 'https://getglue.dev'
+
+    // Persist toolbar selections across reloads. `typeof window` is
+    // the canonical VitePress SSR guard — touching localStorage
+    // during SSR trips Node's experimental localStorage warning.
+    const isClient = typeof window !== 'undefined'
+    function persisted(key, initial) {
+        const v = ref(isClient ? (localStorage.getItem(key) || initial) : initial)
+        if (isClient) {
+            watch(v, n => {
+                try { localStorage.setItem(key, n) } catch (_) {/* private mode */}
+            })
+        }
+        return v
+    }
 
     const badges = ref([])
     const copySuccess = ref(null)
-    const selectedStyle = ref('sm')
-    const selectedVariant = ref('square')
-    const selectedFormat = ref('markdown')
-
-    const BADGE_URL_BASE = 'https://getglue.dev/badges'
+    const selectedStyle = persisted('badges:style', 'sm')
+    const selectedVariant = persisted('badges:variant', 'square')
+    const selectedFormat = persisted('badges:format', 'markdown')
 
     onMounted(async () => {
         const res = await fetch('/badges/badges.json')
         badges.value = await res.json()
     })
 
+    // HTML attribute escape — only "&" "<" and quotes can break out
+    // of an attribute or tag. Today's labels don't contain any of
+    // these, but a future addition like `say "hi"` would otherwise
+    // produce malformed HTML in the user's clipboard.
+    function escAttr(s) {
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/"/g, '&quot;')
+    }
+    // Markdown link-text escape — `[` and `]` are the only chars
+    // that break a `[text](url)` construct.
+    function escMd(s) {
+        return String(s).replace(/([\[\]])/g, '\\$1')
+    }
+
     function formatSnippet(badge) {
         const url = `${BADGE_URL_BASE}/${badge.file}`
         const alt = `${badge.label} ${badge.message}`
         switch (selectedFormat.value) {
             case 'html':
-                return `<a href="https://getglue.dev"><img src="${url}" alt="${alt}"></a>`
+                return `<a href="${LINK_TARGET}"><img src="${url}" alt="${escAttr(alt)}"></a>`
             case 'url':
                 return url
             case 'img':
-                return `<img src="${url}" alt="${alt}">`
+                return `<img src="${url}" alt="${escAttr(alt)}">`
             case 'markdown':
             default:
-                return `[![${badge.label}](${url})](https://getglue.dev)`
+                return `[![${escMd(badge.label)}](${url})](${LINK_TARGET})`
         }
     }
 
+    // Track the active "copied" timeout so a rapid second click
+    // doesn't let the first click's timer prematurely clear the
+    // second badge's highlight.
+    let copyTimer = null
     function copyBadge(badge) {
         navigator.clipboard.writeText(formatSnippet(badge))
         copySuccess.value = badge.id
-        setTimeout(() => copySuccess.value = null, 1500)
+        if (copyTimer) clearTimeout(copyTimer)
+        copyTimer = setTimeout(() => { copySuccess.value = null; copyTimer = null }, 1500)
     }
 
     const categories = ['status', 'brand', 'reverse']

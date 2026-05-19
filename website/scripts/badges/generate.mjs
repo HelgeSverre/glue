@@ -73,7 +73,9 @@ function deriveGeometry(layout, label, message, showIcon) {
 }
 
 /**
- * Generate a badge SVG.
+ * Generate a badge SVG plus the dimensions it was sized at — returning
+ * both lets the manifest record real `width`/`height` without
+ * re-parsing the SVG string we just produced.
  *
  * @param {object} config           Badge config from `./config.mjs`.
  * @param {string} config.label
@@ -84,11 +86,11 @@ function deriveGeometry(layout, label, message, showIcon) {
  * @param {string} [config.messageColor]
  * @param {boolean} [config.showIcon=true]
  * @param {'sm'|'md'|'lg'} style
- * @param {number} [cornerRadius=0]  Corner rounding in px (0 = square).
- *                                   Applied via the clipPath rect so both
- *                                   the rounding and the badge fills clip
- *                                   to the same shape.
- * @returns {string} SVG markup.
+ * @param {number} [cornerRadius=0]  Corner rounding in px (0 = square),
+ *                                   applied via the clipPath rect so
+ *                                   fills and divider clip to the same
+ *                                   shape.
+ * @returns {{svg: string, width: number, height: number}}
  */
 function generateSvg(
   {
@@ -106,7 +108,7 @@ function generateSvg(
   const layout = LAYOUT[style];
   const { labelTextX, labelWidth, messageTextX, messageWidth } =
     deriveGeometry(layout, label, message, showIcon);
-  const svgWidth = labelWidth + messageWidth;
+  const width = labelWidth + messageWidth;
   const height = layout.height;
 
   const iconGroup = showIcon
@@ -115,11 +117,14 @@ function generateSvg(
     </g>`
     : "";
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${height}" viewBox="0 0 ${svgWidth} ${height}" role="img" aria-label="Glue: ${label} ${message}">
+  const textAttrs = (x, fill) =>
+    `x="${x}" y="${layout.textY}" fill="${fill}" font-family="${FONT_FAMILY}" font-size="${layout.fontSize}" font-weight="${layout.fontWeight}" text-rendering="geometricPrecision"`;
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Glue: ${label} ${message}">
   <title>Glue: ${label} ${message}</title>
   <defs>
     <clipPath id="r">
-      <rect width="${svgWidth}" height="${height}" rx="${cornerRadius}" fill="#fff"/>
+      <rect width="${width}" height="${height}" rx="${cornerRadius}" fill="#fff"/>
     </clipPath>
   </defs>
   <g clip-path="url(#r)">
@@ -127,10 +132,12 @@ function generateSvg(
     <rect x="${labelWidth}" width="${messageWidth}" height="${height}" fill="${messageBg}"/>
     <rect x="${labelWidth}" width="${layout.dividerWidth}" height="${height}" fill="${COLORS.divider}" opacity="0.65"/>
     ${iconGroup}
-    <text x="${labelTextX}" y="${layout.textY}" fill="${labelColor || COLORS.text}" font-family="${FONT_FAMILY}" font-size="${layout.fontSize}" font-weight="${layout.fontWeight}" text-rendering="geometricPrecision">${esc(label)}</text>
-    <text x="${messageTextX}" y="${layout.textY}" fill="${messageColor || COLORS.surface}" font-family="${FONT_FAMILY}" font-size="${layout.fontSize}" font-weight="${layout.fontWeight}" text-rendering="geometricPrecision">${esc(message)}</text>
+    <text ${textAttrs(labelTextX, labelColor || COLORS.text)}>${esc(label)}</text>
+    <text ${textAttrs(messageTextX, messageColor || COLORS.surface)}>${esc(message)}</text>
   </g>
 </svg>`;
+
+  return { svg, width, height };
 }
 
 /**
@@ -182,66 +189,63 @@ function filenameFor(
 }
 
 /**
- * Main entry point.
+ * Render one (config × style × variant) combination: writes both
+ * `.svg` and `.png` to disk and returns the manifest entry.
  */
+async function buildBadge(config, style, variant) {
+  const fileBase = filenameFor(config, style, variant.filenameSuffix);
+  const { svg, width, height } = generateSvg(
+    config,
+    style,
+    variant.cornerRadius,
+  );
+
+  await writeFile(path.join(BADGES_DIR, `${fileBase}.svg`), svg, "utf-8");
+  await writeFile(path.join(BADGES_DIR, `${fileBase}.png`), await renderPng(svg));
+
+  return {
+    id: fileBase,
+    file: `${fileBase}.svg`,
+    pngFile: `${fileBase}.png`,
+    label: config.label,
+    message: config.message,
+    labelBg: config.labelBg,
+    messageBg: config.messageBg,
+    labelColor: config.labelColor || COLORS.text,
+    messageColor: config.messageColor || COLORS.surface,
+    category: config.category,
+    style,
+    variant: variant.name,
+    cornerRadius: variant.cornerRadius,
+    width,
+    height,
+  };
+}
+
 async function main() {
   await mkdir(BADGES_DIR, { recursive: true });
-
   console.log("Generating badges...");
 
-  /** @type {Object[]} */
   const jsonBadges = [];
-
   for (const config of BADGE_CONFIGS) {
     for (const style of STYLES) {
       for (const variant of VARIANTS) {
-        const fileBase = filenameFor(config, style, variant.filenameSuffix);
-        const svg = generateSvg(config, style, variant.cornerRadius);
-
-        const svgPath = path.join(BADGES_DIR, `${fileBase}.svg`);
-        await writeFile(svgPath, svg, "utf-8");
-
-        const pngBuffer = await renderPng(svg);
-        const pngPath = path.join(BADGES_DIR, `${fileBase}.png`);
-        await writeFile(pngPath, pngBuffer);
-
-        // Pull width/height from the rendered SVG so the manifest can
-        // surface real pixel dimensions on the /badges page (instead
-        // of the page clamping every preview to a single height).
-        const dims = svg.match(/width="(\d+)" height="(\d+)"/);
-        const width = dims ? Number(dims[1]) : undefined;
-        const height = dims ? Number(dims[2]) : undefined;
-
-        jsonBadges.push({
-          id: fileBase,
-          file: `${fileBase}.svg`,
-          pngFile: `${fileBase}.png`,
-          label: config.label,
-          message: config.message,
-          labelBg: config.labelBg,
-          messageBg: config.messageBg,
-          labelColor: config.labelColor || COLORS.text,
-          messageColor: config.messageColor || COLORS.surface,
-          category: config.category,
-          style,
-          variant: variant.name,
-          cornerRadius: variant.cornerRadius,
-          width,
-          height,
-        });
-
-        console.log(`  → ${fileBase}.svg + .png`);
+        const entry = await buildBadge(config, style, variant);
+        jsonBadges.push(entry);
+        console.log(`  → ${entry.id}.svg + .png`);
       }
     }
   }
 
-  const jsonOutput = JSON.stringify(jsonBadges, null, 2);
-  await writeFile(path.join(BADGES_DIR, "badges.json"), jsonOutput, "utf-8");
+  await writeFile(
+    path.join(BADGES_DIR, "badges.json"),
+    JSON.stringify(jsonBadges, null, 2),
+    "utf-8",
+  );
   console.log("  → badges.json");
 
-  const total = BADGE_CONFIGS.length * STYLES.length * VARIANTS.length;
   console.log(
-    `✓ generated ${total} badges (${total * 2} files) in public/badges/`,
+    `✓ generated ${jsonBadges.length} badges (${jsonBadges.length * 2} files) in public/badges/`,
   );
 }
 
