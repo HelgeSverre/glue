@@ -284,6 +284,10 @@ export default defineConfig({
             { text: "Daytona", link: "/docs/using-glue/daytona" },
             { text: "Sprites", link: "/docs/using-glue/sprites" },
             { text: "Modal", link: "/docs/using-glue/modal" },
+            {
+              text: "Session Patches",
+              link: "/docs/using-glue/session-patches",
+            },
           ],
         },
         {

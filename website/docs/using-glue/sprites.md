@@ -48,11 +48,47 @@ the next time you connect.
 ## What happens on session start
 
 1. `sprite create <name>` (skipped if an existing sprite resumes).
-2. Workspace bootstrap clones the current git repo (or uploads a
-   tarball) into `/workspace` inside the sprite.
+2. Workspace bootstrap stages your working tree at `/workspace` —
+   see [Bootstrap strategy](#bootstrap-strategy) below.
 3. Tools and bash run via `sprite exec`.
-4. On session close, the sprite is deleted unless `delete_on_close:
-   false`.
+4. On session close, the agent's changes are captured to
+   `~/.glue/sessions/<id>/runtime.mbox`
+   (see [Session Patches](/docs/using-glue/session-patches)) and the
+   sprite is deleted unless `delete_on_close: false`.
+
+## Bootstrap strategy
+
+Sprites uses the **bundle path** for fresh sprites:
+
+1. Glue builds a host-side git bundle of your working tree (uncommitted
+   edits + untracked files included).
+2. Uploads it into the sprite via `sprite exec` — capped at **3 MB**
+   because base64-over-shell-exec is the bottleneck. Most application
+   repos fit comfortably; vendored / monorepo-sized projects don't.
+3. Sandbox clones from the bundle.
+
+If the bundle exceeds 3 MB or host `git` isn't available, glue falls
+back to **clone-from-remote** inside the sprite — that path requires
+a reachable `origin` and credentials Sprites can use.
+
+::: warning Resumed sprites with uncommitted changes are refused
+When you resume a sprite (`sprite_name: my-box`) and the previous
+session left uncommitted changes in `/workspace`, glue refuses to
+start instead of producing a silently-broken diff baseline:
+
+```
+Sprite "my-box" has uncommitted changes from a previous session in
+/workspace. Commit or export them inside the sandbox before resuming,
+e.g.:
+  sprite exec my-box -- bash -lc "cd /workspace && git add -A && \
+    git commit -m 'resume baseline'"
+```
+
+This is a deliberate choice: a silent `null` baseline used to drop
+*every* change from the resumed session. If you want this session to
+build on the previous one, commit the previous work inside the sandbox
+first. If you don't, delete the sprite.
+:::
 
 ## All Sprites options
 

@@ -36,6 +36,46 @@ Per-runtime options live in matching top-level YAML sections (`daytona:`,
 - [Daytona](/docs/using-glue/daytona)
 - [Sprites](/docs/using-glue/sprites)
 - [Modal](/docs/using-glue/modal)
+- [Session Patches](/docs/using-glue/session-patches) — what's captured at
+  session end and how to apply it
+
+## Bootstrap (cloud runtimes)
+
+Cloud runtimes stage your working tree at `/workspace` via one of three
+strategies. `WorkspaceBootstrap` picks one per session:
+
+| Strategy | Used when | What it captures |
+|---|---|---|
+| **resume** | `/workspace/.git` already exists in the sandbox (Sprites persistent sandbox) | Whatever the previous session left there |
+| **bundle** | Host has `git` AND bundle fits the runtime's upload cap | Uncommitted edits, unpushed commits, untracked files, repos with no remote — everything visible to `git add -A` on the host |
+| **clone-from-remote** | Bundle path unavailable (no host git, or bundle too large) | Whatever's reachable on `origin` at host HEAD SHA |
+
+Per-runtime upload caps for the bundle path:
+
+| Runtime | Cap | Upload mechanism |
+|---|---|---|
+| Daytona | 200 MB | Multipart HTTP upload |
+| Modal | 30 MB | base64-in-JSON to Python sidecar |
+| Sprites | 3 MB | base64-over-shell exec |
+
+Run `glue doctor` to verify host `git` is available — without it, every
+cloud session is forced through clone-from-remote, which requires a
+reachable origin and sandbox-accessible auth.
+
+## End-of-session diff-out
+
+When a cloud session ends, glue runs `git format-patch + git diff` from
+inside the sandbox and saves the result to
+`~/.glue/sessions/<id>/runtime.mbox` with a `runtime.mbox.meta.json`
+sidecar. Apply with:
+
+```sh
+glue session apply <session-id>
+```
+
+See [Session Patches](/docs/using-glue/session-patches) for the full
+flow including conflict handling, the size cap, and the
+`DiffUnavailable` warnings.
 
 ## How it's wired
 

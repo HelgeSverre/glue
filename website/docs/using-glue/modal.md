@@ -74,11 +74,43 @@ insurance against a crashed glue process leaving sandboxes billing.
 
 1. The Python sidecar launches and calls `Sandbox.create("sleep",
    "infinity")` inside the configured Modal App.
-2. Workspace bootstrap clones the current git repo (or uploads a
-   tarball) into `/workspace`.
+2. Workspace bootstrap stages your working tree at `/workspace` —
+   see [Bootstrap strategy](#bootstrap-strategy) below.
 3. Tools and bash run via sidecar JSON-RPC.
-4. On session close, the sandbox is terminated (unless
-   `delete_on_close: false`).
+4. On session close, the agent's changes are captured to
+   `~/.glue/sessions/<id>/runtime.mbox`
+   (see [Session Patches](/docs/using-glue/session-patches)) and the
+   sandbox is terminated (unless `delete_on_close: false`).
+
+## Bootstrap strategy
+
+Modal uses the **bundle path** by default:
+
+1. Glue builds a host-side git bundle of your working tree (uncommitted
+   edits + untracked files included).
+2. Uploads it to `/tmp/glue-bootstrap.bundle` inside the sandbox via
+   the sidecar (base64-in-JSON), capped at **30 MB** before JSON
+   parsing memory cost gets unfriendly.
+3. Sandbox clones from the bundle.
+
+If the bundle exceeds 30 MB or host `git` isn't available, glue falls
+back to **clone-from-remote** inside the sandbox — that path requires
+a reachable `origin` and credentials Modal's image can use.
+
+## Sandbox death surfaces clearly
+
+Modal sandboxes auto-terminate at `sandbox_timeout_seconds`. If the
+sandbox dies mid-session, the end-of-session diff capture won't
+silently produce a `null` — you'll see:
+
+```
+◆ Runtime workspace diff unavailable (executorDead): modal sidecar is
+  no longer reachable (sandbox may have auto-terminated on
+  sandbox_timeout_seconds, or the python process exited);
+  end-of-session diff cannot be captured
+```
+
+If you're hitting this regularly, raise `sandbox_timeout_seconds`.
 
 ## All Modal options
 
