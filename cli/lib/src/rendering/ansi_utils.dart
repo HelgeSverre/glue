@@ -238,6 +238,90 @@ String wrapIndented(
   return buf.toString();
 }
 
+/// Wrap visible columns `[startCol, endCol)` of an ANSI-styled [line] with
+/// reverse-video (`\x1b[7m` / `\x1b[27m`), preserving existing CSI and OSC
+/// sequences and treating wide glyphs as 2 cells.
+///
+/// Used to paint the transcript-selection highlight onto the visible
+/// viewport slice without forcing every renderer downstream to know
+/// anything about selections.
+///
+/// Columns count *display cells*: a CJK or emoji glyph occupies 2 cells.
+/// If [startCol] falls inside a wide glyph the entire glyph is included;
+/// likewise for [endCol]. Out-of-range bounds clamp to the line's
+/// visible width. Returns [line] unchanged if `endCol <= startCol`.
+String applySelectionHighlight(String line, int startCol, int endCol) {
+  if (endCol <= startCol) return line;
+  final buf = StringBuffer();
+  var visible = 0;
+  var i = 0;
+  var inHighlight = false;
+
+  void openIfNeeded() {
+    if (!inHighlight) {
+      buf.write('\x1b[7m');
+      inHighlight = true;
+    }
+  }
+
+  void closeIfNeeded() {
+    if (inHighlight) {
+      buf.write('\x1b[27m');
+      inHighlight = false;
+    }
+  }
+
+  while (i < line.length) {
+    final csiMatch = _csiPattern.matchAsPrefix(line, i);
+    if (csiMatch != null) {
+      final seq = csiMatch.group(0)!;
+      buf.write(seq);
+      i += seq.length;
+      continue;
+    }
+    final oscMatch = _oscPattern.matchAsPrefix(line, i);
+    if (oscMatch != null) {
+      final seq = oscMatch.group(0)!;
+      buf.write(seq);
+      i += seq.length;
+      continue;
+    }
+    final codeUnit = line.codeUnitAt(i);
+    int cp;
+    int advance;
+    if (codeUnit >= 0xD800 && codeUnit <= 0xDBFF && i + 1 < line.length) {
+      final low = line.codeUnitAt(i + 1);
+      cp = 0x10000 + ((codeUnit - 0xD800) << 10) + (low - 0xDC00);
+      advance = 2;
+    } else {
+      cp = codeUnit;
+      advance = 1;
+    }
+    final w = charWidth(cp);
+    // Zero-width characters (combining marks, ZWJ, etc.) attach to
+    // whatever was just emitted — keep the current highlight state so
+    // diacritics don't drift out of the reverse-video range.
+    if (w == 0) {
+      buf.write(line.substring(i, i + advance));
+      i += advance;
+      continue;
+    }
+    final cellStart = visible;
+    final cellEnd = visible + w;
+    final inRange = cellEnd > startCol && cellStart < endCol;
+    if (inRange) {
+      openIfNeeded();
+    } else {
+      closeIfNeeded();
+    }
+    buf.write(line.substring(i, i + advance));
+    visible += w;
+    i += advance;
+  }
+  closeIfNeeded();
+  return buf.toString();
+}
+
 /// Terminal column width of a single Unicode code point.
 int charWidth(int cp) {
   // Zero-width: combining marks, variation selectors, joiners

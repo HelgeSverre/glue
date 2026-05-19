@@ -22,6 +22,7 @@ import 'package:glue/src/services/approval_state.dart';
 import 'package:glue/src/services/conversation_view.dart';
 import 'package:glue/src/services/lifecycle.dart';
 import 'package:glue/src/app/model_display.dart';
+import 'package:glue/src/app/transcript_selection.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 import 'package:glue/src/ui/model_panel_formatter.dart'
     show CatalogRow, ModelAvailability;
@@ -29,6 +30,7 @@ import 'package:glue/src/rendering/block_renderer.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
 import 'package:glue/src/ui/modal.dart';
 import 'package:glue/src/ui/dock_manager.dart';
+import 'package:glue/src/ui/toast.dart';
 import 'package:glue/src/ui/panel_modal.dart';
 import 'package:glue/src/ui/modal_surface.dart';
 import 'package:glue/src/ui/at_file_hint.dart';
@@ -185,6 +187,7 @@ class App {
   final List<PanelOverlay> _panelStack = [];
   late final ModalSurface _panels;
   final DockManager _dockManager = DockManager();
+  late final Toast _toast;
   bool _renderedPanelLastFrame = false;
   final Set<String> _autoApprovedTools = {
     ...ToolPermissions.defaultTrustedTools,
@@ -219,6 +222,21 @@ class App {
 
   final Map<String, SubagentGroup> _subagentGroups = {};
   final List<SubagentGroup?> _outputLineGroups = [];
+
+  // Transcript selection. Updated whenever the user drags in the output
+  // zone; rebuilt against block-anchored coordinates on every render so
+  // streaming and resize don't desync the highlight.
+  TranscriptSelection? _selection;
+  DragState? _dragState;
+  final ClickChain _clickChain = ClickChain();
+
+  // Per-render shadow of the output transcript used for hit-testing and
+  // plain-text extraction. Indices align with `outputLines`; entries are
+  // null for non-selectable rows (blank separators, modal/panel lines).
+  final List<String> _plainOutputLines = [];
+  final List<(String blockId, int lineStartOffset)?> _outputLineAnchors = [];
+  final Map<String, String> _blockPlainText = {};
+  final List<String> _blockOrder = [];
 
   final bool _startupContinue;
   final String? _startupPrompt;
@@ -307,6 +325,7 @@ class App {
       panelStack: _panelStack,
       render: _render,
     );
+    _toast = Toast(onRender: _render);
     _skillRuntime = skillRuntime ??
         SkillRuntime(
           cwd: _cwd,
@@ -429,8 +448,7 @@ class App {
           // Don't fall back to silent null — surface why the diff
           // couldn't be captured so the user can act on it. Skip
           // notSupported (host/docker, by design).
-          if (outcome.reason !=
-              RuntimeDiffUnavailableReason.notSupported) {
+          if (outcome.reason != RuntimeDiffUnavailableReason.notSupported) {
             stderr.writeln(
               '\n\x1b[33m◆\x1b[0m Runtime workspace diff unavailable '
               '(${outcome.reason.name})'
@@ -591,6 +609,7 @@ class App {
       await _mcpPool.close();
       await _agentSub?.cancel();
       await _subagentSub?.cancel();
+      _toast.dismiss();
       await _events.close();
       terminal.disableMouse();
       terminal.resetScrollRegion();
@@ -864,6 +883,43 @@ class App {
     // 1. Build all output lines from blocks.
     final outputLines = <String>[];
     _outputLineGroups.clear();
+    _plainOutputLines.clear();
+    _outputLineAnchors.clear();
+    _blockPlainText.clear();
+    _blockOrder.clear();
+
+    void pushBlock({
+      required String blockId,
+      required String renderedText,
+      SubagentGroup? group,
+    }) {
+      final plain = stripAnsi(renderedText);
+      _blockPlainText[blockId] = plain;
+      _blockOrder.add(blockId);
+
+      final ansiLines = renderedText.split('\n');
+      final plainLines = plain.split('\n');
+      // Defensive: ANSI and plain splits should agree on line count; if a
+      // renderer ever leaks an ANSI escape across a newline this guards
+      // against an index mismatch.
+      final lineCount = ansiLines.length < plainLines.length
+          ? ansiLines.length
+          : plainLines.length;
+      var offset = 0;
+      for (var i = 0; i < lineCount; i++) {
+        outputLines.add(ansiLines[i]);
+        _plainOutputLines.add(plainLines[i]);
+        _outputLineAnchors.add((blockId, offset));
+        _outputLineGroups.add(group);
+        offset += plainLines[i].length + 1; // +1 for the joining newline
+      }
+      // Trailing separator between blocks: not selectable.
+      outputLines.add('');
+      _plainOutputLines.add('');
+      _outputLineAnchors.add(null);
+      _outputLineGroups.add(null);
+    }
+
     for (final block in _blocks) {
       final text = switch (block.kind) {
         EntryKind.user => renderer.renderUser(block.text),
@@ -886,34 +942,48 @@ class App {
             maxLines: _config?.bashMaxLines ?? 50,
           ),
       };
-      final lines = text.split('\n');
-      final group = block.kind == EntryKind.subagentGroup ? block.group : null;
-      for (var j = 0; j < lines.length; j++) {
-        _outputLineGroups.add(group);
-      }
-      _outputLineGroups.add(null);
-      outputLines.addAll(lines);
-      outputLines.add('');
+      pushBlock(
+        blockId: block.id,
+        renderedText: text,
+        group: block.kind == EntryKind.subagentGroup ? block.group : null,
+      );
     }
 
     // If streaming reasoning, render it above the (still-empty) assistant
     // text — when both buffers are non-empty (Anthropic interleaves them in
     // edge cases) the user sees thinking "above" the conclusion.
     if (_streamingThinking.isNotEmpty) {
-      outputLines
-          .addAll(renderer.renderThinking(_streamingThinking).split('\n'));
+      pushBlock(
+        blockId: kStreamingThinkingId,
+        renderedText: renderer.renderThinking(_streamingThinking),
+      );
     }
 
     if (_streamingText.isNotEmpty) {
-      outputLines.addAll(renderer.renderAssistant(_streamingText).split('\n'));
+      pushBlock(
+        blockId: kStreamingAssistantId,
+        renderedText: renderer.renderAssistant(_streamingText),
+      );
     }
 
     if (_activeModal != null && !_activeModal!.isComplete) {
+      // Modal rows are not part of the selectable transcript.
       outputLines.add('');
-      outputLines.addAll(_activeModal!.render(layout.outputWidth));
+      _plainOutputLines.add('');
+      _outputLineAnchors.add(null);
+      _outputLineGroups.add(null);
+      for (final line in _activeModal!.render(layout.outputWidth)) {
+        outputLines.add(line);
+        _plainOutputLines.add(stripAnsi(line));
+        _outputLineAnchors.add(null);
+        _outputLineGroups.add(null);
+      }
     }
 
     outputLines.add('');
+    _plainOutputLines.add('');
+    _outputLineAnchors.add(null);
+    _outputLineGroups.add(null);
 
     if (panelActive) {
       _renderedPanelLastFrame = true;
@@ -953,6 +1023,8 @@ class App {
         ? outputLines.sublist(firstLine, endLine)
         : <String>[];
 
+    _applySelectionToVisibleSlice(visibleLines, firstLine);
+
     layout.paintOutputViewport(visibleLines);
 
     // 3b. Render docked panels over output after content paint.
@@ -974,6 +1046,24 @@ class App {
         height: plan.rect.height,
         lines: plan.lines,
       );
+    }
+
+    // 3c. Transient copy toast — narrow chip anchored top-right with a
+    // 2-cell gutter from the output's right edge. Painted as its own
+    // small rect so the underlying transcript stays visible around it.
+    if (_toast.visible) {
+      const gutter = 2;
+      final chipWidth = _toast.cellWidth;
+      final col = layout.outputRight - chipWidth - gutter + 1;
+      if (chipWidth > 0 && col >= layout.outputLeft) {
+        layout.paintRect(
+          row: layout.outputTop,
+          col: col,
+          width: chipWidth,
+          height: 1,
+          lines: [_toast.renderLine()],
+        );
+      }
     }
 
     // 4. Autocomplete / @file / shell overlay.
@@ -1035,6 +1125,372 @@ class App {
       showCursor: showCursor,
       promptStyle: promptStyle,
     );
+  }
+
+  // ── Transcript selection ───────────────────────────────────────────────
+
+  /// Translate a screen `(x, y)` (1-indexed cells) into a position in the
+  /// transcript, or `null` if the point is outside the selectable output
+  /// zone or lands on a non-selectable row (blank separator, modal).
+  TranscriptPosition? _resolvePositionAt(int x, int y) {
+    if (y < layout.outputTop || y > layout.outputBottom) return null;
+    final viewportHeight = layout.outputBottom - layout.outputTop + 1;
+    final totalLines = _outputLineAnchors.length;
+    final firstLine =
+        (totalLines - viewportHeight - _scrollOffset).clamp(0, totalLines);
+    final visibleIdx = firstLine + (y - layout.outputTop);
+    if (visibleIdx < 0 || visibleIdx >= totalLines) return null;
+    final anchor = _outputLineAnchors[visibleIdx];
+    if (anchor == null) return null;
+    final (blockId, lineStartOffset) = anchor;
+    final plain = _plainOutputLines[visibleIdx];
+    final col = (x - layout.outputLeft).clamp(0, 1 << 30);
+    final charOffsetInLine = _colToCharOffset(plain, col);
+    return TranscriptPosition(
+      blockId: blockId,
+      plainTextOffset: lineStartOffset + charOffsetInLine,
+    );
+  }
+
+  /// Walk [plainLine] in display cells and return the char offset at the
+  /// start of the cell that contains [col]. Out-of-range `col` clamps to
+  /// the end of the line.
+  int _colToCharOffset(String plainLine, int col) {
+    var visible = 0;
+    var i = 0;
+    while (i < plainLine.length) {
+      final cu = plainLine.codeUnitAt(i);
+      int cp;
+      int adv;
+      if (cu >= 0xD800 && cu <= 0xDBFF && i + 1 < plainLine.length) {
+        final lo = plainLine.codeUnitAt(i + 1);
+        cp = 0x10000 + ((cu - 0xD800) << 10) + (lo - 0xDC00);
+        adv = 2;
+      } else {
+        cp = cu;
+        adv = 1;
+      }
+      final w = charWidth(cp);
+      if (visible >= col) return i;
+      if (visible + w > col) return i;
+      visible += w;
+      i += adv;
+    }
+    return plainLine.length;
+  }
+
+  /// Inverse of [_colToCharOffset]: char offset → display column.
+  int _charOffsetToCol(String plainLine, int charOffset) {
+    var visible = 0;
+    var i = 0;
+    final limit = charOffset > plainLine.length ? plainLine.length : charOffset;
+    while (i < limit) {
+      final cu = plainLine.codeUnitAt(i);
+      int cp;
+      int adv;
+      if (cu >= 0xD800 && cu <= 0xDBFF && i + 1 < plainLine.length) {
+        final lo = plainLine.codeUnitAt(i + 1);
+        cp = 0x10000 + ((cu - 0xD800) << 10) + (lo - 0xDC00);
+        adv = 2;
+      } else {
+        cp = cu;
+        adv = 1;
+      }
+      visible += charWidth(cp);
+      i += adv;
+    }
+    return visible;
+  }
+
+  /// Rewrite [visibleLines] in place to wrap any selected cells with the
+  /// reverse-video escape. Called from [_render] immediately before
+  /// [Layout.paintOutputViewport] so the layout API stays string-only.
+  void _applySelectionToVisibleSlice(List<String> visibleLines, int firstLine) {
+    final sel = _selection;
+    if (sel == null || sel.isEmpty) return;
+    final ordered = sel.ordered(_blockOrder);
+    if (ordered == null) {
+      // Selection points at a block that no longer exists in this render —
+      // drop the selection rather than guessing where it should go.
+      _selection = null;
+      return;
+    }
+    final (start, end) = ordered;
+    final indexOf = <String, int>{};
+    for (var i = 0; i < _blockOrder.length; i++) {
+      indexOf[_blockOrder[i]] = i;
+    }
+    final startBlockIdx = indexOf[start.blockId]!;
+    final endBlockIdx = indexOf[end.blockId]!;
+
+    for (var i = 0; i < visibleLines.length; i++) {
+      final absIdx = firstLine + i;
+      if (absIdx < 0 || absIdx >= _outputLineAnchors.length) continue;
+      final anchor = _outputLineAnchors[absIdx];
+      if (anchor == null) continue;
+      final (blockId, lineStartOffset) = anchor;
+      final blockIdx = indexOf[blockId];
+      if (blockIdx == null) continue;
+      if (blockIdx < startBlockIdx || blockIdx > endBlockIdx) continue;
+
+      final plain = _plainOutputLines[absIdx];
+      final lineLen = plain.length;
+      var lineStartCharOffset = 0;
+      var lineEndCharOffset = lineLen;
+
+      if (blockIdx == startBlockIdx) {
+        final relStart = start.plainTextOffset - lineStartOffset;
+        if (relStart >= lineLen + 1) continue; // start is past this line
+        if (relStart > 0) lineStartCharOffset = relStart;
+      }
+      if (blockIdx == endBlockIdx) {
+        final relEnd = end.plainTextOffset - lineStartOffset;
+        if (relEnd <= 0) continue; // end is before this line
+        if (relEnd < lineLen) lineEndCharOffset = relEnd;
+      }
+
+      final startCol = _charOffsetToCol(plain, lineStartCharOffset);
+      final endCol = _charOffsetToCol(plain, lineEndCharOffset);
+      if (endCol <= startCol) continue;
+      visibleLines[i] =
+          applySelectionHighlight(visibleLines[i], startCol, endCol);
+    }
+  }
+
+  /// Extract the plain-text representation of the current selection,
+  /// honoring line breaks. Returns an empty string if the selection is
+  /// empty, the blocks have disappeared, or no text falls inside the
+  /// selected range.
+  String _extractSelectedText() {
+    final sel = _selection;
+    if (sel == null || sel.isEmpty) return '';
+    final ordered = sel.ordered(_blockOrder);
+    if (ordered == null) return '';
+    final (start, end) = ordered;
+    final indexOf = <String, int>{};
+    for (var i = 0; i < _blockOrder.length; i++) {
+      indexOf[_blockOrder[i]] = i;
+    }
+    final startBlockIdx = indexOf[start.blockId]!;
+    final endBlockIdx = indexOf[end.blockId]!;
+
+    final buf = StringBuffer();
+    for (var bi = startBlockIdx; bi <= endBlockIdx; bi++) {
+      final id = _blockOrder[bi];
+      final plain = _blockPlainText[id];
+      if (plain == null) continue;
+      var lo = 0;
+      var hi = plain.length;
+      if (bi == startBlockIdx) {
+        lo = start.plainTextOffset.clamp(0, plain.length);
+      }
+      if (bi == endBlockIdx) hi = end.plainTextOffset.clamp(0, plain.length);
+      if (hi <= lo) continue;
+      if (buf.isNotEmpty) buf.write('\n');
+      buf.write(plain.substring(lo, hi));
+    }
+    return buf.toString().trimRight();
+  }
+
+  /// Clear any active selection and request a re-render.
+  void _clearSelection() {
+    if (_selection == null) return;
+    _selection = null;
+    _render();
+  }
+
+  /// Whether a non-empty selection is currently held.
+  bool get hasSelection => _selection != null && !_selection!.isEmpty;
+
+  /// Copy the current selection to the clipboard. Used by both the
+  /// mouse-release path and the Ctrl+Shift+C keyboard shortcut. The
+  /// selection itself stays highlighted (Esc or a new drag clears it).
+  ///
+  /// Confirmation surfaces through [_toast] — a transient top-right chip
+  /// painted directly into the output viewport — so the permanent
+  /// transcript stays free of "Copied …" noise.
+  Future<void> copySelectionToClipboard() async {
+    final text = _extractSelectedText();
+    if (text.isEmpty) return;
+    final ok = await copyToClipboard(text);
+    if (!ok) {
+      _toast.show('Clipboard unavailable', kind: ToastKind.error);
+      return;
+    }
+    final lineCount = '\n'.allMatches(text).length + 1;
+    _toast.show(
+      lineCount == 1
+          ? 'Copied ${text.length} chars'
+          : 'Copied $lineCount lines',
+    );
+  }
+
+  /// Migrate any selection that points at a streaming sentinel onto a
+  /// freshly-flushed block. The plain-text rendering of the new block is
+  /// the streaming buffer's content unchanged, so existing offsets still
+  /// point at the same characters.
+  void _rebindStreamingSelection(String fromSentinel, String toBlockId) {
+    final sel = _selection;
+    if (sel == null) return;
+    _selection = sel.rebindBlockId(fromSentinel, toBlockId);
+  }
+
+  /// Mouse routing: wheel → scroll; press/motion/release → drag selection
+  /// in the output zone; click-to-expand (subagent groups) is the
+  /// fallback when a press-release pair didn't cross the drag threshold.
+  ///
+  /// Shift-modified events are ignored on purpose — most terminals honour
+  /// Shift-drag as a native-selection bypass even while application mouse
+  /// capture is on, and reacting here would steal that escape hatch.
+  void _handleMouseEvent(MouseEvent event) {
+    if (event.isScroll) {
+      _events.add(UserScroll(event.isScrollUp ? 3 : -3));
+      return;
+    }
+    if (event.shift) {
+      // Cancel any in-progress drag and let the terminal handle it.
+      _dragState = null;
+      return;
+    }
+    // Only react to the primary (left) button.
+    if (event.buttonNumber != 0) return;
+
+    if (event.isMotion && event.isDown) {
+      _handleMouseMotion(event);
+      return;
+    }
+    if (event.isDown) {
+      _handleMousePress(event);
+      return;
+    }
+    _handleMouseRelease(event);
+  }
+
+  void _handleMousePress(MouseEvent event) {
+    final inOutput =
+        event.y >= layout.outputTop && event.y <= layout.outputBottom;
+    if (!inOutput) {
+      _dragState = null;
+      return;
+    }
+    // Starting a new gesture clears any previous selection so the
+    // highlight doesn't linger while the user picks a new range.
+    if (_selection != null) {
+      _selection = null;
+    }
+    final origin = _resolvePositionAt(event.x, event.y);
+    if (origin == null) {
+      _dragState = null;
+      _render();
+      return;
+    }
+    _dragState = DragState(
+      originX: event.x,
+      originY: event.y,
+      origin: origin,
+    );
+    _render();
+  }
+
+  void _handleMouseMotion(MouseEvent event) {
+    final drag = _dragState;
+    if (drag == null) return;
+    final justCrossed = drag.observeMotion(event.x, event.y);
+    if (!drag.exceededThreshold) return;
+    final focus = _resolvePositionAt(event.x, event.y);
+    if (focus == null) return;
+    if (justCrossed || _selection == null) {
+      _selection = TranscriptSelection(anchor: drag.origin, focus: focus);
+    } else {
+      _selection = _selection!.withFocus(focus);
+    }
+    _render();
+  }
+
+  void _handleMouseRelease(MouseEvent event) {
+    final drag = _dragState;
+    _dragState = null;
+    if (drag == null) return;
+    if (drag.exceededThreshold) {
+      // A real drag invalidates any accumulated single-click chain;
+      // otherwise a slow drag followed by a quick click would
+      // accidentally promote to a double-click.
+      _clickChain.reset();
+      final endPos = _resolvePositionAt(event.x, event.y);
+      if (endPos != null && _selection != null) {
+        _selection = _selection!.withFocus(endPos);
+      }
+      copySelectionToClipboard();
+      return;
+    }
+    // It's a click — feed the chain and dispatch on count.
+    final count = _clickChain.register(event.x, event.y, DateTime.now());
+    switch (count) {
+      case 1:
+        _handleOutputClick(event.y);
+      case 2:
+        _selectWordAt(event.x, event.y);
+      case 3:
+        _selectLineAt(event.y);
+    }
+  }
+
+  /// Double-click: select the contiguous same-class run (word / punct
+  /// run) containing the click position, then auto-copy.
+  void _selectWordAt(int x, int y) {
+    final pos = _resolvePositionAt(x, y);
+    if (pos == null) return;
+    final blockPlain = _blockPlainText[pos.blockId];
+    if (blockPlain == null || blockPlain.isEmpty) return;
+    final (start, end) = findClassRange(blockPlain, pos.plainTextOffset);
+    if (end <= start) return;
+    _selection = TranscriptSelection(
+      anchor: TranscriptPosition(blockId: pos.blockId, plainTextOffset: start),
+      focus: TranscriptPosition(blockId: pos.blockId, plainTextOffset: end),
+    );
+    copySelectionToClipboard();
+  }
+
+  /// Triple-click: select the whole rendered line under the cursor,
+  /// then auto-copy.
+  void _selectLineAt(int y) {
+    if (y < layout.outputTop || y > layout.outputBottom) return;
+    final viewportHeight = layout.outputBottom - layout.outputTop + 1;
+    final totalLines = _outputLineAnchors.length;
+    final firstLine =
+        (totalLines - viewportHeight - _scrollOffset).clamp(0, totalLines);
+    final idx = firstLine + (y - layout.outputTop);
+    if (idx < 0 || idx >= _outputLineAnchors.length) return;
+    final anchor = _outputLineAnchors[idx];
+    if (anchor == null) return;
+    final (blockId, lineStartOffset) = anchor;
+    final plain = _plainOutputLines[idx];
+    if (plain.isEmpty) return;
+    _selection = TranscriptSelection(
+      anchor: TranscriptPosition(
+        blockId: blockId,
+        plainTextOffset: lineStartOffset,
+      ),
+      focus: TranscriptPosition(
+        blockId: blockId,
+        plainTextOffset: lineStartOffset + plain.length,
+      ),
+    );
+    copySelectionToClipboard();
+  }
+
+  void _handleOutputClick(int y) {
+    if (y < layout.outputTop || y > layout.outputBottom) return;
+    final viewportHeight = layout.outputBottom - layout.outputTop + 1;
+    final totalLines = _outputLineGroups.length;
+    final firstLine =
+        (totalLines - viewportHeight - _scrollOffset).clamp(0, totalLines);
+    final idx = firstLine + (y - layout.outputTop);
+    if (idx < 0 || idx >= _outputLineGroups.length) return;
+    final group = _outputLineGroups[idx];
+    if (group == null) return;
+    group.expanded = !group.expanded;
+    _render();
   }
 
   // ── Event routing ──────────────────────────────────────────────────────
@@ -1105,6 +1561,22 @@ class App {
         // Focused docked panel handles input before editor/autocomplete.
         if (_dockManager.handleEvent(event)) {
           _render();
+          return;
+        }
+
+        // Transcript selection takes priority over normal Esc/copy keys:
+        //  - Esc clears an active selection without falling through to
+        //    cancel-agent or dismiss-autocomplete.
+        //  - Ctrl+Shift+C copies the current selection. We never override
+        //    Ctrl+C because that must stay reserved for cancelling an
+        //    in-flight agent (users often select text *because* the agent
+        //    is misbehaving and they want to abort).
+        if (event case KeyEvent(key: Key.escape) when hasSelection) {
+          _clearSelection();
+          return;
+        }
+        if (event case KeyEvent(key: Key.ctrlShiftC)) {
+          if (hasSelection) copySelectionToClipboard();
           return;
         }
 
@@ -1280,32 +1752,8 @@ class App {
       case ResizeEvent(:final cols, :final rows):
         _events.add(UserResize(cols, rows));
 
-      case MouseEvent(
-          :final y,
-          :final isScroll,
-          :final isScrollUp,
-          :final isDown
-        ):
-        if (isScroll) {
-          _events.add(UserScroll(isScrollUp ? 3 : -3));
-        } else if (isDown) {
-          if (y >= layout.outputTop && y <= layout.outputBottom) {
-            final viewportHeight = layout.outputBottom - layout.outputTop + 1;
-            final totalLines = _outputLineGroups.length;
-            final firstLine = (totalLines - viewportHeight - _scrollOffset)
-                .clamp(0, totalLines);
-            final outputLineIdx = firstLine + (y - layout.outputTop);
-            if (outputLineIdx >= 0 &&
-                outputLineIdx < _outputLineGroups.length) {
-              final group = _outputLineGroups[outputLineIdx];
-              if (group != null) {
-                group.expanded = !group.expanded;
-                _render();
-                return;
-              }
-            }
-          }
-        }
+      case final MouseEvent mouse:
+        _handleMouseEvent(mouse);
 
       case PasteEvent():
         // Dismiss popups before inserting paste content.
@@ -1340,8 +1788,22 @@ class App {
   /// the turn.
   void _flushThinking() {
     if (_streamingThinking.isEmpty) return;
-    _blocks.add(ConversationEntry.thinking(_streamingThinking));
+    final entry = ConversationEntry.thinking(_streamingThinking);
+    _blocks.add(entry);
+    _rebindStreamingSelection(kStreamingThinkingId, entry.id);
     _streamingThinking = '';
+  }
+
+  /// Flush the streaming-assistant buffer into a real block, carrying any
+  /// active transcript selection across the sentinel→entry handoff. All
+  /// places that previously wrote `_blocks.add(ConversationEntry.assistant(...))`
+  /// for the streaming buffer go through this helper.
+  void _flushAssistant({String? overrideText}) {
+    final text = overrideText ?? _streamingText;
+    final entry = ConversationEntry.assistant(text);
+    _blocks.add(entry);
+    _rebindStreamingSelection(kStreamingAssistantId, entry.id);
+    _streamingText = '';
   }
 
   void _startAgent(String displayMessage, {String? expandedMessage}) {
@@ -1381,8 +1843,7 @@ class App {
       onDone: () {
         _endTurnSpan();
         if (_streamingText.isNotEmpty) {
-          _blocks.add(ConversationEntry.assistant(_streamingText));
-          _streamingText = '';
+          _flushAssistant();
         }
         _stopSpinner();
         _mode = AppMode.idle;
@@ -1411,8 +1872,7 @@ class App {
         if (_streamingText.isNotEmpty) {
           _sessionManager
               .logEvent('assistant_message', {'text': _streamingText});
-          _blocks.add(ConversationEntry.assistant(_streamingText));
-          _streamingText = '';
+          _flushAssistant();
         }
         _toolUi[id] = _ToolCallUiState(id: id, name: name);
         _blocks.add(ConversationEntry.toolCallRef(id));
@@ -1482,8 +1942,7 @@ class App {
         } else {
           // Ollama path — no prior pending event, create the ref now.
           if (_streamingText.isNotEmpty) {
-            _blocks.add(ConversationEntry.assistant(_streamingText));
-            _streamingText = '';
+            _flushAssistant();
           }
           _toolUi[call.id] = _ToolCallUiState(
             id: call.id,
@@ -1550,8 +2009,7 @@ class App {
           _ensureSessionStore();
           _sessionManager
               .logEvent('assistant_message', {'text': _streamingText});
-          _blocks.add(ConversationEntry.assistant(_streamingText));
-          _streamingText = '';
+          _flushAssistant();
         }
         _reevaluateTitle();
         _stopSpinner();
@@ -1587,8 +2045,7 @@ class App {
     _stopSpinner();
     _mode = AppMode.idle;
     if (_streamingText.isNotEmpty) {
-      _blocks.add(ConversationEntry.assistant('$_streamingText\n[cancelled]'));
-      _streamingText = '';
+      _flushAssistant(overrideText: '$_streamingText\n[cancelled]');
     }
     for (final state in _toolUi.values) {
       if (state.phase == _ToolPhase.preparing ||

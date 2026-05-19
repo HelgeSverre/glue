@@ -4,6 +4,60 @@ import 'package:glue/glue.dart';
 import 'package:test/test.dart';
 
 void main() {
+  // ── applySelectionHighlight ─────────────────────────────────────────
+
+  group('applySelectionHighlight', () {
+    test('returns the line unchanged when the range is empty', () {
+      expect(applySelectionHighlight('hello', 0, 0), equals('hello'));
+      expect(applySelectionHighlight('hello', 3, 2), equals('hello'));
+    });
+
+    test('wraps an ASCII range with reverse-video', () {
+      expect(
+        applySelectionHighlight('hello world', 0, 5),
+        equals('\x1b[7mhello\x1b[27m world'),
+      );
+    });
+
+    test('wraps a sub-range in the middle of the line', () {
+      expect(
+        applySelectionHighlight('hello world', 6, 11),
+        equals('hello \x1b[7mworld\x1b[27m'),
+      );
+    });
+
+    test('treats wide glyphs as 2 cells and includes them whole', () {
+      // 漢 is double-width; selecting cells 0..2 covers exactly that glyph.
+      expect(
+        applySelectionHighlight('漢字', 0, 2),
+        equals('\x1b[7m漢\x1b[27m字'),
+      );
+      // Selecting cells 0..3 covers '漢' (2 cells) and starts inside '字';
+      // the second glyph is included whole because we don't split glyphs.
+      expect(
+        applySelectionHighlight('漢字', 0, 3),
+        equals('\x1b[7m漢字\x1b[27m'),
+      );
+    });
+
+    test('preserves CSI styling sequences around the highlight', () {
+      const input = '\x1b[31mred\x1b[39m blue';
+      final out = applySelectionHighlight(input, 0, 3);
+      expect(out, contains('\x1b[7m'));
+      expect(out, contains('\x1b[27m'));
+      // Original styling sequences remain intact.
+      expect(out, contains('\x1b[31m'));
+      expect(out, contains('\x1b[39m'));
+    });
+
+    test('zero-width characters travel with their preceding glyph', () {
+      // 'a' + combining acute = 1 cell, but 2 string characters.
+      const input = 'ábc';
+      final out = applySelectionHighlight(input, 0, 1);
+      expect(out, equals('\x1b[7má\x1b[27mbc'));
+    });
+  });
+
   // ── osc8Link ────────────────────────────────────────────────────────
 
   group('osc8Link', () {

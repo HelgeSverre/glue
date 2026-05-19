@@ -30,6 +30,13 @@ enum Key {
   ctrlL,
   ctrlU,
   ctrlW,
+
+  /// Ctrl+Shift+C — distinct from [ctrlC] because Ctrl+C must keep
+  /// cancelling in-flight work. Modern terminals emit this through the
+  /// modifyOtherKeys / Kitty CSI-u protocols (raw byte 3 carries no
+  /// modifier info, so it would otherwise be indistinguishable).
+  ctrlShiftC,
+
   unknown,
 }
 
@@ -72,6 +79,12 @@ class ResizeEvent extends TerminalEvent {
 }
 
 /// A mouse event (if mouse reporting is enabled).
+///
+/// The SGR `button` byte encodes a lot at once: low bits hold the button
+/// number (or wheel direction), bits 2–4 hold the Shift/Alt/Ctrl modifier
+/// state, bit 5 marks motion reports (drag events emitted by `?1002`),
+/// and bit 6 distinguishes wheel events. Convenience getters expose these
+/// without forcing every caller to do the bit twiddling.
 class MouseEvent extends TerminalEvent {
   final int x;
   final int y;
@@ -85,8 +98,23 @@ class MouseEvent extends TerminalEvent {
   /// Whether the scroll direction is upward. Only meaningful when [isScroll] is true.
   bool get isScrollUp => isScroll && (button & 1) == 0;
 
+  /// Whether this report is a motion (drag) event under `?1002`/`?1003`.
+  /// When true, [isDown] also reads true on most terminals — the motion bit
+  /// fires while a button is held.
+  bool get isMotion => (button & 32) != 0;
+
+  /// SGR modifier bits.
+  bool get shift => (button & 4) != 0;
+  bool get alt => (button & 8) != 0;
+  bool get ctrl => (button & 16) != 0;
+
+  /// Button number with modifier/motion/wheel bits stripped.
+  /// 0 = left, 1 = middle, 2 = right, 3 = release-untracked.
+  int get buttonNumber => button & 0x03;
+
   @override
-  String toString() => 'MouseEvent($x, $y, button=$button, isDown=$isDown)';
+  String toString() =>
+      'MouseEvent($x, $y, button=$button, isDown=$isDown${isMotion ? ', motion' : ''}${shift ? ', shift' : ''}${alt ? ', alt' : ''}${ctrl ? ', ctrl' : ''})';
 }
 
 /// Bracketed paste content from the terminal.
@@ -414,6 +442,9 @@ class Terminal {
     final isAlt = (modifier - 1) & 0x02 != 0;
     final isCtrl = (modifier - 1) & 0x04 != 0;
 
+    if (isCtrl && isShift && (keycode == 67 || keycode == 99)) {
+      return KeyEvent(Key.ctrlShiftC, ctrl: true, shift: true);
+    }
     return switch (keycode) {
       13 => KeyEvent(Key.enter, shift: isShift, alt: isAlt, ctrl: isCtrl),
       9 => KeyEvent(Key.tab, shift: isShift, alt: isAlt, ctrl: isCtrl),
@@ -459,6 +490,9 @@ class Terminal {
       final isAlt = (modifier - 1) & 0x02 != 0;
       final isCtrl = (modifier - 1) & 0x04 != 0;
 
+      if (isCtrl && isShift && (keycode == 67 || keycode == 99)) {
+        return KeyEvent(Key.ctrlShiftC, ctrl: true, shift: true);
+      }
       return switch (keycode) {
         13 => KeyEvent(Key.enter, shift: isShift, alt: isAlt, ctrl: isCtrl),
         9 => KeyEvent(Key.tab, shift: isShift, alt: isAlt, ctrl: isCtrl),
@@ -536,11 +570,18 @@ class Terminal {
   /// Leaves the alternate screen buffer.
   void disableAltScreen() => write('\x1b[?1049l');
 
-  /// Enables mouse reporting (X10 + SGR extended).
-  void enableMouse() => write('\x1b[?1000h\x1b[?1006h');
+  /// Enables mouse reporting: X10 button-press + SGR coordinates +
+  /// `?1002` button-event tracking (motion while a button is held).
+  ///
+  /// `?1002` is required for drag-to-select. It does *not* enable
+  /// arbitrary hover motion (that would be `?1003`, which floods Terminal.app
+  /// and tmux). Shift-drag is generally passed through by terminals as a
+  /// native-selection escape hatch even with capture on, but consumers must
+  /// also explicitly ignore Shift-modified motion events.
+  void enableMouse() => write('\x1b[?1000h\x1b[?1002h\x1b[?1006h');
 
-  /// Disables mouse reporting.
-  void disableMouse() => write('\x1b[?1000l\x1b[?1006l');
+  /// Disables mouse reporting (clear every mode `enableMouse` set).
+  void disableMouse() => write('\x1b[?1000l\x1b[?1002l\x1b[?1006l');
 
   /// Sets the hardware scroll region to rows [top] through [bottom] (1-indexed).
   void setScrollRegion(int top, int bottom) => write('\x1b[$top;${bottom}r');

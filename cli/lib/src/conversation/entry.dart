@@ -29,13 +29,22 @@ class ConversationEntry {
   final String? expandedText;
   final SubagentGroup? group;
 
+  /// Stable identifier assigned at construction. Used by transcript
+  /// selection to anchor positions to a logical block rather than a
+  /// transient rendered-line index — line indices shift whenever the
+  /// pipeline rebuilds, but a block's identity (and the offset into its
+  /// plain text) stays stable across streams and re-renders.
+  final String id;
+
   ConversationEntry._(
     this.kind,
     this.text, {
     this.args,
     this.expandedText,
     this.group,
-  });
+  }) : id = 'e${_nextId++}';
+
+  static int _nextId = 0;
 
   factory ConversationEntry.user(String text, {String? expandedText}) =>
       ConversationEntry._(EntryKind.user, text, expandedText: expandedText);

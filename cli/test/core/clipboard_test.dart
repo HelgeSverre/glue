@@ -104,17 +104,23 @@ void main() {
       },
     );
 
-    test('returns false when every command throws', () async {
+    test('returns false when every command throws and OSC52 also fails',
+        () async {
       final ok = await copyToClipboard(
         'X',
+        environmentOverride: const {},
+        osc52Writer: (_) => throw StateError('osc52 disabled in this test'),
         runner: (_, __) async => throw const ProcessException('nope', []),
       );
       expect(ok, isFalse);
     });
 
-    test('returns false when every command exits non-zero', () async {
+    test('returns false when every command exits non-zero and OSC52 fails',
+        () async {
       final ok = await copyToClipboard(
         'X',
+        environmentOverride: const {},
+        osc52Writer: (_) => throw StateError('osc52 disabled in this test'),
         runner: (_, __) async => _proc(exit: 1),
       );
       expect(ok, isFalse);

@@ -4,6 +4,54 @@ All notable changes to Glue CLI will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **In-app transcript selection and copy** — drag-select text in the
+  output zone, release to copy to the clipboard. Selection is anchored
+  to `(blockId, plain-text offset)` so it survives streaming chunks and
+  terminal resize without pointing at the wrong text. Drag is reported
+  via xterm `?1002` button-event tracking; SGR modifiers/motion are
+  surfaced on `MouseEvent`. Shift-drag is passed through to the
+  terminal as a native-selection escape hatch.
+- **Double-click selects a word, triple-click selects a line** —
+  click-chain detection (300 ms window, cell-exact) mirrors the
+  convention used by VS Code / Zed / token-editor. Word boundaries use
+  the same three-class model as token-editor (whitespace / word /
+  punctuation), so `foo_bar` selects as one identifier, a lone `.`
+  between identifiers selects just the dot, and CJK / emoji /
+  combining marks stay atomic. Both gestures auto-copy.
+- **`Ctrl+Shift+C` copies the current selection** — `Ctrl+C` is left
+  alone so it still cancels in-flight agent work (you often select
+  text *because* the agent is misbehaving). `Esc` clears an active
+  selection without falling through to autocomplete-dismiss or
+  cancel-agent.
+- **OSC52 clipboard transport** — when running under tmux or SSH,
+  clipboard writes go through OSC52 (with the tmux passthrough
+  envelope when `TMUX` is set) instead of relying on host
+  `pbcopy`/`clip`/`wl-copy`. Host commands stay the default outside
+  multiplexers; OSC52 also acts as the fallback when host commands
+  fail. Payloads >74 KB skip OSC52 cleanly.
+- **Transient copy-confirmation toast** — successful copies surface a
+  narrow charcoal chip at the top-right of the output viewport
+  (`✓ Copied 3 lines`, yellow glyph on dim text) for ~1.8 s. Failures
+  show a red-glyph variant for ~3.5 s. Painted directly into the
+  viewport as a content-sized rect so it doesn't blank the row of
+  transcript behind it, and never written to `_blocks` or the session
+  log — the transcript stays clean.
+
+### Internal
+
+- New `cli/lib/src/app/transcript_selection.dart` houses the
+  coordinate model (`TranscriptPosition`, `TranscriptSelection`),
+  drag gesture state, char-class helpers (`classify`,
+  `findClassRange`), and the `ClickChain` synthesiser. Render
+  pipeline keeps a per-frame `plainOutputLines` shadow + line→block
+  anchor list to support hit-testing and plain-text extraction
+  without touching `Layout.paintOutputViewport`.
+- `applySelectionHighlight` (in `ansi_utils.dart`) is a new
+  cell-aware ANSI splicer used to wrap selected ranges with
+  reverse-video while preserving wide glyphs and combining marks.
+
 ## [0.4.1] - 2026-05-19
 
 ### Added

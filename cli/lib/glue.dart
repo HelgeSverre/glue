@@ -49,7 +49,22 @@ export 'src/rendering/ansi_utils.dart'
         ansiTruncate,
         ansiWrap,
         wrapIndented,
-        charWidth;
+        charWidth,
+        applySelectionHighlight;
+export 'src/app/transcript_selection.dart'
+    show
+        TranscriptPosition,
+        TranscriptSelection,
+        DragState,
+        dragThresholdCells,
+        kStreamingAssistantId,
+        kStreamingThinkingId,
+        CharClass,
+        classify,
+        findClassRange,
+        ClickChain,
+        clickChainWindow;
+export 'src/ui/toast.dart' show Toast, ToastKind;
 export 'src/rendering/block_renderer.dart' show BlockRenderer;
 export 'src/rendering/markdown_renderer.dart' show MarkdownRenderer;
 export 'src/commands/slash_commands.dart'
