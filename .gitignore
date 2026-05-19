@@ -23,6 +23,7 @@ pubspec.lock
 build/
 dist/
 cli/glue
+/glue
 cli/doc/api/
 playwright-report/
 test-results/
