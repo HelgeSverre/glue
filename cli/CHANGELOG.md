@@ -4,6 +4,18 @@ All notable changes to Glue CLI will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **Runtime workspace diff is now an mbox** (`runtime.mbox`, not
+  `runtime.patch`) produced by `git format-patch --binary -M -C` plus
+  a working-tree `git diff --binary -M -C HEAD`. An `add -N` preamble
+  guarantees untracked files survive. Result: agent commits keep
+  their authorship + message (apply with `git am --3way`), binary
+  files round-trip byte-for-byte, renames stay as renames, and files
+  the agent *created* but didn't `git add` no longer vanish. Round-trip
+  integration test verifies all three (`packages/glue_runtimes/test/common/diff_roundtrip_test.dart`).
+  Resolves Q3 default.
+
 ### Added
 
 - **Runtime diff outcomes are typed** — `RuntimeSession.diffSinceBootstrap`

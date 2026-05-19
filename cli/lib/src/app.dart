@@ -440,8 +440,13 @@ class App {
     required RuntimeDiffMeta meta,
   }) {
     final sessionDir = _environment.sessionDir(sessionId);
-    final patchPath = p.join(sessionDir, 'runtime.patch');
-    final metaPath = p.join(sessionDir, 'runtime.patch.meta.json');
+    // Phase 1: capture is now format-patch mbox, not plain `git diff`,
+    // so save with the .mbox extension and recommend `git am --3way` for
+    // apply. The .meta.json sidecar tells host tools which format to
+    // expect.
+    final ext = meta.format == 'format-patch' ? 'mbox' : 'patch';
+    final patchPath = p.join(sessionDir, 'runtime.$ext');
+    final metaPath = p.join(sessionDir, 'runtime.$ext.meta.json');
     final cappedPatch = patch.length > _runtimePatchSizeCapBytes
         ? '${patch.substring(0, _runtimePatchSizeCapBytes)}\n'
             '<<< truncated: original was ${patch.length} bytes, '
@@ -455,6 +460,9 @@ class App {
           'truncated': truncated,
           'truncation_cap_bytes': _runtimePatchSizeCapBytes,
         })}\n');
+    final applyHint = meta.format == 'format-patch'
+        ? 'apply with: git am --3way $patchPath'
+        : 'apply with: git apply $patchPath';
     if (truncated) {
       stderr.writeln(
         '\n\x1b[33m◆\x1b[0m Runtime workspace diff was ${patch.length} '
@@ -463,7 +471,8 @@ class App {
       );
     } else {
       stderr.writeln(
-        '\n\x1b[36m◆\x1b[0m Runtime workspace diff saved to $patchPath',
+        '\n\x1b[36m◆\x1b[0m Runtime workspace diff saved to $patchPath\n'
+        '  $applyHint',
       );
     }
   }

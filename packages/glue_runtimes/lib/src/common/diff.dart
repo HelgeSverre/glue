@@ -135,19 +135,29 @@ class DiffMeta {
   }
 }
 
-/// Captures the workspace diff a cloud runtime accumulated since its
-/// bootstrap commit.
+/// Captures everything the agent did inside the sandbox workspace.
 ///
-/// Runs `git -C <runtimeCwd> diff <bootstrapSha>` via [executor]. The
-/// returned [DiffOutcome] distinguishes:
-/// - [DiffSuccess] — non-empty patch captured
-/// - [DiffEmpty] — git ran cleanly but nothing changed
-/// - [DiffUnavailable] with one of [DiffUnavailableReason] — null
-///   `bootstrapSha`, git exit code non-zero, etc.
+/// Strategy (Phase 1 of cloud-runtimes-correctness-plan):
 ///
-/// Caller threads [runtimeId], [sandboxId], [remoteUrl] into the
-/// returned [DiffMeta] so the host surface can write a
-/// `<patch>.meta.json` sidecar without re-discovering them.
+/// 1. `git add -N -- .` — intent-to-add for untracked files so they
+///    appear in the working-tree diff. Without this, files the agent
+///    *created* (test fixtures, new modules) are silently dropped.
+/// 2. `git format-patch --binary -M -C --stdout <sha>..HEAD` — captures
+///    every commit the agent made inside the sandbox as an mbox
+///    sequence, preserving message + authorship. Skipped when
+///    `HEAD == bootstrapSha` (no agent commits).
+/// 3. `git diff --binary -M -C <sha>` — working-tree delta on top of
+///    HEAD (anything the agent wrote but didn't commit).
+///
+/// Concatenated output is mbox-compatible: callers should save with a
+/// `.mbox` extension and apply with `git am --3way`. `--binary`
+/// captures binary blob changes (images, PDFs) so they survive
+/// round-trip; `-M -C` enables rename/copy detection so a moved file
+/// is one hunk, not delete+add.
+///
+/// Empty output (no commits and no worktree changes) → [DiffEmpty].
+/// `git` failure at any step → [DiffUnavailable.gitFailed] with the
+/// stderr included in the hint.
 Future<DiffOutcome> captureWorkspaceDiff({
   required CommandExecutor executor,
   required String runtimeCwd,
@@ -155,7 +165,7 @@ Future<DiffOutcome> captureWorkspaceDiff({
   required String runtimeId,
   String? sandboxId,
   String? remoteUrl,
-  String format = 'diff',
+  String format = 'format-patch',
 }) async {
   if (bootstrapSha == null || bootstrapSha.isEmpty) {
     return const DiffUnavailable(
@@ -164,25 +174,67 @@ Future<DiffOutcome> captureWorkspaceDiff({
           'commit changes inside the sandbox before exiting to preserve them',
     );
   }
-  final CaptureResult r;
+
+  final cwd = _q(runtimeCwd);
+  final sha = _q(bootstrapSha);
+
+  // (1) intent-to-add for untracked. Failures here are non-fatal —
+  // if the workspace isn't a git repo we'll catch it in step (2).
   try {
-    r = await executor.runCapture(
-      'git -C ${_q(runtimeCwd)} diff ${_q(bootstrapSha)}',
+    await executor.runCapture('git -C $cwd add -N -- . 2>/dev/null || true');
+  } catch (e) {
+    return DiffUnavailable(
+      reason: DiffUnavailableReason.executorDead,
+      hint: 'runtime executor failed during diff prep: $e',
+    );
+  }
+
+  // (2) format-patch for committed history. May produce an empty
+  // string when HEAD == bootstrapSha; that's normal.
+  final CaptureResult formatPatch;
+  try {
+    formatPatch = await executor.runCapture(
+      'git -C $cwd format-patch --binary -M -C --stdout $sha..HEAD',
     );
   } catch (e) {
     return DiffUnavailable(
       reason: DiffUnavailableReason.executorDead,
-      hint: 'runtime executor failed before diff could run: $e',
+      hint: 'runtime executor failed during format-patch: $e',
     );
   }
-  if (r.exitCode != 0) {
+  if (formatPatch.exitCode != 0) {
     return DiffUnavailable(
       reason: DiffUnavailableReason.gitFailed,
-      hint: 'git diff exited ${r.exitCode}: '
-          '${r.stderr.isEmpty ? r.stdout : r.stderr}'.trim(),
+      hint: 'git format-patch exited ${formatPatch.exitCode}: '
+          '${formatPatch.stderr.isEmpty ? formatPatch.stdout : formatPatch.stderr}'
+              .trim(),
     );
   }
-  final patch = r.stdout;
+
+  // (3) working-tree delta on top of HEAD.
+  final CaptureResult workTree;
+  try {
+    workTree = await executor.runCapture(
+      'git -C $cwd diff --binary -M -C HEAD',
+    );
+  } catch (e) {
+    return DiffUnavailable(
+      reason: DiffUnavailableReason.executorDead,
+      hint: 'runtime executor failed during working-tree diff: $e',
+    );
+  }
+  if (workTree.exitCode != 0) {
+    return DiffUnavailable(
+      reason: DiffUnavailableReason.gitFailed,
+      hint: 'git diff exited ${workTree.exitCode}: '
+          '${workTree.stderr.isEmpty ? workTree.stdout : workTree.stderr}'
+              .trim(),
+    );
+  }
+
+  final mbox = [formatPatch.stdout, workTree.stdout]
+      .where((s) => s.isNotEmpty)
+      .join();
   final meta = DiffMeta(
     runtimeId: runtimeId,
     sandboxId: sandboxId,
@@ -191,10 +243,10 @@ Future<DiffOutcome> captureWorkspaceDiff({
     runtimeCwd: runtimeCwd,
     format: format,
     capturedAt: DateTime.now().toUtc(),
-    sizeBytes: patch.length,
+    sizeBytes: mbox.length,
   );
-  if (patch.isEmpty) return DiffEmpty(meta: meta);
-  return DiffSuccess(patch: patch, meta: meta);
+  if (mbox.isEmpty) return DiffEmpty(meta: meta);
+  return DiffSuccess(patch: mbox, meta: meta);
 }
 
 String _q(String s) => "'${s.replaceAll("'", "'\\''")}'";
