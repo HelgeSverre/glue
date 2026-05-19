@@ -253,7 +253,7 @@ Glue badges for your projects. Click to copy.
     }
 
     .preview-dark {
-        background: #111;
+        background: linear-gradient(90deg, #222, #666);
     }
 
     .preview-light {
