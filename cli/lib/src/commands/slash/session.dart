@@ -78,6 +78,15 @@ class SessionCommand extends SlashCommand {
       ..writeln('  Approval:     ${ctx.approval.mode.label} '
           '(Shift+Tab to toggle)')
       ..writeln('  Auto-approve: ${trusted.join(", ")}');
+    // Phase 3: surface cloud runtime info when present so the user
+    // knows where the patch is going to land.
+    if (meta?.runtimeId != null && meta!.runtimeId != 'host') {
+      buf
+        ..writeln('  Runtime:      ${meta.runtimeId}')
+        ..writeln('  Sandbox:      ${meta.sandboxId ?? "(unknown)"}')
+        ..writeln('  Patch on close: '
+            '~/.glue/sessions/${meta.id.value}/runtime.mbox');
+    }
     return buf.toString();
   }
 }

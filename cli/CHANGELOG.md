@@ -6,6 +6,25 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Added
 
+- **`glue session` CLI subcommand surface** — `list`, `show`, `diff`,
+  `apply`, `export`. `apply` defaults to creating a branch
+  `glue/<session-id>` from current HEAD and runs `git am --3way`
+  (falls back to `git apply --3way` for working-tree-only patches);
+  pass `--in-place` to apply on the current branch (Q6 default
+  resolved). Refuses to apply truncated patches.
+- **Session meta now persists runtime info** — `runtime_id`,
+  `sandbox_id`, `runtime_bootstrap_sha`, `runtime_remote_url`,
+  `runtime_patch_path`, `runtime_closed_at`. Lets `/session`, the
+  `glue session …` commands, and a future cleanup sweep reason
+  about prior cloud sessions without scanning the filesystem.
+- **`/session` shows cloud runtime info** when the session is
+  running in a cloud sandbox (runtime id, sandbox id, where the
+  patch will land on close).
+- **`findOrphanedRuntimeSessions` helper** — detects cloud sessions
+  whose `runtime_closed_at` is null and start time is > 24h old
+  (likely leaked sandboxes), exposed for a future
+  `glue runtime cleanup` command.
+
 - **Cloud runtime bootstrap captures the host working tree** via a
   git bundle, replacing the clone-from-remote-only path that lost
   uncommitted edits, unpushed commits, untracked files, and locked

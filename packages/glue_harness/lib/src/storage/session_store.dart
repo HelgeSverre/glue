@@ -60,6 +60,17 @@ class SessionMeta {
   // Summary.
   String? summary;
 
+  // Runtime — populated when the session ran in a cloud sandbox.
+  // Phase 3 of cloud-runtimes-correctness-plan: lets `/resume` and
+  // `glue session …` reason about prior cloud sessions, detect
+  // leaked sandboxes, and locate the on-disk patch.
+  String? runtimeId;
+  String? sandboxId;
+  String? runtimeBootstrapSha;
+  String? runtimeRemoteUrl;
+  String? runtimePatchPath;
+  DateTime? runtimeClosedAt;
+
   SessionMeta({
     this.schemaVersion = currentSchemaVersion,
     required this.id,
@@ -89,6 +100,12 @@ class SessionMeta {
     this.cacheCreationTokens,
     this.messageCount,
     this.summary,
+    this.runtimeId,
+    this.sandboxId,
+    this.runtimeBootstrapSha,
+    this.runtimeRemoteUrl,
+    this.runtimePatchPath,
+    this.runtimeClosedAt,
   });
 
   Map<String, Object?> toJson() => {
@@ -126,6 +143,14 @@ class SessionMeta {
           'cache_creation_tokens': cacheCreationTokens,
         if (messageCount != null) 'message_count': messageCount,
         if (summary != null) 'summary': summary,
+        if (runtimeId != null) 'runtime_id': runtimeId,
+        if (sandboxId != null) 'sandbox_id': sandboxId,
+        if (runtimeBootstrapSha != null)
+          'runtime_bootstrap_sha': runtimeBootstrapSha,
+        if (runtimeRemoteUrl != null) 'runtime_remote_url': runtimeRemoteUrl,
+        if (runtimePatchPath != null) 'runtime_patch_path': runtimePatchPath,
+        if (runtimeClosedAt != null)
+          'runtime_closed_at': runtimeClosedAt!.toUtc().toIso8601String(),
       };
 
   factory SessionMeta.fromJson(Map<String, dynamic> json) {
@@ -186,6 +211,14 @@ class SessionMeta {
       cacheCreationTokens: json['cache_creation_tokens'] as int?,
       messageCount: json['message_count'] as int?,
       summary: json['summary'] as String?,
+      runtimeId: json['runtime_id'] as String?,
+      sandboxId: json['sandbox_id'] as String?,
+      runtimeBootstrapSha: json['runtime_bootstrap_sha'] as String?,
+      runtimeRemoteUrl: json['runtime_remote_url'] as String?,
+      runtimePatchPath: json['runtime_patch_path'] as String?,
+      runtimeClosedAt: json['runtime_closed_at'] != null
+          ? DateTime.parse(json['runtime_closed_at'] as String)
+          : null,
     );
   }
 

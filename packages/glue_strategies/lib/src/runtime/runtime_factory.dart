@@ -261,6 +261,33 @@ class _BuiltinRuntimeSession implements RuntimeSession {
       );
 }
 
+/// Snapshot of the immutable runtime metadata that surfaces persist
+/// alongside the session (`SessionMeta`) so `/resume`, `glue session
+/// …`, and the cleanup sweep have a stable handle on what runtime
+/// the session used.
+class RuntimeInfoSnapshot {
+  final String runtimeId;
+  final String sandboxId;
+  final String? bootstrapSha;
+  final String? remoteUrl;
+  const RuntimeInfoSnapshot({
+    required this.runtimeId,
+    required this.sandboxId,
+    this.bootstrapSha,
+    this.remoteUrl,
+  });
+
+  /// Builds a snapshot from a live [RuntimeSession]. Cheap — just
+  /// reads getters and shapes the data.
+  factory RuntimeInfoSnapshot.from(RuntimeSession session) {
+    return RuntimeInfoSnapshot(
+      runtimeId: session.id,
+      sandboxId: session.sandboxId,
+      bootstrapSha: session.bootstrapSha,
+    );
+  }
+}
+
 /// Signature a cloud runtime adapter must implement. [options] is the
 /// YAML section from the user's config for this adapter (parsed by
 /// the harness as a generic untyped map).

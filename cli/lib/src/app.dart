@@ -197,6 +197,12 @@ class App {
   final CommandExecutor _executor;
   final Future<void> Function()? _runtimeClose;
   final Future<RuntimeDiffOutcome> Function()? _runtimeDiff;
+
+  /// Optional snapshot of runtime info for SessionMeta (Phase 3).
+  /// Surfaces use this to persist `runtime_id`, `sandbox_id`,
+  /// `runtime_bootstrap_sha`, `runtime_remote_url` so `/resume` and
+  /// `glue session …` can reason about prior cloud sessions.
+  final RuntimeInfoSnapshot? _runtimeInfo;
   final ShellJobManager _jobManager;
   late final SlashAutocomplete _autocomplete;
   late final AtFileHint _atHint;
@@ -245,6 +251,7 @@ class App {
     CommandExecutor? executor,
     Future<void> Function()? runtimeClose,
     Future<RuntimeDiffOutcome> Function()? runtimeDiff,
+    RuntimeInfoSnapshot? runtimeInfo,
     ShellJobManager? jobManager,
     bool startupContinue = false,
     String? startupPrompt,
@@ -270,6 +277,7 @@ class App {
         _executor = executor ?? HostExecutor(const ShellConfig()),
         _runtimeClose = runtimeClose,
         _runtimeDiff = runtimeDiff,
+        _runtimeInfo = runtimeInfo,
         _jobManager = jobManager ??
             ShellJobManager(
               executor ?? HostExecutor(const ShellConfig()),
@@ -357,6 +365,7 @@ class App {
       executor: services.executor,
       runtimeClose: services.runtimeSession.close,
       runtimeDiff: services.runtimeSession.diffSinceBootstrap,
+      runtimeInfo: RuntimeInfoSnapshot.from(services.runtimeSession),
       jobManager: services.jobManager,
       startupContinue: startupContinue,
       startupPrompt: prompt,
@@ -460,6 +469,16 @@ class App {
           'truncated': truncated,
           'truncation_cap_bytes': _runtimePatchSizeCapBytes,
         })}\n');
+    // Phase 3: record the patch path + close time on the session
+    // meta so `glue session …` can find it without scanning the
+    // filesystem.
+    final store = _sessionManager.currentStore;
+    if (store != null) {
+      store.meta
+        ..runtimePatchPath = truncated ? '$patchPath.truncated' : patchPath
+        ..runtimeClosedAt = DateTime.now().toUtc();
+      store.updateMeta();
+    }
     final applyHint = meta.format == 'format-patch'
         ? 'apply with: git am --3way $patchPath'
         : 'apply with: git apply $patchPath';
@@ -1987,6 +2006,24 @@ class App {
       cwd: _cwd,
       modelRef: config?.activeModel.toString() ?? _modelId,
     );
+    _persistRuntimeInfo();
+  }
+
+  /// Phase 3: write the active runtime's identity into the session
+  /// meta so `/resume`, `glue session …`, and the cleanup sweep can
+  /// reason about prior cloud sessions. No-op for host/docker
+  /// (sandboxId is empty).
+  void _persistRuntimeInfo() {
+    final info = _runtimeInfo;
+    final store = _sessionManager.currentStore;
+    if (info == null || store == null) return;
+    if (info.sandboxId.isEmpty) return;
+    store.meta
+      ..runtimeId = info.runtimeId
+      ..sandboxId = info.sandboxId
+      ..runtimeBootstrapSha = info.bootstrapSha
+      ..runtimeRemoteUrl = info.remoteUrl;
+    store.updateMeta();
   }
 
   /// Resume [session] into the running app. Used by startup paths

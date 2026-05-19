@@ -9,6 +9,7 @@ import 'package:cli_completion/parser.dart';
 import 'package:glue/glue.dart';
 import 'package:glue/src/acp/cli_acp_delegate.dart';
 import 'package:glue/src/commands/mcp_command.dart';
+import 'package:glue/src/commands/session_command.dart';
 import 'package:glue_runtimes/daytona.dart';
 import 'package:glue_runtimes/modal.dart';
 import 'package:glue_runtimes/sprites.dart';
@@ -110,6 +111,7 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
     addCommand(DoctorCommand());
     addCommand(McpCommand());
     addCommand(ServeCommand());
+    addCommand(SessionCommand());
   }
 
   @override
@@ -938,4 +940,238 @@ Register-ArgumentCompleter -Native -CommandName $executableName -ScriptBlock {
   }
 }
 ''';
+}
+
+class SessionCommand extends Command<int> {
+  SessionCommand() {
+    addSubcommand(SessionListCommand());
+    addSubcommand(SessionShowCommand());
+    addSubcommand(SessionDiffCommand());
+    addSubcommand(SessionApplyCommand());
+    addSubcommand(SessionExportCommand());
+  }
+
+  @override
+  String get name => 'session';
+
+  @override
+  String get description =>
+      'List, inspect, and apply the workspace patches captured by cloud sessions.';
+}
+
+class SessionListCommand extends Command<int> {
+  @override
+  String get name => 'list';
+
+  @override
+  String get description =>
+      'List sessions with runtime + patch availability.';
+
+  @override
+  Future<int> run() async {
+    final env = Environment.detect();
+    final sessions = listSessions(env);
+    if (sessions.isEmpty) {
+      stdout.writeln('No sessions found in ${env.sessionsDir}.');
+      return 0;
+    }
+    for (final s in sessions) {
+      final patch = s.patchPath == null
+          ? '-'
+          : '${s.patchSizeBytes ?? 0} bytes';
+      final runtime = s.meta.runtimeId ?? 'host';
+      final title = s.meta.title ?? '(untitled)';
+      stdout.writeln(
+        '${s.meta.id.value}  $runtime  patch=$patch  $title',
+      );
+    }
+    return 0;
+  }
+}
+
+class SessionShowCommand extends Command<int> {
+  @override
+  String get name => 'show';
+  @override
+  String get description =>
+      'Print metadata + the first screen of the patch for a session.';
+
+  @override
+  Future<int> run() async {
+    final args = argResults!.rest;
+    if (args.isEmpty) {
+      stderr.writeln('Usage: glue session show <id>');
+      return 64;
+    }
+    final env = Environment.detect();
+    final session = listSessions(env).firstWhere(
+      (s) => s.meta.id.value == args.first,
+      orElse: () => throw StateError('session not found: ${args.first}'),
+    );
+    final m = session.meta;
+    stdout.writeln('Session ${m.id.value}');
+    stdout.writeln('  started:    ${m.startTime.toIso8601String()}');
+    stdout.writeln('  model:      ${m.modelRef}');
+    if (m.title != null) stdout.writeln('  title:      ${m.title}');
+    if (m.runtimeId != null) {
+      stdout.writeln('  runtime:    ${m.runtimeId}');
+    }
+    if (m.sandboxId != null) {
+      stdout.writeln('  sandbox:    ${m.sandboxId}');
+    }
+    if (m.runtimeBootstrapSha != null) {
+      stdout.writeln('  bootstrap:  ${m.runtimeBootstrapSha}');
+    }
+    if (m.runtimePatchPath != null) {
+      stdout.writeln('  patch:      ${m.runtimePatchPath}');
+    } else if (session.patchPath != null) {
+      stdout.writeln('  patch:      ${session.patchPath} (found by scan)');
+    }
+    if (m.runtimeClosedAt != null) {
+      stdout.writeln('  closed:     ${m.runtimeClosedAt!.toIso8601String()}');
+    }
+    final patch = session.patchPath;
+    if (patch != null) {
+      final body = File(patch).readAsStringSync();
+      final lines = body.split('\n').take(40).join('\n');
+      stdout.writeln('\n--- patch (first 40 lines) ---');
+      stdout.writeln(lines);
+    }
+    return 0;
+  }
+}
+
+class SessionDiffCommand extends Command<int> {
+  @override
+  String get name => 'diff';
+  @override
+  String get description => 'Print a session\'s full runtime patch to stdout.';
+
+  @override
+  Future<int> run() async {
+    final args = argResults!.rest;
+    if (args.isEmpty) {
+      stderr.writeln('Usage: glue session diff <id>');
+      return 64;
+    }
+    final env = Environment.detect();
+    final session = listSessions(env).firstWhere(
+      (s) => s.meta.id.value == args.first,
+      orElse: () => throw StateError('session not found: ${args.first}'),
+    );
+    final patch = session.patchPath;
+    if (patch == null) {
+      stderr.writeln('No patch found for session ${args.first}');
+      return 1;
+    }
+    stdout.write(File(patch).readAsStringSync());
+    return 0;
+  }
+}
+
+class SessionApplyCommand extends Command<int> {
+  SessionApplyCommand() {
+    argParser
+      ..addOption(
+        'target',
+        help: 'Directory to apply the patch to. Defaults to cwd.',
+      )
+      ..addOption(
+        'branch',
+        help: 'Branch name to create from current HEAD before applying. '
+            'Default: glue/<session-id>.',
+      )
+      ..addFlag(
+        'in-place',
+        negatable: false,
+        help:
+            'Apply directly to current HEAD instead of creating a branch '
+            '(overrides Q6 default).',
+      );
+  }
+
+  @override
+  String get name => 'apply';
+  @override
+  String get description =>
+      'Apply a session\'s runtime patch via `git am --3way` '
+      '(falls back to `git apply --3way`).';
+
+  @override
+  Future<int> run() async {
+    final args = argResults!.rest;
+    if (args.isEmpty) {
+      stderr.writeln('Usage: glue session apply <id> [--target <dir>] '
+          '[--branch <name>] [--in-place]');
+      return 64;
+    }
+    final env = Environment.detect();
+    final session = listSessions(env).firstWhere(
+      (s) => s.meta.id.value == args.first,
+      orElse: () => throw StateError('session not found: ${args.first}'),
+    );
+    final target = argResults!.option('target') ?? Directory.current.path;
+    final result = await applySessionPatch(
+      session: session,
+      targetDir: target,
+      branch: argResults!.option('branch'),
+      inPlace: argResults!.flag('in-place'),
+    );
+    if (result.ok) {
+      stdout.writeln(result.message);
+      if (result.branch != null) {
+        stdout.writeln('  on branch: ${result.branch}');
+      }
+      return 0;
+    }
+    stderr.writeln(result.message);
+    for (final rej in result.rejectedFiles) {
+      stderr.writeln('  rejection: $rej');
+    }
+    return 1;
+  }
+}
+
+class SessionExportCommand extends Command<int> {
+  SessionExportCommand() {
+    argParser.addOption(
+      'to',
+      help: 'Destination path for the patch + meta sidecar.',
+      mandatory: true,
+    );
+  }
+
+  @override
+  String get name => 'export';
+  @override
+  String get description =>
+      'Copy a session\'s patch + meta sidecar to a destination path.';
+
+  @override
+  Future<int> run() async {
+    final args = argResults!.rest;
+    if (args.isEmpty) {
+      stderr.writeln('Usage: glue session export <id> --to <path>');
+      return 64;
+    }
+    final env = Environment.detect();
+    final session = listSessions(env).firstWhere(
+      (s) => s.meta.id.value == args.first,
+      orElse: () => throw StateError('session not found: ${args.first}'),
+    );
+    final patch = session.patchPath;
+    if (patch == null) {
+      stderr.writeln('No patch found for session ${args.first}');
+      return 1;
+    }
+    final to = argResults!.option('to')!;
+    File(patch).copySync(to);
+    // Copy the .meta.json sidecar alongside.
+    final metaSrc = File('$patch.meta.json');
+    if (metaSrc.existsSync()) {
+      metaSrc.copySync('$to.meta.json');
+    }
+    stdout.writeln('Copied to $to');
+    return 0;
+  }
 }
