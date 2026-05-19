@@ -90,36 +90,13 @@ Glue badges for your projects. Click to copy.
 
 <div class="toolbar">
     <div class="tab-group" role="group" aria-label="Size">
-        <button
-                v-for="style in ['sm', 'md', 'lg']"
-                :key="style"
-                :class="{ active: selectedStyle === style }"
-                @click="selectedStyle = style"
-        >
-            {{ styleLabels[style] }}
-        </button>
+        <button v-for="style in ['sm', 'md', 'lg']" :key="style" :class="{ active: selectedStyle === style }" @click="selectedStyle = style">{{ styleLabels[style] }}</button>
     </div>
-
     <div class="tab-group" role="group" aria-label="Shape">
-        <button
-                v-for="variant in ['square', 'rounded']"
-                :key="variant"
-                :class="{ active: selectedVariant === variant }"
-                @click="selectedVariant = variant"
-        >
-            {{ variantLabels[variant] }}
-        </button>
+        <button v-for="variant in ['square', 'rounded']" :key="variant" :class="{ active: selectedVariant === variant }" @click="selectedVariant = variant">{{ variantLabels[variant] }}</button>
     </div>
-
     <div class="tab-group" role="group" aria-label="Copy format">
-        <button
-                v-for="fmt in ['markdown', 'html', 'url', 'img']"
-                :key="fmt"
-                :class="{ active: selectedFormat === fmt }"
-                @click="selectedFormat = fmt"
-        >
-            {{ formatLabels[fmt] }}
-        </button>
+        <button v-for="fmt in ['markdown', 'html', 'url', 'img']" :key="fmt" :class="{ active: selectedFormat === fmt }" @click="selectedFormat = fmt">{{ formatLabels[fmt] }}</button>
     </div>
 </div>
 
@@ -240,7 +217,7 @@ Glue badges for your projects. Click to copy.
     }
 
     .preview-dark {
-        background: #333;
+        background: #111;
     }
 
     .preview-light {
