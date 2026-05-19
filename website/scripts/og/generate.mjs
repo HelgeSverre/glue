@@ -257,15 +257,28 @@ async function main() {
       maxLines: 2,
     });
 
-    // Layout: anchor the headline a fixed distance below the top rule; subtitle
-    // follows under the last headline line; foot strip sits at y=555. We want
-    // the whole block to comfortably fit between y=180 and y=500.
+    // Layout: anchor the headline so its visual CAP TOP sits at
+    // HEADLINE_CAP_TOP regardless of size — using `220 + 0.1*size` (a
+    // magic baseline offset) made smaller headlines drift downward
+    // visually since baseline scales by ~70% of size, not 10%. Now
+    // the cap-top stays stable; the baseline moves with the font.
+    //
+    // Subtitle gap is computed from the headline's descender + the
+    // subtitle's cap-height + a visual clearance, so headlines ending
+    // in a descender word ("Why Glue", "go to .org") don't smash into
+    // the subtitle's caps the way a fixed gap of 42px did.
+    const HEADLINE_CAP_TOP = 175;
+    const CAP_HEIGHT_RATIO = 0.73; // Inter SemiBold cap-height / em
+    const DESCENT_RATIO = 0.22; // Inter SemiBold descender / em
+    const VISUAL_CLEAR_PX = 16; // desired gap between descender and next cap-top
+
     const headlineLineHeight = Math.round(size * 1.08);
     const subtitleSize = 26;
     const subtitleLineHeight = Math.round(subtitleSize * 1.3);
     const subtitleLines = splitLines(String(subtitle), 1040, subtitleSize, 2);
 
-    const HEADLINE_Y = 220 + Math.round(size * 0.1); // visual top ~200–215
+    const HEADLINE_Y =
+      HEADLINE_CAP_TOP + Math.round(size * CAP_HEIGHT_RATIO);
     const HEADLINE_TSPANS = tspansForHeadline(
       lines,
       HEADLINE_Y,
@@ -273,7 +286,10 @@ async function main() {
       headlineLineHeight,
     );
 
-    const subtitleGap = 42;
+    const subtitleGap =
+      Math.round(size * DESCENT_RATIO) +
+      Math.round(subtitleSize * CAP_HEIGHT_RATIO) +
+      VISUAL_CLEAR_PX;
     const SUBTITLE_Y =
       HEADLINE_Y + (lines.length - 1) * headlineLineHeight + subtitleGap;
     const SUBTITLE_TSPANS = tspansFromLines(
