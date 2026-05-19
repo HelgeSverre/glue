@@ -1,5 +1,5 @@
 <!-- Generated from docs/reference/runtime-capabilities.yaml. Do not edit by hand. -->
-<!-- Re-run: `just site-generate` (or `dart run tool/generate_site_reference.dart` in cli/) -->
+<!-- Re-run: `just website::generate-reference` (or `dart run tool/generate_site_reference.dart` in cli/) -->
 
 # Runtime capability matrix
 

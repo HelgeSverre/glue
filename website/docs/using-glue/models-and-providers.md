@@ -25,9 +25,8 @@ model in the bundled catalog.
 Or switch interactively:
 
 ```text
-/model              # show current model
+/model              # open the model picker (browse all models in the catalog)
 /model gpt-5        # fuzzy-switch by name
-/models             # browse all models in the catalog
 ```
 
 ## Profiles (model shortcuts)

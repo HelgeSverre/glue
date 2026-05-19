@@ -4,8 +4,8 @@ Each session is stored under `~/.glue/sessions/<session-id>/`.
 
 Managed by:
 
-- `SessionStore` (`lib/src/storage/session_store.dart`)
-- `SessionState` (`lib/src/storage/session_state.dart`)
+- `SessionStore` (`packages/glue_harness/lib/src/storage/session_store.dart`)
+- `SessionState` (`packages/glue_harness/lib/src/storage/session_state.dart`)
 
 ## Directory Structure
 
@@ -62,6 +62,29 @@ Common event types:
 - `title_generated` with `title`
 
 Glue may append additional event types over time.
+
+### Runtime command events (in-process only)
+
+The `SessionEvent` sealed class in
+`packages/glue_core/lib/src/session_event.dart` also defines a runtime
+command family used by cloud-runtime executors (Phase 0–1 of the cloud
+runtimes correctness work):
+
+- `RuntimeCommandStartedEvent` — `runtimeId`, `commandId`, `command`,
+  `runtimeCwd`, optional `sessionScopedId`
+- `RuntimeCommandOutputEvent` — `commandId`, `stream`, `text`
+- `RuntimeCommandCompletedEvent` — `commandId`, `exitCode`, `duration`,
+  optional `stdoutBytes` / `stderrBytes`
+- `RuntimeCommandFailedEvent` — `commandId`, `errorType`, `message`
+  (transport / runtime-level failure, not a non-zero exit)
+- `RuntimeCommandCancelledEvent` — `commandId` (timeout, `/cancel`, shutdown)
+
+These are emitted by the Docker / Daytona / Sprites / Modal executors via
+the in-process `RuntimeEventSink` so the TUI and other in-session
+subscribers can observe them. They are **not currently written to
+`conversation.jsonl`** — the persistent log still only contains the
+common event types above. Persistence is tracked separately under the
+session JSONL schema work.
 
 ## `state.json`
 

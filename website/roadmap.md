@@ -20,12 +20,9 @@ Legend: <FeatureStatus status="shipping" />
 
 Work we're actively simplifying or tightening.
 
-- **Remove interaction modes and plan-mode UI.** The `code` / `architect` /
-  `ask` mode selector and the plan-mode panel both go away. One surface, one
-  tool-approval policy. <FeatureStatus status="shipping" />
 - **Model catalog as a first-class file.** `docs/reference/models.yaml`
-  becomes the single source the CLI and website both read.
-  <FeatureStatus status="experimental" />
+  is the single source the CLI and website both read.
+  <FeatureStatus status="shipping" />
 - **TUI behavior contract.** Pin down scrollback, resize, tool-state
   rendering, and ASCII fallback in a single document so the behavior
   doesn't drift between releases. <FeatureStatus status="planned" />
@@ -40,11 +37,11 @@ The shape is clear; the work isn't in main yet.
 - **Provider adapter contract.** `ProviderAdapter` + `ProviderConfig` +
   `ModelConfig` + `CredentialStore`. Custom providers via
   `adapter: openai` + `compatibility: <profile>`. <FeatureStatus status="planned" />
-- **Cloud runtime polish.** End-of-session diff-out, cloud-provided
-  browser CDP, cloud-side artifact retrieval, in-session
-  `/runtime switch <name>`, runtime event emission in session logs.
-  Daytona / Sprites / Modal already ship — this is the followup.
-  <FeatureStatus status="planned" />
+- **Cloud runtime polish.** Cloud-provided browser CDP, cloud-side
+  artifact retrieval, end-of-session diff auto-apply, in-session
+  `/runtime switch <name>`, and runtime event persistence to
+  `conversation.jsonl`. Daytona / Sprites / Modal already ship — this
+  is the followup. <FeatureStatus status="planned" />
 - **Docker sandbox polish.** Mount ergonomics, background job handling,
   state preservation across sessions. <FeatureStatus status="experimental" />
 - **Web extraction flows.** First-class pipelines for page → structured

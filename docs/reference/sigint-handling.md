@@ -132,10 +132,12 @@ either be wired to that signal or be cheap enough that the next iteration
 of the loop will check it.
 
 In Glue today this is implicit — cancelling the agent stream subscription
-unwinds the per-request `http.Client` via the provider's `finally` block
-(`anthropic_provider.dart`, `openai_provider.dart`), which in turn aborts
-the SSE socket and stops billing. Tool subprocesses are torn down by the
-existing `ShellJobManager` SIGTERM/SIGKILL escalation.
+unwinds the per-request `http.Client` via the streaming client's `finally`
+block (`packages/glue_strategies/lib/src/llm/anthropic_client.dart`,
+`packages/glue_strategies/lib/src/llm/openai_client.dart`, and the per-adapter
+wrappers in `packages/glue_strategies/lib/src/providers/`), which in turn
+aborts the SSE socket and stops billing. Tool subprocesses are torn down by
+the existing `ShellJobManager` SIGTERM/SIGKILL escalation.
 
 ### Kill child processes by group, not by PID
 

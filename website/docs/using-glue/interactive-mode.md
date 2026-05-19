@@ -4,20 +4,30 @@ Glue runs as an interactive REPL. Type messages, use slash commands, or enter ba
 
 ## Slash Commands
 
-| Command    | Aliases       | Description                                                 |
-| ---------- | ------------- | ----------------------------------------------------------- |
-| `/help`    |               | Show all commands and keybindings                           |
-| `/clear`   |               | Clear conversation history                                  |
-| `/exit`    | `/quit`, `/q` | Exit the application                                        |
-| `/model`   |               | Open the model picker, or fuzzy-switch by name (`/model X`) |
-| `/models`  |               | Browse and switch models across all providers               |
-| `/info`    | `/status`     | Show session info (model, tokens, cwd)                      |
-| `/tools`   |               | List all available tools                                    |
-| `/history` |               | Browse history; fork by index or query (`/history <q>`)     |
-| `/resume`  |               | Open the session picker, or resume by ID/query              |
-| `/debug`   |               | Toggle debug mode (verbose logging to `~/.glue/logs/`)      |
-| `/skills`  |               | Browse skills, or activate one by name (`/skills <name>`)   |
-| `/approve` |               | Toggle approval mode (`confirm` ↔ `auto`)                   |
+| Command     | Description                                                              |
+| ----------- | ------------------------------------------------------------------------ |
+| `/approve`  | Toggle approval mode (confirm ↔ auto)                                    |
+| `/clear`    | Clear conversation history                                               |
+| `/config`   | Open config.yaml in `$EDITOR`, or initialize it with `/config init`      |
+| `/copy`     | Copy the last assistant response to the clipboard                        |
+| `/debug`    | Toggle debug mode (verbose logging)                                      |
+| `/exit`     | Exit Glue                                                                |
+| `/help`     | Show available commands and keybindings                                  |
+| `/history`  | Browse history or fork by index/query                                    |
+| `/mcp`      | Inspect MCP servers                                                      |
+| `/model`    | Switch model (no args = picker, with arg = switch directly)              |
+| `/open`     | Open a Glue directory in your file manager                               |
+| `/paths`    | Show Glue data paths (config, sessions, logs, skills, plans, cache)      |
+| `/provider` | Manage providers (list, add, remove, test)                               |
+| `/recap`    | Summarize the current session in one line                                |
+| `/rename`   | Rename the current session                                               |
+| `/resume`   | Resume a session (panel or by ID/query)                                  |
+| `/runtime`  | Show the active execution runtime                                        |
+| `/session`  | Show current session info, or `/session copy` to copy ID                 |
+| `/share`    | Export the current session as html, markdown, or gist                    |
+| `/skills`   | Browse skills or activate one by name                                    |
+| `/tools`    | List available tools                                                     |
+| `/usage`    | Show token usage for this session (per role: main, subagent, title)      |
 
 ## Keybindings
 

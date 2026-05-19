@@ -1,6 +1,6 @@
 # `~/.glue/` Directory Layout
 
-The `~/.glue/` directory is the user's Glue home. It stores configuration, session history, and logs. Managed by `Environment` (`lib/src/core/environment.dart`).
+The `~/.glue/` directory is the user's Glue home. It stores configuration, session history, and logs. Managed by `Environment` (`packages/glue_harness/lib/src/core/environment.dart`).
 
 ## Directory Structure
 
@@ -35,7 +35,7 @@ Loaded once at startup by `GlueConfig.load()`. Resolution order: CLI args → en
 **Schema:** See [config-store-json.md](config-store-json.md).  
 **Stability:** Internal; may change between versions.
 
-Managed by `ConfigStore` (`lib/src/storage/config_store.dart`). Read on demand with filesystem-change detection (mtime + size). Written atomically via tmp-file rename.
+Managed by `ConfigStore` (`packages/glue_harness/lib/src/storage/config_store.dart`). Read on demand with filesystem-change detection (mtime + size). Written atomically via tmp-file rename.
 
 On upgrade, Glue can still read legacy `config.json` if `preferences.json`
 does not exist yet.

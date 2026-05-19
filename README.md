@@ -30,10 +30,10 @@ Requires [Dart SDK](https://dart.dev/get-dart) ≥ 3.4 and [just](https://github
 
 ```bash
 cd cli
-dart pub get
-just build      # compile AOT binary → ./glue
-just install    # symlink to ~/.local/bin/glue
+just install    # compile AOT binary → ~/.local/bin/glue
 ```
+
+See [`cli/README.md`](cli/README.md#install) for run-from-source and additional install options.
 
 Set an API key and launch:
 

@@ -28,7 +28,7 @@ Canonical sources:
 ```
 
 The `<session-id>` is a timestamp-based ID. Directories accumulate over time;
-automatic GC is <FeatureStatus status="planned" />.
+prune old ones with `rm -rf` when you want the space back.
 
 ## The event log
 
@@ -49,7 +49,7 @@ file edits, and error details — is <FeatureStatus status="planned" />.
 ```jsonl
 {"timestamp":"2026-04-19T10:30:00.000Z","type":"user_message","text":"explain the retry logic in http_client.dart"}
 {"timestamp":"2026-04-19T10:30:00.420Z","type":"assistant_message","text":"Reading the file and the tests around it."}
-{"timestamp":"2026-04-19T10:30:00.510Z","type":"tool_call","id":"t_1","name":"read","arguments":{"path":"cli/lib/src/web/http_client.dart"}}
+{"timestamp":"2026-04-19T10:30:00.510Z","type":"tool_call","id":"t_1","name":"read","arguments":{"path":"packages/glue_strategies/lib/src/web/http_client.dart"}}
 {"timestamp":"2026-04-19T10:30:00.630Z","type":"tool_result","call_id":"t_1","content":"…"}
 {"timestamp":"2026-04-19T10:30:01.900Z","type":"title_generated","title":"HTTP client retry logic walkthrough"}
 ```

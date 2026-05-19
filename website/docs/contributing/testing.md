@@ -2,18 +2,24 @@
 
 ## Running Tests
 
+Recipes are namespaced per-package under the root justfile. Run from the
+repo root, or `cd` into the package and use the unqualified names.
+
 ```bash
-# Run all unit tests
+# Run all unit tests across the monorepo
 just test
 
-# Run tests in a specific directory
-just test test/llm/
+# CLI tests only (from repo root)
+just cli::test
 
-# Run e2e integration tests (requires: ollama + qwen3:1.7b)
-just e2e
+# Run tests in a specific directory (CLI package)
+just cli::test test/llm/
+
+# Run CLI e2e integration tests (requires: ollama + qwen3:1.7b)
+just cli::e2e
 ```
 
-Or using Dart directly:
+Or using Dart directly (from `cli/`):
 
 ```bash
 dart test
@@ -32,11 +38,13 @@ dart test --run-skipped -t e2e
 ## Static Analysis
 
 ```bash
-just analyze    # dart analyze --fatal-infos
-just format     # dart format .
-just check      # analyze + test
+just cli::analyze   # dart analyze --fatal-infos
+just cli::format    # dart format .
+just cli::check     # gen-check + analyze + test + layer hygiene (CLI)
+just check          # Monorepo quality gate (all packages)
 ```
 
 ::: tip
-Run `just check` before submitting a PR to catch analysis issues and test failures early.
+Run `just check` (from the repo root) before submitting a PR to catch analysis
+issues and test failures across the whole monorepo.
 :::

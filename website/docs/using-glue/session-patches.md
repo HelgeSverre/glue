@@ -158,12 +158,15 @@ sending to a teammate or attaching to a PR.
 **Land the agent's work as a branch you can PR:**
 
 ```bash
-glue --runtime daytona "refactor the auth helpers to use the new
+GLUE_RUNTIME=daytona glue "refactor the auth helpers to use the new
   CredentialStore API"
 # ... session ends ...
 glue session apply <id>
 # → on branch glue/<id>; tests + push as usual
 ```
+
+(You can also set `runtime: daytona` in `~/.glue/config.yaml` to make it
+the default instead of passing the env var each time.)
 
 **Inspect before applying:**
 

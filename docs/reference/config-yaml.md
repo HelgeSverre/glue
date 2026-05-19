@@ -264,4 +264,4 @@ Use `active_model: provider/model`, `small_model: provider/model`, flat
 profile refs, and environment variables or `~/.glue/credentials.json` for
 credentials.
 
-For exact parsing logic, see `cli/lib/src/config/glue_config.dart`.
+For exact parsing logic, see `packages/glue_harness/lib/src/config/glue_config.dart`.

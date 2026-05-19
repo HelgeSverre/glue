@@ -1,5 +1,5 @@
 <!-- Generated from docs/reference/session-storage.md. Do not edit by hand. -->
-<!-- Re-run: `just site-generate` (or `dart run tool/generate_site_reference.dart` in cli/) -->
+<!-- Re-run: `just website::generate-reference` (or `dart run tool/generate_site_reference.dart` in cli/) -->
 
 # Session event types
 

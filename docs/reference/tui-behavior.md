@@ -1,8 +1,11 @@
 # TUI Behavior Contract
 
 The rules Glue's terminal UI follows. This is the short version — refer to
-`cli/lib/src/app/render_pipeline.dart` and `terminal_event_router.dart` for
-the actual implementations.
+`cli/lib/src/app.dart` (which merges terminal input and agent events into
+the render loop) and the surface code under `cli/lib/src/terminal/`
+(`terminal.dart`, `layout.dart`, `screen_buffer.dart`) and
+`cli/lib/src/rendering/` (`block_renderer.dart`, `ansi_utils.dart`,
+`markdown_renderer.dart`) for the actual implementations.
 
 ## Terminal setup
 
@@ -117,6 +120,10 @@ Ambiguous-width glyphs default to width 1. See
 `cli/lib/src/rendering/ansi_utils.dart` — `visibleLength`, `charWidth`,
 `ansiTruncate`, `wrapIndented`.
 
+> Historical note: an earlier split of `App` into `render_pipeline.dart`,
+> `terminal_event_router.dart`, and `spinner_runtime.dart` was reverted —
+> all of that lives inline in `app.dart` today.
+
 ## Glyph policy
 
 The TUI uses these Unicode markers:
@@ -149,8 +156,9 @@ These are known gaps, tracked separately:
 
 ## See also
 
-- `cli/lib/src/app/render_pipeline.dart` — 60fps paint loop
-- `cli/lib/src/app/terminal_event_router.dart` — input routing
-- `cli/lib/src/app/spinner_runtime.dart` — spinner timer lifecycle
+- `cli/lib/src/app.dart` — 60fps paint loop, input routing, and spinner lifecycle (event-driven `App` controller)
+- `cli/lib/src/terminal/terminal.dart` — raw mode, alt screen, mouse tracking, terminal-event stream
+- `cli/lib/src/terminal/layout.dart` — output/overlay/status/input zone layout
 - `cli/lib/src/rendering/block_renderer.dart` — block + tool-phase rendering
+- `cli/lib/src/rendering/ansi_utils.dart` — display-width wrapping (`visibleLength`, `charWidth`, `ansiTruncate`, `wrapIndented`)
 - `cli/bin/glue_theme_demo.dart` — interactive visual reference

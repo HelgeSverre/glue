@@ -110,20 +110,6 @@ All notable changes to Glue CLI will be documented in this file.
   correctness plan + Q4 default (no `.glueignore`, respect host
   `.gitignore` via `git add -A`).
 
-### Changed
-
-- **Runtime workspace diff is now an mbox** (`runtime.mbox`, not
-  `runtime.patch`) produced by `git format-patch --binary -M -C` plus
-  a working-tree `git diff --binary -M -C HEAD`. An `add -N` preamble
-  guarantees untracked files survive. Result: agent commits keep
-  their authorship + message (apply with `git am --3way`), binary
-  files round-trip byte-for-byte, renames stay as renames, and files
-  the agent *created* but didn't `git add` no longer vanish. Round-trip
-  integration test verifies all three (`packages/glue_runtimes/test/common/diff_roundtrip_test.dart`).
-  Resolves Q3 default.
-
-### Added
-
 - **Runtime diff outcomes are typed** — `RuntimeSession.diffSinceBootstrap`
   now returns a sealed `RuntimeDiffOutcome` (`Success` / `Empty` /
   `Unavailable(reason)`) instead of a nullable string. Surfaces show a
@@ -160,6 +146,18 @@ All notable changes to Glue CLI will be documented in this file.
   `git -C /workspace diff <bootstrapSha>` inside the sandbox on session
   shutdown; the result is saved to `<session-dir>/runtime.patch` so
   the user can review (or apply) the agent's edits after a cloud run.
+
+### Changed
+
+- **Runtime workspace diff is now an mbox** (`runtime.mbox`, not
+  `runtime.patch`) produced by `git format-patch --binary -M -C` plus
+  a working-tree `git diff --binary -M -C HEAD`. An `add -N` preamble
+  guarantees untracked files survive. Result: agent commits keep
+  their authorship + message (apply with `git am --3way`), binary
+  files round-trip byte-for-byte, renames stay as renames, and files
+  the agent *created* but didn't `git add` no longer vanish. Round-trip
+  integration test verifies all three (`packages/glue_runtimes/test/common/diff_roundtrip_test.dart`).
+  Resolves Q3 default.
 
 ## [0.4.0] - 2026-05-18
 

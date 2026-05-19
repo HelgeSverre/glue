@@ -1,6 +1,6 @@
 # `~/.glue/preferences.json` — Runtime Preferences Store
 
-Machine-managed JSON file used by `ConfigStore` (`lib/src/storage/config_store.dart`).
+Machine-managed JSON file used by `ConfigStore` (`packages/glue_harness/lib/src/storage/config_store.dart`).
 
 - Not intended for manual editing.
 - Internal format; may change between versions.

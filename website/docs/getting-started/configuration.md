@@ -160,16 +160,22 @@ schema.
 
 Most config keys can be overridden by an env var prefixed with `GLUE_`:
 
-| Variable                         | Override                        |
-| -------------------------------- | ------------------------------- |
-| `GLUE_HOME`                      | Root config directory           |
-| `GLUE_MODEL`                     | Active model (`provider/model`) |
-| `GLUE_SHELL` / `GLUE_SHELL_MODE` | Shell binary and mode           |
-| `GLUE_DOCKER_ENABLED` etc.       | Docker runtime toggles          |
-| `GLUE_SEARCH_PROVIDER`           | Web search backend              |
-| `GLUE_APPROVAL_MODE`             | `confirm` or `auto`             |
-| `GLUE_DEBUG=1`                   | Enables verbose debug logging   |
-| `GLUE_SKILLS_PATHS`              | Extra skill discovery roots     |
+| Variable                         | Override                                                          |
+| -------------------------------- | ----------------------------------------------------------------- |
+| `GLUE_HOME`                      | Root config directory                                             |
+| `GLUE_MODEL`                     | Active model (`provider/model`)                                   |
+| `GLUE_RUNTIME`                   | Active runtime adapter (`host`, `docker`, `daytona`, …)           |
+| `GLUE_SHELL` / `GLUE_SHELL_MODE` | Shell binary and mode                                             |
+| `GLUE_DOCKER_ENABLED` etc.       | Docker runtime toggles (`GLUE_DOCKER_IMAGE`, `_SHELL`, `_MOUNTS`) |
+| `GLUE_SEARCH_PROVIDER`           | Web search backend                                                |
+| `GLUE_BROWSER_BACKEND`           | Browser automation backend                                        |
+| `GLUE_OCR_PROVIDER`              | OCR provider used for PDF extraction                              |
+| `GLUE_APPROVAL_MODE`             | `confirm` or `auto`                                               |
+| `GLUE_TITLE_GENERATION_ENABLED`  | Toggle automatic session-title generation (`1`/`0`)               |
+| `GLUE_ANTHROPIC_PROMPT_CACHE`    | Toggle Anthropic prompt caching (`1`/`0`)                         |
+| `GLUE_CATALOG_CACHE`             | Override path to the cached model catalog                         |
+| `GLUE_DEBUG=1`                   | Enables verbose debug logging                                     |
+| `GLUE_SKILLS_PATHS`              | Extra skill discovery roots                                       |
 
 Full list in the [canonical config reference](https://github.com/helgesverre/glue/blob/main/docs/reference/config-yaml.md).
 

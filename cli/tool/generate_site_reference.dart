@@ -92,7 +92,7 @@ void _writeModels() {
   sb.writeln(
       '<!-- Generated from docs/reference/models.yaml. Do not edit by hand. -->');
   sb.writeln(
-      '<!-- Re-run: `just site-generate` (or `dart run tool/generate_site_reference.dart` in cli/) -->');
+      '<!-- Re-run: `just website::generate-reference` (or `dart run tool/generate_site_reference.dart` in cli/) -->');
   sb.writeln();
   sb.writeln('# Model catalog');
   sb.writeln();
@@ -174,7 +174,7 @@ void _writeRuntimeMatrix() {
   sb.writeln(
       '<!-- Generated from docs/reference/runtime-capabilities.yaml. Do not edit by hand. -->');
   sb.writeln(
-      '<!-- Re-run: `just site-generate` (or `dart run tool/generate_site_reference.dart` in cli/) -->');
+      '<!-- Re-run: `just website::generate-reference` (or `dart run tool/generate_site_reference.dart` in cli/) -->');
   sb.writeln();
   sb.writeln('# Runtime capability matrix');
   sb.writeln();
@@ -275,7 +275,7 @@ void _writeConfigExamples() {
   sb.writeln(
       '<!-- Generated from docs/reference/config-yaml.md. Do not edit by hand. -->');
   sb.writeln(
-      '<!-- Re-run: `just site-generate` (or `dart run tool/generate_site_reference.dart` in cli/) -->');
+      '<!-- Re-run: `just website::generate-reference` (or `dart run tool/generate_site_reference.dart` in cli/) -->');
   sb.writeln();
   sb.writeln('# Config examples');
   sb.writeln();
@@ -336,7 +336,7 @@ void _writeSessionEvents() {
   sb.writeln(
       '<!-- Generated from docs/reference/session-storage.md. Do not edit by hand. -->');
   sb.writeln(
-      '<!-- Re-run: `just site-generate` (or `dart run tool/generate_site_reference.dart` in cli/) -->');
+      '<!-- Re-run: `just website::generate-reference` (or `dart run tool/generate_site_reference.dart` in cli/) -->');
   sb.writeln();
   sb.writeln('# Session event types');
   sb.writeln();
@@ -409,7 +409,7 @@ void _writeBrandTokens() {
   sb.writeln(
       '<!-- Generated from cli/lib/src/ui/theme_tokens.dart. Do not edit by hand. -->');
   sb.writeln(
-      '<!-- Re-run: `just site-generate` (or `dart run tool/generate_site_reference.dart` in cli/) -->');
+      '<!-- Re-run: `just website::generate-reference` (or `dart run tool/generate_site_reference.dart` in cli/) -->');
   sb.writeln();
   sb.writeln('## Terminal design tokens');
   sb.writeln();

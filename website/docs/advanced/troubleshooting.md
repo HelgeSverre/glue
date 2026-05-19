@@ -21,7 +21,7 @@ If you set `docker.enabled: true` but the session runs on the host, look for
 a notice in the status bar. Common causes:
 
 - Docker Desktop isn't running.
-- The image in `docker.image` isn't pulled yet — run `docker pull <image>`.
+- The image in `docker.image` isn't pulled yet — run `docker pull &lt;image&gt;`.
 - The path in `docker.mounts` doesn't exist.
 
 With `docker.fallback_to_host: true`, Glue drops back to host instead of
@@ -46,6 +46,64 @@ the session.
 
 If `meta.json` is missing but `conversation.jsonl` exists, the session is
 effectively orphaned — move or delete the directory.
+
+## Cloud runtime failed to bootstrap
+
+Daytona, Sprites, and Modal sandboxes have to clone or upload your repo
+before the agent can work. When that step fails, Glue classifies the error
+(via `BootstrapErrorKind`) and prints a remediation hint instead of a bare
+exit code. Common kinds:
+
+| Kind            | What it means                                                                       | What to try                                                                                  |
+| --------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `auth`          | The sandbox couldn't authenticate to your git remote (401, missing token).          | Use the bundle bootstrap path (don't rely on sandbox-side credentials), or set up an HTTPS token. |
+| `saml`          | SSO/SAML enforcement rejected the token.                                            | Authorise the token for the org in your SSO provider.                                        |
+| `network`       | DNS / connect timeout / proxy block reaching the remote from the sandbox.           | Check the sandbox's outbound network policy; retry.                                          |
+| `missingBinary` | `git` (or another required helper) isn't on `PATH` inside the sandbox image.        | Use a base image that includes git, or switch runtimes.                                      |
+| `prep`          | Workspace prep (`mkdir` / `chown`) failed in the sandbox.                           | Usually transient — retry; otherwise file an issue.                                          |
+| `upload`        | Uploading the host-side bundle to the sandbox failed.                               | See "Bundle exceeds upload cap" below.                                                       |
+| `cloneBundle`   | The uploaded bundle couldn't be cloned inside the sandbox.                          | Re-run; if it persists, check that your local `git` produces a valid bundle.                 |
+| `checkout`      | `git checkout &lt;sha&gt;` failed inside the sandbox.                                     | Make sure the commit is reachable (committed, not just staged) before starting.              |
+
+## Bundle exceeds upload cap
+
+The bundle bootstrap path packs your working tree into a `git bundle` and
+ships it to the sandbox. Each runtime has its own per-call upload cap:
+
+| Runtime   | Bundle cap |
+| --------- | ---------- |
+| Daytona   | 200 MB     |
+| Modal     | 30 MB      |
+| Sprites   | 3 MB       |
+
+If your bundle exceeds the cap, the bootstrap fails with `upload` /
+`cloneBundle`. Workarounds: trim large binaries / `node_modules` /
+`.venv` from the tree, commit and push so the sandbox can clone from the
+remote instead, or switch to a runtime with a larger cap.
+
+## `glue session apply` conflicts
+
+When you apply a captured session patch back to your host workspace, the
+`git am --3way` (or fallback `git apply --3way`) step can hit conflicts —
+typically because your host moved on while the agent was working in the
+sandbox. Glue surfaces `.rej` files for the offending hunks:
+
+```
+git am and git apply both failed. Inspect rejections or apply manually:
+  rejection: /path/to/file.dart.rej
+```
+
+Options:
+
+- Apply to a clean checkout instead: `git worktree add /tmp/review HEAD`
+  then `glue session apply &lt;id&gt; --target /tmp/review`.
+- Pick a different base: `glue session apply &lt;id&gt; --branch glue/&lt;id&gt;`
+  creates a fresh branch from current `HEAD`; the default name is the same.
+- Inspect first: `glue session show &lt;id&gt;` for metadata, `glue session diff
+  &lt;id&gt;` for the full patch.
+
+See [Session patches](/docs/using-glue/session-patches) for the full
+workflow.
 
 ## Tools hang waiting for approval
 

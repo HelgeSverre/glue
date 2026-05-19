@@ -24,14 +24,14 @@ of the codebase is split into reusable packages under `packages/`.
 | Commands      | `cli/lib/src/commands/`                    | Slash command registry and built-in commands (`/model`, `/runtime`, `/mcp`, …)    |
 | Config        | `glue_harness/lib/src/config/`             | `~/.glue/config.yaml` loading, env-var resolution, permission modes               |
 | Core          | `glue_harness/lib/src/core/`               | Service locator, environment helpers                                              |
-| Credentials   | `glue_harness/lib/src/credentials/`        | Credential store (env vars + `credentials.json`)                                  |
+| Credentials   | `glue_strategies/lib/src/credentials/`     | Credential store (env vars + `credentials.json`)                                  |
 | Doctor        | `cli/lib/src/doctor/`                      | `glue doctor` health checks; per-runtime sections for host/docker/cloud           |
 | Input         | `cli/lib/src/input/`                       | Line editor, file expansion, autocomplete                                         |
-| LLM           | `glue_harness/lib/src/llm/`                | Wire-protocol clients: Anthropic native, OpenAI HTTP, Ollama NDJSON; `LlmFactory` |
-| MCP           | `glue_harness/lib/src/mcp_client/`         | MCP client pool, stdio/HTTP/WebSocket transports, OAuth                           |
+| LLM           | `glue_strategies/lib/src/llm/`             | Wire-protocol clients: Anthropic native, OpenAI HTTP, Ollama NDJSON; `LlmFactory` |
+| MCP           | `glue_strategies/lib/src/mcp_client/`      | MCP client pool, stdio/HTTP/WebSocket transports, OAuth                           |
 | Observability | `glue_harness/lib/src/observability/`      | Local JSONL spans + debug controller                                              |
 | Orchestrator  | `glue_harness/lib/src/orchestrator/`       | Permission gate, tool-permission policies                                         |
-| Providers     | `glue_harness/lib/src/providers/`          | Adapters that map catalog providers to LLM clients                                |
+| Providers     | `glue_strategies/lib/src/providers/`       | Adapters that map catalog providers to LLM clients                                |
 | Rendering     | `cli/lib/src/rendering/`                   | Markdown rendering, ANSI utilities                                                |
 | Runtimes      | `glue_strategies/` + `glue_runtimes/`      | `CommandExecutor` + `Workspace` + `RuntimeSession`; built-in host/docker; cloud adapters daytona/sprites/modal |
 | Session       | `glue_harness/lib/src/session/`            | Session manager (lifecycle on top of storage)                                     |
@@ -40,7 +40,7 @@ of the codebase is split into reusable packages under `packages/`.
 | Terminal      | `cli/lib/src/terminal/`                    | Raw terminal I/O, key parsing                                                     |
 | Tools         | `glue_harness/lib/src/agent/tools.dart` + `tools/` | Built-in tool implementations (bash, files, web, subagents, skills)       |
 | UI            | `cli/lib/src/ui/`                          | TUI panels, modals, status line                                                   |
-| Web           | `glue_harness/lib/src/web/`                | Web fetch, search, browser automation backends                                    |
+| Web           | `glue_strategies/lib/src/web/`             | Web fetch, search, browser automation backends                                    |
 
 ## Entry Point
 

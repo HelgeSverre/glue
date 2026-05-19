@@ -62,8 +62,10 @@ features:
   runtime-boundary: { status: planned, name: "Runtime boundary plan" }
   credential-keychain: { status: planned, name: "OS keychain credentials" }
 
+  # Observability
+  observability-otel: { status: shipping, name: "OpenTelemetry export" }
+
   # Removed (must NOT appear as shipping anywhere)
   interaction-modes:
     { status: removed, name: "Interaction modes (code/architect/ask)" }
   plan-mode-ui: { status: removed, name: "Plan-mode UI" }
-  observability-otel: { status: removed, name: "OTEL/Langfuse observability" }

@@ -78,9 +78,9 @@ Every feature carries a status —
 <div class="fc-icon">☁</div>
 <div class="fc-head">
 <h3>Cloud runtimes</h3>
-<FeatureStatus status="planned" />
+<FeatureStatus status="shipping" />
 </div>
-<p>Offload to remote workers (E2B, Modal, Daytona, custom SSH or container). Tracked by the runtime boundary plan. <a href="/runtimes">Runtimes →</a></p>
+<p>Offload commands to a remote sandbox. Daytona, Sprites, and Modal are available today via the same <code>RuntimeFactory</code> adapter pattern. <a href="/runtimes">Runtimes →</a></p>
 </article>
 
 <article class="feature-card">

@@ -11,7 +11,7 @@ _Status per backend_ column below.
 ## Supported backends
 
 Glue ships with seven browser backends today. Each implements the same
-`BrowserEndpointProvider` interface (`cli/lib/src/web/browser/providers/`) —
+`BrowserEndpointProvider` interface (`packages/glue_strategies/lib/src/web/browser/providers/`) —
 picking one is a config change, not a code change.
 
 | Backend        | Where it runs                                                   | Status                                  | Best for                                                                 |

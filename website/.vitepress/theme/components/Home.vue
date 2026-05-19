@@ -48,7 +48,7 @@ const fallbackEvents: ShotEvent[] = [
   {
     kind: "tool_call",
     name: "read",
-    args: { path: "cli/lib/src/llm/http_client.dart" },
+    args: { path: "packages/glue_strategies/lib/src/llm/anthropic_client.dart" },
     phase: "running",
   },
   {
@@ -59,7 +59,7 @@ const fallbackEvents: ShotEvent[] = [
   {
     kind: "tool_call",
     name: "edit",
-    args: { path: "cli/lib/src/llm/http_client.dart" },
+    args: { path: "packages/glue_strategies/lib/src/llm/anthropic_client.dart" },
     phase: "running",
   },
   {
@@ -363,7 +363,7 @@ const matrixRows = [
 // ── JSONL sample for the "also: coding" section ───────────────────────────
 const jsonlSample = [
   `{"t":"10:30:00.000Z","type":"user_message","text":"explain retry logic"}`,
-  `{"t":"10:30:00.510Z","type":"tool_call","name":"read","args":{"path":"http_client.dart"}}`,
+  `{"t":"10:30:00.510Z","type":"tool_call","name":"read","args":{"path":"anthropic_client.dart"}}`,
   `{"t":"10:30:00.630Z","type":"tool_result","content":"…"}`,
   `{"t":"10:30:01.900Z","type":"assistant_message","text":"Exponential backoff with jitter."}`,
   `{"t":"10:30:02.120Z","type":"title_generated","title":"HTTP client retry walkthrough"}`,
