@@ -114,6 +114,7 @@ Cross-cutting layers:
 - **Functional over imperative**: Prefer `.where(...)`, `.map(...)`, `.toList()`, `.join('\n')`, `Map.fromEntries(...)` and small extensions like `sortBy` over `for`/`if` collection literals or `StringBuffer` loops when the code is a pure filter, transform, or aggregate. Mutation-heavy or multi-stage logic stays imperative.
 - **Inline the chain**: When building a structured map literal, inline the `.map(...)` / `Map.fromEntries(...)` call directly at the value position rather than extracting `final properties = ...` / `final required = ...` locals — the literal stays the structural shape, and the chains read top-to-bottom alongside the keys they belong to.
 - **Block body for map builders**: Methods that return a multi-key map literal (e.g. `toSchema`, `toJson`) should use a block body with `return { ... };` rather than an arrow expression body. The block makes intermediate steps and the literal's shape easier to scan.
+- **SVG/banner geometry**: The `website/scripts/og/` and `website/scripts/badges/` generators must derive every position and width from named padding/font-metric constants — no hardcoded text x or `+ 26`-style magic offsets. If you change either generator, run the geometry debug snippet (see comments in `design-tokens.mjs`) before rendering, and visually inspect at least one descender-bearing headline and the largest icon size. Use the `svg-text-geometry` skill for the general pattern.
 
 ## CI
 

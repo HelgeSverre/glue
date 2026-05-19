@@ -14,6 +14,7 @@ outline: false
     const badges = ref([])
     const copySuccess = ref(null)
     const selectedStyle = ref('sm')
+    const selectedVariant = ref('square')
 
     const BADGE_URL_BASE = 'https://getglue.dev/badges'
 
@@ -44,8 +45,17 @@ outline: false
         lg: 'lg (32px)'
     }
 
+    const variantLabels = {
+        square: 'square',
+        rounded: 'rounded (4px)'
+    }
+
     const filteredBadges = computed(() => {
-        return badges.value.filter(b => b.style === selectedStyle.value)
+        return badges.value.filter(b =>
+            b.style === selectedStyle.value &&
+            // Older manifests don't carry `variant`; default to square.
+            (b.variant || 'square') === selectedVariant.value
+        )
     })
 
     function badgesForCategory(cat) {
@@ -65,6 +75,17 @@ Glue badges for your projects. Click to copy.
             @click="selectedStyle = style"
     >
         {{ styleLabels[style] }}
+    </button>
+</div>
+
+<div class="style-tabs">
+    <button
+            v-for="variant in ['square', 'rounded']"
+            :key="variant"
+            :class="{ active: selectedVariant === variant }"
+            @click="selectedVariant = variant"
+    >
+        {{ variantLabels[variant] }}
     </button>
 </div>
 
