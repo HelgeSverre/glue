@@ -460,6 +460,38 @@ void _checkRuntime(
     ));
   }
 
+  // Phase 4: host-side git is required by bundle bootstrap
+  // (used for every cloud runtime). Warn early if it's missing so
+  // the user doesn't discover this at first cloud session start.
+  if (selected != 'host' && selected != 'docker') {
+    try {
+      final gitProbe = Process.runSync('git', ['--version']);
+      if (gitProbe.exitCode == 0) {
+        findings.add(DoctorFinding(
+          severity: DoctorSeverity.ok,
+          section: section,
+          message: 'Host git: ${(gitProbe.stdout as String).trim()} '
+              '(bundle bootstrap available)',
+        ));
+      } else {
+        findings.add(const DoctorFinding(
+          severity: DoctorSeverity.warning,
+          section: section,
+          message: 'Host git not runnable — bundle bootstrap is unavailable, '
+              'cloud sessions will fall back to clone-from-remote '
+              '(requires reachable origin + pushed HEAD)',
+        ));
+      }
+    } on ProcessException {
+      findings.add(const DoctorFinding(
+        severity: DoctorSeverity.warning,
+        section: section,
+        message: 'git not on host PATH — bundle bootstrap is unavailable, '
+            'cloud sessions will fall back to clone-from-remote',
+      ));
+    }
+  }
+
   switch (selected) {
     case 'host':
       findings.add(const DoctorFinding(

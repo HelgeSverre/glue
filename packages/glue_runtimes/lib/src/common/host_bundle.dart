@@ -81,6 +81,24 @@ Future<HostBundle> buildHostBundle({
   required String sessionId,
   String? sessionDir,
 }) async {
+  if (!Directory(hostCwd).existsSync()) {
+    throw HostBundleException(
+      stage: 'init',
+      message: 'host cwd does not exist: $hostCwd',
+    );
+  }
+  // Refuse bare-repo / mirror clones — they have no working tree
+  // for `git add -A` to capture, so the bundle would be empty and
+  // misleading. (Phase 4: T6 — clear refusal beats silent emptiness.)
+  if (await _isBareRepo(hostCwd)) {
+    throw const HostBundleException(
+      stage: 'init',
+      message: 'host cwd is a bare/mirror git repository; cloud runtimes '
+          'need a working tree to mirror. Clone the bare repo to a '
+          'regular working tree and re-run from there.',
+    );
+  }
+
   final baseDir = sessionDir ?? await _defaultSessionDir(sessionId);
   await Directory(baseDir).create(recursive: true);
 
@@ -157,6 +175,20 @@ Future<HostBundle> buildHostBundle({
     stage: 'bundle',
   );
 
+  // Submodule warning — Phase 4 W7. The bundle includes the
+  // gitlink (commit SHA pointer) but not the submodule's own
+  // content. The sandbox would need to recursively fetch each
+  // submodule's remote, which brings back the auth problem the
+  // bundle path is supposed to bypass. Warn so the user knows
+  // submodules will be empty inside the sandbox.
+  if (File('$hostCwd/.gitmodules').existsSync()) {
+    stderr.writeln(
+      '[glue bootstrap] WARN: host has .gitmodules; submodule contents '
+      'are NOT included in the bundle. The agent will see empty '
+      'submodule directories inside the sandbox.',
+    );
+  }
+
   return HostBundle(
     path: bundlePath,
     bundleSha: sha,
@@ -196,6 +228,20 @@ Future<ProcessResult> _git(
     );
   }
   return result;
+}
+
+Future<bool> _isBareRepo(String hostCwd) async {
+  try {
+    final r = await Process.run(
+      'git',
+      ['rev-parse', '--is-bare-repository'],
+      workingDirectory: hostCwd,
+    );
+    if (r.exitCode != 0) return false;
+    return (r.stdout as String).trim().toLowerCase() == 'true';
+  } catch (_) {
+    return false;
+  }
 }
 
 Future<String?> _readHostRemoteUrl(String hostCwd) async {

@@ -56,24 +56,119 @@ class BootstrapExecResult {
   const BootstrapExecResult({required this.exitCode, required this.output});
 }
 
+/// Classification of a bootstrap failure. Surfaces use [kind] to
+/// pick the right remediation hint (Phase 4: error legibility).
+enum BootstrapErrorKind {
+  /// Auth failure cloning a remote — 401, missing credentials,
+  /// expired token, etc.
+  auth,
+
+  /// Network failure — DNS, connect timeout, proxy block.
+  network,
+
+  /// `git` (or a required helper) not on PATH inside the sandbox.
+  missingBinary,
+
+  /// SSO / SAML enforcement rejected the token.
+  saml,
+
+  /// Workspace prep step failed (mkdir / chown / etc.).
+  prep,
+
+  /// Bundle upload to the sandbox failed.
+  upload,
+
+  /// Cloning a bundle inside the sandbox failed.
+  cloneBundle,
+
+  /// Cloning from a remote inside the sandbox failed (catch-all when
+  /// the stderr didn't match any of the more specific patterns).
+  clone,
+
+  /// Git checkout of the desired SHA inside the sandbox failed.
+  checkout,
+
+  /// We don't know what happened.
+  unknown,
+}
+
 /// Raised when a bootstrap step fails. Adapters typically catch this
 /// and re-throw their own `*ApiException` so the failure surfaces in
-/// a runtime-consistent shape.
+/// a runtime-consistent shape. [kind] + [remediationHint] are filled
+/// in by `_classifyClone` and friends so surfaces (`glue doctor`,
+/// the App's bootstrap-failure path) can show actionable messages
+/// instead of bare exit codes.
 class BootstrapException implements Exception {
   final String stage;
   final String message;
   final int? exitCode;
   final String? output;
+  final BootstrapErrorKind kind;
+  final String? remediationHint;
   const BootstrapException({
     required this.stage,
     required this.message,
     this.exitCode,
     this.output,
+    this.kind = BootstrapErrorKind.unknown,
+    this.remediationHint,
   });
   @override
   String toString() =>
-      'BootstrapException($stage${exitCode == null ? '' : ', exit=$exitCode'}): '
-      '$message${output == null ? '' : '\n$output'}';
+      'BootstrapException($stage/${kind.name}'
+      '${exitCode == null ? '' : ', exit=$exitCode'}): '
+      '$message${output == null ? '' : '\n$output'}'
+      '${remediationHint == null ? '' : '\n→ $remediationHint'}';
+}
+
+/// Classifies a `git clone` failure based on stderr patterns. Defaults
+/// to [BootstrapErrorKind.unknown] when nothing matches so the
+/// surface can fall back to printing the raw output.
+({BootstrapErrorKind kind, String? hint}) classifyCloneFailure(String stderr) {
+  final lower = stderr.toLowerCase();
+  if (lower.contains('saml') ||
+      lower.contains('sso') ||
+      lower.contains('single sign-on')) {
+    return (
+      kind: BootstrapErrorKind.saml,
+      hint: 'remote enforces SAML/SSO — authorize your token with '
+          '`gh auth refresh -s` or via your provider\'s authorization URL',
+    );
+  }
+  if (lower.contains('authentication failed') ||
+      lower.contains('could not read username') ||
+      lower.contains('http basic') ||
+      lower.contains('401') ||
+      lower.contains('403') ||
+      lower.contains('permission denied (publickey)')) {
+    return (
+      kind: BootstrapErrorKind.auth,
+      hint: 'sandbox could not authenticate to the remote. Switch to a '
+          'runtime that supports bundle bootstrap (Daytona, Modal, '
+          'Sprites in this build) so credentials stay on the host, or '
+          'inject an HTTPS token into the clone URL.',
+    );
+  }
+  if (lower.contains('could not resolve host') ||
+      lower.contains('connection timed out') ||
+      lower.contains('connection refused') ||
+      lower.contains('network is unreachable')) {
+    return (
+      kind: BootstrapErrorKind.network,
+      hint: 'sandbox cannot reach the remote — check egress policy / '
+          'VPN reachability, or use bundle bootstrap to avoid the '
+          'sandbox-side fetch entirely',
+    );
+  }
+  if (lower.contains('command not found') ||
+      lower.contains('not found') && lower.contains('git')) {
+    return (
+      kind: BootstrapErrorKind.missingBinary,
+      hint: 'sandbox image is missing `git` — pin a runtime image '
+          'that includes it',
+    );
+  }
+  return (kind: BootstrapErrorKind.unknown, hint: null);
 }
 
 /// Seeds a freshly-created or resumed runtime sandbox with the
@@ -134,6 +229,10 @@ class WorkspaceBootstrap {
       if (prep.exitCode != 0) {
         throw BootstrapException(
           stage: 'prep',
+          kind: BootstrapErrorKind.prep,
+          remediationHint: 'workspace prep failed (typically `sudo mkdir` '
+              'or chown) — check the sandbox image has the expected user '
+              'and sudo configured',
           message: 'pre-clone prep failed',
           exitCode: prep.exitCode,
           output: prep.output,
@@ -195,6 +294,10 @@ class WorkspaceBootstrap {
     } catch (e) {
       throw BootstrapException(
         stage: 'upload',
+        kind: BootstrapErrorKind.upload,
+        remediationHint: 'bundle upload failed; if the bundle is large, '
+            'try a runtime with a larger upload cap (Daytona) or push '
+            'the working tree to a remote first to take the clone path',
         message: 'bundle upload to $runtimeBundlePath failed',
         output: e.toString(),
       );
@@ -207,6 +310,9 @@ class WorkspaceBootstrap {
     if (clone.exitCode != 0) {
       throw BootstrapException(
         stage: 'clone-bundle',
+        kind: BootstrapErrorKind.cloneBundle,
+        remediationHint: 'sandbox image likely missing `git` — pin a '
+            'runtime image that includes it (see `glue doctor`)',
         message: 'sandbox failed to clone uploaded bundle at $runtimeBundlePath',
         exitCode: clone.exitCode,
         output: clone.output,
@@ -244,8 +350,11 @@ class WorkspaceBootstrap {
     final cloneUrl = _toHttpsCloneUrl(remoteUrl);
     final clone = await exec.run('git clone $cloneUrl $runtimeCwd');
     if (clone.exitCode != 0) {
+      final c = classifyCloneFailure(clone.output);
       throw BootstrapException(
         stage: 'clone',
+        kind: c.kind,
+        remediationHint: c.hint,
         message: 'git clone failed inside the sandbox',
         exitCode: clone.exitCode,
         output: clone.output,
@@ -256,6 +365,11 @@ class WorkspaceBootstrap {
     if (checkout.exitCode != 0) {
       throw BootstrapException(
         stage: 'checkout',
+        kind: BootstrapErrorKind.checkout,
+        remediationHint: 'host HEAD ($sha) is not reachable from the '
+            'remote. Push the commit, or use a runtime adapter that '
+            'supports bundle bootstrap so the working tree ships '
+            'directly from the host.',
         message: 'git checkout $sha failed inside the sandbox',
         exitCode: checkout.exitCode,
         output: checkout.output,

@@ -6,6 +6,27 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Added
 
+- **Bootstrap error classification** — `BootstrapException` now
+  carries a typed `kind` (`auth`, `network`, `saml`,
+  `missingBinary`, `prep`, `upload`, `cloneBundle`, `clone`,
+  `checkout`, `unknown`) and a `remediationHint`. The clone path
+  pattern-matches git stderr to assign the right kind, so failures
+  surface as "sandbox couldn't authenticate to the remote — switch
+  to bundle bootstrap or inject an HTTPS token" instead of
+  `BootstrapException(stage: clone, exit: 128)`.
+- **Bare-repo refusal** — `buildHostBundle` refuses bare/mirror
+  clones with a clear message instead of producing a silently empty
+  bundle.
+- **Submodule warning** — bundle bootstrap warns when host has
+  `.gitmodules` since submodule contents are not transferred
+  (gitlink pointer only). Recursive submodule fetch would require
+  re-introducing sandbox-side auth, so this stays a warning until a
+  full solution lands.
+- **`glue doctor` host-git check** — surfaces a warning at the
+  Runtime section when host git is missing, since that disables
+  bundle bootstrap and forces all cloud sessions through the
+  clone-from-remote fallback.
+
 - **`glue session` CLI subcommand surface** — `list`, `show`, `diff`,
   `apply`, `export`. `apply` defaults to creating a branch
   `glue/<session-id>` from current HEAD and runs `git am --3way`
