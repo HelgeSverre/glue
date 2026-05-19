@@ -196,7 +196,7 @@ class App {
   final String? _systemPrompt;
   final CommandExecutor _executor;
   final Future<void> Function()? _runtimeClose;
-  final Future<String?> Function()? _runtimeDiff;
+  final Future<RuntimeDiffOutcome> Function()? _runtimeDiff;
   final ShellJobManager _jobManager;
   late final SlashAutocomplete _autocomplete;
   late final AtFileHint _atHint;
@@ -244,7 +244,7 @@ class App {
     SessionStore? sessionStore,
     CommandExecutor? executor,
     Future<void> Function()? runtimeClose,
-    Future<String?> Function()? runtimeDiff,
+    Future<RuntimeDiffOutcome> Function()? runtimeDiff,
     ShellJobManager? jobManager,
     bool startupContinue = false,
     String? startupPrompt,
@@ -385,27 +385,87 @@ class App {
     if (!_exitCompleter.isCompleted) _exitCompleter.complete();
   }
 
-  /// Captures the cloud runtime's workspace diff before shutdown and
-  /// writes it to `<session-dir>/runtime.patch`. No-op for host/docker
-  /// (the runtime returns `null` from `diffSinceBootstrap`) and when
-  /// the diff is empty (no changes inside the sandbox). Failures are
-  /// swallowed so shutdown never blocks on diff capture.
+  /// Captures the cloud runtime's workspace diff before shutdown.
+  ///
+  /// Writes the patch and a `runtime.patch.meta.json` sidecar to the
+  /// session directory. Distinguishes three outcomes from the runtime:
+  /// success (write + breadcrumb), empty (silent — no changes), and
+  /// unavailable (write a single-line warning naming the reason so the
+  /// user knows the session didn't silently lose their work).
+  ///
+  /// Enforces [_runtimePatchSizeCapBytes] (Q2 default: 50 MB) to avoid
+  /// blowing up the session directory when an agent vendors deps or
+  /// commits generated assets. Truncated patches keep a `.truncated`
+  /// suffix so apply-tools won't try to use them as-is.
+  ///
+  /// Failures are swallowed so shutdown never blocks on diff capture.
   Future<void> _captureRuntimePatch() async {
     final diff = _runtimeDiff;
     final sessionId = _sessionManager.currentSessionId;
     if (diff == null || sessionId == null) return;
     try {
-      final patch = await diff();
-      if (patch == null || patch.isEmpty) return;
-      final patchPath = p.join(
-        _environment.sessionDir(sessionId),
-        'runtime.patch',
+      final outcome = await diff();
+      switch (outcome) {
+        case RuntimeDiffOutcomeSuccess():
+          _writeRuntimePatch(
+            sessionId: sessionId,
+            patch: outcome.patch,
+            meta: outcome.meta,
+          );
+        case RuntimeDiffOutcomeEmpty():
+          // No agent changes inside the sandbox — silent is fine here,
+          // there's nothing for the user to act on.
+          break;
+        case RuntimeDiffOutcomeUnavailable():
+          // Don't fall back to silent null — surface why the diff
+          // couldn't be captured so the user can act on it. Skip
+          // notSupported (host/docker, by design).
+          if (outcome.reason !=
+              RuntimeDiffUnavailableReason.notSupported) {
+            stderr.writeln(
+              '\n\x1b[33m◆\x1b[0m Runtime workspace diff unavailable '
+              '(${outcome.reason.name})'
+              '${outcome.hint == null ? '' : ': ${outcome.hint}'}',
+            );
+          }
+      }
+    } catch (_) {/* shutdown must not block on diff failure */}
+  }
+
+  static const int _runtimePatchSizeCapBytes = 50 * 1024 * 1024;
+
+  void _writeRuntimePatch({
+    required SessionId sessionId,
+    required String patch,
+    required RuntimeDiffMeta meta,
+  }) {
+    final sessionDir = _environment.sessionDir(sessionId);
+    final patchPath = p.join(sessionDir, 'runtime.patch');
+    final metaPath = p.join(sessionDir, 'runtime.patch.meta.json');
+    final cappedPatch = patch.length > _runtimePatchSizeCapBytes
+        ? '${patch.substring(0, _runtimePatchSizeCapBytes)}\n'
+            '<<< truncated: original was ${patch.length} bytes, '
+            'cap is $_runtimePatchSizeCapBytes >>>\n'
+        : patch;
+    final truncated = patch.length > _runtimePatchSizeCapBytes;
+    File(truncated ? '$patchPath.truncated' : patchPath)
+        .writeAsStringSync(cappedPatch);
+    File(metaPath).writeAsStringSync('${jsonEncode({
+          ...meta.toJson(),
+          'truncated': truncated,
+          'truncation_cap_bytes': _runtimePatchSizeCapBytes,
+        })}\n');
+    if (truncated) {
+      stderr.writeln(
+        '\n\x1b[33m◆\x1b[0m Runtime workspace diff was ${patch.length} '
+        'bytes (cap: $_runtimePatchSizeCapBytes); '
+        'truncated copy saved to $patchPath.truncated',
       );
-      File(patchPath).writeAsStringSync(patch);
+    } else {
       stderr.writeln(
         '\n\x1b[36m◆\x1b[0m Runtime workspace diff saved to $patchPath',
       );
-    } catch (_) {/* shutdown must not block on diff failure */}
+    }
   }
 
   /// Run the application event loop.

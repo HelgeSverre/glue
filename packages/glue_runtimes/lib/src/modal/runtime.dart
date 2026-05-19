@@ -107,9 +107,26 @@ class ModalRuntime implements RuntimeSession {
   }
 
   @override
-  Future<String?> diffSinceBootstrap() => captureWorkspaceDiff(
-        executor: executor,
-        runtimeCwd: workspace.mapping.runtimeCwd,
-        bootstrapSha: bootstrapSha,
+  Future<RuntimeDiffOutcome> diffSinceBootstrap() async {
+    // If the sidecar died (e.g. Modal sandbox auto-terminated mid
+    // session), surface that explicitly. Without this preflight the
+    // exec call below would throw a generic transport error and the
+    // caller couldn't tell it apart from a real git failure.
+    if (!_sidecar.isReady) {
+      return const RuntimeDiffOutcomeUnavailable(
+        reason: RuntimeDiffUnavailableReason.executorDead,
+        hint: 'modal sidecar is no longer reachable (sandbox may have '
+            'auto-terminated on sandbox_timeout_seconds, or the python '
+            'process exited); end-of-session diff cannot be captured',
       );
+    }
+    final outcome = await captureWorkspaceDiff(
+      executor: executor,
+      runtimeCwd: workspace.mapping.runtimeCwd,
+      bootstrapSha: bootstrapSha,
+      runtimeId: id,
+      sandboxId: sandboxId,
+    );
+    return outcome.toSurfaceOutcome();
+  }
 }

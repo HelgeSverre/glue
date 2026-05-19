@@ -121,9 +121,28 @@ class DaytonaRuntime implements RuntimeSession {
   }
 
   @override
-  Future<String?> diffSinceBootstrap() => captureWorkspaceDiff(
-        executor: executor,
-        runtimeCwd: workspace.mapping.runtimeCwd,
-        bootstrapSha: bootstrapSha,
+  Future<RuntimeDiffOutcome> diffSinceBootstrap() async {
+    final outcome = await captureWorkspaceDiff(
+      executor: executor,
+      runtimeCwd: workspace.mapping.runtimeCwd,
+      bootstrapSha: bootstrapSha,
+      runtimeId: id,
+      sandboxId: sandbox.id,
+      remoteUrl: await _captureGitRemote(),
+    );
+    return outcome.toSurfaceOutcome();
+  }
+
+  Future<String?> _captureGitRemote() async {
+    try {
+      final r = await executor.runCapture(
+        'git -C ${workspace.mapping.runtimeCwd} config --get remote.origin.url',
       );
+      if (r.exitCode != 0) return null;
+      final url = r.stdout.trim();
+      return url.isEmpty ? null : url;
+    } catch (_) {
+      return null;
+    }
+  }
 }

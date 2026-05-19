@@ -95,7 +95,7 @@ class SpritesRuntime implements RuntimeSession {
         fs: SpritesFsTransport(cli: cli, spriteName: name),
         mapping: mapping,
       );
-      return SpritesRuntime._(
+      final runtime = SpritesRuntime._(
         cli: cli,
         config: config,
         spriteName: name,
@@ -104,6 +104,16 @@ class SpritesRuntime implements RuntimeSession {
         bootstrapSha: result.bootstrapSha,
         resumed: result.resumed,
       );
+      // On resume there's no bootstrap SHA from the bootstrap helper
+      // (we skipped the clone). Re-baseline against whatever the
+      // sandbox's current HEAD is so a second session can still
+      // produce a diff. If the resumed worktree is dirty (Q1: refuse
+      // explicitly — silent is worse than blocking) we abort so the
+      // user can commit/export inside the sandbox before retrying.
+      if (result.resumed) {
+        await runtime._rebaselineFromResumedSandbox(runtimeCwd);
+      }
+      return runtime;
     } catch (e) {
       // Only tear down a sprite we created ourselves — never delete
       // one we resumed.
@@ -127,9 +137,49 @@ class SpritesRuntime implements RuntimeSession {
   }
 
   @override
-  Future<String?> diffSinceBootstrap() => captureWorkspaceDiff(
-        executor: executor,
-        runtimeCwd: workspace.mapping.runtimeCwd,
-        bootstrapSha: bootstrapSha,
+  Future<RuntimeDiffOutcome> diffSinceBootstrap() async {
+    final outcome = await captureWorkspaceDiff(
+      executor: executor,
+      runtimeCwd: workspace.mapping.runtimeCwd,
+      bootstrapSha: _effectiveBootstrapSha,
+      runtimeId: id,
+      sandboxId: spriteName,
+    );
+    return outcome.toSurfaceOutcome();
+  }
+
+  /// On resume, [bootstrapSha] from the bootstrap call is null. We
+  /// re-baseline against whatever the sandbox's current HEAD is so a
+  /// second session can still produce a diff for changes made during
+  /// that session. The re-baselined SHA is captured during [start].
+  String? get _effectiveBootstrapSha =>
+      bootstrapSha ?? _resumeBaselineSha;
+  String? _resumeBaselineSha;
+
+  Future<void> _rebaselineFromResumedSandbox(String runtimeCwd) async {
+    final head = await executor.runCapture(
+      'git -C $runtimeCwd rev-parse HEAD 2>/dev/null',
+    );
+    if (head.exitCode != 0 || head.stdout.trim().isEmpty) {
+      // Resumed sprite without a git repo at runtimeCwd — no baseline
+      // is possible. Surface this as DiffUnavailable later rather than
+      // refuse to start (user may have intentionally non-git workspace).
+      return;
+    }
+    final status = await executor.runCapture(
+      'git -C $runtimeCwd status --porcelain=v1 --untracked-files=normal',
+    );
+    if (status.exitCode == 0 && status.stdout.trim().isNotEmpty) {
+      throw StateError(
+        'Sprite "$spriteName" has uncommitted changes from a previous '
+        'session in $runtimeCwd. Commit or export them inside the '
+        'sandbox before resuming, e.g.:\n'
+        '  sprite exec $spriteName -- bash -lc "cd $runtimeCwd && '
+        'git add -A && git commit -m \'resume baseline\'"\n'
+        '(Q1 default: refuse silently broken cases — see '
+        'docs/plans/2026-05-19-cloud-runtimes-correctness-plan.md)',
       );
+    }
+    _resumeBaselineSha = head.stdout.trim();
+  }
 }

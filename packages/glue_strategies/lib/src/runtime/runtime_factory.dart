@@ -53,13 +53,98 @@ abstract class RuntimeSession {
   /// (or leave it to auto-sleep when `delete_on_close: false`).
   Future<void> close();
 
-  /// Returns the unified-diff patch of all changes made inside the
-  /// sandbox workspace since [bootstrapSha], or `null` when no diff
-  /// can be produced (host/docker, no bootstrap SHA, or the diff
-  /// command failed). Callers typically invoke this just before
-  /// [close] so they can persist the patch alongside the session
-  /// log.
-  Future<String?> diffSinceBootstrap() async => null;
+  /// Returns the outcome of attempting to diff the runtime workspace
+  /// against [bootstrapSha]. The default implementation reports
+  /// [RuntimeDiffOutcomeUnavailable] (host/docker, no diff capture).
+  /// Cloud runtimes override this to return [RuntimeDiffOutcomeSuccess],
+  /// [RuntimeDiffOutcomeEmpty], or [RuntimeDiffOutcomeUnavailable] with
+  /// a typed reason and a hint.
+  ///
+  /// Returning `unavailable` is explicitly *not* the same as "no
+  /// changes". Surfaces must turn `unavailable` into a visible warning
+  /// so the user knows the session didn't silently lose their work.
+  Future<RuntimeDiffOutcome> diffSinceBootstrap() async =>
+      const RuntimeDiffOutcomeUnavailable(
+        reason: RuntimeDiffUnavailableReason.notSupported,
+        hint: 'this runtime does not capture an end-of-session diff',
+      );
+}
+
+/// Surface-facing mirror of `DiffOutcome` from `glue_runtimes/common/diff.dart`.
+/// Lives here so `glue_strategies` consumers can pattern-match without
+/// importing the runtime adapter package.
+sealed class RuntimeDiffOutcome {
+  const RuntimeDiffOutcome();
+}
+
+class RuntimeDiffOutcomeSuccess extends RuntimeDiffOutcome {
+  final String patch;
+  final RuntimeDiffMeta meta;
+  const RuntimeDiffOutcomeSuccess({required this.patch, required this.meta});
+}
+
+class RuntimeDiffOutcomeEmpty extends RuntimeDiffOutcome {
+  final RuntimeDiffMeta meta;
+  const RuntimeDiffOutcomeEmpty({required this.meta});
+}
+
+class RuntimeDiffOutcomeUnavailable extends RuntimeDiffOutcome {
+  final RuntimeDiffUnavailableReason reason;
+  final String? hint;
+  const RuntimeDiffOutcomeUnavailable({required this.reason, this.hint});
+}
+
+enum RuntimeDiffUnavailableReason {
+  /// Adapter doesn't implement diff capture (host/docker today).
+  notSupported,
+
+  /// Runtime never recorded a bootstrap SHA — typically a resumed
+  /// cloud sandbox where there was no clean baseline to diff against.
+  noBootstrapSha,
+
+  /// `git` exited non-zero inside the runtime.
+  gitFailed,
+
+  /// The executor itself failed (transport died, sandbox terminated).
+  executorDead,
+
+  /// The runtime's workspace isn't a git repo.
+  runtimeNotGit,
+}
+
+class RuntimeDiffMeta {
+  final String runtimeId;
+  final String? sandboxId;
+  final String? bootstrapSha;
+  final String? remoteUrl;
+  final String runtimeCwd;
+  final String format;
+  final DateTime capturedAt;
+  final int sizeBytes;
+
+  const RuntimeDiffMeta({
+    required this.runtimeId,
+    required this.sandboxId,
+    required this.bootstrapSha,
+    required this.remoteUrl,
+    required this.runtimeCwd,
+    required this.format,
+    required this.capturedAt,
+    required this.sizeBytes,
+  });
+
+  Map<String, Object?> toJson() {
+    return {
+      'runtime_id': runtimeId,
+      'sandbox_id': sandboxId,
+      'bootstrap_sha': bootstrapSha,
+      'remote_url': remoteUrl,
+      'runtime_cwd': runtimeCwd,
+      'format': format,
+      'captured_at': capturedAt.toIso8601String(),
+      'size_bytes': sizeBytes,
+    };
+  }
 }
 
 /// Builds a [RuntimeSession] for `runtime: <name>` from config.
@@ -168,7 +253,12 @@ class _BuiltinRuntimeSession implements RuntimeSession {
   Future<void> close() async {}
 
   @override
-  Future<String?> diffSinceBootstrap() async => null;
+  Future<RuntimeDiffOutcome> diffSinceBootstrap() async =>
+      const RuntimeDiffOutcomeUnavailable(
+        reason: RuntimeDiffUnavailableReason.notSupported,
+        hint: 'host/docker runtimes work directly on the host filesystem; '
+            'no end-of-session diff is captured',
+      );
 }
 
 /// Signature a cloud runtime adapter must implement. [options] is the

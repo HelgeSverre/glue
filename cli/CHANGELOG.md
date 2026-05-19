@@ -6,6 +6,31 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Added
 
+- **Runtime diff outcomes are typed** — `RuntimeSession.diffSinceBootstrap`
+  now returns a sealed `RuntimeDiffOutcome` (`Success` / `Empty` /
+  `Unavailable(reason)`) instead of a nullable string. Surfaces show a
+  warning at session shutdown when the diff couldn't be captured (Sprites
+  resumed without a baseline, Modal sandbox auto-terminated, runtime
+  workspace isn't a git repo, etc.) — no more silent nulls.
+- **`runtime.patch.meta.json` sidecar** — every saved runtime patch now
+  has a metadata sidecar with `runtime_id`, `sandbox_id`, `bootstrap_sha`,
+  `remote_url`, `runtime_cwd`, `format`, `captured_at`, `size_bytes`,
+  and `truncated`. Apply tools and `glue session …` (forthcoming) read
+  this instead of re-inferring context from the patch body.
+- **Patch size cap** — runtime patches are capped at 50 MB by default; a
+  larger diff is written to `runtime.patch.truncated` with a visible
+  warning so the user can investigate without flooding the session
+  directory.
+- **Sprites dirty-resume refusal** — resuming a sprite whose `/workspace`
+  has uncommitted changes from a previous session now refuses with a
+  remediation message instead of silently producing a null baseline
+  (which dropped every subsequent diff). Resolves Q1 in
+  `docs/plans/2026-05-19-cloud-runtimes-correctness-plan.md`.
+- **Modal sandbox death detection** — `diffSinceBootstrap` preflight-checks
+  the sidecar before attempting `git diff`, so an auto-terminated Modal
+  sandbox produces a clear `executorDead` warning instead of a generic
+  transport exception.
+
 - **Runtime command events** — every executor (host / docker / daytona
   / sprites / modal) now emits `RuntimeCommandStarted` /
   `RuntimeCommandCompleted` / `RuntimeCommandFailed` /

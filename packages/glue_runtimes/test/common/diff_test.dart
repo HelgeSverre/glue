@@ -6,41 +6,82 @@ import 'package:glue_runtimes/src/common/diff.dart';
 
 void main() {
   group('captureWorkspaceDiff', () {
-    test('returns null when bootstrapSha is null', () async {
+    test('reports noBootstrapSha when bootstrapSha is null', () async {
       final result = await captureWorkspaceDiff(
         executor: _FakeExecutor(),
         runtimeCwd: '/workspace',
         bootstrapSha: null,
+        runtimeId: 'daytona',
       );
-      expect(result, isNull);
+      expect(result, isA<DiffUnavailable>());
+      expect((result as DiffUnavailable).reason,
+          DiffUnavailableReason.noBootstrapSha);
     });
 
-    test('returns null when bootstrapSha is empty', () async {
+    test('reports noBootstrapSha when bootstrapSha is empty', () async {
       final result = await captureWorkspaceDiff(
         executor: _FakeExecutor(),
         runtimeCwd: '/workspace',
         bootstrapSha: '',
+        runtimeId: 'daytona',
       );
-      expect(result, isNull);
+      expect(result, isA<DiffUnavailable>());
+      expect((result as DiffUnavailable).reason,
+          DiffUnavailableReason.noBootstrapSha);
     });
 
-    test('returns null when git exits non-zero', () async {
+    test('reports gitFailed when git exits non-zero', () async {
       final result = await captureWorkspaceDiff(
         executor: _FakeExecutor(exitCode: 128, stdout: 'fatal: bad sha'),
         runtimeCwd: '/workspace',
         bootstrapSha: 'deadbeef',
+        runtimeId: 'daytona',
       );
-      expect(result, isNull);
+      expect(result, isA<DiffUnavailable>());
+      expect((result as DiffUnavailable).reason,
+          DiffUnavailableReason.gitFailed);
+      expect(result.hint, contains('fatal: bad sha'));
     });
 
-    test('returns the diff body on success', () async {
+    test('reports executorDead when the exec call throws', () async {
+      final result = await captureWorkspaceDiff(
+        executor: _FakeExecutor(throwOnRun: true),
+        runtimeCwd: '/workspace',
+        bootstrapSha: 'abc123',
+        runtimeId: 'modal',
+      );
+      expect(result, isA<DiffUnavailable>());
+      expect((result as DiffUnavailable).reason,
+          DiffUnavailableReason.executorDead);
+    });
+
+    test('returns DiffSuccess with the diff body on a non-empty patch',
+        () async {
       const patch = 'diff --git a/foo b/foo\n--- a/foo\n+++ b/foo\n@@\n-x\n+y\n';
       final result = await captureWorkspaceDiff(
         executor: _FakeExecutor(stdout: patch),
         runtimeCwd: '/workspace',
         bootstrapSha: 'abc123',
+        runtimeId: 'daytona',
+        sandboxId: 'sb-1',
       );
-      expect(result, patch);
+      expect(result, isA<DiffSuccess>());
+      final success = result as DiffSuccess;
+      expect(success.patch, patch);
+      expect(success.meta.runtimeId, 'daytona');
+      expect(success.meta.sandboxId, 'sb-1');
+      expect(success.meta.bootstrapSha, 'abc123');
+      expect(success.meta.sizeBytes, patch.length);
+    });
+
+    test('returns DiffEmpty when the patch body is empty', () async {
+      final result = await captureWorkspaceDiff(
+        executor: _FakeExecutor(stdout: ''),
+        runtimeCwd: '/workspace',
+        bootstrapSha: 'abc',
+        runtimeId: 'daytona',
+      );
+      expect(result, isA<DiffEmpty>());
     });
 
     test('issues the git diff command at runtimeCwd', () async {
@@ -49,6 +90,7 @@ void main() {
         executor: exec,
         runtimeCwd: '/workspace',
         bootstrapSha: 'abc123',
+        runtimeId: 'daytona',
       );
       expect(exec.lastCommand, contains("git -C '/workspace' diff 'abc123'"));
     });
@@ -59,6 +101,7 @@ void main() {
         executor: exec,
         runtimeCwd: "/work'space",
         bootstrapSha: 'abc',
+        runtimeId: 'daytona',
       );
       expect(exec.lastCommand, contains(r"'/work'\''space'"));
     });
@@ -66,14 +109,20 @@ void main() {
 }
 
 class _FakeExecutor implements CommandExecutor {
-  _FakeExecutor({this.exitCode = 0, this.stdout = ''});
+  _FakeExecutor({
+    this.exitCode = 0,
+    this.stdout = '',
+    this.throwOnRun = false,
+  });
   final int exitCode;
   final String stdout;
+  final bool throwOnRun;
   String? lastCommand;
 
   @override
   Future<CaptureResult> runCapture(String command, {Duration? timeout}) async {
     lastCommand = command;
+    if (throwOnRun) throw StateError('executor dead');
     return CaptureResult(exitCode: exitCode, stdout: stdout, stderr: '');
   }
 
