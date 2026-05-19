@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import 'package:glue_runtimes/src/common/host_bundle.dart';
+import 'package:glue_runtimes/src/common/shell_quote.dart';
 
 /// Result of a successful workspace bootstrap.
 class BootstrapResult {
@@ -194,14 +195,20 @@ class WorkspaceBootstrap {
   final String? prepCommand;
 
   /// Session identifier, used to namespace the host-built bundle
-  /// under `~/.glue/sessions/<id>/bootstrap.bundle` and as the
-  /// synthetic commit message inside it.
+  /// under `<bundleBaseDir>/bootstrap.bundle` and as the synthetic
+  /// commit message inside it.
   final String sessionId;
+
+  /// Override for the host directory the bundle file is staged in.
+  /// Defaults to `~/.glue/sessions/<sessionId>`. Tests pass a temp
+  /// directory so they don't pollute the user's real glue home.
+  final String? bundleBaseDir;
 
   WorkspaceBootstrap({
     required this.exec,
     required this.sessionId,
     this.prepCommand,
+    this.bundleBaseDir,
   });
 
   /// Strategy preference (Phase 2 of cloud-runtimes-correctness-plan):
@@ -219,7 +226,7 @@ class WorkspaceBootstrap {
     required String hostCwd,
     required String runtimeCwd,
   }) async {
-    final probe = await exec.run('test -d $runtimeCwd/.git');
+    final probe = await exec.run('test -d ${shQuote('$runtimeCwd/.git')}');
     if (probe.exitCode == 0) {
       return const BootstrapResult(resumed: true);
     }
@@ -273,12 +280,20 @@ class WorkspaceBootstrap {
       bundle = await buildHostBundle(
         hostCwd: hostCwd,
         sessionId: sessionId,
+        sessionDir: bundleBaseDir,
       );
     } on HostBundleException catch (e) {
       throw _BundleSkipped('host git unavailable (${e.stage}: ${e.message})');
     }
 
     if (bundle.sizeBytes > transport.bundleSizeCapBytes) {
+      // Delete the bundle before falling through to clone-from-remote
+      // so we don't accumulate orphaned multi-MB blobs under
+      // ~/.glue/sessions/<id>/ (every cloud session that exceeds the
+      // runtime's cap would leak one otherwise).
+      try {
+        await bundle.path.delete();
+      } catch (_) {}
       throw _BundleSkipped(
         'bundle is ${bundle.sizeBytes} bytes, exceeds runtime cap of '
         '${transport.bundleSizeCapBytes}',
@@ -303,9 +318,14 @@ class WorkspaceBootstrap {
       );
     }
 
+    // Note the brace-scoped `|| true` on the remote-remove step only —
+    // an earlier version had a trailing `|| true` on the whole chain,
+    // which swallowed `git clone` failures and let bootstrap "succeed"
+    // with an empty workspace.
     final clone = await exec.run(
-      'git clone $runtimeBundlePath $runtimeCwd '
-      '&& cd $runtimeCwd && git remote remove origin 2>/dev/null || true',
+      'git clone ${shQuote(runtimeBundlePath)} ${shQuote(runtimeCwd)} && '
+      'cd ${shQuote(runtimeCwd)} && '
+      '{ git remote remove origin 2>/dev/null || true; }',
     );
     if (clone.exitCode != 0) {
       throw BootstrapException(
@@ -320,7 +340,7 @@ class WorkspaceBootstrap {
     }
 
     // Bundle has been consumed; remove it to free sandbox disk.
-    await exec.run('rm -f $runtimeBundlePath');
+    await exec.run('rm -f ${shQuote(runtimeBundlePath)}');
 
     // Best-effort: delete the host-side bundle (keep the tempGitDir
     // for diagnostics). Failures are non-fatal.
@@ -348,7 +368,9 @@ class WorkspaceBootstrap {
     }
 
     final cloneUrl = _toHttpsCloneUrl(remoteUrl);
-    final clone = await exec.run('git clone $cloneUrl $runtimeCwd');
+    final clone = await exec.run(
+      'git clone ${shQuote(cloneUrl)} ${shQuote(runtimeCwd)}',
+    );
     if (clone.exitCode != 0) {
       final c = classifyCloneFailure(clone.output);
       throw BootstrapException(
@@ -361,7 +383,9 @@ class WorkspaceBootstrap {
       );
     }
 
-    final checkout = await exec.run('cd $runtimeCwd && git checkout $sha');
+    final checkout = await exec.run(
+      'cd ${shQuote(runtimeCwd)} && git checkout ${shQuote(sha)}',
+    );
     if (checkout.exitCode != 0) {
       throw BootstrapException(
         stage: 'checkout',

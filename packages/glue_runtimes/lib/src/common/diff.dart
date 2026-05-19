@@ -1,5 +1,7 @@
 import 'package:glue_strategies/glue_strategies.dart';
 
+import 'package:glue_runtimes/src/common/shell_quote.dart';
+
 /// Bridges this package's [DiffOutcome] vocabulary back into the
 /// surface-facing [RuntimeDiffOutcome] in `glue_strategies`. Each
 /// cloud `RuntimeSession.diffSinceBootstrap` calls into the helpers
@@ -175,8 +177,8 @@ Future<DiffOutcome> captureWorkspaceDiff({
     );
   }
 
-  final cwd = _q(runtimeCwd);
-  final sha = _q(bootstrapSha);
+  final cwd = shQuote(runtimeCwd);
+  final sha = shQuote(bootstrapSha);
 
   // (1) intent-to-add for untracked. Failures here are non-fatal —
   // if the workspace isn't a git repo we'll catch it in step (2).
@@ -248,5 +250,3 @@ Future<DiffOutcome> captureWorkspaceDiff({
   if (mbox.isEmpty) return DiffEmpty(meta: meta);
   return DiffSuccess(patch: mbox, meta: meta);
 }
-
-String _q(String s) => "'${s.replaceAll("'", "'\\''")}'";
