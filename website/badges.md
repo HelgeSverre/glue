@@ -141,17 +141,21 @@ Glue badges for your projects. Click to copy.
     <div class="badge-grid">
         <div
                 v-for="badge in badgesForCategory(cat)"
-                :key="badge.id"
+                :key="`${badge.label}|${badge.message}|${badge.category}`"
                 class="badge-card"
                 :class="{ copied: copySuccess === badge.id }"
                 @click="copyBadge(badge)"
         >
             <div class="badge-row">
                 <div class="preview preview-dark">
-                    <img :src="`/badges/${badge.file}`" :alt="badge.label + ' ' + badge.message" :width="badge.width" :height="badge.height" />
+                    <Transition name="badge-fade" mode="out-in">
+                        <img :key="badge.file" :src="`/badges/${badge.file}`" :alt="badge.label + ' ' + badge.message" :width="badge.width" :height="badge.height" />
+                    </Transition>
                 </div>
                 <div class="preview preview-light">
-                    <img :src="`/badges/${badge.file}`" :alt="badge.label + ' ' + badge.message" :width="badge.width" :height="badge.height" />
+                    <Transition name="badge-fade" mode="out-in">
+                        <img :key="badge.file" :src="`/badges/${badge.file}`" :alt="badge.label + ' ' + badge.message" :width="badge.width" :height="badge.height" />
+                    </Transition>
                 </div>
             </div>
             <div class="badge-footer">
@@ -226,7 +230,17 @@ Glue badges for your projects. Click to copy.
         padding: 0;
         cursor: pointer;
         overflow: hidden;
-        transition: all 0.15s ease;
+        /* Card height changes when the badge size or text length
+           switches; smooth that resize instead of snapping. */
+        transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .badge-row,
+    .preview {
+        /* Animate height/padding changes when switching size — the
+           inner img re-sizes and the row reflows; this hides the
+           snap. */
+        transition: min-height 0.18s ease, padding 0.18s ease;
     }
 
     .badge-card:hover {
@@ -271,6 +285,20 @@ Glue badges for your projects. Click to copy.
         /* Keep PNG previews crisp at native resolution. */
         image-rendering: -webkit-optimize-contrast;
         image-rendering: crisp-edges;
+    }
+
+    /* Cross-fade the img swap when switching size or variant —
+       without this the preview blinks white as the browser loads
+       the new file. `mode="out-in"` on <Transition> means old
+       fades out, new fades in; both phases live here. */
+    .badge-fade-enter-active,
+    .badge-fade-leave-active {
+        transition: opacity 0.12s ease;
+    }
+
+    .badge-fade-enter-from,
+    .badge-fade-leave-to {
+        opacity: 0;
     }
 
     .badge-footer {
