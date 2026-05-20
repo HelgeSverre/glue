@@ -112,11 +112,15 @@ void main() {
   });
 
   group('OpenAiCompatibleAdapter.createClient', () {
-    test('vanilla openai: uses api.openai.com + Bearer + stream_options',
+    test('vanilla openai: uses api.openai.com/v1 + Bearer + stream_options',
         () async {
       final adapter = OpenAiCompatibleAdapter();
       final client = adapter.createClient(
-        provider: _resolved(id: 'openai', apiKey: 'sk-oa'),
+        provider: _resolved(
+          id: 'openai',
+          baseUrl: 'https://api.openai.com/v1',
+          apiKey: 'sk-oa',
+        ),
         model: _model('gpt-5.4'),
         systemPrompt: '',
       ) as OpenAiClient;
@@ -125,9 +129,22 @@ void main() {
       final captured = await _capture(client);
       final req = captured.request!;
       expect(req.url.host, 'api.openai.com');
+      expect(req.url.path, '/v1/chat/completions');
       expect(req.headers['Authorization'], 'Bearer sk-oa');
       final body = jsonDecode(captured.body!) as Map<String, dynamic>;
       expect(body['stream_options'], isNotNull);
+    });
+
+    test('throws when provider is missing base_url', () {
+      final adapter = OpenAiCompatibleAdapter();
+      expect(
+        () => adapter.createClient(
+          provider: _resolved(id: 'openai', apiKey: 'sk-oa'),
+          model: _model('gpt-5.4'),
+          systemPrompt: '',
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
     });
 
     test('groq profile: uses custom base URL and strips stream_options',

@@ -25,13 +25,11 @@ class OpenAiClient implements LlmClient {
   final Map<String, String> extraHeaders;
   final Uri _baseUri;
 
-  static const _defaultBaseUrl = 'https://api.openai.com';
-
   OpenAiClient({
     required this.apiKey,
     required this.model,
     required this.systemPrompt,
-    this.baseUrl = _defaultBaseUrl,
+    required this.baseUrl,
     this.profile = CompatibilityProfile.openai,
     this.extraHeaders = const {},
     http.Client Function()? requestClientFactory,

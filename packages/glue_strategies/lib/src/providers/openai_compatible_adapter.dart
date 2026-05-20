@@ -37,12 +37,21 @@ class OpenAiCompatibleAdapter extends ProviderAdapter {
     required ResolvedModel model,
     required String systemPrompt,
   }) {
+    final baseUrl = provider.baseUrl;
+    if (baseUrl == null || baseUrl.isEmpty) {
+      throw ArgumentError(
+        'Provider "${provider.id}" is missing base_url. Add it to '
+        '~/.glue/models.yaml (e.g. https://api.openai.com/v1). The remote '
+        'catalog sanitizer strips base_url for security, so provider entries '
+        'overlaid from a remote catalog must re-declare it locally.',
+      );
+    }
     final profile = CompatibilityProfile.fromString(provider.compatibility);
     return OpenAiClient(
       apiKey: provider.apiKey ?? '',
       model: model.apiId,
       systemPrompt: systemPrompt,
-      baseUrl: provider.baseUrl ?? 'https://api.openai.com',
+      baseUrl: baseUrl,
       profile: profile,
       extraHeaders: provider.requestHeaders,
       requestClientFactory: _requestClientFactory,
