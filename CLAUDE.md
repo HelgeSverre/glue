@@ -101,7 +101,7 @@ Cross-cutting layers:
 
 **Doctor** (`cli/lib/src/doctor/`): Installation and config health checks surfaced by `glue doctor`, including a per-runtime block (host / docker / daytona / sprites / modal).
 
-**Other key modules**: `glue_harness/skills/` (skill discovery and execution), `glue_harness/tools/` (web/subagent tools), `glue_harness/observability/` (tracing, OTEL).
+**Other key modules**: `glue_harness/skills/` (skill discovery and execution), `glue_harness/tools/` (web/subagent tools), `glue_harness/observability/` (tracing + OTLP/HTTP export via `otlp_http_trace_sink.dart` — emits a stable `session.id` resource attribute per Glue CLI process so observability backends following the OpenInference convention can group multiple traces from one invocation).
 
 ## Code Conventions
 
