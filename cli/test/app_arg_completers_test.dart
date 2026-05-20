@@ -6,7 +6,19 @@ library;
 
 import 'package:glue/glue.dart';
 import 'package:glue/src/commands/arg_completers.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:test/test.dart';
+
+McpServerSnapshot _stdioServer(String id) => McpServerSnapshot(
+      spec: McpStdioServerSpec(id: id, command: 'npx', args: const ['x']),
+      state: const McpDisconnected(),
+    );
+
+McpServerSnapshot _httpServer(String id, {String url = 'https://x/y'}) =>
+    McpServerSnapshot(
+      spec: McpHttpServerSpec(id: id, url: Uri.parse(url)),
+      state: const McpDisconnected(),
+    );
 
 ModelDef _model(String id, String name) => ModelDef(id: id, name: name);
 
@@ -204,6 +216,90 @@ void main() {
 
     test('non-empty priorArgs returns empty', () {
       expect(shareArgCandidates(['html'], ''), isEmpty);
+    });
+  });
+
+  group('mcpSubcommandCandidates', () {
+    test('empty partial returns all subcommands', () {
+      final ids = mcpSubcommandCandidates('').map((c) => c.value).toSet();
+      expect(
+        ids,
+        {'list', 'tools', 'reconnect', 'toggle', 'auth', 'help'},
+      );
+    });
+
+    test('prefix narrows', () {
+      expect(
+        mcpSubcommandCandidates('to').map((c) => c.value).toList(),
+        ['tools', 'toggle'],
+      );
+    });
+
+    test('list and help do not continue; others do', () {
+      final byName = {
+        for (final c in mcpSubcommandCandidates('')) c.value: c,
+      };
+      expect(byName['list']!.continues, isFalse);
+      expect(byName['help']!.continues, isFalse);
+      expect(byName['tools']!.continues, isTrue);
+      expect(byName['reconnect']!.continues, isTrue);
+    });
+  });
+
+  group('mcpAuthSubcommandCandidates', () {
+    test('returns login, logout, status', () {
+      expect(
+        mcpAuthSubcommandCandidates('').map((c) => c.value).toSet(),
+        {'login', 'logout', 'status'},
+      );
+    });
+
+    test('status terminates; login/logout continue', () {
+      final byName = {
+        for (final c in mcpAuthSubcommandCandidates('')) c.value: c,
+      };
+      expect(byName['status']!.continues, isFalse);
+      expect(byName['login']!.continues, isTrue);
+      expect(byName['logout']!.continues, isTrue);
+    });
+  });
+
+  group('mcpServerIdCandidates', () {
+    final servers = [
+      _stdioServer('filesystem'),
+      _stdioServer('fastly'),
+      _httpServer('notion'),
+      _httpServer('grafana'),
+    ];
+
+    test('prefix matches across all servers regardless of transport', () {
+      expect(
+        mcpServerIdCandidates(servers, 'f').map((c) => c.value).toList(),
+        ['filesystem', 'fastly'],
+      );
+    });
+
+    test('empty partial returns every server', () {
+      expect(
+        mcpServerIdCandidates(servers, '').map((c) => c.value).toSet(),
+        {'filesystem', 'fastly', 'notion', 'grafana'},
+      );
+    });
+
+    test('requireRemote filters out stdio servers', () {
+      expect(
+        mcpServerIdCandidates(servers, '', requireRemote: true)
+            .map((c) => c.value)
+            .toSet(),
+        {'notion', 'grafana'},
+      );
+    });
+
+    test('case-insensitive prefix', () {
+      expect(
+        mcpServerIdCandidates(servers, 'NO').map((c) => c.value).toList(),
+        ['notion'],
+      );
     });
   });
 }

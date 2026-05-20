@@ -213,6 +213,10 @@ Inside a Glue session you have the same surface plus live-state actions:
 /mcp help                       Subcommand cheatsheet
 ```
 
+All subcommands tab-complete. `/mcp <TAB>` lists subcommands; `/mcp reconnect|toggle|tools <TAB>` enumerates configured server ids; `/mcp auth login|logout <TAB>` filters down to HTTP/WebSocket servers (stdio servers can't OAuth).
+
+Inside the status panel (`/mcp` with no args) press `Enter` on a row to open an action submenu: **Reconnect**, **Enable/Disable for this session** (label tracks current state), **View tools**, **Copy server ID**, and **Show last error** (only when a failure is recorded). The submenu reuses the pool's `reconnect()`/`toggle()` methods, so panel actions and the slash subcommands are interchangeable.
+
 The status bar shows a `MCP:N⚠` badge when one or more servers are in `reconnecting` or `dead` state, so you notice flaky servers without opening the panel.
 
 ## How tools are exposed
@@ -238,7 +242,7 @@ The `mcp.tool_policy.auto_approve` and `mcp.tool_policy.deny` globs match agains
 Each server runs an independent state machine: `disconnected → connecting → connected`, with `reconnecting` and `dead` for failure recovery.
 
 - **Drop detection**: stdio EOF, HTTP 5xx / SSE close, WebSocket non-1000 close.
-- **Backoff**: exponential with jitter, defaults to `500ms → 30s` over 10 attempts. Reset after a successful `tools/list`. Servers that crash-loop (≥5 respawns in 60s) are marked `dead` for the session.
+- **Backoff**: exponential with jitter, defaults to `500ms → 30s` over 10 attempts. The attempt counter resets on every successful connect, and on manual `/mcp reconnect <id>` or `/mcp toggle <id>`. After `max_attempts` consecutive failures the server is marked `dead` for the session; clear with `/mcp reconnect <id>`. Tunable via `mcp.reconnect.{enabled, initial_delay_ms, max_delay_ms, max_attempts}` in `config.yaml`.
 - **In-flight calls** at drop time resolve as `ToolResult(success: false, metadata: {retryable: true, ...})`. We never auto-retry — the agent loop decides whether to try again or change tack.
 - **`tools/list_changed`** notifications are honoured: when a server tells us its tool list changed, Glue refreshes, diffs against the previous set, and posts a system message naming what came and went.
 

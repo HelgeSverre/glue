@@ -6,6 +6,34 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Added
 
+- **Interactive `/mcp` panel** — pressing `Enter` on a server row in the
+  status panel now opens an action submenu with **Reconnect**,
+  **Enable/Disable for this session**, **View tools**, **Copy server
+  ID**, and **Show last error** (when a failure is recorded). Actions
+  reuse the pool's existing `reconnect()` / `toggle()` methods, so
+  the panel and the slash subcommands stay interchangeable. Tools and
+  error views render as scrollable read-only modals.
+- **Tab completion for `/mcp` subcommands and server IDs** —
+  `/mcp <TAB>` enumerates subcommands, `/mcp reconnect|toggle|tools
+<TAB>` enumerates configured server IDs (case-insensitive prefix),
+  and `/mcp auth login|logout <TAB>` filters down to HTTP/WebSocket
+  servers (stdio can't OAuth). Adds `mcpSubcommandCandidates`,
+  `mcpAuthSubcommandCandidates`, and `mcpServerIdCandidates` to
+  `arg_completers.dart`, wired through the standard
+  `SlashArgCompleter` override on `McpSlashCommand`.
+- **Automatic MCP reconnect with backoff** — when an MCP server's
+  initial handshake or transport fails, the pool now transitions to
+  `McpReconnecting` and schedules a retry via the existing
+  `mcpBackoff` helper (exponential with jitter, 500ms→30s over 10
+  attempts by default; tunable via `mcp.reconnect.*` in
+  `config.yaml`). Only after `max_attempts` consecutive failures does
+  the server land in `McpDead`. `McpPoolServerDisconnectedEvent` now
+  carries the populated `reconnectAttempt` + `nextAttemptIn` fields
+  it always had room for, so the status bar and panel can render
+  the retry countdown. Manual `/mcp reconnect <id>` and `/mcp toggle
+<id>` cancel any pending retry timer and reset the attempt counter
+  — pool tests cover both paths. Closes the docs-vs-reality gap
+  flagged in [#26](https://github.com/HelgeSverre/glue/issues/26).
 - **Editor Integration (ACP) docs + branded `glue serve` output** — new
   `website/docs/advanced/acp-server.md` page covers what ACP is, the
   two `glue serve` transports (stdio for editors, WebSocket for

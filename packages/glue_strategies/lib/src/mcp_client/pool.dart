@@ -172,6 +172,15 @@ class McpClientPool {
 
   final Map<String, McpServerSnapshot> _servers = {};
   final Map<String, McpClient> _clients = {};
+
+  /// In-flight reconnect timers, keyed by server id. Cancelled on manual
+  /// `reconnect`/`toggle`/`close` and on every successful connect.
+  final Map<String, Timer> _retryTimers = {};
+
+  /// Per-server attempt counter. Bumped before each `_connect` call;
+  /// reset to 0 on successful connect or manual user action.
+  final Map<String, int> _attempts = {};
+
   final _events = StreamController<McpPoolEvent>.broadcast();
 
   Stream<McpPoolEvent> get events => _events.stream;
@@ -206,10 +215,14 @@ class McpClientPool {
     }
   }
 
-  /// Reconnect a specific server. Clears `dead` state if applicable.
+  /// Reconnect a specific server. Clears `dead` state if applicable and
+  /// cancels any pending automatic-retry timer so the manual action takes
+  /// precedence.
   Future<void> reconnect(String serverId) async {
     final s = _servers[serverId];
     if (s == null) return;
+    _cancelRetry(serverId);
+    _attempts[serverId] = 0;
     await _disconnect(s);
     s.state = const McpDisconnected();
     await _connect(s);
@@ -219,6 +232,8 @@ class McpClientPool {
   Future<void> toggle(String serverId) async {
     final s = _servers[serverId];
     if (s == null) return;
+    _cancelRetry(serverId);
+    _attempts[serverId] = 0;
     if (_clients.containsKey(serverId)) {
       await _disconnect(s);
       _servers[serverId] = McpServerSnapshot(
@@ -235,6 +250,9 @@ class McpClientPool {
   }
 
   Future<void> close() async {
+    for (final id in _retryTimers.keys.toList()) {
+      _cancelRetry(id);
+    }
     for (final s in _servers.values.toList()) {
       await _disconnect(s);
     }
@@ -244,8 +262,10 @@ class McpClientPool {
   // ─── private ─────────────────────────────────────────────────────────────
 
   Future<void> _connect(McpServerSnapshot s) async {
+    final attempt = (_attempts[s.id] ?? 0) + 1;
+    _attempts[s.id] = attempt;
     try {
-      s.state = const McpConnecting();
+      s.state = McpConnecting(attempt: attempt);
       final client = await _clientFactory(s.spec, credentials);
       _clients[s.id] = client;
 
@@ -264,6 +284,7 @@ class McpClientPool {
         serverVersion: init.serverInfo.version,
         protocolVersion: init.protocolVersion,
       );
+      _attempts[s.id] = 0;
 
       _events.add(McpPoolServerConnectedEvent(
         serverId: s.id,
@@ -279,25 +300,76 @@ class McpClientPool {
         }
       }));
     } on McpCallFailure catch (e) {
-      s.state = McpDead(reason: e.reason);
       s.lastError = e.message ?? e.reason;
+      // Clean up the half-started client if any.
+      final client = _clients.remove(s.id);
+      await client?.close();
       _events.add(McpPoolServerErrorEvent(
         serverId: s.id,
         kind: _failureKind(e),
         message: s.lastError!,
       ));
-      // Clean up the half-started client if any.
-      final client = _clients.remove(s.id);
-      await client?.close();
+      _handleFailure(s, reason: e.reason, attempt: attempt);
     } catch (e) {
-      s.state = const McpDead(reason: 'spawn_failed');
       s.lastError = e.toString();
       _events.add(McpPoolServerErrorEvent(
         serverId: s.id,
         kind: McpServerErrorKind.spawnFailed,
         message: s.lastError!,
       ));
+      _handleFailure(s, reason: 'spawn_failed', attempt: attempt);
     }
+  }
+
+  /// Decide whether to schedule another reconnect attempt or mark dead.
+  ///
+  /// When the reconnect policy is disabled or the attempt cap has been
+  /// reached, the server transitions to [McpDead] (legacy behaviour).
+  /// Otherwise we compute a backoff delay, transition to
+  /// [McpReconnecting], emit a disconnect event carrying the attempt
+  /// number + `nextAttemptIn`, and arm a timer.
+  void _handleFailure(
+    McpServerSnapshot s, {
+    required String reason,
+    required int attempt,
+  }) {
+    final policy = config.reconnect;
+    if (!policy.enabled || attempt >= policy.maxAttempts) {
+      s.state = McpDead(reason: reason);
+      return;
+    }
+    final delay = mcpBackoff(
+      attempt: attempt,
+      initial: Duration(milliseconds: policy.initialDelayMs),
+      max: Duration(milliseconds: policy.maxDelayMs),
+    );
+    s.state = McpReconnecting(
+      attempt: attempt,
+      nextAttemptIn: delay,
+      lastError: s.lastError,
+    );
+    _events.add(McpPoolServerDisconnectedEvent(
+      serverId: s.id,
+      reason: McpDisconnectReason.dropped,
+      reconnectAttempt: attempt,
+      nextAttemptIn: delay,
+    ));
+    _retryTimers[s.id]?.cancel();
+    _retryTimers[s.id] = Timer(delay, () {
+      _retryTimers.remove(s.id);
+      // The server may have been toggled off (or removed) while waiting.
+      final current = _servers[s.id];
+      if (current == null || !current.enabled) return;
+      // Guard against races with manual reconnect: if the user kicked off
+      // a fresh connect attempt, the state will no longer be
+      // McpReconnecting, and we should leave it alone.
+      if (current.state is! McpReconnecting) return;
+      unawaited(_connect(current));
+    });
+  }
+
+  void _cancelRetry(String serverId) {
+    _retryTimers.remove(serverId)?.cancel();
   }
 
   Future<void> _refreshTools(McpServerSnapshot s) async {
@@ -330,6 +402,7 @@ class McpClientPool {
   }
 
   Future<void> _disconnect(McpServerSnapshot s) async {
+    _cancelRetry(s.id);
     final client = _clients.remove(s.id);
     if (client != null) {
       await client.close();

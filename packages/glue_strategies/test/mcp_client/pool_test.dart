@@ -30,11 +30,13 @@ McpClientFactory _fakeFactory({
         case McpMethod.toolsList:
           return [
             JsonRpcResponse(id: out.id, result: {
-              'tools': tools.map((t) => {
-                    'name': t.name,
-                    'description': t.description,
-                    'inputSchema': t.inputSchema,
-                  }).toList(),
+              'tools': tools
+                  .map((t) => {
+                        'name': t.name,
+                        'description': t.description,
+                        'inputSchema': t.inputSchema,
+                      })
+                  .toList(),
             }),
           ];
         default:
@@ -48,15 +50,15 @@ McpClientFactory _fakeFactory({
 /// Factory that always throws on `initialize` — used to test the
 /// "server fails to start" path.
 McpClientFactory _failingFactory() {
-  return (spec, credentials) async =>
-      throw const McpCallFailure(
+  return (spec, credentials) async => throw const McpCallFailure(
         reason: 'spawn_failed',
         message: 'cannot spawn',
       );
 }
 
 CredentialStore _emptyCreds() => CredentialStore(
-      path: '${Directory.systemTemp.createTempSync('pool_test_').path}/creds.json',
+      path:
+          '${Directory.systemTemp.createTempSync('pool_test_').path}/creds.json',
       env: const {},
     );
 
@@ -130,13 +132,17 @@ void main() {
       await pool.close();
     });
 
-    test('failing server transitions to dead + emits error event', () async {
+    test('failing server transitions to dead when reconnect is disabled',
+        () async {
       const failer = McpStdioServerSpec(
         id: 'broken',
         command: 'fake',
       );
       final pool = McpClientPool(
-        config: const McpConfig(servers: [failer]),
+        config: const McpConfig(
+          servers: [failer],
+          reconnect: McpReconnectPolicy(enabled: false),
+        ),
         credentials: _emptyCreds(),
         clientFactory: _failingFactory(),
       );
@@ -152,6 +158,103 @@ void main() {
       expect(pool.unhealthyCount, 1);
 
       await sub.cancel();
+      await pool.close();
+    });
+
+    test('failing server enters McpReconnecting when reconnect is enabled',
+        () async {
+      const failer = McpStdioServerSpec(id: 'broken', command: 'fake');
+      final pool = McpClientPool(
+        config: const McpConfig(
+          servers: [failer],
+          reconnect: McpReconnectPolicy(
+            initialDelayMs: 1000,
+            maxDelayMs: 5000,
+            maxAttempts: 3,
+          ),
+        ),
+        credentials: _emptyCreds(),
+        clientFactory: _failingFactory(),
+      );
+
+      final captured = <McpPoolEvent>[];
+      final sub = pool.events.listen(captured.add);
+
+      pool.connectAll();
+      // Wait for the first attempt to fail; the retry timer is armed but
+      // hasn't fired yet (initialDelayMs = 1s).
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      final state = pool.server('broken')?.state;
+      expect(state, isA<McpReconnecting>(),
+          reason: 'should have scheduled a retry, not died');
+      expect((state as McpReconnecting).attempt, 1);
+      expect(state.nextAttemptIn.inMilliseconds, greaterThanOrEqualTo(1000));
+
+      // The error event still fires on every failed attempt.
+      expect(captured.whereType<McpPoolServerErrorEvent>(), isNotEmpty);
+      // A disconnect event with reconnect metadata is emitted alongside.
+      final disc = captured.whereType<McpPoolServerDisconnectedEvent>().first;
+      expect(disc.reconnectAttempt, 1);
+      expect(disc.nextAttemptIn.inMilliseconds, greaterThanOrEqualTo(1000));
+
+      await sub.cancel();
+      await pool.close();
+    });
+
+    test('reconnect retries until maxAttempts, then marks dead', () async {
+      const failer = McpStdioServerSpec(id: 'broken', command: 'fake');
+      final pool = McpClientPool(
+        // 1ms delays so the retry loop drains inside the test.
+        config: const McpConfig(
+          servers: [failer],
+          reconnect: McpReconnectPolicy(
+            initialDelayMs: 1,
+            maxDelayMs: 2,
+            maxAttempts: 3,
+          ),
+        ),
+        credentials: _emptyCreds(),
+        clientFactory: _failingFactory(),
+      );
+
+      pool.connectAll();
+      // 3 attempts × ~2ms backoff + jitter; 200ms is plenty.
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+
+      final state = pool.server('broken')?.state;
+      expect(state, isA<McpDead>(), reason: 'should exhaust attempts and die');
+      await pool.close();
+    });
+
+    test('manual reconnect() cancels the pending retry timer', () async {
+      const failer = McpStdioServerSpec(id: 'broken', command: 'fake');
+      final pool = McpClientPool(
+        config: const McpConfig(
+          servers: [failer],
+          reconnect: McpReconnectPolicy(
+            initialDelayMs: 1000,
+            maxDelayMs: 5000,
+            maxAttempts: 10,
+          ),
+        ),
+        credentials: _emptyCreds(),
+        clientFactory: _failingFactory(),
+      );
+
+      pool.connectAll();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(pool.server('broken')?.state, isA<McpReconnecting>());
+
+      // Kick off a manual reconnect; it should reset the attempt counter
+      // back to 1 (visible in the next McpReconnecting state).
+      await pool.reconnect('broken');
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      final state = pool.server('broken')?.state;
+      expect(state, isA<McpReconnecting>());
+      expect((state as McpReconnecting).attempt, 1,
+          reason: 'manual reconnect should restart attempt counter at 1');
+
       await pool.close();
     });
 
@@ -227,8 +330,7 @@ void main() {
   });
 
   group('McpClientPool — toggle / reconnect', () {
-    test('toggle disables a connected server and removes its tools',
-        () async {
+    test('toggle disables a connected server and removes its tools', () async {
       const spec = McpStdioServerSpec(id: 'fs', command: 'fake');
       final pool = McpClientPool(
         config: const McpConfig(servers: [spec]),

@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:glue_harness/glue_harness.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 
+import 'package:glue/src/commands/arg_completers.dart' as arg_completers;
 import 'package:glue/src/commands/slash_command_context.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/terminal/styled.dart';
@@ -27,6 +29,35 @@ class McpSlashCommand extends SlashCommand {
 
   @override
   String get description => 'Inspect MCP servers';
+
+  @override
+  SlashArgCompleter? get argCompleter => (prior, partial) {
+        // /mcp <TAB>
+        if (prior.isEmpty) {
+          return arg_completers.mcpSubcommandCandidates(partial);
+        }
+        final servers = ctx.mcpPool.servers;
+        // /mcp tools|reconnect|toggle <TAB>
+        if (prior.length == 1 &&
+            const {'tools', 'reconnect', 'toggle'}.contains(prior.first)) {
+          return arg_completers.mcpServerIdCandidates(servers, partial);
+        }
+        // /mcp auth <TAB>
+        if (prior.length == 1 && prior.first == 'auth') {
+          return arg_completers.mcpAuthSubcommandCandidates(partial);
+        }
+        // /mcp auth login|logout <TAB> — HTTP/WS servers only.
+        if (prior.length == 2 &&
+            prior.first == 'auth' &&
+            const {'login', 'logout'}.contains(prior[1])) {
+          return arg_completers.mcpServerIdCandidates(
+            servers,
+            partial,
+            requireRemote: true,
+          );
+        }
+        return const [];
+      };
 
   @override
   String execute(List<String> args) {
@@ -315,9 +346,110 @@ class McpSlashCommand extends SlashCommand {
       height: PanelFluid(0.6, 8),
     );
     ctx.panels.push(panel);
-    // v1: selection is read-only. Toggle / reconnect / call actions land
-    // in B7 as a follow-up action panel.
-    panel.selection.then((_) => ctx.panels.dismiss(panel));
+    panel.selection.then((picked) {
+      if (picked == null) {
+        ctx.panels.dismiss(panel);
+        return;
+      }
+      _openActionPanel(parentPanel: panel, server: picked);
+    });
+  }
+
+  void _openActionPanel({
+    required SelectPanel<McpServerSnapshot> parentPanel,
+    required McpServerSnapshot server,
+  }) {
+    final actions = _actionsFor(server);
+    final lines = actions.map((a) => a.label(server)).toList();
+    final actionPanel = PanelModal(
+      title: server.id,
+      lines: lines,
+      barrier: BarrierStyle.dim,
+      height: PanelFixed(lines.length + 2),
+      width: PanelFixed(36),
+      selectable: true,
+    );
+    ctx.panels.push(actionPanel);
+
+    actionPanel.selection.then((idx) async {
+      ctx.panels.dismiss(actionPanel);
+      ctx.panels.dismiss(parentPanel);
+      if (idx == null) return;
+      final action = actions[idx];
+      switch (action) {
+        case _McpAction.reconnect:
+          unawaited(ctx.mcpPool.reconnect(server.id));
+          ctx.conversation.notify('Reconnecting "${server.id}"…');
+        case _McpAction.toggle:
+          final wasEnabled = server.enabled;
+          unawaited(ctx.mcpPool.toggle(server.id));
+          ctx.conversation.notify(
+            wasEnabled
+                ? 'Disabling "${server.id}" for this session…'
+                : 'Enabling "${server.id}" and connecting…',
+          );
+        case _McpAction.viewTools:
+          _openToolsPanel(server);
+        case _McpAction.copyId:
+          final ok = await copyToClipboard(server.id);
+          ctx.conversation.notify(
+            ok
+                ? 'Copied "${server.id}" to clipboard.'
+                : 'Clipboard copy failed on this platform.',
+          );
+        case _McpAction.showError:
+          _openErrorPanel(server);
+      }
+    });
+  }
+
+  void _openToolsPanel(McpServerSnapshot server) {
+    if (server.tools.isEmpty) {
+      ctx.conversation.notify(
+        server.state is McpConnected
+            ? 'Server "${server.id}" advertises no tools.'
+            : 'Server "${server.id}" is not connected; tools unknown.',
+      );
+      return;
+    }
+    final lines = <String>[
+      for (final t in server.tools)
+        t.description.isEmpty ? t.name : '${t.name}  — ${t.description}',
+    ];
+    final panel = PanelModal(
+      title: 'Tools — ${server.id}',
+      lines: lines,
+      barrier: BarrierStyle.dim,
+      width: PanelFluid(0.7, 40),
+      height: PanelFluid(0.6, 6),
+      selectable: false,
+    );
+    ctx.panels.push(panel);
+    panel.result.then((_) => ctx.panels.dismiss(panel));
+  }
+
+  void _openErrorPanel(McpServerSnapshot server) {
+    final err = server.lastError ?? '(no error recorded)';
+    final panel = PanelModal(
+      title: 'Last error — ${server.id}',
+      lines: err.split('\n'),
+      barrier: BarrierStyle.dim,
+      width: PanelFluid(0.7, 40),
+      height: PanelFluid(0.4, 4),
+      selectable: false,
+    );
+    ctx.panels.push(panel);
+    panel.result.then((_) => ctx.panels.dismiss(panel));
+  }
+
+  List<_McpAction> _actionsFor(McpServerSnapshot s) {
+    return [
+      _McpAction.reconnect,
+      _McpAction.toggle,
+      if (s.tools.isNotEmpty) _McpAction.viewTools,
+      _McpAction.copyId,
+      if (s.lastError != null) _McpAction.showError,
+    ];
   }
 
   // ── text form ──────────────────────────────────────────────────────────
@@ -360,5 +492,22 @@ class McpSlashCommand extends SlashCommand {
         McpStdioServerSpec(:final command) => command,
         McpHttpServerSpec(:final url) => url.toString(),
         McpWebSocketServerSpec(:final url) => url.toString(),
+      };
+}
+
+enum _McpAction {
+  reconnect,
+  toggle,
+  viewTools,
+  copyId,
+  showError;
+
+  String label(McpServerSnapshot s) => switch (this) {
+        _McpAction.reconnect => 'Reconnect',
+        _McpAction.toggle =>
+          s.enabled ? 'Disable for this session' : 'Enable and connect',
+        _McpAction.viewTools => 'View tools (${s.tools.length})',
+        _McpAction.copyId => 'Copy server ID',
+        _McpAction.showError => 'Show last error',
       };
 }

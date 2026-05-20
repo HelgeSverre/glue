@@ -11,6 +11,7 @@ library;
 import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue_harness/glue_harness.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 
 const Map<String, String> openTargets = {
   'home': r'$GLUE_HOME',
@@ -135,3 +136,66 @@ List<SlashArgCandidate> shareArgCandidates(
       .map((e) => SlashArgCandidate(value: e.key, description: e.value))
       .toList();
 }
+
+const Map<String, String> mcpSubcommands = {
+  'list': 'Print servers as a text table',
+  'tools': 'List one server\'s tools',
+  'reconnect': 'Retry a dead/reconnecting server',
+  'toggle': 'Session-scoped enable/disable',
+  'auth': 'Manage credentials',
+  'help': 'Subcommand cheatsheet',
+};
+
+const Map<String, String> mcpAuthSubcommands = {
+  'login': 'Run OAuth flow (HTTP/WS only)',
+  'logout': 'Forget stored credentials',
+  'status': 'Show credential state per server',
+};
+
+List<SlashArgCandidate> mcpSubcommandCandidates(String partial) {
+  return mcpSubcommands.entries
+      .where((e) => e.key.startsWith(partial))
+      .map((e) => SlashArgCandidate(
+            value: e.key,
+            description: e.value,
+            continues: e.key != 'list' && e.key != 'help',
+          ))
+      .toList();
+}
+
+List<SlashArgCandidate> mcpAuthSubcommandCandidates(String partial) {
+  return mcpAuthSubcommands.entries
+      .where((e) => e.key.startsWith(partial))
+      .map((e) => SlashArgCandidate(
+            value: e.key,
+            description: e.value,
+            continues: e.key != 'status',
+          ))
+      .toList();
+}
+
+/// Completes server IDs from the live pool. When [requireRemote] is true,
+/// stdio servers are filtered out — used for `auth login/logout` which only
+/// applies to HTTP/WebSocket transports.
+List<SlashArgCandidate> mcpServerIdCandidates(
+  Iterable<McpServerSnapshot> servers,
+  String partial, {
+  bool requireRemote = false,
+}) {
+  final needle = partial.toLowerCase();
+  return servers
+      .where((s) =>
+          (!requireRemote || s.spec is! McpStdioServerSpec) &&
+          s.id.toLowerCase().startsWith(needle))
+      .map((s) => SlashArgCandidate(
+            value: s.id,
+            description: _mcpKindLabel(s.spec),
+          ))
+      .toList();
+}
+
+String _mcpKindLabel(McpServerSpec spec) => switch (spec) {
+      McpStdioServerSpec() => 'stdio',
+      McpHttpServerSpec() => 'http+sse',
+      McpWebSocketServerSpec() => 'websocket',
+    };
