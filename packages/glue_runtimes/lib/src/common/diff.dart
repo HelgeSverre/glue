@@ -208,8 +208,8 @@ Future<DiffOutcome> captureWorkspaceDiff({
     return DiffUnavailable(
       reason: DiffUnavailableReason.gitFailed,
       hint: 'git format-patch exited ${formatPatch.exitCode}: '
-          '${formatPatch.stderr.isEmpty ? formatPatch.stdout : formatPatch.stderr}'
-              .trim(),
+              '${formatPatch.stderr.isEmpty ? formatPatch.stdout : formatPatch.stderr}'
+          .trim(),
     );
   }
 
@@ -229,14 +229,13 @@ Future<DiffOutcome> captureWorkspaceDiff({
     return DiffUnavailable(
       reason: DiffUnavailableReason.gitFailed,
       hint: 'git diff exited ${workTree.exitCode}: '
-          '${workTree.stderr.isEmpty ? workTree.stdout : workTree.stderr}'
-              .trim(),
+              '${workTree.stderr.isEmpty ? workTree.stdout : workTree.stderr}'
+          .trim(),
     );
   }
 
-  final mbox = [formatPatch.stdout, workTree.stdout]
-      .where((s) => s.isNotEmpty)
-      .join();
+  final mbox =
+      [formatPatch.stdout, workTree.stdout].where((s) => s.isNotEmpty).join();
   final meta = DiffMeta(
     runtimeId: runtimeId,
     sandboxId: sandboxId,

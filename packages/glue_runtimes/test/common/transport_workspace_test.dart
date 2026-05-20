@@ -33,7 +33,8 @@ class _FakeFs implements RuntimeFsTransport {
     final base = path.endsWith('/') ? path : '$path/';
     return [
       for (final entry in [...files.keys, ...dirs])
-        if (entry.startsWith(base) && !entry.substring(base.length).contains('/'))
+        if (entry.startsWith(base) &&
+            !entry.substring(base.length).contains('/'))
           FsTransportEntry(
             name: entry.substring(base.length),
             isDirectory: dirs.contains(entry),
@@ -44,7 +45,8 @@ class _FakeFs implements RuntimeFsTransport {
 
   @override
   Future<FsTransportStat?> stat(String path) async {
-    if (dirs.contains(path)) return const FsTransportStat(size: 0, isDirectory: true);
+    if (dirs.contains(path))
+      return const FsTransportStat(size: 0, isDirectory: true);
     final f = files[path];
     if (f == null) return null;
     return FsTransportStat(size: f.length, isDirectory: false);
@@ -58,8 +60,7 @@ void main() {
   );
 
   group('TransportWorkspace', () {
-    test('readFileAsString round-trips utf8 through the transport',
-        () async {
+    test('readFileAsString round-trips utf8 through the transport', () async {
       final fs = _FakeFs()..files['/workspace/a.txt'] = utf8.encode('hello');
       final ws = TransportWorkspace(fs: fs, mapping: mapping);
       expect(await ws.readFileAsString('/workspace/a.txt'), 'hello');

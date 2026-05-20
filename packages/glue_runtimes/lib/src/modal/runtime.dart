@@ -2,7 +2,8 @@ import 'package:glue_core/glue_core.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 
 import 'package:glue_runtimes/src/common/diff.dart';
-import 'package:glue_runtimes/src/common/host_bundle.dart' show generateSessionId;
+import 'package:glue_runtimes/src/common/host_bundle.dart'
+    show generateSessionId;
 import 'package:glue_runtimes/src/modal/bootstrap.dart';
 import 'package:glue_runtimes/src/modal/config.dart';
 import 'package:glue_runtimes/src/modal/executor.dart';
@@ -56,7 +57,8 @@ class ModalRuntime implements RuntimeSession {
     final sidecar = sidecarOverride ?? ModalSidecar(config);
     try {
       await sidecar.start();
-      final sandboxId = sidecar is ModalSidecar ? (sidecar.sandboxId ?? '') : '';
+      final sandboxId =
+          sidecar is ModalSidecar ? (sidecar.sandboxId ?? '') : '';
 
       final bootstrap = ModalBootstrap(
         sidecar: sidecar,

@@ -42,9 +42,8 @@ class RuntimeCommand extends SlashCommand {
         final baseUrl = (config.runtimeOptions['api_base_url'] as String?) ??
             ctx.environment.vars['DAYTONA_API_BASE_URL'] ??
             'https://app.daytona.io/api';
-        final snapshot =
-            (config.runtimeOptions['snapshot'] as String?) ??
-                ctx.environment.vars['DAYTONA_SNAPSHOT'];
+        final snapshot = (config.runtimeOptions['snapshot'] as String?) ??
+            ctx.environment.vars['DAYTONA_SNAPSHOT'];
         buf.writeln('  Daytona base URL: $baseUrl');
         buf.writeln(
           snapshot == null

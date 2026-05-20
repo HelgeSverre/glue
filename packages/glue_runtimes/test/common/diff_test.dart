@@ -45,8 +45,8 @@ void main() {
         runtimeId: 'daytona',
       );
       expect(result, isA<DiffUnavailable>());
-      expect((result as DiffUnavailable).reason,
-          DiffUnavailableReason.gitFailed);
+      expect(
+          (result as DiffUnavailable).reason, DiffUnavailableReason.gitFailed);
       expect(result.hint, contains('fatal: bad sha'));
     });
 
@@ -121,7 +121,8 @@ void main() {
       expect(exec.commands[2], contains('diff --binary'));
     });
 
-    test('format-patch range is bootstrapSha..HEAD with binary + rename detection',
+    test(
+        'format-patch range is bootstrapSha..HEAD with binary + rename detection',
         () async {
       final exec = _ScriptedExecutor([
         _Step(stdout: ''),
@@ -134,7 +135,8 @@ void main() {
         bootstrapSha: 'abc123',
         runtimeId: 'daytona',
       );
-      expect(exec.commands[1], contains("format-patch --binary -M -C --stdout 'abc123'..HEAD"));
+      expect(exec.commands[1],
+          contains("format-patch --binary -M -C --stdout 'abc123'..HEAD"));
       expect(exec.commands[2], contains('diff --binary -M -C HEAD'));
     });
 

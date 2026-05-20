@@ -41,19 +41,19 @@ void main() {
       final anthropic = catalog.providers['anthropic']!;
       final opus47 = anthropic.models['claude-opus-4-7']!;
       final sonnet46 = anthropic.models['claude-sonnet-4-6']!;
-      final opus46 = anthropic.models['claude-opus-4-6']!;
       final haiku45 = anthropic.models['claude-haiku-4-5']!;
       expect(opus47.recommended, isTrue);
       expect(sonnet46.recommended, isTrue);
-      expect(opus46.recommended, isTrue);
       expect(haiku45.recommended, isTrue);
       expect(opus47.capabilities, contains('tools'));
+      // opus-4-6 was moved to Anthropic's Legacy table; the catalog
+      // should not advertise it as a current model.
+      expect(anthropic.models.containsKey('claude-opus-4-6'), isFalse);
     });
 
     test('anthropic 4.6/4.7 family advertises native 1M context', () {
       final anthropic = catalog.providers['anthropic']!;
       expect(anthropic.models['claude-opus-4-7']!.contextWindow, 1000000);
-      expect(anthropic.models['claude-opus-4-6']!.contextWindow, 1000000);
       expect(anthropic.models['claude-sonnet-4-6']!.contextWindow, 1000000);
       expect(anthropic.models['claude-haiku-4-5']!.contextWindow, 200000);
     });

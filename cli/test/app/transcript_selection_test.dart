@@ -79,7 +79,8 @@ void main() {
       final t = DateTime(2026, 5, 19, 12);
       expect(chain.register(10, 5, t), 1);
       expect(chain.register(10, 5, t.add(const Duration(milliseconds: 50))), 2);
-      expect(chain.register(10, 5, t.add(const Duration(milliseconds: 100))), 3);
+      expect(
+          chain.register(10, 5, t.add(const Duration(milliseconds: 100))), 3);
     });
 
     test('a fourth click in-window wraps back to 1', () {
@@ -88,7 +89,8 @@ void main() {
       chain.register(10, 5, t);
       chain.register(10, 5, t.add(const Duration(milliseconds: 50)));
       chain.register(10, 5, t.add(const Duration(milliseconds: 100)));
-      expect(chain.register(10, 5, t.add(const Duration(milliseconds: 150))), 1);
+      expect(
+          chain.register(10, 5, t.add(const Duration(milliseconds: 150))), 1);
     });
 
     test('a slow click outside the window resets the chain', () {
@@ -96,7 +98,8 @@ void main() {
       final t = DateTime(2026, 5, 19, 12);
       chain.register(10, 5, t);
       // 301 ms is just past the 300 ms window.
-      expect(chain.register(10, 5, t.add(const Duration(milliseconds: 301))), 1);
+      expect(
+          chain.register(10, 5, t.add(const Duration(milliseconds: 301))), 1);
     });
 
     test('a click at an adjacent cell resets the chain', () {
@@ -106,7 +109,8 @@ void main() {
       // Even a 1-cell wobble is treated as a fresh click — terminals
       // report integer cells so true double-clicks land on the same cell.
       expect(chain.register(11, 5, t.add(const Duration(milliseconds: 50))), 1);
-      expect(chain.register(10, 6, t.add(const Duration(milliseconds: 100))), 1);
+      expect(
+          chain.register(10, 6, t.add(const Duration(milliseconds: 100))), 1);
     });
 
     test('reset() zeroes the count and timestamp', () {

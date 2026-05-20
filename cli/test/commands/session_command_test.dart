@@ -44,9 +44,9 @@ void main() {
 
     test('reports patch path + size when present on disk', () async {
       _writeMeta(env, _meta(id: 'sid', runtimeId: 'daytona'));
-      final patchFile = File(
-          p.join(env.sessionDir(const SessionId('sid')), 'runtime.mbox'))
-        ..writeAsStringSync('From a Mon\nSubject: x\n\nbody\n');
+      final patchFile =
+          File(p.join(env.sessionDir(const SessionId('sid')), 'runtime.mbox'))
+            ..writeAsStringSync('From a Mon\nSubject: x\n\nbody\n');
 
       final result = listSessions(env);
       expect(result.first.patchPath, patchFile.path);
@@ -78,8 +78,8 @@ void main() {
 
     test('refuses to apply truncated patches', () async {
       _writeMeta(env, _meta(id: 'sid', runtimeId: 'daytona'));
-      final truncated = File(p.join(env.sessionDir(const SessionId('sid')),
-          'runtime.mbox.truncated'))
+      final truncated = File(p.join(
+          env.sessionDir(const SessionId('sid')), 'runtime.mbox.truncated'))
         ..writeAsStringSync('partial');
 
       final session = listSessions(env).first;

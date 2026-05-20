@@ -43,7 +43,8 @@ void main() {
     });
 
     test('falls back to unknown when no pattern matches', () {
-      final r = classifyCloneFailure('some weird git internal error 0xdeadbeef');
+      final r =
+          classifyCloneFailure('some weird git internal error 0xdeadbeef');
       expect(r.kind, BootstrapErrorKind.unknown);
       expect(r.hint, isNull);
     });

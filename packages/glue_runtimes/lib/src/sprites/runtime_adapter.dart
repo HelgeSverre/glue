@@ -11,11 +11,9 @@ SpritesConfig spritesConfigFromOptions(
   Map<String, String>? env,
 }) {
   final e = env ?? Platform.environment;
-  final spriteCliPath = (options['sprite_cli'] as String?) ??
-      e['SPRITES_CLI'] ??
-      'sprite';
-  final spriteName =
-      (options['sprite_name'] as String?) ?? e['SPRITES_NAME'];
+  final spriteCliPath =
+      (options['sprite_cli'] as String?) ?? e['SPRITES_CLI'] ?? 'sprite';
+  final spriteName = (options['sprite_name'] as String?) ?? e['SPRITES_NAME'];
   final deleteOnClose = options['delete_on_close'] is bool
       ? options['delete_on_close'] as bool
       : (e['SPRITES_DELETE_ON_CLOSE']?.toLowerCase() != 'false');

@@ -114,8 +114,7 @@ void main() {
       expect(bundle.originRemoteUrl, 'https://example.invalid/foo.git');
     });
 
-    test('throws HostBundleException when host cwd does not exist',
-        () async {
+    test('throws HostBundleException when host cwd does not exist', () async {
       await expectLater(
         buildHostBundle(
           hostCwd: '${tmp.path}/nonexistent',

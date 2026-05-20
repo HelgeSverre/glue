@@ -134,8 +134,7 @@ void main() {
       );
     });
 
-    test(
-        'non-git cwd + non-bundle transport throws BootstrapException(clone)',
+    test('non-git cwd + non-bundle transport throws BootstrapException(clone)',
         () async {
       // Phase 2: a non-git cwd is no longer a hard error when the
       // transport supports bundles — the host-side temp git-dir
@@ -153,8 +152,8 @@ void main() {
         ws.bootstrap(hostCwd: tmp.path, runtimeCwd: '/workspace'),
         throwsA(isA<BootstrapException>()
             .having((e) => e.stage, 'stage', 'clone')
-            .having((e) => e.message, 'message',
-                contains('no bundle transport'))),
+            .having(
+                (e) => e.message, 'message', contains('no bundle transport'))),
       );
     });
   });

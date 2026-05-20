@@ -152,7 +152,7 @@ class SpritesCli implements SpritesCliBase {
     ).timeout(config.startTimeout);
     if (res.exitCode != 0) {
       throw RuntimeApiException(
-      runtimeId: 'sprites',
+        runtimeId: 'sprites',
         statusCode: res.exitCode,
         endpoint: 'create_sprite',
         message: 'sprite create failed',
@@ -178,7 +178,7 @@ class SpritesCli implements SpritesCliBase {
     // an `"error"` JSON key, propagate it.
     if (out.contains('"error"')) {
       throw RuntimeApiException(
-      runtimeId: 'sprites',
+        runtimeId: 'sprites',
         statusCode: res.exitCode,
         endpoint: 'delete_sprite',
         message: 'sprite delete failed',
@@ -244,7 +244,7 @@ extension SpritesFs on SpritesCliBase {
     );
     if (res.exitCode != 0) {
       throw RuntimeApiException(
-      runtimeId: 'sprites',
+        runtimeId: 'sprites',
         statusCode: res.exitCode,
         endpoint: 'read_file',
         message: 'file read failed',
@@ -273,7 +273,7 @@ extension SpritesFs on SpritesCliBase {
     );
     if (res.exitCode != 0) {
       throw RuntimeApiException(
-      runtimeId: 'sprites',
+        runtimeId: 'sprites',
         statusCode: res.exitCode,
         endpoint: 'write_file',
         message: 'file write failed',
@@ -329,17 +329,14 @@ extension SpritesFs on SpritesCliBase {
     );
     if (res.exitCode != 0) {
       throw RuntimeApiException(
-      runtimeId: 'sprites',
+        runtimeId: 'sprites',
         statusCode: res.exitCode,
         endpoint: 'list_dir',
         message: 'directory list failed',
         body: res.stderr,
       );
     }
-    return res.stdout
-        .split('\n')
-        .where((l) => l.isNotEmpty)
-        .map((line) {
+    return res.stdout.split('\n').where((l) => l.isNotEmpty).map((line) {
       final isDir = line.endsWith('/');
       final name = isDir ? line.substring(0, line.length - 1) : line;
       return (name: name, isDirectory: isDir);

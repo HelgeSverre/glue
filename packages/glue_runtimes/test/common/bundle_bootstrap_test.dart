@@ -53,8 +53,8 @@ void main() {
 
       expect(result.resumed, isFalse);
       expect(result.bootstrapSha, hasLength(40));
-      expect(File('${sandboxDir.path}/workspace/main.dart').existsSync(),
-          isTrue);
+      expect(
+          File('${sandboxDir.path}/workspace/main.dart').existsSync(), isTrue);
     });
 
     test('captures uncommitted host changes (user\'s broken scenario)',
@@ -129,8 +129,7 @@ void main() {
       await _git(['commit', '-q', '-m', 'init'], hostCwd);
       final sandboxDir = await Directory('${tmp.path}/sandbox').create();
       final bundleBase = await Directory('${tmp.path}/glue').create();
-      final transport =
-          _FakeBundleTransport(sandboxDir, bundleSizeCapBytes: 1);
+      final transport = _FakeBundleTransport(sandboxDir, bundleSizeCapBytes: 1);
       final ws = WorkspaceBootstrap(
         exec: transport,
         sessionId: 'leak-test',
@@ -169,8 +168,7 @@ void main() {
       // error rather than an upload-stage one.
 
       final sandboxDir = await Directory('${tmp.path}/sandbox').create();
-      final transport =
-          _FakeBundleTransport(sandboxDir, bundleSizeCapBytes: 1);
+      final transport = _FakeBundleTransport(sandboxDir, bundleSizeCapBytes: 1);
 
       final ws = WorkspaceBootstrap(
         exec: transport,
@@ -181,8 +179,8 @@ void main() {
           hostCwd: hostCwd.path,
           runtimeCwd: '${sandboxDir.path}/workspace',
         ),
-        throwsA(isA<BootstrapException>()
-            .having((e) => e.stage, 'stage', 'clone')),
+        throwsA(
+            isA<BootstrapException>().having((e) => e.stage, 'stage', 'clone')),
       );
     });
   });
@@ -218,9 +216,8 @@ class _FakeBundleTransport implements BootstrapBundleTransport {
   Future<BootstrapExecResult> run(String shellCommand) async {
     // Rewrite sandbox-absolute paths into our sandboxDir so the test
     // doesn't need root to write under `/tmp/glue-bootstrap.bundle`.
-    final rewritten =
-        shellCommand.replaceAll('/tmp/glue-bootstrap.bundle',
-            '${sandboxDir.path}/tmp/glue-bootstrap.bundle');
+    final rewritten = shellCommand.replaceAll('/tmp/glue-bootstrap.bundle',
+        '${sandboxDir.path}/tmp/glue-bootstrap.bundle');
     final r = await Process.run('sh', ['-c', rewritten]);
     return BootstrapExecResult(
       exitCode: r.exitCode,

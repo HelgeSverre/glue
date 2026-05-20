@@ -128,7 +128,8 @@ void main() {
     test('points at the canonical GitHub raw URL', () {
       expect(defaultCatalogUrls, hasLength(1));
       expect(defaultCatalogUrls.single, contains('raw.githubusercontent.com'));
-      expect(defaultCatalogUrls.single, endsWith('/docs/reference/models.yaml'));
+      expect(
+          defaultCatalogUrls.single, endsWith('/docs/reference/models.yaml'));
     });
   });
 }

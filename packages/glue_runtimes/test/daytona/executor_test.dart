@@ -17,8 +17,7 @@ void main() {
   );
 
   group('DaytonaExecutor.runCapture', () {
-    test('routes through execCapture and tags runtimeId/sessionId',
-        () async {
+    test('routes through execCapture and tags runtimeId/sessionId', () async {
       final mock = MockClient((_) async => http.Response(
             jsonEncode({'result': 'hello\n', 'exitCode': 0}),
             200,
@@ -46,8 +45,7 @@ void main() {
       });
       final client = DaytonaClient(config: config, httpClient: mock);
       final executor = DaytonaExecutor(client: client, sandbox: sandbox);
-      await executor.runCapture('sleep 1',
-          timeout: const Duration(seconds: 2));
+      await executor.runCapture('sleep 1', timeout: const Duration(seconds: 2));
       final body =
           jsonDecode((captured! as http.Request).body) as Map<String, dynamic>;
       expect(body['timeout'], 2000,

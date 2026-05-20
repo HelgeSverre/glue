@@ -2,7 +2,8 @@ import 'package:glue_core/glue_core.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 
 import 'package:glue_runtimes/src/common/diff.dart';
-import 'package:glue_runtimes/src/common/host_bundle.dart' show generateSessionId;
+import 'package:glue_runtimes/src/common/host_bundle.dart'
+    show generateSessionId;
 import 'package:glue_runtimes/src/sprites/bootstrap.dart';
 import 'package:glue_runtimes/src/sprites/cli.dart';
 import 'package:glue_runtimes/src/sprites/config.dart';
@@ -157,8 +158,7 @@ class SpritesRuntime implements RuntimeSession {
   /// re-baseline against whatever the sandbox's current HEAD is so a
   /// second session can still produce a diff for changes made during
   /// that session. The re-baselined SHA is captured during [start].
-  String? get _effectiveBootstrapSha =>
-      bootstrapSha ?? _resumeBaselineSha;
+  String? get _effectiveBootstrapSha => bootstrapSha ?? _resumeBaselineSha;
   String? _resumeBaselineSha;
 
   Future<void> _rebaselineFromResumedSandbox(String runtimeCwd) async {

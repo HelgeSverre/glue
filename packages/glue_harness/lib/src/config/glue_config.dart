@@ -292,8 +292,7 @@ class GlueConfig {
                 p.join(home, '.glue/cache/models.yaml'),
           ),
           localOverrides: _loadOptionalYaml(
-            environment?.modelsYamlPath ??
-                p.join(home, '.glue/models.yaml'),
+            environment?.modelsYamlPath ?? p.join(home, '.glue/models.yaml'),
           ),
         );
 

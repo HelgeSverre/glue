@@ -57,7 +57,7 @@ void main() {
     });
 
     test('exact display-name match resolves (case-insensitive)', () {
-      final out = resolveModelInput('Claude Opus 4.6', bundledCatalog);
+      final out = resolveModelInput('Claude Opus 4.7', bundledCatalog);
       expect(out, isA<ResolvedExact>());
       expect((out as ResolvedExact).ref.providerId, 'anthropic');
     });

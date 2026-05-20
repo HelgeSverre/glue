@@ -24,7 +24,7 @@ void main() {
     ..writeln("const String modalSidecarSource = r'''")
     ..write(src)
     ..writeln("''';");
-  File('lib/src/modal/sidecar_source.g.dart')
-      .writeAsStringSync(out.toString());
-  stdout.writeln('wrote lib/src/modal/sidecar_source.g.dart (${src.length} chars)');
+  File('lib/src/modal/sidecar_source.g.dart').writeAsStringSync(out.toString());
+  stdout.writeln(
+      'wrote lib/src/modal/sidecar_source.g.dart (${src.length} chars)');
 }

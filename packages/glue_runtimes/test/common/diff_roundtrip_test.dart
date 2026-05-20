@@ -43,8 +43,7 @@ void main() {
       final baseSha = await _headSha(repo, gitPath);
 
       // Agent creates an untracked file (no `git add`).
-      File('${repo.path}/new_test.dart')
-          .writeAsStringSync('void main() {}\n');
+      File('${repo.path}/new_test.dart').writeAsStringSync('void main() {}\n');
 
       final outcome = await captureWorkspaceDiff(
         executor: HostExecutor(const ShellConfig()),
@@ -175,7 +174,8 @@ Future<Directory> _applyToFreshClone({
       workingDirectory: clone.path,
     );
     expect(apply.exitCode, 0,
-        reason: 'git apply failed:\nstdout=${apply.stdout}\nstderr=${apply.stderr}');
+        reason:
+            'git apply failed:\nstdout=${apply.stdout}\nstderr=${apply.stderr}');
   }
   return clone;
 }

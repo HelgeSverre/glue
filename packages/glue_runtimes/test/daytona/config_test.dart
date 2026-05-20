@@ -51,8 +51,7 @@ void main() {
       expect(c.apiBaseUrl, 'https://app.daytona.io/api');
     });
 
-    test('returns empty api key when neither options nor env provide one',
-        () {
+    test('returns empty api key when neither options nor env provide one', () {
       final c = daytonaConfigFromOptions(const {}, env: const {});
       expect(c.apiKey, '');
     });

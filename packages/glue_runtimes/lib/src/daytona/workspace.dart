@@ -19,8 +19,7 @@ class DaytonaFsTransport implements RuntimeFsTransport {
   DaytonaFsTransport({required this.client, required this.sandbox});
 
   @override
-  Future<List<int>> readBytes(String path) =>
-      client.readFile(sandbox, path);
+  Future<List<int>> readBytes(String path) => client.readFile(sandbox, path);
 
   @override
   Future<void> writeBytes(String path, List<int> bytes) =>

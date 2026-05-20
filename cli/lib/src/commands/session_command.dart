@@ -212,18 +212,14 @@ Future<SessionApplyResult> applySessionPatch({
     );
     if (find.exitCode == 0) {
       rejected.addAll(
-        (find.stdout as String)
-            .trim()
-            .split('\n')
-            .where((s) => s.isNotEmpty),
+        (find.stdout as String).trim().split('\n').where((s) => s.isNotEmpty),
       );
     }
   } catch (_) {/* find isn't critical */}
 
   return SessionApplyResult(
     ok: false,
-    message:
-        'git am and git apply both failed. Inspect rejections or apply '
+    message: 'git am and git apply both failed. Inspect rejections or apply '
         'manually:\n  ${apply.stderr.toString().trim().split('\n').join('\n  ')}',
     branch: branch,
     rejectedFiles: rejected,

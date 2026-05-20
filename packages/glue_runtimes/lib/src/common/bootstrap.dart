@@ -115,8 +115,7 @@ class BootstrapException implements Exception {
     this.remediationHint,
   });
   @override
-  String toString() =>
-      'BootstrapException($stage/${kind.name}'
+  String toString() => 'BootstrapException($stage/${kind.name}'
       '${exitCode == null ? '' : ', exit=$exitCode'}): '
       '$message${output == null ? '' : '\n$output'}'
       '${remediationHint == null ? '' : '\n→ $remediationHint'}';
@@ -333,7 +332,8 @@ class WorkspaceBootstrap {
         kind: BootstrapErrorKind.cloneBundle,
         remediationHint: 'sandbox image likely missing `git` — pin a '
             'runtime image that includes it (see `glue doctor`)',
-        message: 'sandbox failed to clone uploaded bundle at $runtimeBundlePath',
+        message:
+            'sandbox failed to clone uploaded bundle at $runtimeBundlePath',
         exitCode: clone.exitCode,
         output: clone.output,
       );

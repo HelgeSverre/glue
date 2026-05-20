@@ -187,7 +187,11 @@ const Set<int> _punctuation = {
 };
 
 bool _isWhitespace(int rune) =>
-    rune == 0x20 || rune == 0x09 || rune == 0x0A || rune == 0x0D || rune == 0xA0;
+    rune == 0x20 ||
+    rune == 0x09 ||
+    rune == 0x0A ||
+    rune == 0x0D ||
+    rune == 0xA0;
 
 /// Classify a single Unicode code point. Whitespace and a fixed ASCII
 /// punctuation set act as boundaries; everything else (Unicode letters,

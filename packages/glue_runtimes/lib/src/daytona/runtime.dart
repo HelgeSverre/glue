@@ -4,7 +4,8 @@ import 'package:glue_core/glue_core.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 
 import 'package:glue_runtimes/src/common/diff.dart';
-import 'package:glue_runtimes/src/common/host_bundle.dart' show generateSessionId;
+import 'package:glue_runtimes/src/common/host_bundle.dart'
+    show generateSessionId;
 import 'package:glue_runtimes/src/daytona/bootstrap.dart';
 import 'package:glue_runtimes/src/daytona/client.dart';
 import 'package:glue_runtimes/src/daytona/config.dart';

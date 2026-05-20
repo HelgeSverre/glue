@@ -23,10 +23,9 @@ DaytonaConfig daytonaConfigFromOptions(
   final apiBaseUrl = (options['api_base_url'] as String?) ??
       e['DAYTONA_API_BASE_URL'] ??
       'https://app.daytona.io/api';
-  final toolboxOverride = (options['toolbox_base_url'] as String?) ??
-      e['DAYTONA_TOOLBOX_BASE_URL'];
-  final snapshot =
-      (options['snapshot'] as String?) ?? e['DAYTONA_SNAPSHOT'];
+  final toolboxOverride =
+      (options['toolbox_base_url'] as String?) ?? e['DAYTONA_TOOLBOX_BASE_URL'];
+  final snapshot = (options['snapshot'] as String?) ?? e['DAYTONA_SNAPSHOT'];
   return DaytonaConfig(
     apiKey: apiKey,
     apiBaseUrl: apiBaseUrl,

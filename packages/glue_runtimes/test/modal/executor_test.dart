@@ -13,8 +13,7 @@ void main() {
       final sidecar = FakeModalSidecar()
         ..execResults['echo hi'] =
             ModalExecResult(exitCode: 0, stdout: 'hi\n', stderr: '');
-      final executor =
-          ModalExecutor(sidecar: sidecar, sandboxId: 'sb-modal-1');
+      final executor = ModalExecutor(sidecar: sidecar, sandboxId: 'sb-modal-1');
       final r = await executor.runCapture('echo hi');
       expect(r.exitCode, 0);
       expect(r.stdout, 'hi\n');

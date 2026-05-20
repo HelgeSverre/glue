@@ -35,8 +35,7 @@ void main() {
       final result = await client.createSandbox();
       expect(result.id, 'sb-123');
       expect(result.state, 'started');
-      expect(result.toolboxBaseUrl,
-          'https://proxy.app-eu.daytona.io/toolbox');
+      expect(result.toolboxBaseUrl, 'https://proxy.app-eu.daytona.io/toolbox');
       final body =
           jsonDecode((captured! as http.Request).body) as Map<String, dynamic>;
       expect(body, isEmpty,
@@ -98,16 +97,15 @@ void main() {
       );
     });
 
-    test('raises when toolboxProxyUrl is missing from the response',
-        () async {
+    test('raises when toolboxProxyUrl is missing from the response', () async {
       final mock = MockClient(
         (_) async => http.Response(jsonEncode({'id': 'sb-1'}), 200),
       );
       final client = DaytonaClient(config: config, httpClient: mock);
       await expectLater(
         client.createSandbox(),
-        throwsA(isA<RuntimeApiException>().having(
-            (e) => e.message, 'message', contains('toolboxProxyUrl'))),
+        throwsA(isA<RuntimeApiException>()
+            .having((e) => e.message, 'message', contains('toolboxProxyUrl'))),
       );
     });
   });
@@ -176,8 +174,8 @@ void main() {
         ),
       );
       final client = DaytonaClient(config: config, httpClient: mock);
-      final cmd = await client.executeSessionCommand(
-          sandbox, 'bg-1', 'sleep 5', runAsync: true);
+      final cmd = await client.executeSessionCommand(sandbox, 'bg-1', 'sleep 5',
+          runAsync: true);
       expect(cmd.commandId, 'cmd-42');
       expect(cmd.sessionId, 'bg-1');
     });
@@ -191,15 +189,13 @@ void main() {
       expect(logs, 'hello\nworld\n');
     });
 
-    test('getSessionCommandStatus parses exitCode (null until done)',
-        () async {
+    test('getSessionCommandStatus parses exitCode (null until done)', () async {
       final mock = MockClient((_) async => http.Response(
             jsonEncode({'command': 'echo hi', 'exitCode': null}),
             200,
           ));
       final client = DaytonaClient(config: config, httpClient: mock);
-      final s =
-          await client.getSessionCommandStatus(sandbox, 'bg-1', 'cmd-42');
+      final s = await client.getSessionCommandStatus(sandbox, 'bg-1', 'cmd-42');
       expect(s.exitCode, isNull);
     });
 
@@ -210,8 +206,7 @@ void main() {
             200,
           ));
       final client = DaytonaClient(config: config, httpClient: mock);
-      final s =
-          await client.getSessionCommandStatus(sandbox, 'bg-1', 'cmd-42');
+      final s = await client.getSessionCommandStatus(sandbox, 'bg-1', 'cmd-42');
       expect(s.exitCode, 0);
     });
 
@@ -253,8 +248,7 @@ void main() {
       expect(captured!.method, 'POST');
       expect(captured!.url.path, '/toolbox/sb-123/files/upload');
       expect(captured!.url.queryParameters['path'], '/workspace/x.txt');
-      expect(captured!.headers['content-type'] ?? '',
-          startsWith('multipart/'));
+      expect(captured!.headers['content-type'] ?? '', startsWith('multipart/'));
       expect(captured!.body, contains('hi'));
     });
 

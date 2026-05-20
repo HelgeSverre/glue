@@ -102,7 +102,8 @@ class ModalSidecar implements ModalSidecarBase {
     final python = await _resolvePython();
     if (python == null) return false;
     try {
-      final res = await Process.run(python, ['-c', 'import modal; print(modal.__version__)']);
+      final res = await Process.run(
+          python, ['-c', 'import modal; print(modal.__version__)']);
       return res.exitCode == 0;
     } on ProcessException {
       return false;
@@ -246,8 +247,9 @@ class ModalSidecar implements ModalSidecarBase {
     final req = jsonEncode({'id': id, 'op': op, ...extra});
     _proc!.stdin.writeln(req);
     await _proc!.stdin.flush();
-    final res =
-        timeout == null ? await completer.future : await completer.future.timeout(timeout);
+    final res = timeout == null
+        ? await completer.future
+        : await completer.future.timeout(timeout);
     if (res['ok'] != true) {
       throw RuntimeApiException(
         runtimeId: 'modal',
@@ -260,7 +262,8 @@ class ModalSidecar implements ModalSidecarBase {
   }
 
   @override
-  Future<ModalExecResult> execCapture(String command, {Duration? timeout}) async {
+  Future<ModalExecResult> execCapture(String command,
+      {Duration? timeout}) async {
     final res = await _send(
       'exec',
       {'command': command, if (timeout != null) 'timeout': timeout.inSeconds},
@@ -282,7 +285,8 @@ class ModalSidecar implements ModalSidecarBase {
 
   @override
   Future<void> writeFile(String path, List<int> bytes) async {
-    await _send('write_file', {'path': path, 'content_b64': base64Encode(bytes)});
+    await _send(
+        'write_file', {'path': path, 'content_b64': base64Encode(bytes)});
   }
 
   @override

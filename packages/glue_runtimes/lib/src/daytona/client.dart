@@ -335,9 +335,10 @@ class DaytonaClient {
     final json = _decodeJson(res, 'file_info');
     return DaytonaStat(
       size: (json['size'] ?? 0) as int,
-      isDirectory:
-          (json['isDir'] ?? json['is_directory'] ?? json['isDirectory'] ?? false)
-              as bool,
+      isDirectory: (json['isDir'] ??
+          json['is_directory'] ??
+          json['isDirectory'] ??
+          false) as bool,
     );
   }
 
@@ -385,8 +386,8 @@ class DaytonaClient {
     Duration? timeout,
   }) async {
     final uri = _toolboxUri(sandbox, path);
-    Future<http.Response> req() => _http.post(uri,
-        headers: _headers(json: true), body: jsonEncode(body));
+    Future<http.Response> req() =>
+        _http.post(uri, headers: _headers(json: true), body: jsonEncode(body));
     final res = timeout == null ? await req() : await req().timeout(timeout);
     _ensureOk(res, endpoint);
     return res;
@@ -405,7 +406,7 @@ class DaytonaClient {
   void _ensureOk(http.Response res, String endpoint) {
     if (res.statusCode >= 200 && res.statusCode < 300) return;
     throw RuntimeApiException(
-        runtimeId: 'daytona',
+      runtimeId: 'daytona',
       statusCode: res.statusCode,
       endpoint: endpoint,
       message: 'HTTP ${res.statusCode}',
@@ -437,9 +438,10 @@ class DaytonaClient {
 
   DaytonaFsEntry _parseFsEntry(Map<String, dynamic> e) => DaytonaFsEntry(
         name: (e['name'] ?? '') as String,
-        isDirectory:
-            (e['isDir'] ?? e['is_directory'] ?? e['isDirectory'] ?? false)
-                as bool,
+        isDirectory: (e['isDir'] ??
+            e['is_directory'] ??
+            e['isDirectory'] ??
+            false) as bool,
         size: (e['size'] ?? 0) as int,
       );
 
