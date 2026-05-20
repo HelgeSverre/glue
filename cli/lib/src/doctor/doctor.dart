@@ -8,7 +8,7 @@ import 'package:glue_harness/glue_harness.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 import 'package:glue/src/commands/config_command.dart';
 import 'package:glue/src/terminal/brand.dart';
-import 'package:glue/src/terminal/styled.dart';
+import 'package:glue/src/terminal/tty_style.dart';
 
 enum DoctorSeverity {
   ok,
@@ -122,7 +122,7 @@ String _marker(DoctorSeverity severity) {
 
 String renderDoctorReport(DoctorReport report, {bool verbose = false}) {
   final buf = StringBuffer();
-  buf.writeln('$brandDot ${'Glue Doctor'.styled.bold}');
+  buf.writeln('$brandDot ${styledOrPlain('Glue Doctor', (s) => s.bold)}');
   buf.writeln();
 
   final visible = verbose
@@ -136,31 +136,33 @@ String renderDoctorReport(DoctorReport report, {bool verbose = false}) {
     if (finding.section != currentSection) {
       if (currentSection != null) buf.writeln();
       currentSection = finding.section;
-      buf.writeln(finding.section.styled.bold.toString());
+      buf.writeln(styledOrPlain(finding.section, (s) => s.bold));
     }
-    final suffix = finding.path == null ? '' : '  ${finding.path!.styled.gray}';
+    final suffix = finding.path == null
+        ? ''
+        : '  ${styledOrPlain(finding.path!, (s) => s.gray)}';
     buf.writeln('  ${_marker(finding.severity)} ${finding.message}$suffix');
   }
 
   final hiddenInfo = report.infoCount - (verbose ? report.infoCount : 0);
 
   buf.writeln();
-  buf.writeln('Summary'.styled.bold.toString());
+  buf.writeln(styledOrPlain('Summary', (s) => s.bold));
   if (report.hasErrors || report.warningCount > 0) {
     buf.writeln(
-      '  ${'${report.okCount} ok'.styled.green}  '
-      '${'${report.warningCount} warn'.styled.yellow}  '
-      '${'${report.errorCount} error'.styled.red}',
+      '  ${styledOrPlain('${report.okCount} ok', (s) => s.green)}  '
+      '${styledOrPlain('${report.warningCount} warn', (s) => s.yellow)}  '
+      '${styledOrPlain('${report.errorCount} error', (s) => s.red)}',
     );
   } else {
     buf.writeln(
-      '  ${'✓ All checks passed'.styled.green}  '
-      '${'(${report.okCount} ok)'.styled.gray}',
+      '  ${styledOrPlain('✓ All checks passed', (s) => s.green)}  '
+      '${styledOrPlain('(${report.okCount} ok)', (s) => s.gray)}',
     );
   }
   if (hiddenInfo > 0) {
     buf.writeln(
-      '  ${'$hiddenInfo info hidden — rerun with --verbose to show'.styled.gray}',
+      '  ${styledOrPlain('$hiddenInfo info hidden — rerun with --verbose to show', (s) => s.gray)}',
     );
   }
   return buf.toString();

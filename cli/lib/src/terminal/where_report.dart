@@ -10,7 +10,7 @@ library;
 import 'dart:io';
 
 import 'package:glue/src/terminal/brand.dart';
-import 'package:glue/src/terminal/styled.dart';
+import 'package:glue/src/terminal/tty_style.dart';
 import 'package:glue_harness/glue_harness.dart';
 
 /// Signature for checking whether a filesystem path exists.
@@ -40,9 +40,9 @@ String buildWhereReport(
       rows.map((r) => r.path.length).fold<int>(0, (a, b) => a > b ? a : b);
 
   final buf = StringBuffer();
-  buf.writeln('$brandDot ${'Glue paths'.styled.bold}');
+  buf.writeln('$brandDot ${styledOrPlain('Glue paths', (s) => s.bold)}');
   final overrideNote = env.glueHomeOverride != null
-      ? '  ${r'(via $GLUE_HOME)'.styled.gray}'
+      ? '  ${styledOrPlain(r'(via $GLUE_HOME)', (s) => s.gray)}'
       : '';
   buf.writeln('  ${env.glueDir}$overrideNote');
   buf.writeln();
@@ -50,11 +50,11 @@ String buildWhereReport(
   for (final row in rows) {
     final present = check(row.path, isDir: row.isDir);
     final status = present
-        ? '$markerOk ${'present'.styled.green}'
-        : '$markerWarn ${'missing'.styled.yellow}';
+        ? '$markerOk ${styledOrPlain('present', (s) => s.green)}'
+        : '$markerWarn ${styledOrPlain('missing', (s) => s.yellow)}';
     buf.writeln(
-      '  ${row.label.padRight(labelWidth).styled.bold} '
-      '${row.path.padRight(pathWidth).styled.gray}  $status',
+      '  ${styledOrPlain(row.label.padRight(labelWidth), (s) => s.bold)} '
+      '${styledOrPlain(row.path.padRight(pathWidth), (s) => s.gray)}  $status',
     );
   }
 

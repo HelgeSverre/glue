@@ -208,24 +208,31 @@ Process-level tests (`Process.start`) automatically run without a TTY, so
 
 State of the union (2026-05). Update as commands are harmonized:
 
-| Command          | Header   | Markers | Format extracted | TTY-aware  |
-| ---------------- | -------- | ------- | ---------------- | ---------- |
-| `--where`        | ✓        | ✓       | ✓                | partial¹   |
-| `catalog show`   | ✓        | ✓       | inline           | partial¹   |
-| `catalog *`      | ✓        | ✓       | inline           | partial¹   |
-| `doctor`         | ✓        | ✓       | ✓                | partial¹   |
-| `mcp list`       | ✓        | ✓       | ✓                | ✓          |
-| `mcp tools`      | ✓        | ✓       | ✓                | ✓          |
-| `mcp auth status`| ✓        | ✓       | ✓                | ✓          |
-| `mcp add`        | n/a      | ✓       | inline (1-line)  | ✓          |
-| `serve`          | partial² | —       | inline           | partial    |
-| `session *`      | —        | —       | inline           | n/a (plain)|
-| `config *`       | —        | —       | inline           | n/a (plain)|
-| `completions *`  | —        | —       | inline           | n/a (plain)|
+| Command           | Header  | Markers | Format extracted | TTY-aware |
+| ----------------- | ------- | ------- | ---------------- | --------- |
+| `--where`         | ✓       | ✓       | ✓                | ✓         |
+| `catalog show`    | ✓       | ✓       | inline¹          | ✓         |
+| `catalog refresh` | ✓       | ✓       | inline¹          | ✓         |
+| `catalog path`    | ✓       | ✓       | inline¹          | ✓         |
+| `catalog open`    | ✓       | ✓       | inline¹          | ✓         |
+| `catalog edit`    | ✓       | ✓       | inline¹          | ✓         |
+| `doctor`          | ✓       | ✓       | ✓                | ✓         |
+| `mcp list`        | ✓       | ✓       | ✓                | ✓         |
+| `mcp tools`       | ✓       | ✓       | ✓                | ✓         |
+| `mcp auth status` | ✓       | ✓       | ✓                | ✓         |
+| `mcp add`         | n/a     | ✓       | inline (1-line)  | ✓         |
+| `serve`           | ✓       | ✓       | inline           | ✓         |
+| `session list`    | ✓       | —       | inline           | ✓         |
+| `session show`    | ✓       | —       | inline           | ✓         |
+| `session apply`   | n/a     | ✓       | inline (1-line)  | ✓         |
+| `session export`  | n/a     | ✓       | inline (1-line)  | ✓         |
+| `session diff`    | n/a     | n/a     | n/a (raw patch)  | n/a       |
+| `config *`        | n/a     | n/a     | inline (plain)   | n/a       |
+| `completions *`   | n/a     | n/a     | inline (plain)   | n/a       |
 
-¹ Pre-dates `styledOrPlain`; brand markers already collapse, but inline
-`.styled` chains do not. Harmless until output is piped.
-² Mixes `brandDot` with raw `.gray`/`.yellow` instead of brand markers.
+¹ Catalog renders are short and tightly coupled to their input shape;
+extraction into `*_format.dart` is **nice-to-have** but not blocking. The
+TTY guard is already in place via `styledOrPlain`.
 
-When you touch one of these surfaces, consider promoting it a row up
-(`partial → ✓`).
+When you touch one of these surfaces, consider promoting "inline" to a
+proper `*_format.dart` if the rendering gets non-trivial.

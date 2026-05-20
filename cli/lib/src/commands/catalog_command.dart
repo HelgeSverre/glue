@@ -16,7 +16,7 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:glue/src/terminal/brand.dart';
-import 'package:glue/src/terminal/styled.dart';
+import 'package:glue/src/terminal/tty_style.dart';
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_harness/glue_harness.dart';
 
@@ -146,7 +146,8 @@ class CatalogRefreshCommand extends Command<int> {
     final cachePath = env.catalogCachePath;
 
     if (!asJson) {
-      stdout.writeln('$brandDot ${'Refreshing catalog'.styled.bold}');
+      stdout.writeln(
+          '$brandDot ${styledOrPlain('Refreshing catalog', (s) => s.bold)}');
     }
 
     final outcome = await refreshCatalog(
@@ -155,8 +156,8 @@ class CatalogRefreshCommand extends Command<int> {
       fetcher: _fetcher ?? RemoteCatalogFetcher(),
       onAttempt: asJson
           ? null
-          : (uri) =>
-              stdout.writeln('  $markerInfo ${uri.toString().styled.gray}'),
+          : (uri) => stdout.writeln(
+              '  $markerInfo ${styledOrPlain(uri.toString(), (s) => s.gray)}'),
     );
 
     if (asJson) {
@@ -167,25 +168,26 @@ class CatalogRefreshCommand extends Command<int> {
     switch (outcome) {
       case RefreshWrote(:final bytes):
         stdout.writeln(
-          '  $markerOk ${'wrote'.styled.green} $cachePath  '
-          '${'($bytes bytes)'.styled.gray}',
+          '  $markerOk ${styledOrPlain('wrote', (s) => s.green)} $cachePath  '
+          '${styledOrPlain('($bytes bytes)', (s) => s.gray)}',
         );
         return 0;
       case RefreshNotModified():
         stdout.writeln(
-          '  $markerOk ${'up to date'.styled.green} '
-          '${'(304 Not Modified)'.styled.gray}',
+          '  $markerOk ${styledOrPlain('up to date', (s) => s.green)} '
+          '${styledOrPlain('(304 Not Modified)', (s) => s.gray)}',
         );
         return 0;
       case RefreshAllFailed(:final failures):
         for (final f in failures) {
           stderr.writeln(
-            '  $markerError ${f.uri.host.styled.red}  '
-            '${f.reason.styled.gray}',
+            '  $markerError ${styledOrPlain(f.uri.host, (s) => s.red)}  '
+            '${styledOrPlain(f.reason, (s) => s.gray)}',
           );
         }
         stderr.writeln();
-        stderr.writeln('  ${'Failed to refresh catalog.'.styled.red}');
+        stderr.writeln(
+            '  ${styledOrPlain('Failed to refresh catalog.', (s) => s.red)}');
         return 1;
     }
   }
@@ -244,28 +246,33 @@ class CatalogShowCommand extends Command<int> {
     }
 
     final defaults = catalog.defaults;
-    stdout.writeln('$brandDot ${'Glue Catalog'.styled.bold}');
+    stdout.writeln('$brandDot ${styledOrPlain('Glue Catalog', (s) => s.bold)}');
     stdout.writeln(
-      '  ${'version ${catalog.version}  ·  updated ${catalog.updatedAt}'.styled.gray}',
+      '  ${styledOrPlain('version ${catalog.version}  ·  updated ${catalog.updatedAt}', (s) => s.gray)}',
     );
     stdout.writeln();
 
-    stdout.writeln('  ${'default'.styled.gray} ${defaults.model}');
+    stdout.writeln(
+        '  ${styledOrPlain('default', (s) => s.gray)} ${defaults.model}');
     if (defaults.smallModel != null) {
-      stdout.writeln('  ${'small  '.styled.gray} ${defaults.smallModel}');
+      stdout.writeln(
+          '  ${styledOrPlain('small  ', (s) => s.gray)} ${defaults.smallModel}');
     }
     if (defaults.localModel != null) {
-      stdout.writeln('  ${'local  '.styled.gray} ${defaults.localModel}');
+      stdout.writeln(
+          '  ${styledOrPlain('local  ', (s) => s.gray)} ${defaults.localModel}');
     }
 
     final providers = catalog.providers.values.toList()
       ..sort((a, b) => a.id.compareTo(b.id));
     for (final provider in providers) {
       stdout.writeln();
-      final disabledTag =
-          provider.enabled ? '' : '  ${'(disabled)'.styled.dim.red}';
+      final disabledTag = provider.enabled
+          ? ''
+          : '  ${styledOrPlain('(disabled)', (s) => s.dim.red)}';
       stdout.writeln(
-        '${provider.id.styled.bold}  ${provider.name.styled.gray}$disabledTag',
+        '${styledOrPlain(provider.id, (s) => s.bold)}  '
+        '${styledOrPlain(provider.name, (s) => s.gray)}$disabledTag',
       );
       final models = provider.models.values.toList()
         ..sort((a, b) => a.id.compareTo(b.id));
@@ -278,9 +285,11 @@ class CatalogShowCommand extends Command<int> {
           .fold<int>(0, (a, b) => a > b ? a : b);
       for (final model in models) {
         final flags = <String>[
-          if (model.isDefault) '$markerOk ${'default'.styled.green}',
+          if (model.isDefault)
+            '$markerOk ${styledOrPlain('default', (s) => s.green)}',
           if (model.recommended) '$markerInfo recommended',
-          if (!model.enabled) '$markerWarn ${'disabled'.styled.yellow}',
+          if (!model.enabled)
+            '$markerWarn ${styledOrPlain('disabled', (s) => s.yellow)}',
         ];
         // Only pad name when followed by flags — avoids trailing whitespace
         // on the last column for flag-less rows.
@@ -288,7 +297,7 @@ class CatalogShowCommand extends Command<int> {
             flags.isEmpty ? model.name : model.name.padRight(nameWidth);
         final suffix = flags.isEmpty ? '' : '  ${flags.join('  ')}';
         stdout.writeln(
-          '  ${model.id.padRight(idWidth)}  ${paddedName.styled.gray}$suffix',
+          '  ${model.id.padRight(idWidth)}  ${styledOrPlain(paddedName, (s) => s.gray)}$suffix',
         );
       }
     }
@@ -363,23 +372,27 @@ class CatalogPathCommand extends Command<int> {
     }
 
     String status(bool present) => present
-        ? '$markerOk ${'present'.styled.green}'
-        : '$markerWarn ${'missing'.styled.yellow}';
+        ? '$markerOk ${styledOrPlain('present', (s) => s.green)}'
+        : '$markerWarn ${styledOrPlain('missing', (s) => s.yellow)}';
 
-    stdout.writeln('$brandDot ${'Catalog paths'.styled.bold}');
+    stdout
+        .writeln('$brandDot ${styledOrPlain('Catalog paths', (s) => s.bold)}');
     stdout.writeln();
     stdout.writeln(
-      '  ${'bundled       '.styled.bold} ${'compiled into binary'.styled.gray}',
+      '  ${styledOrPlain('bundled       ', (s) => s.bold)} '
+      '${styledOrPlain('compiled into binary', (s) => s.gray)}',
     );
     stdout.writeln(
-      '  ${'cached remote '.styled.bold} ${cachePath.styled.gray}  ${status(cachePresent)}',
+      '  ${styledOrPlain('cached remote ', (s) => s.bold)} '
+      '${styledOrPlain(cachePath, (s) => s.gray)}  ${status(cachePresent)}',
     );
     stdout.writeln(
-      '  ${'local override'.styled.bold} ${overridePath.styled.gray}  ${status(overridePresent)}',
+      '  ${styledOrPlain('local override', (s) => s.bold)} '
+      '${styledOrPlain(overridePath, (s) => s.gray)}  ${status(overridePresent)}',
     );
     stdout.writeln();
     stdout.writeln(
-      '  ${'merge order: bundled → cached remote → local override'.styled.dim}',
+      '  ${styledOrPlain('merge order: bundled → cached remote → local override', (s) => s.dim)}',
     );
     return 0;
   }
@@ -419,16 +432,17 @@ class CatalogOpenCommand extends Command<int> {
       return 0;
     }
 
-    stdout.writeln('$brandDot ${'Opening catalog'.styled.bold}');
-    stdout.writeln('  $markerInfo ${url.styled.gray}');
+    stdout.writeln(
+        '$brandDot ${styledOrPlain('Opening catalog', (s) => s.bold)}');
+    stdout.writeln('  $markerInfo ${styledOrPlain(url, (s) => s.gray)}');
 
     final launched = await _openBrowser(url);
     if (!launched) {
       stderr.writeln(
-        '  $markerWarn ${'no browser launcher available on this platform'.styled.yellow}',
+        '  $markerWarn ${styledOrPlain('no browser launcher available on this platform', (s) => s.yellow)}',
       );
       stderr.writeln(
-          '  ${'Copy the URL above to open it manually.'.styled.gray}');
+          '  ${styledOrPlain('Copy the URL above to open it manually.', (s) => s.gray)}');
       return 1;
     }
     return 0;
@@ -451,34 +465,38 @@ class CatalogEditCommand extends Command<int> {
     final cachePath = env.catalogCachePath;
 
     if (!File(cachePath).existsSync()) {
-      stderr.writeln('$brandDot ${'Edit catalog'.styled.bold}');
+      stderr
+          .writeln('$brandDot ${styledOrPlain('Edit catalog', (s) => s.bold)}');
       stderr.writeln(
-        '  $markerWarn ${'no cached catalog at'.styled.yellow} '
-        '${cachePath.styled.gray}',
+        '  $markerWarn ${styledOrPlain('no cached catalog at', (s) => s.yellow)} '
+        '${styledOrPlain(cachePath, (s) => s.gray)}',
       );
       stderr.writeln();
       stderr.writeln(
-        '  ${'Run'.styled.gray} ${'glue catalog refresh'.styled.bold} '
-        '${'to download the latest catalog.'.styled.gray}',
+        '  ${styledOrPlain('Run', (s) => s.gray)} '
+        '${styledOrPlain('glue catalog refresh', (s) => s.bold)} '
+        '${styledOrPlain('to download the latest catalog.', (s) => s.gray)}',
       );
       return 1;
     }
 
     final editor = Platform.environment['EDITOR']?.trim();
     if (editor == null || editor.isEmpty) {
-      stderr.writeln('$brandDot ${'Edit catalog'.styled.bold}');
+      stderr
+          .writeln('$brandDot ${styledOrPlain('Edit catalog', (s) => s.bold)}');
       stderr.writeln(
-        '  $markerError ${r'$EDITOR is not set'.styled.red}',
+        '  $markerError ${styledOrPlain(r'$EDITOR is not set', (s) => s.red)}',
       );
       stderr.writeln(
-        '  ${r'Set $EDITOR to your preferred editor (e.g. vim, nano, code).'.styled.gray}',
+        '  ${styledOrPlain(r'Set $EDITOR to your preferred editor (e.g. vim, nano, code).', (s) => s.gray)}',
       );
       return 1;
     }
 
-    stdout.writeln('$brandDot ${'Editing catalog'.styled.bold}');
     stdout.writeln(
-      '  $markerInfo ${editor.styled.gray} ${cachePath.styled.gray}',
+        '$brandDot ${styledOrPlain('Editing catalog', (s) => s.bold)}');
+    stdout.writeln(
+      '  $markerInfo ${styledOrPlain(editor, (s) => s.gray)} ${styledOrPlain(cachePath, (s) => s.gray)}',
     );
 
     final result = await Process.start(

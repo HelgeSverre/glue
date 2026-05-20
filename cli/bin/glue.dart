@@ -12,7 +12,7 @@ import 'package:glue/src/commands/catalog_command.dart';
 import 'package:glue/src/commands/mcp_command.dart';
 import 'package:glue/src/commands/session_command.dart';
 import 'package:glue/src/terminal/brand.dart';
-import 'package:glue/src/terminal/styled.dart';
+import 'package:glue/src/terminal/tty_style.dart';
 import 'package:glue/src/terminal/where_report.dart';
 import 'package:glue_runtimes/daytona.dart';
 import 'package:glue_runtimes/modal.dart';
@@ -504,20 +504,26 @@ class ServeCommand extends Command<int> {
     final boundPort = await httpHost.start(address: address, port: port);
     final url = 'ws://${address.host}:$boundPort'
         '${wsPath == '*' ? '' : wsPath}';
+    // stderr is the human banner channel here because stdout is reserved
+    // for the ACP/JSON-RPC stream. styledOrPlain still suppresses ANSI when
+    // stderr is captured (no TTY) or NO_COLOR is set.
     stderr.writeln(
-      '$brandDot ${'glue serve'.styled.bold} '
-      '${'ACP over WebSocket'.styled.gray}',
+      '$brandDot ${styledOrPlain('glue serve', (s) => s.bold)} '
+      '${styledOrPlain('ACP over WebSocket', (s) => s.gray)}',
     );
-    stderr.writeln('  ${'url '.styled.gray} $url');
+    stderr.writeln('  $markerOk ${styledOrPlain('url ', (s) => s.gray)} $url');
     if (httpHost.bearerToken != null) {
       stderr.writeln(
-        '  ${'auth'.styled.gray} ${'bearer token required'.styled.yellow}',
+        '  $markerWarn ${styledOrPlain('auth', (s) => s.gray)} '
+        '${styledOrPlain('bearer token required', (s) => s.yellow)}',
       );
     }
     stderr.writeln(
-      '  ${'docs'.styled.gray} https://getglue.dev/docs/advanced/acp-server',
+      '  $markerInfo ${styledOrPlain('docs', (s) => s.gray)} '
+      'https://getglue.dev/docs/advanced/acp-server',
     );
-    stderr.writeln('  ${'stop'.styled.gray} Ctrl+C');
+    stderr.writeln(
+        '  $markerInfo ${styledOrPlain('stop', (s) => s.gray)} Ctrl+C');
 
     // Run until SIGINT.
     final exitSignal = Completer<void>();
@@ -998,13 +1004,23 @@ class SessionListCommand extends Command<int> {
       stdout.writeln('No sessions found in ${env.sessionsDir}.');
       return 0;
     }
+    stdout.writeln('$brandDot ${styledOrPlain('Sessions', (s) => s.bold)}');
+    final idWidth = sessions
+        .map((s) => s.meta.id.value.length)
+        .fold<int>(0, (a, b) => a > b ? a : b);
+    final runtimeWidth = sessions
+        .map((s) => (s.meta.runtimeId ?? 'host').length)
+        .fold<int>(0, (a, b) => a > b ? a : b);
     for (final s in sessions) {
       final patch =
           s.patchPath == null ? '-' : '${s.patchSizeBytes ?? 0} bytes';
       final runtime = s.meta.runtimeId ?? 'host';
       final title = s.meta.title ?? '(untitled)';
       stdout.writeln(
-        '${s.meta.id.value}  $runtime  patch=$patch  $title',
+        '  ${styledOrPlain(s.meta.id.value.padRight(idWidth), (x) => x.bold)}  '
+        '${styledOrPlain(runtime.padRight(runtimeWidth), (x) => x.gray)}  '
+        '${styledOrPlain('patch=$patch', (x) => x.gray)}  '
+        '$title',
       );
     }
     return 0;
@@ -1031,32 +1047,37 @@ class SessionShowCommand extends Command<int> {
       orElse: () => throw StateError('session not found: ${args.first}'),
     );
     final m = session.meta;
-    stdout.writeln('Session ${m.id.value}');
-    stdout.writeln('  started:    ${m.startTime.toIso8601String()}');
-    stdout.writeln('  model:      ${m.modelRef}');
-    if (m.title != null) stdout.writeln('  title:      ${m.title}');
-    if (m.runtimeId != null) {
-      stdout.writeln('  runtime:    ${m.runtimeId}');
+    stdout.writeln(
+      '$brandDot ${styledOrPlain('Session ${m.id.value}', (x) => x.bold)}',
+    );
+    void row(String key, String value) {
+      stdout.writeln(
+          '  ${styledOrPlain(key.padRight(11), (x) => x.gray)} $value');
     }
-    if (m.sandboxId != null) {
-      stdout.writeln('  sandbox:    ${m.sandboxId}');
-    }
+
+    row('started:', m.startTime.toIso8601String());
+    row('model:', m.modelRef);
+    if (m.title != null) row('title:', m.title!);
+    if (m.runtimeId != null) row('runtime:', m.runtimeId!);
+    if (m.sandboxId != null) row('sandbox:', m.sandboxId!);
     if (m.runtimeBootstrapSha != null) {
-      stdout.writeln('  bootstrap:  ${m.runtimeBootstrapSha}');
+      row('bootstrap:', m.runtimeBootstrapSha!);
     }
     if (m.runtimePatchPath != null) {
-      stdout.writeln('  patch:      ${m.runtimePatchPath}');
+      row('patch:', m.runtimePatchPath!);
     } else if (session.patchPath != null) {
-      stdout.writeln('  patch:      ${session.patchPath} (found by scan)');
+      row('patch:', '${session.patchPath} (found by scan)');
     }
     if (m.runtimeClosedAt != null) {
-      stdout.writeln('  closed:     ${m.runtimeClosedAt!.toIso8601String()}');
+      row('closed:', m.runtimeClosedAt!.toIso8601String());
     }
     final patch = session.patchPath;
     if (patch != null) {
       final body = File(patch).readAsStringSync();
       final lines = body.split('\n').take(40).join('\n');
-      stdout.writeln('\n--- patch (first 40 lines) ---');
+      stdout.writeln();
+      stdout.writeln(
+          styledOrPlain('--- patch (first 40 lines) ---', (x) => x.gray));
       stdout.writeln(lines);
     }
     return 0;
@@ -1139,9 +1160,10 @@ class SessionApplyCommand extends Command<int> {
       inPlace: argResults!.flag('in-place'),
     );
     if (result.ok) {
-      stdout.writeln(result.message);
+      stdout.writeln('$markerOk ${result.message}');
       if (result.branch != null) {
-        stdout.writeln('  on branch: ${result.branch}');
+        stdout.writeln(
+            '  ${styledOrPlain('on branch:', (x) => x.gray)} ${result.branch}');
       }
       return 0;
     }
@@ -1192,7 +1214,7 @@ class SessionExportCommand extends Command<int> {
     if (metaSrc.existsSync()) {
       metaSrc.copySync('$to.meta.json');
     }
-    stdout.writeln('Copied to $to');
+    stdout.writeln('$markerOk Copied to ${styledOrPlain(to, (x) => x.bold)}');
     return 0;
   }
 }
