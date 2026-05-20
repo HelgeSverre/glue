@@ -6,6 +6,20 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Added
 
+- **Editor Integration (ACP) docs + branded `glue serve` output** — new
+  `website/docs/advanced/acp-server.md` page covers what ACP is, the
+  two `glue serve` transports (stdio for editors, WebSocket for
+  browser/notebook clients), the full flag reference, and
+  copy-pasteable configs for Zed (official), JetBrains AI Assistant
+  2025.3+ (official), VS Code (`formulahendry.acp-client`), Neovim
+  (`agentic.nvim` + alternatives), Emacs (`agent-shell`), and
+  marimo/`use-acp`/`agent-client-kernel`. `glue serve --help` now
+  ends with a `usageFooter` pointing at that page. `glue serve --port`
+  prints a brand-styled startup banner (`● glue serve` + indented
+  `url`/`auth`/`docs`/`stop` rows) instead of the old single-line
+  `[glue serve]` log, matching the shape of `glue catalog show` and
+  `glue doctor`. Wired into the Advanced sidebar between Web Tools
+  and MCP Servers.
 - **`glue mcp add | remove | enable | disable`** — manage MCP server
   entries from the shell instead of hand-editing `~/.glue/config.yaml`.
   `add` takes `--transport stdio|http|ws`, accepts stdio commands after
@@ -78,6 +92,12 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Internal
 
+- New `cli/lib/src/terminal/brand.dart` centralises the brand dot
+  (`●` in RGB 250,204,21) and the `✓ · ! ✗` severity markers used by
+  `glue catalog`, `glue doctor`, `glue serve`, and `glue --where`.
+  Replaces the private copies that had been duplicated across
+  `catalog_command.dart` and `doctor.dart`, so all branded surfaces
+  share a single source.
 - New `cli/lib/src/app/transcript_selection.dart` houses the
   coordinate model (`TranscriptPosition`, `TranscriptSelection`),
   drag gesture state, char-class helpers (`classify`,
