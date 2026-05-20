@@ -26,6 +26,7 @@ Naming guidance:
 - Avoid adding one-off top-level verbs when the feature naturally belongs under an existing noun namespace.
 - Keep interactive slash command behavior and non-interactive CLI behavior aligned where practical, but do not force them to share the same exact grammar if that harms UX.
 - If introducing a new command family, document the reasoning in `docs/plans/` first when the surface area is non-trivial.
+- For any user-facing stdout from a `Command<int>`, follow `docs/design/cli-output-formatting.md` — brand markers (`brandDot`, `markerOk/Warn/Error/Info`), the `*_format.dart` extraction pattern, and `styledOrPlain()` for TTY/`NO_COLOR` safety.
 
 ## Common Commands
 
