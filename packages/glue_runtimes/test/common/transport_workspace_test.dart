@@ -45,8 +45,9 @@ class _FakeFs implements RuntimeFsTransport {
 
   @override
   Future<FsTransportStat?> stat(String path) async {
-    if (dirs.contains(path))
+    if (dirs.contains(path)) {
       return const FsTransportStat(size: 0, isDirectory: true);
+    }
     final f = files[path];
     if (f == null) return null;
     return FsTransportStat(size: f.length, isDirectory: false);
