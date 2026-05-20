@@ -92,8 +92,7 @@ mcp:
       final after = _read(configPath);
       // Every comment line from the original must still be present.
       for (final line in original.split('\n').where((l) => l.startsWith('#'))) {
-        expect(after, contains(line),
-            reason: 'comment line dropped: "$line"');
+        expect(after, contains(line), reason: 'comment line dropped: "$line"');
       }
       expect(after, contains('# inline comment'));
       // Top-level keys keep their order: active_model before small_model.

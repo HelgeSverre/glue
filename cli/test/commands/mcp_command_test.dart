@@ -26,17 +26,16 @@ Future<ProcessResult> _runGlue(
     },
   );
   await process.stdin.close();
-  final out = await process.stdout
-      .transform(const SystemEncoding().decoder)
-      .join();
-  final err = await process.stderr
-      .transform(const SystemEncoding().decoder)
-      .join();
+  final out =
+      await process.stdout.transform(const SystemEncoding().decoder).join();
+  final err =
+      await process.stderr.transform(const SystemEncoding().decoder).join();
   final exitCode = await process.exitCode;
   return ProcessResult(process.pid, exitCode, out, err);
 }
 
-Directory _scratch() => Directory.systemTemp.createTempSync('glue_mcp_cmd_test_');
+Directory _scratch() =>
+    Directory.systemTemp.createTempSync('glue_mcp_cmd_test_');
 
 void main() {
   group('glue mcp', () {
@@ -172,8 +171,17 @@ void main() {
       addTearDown(() => dir.deleteSync(recursive: true));
 
       var r = await _runGlue(
-        ['mcp', 'add', 'parked', '--transport', 'stdio', '--disabled', '--',
-            'echo', 'hi'],
+        [
+          'mcp',
+          'add',
+          'parked',
+          '--transport',
+          'stdio',
+          '--disabled',
+          '--',
+          'echo',
+          'hi'
+        ],
         glueHome: dir.path,
       );
       expect(r.exitCode, 0, reason: r.stderr.toString());
@@ -184,6 +192,45 @@ void main() {
       expect(r.stderr.toString(), contains('disabled'));
       expect(r.stderr.toString(), contains('glue mcp enable parked'));
     }, timeout: const Timeout(Duration(seconds: 30)));
+
+    test('tools (no arg) with empty config prints friendly message', () async {
+      final dir = _scratch();
+      addTearDown(() => dir.deleteSync(recursive: true));
+
+      final r = await _runGlue(['mcp', 'tools'], glueHome: dir.path)
+          .timeout(const Duration(seconds: 30));
+      expect(r.exitCode, 0, reason: r.stderr.toString());
+      expect(r.stdout.toString(), contains('No MCP servers configured'));
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('tools (no arg) with only disabled servers groups them as disabled',
+        () async {
+      final dir = _scratch();
+      addTearDown(() => dir.deleteSync(recursive: true));
+
+      var r = await _runGlue(
+        [
+          'mcp',
+          'add',
+          'parked',
+          '--transport',
+          'stdio',
+          '--disabled',
+          '--',
+          'echo',
+          'hi'
+        ],
+        glueHome: dir.path,
+      );
+      expect(r.exitCode, 0, reason: r.stderr.toString());
+
+      r = await _runGlue(['mcp', 'tools'], glueHome: dir.path)
+          .timeout(const Duration(seconds: 30));
+      expect(r.exitCode, 0, reason: r.stderr.toString());
+      final out = r.stdout.toString();
+      expect(out, contains('parked'));
+      expect(out, contains('disabled'));
+    }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('add http with --auth bearer hints at follow-up auth set', () async {
       final dir = _scratch();

@@ -167,7 +167,8 @@ class McpConfigWriter {
     return lines.toString();
   }
 
-  void _writeAuth(StringBuffer out, McpAuthSpec auth, {required String indent}) {
+  void _writeAuth(StringBuffer out, McpAuthSpec auth,
+      {required String indent}) {
     switch (auth) {
       case McpNoAuth():
         return;

@@ -140,7 +140,7 @@ glue mcp remove <id>                   # remove a server (also clears its creds)
 glue mcp enable <id>                   # un-park a disabled server
 glue mcp disable <id>                  # park a server without removing it
 glue mcp list                          # configured servers + enabled/disabled
-glue mcp tools <server>                # connect once and list advertised tools
+glue mcp tools [<server>]              # list tools (all servers if no id)
 glue mcp auth set <server> --bearer    # store a bearer token (stdin, hidden)
 glue mcp auth login <server>           # OAuth flow (opens browser)
 glue mcp auth logout <server>          # forget stored credentials
@@ -204,7 +204,7 @@ Inside a Glue session you have the same surface plus live-state actions:
 ```
 /mcp                            Open the status panel (visual table)
 /mcp list                       Print a text table inline
-/mcp tools <server>             List the server's tools
+/mcp tools [<server>]           List tools (grouped by server if no arg)
 /mcp reconnect <server>         Retry a dead or reconnecting server
 /mcp toggle <server>            Session-scoped enable/disable
 /mcp auth login <server>        OAuth flow inside the TUI
@@ -214,6 +214,8 @@ Inside a Glue session you have the same surface plus live-state actions:
 ```
 
 All subcommands tab-complete. `/mcp <TAB>` lists subcommands; `/mcp reconnect|toggle|tools <TAB>` enumerates configured server ids; `/mcp auth login|logout <TAB>` filters down to HTTP/WebSocket servers (stdio servers can't OAuth).
+
+`/mcp tools` (and `glue mcp tools`) take the server id as **optional**. With no argument, both list every configured server grouped by id and annotated with status — `(connecting)`, `(reconnecting)`, `(disconnected)`, `(dead)`, or `(disabled)` — so a single command surfaces "what's available right now" across the whole pool. The CLI form waits up to 10 seconds for every selected server to settle before printing.
 
 Inside the status panel (`/mcp` with no args) press `Enter` on a row to open an action submenu: **Reconnect**, **Enable/Disable for this session** (label tracks current state), **View tools**, **Copy server ID**, and **Show last error** (only when a failure is recorded). The submenu reuses the pool's `reconnect()`/`toggle()` methods, so panel actions and the slash subcommands are interchangeable.
 

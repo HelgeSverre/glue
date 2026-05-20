@@ -52,7 +52,9 @@ void main() {
           result = {
             'protocolVersion': mcpProtocolVersion,
             'serverInfo': {'name': 'fake', 'version': '0.0.1'},
-            'capabilities': const {'tools': {'listChanged': false}},
+            'capabilities': const {
+              'tools': {'listChanged': false}
+            },
           };
         } else if (method == 'tools/list') {
           result = {
@@ -127,28 +129,27 @@ void main() {
         final body = await utf8.decoder.bind(req).join();
         final msg = jsonDecode(body) as Map<String, dynamic>;
         final id = msg['id'];
-        req.response.headers.contentType =
-            ContentType('text', 'event-stream');
+        req.response.headers.contentType = ContentType('text', 'event-stream');
         // Send a notification, then the actual response.
         req.response.write('event: message\n');
         req.response.write(
           'data: ${jsonEncode({
-            'jsonrpc': '2.0',
-            'method': 'notifications/some_status',
-            'params': {'msg': 'intermediate'},
-          })}\n\n',
+                'jsonrpc': '2.0',
+                'method': 'notifications/some_status',
+                'params': {'msg': 'intermediate'},
+              })}\n\n',
         );
         req.response.write('event: message\n');
         req.response.write(
           'data: ${jsonEncode({
-            'jsonrpc': '2.0',
-            'id': id,
-            'result': {
-              'protocolVersion': mcpProtocolVersion,
-              'serverInfo': {'name': 'sse-fake', 'version': '0.0.1'},
-              'capabilities': const {},
-            },
-          })}\n\n',
+                'jsonrpc': '2.0',
+                'id': id,
+                'result': {
+                  'protocolVersion': mcpProtocolVersion,
+                  'serverInfo': {'name': 'sse-fake', 'version': '0.0.1'},
+                  'capabilities': const {},
+                },
+              })}\n\n',
         );
         await req.response.close();
       });

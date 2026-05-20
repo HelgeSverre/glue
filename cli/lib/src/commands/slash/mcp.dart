@@ -4,6 +4,7 @@ import 'package:glue_harness/glue_harness.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 
 import 'package:glue/src/commands/arg_completers.dart' as arg_completers;
+import 'package:glue/src/commands/mcp_tools_format.dart';
 import 'package:glue/src/commands/slash_command_context.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/terminal/styled.dart';
@@ -89,7 +90,7 @@ class McpSlashCommand extends SlashCommand {
   String _help() => [
         '/mcp                            Open the status panel.',
         '/mcp list                       Print a text table inline.',
-        '/mcp tools <server>             List the server\'s tools.',
+        '/mcp tools [<server>]           List tools (grouped by server if no arg).',
         '/mcp reconnect <server>         Retry a dead/reconnecting server.',
         '/mcp toggle <server>            Session-scoped enable/disable.',
         '/mcp auth login <server>        Run the OAuth flow (HTTP/WS only).',
@@ -100,20 +101,15 @@ class McpSlashCommand extends SlashCommand {
   // ── tools / reconnect / toggle ─────────────────────────────────────────
 
   String _tools(List<String> args) {
-    if (args.length != 1) return 'Usage: /mcp tools <server>';
+    if (args.length > 1) return 'Usage: /mcp tools [<server>]';
+    if (args.isEmpty) {
+      return formatMcpToolsByServer(
+        ctx.mcpPool.servers.map(listingFromSnapshot),
+      );
+    }
     final s = ctx.mcpPool.server(args.single);
     if (s == null) return 'Server "${args.single}" is not in your config.';
-    if (s.tools.isEmpty) {
-      return s.state is McpConnected
-          ? 'Server "${s.id}" advertises no tools.'
-          : 'Server "${s.id}" is not connected; tools unknown.';
-    }
-    final lines = <String>['Tools for ${s.id}:'];
-    for (final t in s.tools) {
-      final desc = t.description.isEmpty ? '' : ' — ${t.description}';
-      lines.add('  ${t.name}$desc');
-    }
-    return lines.join('\n');
+    return formatMcpToolsByServer([listingFromSnapshot(s)]);
   }
 
   String _reconnect(List<String> args) {

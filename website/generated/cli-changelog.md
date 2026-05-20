@@ -6,6 +6,26 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Added
 
+- **`/mcp tools` and `glue mcp tools` now list every server when no
+  argument is given** — output is grouped by server with per-server
+  status annotations (`connected` is unmarked; `connecting`,
+  `reconnecting`, `disconnected`, `dead`, and `disabled` get a tag
+  in parentheses), and a friendly per-server reason when a server
+  has no tools to show (e.g. `disabled; enable to list tools`). The
+  single-server form (`glue mcp tools <id>`) still exits 1 when the
+  named server is disabled, so existing scripts that gate on the
+  exit code keep working. CLI and slash share a single formatter in
+  `cli/lib/src/commands/mcp_tools_format.dart`, with `formatMcpToolsByServer`
+  taking pure value objects so the renderer is unit-testable
+  without spinning up a real `McpClientPool`. CLI variant now waits
+  for _all_ selected servers to settle (with a 10 s cap), so the
+  no-arg listing prints a single coherent snapshot rather than only
+  the first server to respond.
+- **`glue mcp add --help` ships five worked examples** —
+  Playwright via npx, GitHub via docker with a PAT env var,
+  Context7 hosted HTTP with no auth, GitHub Copilot hosted HTTP
+  with bearer, and a generic OAuth-via-DCR server. Discoverable
+  via the command's description in the help output.
 - **Interactive `/mcp` panel** — pressing `Enter` on a server row in the
   status panel now opens an action submenu with **Reconnect**,
   **Enable/Disable for this session**, **View tools**, **Copy server

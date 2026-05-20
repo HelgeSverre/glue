@@ -88,8 +88,7 @@ void main() {
     });
 
     test('forwards bearer token via Authorization header', () async {
-      final server =
-          await _FakeWsMcpServer.bind(requiredBearer: 'tok-xyz');
+      final server = await _FakeWsMcpServer.bind(requiredBearer: 'tok-xyz');
       addTearDown(server.close);
 
       final transport = await connectMcpWebSocket(
@@ -103,8 +102,7 @@ void main() {
     });
 
     test('rejects connection when bearer is missing', () async {
-      final server =
-          await _FakeWsMcpServer.bind(requiredBearer: 'tok-xyz');
+      final server = await _FakeWsMcpServer.bind(requiredBearer: 'tok-xyz');
       addTearDown(server.close);
 
       await expectLater(

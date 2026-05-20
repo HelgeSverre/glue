@@ -15,6 +15,7 @@ import 'package:glue_harness/glue_harness.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 
 import 'package:glue/src/commands/config_command.dart' show userConfigPath;
+import 'package:glue/src/commands/mcp_tools_format.dart';
 
 /// Credential-store conventions for MCP. Both helpers and slash commands
 /// go through here so the namespacing stays consistent.
@@ -77,7 +78,8 @@ class McpAddCommand extends Command<int> {
       ..addOption('cwd', help: 'Working directory for a stdio subprocess.')
       ..addOption(
         'timeout',
-        help: 'Per-call timeout in seconds. Overrides mcp.call_timeout_seconds.',
+        help:
+            'Per-call timeout in seconds. Overrides mcp.call_timeout_seconds.',
       )
       ..addFlag(
         'disabled',
@@ -95,8 +97,34 @@ class McpAddCommand extends Command<int> {
   String get name => 'add';
 
   @override
-  String get description =>
-      'Add a new MCP server entry to ~/.glue/config.yaml.';
+  String get description => [
+        'Add a new MCP server entry to ~/.glue/config.yaml.',
+        '',
+        'Examples:',
+        '  # 1. Local stdio via npx (Playwright browser automation)',
+        '  glue mcp add playwright --transport stdio \\',
+        '    -- npx -y @playwright/mcp@latest',
+        '',
+        '  # 2. Local stdio via docker (GitHub server, PAT in env)',
+        '  glue mcp add github --transport stdio \\',
+        '    -e GITHUB_PERSONAL_ACCESS_TOKEN=ghp_xxx \\',
+        '    -- docker run -i --rm -e GITHUB_PERSONAL_ACCESS_TOKEN \\',
+        '       ghcr.io/github/github-mcp-server',
+        '',
+        '  # 3. Hosted HTTP, no auth (Context7 docs lookup)',
+        '  glue mcp add context7 --transport http \\',
+        '    --url https://mcp.context7.com/mcp',
+        '',
+        '  # 4. Hosted HTTP with a bearer token (GitHub Copilot MCP)',
+        '  glue mcp add github-hosted --transport http \\',
+        '    --url https://api.githubcopilot.com/mcp/ --auth bearer',
+        '  glue mcp auth set github-hosted --bearer    # then store the PAT',
+        '',
+        '  # 5. Hosted HTTP with OAuth (when the server advertises DCR)',
+        '  glue mcp add some-saas --transport http \\',
+        '    --url https://mcp.example.com --auth oauth',
+        '  glue mcp auth login some-saas               # opens browser',
+      ].join('\n');
 
   @override
   String get invocation =>
@@ -399,32 +427,41 @@ class McpToolsCommand extends Command<int> {
 
   @override
   String get description =>
-      'Connect to an MCP server and list its tools (one-shot).';
+      'List tools advertised by configured MCP servers (one-shot).';
 
   @override
-  String get invocation => 'glue mcp tools <server>';
+  String get invocation => 'glue mcp tools [<server>]';
 
   @override
   Future<int> run() async {
     final argResults = this.argResults!;
-    if (argResults.rest.length != 1) {
-      stderr.writeln('Usage: glue mcp tools <server>');
+    if (argResults.rest.length > 1) {
+      stderr.writeln('Usage: glue mcp tools [<server>]');
       return 1;
     }
-    final serverId = argResults.rest.single;
 
     final config = _safeLoadConfig();
     if (config == null) return 1;
 
-    final spec = config.mcp.servers.where((s) => s.id == serverId).firstOrNull;
-    if (spec == null) {
+    final selected = argResults.rest.isEmpty
+        ? config.mcp.servers
+        : config.mcp.servers
+            .where((s) => s.id == argResults.rest.single)
+            .toList();
+
+    if (argResults.rest.isNotEmpty && selected.isEmpty) {
+      final serverId = argResults.rest.single;
       stderr.writeln(
         'Server "$serverId" is not in your config. Known: '
         '${config.mcp.servers.map((s) => s.id).join(", ")}.',
       );
       return 1;
     }
-    if (!spec.enabled) {
+
+    // Single-server form preserves the legacy "disabled → error" UX so
+    // scripts can still treat it as a hard failure.
+    if (argResults.rest.isNotEmpty && !selected.single.enabled) {
+      final serverId = selected.single.id;
       stderr.writeln(
         'Server "$serverId" is disabled — enable it with '
         '"glue mcp enable $serverId" before listing its tools.',
@@ -432,41 +469,43 @@ class McpToolsCommand extends Command<int> {
       return 1;
     }
 
-    // Spin up a transient pool of just this server, wait briefly, print.
+    if (selected.isEmpty) {
+      stdout.writeln(formatMcpToolsByServer(const []));
+      return 0;
+    }
+
+    // Pool is built from `selected` (not just enabled) so the snapshots
+    // we read back cover every server we plan to print — disabled ones
+    // included. `connectAll()` skips disabled specs internally.
     final pool = McpClientPool(
-      config: McpConfig(servers: [spec]),
+      config: McpConfig(servers: selected),
       credentials: config.credentials,
     );
     pool.connectAll();
 
-    try {
-      await pool.events
-          .where((e) =>
-              e is McpPoolServerConnectedEvent || e is McpPoolServerErrorEvent)
-          .first
-          .timeout(const Duration(seconds: 10));
-    } on TimeoutException {
-      stderr.writeln('Timed out waiting for "$serverId" to respond.');
-      await pool.close();
-      return 1;
+    final pending = selected.where((s) => s.enabled).map((s) => s.id).toSet();
+    if (pending.isNotEmpty) {
+      try {
+        await pool.events
+            .where((e) {
+              if (e is McpPoolServerConnectedEvent) pending.remove(e.serverId);
+              if (e is McpPoolServerErrorEvent) pending.remove(e.serverId);
+              return pending.isEmpty;
+            })
+            .first
+            .timeout(const Duration(seconds: 10));
+      } on TimeoutException {
+        // Print whatever we got; servers still pending will show as
+        // connecting/dead per their last snapshot.
+      }
     }
 
-    final snapshot = pool.server(serverId);
-    if (snapshot == null || snapshot.tools.isEmpty) {
-      stderr.writeln(
-        'Server "$serverId" advertised no tools (state: '
-        '${snapshot?.state.runtimeType ?? 'unknown'}).',
-      );
-      if (snapshot?.lastError != null) {
-        stderr.writeln('Last error: ${snapshot!.lastError}');
-      }
-      await pool.close();
-      return 1;
-    }
-    for (final t in snapshot.tools) {
-      final desc = t.description.isEmpty ? '' : ' — ${t.description}';
-      stdout.writeln('  ${t.name}$desc');
-    }
+    final listings = selected
+        .map((spec) => pool.server(spec.id))
+        .whereType<McpServerSnapshot>()
+        .map(listingFromSnapshot)
+        .toList();
+    stdout.writeln(formatMcpToolsByServer(listings));
     await pool.close();
     return 0;
   }

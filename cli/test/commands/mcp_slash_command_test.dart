@@ -147,6 +147,38 @@ void main() {
       expect(fx.panelStack, hasLength(1));
     });
 
+    test('/mcp tools with no args groups all servers (incl. disabled)', () {
+      final tmp = Directory.systemTemp.createTempSync('mcp_slash_test_');
+      final env = Environment.test(home: tmp.path, cwd: tmp.path);
+      final pool = McpClientPool(
+        config: const McpConfig(servers: [
+          McpStdioServerSpec(id: 'fs', command: 'fake'),
+          McpStdioServerSpec(id: 'parked', command: 'fake', enabled: false),
+        ]),
+        credentials: CredentialStore(
+          path: '${env.glueDir}/credentials.json',
+          env: const {},
+        ),
+      );
+      final fx = _Fixture(pool: pool);
+      final cmd = McpSlashCommand(fx.ctx);
+
+      final result = cmd.execute(['tools']);
+      // Both servers show up in the grouped output.
+      expect(result, contains('fs'));
+      expect(result, contains('parked'));
+      // Annotations distinguish state, since neither server is connected.
+      expect(result, contains('disabled'));
+      expect(result, contains('not connected'));
+    });
+
+    test('/mcp tools with no args + empty config → friendly message', () {
+      final fx = _Fixture();
+      final cmd = McpSlashCommand(fx.ctx);
+      final result = cmd.execute(['tools']);
+      expect(result, contains('No MCP servers configured'));
+    });
+
     test('unknown subcommand → usage hint pointing at /mcp help', () {
       final fx = _Fixture();
       final cmd = McpSlashCommand(fx.ctx);
