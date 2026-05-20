@@ -3,5 +3,17 @@
   "outputDirectory": ".vitepress/dist",
   "framework": null,
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/models.yaml",
+      "destination": "https://raw.githubusercontent.com/helgesverre/glue/main/docs/reference/models.yaml",
+      "permanent": false
+    },
+    {
+      "source": "/models.yml",
+      "destination": "https://raw.githubusercontent.com/helgesverre/glue/main/docs/reference/models.yaml",
+      "permanent": false
+    }
+  ]
 }
