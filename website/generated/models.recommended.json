@@ -16,22 +16,6 @@
     "notes": "Default high-quality coding model."
   },
   {
-    "id": "claude-opus-4-6",
-    "provider": "anthropic",
-    "name": "Claude Opus 4.6",
-    "recommended": true,
-    "capabilities": [
-      "chat",
-      "tools",
-      "vision",
-      "files",
-      "json",
-      "reasoning",
-      "coding"
-    ],
-    "notes": "Use for difficult architecture, debugging, and long investigations."
-  },
-  {
     "id": "claude-haiku-4-5",
     "provider": "anthropic",
     "name": "Claude Haiku 4.5",
@@ -78,9 +62,9 @@
     "notes": "Frontier general-purpose and agentic coding model."
   },
   {
-    "id": "gpt-5.4",
+    "id": "gpt-5.5-pro",
     "provider": "openai",
-    "name": "GPT-5.4",
+    "name": "GPT-5.5 Pro",
     "recommended": true,
     "capabilities": [
       "chat",
@@ -91,7 +75,7 @@
       "reasoning",
       "coding"
     ],
-    "notes": "Prior frontier model — kept for pinned configs."
+    "notes": "High-compute reasoning variant. Use for hard architecture, proofs, and long-horizon planning."
   },
   {
     "id": "gpt-5.4-mini",
@@ -108,6 +92,19 @@
     "notes": "Default small_model candidate."
   },
   {
+    "id": "gpt-5.4-nano",
+    "provider": "openai",
+    "name": "GPT-5.4 Nano",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "json",
+      "coding"
+    ],
+    "notes": "Cheapest GPT-5.4-class model for high-volume tasks."
+  },
+  {
     "id": "o3",
     "provider": "openai",
     "name": "o3",
@@ -119,21 +116,24 @@
       "reasoning",
       "coding"
     ],
-    "notes": "Reasoning-specialized flagship. State of the art on Codeforces / SWE-bench / MMMU; use for hard debugging, proofs, and multi-step planning."
+    "notes": "Reasoning-specialized flagship. Use for hard debugging, proofs, and multi-step planning."
   },
   {
-    "id": "o4-mini",
-    "provider": "openai",
-    "name": "o4-mini",
+    "id": "gemini-3.5-flash",
+    "provider": "gemini",
+    "name": "Gemini 3.5 Flash",
     "recommended": true,
     "capabilities": [
       "chat",
       "tools",
+      "vision",
+      "files",
       "json",
       "reasoning",
-      "coding"
+      "coding",
+      "browser"
     ],
-    "notes": "Small + fast reasoning model. Best price/quality point for iterative coding with structured thinking."
+    "notes": "GA Flash (May 2026). Most intelligent Flash-tier model for agentic and coding tasks. Supports Google Search grounding."
   },
   {
     "id": "gemini-3.1-pro-preview",
@@ -147,9 +147,10 @@
       "files",
       "json",
       "reasoning",
-      "coding"
+      "coding",
+      "browser"
     ],
-    "notes": "Current Pro-class preview. Strongest Gemini model for complex reasoning, coding, and research."
+    "notes": "Pro-class preview. Strongest Gemini model for complex reasoning, coding, and research. Supports Google Search grounding."
   },
   {
     "id": "gemini-3-flash-preview",
@@ -164,7 +165,21 @@
       "json",
       "coding"
     ],
-    "notes": "Fast, balanced, multimodal. ~78% SWE-bench Verified — strong agentic-coding candidate."
+    "notes": "Fast, balanced, multimodal preview. Strong agentic-coding candidate."
+  },
+  {
+    "id": "gemini-3.1-flash-lite",
+    "provider": "gemini",
+    "name": "Gemini 3.1 Flash-Lite",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "json",
+      "coding"
+    ],
+    "notes": "GA Flash-Lite (May 2026). Cost-efficient, fastest performance for high-frequency, lightweight tasks."
   },
   {
     "id": "devstral-latest",
@@ -222,6 +237,19 @@
     "notes": "Pure reasoning model. Use when you need explicit long-chain thinking; not a general chat pick."
   },
   {
+    "id": "mistral-medium-latest",
+    "provider": "mistral",
+    "name": "Mistral Medium Latest",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "json"
+    ],
+    "notes": "Mistral Medium 3.5 (April 2026). Mid-tier general-purpose; multimodal with tool use."
+  },
+  {
     "id": "llama-4-scout-17b-16e-instruct",
     "provider": "groq",
     "name": "Llama 4 Scout (17B active / 109B MoE)",
@@ -234,20 +262,6 @@
       "coding"
     ],
     "notes": "Native multimodal MoE in production on Groq. Strong speed/quality default as of 2026-04."
-  },
-  {
-    "id": "llama-4-maverick-17b-128e-instruct",
-    "provider": "groq",
-    "name": "Llama 4 Maverick (17B active / 400B MoE)",
-    "recommended": true,
-    "capabilities": [
-      "chat",
-      "tools",
-      "vision",
-      "json",
-      "coding"
-    ],
-    "notes": "Larger Llama 4 variant — more capable, still Groq-fast."
   },
   {
     "id": "gpt-oss-120b",
@@ -291,9 +305,9 @@
     "notes": "Consensus local coding agent. 30B/3.3B MoE. ~20 GB VRAM at Q4_K_M."
   },
   {
-    "id": "qwen3-coder-next:80b",
+    "id": "qwen3-coder-next:latest",
     "provider": "ollama",
-    "name": "Qwen3 Coder Next 80B (MoE)",
+    "name": "Qwen3 Coder Next (MoE)",
     "recommended": true,
     "capabilities": [
       "chat",
@@ -302,21 +316,7 @@
       "coding",
       "local"
     ],
-    "notes": "2026-04 flagship local coder. 3B/80B MoE; ~48 GB at Q4_K_M so needs a workstation GPU or Mac Studio. ~58% SWE-bench Verified."
-  },
-  {
-    "id": "llama4:8b",
-    "provider": "ollama",
-    "name": "Llama 4 8B",
-    "recommended": true,
-    "capabilities": [
-      "chat",
-      "tools",
-      "vision",
-      "json",
-      "local"
-    ],
-    "notes": "Massive (1M+) context with native multimodal and parallel tool calls. ~6 GB at Q4_K_M; fits laptops. Good general assistant, not a code specialist."
+    "notes": "2026-04 flagship local coder. Qwen3-Next-80B-A3B; ~52 GB at Q4_K_M, ~85 GB at Q8_0. Needs a workstation GPU or 64 GB+ Mac."
   },
   {
     "id": "qwen3.6:35b",
@@ -350,9 +350,9 @@
     "notes": "Google's latest with native function-calling. Multimodal, 256K context. ~18 GB at Q4_K_M."
   },
   {
-    "id": "devstral-small-2:24b",
+    "id": "devstral:24b",
     "provider": "ollama",
-    "name": "Devstral Small 2 24B",
+    "name": "Devstral 24B",
     "recommended": true,
     "capabilities": [
       "chat",
@@ -361,21 +361,7 @@
       "coding",
       "local"
     ],
-    "notes": "Mistral's agentic coding model (Dec 2025). 68% SWE-bench. ~14 GB at Q4_K_M."
-  },
-  {
-    "id": "qwen2.5-coder:32b",
-    "provider": "ollama",
-    "name": "Qwen2.5 Coder 32B",
-    "recommended": true,
-    "capabilities": [
-      "chat",
-      "tools",
-      "json",
-      "coding",
-      "local"
-    ],
-    "notes": "Aider-verified 73.7% (GPT-4o class). Safe fallback."
+    "notes": "Mistral's agentic coding model. ~14 GB at Q4_K_M."
   },
   {
     "id": "qwen3:8b",
@@ -405,9 +391,41 @@
     "notes": "Uses your GitHub Copilot subscription."
   },
   {
-    "id": "gpt-4.1",
+    "id": "claude-opus-4-7",
     "provider": "copilot",
-    "name": "GPT-4.1 (via Copilot)",
+    "name": "Claude Opus 4.7 (via Copilot)",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "files",
+      "json",
+      "reasoning",
+      "coding"
+    ],
+    "notes": "Top-tier Anthropic model via Copilot subscription."
+  },
+  {
+    "id": "gpt-5.5",
+    "provider": "copilot",
+    "name": "GPT-5.5 (via Copilot)",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "files",
+      "json",
+      "reasoning",
+      "coding"
+    ],
+    "notes": "Uses your GitHub Copilot subscription."
+  },
+  {
+    "id": "gpt-5.3-codex",
+    "provider": "copilot",
+    "name": "GPT-5.3 Codex (via Copilot)",
     "recommended": true,
     "capabilities": [
       "chat",
@@ -415,7 +433,7 @@
       "json",
       "coding"
     ],
-    "notes": "Uses your GitHub Copilot subscription."
+    "notes": "OpenAI's agentic coding model via Copilot subscription."
   },
   {
     "id": "claude-sonnet-4-6",
@@ -448,9 +466,9 @@
     "notes": "Small-model fallback through a router."
   },
   {
-    "id": "gemini-flash-latest",
+    "id": "gemini-3.5-flash",
     "provider": "openrouter",
-    "name": "Gemini Flash Latest via OpenRouter",
+    "name": "Gemini 3.5 Flash via OpenRouter",
     "recommended": true,
     "capabilities": [
       "chat",

@@ -14,12 +14,12 @@
 # the OpenAI API wire format", not "this provider is OpenAI".
 
 version: 1
-updated_at: 2026-04-25
+updated_at: 2026-05-20
 
 defaults:
   model: anthropic/claude-sonnet-4-6
   small_model: openai/gpt-5.4-mini
-  local_model: ollama/qwen2.5-coder:32b
+  local_model: ollama/qwen3-coder:30b
 
 catalog:
   source: bundled
@@ -80,15 +80,6 @@ providers:
         speed: standard
         cost: high
         notes: Default high-quality coding model.
-      claude-opus-4-6:
-        name: Claude Opus 4.6
-        recommended: true
-        capabilities: [chat, tools, vision, files, json, reasoning, coding]
-        context_window: 1000000
-        max_output_tokens: 128000
-        speed: slower
-        cost: premium
-        notes: Use for difficult architecture, debugging, and long investigations.
       claude-haiku-4-5:
         name: Claude Haiku 4.5
         recommended: true
@@ -122,15 +113,26 @@ providers:
         recommended: true
         default: true
         capabilities: [chat, tools, vision, files, json, reasoning, coding]
-        context_window: 400000
+        context_window: 1050000
+        max_output_tokens: 128000
         speed: standard
         cost: high
         notes: Frontier general-purpose and agentic coding model.
-      gpt-5.4:
-        name: GPT-5.4
+      gpt-5.5-pro:
+        name: GPT-5.5 Pro
         recommended: true
         capabilities: [chat, tools, vision, files, json, reasoning, coding]
-        context_window: 400000
+        context_window: 1050000
+        max_output_tokens: 128000
+        speed: slower
+        cost: premium
+        notes: High-compute reasoning variant. Use for hard architecture, proofs, and long-horizon planning.
+      gpt-5.4:
+        name: GPT-5.4
+        recommended: false
+        capabilities: [chat, tools, vision, files, json, reasoning, coding]
+        context_window: 1050000
+        max_output_tokens: 128000
         speed: standard
         cost: high
         notes: Prior frontier model — kept for pinned configs.
@@ -139,9 +141,19 @@ providers:
         recommended: true
         capabilities: [chat, tools, vision, json, coding]
         context_window: 400000
+        max_output_tokens: 128000
         speed: fast
         cost: low
         notes: Default small_model candidate.
+      gpt-5.4-nano:
+        name: GPT-5.4 Nano
+        recommended: true
+        capabilities: [chat, tools, json, coding]
+        context_window: 400000
+        max_output_tokens: 128000
+        speed: fast
+        cost: low
+        notes: Cheapest GPT-5.4-class model for high-volume tasks.
       o3:
         name: o3
         recommended: true
@@ -149,23 +161,7 @@ providers:
         context_window: 200000
         speed: slower
         cost: high
-        notes: Reasoning-specialized flagship. State of the art on Codeforces / SWE-bench / MMMU; use for hard debugging, proofs, and multi-step planning.
-      o4-mini:
-        name: o4-mini
-        recommended: true
-        capabilities: [chat, tools, json, reasoning, coding]
-        context_window: 200000
-        speed: fast
-        cost: low
-        notes: Small + fast reasoning model. Best price/quality point for iterative coding with structured thinking.
-      gpt-5.2:
-        name: GPT-5.2
-        recommended: false
-        capabilities: [chat, tools, vision, files, json, reasoning, coding]
-        context_window: 400000
-        speed: standard
-        cost: high
-        notes: Legacy frontier model — superseded by GPT-5.4. Kept for users with pinned configs.
+        notes: Reasoning-specialized flagship. Use for hard debugging, proofs, and multi-step planning.
 
   gemini:
     name: Google Gemini
@@ -175,70 +171,50 @@ providers:
     auth:
       api_key: env:GEMINI_API_KEY
     models:
+      gemini-3.5-flash:
+        name: Gemini 3.5 Flash
+        recommended: true
+        default: true
+        capabilities: [chat, tools, vision, files, json, reasoning, coding, browser]
+        context_window: 1000000
+        max_output_tokens: 65536
+        speed: fast
+        cost: low
+        notes: GA Flash (May 2026). Most intelligent Flash-tier model for agentic and coding tasks. Supports Google Search grounding.
       gemini-3.1-pro-preview:
         name: Gemini 3.1 Pro Preview
         recommended: true
-        default: true
-        capabilities: [chat, tools, vision, files, json, reasoning, coding]
+        capabilities: [chat, tools, vision, files, json, reasoning, coding, browser]
         context_window: 1000000
+        max_output_tokens: 65536
         speed: standard
         cost: medium
-        notes: Current Pro-class preview. Strongest Gemini model for complex reasoning, coding, and research.
+        notes: Pro-class preview. Strongest Gemini model for complex reasoning, coding, and research. Supports Google Search grounding.
       gemini-3-flash-preview:
         name: Gemini 3 Flash Preview
         recommended: true
         capabilities: [chat, tools, vision, files, json, coding]
         context_window: 1000000
+        max_output_tokens: 65536
         speed: fast
         cost: low
-        notes: Fast, balanced, multimodal. ~78% SWE-bench Verified — strong agentic-coding candidate.
-      gemini-3.1-flash-lite-preview:
-        name: Gemini 3.1 Flash-Lite Preview
-        recommended: false
+        notes: Fast, balanced, multimodal preview. Strong agentic-coding candidate.
+      gemini-3.1-flash-lite:
+        name: Gemini 3.1 Flash-Lite
+        recommended: true
         capabilities: [chat, tools, vision, json, coding]
         context_window: 1000000
+        max_output_tokens: 65536
         speed: fast
         cost: low
-        notes: Cost-efficient, fastest performance for high-frequency, lightweight tasks.
-      gemini-2.5-pro:
-        name: Gemini 2.5 Pro
-        recommended: false
-        capabilities: [chat, tools, vision, files, json, reasoning, coding]
-        context_window: 1000000
-        speed: standard
-        cost: medium
-        notes: GA Pro model. Retires 2026-06-17 — prefer 3.1 Pro Preview for new work.
-      gemini-2.5-flash:
-        name: Gemini 2.5 Flash
-        recommended: false
-        capabilities: [chat, tools, vision, files, json, coding]
-        context_window: 1000000
-        speed: fast
-        cost: low
-        notes: GA Flash. Retires 2026-06-17 — prefer 3 Flash Preview for new work.
-      gemini-2.5-flash-lite:
-        name: Gemini 2.5 Flash-Lite
-        recommended: false
-        capabilities: [chat, tools, vision, json, coding]
-        context_window: 1000000
-        speed: fast
-        cost: low
-        notes: GA Flash-Lite. Retires 2026-06-17.
-      deep-research-pro-preview-12-2025:
-        name: Deep Research Pro (Dec 2025)
-        recommended: false
-        enabled: false
-        capabilities: [chat, reasoning, tools]
-        context_window: 1000000
-        speed: slower
-        cost: high
-        notes: Deep Research agent (legacy preview). Requires background-execution runner — not yet wired up in Glue.
+        notes: GA Flash-Lite (May 2026). Cost-efficient, fastest performance for high-frequency, lightweight tasks.
       deep-research-preview-04-2026:
         name: Deep Research Preview (Apr 2026)
         recommended: false
         enabled: false
         capabilities: [chat, reasoning, tools, browser]
         context_window: 1000000
+        max_output_tokens: 65536
         speed: slower
         cost: high
         notes: Fast Deep Research agent — interactive use. Requires background runner (not yet wired up in Glue).
@@ -248,6 +224,7 @@ providers:
         enabled: false
         capabilities: [chat, reasoning, tools, browser]
         context_window: 1000000
+        max_output_tokens: 65536
         speed: slower
         cost: high
         notes: Maximum-comprehensiveness Deep Research agent. Requires background runner (not yet wired up in Glue).
@@ -297,12 +274,12 @@ providers:
         notes: Pure reasoning model. Use when you need explicit long-chain thinking; not a general chat pick.
       mistral-medium-latest:
         name: Mistral Medium Latest
-        recommended: false
+        recommended: true
         capabilities: [chat, tools, vision, json]
-        context_window: 128000
+        context_window: 262000
         speed: standard
         cost: medium
-        notes: Legacy middle tier — outclassed by Small 4 on cost/quality after the March 2026 unification.
+        notes: Mistral Medium 3.5 (April 2026). Mid-tier general-purpose; multimodal with tool use.
 
   groq:
     name: Groq
@@ -324,15 +301,6 @@ providers:
         speed: fast
         cost: low
         notes: Native multimodal MoE in production on Groq. Strong speed/quality default as of 2026-04.
-      llama-4-maverick-17b-128e-instruct:
-        name: Llama 4 Maverick (17B active / 400B MoE)
-        api_id: meta-llama/llama-4-maverick-17b-128e-instruct
-        recommended: true
-        capabilities: [chat, tools, vision, json, coding]
-        context_window: 128000
-        speed: fast
-        cost: low
-        notes: Larger Llama 4 variant — more capable, still Groq-fast.
       gpt-oss-120b:
         name: GPT-OSS 120B
         api_id: openai/gpt-oss-120b
@@ -351,22 +319,6 @@ providers:
         speed: fast
         cost: low
         notes: Coding-optimized, faster/cheaper than 120B.
-      llama-3.3-70b-versatile:
-        name: Llama 3.3 70B Versatile
-        recommended: false
-        capabilities: [chat, tools, json]
-        context_window: 131072
-        speed: fast
-        cost: low
-        notes: Previous-generation general-purpose. Superseded by Llama 4 Scout for most uses.
-      llama-3.1-8b-instant:
-        name: Llama 3.1 8B Instant
-        recommended: false
-        capabilities: [chat, tools, json]
-        context_window: 131072
-        speed: fast
-        cost: low
-        notes: 8B floor. Fast but tool-loop fragile; use for summaries/titles, not the main agent.
 
   ollama:
     name: Ollama
@@ -386,22 +338,14 @@ providers:
         speed: depends_on_hardware
         cost: local
         notes: Consensus local coding agent. 30B/3.3B MoE. ~20 GB VRAM at Q4_K_M.
-      qwen3-coder-next:80b:
-        name: Qwen3 Coder Next 80B (MoE)
+      qwen3-coder-next:latest:
+        name: Qwen3 Coder Next (MoE)
         recommended: true
         capabilities: [chat, tools, json, coding, local]
         context_window: 256000
         speed: depends_on_hardware
         cost: local
-        notes: 2026-04 flagship local coder. 3B/80B MoE; ~48 GB at Q4_K_M so needs a workstation GPU or Mac Studio. ~58% SWE-bench Verified.
-      llama4:8b:
-        name: Llama 4 8B
-        recommended: true
-        capabilities: [chat, tools, vision, json, local]
-        context_window: 1048576
-        speed: depends_on_hardware
-        cost: local
-        notes: Massive (1M+) context with native multimodal and parallel tool calls. ~6 GB at Q4_K_M; fits laptops. Good general assistant, not a code specialist.
+        notes: 2026-04 flagship local coder. Qwen3-Next-80B-A3B; ~52 GB at Q4_K_M, ~85 GB at Q8_0. Needs a workstation GPU or 64 GB+ Mac.
       qwen3.6:35b:
         name: Qwen3.6 35B
         recommended: true
@@ -418,22 +362,22 @@ providers:
         speed: depends_on_hardware
         cost: local
         notes: Google's latest with native function-calling. Multimodal, 256K context. ~18 GB at Q4_K_M.
-      devstral-small-2:24b:
-        name: Devstral Small 2 24B
+      devstral:24b:
+        name: Devstral 24B
         recommended: true
         capabilities: [chat, tools, json, coding, local]
         context_window: 128000
         speed: depends_on_hardware
         cost: local
-        notes: Mistral's agentic coding model (Dec 2025). 68% SWE-bench. ~14 GB at Q4_K_M.
+        notes: Mistral's agentic coding model. ~14 GB at Q4_K_M.
       qwen2.5-coder:32b:
         name: Qwen2.5 Coder 32B
-        recommended: true
+        recommended: false
         capabilities: [chat, tools, json, coding, local]
         context_window: 32768
         speed: depends_on_hardware
         cost: local
-        notes: Aider-verified 73.7% (GPT-4o class). Safe fallback.
+        notes: Previous-generation safe fallback. Prefer qwen3-coder:30b.
       qwen3:8b:
         name: Qwen3 8B
         recommended: true
@@ -442,54 +386,6 @@ providers:
         speed: depends_on_hardware
         cost: local
         notes: Low-end floor for tool use. ~5 GB at Q4_K_M. Fits a 16 GB laptop.
-      mistral:7b:
-        name: Mistral 7B
-        recommended: false
-        capabilities: [chat, tools, json, local]
-        context_window: 32768
-        speed: depends_on_hardware
-        cost: local
-        notes: General-purpose, not code-specialized. Tool use works but weaker than Qwen3-Coder.
-      gemma3:12b:
-        name: Gemma 3 12B
-        recommended: false
-        capabilities: [chat, json, local]
-        context_window: 131072
-        speed: depends_on_hardware
-        cost: local
-        notes: No tools capability; superseded by Gemma 4. Use gemma4:26b instead.
-      codellama:13b:
-        name: CodeLlama 13B
-        recommended: false
-        capabilities: [chat, json, coding, local]
-        context_window: 16384
-        speed: depends_on_hardware
-        cost: local
-        notes: FIM-lineage code model. Narrates instead of calling tools. Not for agent use.
-      codegemma:7b:
-        name: CodeGemma 7B
-        recommended: false
-        capabilities: [chat, json, coding, local]
-        context_window: 8192
-        speed: depends_on_hardware
-        cost: local
-        notes: FIM-trained (80% FIM rate). Not designed for agent tool use.
-      starcoder2:15b:
-        name: StarCoder2 15B
-        recommended: false
-        capabilities: [chat, json, coding, local]
-        context_window: 16384
-        speed: depends_on_hardware
-        cost: local
-        notes: FIM-lineage (BigCode). Code completion, not agent tool use.
-      deepseek-coder:33b:
-        name: DeepSeek Coder 33B
-        recommended: false
-        capabilities: [chat, json, coding, local]
-        context_window: 16384
-        speed: depends_on_hardware
-        cost: local
-        notes: Legacy DeepSeek code model (no tools). Use qwen3-coder or devstral-small-2 instead.
 
   copilot:
     name: GitHub Copilot
@@ -504,20 +400,57 @@ providers:
       claude-sonnet-4-6:
         name: Claude Sonnet 4.6 (via Copilot)
         recommended: true
+        default: true
         capabilities: [chat, tools, vision, json, coding]
         context_window: 1000000
         max_output_tokens: 64000
         speed: standard
         cost: subscription
         notes: Uses your GitHub Copilot subscription.
-      gpt-4.1:
-        name: GPT-4.1 (via Copilot)
+      claude-opus-4-7:
+        name: Claude Opus 4.7 (via Copilot)
         recommended: true
-        capabilities: [chat, tools, json, coding]
-        context_window: 128000
+        capabilities: [chat, tools, vision, files, json, reasoning, coding]
+        context_window: 1000000
+        max_output_tokens: 128000
+        speed: slower
+        cost: subscription
+        notes: Top-tier Anthropic model via Copilot subscription.
+      claude-opus-4-6:
+        name: Claude Opus 4.6 (via Copilot)
+        recommended: false
+        capabilities: [chat, tools, vision, files, json, reasoning, coding]
+        context_window: 1000000
+        max_output_tokens: 128000
+        speed: slower
+        cost: subscription
+        notes: Kept available; superseded by Opus 4.7 for new work.
+      gpt-5.5:
+        name: GPT-5.5 (via Copilot)
+        recommended: true
+        capabilities: [chat, tools, vision, files, json, reasoning, coding]
+        context_window: 1050000
+        max_output_tokens: 128000
         speed: standard
         cost: subscription
         notes: Uses your GitHub Copilot subscription.
+      gpt-5.3-codex:
+        name: GPT-5.3 Codex (via Copilot)
+        recommended: true
+        capabilities: [chat, tools, json, coding]
+        context_window: 400000
+        max_output_tokens: 128000
+        speed: fast
+        cost: subscription
+        notes: OpenAI's agentic coding model via Copilot subscription.
+      gemini-2.5-pro:
+        name: Gemini 2.5 Pro (via Copilot)
+        recommended: false
+        capabilities: [chat, tools, vision, files, json, reasoning, coding]
+        context_window: 1000000
+        speed: standard
+        cost: subscription
+        notes: Google option via Copilot subscription.
 
   openrouter:
     name: OpenRouter
@@ -534,7 +467,7 @@ providers:
     models:
       claude-sonnet-4-6:
         name: Claude Sonnet 4.6 via OpenRouter
-        api_id: anthropic/claude-sonnet-4-6
+        api_id: anthropic/claude-sonnet-4.6
         recommended: true
         capabilities: [chat, tools, vision, files, json, reasoning, coding]
         context_window: 1000000
@@ -551,9 +484,9 @@ providers:
         speed: fast
         cost: provider_routed
         notes: Small-model fallback through a router.
-      gemini-flash-latest:
-        name: Gemini Flash Latest via OpenRouter
-        api_id: google/gemini-flash-latest
+      gemini-3.5-flash:
+        name: Gemini 3.5 Flash via OpenRouter
+        api_id: google/gemini-3.5-flash
         recommended: true
         capabilities: [chat, tools, vision, files, json, browser]
         context_window: 1000000
@@ -592,32 +525,33 @@ profiles:
   cheap:
     description: Low-cost summaries, titles, and quick checks.
     recommended:
-      - openai/gpt-5.5-mini
-      - openai/o4-mini
+      - openai/gpt-5.4-mini
+      - openai/gpt-5.4-nano
       - anthropic/claude-haiku-4-5
-      - gemini/gemini-flash-latest
+      - gemini/gemini-3.5-flash
       - mistral/mistral-small-latest
   local:
     description: No hosted provider call.
     recommended:
       - ollama/qwen3-coder:30b
-      - ollama/qwen3-coder-next:80b
-      - ollama/devstral-small-2:24b
-      - ollama/llama4:8b
+      - ollama/qwen3-coder-next:latest
+      - ollama/qwen3.6:35b
+      - ollama/gemma4:26b
+      - ollama/devstral:24b
       - ollama/qwen3:8b
       - local-vllm/local-model
   research:
     description: Browser, scraping, long context, and extraction tasks.
     recommended:
-      - gemini/gemini-flash-latest
-      - gemini/gemini-pro-latest
+      - gemini/gemini-3.5-flash
+      - gemini/gemini-3.1-pro-preview
       - openai/gpt-5.4-mini
       - anthropic/claude-sonnet-4-6
   reasoning:
     description: Hard problems that benefit from explicit long-chain thinking.
     recommended:
       - openai/o3
-      - openai/o4-mini
+      - openai/gpt-5.5-pro
       - anthropic/claude-opus-4-7
       - mistral/magistral-medium-latest
       - groq/gpt-oss-120b
