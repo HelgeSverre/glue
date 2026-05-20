@@ -8,6 +8,7 @@ import 'package:cli_completion/installer.dart';
 import 'package:cli_completion/parser.dart';
 import 'package:glue/glue.dart';
 import 'package:glue/src/acp/cli_acp_delegate.dart';
+import 'package:glue/src/commands/catalog_command.dart';
 import 'package:glue/src/commands/mcp_command.dart';
 import 'package:glue/src/commands/session_command.dart';
 import 'package:glue_runtimes/daytona.dart';
@@ -107,6 +108,7 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
           negatable: false,
           help: 'Enable debug mode (verbose logging).');
     addCommand(CompletionsCommand());
+    addCommand(CatalogCommand());
     addCommand(ConfigCommand());
     addCommand(DoctorCommand());
     addCommand(McpCommand());
@@ -964,8 +966,7 @@ class SessionListCommand extends Command<int> {
   String get name => 'list';
 
   @override
-  String get description =>
-      'List sessions with runtime + patch availability.';
+  String get description => 'List sessions with runtime + patch availability.';
 
   @override
   Future<int> run() async {
@@ -976,9 +977,8 @@ class SessionListCommand extends Command<int> {
       return 0;
     }
     for (final s in sessions) {
-      final patch = s.patchPath == null
-          ? '-'
-          : '${s.patchSizeBytes ?? 0} bytes';
+      final patch =
+          s.patchPath == null ? '-' : '${s.patchSizeBytes ?? 0} bytes';
       final runtime = s.meta.runtimeId ?? 'host';
       final title = s.meta.title ?? '(untitled)';
       stdout.writeln(
@@ -1084,8 +1084,7 @@ class SessionApplyCommand extends Command<int> {
       ..addFlag(
         'in-place',
         negatable: false,
-        help:
-            'Apply directly to current HEAD instead of creating a branch '
+        help: 'Apply directly to current HEAD instead of creating a branch '
             '(overrides Q6 default).',
       );
   }
