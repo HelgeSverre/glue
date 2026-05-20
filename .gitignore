@@ -59,5 +59,7 @@ node_modules/
 # Browser probe (generated outputs)
 browser/probe/browser/
 settings.local.json
-# CocoIndex Code (ccc)
-/.cocoindex_code/
+mlflow.db
+
+mlflow.db
+mlflow.db

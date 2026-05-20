@@ -28,6 +28,10 @@ class OtlpHttpTraceSink extends ObservabilitySink {
   Future<void>? _pendingFlush;
   bool _closed = false;
 
+  /// Stable ID for this process invocation. Lets llmflow (or any OTLP
+  /// consumer) group all traces emitted during a single `glue` run.
+  late final String _sessionId = _generateSessionId();
+
   @override
   void onSpan(ObservabilitySpan span) {
     if (_closed || !_config.isConfigured) return;
@@ -76,6 +80,13 @@ class OtlpHttpTraceSink extends ObservabilitySink {
     if (_ownsClient) _client.close();
   }
 
+  static String _generateSessionId() {
+    final ts = DateTime.now().millisecondsSinceEpoch.toRadixString(36);
+    final rand =
+        (DateTime.now().microsecondsSinceEpoch & 0xFFFFFF).toRadixString(36);
+    return 'glue-$ts-$rand';
+  }
+
   Map<String, dynamic> _toOtlpPayload(List<ObservabilitySpan> spans) {
     return {
       'resourceSpans': [
@@ -86,6 +97,7 @@ class OtlpHttpTraceSink extends ObservabilitySink {
               _kv('service.version', AppConstants.version),
               _kv('telemetry.sdk.language', 'dart'),
               _kv('telemetry.sdk.name', 'glue'),
+              _kv('session.id', _sessionId),
               for (final entry in _config.resourceAttributes.entries)
                 _kv(entry.key, entry.value),
             ],
