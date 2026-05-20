@@ -6,6 +6,43 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Added
 
+- **`glue mcp add | remove | enable | disable`** — manage MCP server
+  entries from the shell instead of hand-editing `~/.glue/config.yaml`.
+  `add` takes `--transport stdio|http|ws`, accepts stdio commands after
+  a `--` separator (`glue mcp add foo --transport stdio -- node srv.js`),
+  HTTP/WS servers via `--url`, env vars via `-e KEY=value`, and a
+  `--disabled` flag to park a server until you run
+  `glue mcp enable <id>`. `remove` clears stored bearer/OAuth
+  credentials by default (opt out with `--keep-credentials`).
+  Mutations go through the new
+  `McpConfigWriter` so comments, key order, and formatting in
+  `config.yaml` are preserved. Verb set mirrors Gemini CLI and Copilot
+  CLI; transport grammar mirrors Claude Code / Amp.
+- **`glue catalog open` and `glue catalog edit`** — `open` launches the
+  configured `catalog.remote_url` (or the canonical GitHub raw URL) in
+  the default browser via `open`/`xdg-open`/`rundll32`; `--print`
+  emits the URL only for piping. `edit` opens
+  `~/.glue/cache/models.yaml` (or `$GLUE_CATALOG_CACHE`) in `$EDITOR`
+  with inherited stdio, warns and hints at `glue catalog refresh`
+  when the cache is missing, and errors out when `$EDITOR` is unset.
+  Both reuse the brand-dot header and `✓ · ! ✗` severity markers from
+  `refresh`/`show`/`path` so the catalog surface stays visually
+  consistent.
+
+### Fixed
+
+- **`glue catalog refresh` now writes YAML, not single-line JSON.** The
+  remote-catalog sanitizer used to round-trip the upstream document
+  through `jsonEncode` after stripping credential-leak vectors —
+  technically valid YAML, but unreadable in `glue catalog edit`. It now
+  uses `YamlEditor` to surgically remove disallowed provider fields and
+  clamp `auth.api_key: none` in place, preserving the upstream's block
+  structure and comments.
+- **`glue mcp tools <server>` no longer hangs for ~10 s when the server
+  is disabled.** The transient pool skips disabled servers during
+  `connectAll`, so the command was waiting for the connect/error event
+  that never came. It now short-circuits with a clear warning
+  pointing at `glue mcp enable <id>`.
 - **In-app transcript selection and copy** — drag-select text in the
   output zone, release to copy to the clipboard. Selection is anchored
   to `(blockId, plain-text offset)` so it survives streaming chunks and
