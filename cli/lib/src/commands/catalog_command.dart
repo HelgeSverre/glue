@@ -3,7 +3,8 @@
 /// `refresh` fetches the canonical model catalog into the user's cache so
 /// `~/.glue/cache/models.yaml` overlays the bundled snapshot on next start.
 /// `show` prints the active merged catalog. `path` reports where each layer
-/// is resolved from.
+/// is resolved from. `open` opens the canonical URL in a browser. `edit`
+/// opens the cached `models.yaml` in `$EDITOR`.
 ///
 /// The `/model` slash command remains the interactive surface inside a
 /// running session; this CLI surface is for scripted setup and diagnostics.
@@ -14,22 +15,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:glue/src/terminal/brand.dart';
 import 'package:glue/src/terminal/styled.dart';
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_harness/glue_harness.dart';
 
 const _jsonEncoder = JsonEncoder.withIndent('  ');
-
-/// Brand dot used in headers across the Glue CLI surface (doctor, catalog).
-/// Kept in sync with `renderDoctorReport` in `src/doctor/doctor.dart`.
-String get _brandDot => '●'.styled.rgb(250, 204, 21).toString();
-
-/// Doctor-style severity markers, reused so `catalog` reads as a sibling of
-/// `doctor`. See `_marker` in `src/doctor/doctor.dart`.
-String get _markerOk => '✓'.styled.green.toString();
-String get _markerInfo => '·'.styled.gray.toString();
-String get _markerWarn => '!'.styled.yellow.toString();
-String get _markerError => '✗'.styled.red.toString();
 
 /// Default sources tried by `glue catalog refresh` when the user has not set
 /// `catalog.remote_url`. Points at the canonical copy in the GitHub repo;
@@ -99,6 +90,8 @@ class CatalogCommand extends Command<int> {
     addSubcommand(CatalogRefreshCommand());
     addSubcommand(CatalogShowCommand());
     addSubcommand(CatalogPathCommand());
+    addSubcommand(CatalogOpenCommand());
+    addSubcommand(CatalogEditCommand());
   }
 
   @override
@@ -150,10 +143,11 @@ class CatalogRefreshCommand extends Command<int> {
       for (final raw in defaultCatalogUrls) Uri.parse(raw),
     ];
 
-    final cachePath = Platform.environment['GLUE_CATALOG_CACHE'] ??
-        '${env.cacheDir}/models.yaml';
+    final cachePath = env.catalogCachePath;
 
-    if (!asJson) stdout.writeln('$_brandDot ${'Refreshing catalog'.styled.bold}');
+    if (!asJson) {
+      stdout.writeln('$brandDot ${'Refreshing catalog'.styled.bold}');
+    }
 
     final outcome = await refreshCatalog(
       candidates: candidates,
@@ -162,7 +156,7 @@ class CatalogRefreshCommand extends Command<int> {
       onAttempt: asJson
           ? null
           : (uri) =>
-              stdout.writeln('  $_markerInfo ${uri.toString().styled.gray}'),
+              stdout.writeln('  $markerInfo ${uri.toString().styled.gray}'),
     );
 
     if (asJson) {
@@ -173,20 +167,20 @@ class CatalogRefreshCommand extends Command<int> {
     switch (outcome) {
       case RefreshWrote(:final bytes):
         stdout.writeln(
-          '  $_markerOk ${'wrote'.styled.green} $cachePath  '
+          '  $markerOk ${'wrote'.styled.green} $cachePath  '
           '${'($bytes bytes)'.styled.gray}',
         );
         return 0;
       case RefreshNotModified():
         stdout.writeln(
-          '  $_markerOk ${'up to date'.styled.green} '
+          '  $markerOk ${'up to date'.styled.green} '
           '${'(304 Not Modified)'.styled.gray}',
         );
         return 0;
       case RefreshAllFailed(:final failures):
         for (final f in failures) {
           stderr.writeln(
-            '  $_markerError ${f.uri.host.styled.red}  '
+            '  $markerError ${f.uri.host.styled.red}  '
             '${f.reason.styled.gray}',
           );
         }
@@ -250,7 +244,7 @@ class CatalogShowCommand extends Command<int> {
     }
 
     final defaults = catalog.defaults;
-    stdout.writeln('$_brandDot ${'Glue Catalog'.styled.bold}');
+    stdout.writeln('$brandDot ${'Glue Catalog'.styled.bold}');
     stdout.writeln(
       '  ${'version ${catalog.version}  ·  updated ${catalog.updatedAt}'.styled.gray}',
     );
@@ -284,15 +278,14 @@ class CatalogShowCommand extends Command<int> {
           .fold<int>(0, (a, b) => a > b ? a : b);
       for (final model in models) {
         final flags = <String>[
-          if (model.isDefault) '$_markerOk ${'default'.styled.green}',
-          if (model.recommended) '$_markerInfo recommended',
-          if (!model.enabled) '$_markerWarn ${'disabled'.styled.yellow}',
+          if (model.isDefault) '$markerOk ${'default'.styled.green}',
+          if (model.recommended) '$markerInfo recommended',
+          if (!model.enabled) '$markerWarn ${'disabled'.styled.yellow}',
         ];
         // Only pad name when followed by flags — avoids trailing whitespace
         // on the last column for flag-less rows.
-        final paddedName = flags.isEmpty
-            ? model.name
-            : model.name.padRight(nameWidth);
+        final paddedName =
+            flags.isEmpty ? model.name : model.name.padRight(nameWidth);
         final suffix = flags.isEmpty ? '' : '  ${flags.join('  ')}';
         stdout.writeln(
           '  ${model.id.padRight(idWidth)}  ${paddedName.styled.gray}$suffix',
@@ -354,8 +347,7 @@ class CatalogPathCommand extends Command<int> {
   @override
   Future<int> run() async {
     final env = Environment.detect();
-    final cachePath = Platform.environment['GLUE_CATALOG_CACHE'] ??
-        '${env.cacheDir}/models.yaml';
+    final cachePath = env.catalogCachePath;
     final overridePath = env.modelsYamlPath;
     final cachePresent = File(cachePath).existsSync();
     final overridePresent = File(overridePath).existsSync();
@@ -371,10 +363,10 @@ class CatalogPathCommand extends Command<int> {
     }
 
     String status(bool present) => present
-        ? '$_markerOk ${'present'.styled.green}'
-        : '$_markerWarn ${'missing'.styled.yellow}';
+        ? '$markerOk ${'present'.styled.green}'
+        : '$markerWarn ${'missing'.styled.yellow}';
 
-    stdout.writeln('$_brandDot ${'Catalog paths'.styled.bold}');
+    stdout.writeln('$brandDot ${'Catalog paths'.styled.bold}');
     stdout.writeln();
     stdout.writeln(
       '  ${'bundled       '.styled.bold} ${'compiled into binary'.styled.gray}',
@@ -391,6 +383,136 @@ class CatalogPathCommand extends Command<int> {
     );
     return 0;
   }
+}
+
+class CatalogOpenCommand extends Command<int> {
+  CatalogOpenCommand() {
+    argParser.addFlag(
+      'print',
+      negatable: false,
+      help: 'Print the URL instead of launching a browser. Useful for '
+          'piping into other tools or running in headless shells.',
+    );
+  }
+
+  @override
+  String get name => 'open';
+
+  @override
+  String get description =>
+      'Open the canonical models.yaml URL in your default browser.';
+
+  @override
+  String get invocation => 'glue catalog open [--print]';
+
+  @override
+  Future<int> run() async {
+    final config = _safeLoadConfig();
+    if (config == null) return 1;
+
+    final url =
+        config.catalog.remoteUrl?.toString() ?? defaultCatalogUrls.first;
+    final printOnly = argResults!.flag('print');
+
+    if (printOnly) {
+      stdout.writeln(url);
+      return 0;
+    }
+
+    stdout.writeln('$brandDot ${'Opening catalog'.styled.bold}');
+    stdout.writeln('  $markerInfo ${url.styled.gray}');
+
+    final launched = await _openBrowser(url);
+    if (!launched) {
+      stderr.writeln(
+        '  $markerWarn ${'no browser launcher available on this platform'.styled.yellow}',
+      );
+      stderr.writeln(
+          '  ${'Copy the URL above to open it manually.'.styled.gray}');
+      return 1;
+    }
+    return 0;
+  }
+}
+
+class CatalogEditCommand extends Command<int> {
+  @override
+  String get name => 'edit';
+
+  @override
+  String get description => r'Open the cached models.yaml in $EDITOR.';
+
+  @override
+  String get invocation => 'glue catalog edit';
+
+  @override
+  Future<int> run() async {
+    final env = Environment.detect();
+    final cachePath = env.catalogCachePath;
+
+    if (!File(cachePath).existsSync()) {
+      stderr.writeln('$brandDot ${'Edit catalog'.styled.bold}');
+      stderr.writeln(
+        '  $markerWarn ${'no cached catalog at'.styled.yellow} '
+        '${cachePath.styled.gray}',
+      );
+      stderr.writeln();
+      stderr.writeln(
+        '  ${'Run'.styled.gray} ${'glue catalog refresh'.styled.bold} '
+        '${'to download the latest catalog.'.styled.gray}',
+      );
+      return 1;
+    }
+
+    final editor = Platform.environment['EDITOR']?.trim();
+    if (editor == null || editor.isEmpty) {
+      stderr.writeln('$brandDot ${'Edit catalog'.styled.bold}');
+      stderr.writeln(
+        '  $markerError ${r'$EDITOR is not set'.styled.red}',
+      );
+      stderr.writeln(
+        '  ${r'Set $EDITOR to your preferred editor (e.g. vim, nano, code).'.styled.gray}',
+      );
+      return 1;
+    }
+
+    stdout.writeln('$brandDot ${'Editing catalog'.styled.bold}');
+    stdout.writeln(
+      '  $markerInfo ${editor.styled.gray} ${cachePath.styled.gray}',
+    );
+
+    final result = await Process.start(
+      editor,
+      [cachePath],
+      mode: ProcessStartMode.inheritStdio,
+      runInShell: true,
+    );
+    return result.exitCode;
+  }
+}
+
+Future<bool> _openBrowser(String url) async {
+  try {
+    if (Platform.isMacOS) {
+      await Process.start('open', [url], mode: ProcessStartMode.detached);
+      return true;
+    }
+    if (Platform.isLinux) {
+      await Process.start('xdg-open', [url], mode: ProcessStartMode.detached);
+      return true;
+    }
+    if (Platform.isWindows) {
+      await Process.start(
+        'rundll32',
+        ['url.dll,FileProtocolHandler', url],
+        mode: ProcessStartMode.detached,
+      );
+      return true;
+    }
+  } catch (_) {
+    return false;
+  }
+  return false;
 }
 
 GlueConfig? _safeLoadConfig() {

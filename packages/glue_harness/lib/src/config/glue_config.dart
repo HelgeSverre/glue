@@ -287,11 +287,13 @@ class GlueConfig {
         loadCatalog(
           bundled: bundledCatalog,
           cachedRemote: _loadOptionalYaml(
-            env['GLUE_CATALOG_CACHE'] ??
-                '${environment?.cacheDir ?? p.join(home, '.glue/cache')}/models.yaml',
+            environment?.catalogCachePath ??
+                env['GLUE_CATALOG_CACHE'] ??
+                p.join(home, '.glue/cache/models.yaml'),
           ),
           localOverrides: _loadOptionalYaml(
-            '${environment?.glueDir ?? p.join(home, '.glue')}/models.yaml',
+            environment?.modelsYamlPath ??
+                p.join(home, '.glue/models.yaml'),
           ),
         );
 

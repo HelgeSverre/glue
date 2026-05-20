@@ -53,6 +53,22 @@ Then switch with the `@` prefix:
 
 Drop a `models.yaml` into `~/.glue/` with your provider/model entry — it merges on top of the bundled catalog. Or, for any OpenAI-compatible endpoint, define a provider with `adapter: openai` and a custom `base_url`. See [Troubleshooting → "The model I want isn't in the catalog"](/docs/advanced/troubleshooting).
 
+## Catalog CLI
+
+The catalog is layered: **bundled snapshot** (compiled into the binary) → **remote refresh** (cached at `~/.glue/cache/models.yaml`) → **local overlay** (`~/.glue/models.yaml`). Use `glue catalog` to inspect and refresh those layers without starting a session:
+
+```sh
+glue catalog refresh          # fetch the canonical models.yaml into the cache
+glue catalog show             # print the active merged catalog (yaml)
+glue catalog show --json      # same, as JSON
+glue catalog path             # report where each layer is resolved from
+glue catalog open             # open the canonical URL in your browser
+glue catalog open --print     # print the URL instead of launching a browser
+glue catalog edit             # open the cached models.yaml in $EDITOR
+```
+
+`refresh` writes YAML (not a one-line JSON dump) and preserves comments and key order from the upstream document, so the cached file stays readable in `glue catalog edit`. The canonical URL is `catalog.remote_url` in `~/.glue/config.yaml` if set, otherwise the bundled default. `GLUE_CATALOG_CACHE` overrides the cache path used by `edit`.
+
 ## See also
 
 - [Configuration](/docs/getting-started/configuration) — credentials and config keys

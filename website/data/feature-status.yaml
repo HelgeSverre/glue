@@ -35,7 +35,7 @@ features:
   model-catalog-curated: { status: shipping, name: "Curated model catalog" }
   provider-adapter: { status: planned, name: "Provider adapter contract" }
   model-catalog-remote:
-    { status: planned, name: "Remote model catalog refresh" }
+    { status: shipping, name: "Remote model catalog refresh" }
 
   # Sessions
   sessions-jsonl: { status: shipping, name: "JSONL session logs" }

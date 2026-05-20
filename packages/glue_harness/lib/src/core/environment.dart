@@ -71,6 +71,16 @@ class Environment {
   String get skillsDir => p.join(glueDir, 'skills');
   String get cacheDir => p.join(glueDir, 'cache');
 
+  /// Path the refreshed remote catalog is written to and loaded from. Honours
+  /// `$GLUE_CATALOG_CACHE` so tests and power users can redirect it without
+  /// touching `$GLUE_HOME`. Used by `glue catalog refresh|path|edit`, the
+  /// doctor's catalog cache check, and the config loader's layered merge.
+  String get catalogCachePath {
+    final override = vars['GLUE_CATALOG_CACHE'];
+    if (override != null && override.isNotEmpty) return override;
+    return p.join(cacheDir, 'models.yaml');
+  }
+
   String sessionDir(SessionId sessionId) =>
       p.join(sessionsDir, sessionId.value);
 

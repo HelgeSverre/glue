@@ -7,6 +7,7 @@ import 'package:yaml/yaml.dart';
 import 'package:glue_harness/glue_harness.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 import 'package:glue/src/commands/config_command.dart';
+import 'package:glue/src/terminal/brand.dart';
 import 'package:glue/src/terminal/styled.dart';
 
 enum DoctorSeverity {
@@ -100,11 +101,7 @@ DoctorReport runDoctor(Environment environment) {
   _checkJsonObject(findings, 'Preferences', environment.configPath);
   _checkCredentialsJson(findings, environment.credentialsPath);
   _checkCatalog(findings, 'Catalog', environment.modelsYamlPath);
-  _checkCatalog(
-    findings,
-    'Catalog cache',
-    p.join(environment.cacheDir, 'models.yaml'),
-  );
+  _checkCatalog(findings, 'Catalog cache', environment.catalogCachePath);
   _checkConfigValidation(findings, environment);
   _checkObservability(findings, environment);
   _checkRuntime(findings, environment);
@@ -116,18 +113,16 @@ DoctorReport runDoctor(Environment environment) {
 
 String _marker(DoctorSeverity severity) {
   return switch (severity) {
-    DoctorSeverity.ok => '✓'.styled.green.toString(),
-    DoctorSeverity.info => '·'.styled.gray.toString(),
-    DoctorSeverity.warning => '!'.styled.yellow.toString(),
-    DoctorSeverity.error => '✗'.styled.red.toString(),
+    DoctorSeverity.ok => markerOk,
+    DoctorSeverity.info => markerInfo,
+    DoctorSeverity.warning => markerWarn,
+    DoctorSeverity.error => markerError,
   };
 }
 
 String renderDoctorReport(DoctorReport report, {bool verbose = false}) {
   final buf = StringBuffer();
-  buf.writeln(
-    '${'●'.styled.rgb(250, 204, 21)} ${'Glue Doctor'.styled.bold}',
-  );
+  buf.writeln('$brandDot ${'Glue Doctor'.styled.bold}');
   buf.writeln();
 
   final visible = verbose
@@ -517,9 +512,8 @@ void _checkRuntime(
             ? 'DAYTONA_API_KEY: present'
             : 'DAYTONA_API_KEY missing — set the env var or daytona.api_key in config',
       ));
-      final snapshot =
-          (config.runtimeOptions['snapshot'] as String?) ??
-              environment.vars['DAYTONA_SNAPSHOT'];
+      final snapshot = (config.runtimeOptions['snapshot'] as String?) ??
+          environment.vars['DAYTONA_SNAPSHOT'];
       findings.add(DoctorFinding(
         severity: DoctorSeverity.info,
         section: section,
@@ -618,9 +612,8 @@ void _checkRuntime(
             ? '`$cliPath` CLI installed and authenticated'
             : '`$cliPath` CLI: $failureReason',
       ));
-      final spriteName =
-          (config.runtimeOptions['sprite_name'] as String?) ??
-              environment.vars['SPRITES_NAME'];
+      final spriteName = (config.runtimeOptions['sprite_name'] as String?) ??
+          environment.vars['SPRITES_NAME'];
       findings.add(DoctorFinding(
         severity: DoctorSeverity.info,
         section: section,

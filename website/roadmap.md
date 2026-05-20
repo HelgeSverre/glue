@@ -57,9 +57,11 @@ Directions we want to head once the foundations land.
 - **Replay UI.** A dedicated surface that reads `conversation.jsonl`
   and renders it step-by-step with diffs, tool-call collapse, and
   time scrubbing. <FeatureStatus status="planned" />
-- **Provider marketplace / catalog refresh.** Optional remote catalog
-  fetch, user-submitted providers, bundled-vs-remote merge semantics.
-  <FeatureStatus status="planned" />
+- **Provider marketplace.** User-submitted providers + a curated remote
+  catalog. The remote-fetch and bundled-vs-remote merge half already
+  ships as `glue catalog refresh` (overlay at
+  `~/.glue/cache/models.yaml`); what's still planned is the submission
+  and curation pipeline. <FeatureStatus status="planned" />
 
 ## Removed
 
