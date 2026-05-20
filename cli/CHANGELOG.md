@@ -41,10 +41,10 @@ All notable changes to Glue CLI will be documented in this file.
   the panel and the slash subcommands stay interchangeable. Tools and
   error views render as scrollable read-only modals.
 - **Tab completion for `/mcp` subcommands and server IDs** —
-  `/mcp <TAB>` enumerates subcommands, `/mcp reconnect|toggle|tools
-  <TAB>` enumerates configured server IDs (case-insensitive prefix),
-  and `/mcp auth login|logout <TAB>` filters down to HTTP/WebSocket
-  servers (stdio can't OAuth). Adds `mcpSubcommandCandidates`,
+  `/mcp <TAB>` enumerates subcommands,
+  `/mcp reconnect|toggle|tools <TAB>` enumerates configured server IDs
+  (case-insensitive prefix), and `/mcp auth login|logout <TAB>` filters
+  down to HTTP/WebSocket servers (stdio can't OAuth). Adds `mcpSubcommandCandidates`,
   `mcpAuthSubcommandCandidates`, and `mcpServerIdCandidates` to
   `arg_completers.dart`, wired through the standard
   `SlashArgCompleter` override on `McpSlashCommand`.
@@ -57,8 +57,8 @@ All notable changes to Glue CLI will be documented in this file.
   the server land in `McpDead`. `McpPoolServerDisconnectedEvent` now
   carries the populated `reconnectAttempt` + `nextAttemptIn` fields
   it always had room for, so the status bar and panel can render
-  the retry countdown. Manual `/mcp reconnect <id>` and `/mcp toggle
-  <id>` cancel any pending retry timer and reset the attempt counter
+  the retry countdown. Manual `/mcp reconnect <id>` and
+  `/mcp toggle <id>` cancel any pending retry timer and reset the attempt counter
   — pool tests cover both paths. Closes the docs-vs-reality gap
   flagged in [#26](https://github.com/HelgeSverre/glue/issues/26).
 - **Editor Integration (ACP) docs + branded `glue serve` output** — new
