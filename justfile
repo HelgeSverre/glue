@@ -21,6 +21,9 @@ clean: glue_core::clean glue_strategies::clean glue_harness::clean glue_server::
 # Monorepo quality gate
 check: glue_core::check glue_strategies::check glue_harness::check glue_server::check glue_runtimes::check cli::check website::check
 
+# Monorepo format pass
+format: glue_core::format glue_strategies::format glue_harness::format glue_server::format glue_runtimes::format cli::format
+
 # Run the live Daytona integration suite (requires DAYTONA_API_KEY).
 daytona: glue_runtimes::daytona
 
