@@ -9,6 +9,7 @@ library;
 import 'dart:async';
 import 'dart:io';
 
+import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:glue_harness/glue_harness.dart';
 import 'package:glue_strategies/glue_strategies.dart';
@@ -27,6 +28,10 @@ abstract final class McpCredentialKeys {
 
 class McpCommand extends Command<int> {
   McpCommand() {
+    addSubcommand(McpAddCommand());
+    addSubcommand(McpRemoveCommand());
+    addSubcommand(McpEnableCommand());
+    addSubcommand(McpDisableCommand());
     addSubcommand(McpListCommand());
     addSubcommand(McpToolsCommand());
     addSubcommand(McpAuthCommand());
@@ -37,6 +42,355 @@ class McpCommand extends Command<int> {
 
   @override
   String get description => 'Manage Model Context Protocol (MCP) servers.';
+}
+
+// ─── add / remove / enable / disable ───────────────────────────────────────
+
+/// Server-id grammar: lowercase alphanumeric + `_` / `-`, starting with an
+/// alphanumeric. Same shape we use to namespace tools (`<id>.<tool>`) and
+/// credentials (`mcp:<id>`).
+final _serverIdPattern = RegExp(r'^[a-z0-9][a-z0-9_-]*$');
+
+class McpAddCommand extends Command<int> {
+  McpAddCommand() {
+    argParser
+      ..addOption(
+        'transport',
+        abbr: 't',
+        allowed: ['stdio', 'http', 'ws'],
+        help: 'Wire protocol. Required.',
+      )
+      ..addOption('url', help: 'URL for http/ws transports.')
+      ..addOption(
+        'auth',
+        allowed: ['none', 'bearer', 'oauth'],
+        defaultsTo: 'none',
+        help: 'Auth kind for http/ws. Use `glue mcp auth …` to store the '
+            'token/run OAuth.',
+      )
+      ..addMultiOption(
+        'env',
+        abbr: 'e',
+        help: 'Environment variable to pass to a stdio subprocess '
+            '(KEY=value, repeatable).',
+      )
+      ..addOption('cwd', help: 'Working directory for a stdio subprocess.')
+      ..addOption(
+        'timeout',
+        help: 'Per-call timeout in seconds. Overrides mcp.call_timeout_seconds.',
+      )
+      ..addFlag(
+        'disabled',
+        negatable: false,
+        help: 'Start parked. Use `glue mcp enable <id>` to turn on.',
+      )
+      ..addFlag(
+        'force',
+        negatable: false,
+        help: 'Overwrite an existing server entry with the same id.',
+      );
+  }
+
+  @override
+  String get name => 'add';
+
+  @override
+  String get description =>
+      'Add a new MCP server entry to ~/.glue/config.yaml.';
+
+  @override
+  String get invocation =>
+      'glue mcp add <id> --transport stdio|http|ws [options] [-- <cmd> <args>...]';
+
+  @override
+  Future<int> run() async {
+    final results = argResults!;
+    if (results.rest.isEmpty) {
+      stderr.writeln('Usage: $invocation');
+      return 1;
+    }
+    final id = results.rest.first;
+    final commandRest = results.rest.skip(1).toList();
+
+    if (!_serverIdPattern.hasMatch(id)) {
+      stderr.writeln(
+        'Invalid id "$id". Use lowercase letters, digits, "_" and "-" '
+        '(must start with a letter or digit).',
+      );
+      return 1;
+    }
+
+    final transport = results.option('transport');
+    if (transport == null) {
+      stderr.writeln('--transport is required (stdio | http | ws).');
+      return 1;
+    }
+
+    final env = Environment.detect();
+    final spec = _buildSpec(id, transport, commandRest, results);
+    if (spec == null) return 1; // _buildSpec already printed the reason
+
+    final writer = McpConfigWriter(userConfigPath(env));
+    try {
+      writer.addServer(spec, overwrite: results.flag('force'));
+    } on McpConfigWriteError catch (e) {
+      stderr.writeln(e.message);
+      return 1;
+    }
+
+    final shape = switch (spec) {
+      McpStdioServerSpec() => 'stdio',
+      McpHttpServerSpec() => 'http',
+      McpWebSocketServerSpec() => 'websocket',
+    };
+    stdout.writeln('Added $shape server "$id".');
+    if (!spec.enabled) {
+      stdout.writeln('(disabled — enable with "glue mcp enable $id")');
+    } else {
+      stdout.writeln('Run "glue" to load it.');
+    }
+    if (spec is McpHttpServerSpec && spec.auth is McpBearerAuth) {
+      stdout.writeln(
+        'Auth set to bearer. Store the token with '
+        '"glue mcp auth set $id --bearer".',
+      );
+    } else if (spec is McpHttpServerSpec && spec.auth is McpOAuthAuth) {
+      stdout.writeln(
+        'Auth set to OAuth. Sign in with "glue mcp auth login $id".',
+      );
+    }
+    return 0;
+  }
+
+  McpServerSpec? _buildSpec(
+    String id,
+    String transport,
+    List<String> commandRest,
+    ArgResults results,
+  ) {
+    final enabled = !results.flag('disabled');
+    final timeout = _parseTimeout(results.option('timeout'));
+    if (timeout == _timeoutError) return null;
+
+    switch (transport) {
+      case 'stdio':
+        if (results.option('url') != null) {
+          stderr.writeln('--url is only valid for --transport http|ws.');
+          return null;
+        }
+        if (commandRest.isEmpty) {
+          stderr.writeln(
+            'stdio transport needs a command after `--`. Example:\n'
+            '  glue mcp add foo --transport stdio -- node server.js',
+          );
+          return null;
+        }
+        final envMap = <String, String>{};
+        for (final raw in results.multiOption('env')) {
+          final eq = raw.indexOf('=');
+          if (eq <= 0) {
+            stderr.writeln(
+              "Invalid --env '$raw'. Use KEY=value (KEY non-empty).",
+            );
+            return null;
+          }
+          envMap[raw.substring(0, eq)] = raw.substring(eq + 1);
+        }
+        return McpStdioServerSpec(
+          id: id,
+          command: commandRest.first,
+          args: commandRest.skip(1).toList(),
+          env: envMap,
+          workingDirectory: results.option('cwd'),
+          enabled: enabled,
+          callTimeoutSeconds: timeout,
+        );
+      case 'http':
+      case 'ws':
+        final urlOption = results.option('url');
+        if (urlOption == null) {
+          stderr.writeln('--url is required for --transport $transport.');
+          return null;
+        }
+        if (commandRest.isNotEmpty) {
+          stderr.writeln(
+            '$transport transport does not take a positional command. '
+            'Drop the `--` separator.',
+          );
+          return null;
+        }
+        if (results.multiOption('env').isNotEmpty ||
+            results.option('cwd') != null) {
+          stderr.writeln(
+            '--env and --cwd are only valid for --transport stdio.',
+          );
+          return null;
+        }
+        final url = Uri.tryParse(urlOption);
+        if (url == null) {
+          stderr.writeln("--url '$urlOption' is not a valid URI.");
+          return null;
+        }
+        final isWs = transport == 'ws';
+        final schemeOk = isWs
+            ? (url.scheme == 'ws' || url.scheme == 'wss')
+            : (url.scheme == 'http' || url.scheme == 'https');
+        if (!schemeOk) {
+          stderr.writeln(
+            "--url scheme '${url.scheme}' does not match --transport $transport.",
+          );
+          return null;
+        }
+        final auth = switch (results.option('auth')) {
+          'bearer' => const McpBearerAuth(),
+          'oauth' => const McpOAuthAuth(),
+          _ => const McpNoAuth(),
+        };
+        if (isWs) {
+          return McpWebSocketServerSpec(
+            id: id,
+            url: url,
+            auth: auth,
+            enabled: enabled,
+            callTimeoutSeconds: timeout,
+          );
+        }
+        return McpHttpServerSpec(
+          id: id,
+          url: url,
+          auth: auth,
+          enabled: enabled,
+          callTimeoutSeconds: timeout,
+        );
+    }
+    return null;
+  }
+
+  static const int _timeoutError = -999;
+  int? _parseTimeout(String? raw) {
+    if (raw == null) return null;
+    final value = int.tryParse(raw);
+    if (value == null || value <= 0) {
+      stderr.writeln("--timeout must be a positive integer (got '$raw').");
+      return _timeoutError;
+    }
+    return value;
+  }
+}
+
+class McpRemoveCommand extends Command<int> {
+  McpRemoveCommand() {
+    argParser.addFlag(
+      'keep-credentials',
+      negatable: false,
+      help: 'Leave stored credentials in place. Default: clear them.',
+    );
+  }
+
+  @override
+  String get name => 'remove';
+
+  @override
+  String get description => 'Remove an MCP server entry from config.';
+
+  @override
+  String get invocation => 'glue mcp remove <id> [--keep-credentials]';
+
+  @override
+  Future<int> run() async {
+    final results = argResults!;
+    if (results.rest.length != 1) {
+      stderr.writeln('Usage: $invocation');
+      return 1;
+    }
+    final id = results.rest.single;
+    final env = Environment.detect();
+    final writer = McpConfigWriter(userConfigPath(env));
+
+    try {
+      writer.removeServer(id);
+    } on McpConfigWriteError catch (e) {
+      stderr.writeln(e.message);
+      return 1;
+    }
+    stdout.writeln("Removed server '$id'.");
+
+    if (!results.flag('keep-credentials')) {
+      final credentials = CredentialStore(
+        path: env.credentialsPath,
+        env: Platform.environment,
+      );
+      _clearMcpCredentials(id, credentials);
+      stdout.writeln('Credentials cleared.');
+    }
+    return 0;
+  }
+}
+
+class McpEnableCommand extends Command<int> {
+  @override
+  String get name => 'enable';
+
+  @override
+  String get description => 'Enable a configured MCP server.';
+
+  @override
+  String get invocation => 'glue mcp enable <id>';
+
+  @override
+  Future<int> run() async => _setEnabled(argResults!, enabled: true);
+}
+
+class McpDisableCommand extends Command<int> {
+  @override
+  String get name => 'disable';
+
+  @override
+  String get description =>
+      'Disable a configured MCP server without removing it.';
+
+  @override
+  String get invocation => 'glue mcp disable <id>';
+
+  @override
+  Future<int> run() async => _setEnabled(argResults!, enabled: false);
+}
+
+Future<int> _setEnabled(ArgResults results, {required bool enabled}) async {
+  if (results.rest.length != 1) {
+    stderr.writeln(
+      'Usage: glue mcp ${enabled ? 'enable' : 'disable'} <id>',
+    );
+    return 1;
+  }
+  final id = results.rest.single;
+  final env = Environment.detect();
+  final writer = McpConfigWriter(userConfigPath(env));
+  try {
+    writer.setEnabled(id, enabled);
+  } on McpConfigWriteError catch (e) {
+    stderr.writeln(e.message);
+    return 1;
+  }
+  stdout.writeln(
+    enabled
+        ? "Enabled '$id'. Will connect on next session start."
+        : "Disabled '$id'.",
+  );
+  return 0;
+}
+
+/// Forgets bearer + OAuth credentials for [serverId]. Shared between
+/// `mcp auth logout` and `mcp remove`.
+void _clearMcpCredentials(String serverId, CredentialStore credentials) {
+  clearMcpOAuthTokens(serverId: serverId, credentials: credentials);
+  final providerId = McpCredentialKeys.providerId(serverId);
+  final existing = credentials.getFields(providerId);
+  final cleaned = <String, String>{
+    for (final e in existing.entries)
+      if (e.key != McpCredentialKeys.bearer) e.key: e.value,
+  };
+  credentials.setFields(providerId, cleaned);
 }
 
 class McpToolsCommand extends Command<int> {
@@ -67,6 +421,13 @@ class McpToolsCommand extends Command<int> {
       stderr.writeln(
         'Server "$serverId" is not in your config. Known: '
         '${config.mcp.servers.map((s) => s.id).join(", ")}.',
+      );
+      return 1;
+    }
+    if (!spec.enabled) {
+      stderr.writeln(
+        'Server "$serverId" is disabled — enable it with '
+        '"glue mcp enable $serverId" before listing its tools.',
       );
       return 1;
     }
@@ -396,15 +757,7 @@ class McpAuthLogoutCommand extends Command<int> {
     final config = _safeLoadConfig();
     if (config == null) return 1;
 
-    // Forget both flavours: OAuth tokens and bearer token.
-    clearMcpOAuthTokens(serverId: serverId, credentials: config.credentials);
-    final providerId = McpCredentialKeys.providerId(serverId);
-    final existing = config.credentials.getFields(providerId);
-    final cleaned = <String, String>{
-      for (final e in existing.entries)
-        if (e.key != McpCredentialKeys.bearer) e.key: e.value,
-    };
-    config.credentials.setFields(providerId, cleaned);
+    _clearMcpCredentials(serverId, config.credentials);
     stdout.writeln('Forgot credentials for "$serverId".');
     return 0;
   }

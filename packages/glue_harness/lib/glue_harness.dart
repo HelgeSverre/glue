@@ -31,6 +31,7 @@ export 'package:glue_harness/src/config/build_info.dart';
 export 'package:glue_harness/src/config/config_template.dart';
 export 'package:glue_harness/src/config/glue_config.dart';
 export 'package:glue_harness/src/config/mcp_config.dart';
+export 'package:glue_harness/src/config/mcp_config_writer.dart';
 export 'package:glue_harness/src/core/clipboard.dart';
 export 'package:glue_harness/src/core/environment.dart';
 // Both path_opener and url_launcher define a private `ProcessRunner`

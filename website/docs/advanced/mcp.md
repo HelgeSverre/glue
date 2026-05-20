@@ -135,6 +135,10 @@ Re-run the same command if your refresh token ever expires.
 ## CLI commands
 
 ```sh
+glue mcp add <id> [options]            # add a new server entry to config.yaml
+glue mcp remove <id>                   # remove a server (also clears its creds)
+glue mcp enable <id>                   # un-park a disabled server
+glue mcp disable <id>                  # park a server without removing it
 glue mcp list                          # configured servers + enabled/disabled
 glue mcp tools <server>                # connect once and list advertised tools
 glue mcp auth set <server> --bearer    # store a bearer token (stdin, hidden)
@@ -142,6 +146,56 @@ glue mcp auth login <server>           # OAuth flow (opens browser)
 glue mcp auth logout <server>          # forget stored credentials
 glue mcp auth status                   # per-server credential summary
 ```
+
+### Adding servers from the shell
+
+`glue mcp add` writes to `~/.glue/config.yaml` using `yaml_edit`, so your
+existing comments and key order survive untouched. Transport is explicit
+via `--transport stdio|http|ws`:
+
+```sh
+# stdio — everything after `--` is the command + args
+glue mcp add filesystem --transport stdio \
+  -e DEBUG=false \
+  -- npx -y @modelcontextprotocol/server-filesystem /Users/me/work
+
+# http+sse — `--auth bearer` records the kind; store the token afterwards
+glue mcp add company-wiki --transport http \
+  --url https://mcp.example.com/wiki \
+  --auth bearer
+glue mcp auth set company-wiki --bearer   # then store the token
+
+# http+sse with OAuth
+glue mcp add notion --transport http \
+  --url https://mcp.notion.com \
+  --auth oauth
+glue mcp auth login notion                 # opens the browser
+
+# websocket
+glue mcp add ws-server --transport ws \
+  --url wss://mcp.example.com/socket \
+  --auth bearer
+
+# start a server parked; enable later with `glue mcp enable <id>`
+glue mcp add postgres --transport stdio --disabled -- /usr/local/bin/mcp-postgres
+```
+
+Flags:
+
+| Flag                  | Applies to | Purpose                                                                                         |
+| --------------------- | ---------- | ----------------------------------------------------------------------------------------------- |
+| `--transport`, `-t`   | required   | `stdio`, `http`, or `ws`.                                                                       |
+| `--url`               | http / ws  | Server URL. Scheme must match transport.                                                        |
+| `--auth`              | http / ws  | `none` (default), `bearer`, or `oauth`. The token / OAuth flow is handled by `glue mcp auth …`. |
+| `--env`, `-e KEY=val` | stdio      | Repeatable. Env vars passed to the subprocess (after the global allowlist scrub).               |
+| `--cwd <dir>`         | stdio      | Working directory.                                                                              |
+| `--timeout <seconds>` | any        | Per-server override of `mcp.call_timeout_seconds`.                                              |
+| `--disabled`          | any        | Add the entry parked. Use `glue mcp enable <id>` to turn on.                                    |
+| `--force`             | any        | Overwrite an existing entry with the same id.                                                   |
+
+`glue mcp remove <id>` deletes the YAML entry **and** clears any stored
+bearer / OAuth credentials. Pass `--keep-credentials` if you plan to
+re-add the same id later and want the stored token reused.
 
 ## Slash commands
 
