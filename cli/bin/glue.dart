@@ -11,6 +11,8 @@ import 'package:glue/src/acp/cli_acp_delegate.dart';
 import 'package:glue/src/commands/catalog_command.dart';
 import 'package:glue/src/commands/mcp_command.dart';
 import 'package:glue/src/commands/session_command.dart';
+import 'package:glue/src/terminal/brand.dart';
+import 'package:glue/src/terminal/styled.dart';
 import 'package:glue_runtimes/daytona.dart';
 import 'package:glue_runtimes/modal.dart';
 import 'package:glue_runtimes/sprites.dart';
@@ -438,6 +440,21 @@ class ServeCommand extends Command<int> {
   }
 
   Future<int> _runStdio(AppServices services) async {
+    // If stdin is attached to a TTY, no ACP client is piping JSON-RPC in —
+    // the user ran `glue serve` by hand. Print a one-line hint pointing at
+    // the docs and exit cleanly instead of silently blocking on stdin.
+    if (stdin.hasTerminal) {
+      stderr.writeln(
+        '$brandDot ${'glue serve'.styled.bold} '
+        '${'speaks ACP over stdin/stdout — meant to be spawned by an editor'.styled.gray}',
+      );
+      stderr.writeln(
+        '  ${'docs'.styled.gray} https://getglue.dev/docs/advanced/acp-server',
+      );
+      await services.obs.close();
+      return 0;
+    }
+
     final delegate = CliAcpDelegate(services: services);
     final transport = LineDelimitedTransport(
       input: stdin,
@@ -491,11 +508,22 @@ class ServeCommand extends Command<int> {
       bearerToken: (token != null && token.isNotEmpty) ? token : null,
     );
     final boundPort = await httpHost.start(address: address, port: port);
+    final url = 'ws://${address.host}:$boundPort'
+        '${wsPath == '*' ? '' : wsPath}';
     stderr.writeln(
-      '[glue serve] ACP over WebSocket on ws://${address.host}:$boundPort'
-      '${wsPath == '*' ? '' : wsPath}'
-      '${httpHost.bearerToken != null ? ' (auth: bearer token required)' : ''}',
+      '$brandDot ${'glue serve'.styled.bold} '
+      '${'ACP over WebSocket'.styled.gray}',
     );
+    stderr.writeln('  ${'url '.styled.gray} $url');
+    if (httpHost.bearerToken != null) {
+      stderr.writeln(
+        '  ${'auth'.styled.gray} ${'bearer token required'.styled.yellow}',
+      );
+    }
+    stderr.writeln(
+      '  ${'docs'.styled.gray} https://getglue.dev/docs/advanced/acp-server',
+    );
+    stderr.writeln('  ${'stop'.styled.gray} Ctrl+C');
 
     // Run until SIGINT.
     final exitSignal = Completer<void>();

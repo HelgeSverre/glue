@@ -299,6 +299,10 @@ export default defineConfig({
               link: "/docs/advanced/browser-automation",
             },
             { text: "Web Tools", link: "/docs/advanced/web-tools" },
+            {
+              text: "Editor Integration (ACP)",
+              link: "/docs/advanced/acp-server",
+            },
             { text: "MCP Servers", link: "/docs/advanced/mcp" },
             { text: "Skills", link: "/docs/advanced/skills" },
             { text: "Subagents", link: "/docs/advanced/subagents" },
