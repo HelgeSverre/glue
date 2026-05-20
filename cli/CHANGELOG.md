@@ -6,6 +6,13 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Added
 
+- **OTLP `session.id` resource attribute** — every Glue invocation now emits
+  a stable per-process `session.id` (format `glue-<base36-ts>-<base36-rand>`)
+  on every OTLP/HTTP trace export, so observability backends that follow the
+  OpenInference convention (llmflow, Phoenix, Langfuse, Helicone, Opik) can
+  group multiple traces from the same Glue session under one "session" view.
+  Implemented in `packages/glue_harness/lib/src/observability/otlp_http_trace_sink.dart`
+  as a `late final` field initialised once per process.
 - **`/mcp tools` and `glue mcp tools` now list every server when no
   argument is given** — output is grouped by server with per-server
   status annotations (`connected` is unmarked; `connecting`,
