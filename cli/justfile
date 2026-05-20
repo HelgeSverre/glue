@@ -90,7 +90,7 @@ release version:
     sed -i '' "s/^version: .*/version: {{version}}/" pubspec.yaml
     dart run tool/gen_version.dart
     echo "Updated pubspec.yaml to {{version}}"
-    git add pubspec.yaml lib/src/config/version_generated.dart
+    git add pubspec.yaml ../packages/glue_core/lib/src/version_generated.dart
     git commit -m "release: v{{version}}"
     git tag "v{{version}}"
     just build
