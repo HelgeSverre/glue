@@ -4,8 +4,31 @@ All notable changes to Glue CLI will be documented in this file.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-05-20
+
 ### Added
 
+- **TTY/`NO_COLOR`-aware brand markers + colorized MCP / session output** —
+  every brand glyph (`●`, `✓`, `!`, `✗`, `·`) and every styled string from
+  command output now routes through a new `styledOrPlain()` helper that
+  collapses ANSI to plain text when stdout is not a terminal or when
+  `NO_COLOR` is set. `glue mcp list`, `glue mcp tools`, `glue mcp auth
+  status`, `glue mcp add`, `glue session list`, `glue session show`, and
+  `glue session apply`/`export` now render with the same brand-dot
+  header, bold ids, and severity-marker status lines as `glue catalog`
+  and `glue doctor`. Existing surfaces (`--where`, `catalog *`, `doctor`,
+  `serve`) had their inline `.styled` chains migrated to `styledOrPlain`
+  so the same piping safety applies everywhere. Output of `glue mcp
+  list | grep enabled` is now grep-friendly with no ANSI noise.
+- **CLI output formatting style guide** — new
+  `docs/design/cli-output-formatting.md` codifies the brand vocabulary
+  (`●` for headers, `✓`/`!`/`✗`/`·` for status), the four-layer
+  rendering pipeline (`Command` → `*_format.dart` → `styledOrPlain` →
+  `Styled`), output shape per command class (diagnostic vs action vs
+  pure-config), stdout/stderr discipline, JSON/`--print`/`NO_COLOR`
+  semantics, and how to test the formatter. Includes a "drift register"
+  table tracking which surfaces are fully on the spec. Linked from
+  `CLAUDE.md` so new command work picks it up.
 - **OTLP `session.id` resource attribute** — every Glue invocation now emits
   a stable per-process `session.id` (format `glue-<base36-ts>-<base36-rand>`)
   on every OTLP/HTTP trace export, so observability backends that follow the
