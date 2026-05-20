@@ -15,7 +15,11 @@ import 'package:glue_harness/glue_harness.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 
 import 'package:glue/src/commands/config_command.dart' show userConfigPath;
+import 'package:glue/src/commands/mcp_auth_status_format.dart';
+import 'package:glue/src/commands/mcp_list_format.dart';
 import 'package:glue/src/commands/mcp_tools_format.dart';
+import 'package:glue/src/terminal/brand.dart';
+import 'package:glue/src/terminal/tty_style.dart';
 
 /// Credential-store conventions for MCP. Both helpers and slash commands
 /// go through here so the namespacing stays consistent.
@@ -171,21 +175,27 @@ class McpAddCommand extends Command<int> {
       McpHttpServerSpec() => 'http',
       McpWebSocketServerSpec() => 'websocket',
     };
-    stdout.writeln('Added $shape server "$id".');
-    if (!spec.enabled) {
-      stdout.writeln('(disabled — enable with "glue mcp enable $id")');
-    } else {
-      stdout.writeln('Run "glue" to load it.');
-    }
+    final ansi = stdoutSupportsAnsi();
+    final boldId = styledOrPlain('"$id"', (s) => s.bold, ansiEnabled: ansi);
+    final prefix = ansi ? '$markerOk ' : '';
+    stdout.writeln('${prefix}Added $shape server $boldId.');
+    final hint = !spec.enabled
+        ? '(disabled — enable with "glue mcp enable $id")'
+        : 'Run "glue" to load it.';
+    stdout.writeln(styledOrPlain(hint, (s) => s.gray, ansiEnabled: ansi));
     if (spec is McpHttpServerSpec && spec.auth is McpBearerAuth) {
-      stdout.writeln(
+      stdout.writeln(styledOrPlain(
         'Auth set to bearer. Store the token with '
         '"glue mcp auth set $id --bearer".',
-      );
+        (s) => s.gray,
+        ansiEnabled: ansi,
+      ));
     } else if (spec is McpHttpServerSpec && spec.auth is McpOAuthAuth) {
-      stdout.writeln(
+      stdout.writeln(styledOrPlain(
         'Auth set to OAuth. Sign in with "glue mcp auth login $id".',
-      );
+        (s) => s.gray,
+        ansiEnabled: ansi,
+      ));
     }
     return 0;
   }
@@ -523,26 +533,21 @@ class McpListCommand extends Command<int> {
     final config = _safeLoadConfig();
     if (config == null) return 1;
 
-    final servers = config.mcp.servers;
-    if (servers.isEmpty) {
-      stdout.writeln('No MCP servers configured.');
-      stdout.writeln('Add a server under `mcp.servers:` in '
-          '${userConfigPath(Environment.detect())}.');
-      return 0;
-    }
-
-    for (final spec in servers) {
-      final kind = switch (spec) {
-        McpStdioServerSpec() => 'stdio',
-        McpHttpServerSpec() => 'http+sse',
-        McpWebSocketServerSpec() => 'websocket',
-      };
-      final state = spec.enabled ? 'enabled' : 'disabled';
-      stdout.writeln('  ${spec.id.padRight(20)} $kind  $state');
-    }
-    stdout.writeln('');
-    stdout
-        .writeln('Use `/mcp` inside a Glue session for live connection state.');
+    final rows = config.mcp.servers
+        .map((spec) => McpServerListRow(
+              id: spec.id,
+              kind: switch (spec) {
+                McpStdioServerSpec() => 'stdio',
+                McpHttpServerSpec() => 'http+sse',
+                McpWebSocketServerSpec() => 'websocket',
+              },
+              enabled: spec.enabled,
+            ))
+        .toList();
+    stdout.writeln(formatMcpServerList(
+      rows,
+      configPath: userConfigPath(Environment.detect()),
+    ));
     return 0;
   }
 }
@@ -577,12 +582,7 @@ class McpAuthStatusCommand extends Command<int> {
     final config = _safeLoadConfig();
     if (config == null) return 1;
 
-    final servers = config.mcp.servers;
-    if (servers.isEmpty) {
-      stdout.writeln('No MCP servers configured.');
-      return 0;
-    }
-    for (final spec in servers) {
+    final rows = config.mcp.servers.map((spec) {
       final fields =
           config.credentials.getFields(McpCredentialKeys.providerId(spec.id));
       final hasBearer = fields.containsKey(McpCredentialKeys.bearer);
@@ -592,14 +592,21 @@ class McpAuthStatusCommand extends Command<int> {
           : spec is McpWebSocketServerSpec
               ? spec.auth
               : const McpNoAuth();
-      final tag = switch (authKind) {
-        McpBearerAuth() => hasBearer ? 'bearer (stored)' : 'bearer (missing)',
-        McpOAuthAuth() =>
-          hasOAuth ? 'oauth (access token stored)' : 'oauth (not logged in)',
-        McpNoAuth() => 'none',
+      final (kind, state) = switch (authKind) {
+        McpBearerAuth() => (
+            'bearer',
+            hasBearer ? McpAuthState.stored : McpAuthState.missing,
+          ),
+        McpOAuthAuth() => (
+            'oauth',
+            hasOAuth ? McpAuthState.stored : McpAuthState.notLoggedIn,
+          ),
+        McpNoAuth() => ('none', McpAuthState.none),
       };
-      stdout.writeln('  ${spec.id.padRight(20)} $tag');
-    }
+      return McpAuthStatusRow(id: spec.id, kind: kind, state: state);
+    }).toList();
+
+    stdout.writeln(formatMcpAuthStatus(rows));
     return 0;
   }
 }
