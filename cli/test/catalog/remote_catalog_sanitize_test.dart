@@ -1,7 +1,11 @@
-import 'dart:convert';
-
 import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
+import 'package:yaml/yaml.dart';
+
+Map<dynamic, dynamic> _providers(String sanitized) {
+  final doc = loadYaml(sanitized) as Map<dynamic, dynamic>;
+  return doc['providers'] as Map<dynamic, dynamic>;
+}
 
 void main() {
   group('sanitizeRemoteCatalogYaml', () {
@@ -23,8 +27,7 @@ providers:
     models: {}
 ''';
       final sanitized = sanitizeRemoteCatalogYaml(yaml);
-      final decoded = jsonDecode(sanitized) as Map;
-      final providers = decoded['providers'] as Map;
+      final providers = _providers(sanitized);
       expect(
           ((providers['anthropic'] as Map)['auth'] as Map)['api_key'], 'none');
       expect(((providers['openai'] as Map)['auth'] as Map)['api_key'], 'none');
@@ -42,8 +45,7 @@ providers:
     models: {}
 ''';
       final sanitized = sanitizeRemoteCatalogYaml(yaml);
-      final decoded = jsonDecode(sanitized) as Map;
-      final providers = decoded['providers'] as Map;
+      final providers = _providers(sanitized);
       expect(((providers['weird'] as Map)['auth'] as Map)['api_key'], 'none');
     });
 
@@ -66,8 +68,7 @@ providers:
 ''';
       final sanitized = sanitizeRemoteCatalogYaml(yaml);
       expect(sanitized, isNot(contains('evil.example.com')));
-      final decoded = jsonDecode(sanitized) as Map;
-      final anthropic = (decoded['providers'] as Map)['anthropic'] as Map;
+      final anthropic = _providers(sanitized)['anthropic'] as Map;
       expect(anthropic.containsKey('base_url'), isFalse);
     });
 
@@ -86,8 +87,7 @@ providers:
 ''';
       final sanitized = sanitizeRemoteCatalogYaml(yaml);
       expect(sanitized, isNot(contains('X-Exfil')));
-      final decoded = jsonDecode(sanitized) as Map;
-      final openai = (decoded['providers'] as Map)['openai'] as Map;
+      final openai = _providers(sanitized)['openai'] as Map;
       expect(openai.containsKey('request_headers'), isFalse);
     });
 
@@ -108,14 +108,13 @@ providers:
         name: My Model
 ''';
       final sanitized = sanitizeRemoteCatalogYaml(yaml);
-      final decoded = jsonDecode(sanitized) as Map;
-      final p = (decoded['providers'] as Map)['new-provider'] as Map;
+      final p = _providers(sanitized)['new-provider'] as Map;
       expect(p['name'], 'New Provider');
       expect(p['adapter'], 'openai');
       expect(p['compatibility'], 'openrouter');
       expect(p['docs_url'], 'https://example.com/docs');
       expect(p['enabled'], false);
-      expect(p['models'], isA<Map<String, dynamic>>());
+      expect(p['models'], isA<Map<dynamic, dynamic>>());
     });
 
     test('sanitized output is parseable as a catalog', () {
@@ -137,8 +136,44 @@ providers:
 ''';
       final sanitized = sanitizeRemoteCatalogYaml(yaml);
       expect(sanitized, isNot(contains('sk-will-be-stripped')));
-      // Re-loading the sanitized catalog must work (JSON is valid YAML).
-      expect(() => jsonDecode(sanitized), returnsNormally);
+      expect(() => loadYaml(sanitized), returnsNormally);
+    });
+
+    test('output is YAML, not single-line JSON', () {
+      const yaml = '''
+version: 1
+providers:
+  anthropic:
+    name: Anthropic
+    adapter: anthropic
+    auth:
+      api_key: sk-leaked
+    models:
+      claude:
+        name: Claude
+''';
+      final sanitized = sanitizeRemoteCatalogYaml(yaml);
+      // YAML output retains line breaks and block structure; JSON output
+      // would collapse to a single `{...}` line.
+      expect(sanitized.split('\n').length, greaterThan(3));
+      expect(sanitized.trimLeft(), isNot(startsWith('{')));
+    });
+
+    test('preserves upstream comments inside the providers tree', () {
+      const yaml = '''
+# Glue catalog
+version: 1
+providers:
+  anthropic:
+    name: Anthropic # vendor name
+    adapter: anthropic
+    auth:
+      api_key: sk-leaked
+    models: {}
+''';
+      final sanitized = sanitizeRemoteCatalogYaml(yaml);
+      expect(sanitized, contains('# Glue catalog'));
+      expect(sanitized, contains('# vendor name'));
     });
   });
 }

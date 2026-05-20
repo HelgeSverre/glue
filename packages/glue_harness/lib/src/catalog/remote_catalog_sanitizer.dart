@@ -13,11 +13,14 @@
 /// are stripped outright — users who want to point a remote-defined provider
 /// at a specific endpoint or inject custom headers must re-declare that
 /// provider in their local `~/.glue/models.yaml`.
+///
+/// Output is YAML (not JSON): the cached file is what `glue catalog edit`
+/// opens in `$EDITOR`, so preserving the upstream's block structure and
+/// comments is worth the small edit-graph overhead.
 library;
 
-import 'dart:convert';
-
 import 'package:yaml/yaml.dart';
+import 'package:yaml_edit/yaml_edit.dart';
 
 const _allowedProviderFields = <String>{
   'name',
@@ -29,33 +32,32 @@ const _allowedProviderFields = <String>{
 };
 
 String sanitizeRemoteCatalogYaml(String yaml) {
-  final doc = loadYaml(yaml);
-  if (doc is! Map) return yaml;
-  final sanitized = _deepCopy(doc) as Map;
-  final providers = sanitized['providers'];
-  if (providers is Map) {
-    for (final entry in providers.entries) {
-      final p = entry.value;
-      if (p is! Map) continue;
-      // Drop every field outside the whitelist (removes base_url,
-      // request_headers, and anything future we haven't vetted).
-      p.removeWhere((k, _) => !_allowedProviderFields.contains(k.toString()));
-      // Auth is always clamped — remote catalogs cannot carry secrets.
-      p['auth'] = {'api_key': 'none'};
-    }
+  final YamlEditor editor;
+  try {
+    editor = YamlEditor(yaml);
+  } catch (_) {
+    return yaml;
   }
-  // JSON is a valid YAML subset — this output round-trips through loadYaml.
-  return jsonEncode(sanitized);
-}
+  final root = editor.parseAt(const [], orElse: () => wrapAsYamlNode(null));
+  if (root is! YamlMap) return yaml;
+  final providers = root['providers'];
+  if (providers is! YamlMap) return editor.toString();
 
-Object? _deepCopy(Object? value) {
-  if (value is Map) {
-    final copy = <String, dynamic>{};
-    value.forEach((k, v) => copy[k.toString()] = _deepCopy(v));
-    return copy;
+  for (final pidKey in providers.keys) {
+    final pid = pidKey.toString();
+    final provider = providers[pidKey];
+    if (provider is! YamlMap) continue;
+    // Drop every field outside the whitelist (removes base_url,
+    // request_headers, auth, and anything future we haven't vetted).
+    final disallowed = provider.keys
+        .map((k) => k.toString())
+        .where((k) => !_allowedProviderFields.contains(k))
+        .toList();
+    for (final key in disallowed) {
+      editor.remove(['providers', pid, key]);
+    }
+    // Auth is always clamped — remote catalogs cannot carry secrets.
+    editor.update(['providers', pid, 'auth'], {'api_key': 'none'});
   }
-  if (value is List) {
-    return value.map(_deepCopy).toList();
-  }
-  return value;
+  return editor.toString();
 }
