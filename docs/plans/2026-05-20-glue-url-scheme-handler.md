@@ -118,7 +118,7 @@ Per-user under `HKCU` to avoid needing admin. v1 may defer Windows support if th
 |---|---|---|---|
 | macOS | Bundled `.app` shim, registered via `lsregister` | High (need shim, codesign) | Yes |
 | Linux | `.desktop` file + `xdg-mime` | Low | Yes |
-| Windows | Registry write under `HKCU` | Medium | Defer — gate on demand |
+| Windows | Registry write under `HKCU` | Medium | Yes (per §9 decision) |
 
 ---
 
@@ -204,8 +204,7 @@ The CursorJack class of attack is the explicit threat model: a malicious page ho
 
 **Defences:**
 
-1. **Confirmation prompt is mandatory in the OS-handler path.** The `handle-url` subcommand renders a structured diff of what will be written (full `command`/`args`/`env`/`url`/`headers`) and requires explicit consent. The prompt is rendered in a new terminal window opened by the shim (macOS: via `osascript` to open Terminal.app running `glue handle-url <url>`; Linux: via `x-terminal-emulator` or similar; we'll need to choose the safest cross-platform path here — flag for sign-off).
-   - Open question: on macOS, do we instead post a system notification "click to review" and have the user run `glue handle-url <url>` themselves? Safer (no surprise terminal) but worse UX. **Recommendation: notification-only for v1, terminal-launch as a follow-up once we've validated which emulator to call.**
+1. **Confirmation prompt is mandatory.** The `handle-url` subcommand renders a structured diff of what will be written (full `command`/`args`/`env`/`url`/`headers`) and requires explicit consent. Per §9 decision, **the OS handler path is notification-only on macOS** — the shim posts a system notification ("Glue: review pending MCP install — click to open"), and the user runs `glue handle-url <url>` in their own terminal. Linux and Windows handlers follow the same pattern (notify, don't spawn a terminal) for consistency: writing the URL to a pending-installs file (`~/.glue/state/pending-url.txt`) that `glue handle-url` (no args) consumes. This sidesteps the "which terminal emulator?" problem entirely.
 2. **stdio servers get an extra warning.** "This server will run `<command>` with arguments `<args>` on your machine every time Glue connects. Only proceed if you trust `<source>`."
 3. **Source provenance is surfaced.** If `source=<url>` is provided, it's displayed prominently. If absent, the prompt notes "no source provided — install only if you copied this link from a trusted page."
 4. **Auth secrets are out-of-band.** The URL cannot deliver a bearer token. User must run `glue mcp auth set` separately.
@@ -227,9 +226,12 @@ Following `CLAUDE.md`'s conventions — top-level CLI for setup/diagnostic; slas
 | `glue url-handler install` | Register the `glue://` scheme on the current OS. Prints what it's writing and where. |
 | `glue url-handler uninstall` | Reverse of install. |
 | `glue url-handler status` | Print whether the scheme is registered, what binary it points to, and any drift (e.g. shim points to an old `glue` path). |
-| `glue url-handler test <url>` | Parse and validate a URL without writing config. Same output the handler would show in the confirmation prompt. |
 
-`glue handle-url <url>` — the verb the OS invokes. Hidden from `glue --help` by default (it's an implementation detail, not a user-facing command). Mirrors `glue serve` style.
+`glue handle-url <url> [--dry-run] [--yes]` — visible in `glue --help` (per §9 decision). This is both the verb the OS shim invokes *and* the user-facing preview command:
+
+- No flags → parse, validate, prompt for confirmation, write.
+- `--dry-run` → parse, validate, print the structured diff, exit 0 without writing. Replaces the originally-planned `glue url-handler test <url>`.
+- `--yes` → skip the confirmation prompt (scripted use). Refused when invoked through the OS shim path (detected via env var the shim sets).
 
 ### 6.2 No slash command in v1
 
@@ -256,8 +258,8 @@ cli/lib/src/url_handler/
   handle_url.dart           # Orchestrates: parse -> resolve (if by-name) -> confirm -> write -> notify
 
 cli/lib/src/commands/
-  url_handler_command.dart  # `glue url-handler install|uninstall|status|test`
-  handle_url_command.dart   # `glue handle-url <url>` (hidden)
+  url_handler_command.dart  # `glue url-handler install|uninstall|status`
+  handle_url_command.dart   # `glue handle-url <url> [--dry-run] [--yes]` (visible)
 
 packages/glue_harness/lib/src/mcp_registry/
   client.dart               # Thin HTTP client for registry.modelcontextprotocol.io
@@ -275,26 +277,30 @@ Reuse, not duplicate:
 
 Bundles sized like the [MCP implementation plan](2026-05-15-mcp-implementation.md). Each is a landable PR.
 
-### Bundle 1 — URL grammar + parser + `glue url-handler test`
+### Bundle 1 — URL grammar + parser + `glue handle-url --dry-run`
 
 Pure, no OS interaction. Lets us validate the grammar by parsing URLs in tests, with no install machinery yet.
 
 - New: `cli/lib/src/url_handler/url_parser.dart`, `parsed_glue_url.dart`.
 - Refactor: extract `McpServerSpec.fromJsonConfig(Map)` out of `_buildSpec` in `mcp_command.dart` so the parser produces the same `McpServerSpec` shape `mcp add` produces.
-- New: `glue url-handler test <url>` CLI subcommand. Prints the parsed-and-validated config in the same diff style we'll use in the confirmation prompt. No-op otherwise.
+- New: `glue handle-url <url>` CLI subcommand with `--dry-run` implemented in this bundle. `--dry-run` prints the parsed-and-validated config in the diff style the eventual confirmation prompt will use, then exits 0. Without `--dry-run`, prints "not yet implemented" and exits 1 (real write lands in Bundle 2).
+- Encoding: `config=` accepts both URL-encoded JSON and base64, auto-detected (per §9 decision).
+- Validation: `${input:...}` values in `env`/`headers`/`url` are rejected with a clear error pointing the user at the limitation (per §9 decision).
 - Tests: URL fixtures for every shape (VS Code-style URL-encoded JSON, Cursor-style base64, malformed, unknown `type`, `${input:...}` rejection, by-name with/without version/as overrides).
+- CLI output follows `docs/design/cli-output-formatting.md` per the CLAUDE.md convention — extracted into a `url_handler_format.dart` for the diff renderer.
 
-**Done criteria:** `dart test` green. `glue url-handler test 'glue://mcp/install?name=foo&config=...'` round-trips against fixtures.
+**Done criteria:** `dart test` green. `glue handle-url --dry-run 'glue://mcp/install?name=foo&config=...'` round-trips against fixtures for both encodings.
 
-### Bundle 2 — `glue handle-url` writes config
+### Bundle 2 — `glue handle-url` writes config (interactive path)
 
-The handler verb itself. Still no OS-level registration.
+Adds the confirm+write half of `handle-url`. Still no OS-level registration.
 
 - New: `cli/lib/src/url_handler/handle_url.dart` — orchestrator.
-- New: `cli/lib/src/commands/handle_url_command.dart` — hidden CLI.
+- Extends Bundle 1's `handle_url_command.dart`: removes the "not yet implemented" stub on the non-`--dry-run` path.
 - Reuses Bundle 1's parser + `McpConfigWriter.addServer`.
 - Interactive confirmation prompt (yes/no with the structured diff).
-- `--yes` flag for scripted use.
+- `--yes` flag for scripted use. Refused when the env var the OS shim sets is present (so a malicious page cannot embed `--yes` semantics via the OS path).
+- Reads a pending-URL from `~/.glue/state/pending-url.txt` when invoked with no args (the OS-handler path), then deletes the file.
 - Adds source/provenance display when `?source=` is present.
 - Adds the stdio-`command` extra warning.
 
@@ -314,46 +320,53 @@ Adds the `glue://mcp/by-name/<id>` route.
 
 `glue url-handler install|uninstall|status` on Linux only.
 
-- New: `cli/lib/src/url_handler/install_linux.dart` — writes the `.desktop` file, runs `update-desktop-database` and `xdg-mime default`. `status` reads `xdg-mime query default x-scheme-handler/glue` and parses.
+- New: `cli/lib/src/url_handler/install_linux.dart` — writes the `.desktop` file. `Exec=` writes the URL to `~/.glue/state/pending-url.txt` and posts a desktop notification via `notify-send` (or falls back to printing on stderr if `notify-send` is missing). `install` runs `update-desktop-database` and `xdg-mime default`. `status` reads `xdg-mime query default x-scheme-handler/glue` and parses.
 - `install` is idempotent. `uninstall` removes the `.desktop` file and clears the default handler.
 - Doctor block: new section in `cli/lib/src/doctor/doctor.dart` calling the same status helper.
 
-**Done criteria:** Fresh Linux install — `glue url-handler install`, then `xdg-open 'glue://mcp/install?...'` opens the confirmation prompt in a new terminal (or posts a notification — TBD per §5).
+**Done criteria:** Fresh Linux install — `glue url-handler install`, then `xdg-open 'glue://mcp/install?...'` posts a notification; running `glue handle-url` in any terminal picks up the pending URL and walks the confirmation flow.
 
 ### Bundle 5 — macOS registration
 
 The hardest bundle — the shim bundle.
 
-- New: `cli/lib/src/url_handler/install_macos.dart` — generates the shim bundle in `~/Library/Application Support/Glue/Glue URL Handler.app/`, writes `Info.plist`, writes the launcher script that `exec`s `glue handle-url`, runs `lsregister -f`.
+- New: `cli/lib/src/url_handler/install_macos.dart` — generates the shim bundle in `~/Library/Application Support/Glue/Glue URL Handler.app/`, writes `Info.plist`, writes the launcher script that writes the URL to `~/.glue/state/pending-url.txt` and posts a user notification via `osascript -e 'display notification ...'`, runs `lsregister -f`.
 - Codesigning: ad-hoc sign the shim so Gatekeeper doesn't quarantine it. Document the limitation that distribution-time codesigning will need a real developer cert.
-- Decide UX path for the prompt (§5 open question) — recommend system notification + user-launched `glue handle-url` for v1.
-- Doctor block reuses §4 helper, branches on platform.
+- Notification-only UX (per §9 decision) — no terminal spawning.
+- Doctor block reuses Bundle 4 helper, branches on platform.
 
-**Done criteria:** Fresh macOS install — `glue url-handler install`, click a `glue://` link in a browser, see the confirmation flow.
+**Done criteria:** Fresh macOS install — `glue url-handler install`, click a `glue://` link in a browser, see the notification; running `glue handle-url` in any terminal picks up the pending URL.
 
-### Bundle 6 — Documentation + `glue://` button generator
+### Bundle 6 — Windows registration
+
+Per §9 decision, Windows is in v1.
+
+- New: `cli/lib/src/url_handler/install_windows.dart` — writes registry entries under `HKCU\Software\Classes\glue` so install works without admin. The registered command writes the URL to `%LOCALAPPDATA%\Glue\state\pending-url.txt` (Windows equivalent of `~/.glue/state/`) and shows a Windows toast (PowerShell `BurntToast` or the native `Windows.UI.Notifications` API — pick whichever needs no extra install).
+- Same notification-only UX; the shim does not spawn a console window.
+- Doctor block: read back the registry to verify registration; flag if the command points to a stale `glue.exe` path.
+- CI: add a Windows runner job covering at least `glue handle-url --dry-run` on the parser; full install/uninstall round-trip is nice-to-have but may be left as a manual verification step in v1.
+
+**Done criteria:** Fresh Windows install — `glue url-handler install`, click a `glue://` link in Edge/Chrome, see the toast; running `glue handle-url` in any console picks up the pending URL.
+
+### Bundle 7 — Documentation + `glue://` button generator
 
 User-facing finish. Mirrors VS Code's [install link generator](https://github.com/merill/vscode-mcp-install-link-creator).
 
 - New docs page on `getglue.dev/docs/url-handler` covering: how to install the handler, how to author URLs, the security model, and a copy-paste button generator.
 - Add `glue url-handler emit <id> --transport ...` (or similar — name TBD) that prints a `glue://mcp/install?...` URL the user can paste into a registry/README.
 
-### Bundle 7 (optional, deferred) — Windows support
-
-`install_windows.dart`. Gate on whether anyone's actually asked for it.
-
 ---
 
-## 9. Open questions for sign-off
+## 9. Decisions (resolved 2026-05-20)
 
-Before any code lands, get explicit decisions on:
-
-1. **Confirmation UX on macOS.** Notification-only (safer, worse UX) vs auto-launch a terminal window (better UX, more surface area). Recommendation: notification-only for v1.
-2. **Windows v1 inclusion.** Build it in Bundle 5 or defer to Bundle 7? Recommendation: defer.
-3. **Base64 acceptance for `config=`.** Cursor uses base64; VS Code uses URL-encoded. Supporting both means registries can paste their existing payloads in. Recommendation: accept both, auto-detect.
-4. **Registry endpoint for `by-name`.** Hardcode `registry.modelcontextprotocol.io` or make it configurable via `~/.glue/config.yaml`? Recommendation: hardcode for v1, add config later if a self-hosted registry case appears.
-5. **`${input:foo}` placeholder support.** VS Code prompts for inputs during install. Glue's handler is non-interactive in v1 — accept and prompt (interactive) or reject (strict)? Recommendation: reject, document, revisit if it bites.
-6. **Hidden `handle-url` vs visible.** Hide from `glue --help` because it's an OS implementation detail, or show because it's also useful for scripted "preview this URL" workflows? Recommendation: hide; `glue url-handler test <url>` covers the preview case.
+| # | Question | Decision |
+|---|---|---|
+| 1 | macOS confirmation UX | **Notification only.** Shim writes URL to `~/.glue/state/pending-url.txt` and posts a system notification; user runs `glue handle-url` in their own terminal. Same pattern on Linux + Windows for consistency. |
+| 2 | Windows v1 | **In v1.** Bundle 6 (was deferred). HKCU registry writes, no admin needed. |
+| 3 | `config=` encoding | **Both URL-encoded JSON and base64, auto-detected.** Parity with both VS Code and Cursor. |
+| 4 | `${input:foo}` placeholders | **Reject with a clear error.** Handler is non-interactive in v1; silent-dropping would surprise users. Documented as a known limitation; revisit if it bites. |
+| 5 | Registry endpoint for `by-name` | **Hardcode `registry.modelcontextprotocol.io`.** Add a config key later if a self-hosted/alternate registry case appears. |
+| 6 | `handle-url` visibility | **Visible.** Drop the planned `glue url-handler test` and fold its preview behaviour into `glue handle-url --dry-run`. One verb, two modes. |
 
 ---
 
