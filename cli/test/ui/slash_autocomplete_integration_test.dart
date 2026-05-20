@@ -54,10 +54,10 @@ void main() {
       ac.update('/op', 3);
       expect(ac.matchCount, 1);
 
-      // Type space → transition to arg mode, 7 targets.
+      // Type space → transition to arg mode, 6 targets.
       ac.update('/open ', 6);
       expect(ac.active, isTrue);
-      expect(ac.matchCount, 7);
+      expect(ac.matchCount, 6);
 
       // Type `s` → narrows to session, sessions, skills.
       ac.update('/open s', 7);
@@ -93,7 +93,7 @@ void main() {
 
       ac.update('/open ', 6);
       expect(ac.active, isTrue);
-      expect(ac.matchCount, 7);
+      expect(ac.matchCount, 6);
 
       // User hits backspace, buffer drops the trailing space.
       ac.update('/open', 5);

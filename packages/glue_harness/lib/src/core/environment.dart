@@ -67,7 +67,6 @@ class Environment {
   String get modelsYamlPath => p.join(glueDir, 'models.yaml');
   String get sessionsDir => p.join(glueDir, 'sessions');
   String get logsDir => p.join(glueDir, 'logs');
-  String get plansDir => p.join(glueDir, 'plans');
   String get skillsDir => p.join(glueDir, 'skills');
   String get cacheDir => p.join(glueDir, 'cache');
 

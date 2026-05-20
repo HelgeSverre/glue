@@ -224,7 +224,6 @@ export 'package:glue_harness/glue_harness.dart'
         WriteFileTool,
         bundledCatalog,
         buildConfigTemplate,
-        buildWhereReport,
         loadCatalog,
         openInFileManager,
         parseCatalogYaml,

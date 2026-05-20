@@ -12,7 +12,6 @@ const _openTargets = <String>[
   'sessions',
   'logs',
   'skills',
-  'plans',
   'cache',
 ];
 
@@ -56,8 +55,6 @@ class OpenCommand extends SlashCommand {
         path = env.logsDir;
       case 'skills':
         path = env.skillsDir;
-      case 'plans':
-        path = env.plansDir;
       case 'cache':
         path = env.cacheDir;
       default:

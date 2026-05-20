@@ -13,6 +13,7 @@ import 'package:glue/src/commands/mcp_command.dart';
 import 'package:glue/src/commands/session_command.dart';
 import 'package:glue/src/terminal/brand.dart';
 import 'package:glue/src/terminal/styled.dart';
+import 'package:glue/src/terminal/where_report.dart';
 import 'package:glue_runtimes/daytona.dart';
 import 'package:glue_runtimes/modal.dart';
 import 'package:glue_runtimes/sprites.dart';
@@ -419,6 +420,14 @@ class ServeCommand extends Command<int> {
       'Serve Glue\'s harness as an ACP agent over stdio or WebSocket.';
 
   @override
+  String get usageFooter => '\n'
+      'glue serve speaks ACP (Agent Client Protocol) — it is meant to be\n'
+      'spawned by an editor or notebook client, not run interactively.\n'
+      '\n'
+      'Editor setup (Zed, VS Code, JetBrains, Neovim, Emacs, marimo):\n'
+      '  https://getglue.dev/docs/advanced/acp-server';
+
+  @override
   Future<int> run() async {
     final portRaw = argResults!.option('port');
     final debug = argResults!.flag('debug');
@@ -440,21 +449,6 @@ class ServeCommand extends Command<int> {
   }
 
   Future<int> _runStdio(AppServices services) async {
-    // If stdin is attached to a TTY, no ACP client is piping JSON-RPC in —
-    // the user ran `glue serve` by hand. Print a one-line hint pointing at
-    // the docs and exit cleanly instead of silently blocking on stdin.
-    if (stdin.hasTerminal) {
-      stderr.writeln(
-        '$brandDot ${'glue serve'.styled.bold} '
-        '${'speaks ACP over stdin/stdout — meant to be spawned by an editor'.styled.gray}',
-      );
-      stderr.writeln(
-        '  ${'docs'.styled.gray} https://getglue.dev/docs/advanced/acp-server',
-      );
-      await services.obs.close();
-      return 0;
-    }
-
     final delegate = CliAcpDelegate(services: services);
     final transport = LineDelimitedTransport(
       input: stdin,

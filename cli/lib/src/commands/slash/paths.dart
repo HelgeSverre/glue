@@ -1,7 +1,6 @@
-import 'package:glue_harness/glue_harness.dart';
-
 import 'package:glue/src/commands/slash_command_context.dart';
 import 'package:glue/src/commands/slash_commands.dart';
+import 'package:glue/src/terminal/where_report.dart';
 
 /// `/paths` — show Glue's data directories.
 class PathsCommand extends SlashCommand {

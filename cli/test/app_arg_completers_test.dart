@@ -34,12 +34,12 @@ SkillMeta _skill(String name, String description) => SkillMeta(
 
 void main() {
   group('openArgCandidates', () {
-    test('empty partial returns all 7 targets', () {
+    test('empty partial returns all 6 targets', () {
       final candidates = openArgCandidates(const [], '');
-      expect(candidates, hasLength(7));
+      expect(candidates, hasLength(6));
       expect(
         candidates.map((c) => c.value).toSet(),
-        {'home', 'session', 'sessions', 'logs', 'skills', 'plans', 'cache'},
+        {'home', 'session', 'sessions', 'logs', 'skills', 'cache'},
       );
     });
 

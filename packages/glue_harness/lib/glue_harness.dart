@@ -40,7 +40,6 @@ export 'package:glue_harness/src/core/environment.dart';
 export 'package:glue_harness/src/core/path_opener.dart' hide ProcessRunner;
 export 'package:glue_harness/src/core/service_locator.dart';
 export 'package:glue_harness/src/core/url_launcher.dart';
-export 'package:glue_harness/src/core/where_report.dart';
 export 'package:glue_harness/src/extensions/list.dart';
 export 'package:glue_harness/src/extensions/units.dart';
 export 'package:glue_harness/src/observability/debug_controller.dart';

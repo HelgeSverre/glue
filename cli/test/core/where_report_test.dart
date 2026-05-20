@@ -1,16 +1,17 @@
+import 'package:glue/src/terminal/where_report.dart';
 import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('buildWhereReport', () {
-    test('lists every expected path row under GLUE_HOME', () {
+    test('renders branded header and lists every expected path row', () {
       final env = Environment.test(home: '/tmp/home');
       final report = buildWhereReport(
         env,
         existsCheck: (_, {required isDir}) => false,
       );
 
-      expect(report, contains('GLUE_HOME'));
+      expect(report, contains('Glue paths'));
       expect(report, contains('/tmp/home/.glue'));
       expect(report, contains('config.yaml'));
       expect(report, contains('preferences.json'));
@@ -20,8 +21,15 @@ void main() {
       expect(report, contains('logs/'));
       expect(report, contains('cache/'));
       expect(report, contains('skills/'));
-      expect(report, contains('plans/'));
-      expect(report, contains('Legend:'));
+    });
+
+    test('omits the legend footer', () {
+      final env = Environment.test(home: '/tmp/home');
+      final report = buildWhereReport(
+        env,
+        existsCheck: (_, {required isDir}) => true,
+      );
+      expect(report, isNot(contains('Legend')));
     });
 
     test('notes GLUE_HOME override when set', () {
@@ -38,22 +46,19 @@ void main() {
       expect(report, contains(r'(via $GLUE_HOME)'));
     });
 
-    test('marks existing paths with ✓ and missing paths with -', () {
+    test('marks existing paths as present and missing paths as missing', () {
       final env = Environment.test(home: '/tmp/home');
-      // Only report the config file as existing.
       final report = buildWhereReport(
         env,
         existsCheck: (path, {required isDir}) => path == env.configYamlPath,
       );
 
-      // The line containing config.yaml should have ✓; sessions/ should show -.
       final configLine =
           report.split('\n').firstWhere((line) => line.contains('config.yaml'));
       final sessionsLine =
           report.split('\n').firstWhere((line) => line.contains('sessions/'));
-      expect(configLine, contains('✓'));
-      expect(sessionsLine, isNot(contains('✓')));
-      expect(sessionsLine, endsWith('-\x1b[0m'));
+      expect(configLine, contains('present'));
+      expect(sessionsLine, contains('missing'));
     });
 
     test('ends with a trailing newline so callers can stdout.write it', () {

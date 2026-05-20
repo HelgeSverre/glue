@@ -161,4 +161,3 @@ These are known gaps, tracked separately:
 - `cli/lib/src/terminal/layout.dart` — output/overlay/status/input zone layout
 - `cli/lib/src/rendering/block_renderer.dart` — block + tool-phase rendering
 - `cli/lib/src/rendering/ansi_utils.dart` — display-width wrapping (`visibleLength`, `charWidth`, `ansiTruncate`, `wrapIndented`)
-- `cli/bin/glue_theme_demo.dart` — interactive visual reference

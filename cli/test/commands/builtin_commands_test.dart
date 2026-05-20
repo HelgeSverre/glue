@@ -255,13 +255,13 @@ void main() {
     test('/paths returns a where-style report', () {
       final registry = createRegistry();
       final result = registry.execute('/paths');
-      expect(result, contains('GLUE'));
+      expect(result, contains('Glue paths'));
     });
 
     test('/where is a hidden alias for /paths', () {
       final registry = createRegistry();
       final result = registry.execute('/where');
-      expect(result, contains('GLUE'));
+      expect(result, contains('Glue paths'));
     });
 
     test('/open without args returns usage hint', () {

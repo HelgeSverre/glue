@@ -18,7 +18,6 @@ const Map<String, String> openTargets = {
   'sessions': 'all sessions',
   'logs': 'logs/',
   'skills': 'skills/',
-  'plans': 'plans/',
   'cache': 'cache/',
 };
 

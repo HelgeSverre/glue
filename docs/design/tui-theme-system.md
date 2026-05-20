@@ -10,7 +10,6 @@ Applies to:
 - Theme tokens (`lib/src/ui/theme_tokens.dart`)
 - UI recipes (`lib/src/ui/theme_recipes.dart`)
 - Shared components (`lib/src/ui/select_panel.dart`, `lib/src/ui/table_formatter.dart`)
-- Interactive demo harness (`bin/glue_theme_demo.dart`)
 
 ## Core Rules
 
@@ -91,25 +90,6 @@ Dock panel requirements:
 - Explicit focus state
 - Clear hotkeys to toggle, focus, and clear focus
 
-## Canonical Realistic Scenario Fixture
-
-The theme demo contains a canonical "realistic scenario" page:
-
-- Conversation history
-- Tool call phases (`done`, `running`, `denied`, `error`)
-- Expanded status/error messaging
-- Subagent activity lines
-- Concurrent stream lanes
-- Bash/output block
-
-It supports:
-
-- Live streaming progression (timer-driven)
-- Scrollable history viewport
-- Pause/resume/restart/follow-tail controls
-
-Use this page as the visual regression target when changing render behavior.
-
 ## Usage Checklist for New UI
 
 When adding a new panel/overlay/view:
@@ -118,15 +98,4 @@ When adding a new panel/overlay/view:
 2. Use `TableFormatter` for tabular content.
 3. Use `SelectPanel` for searchable pickers.
 4. Keep overlays floating unless there is a hard requirement for pinned layout.
-5. Add or update demo coverage in `glue_theme_demo.dart`.
-6. Add tests for new formatting/navigation behavior.
-
-## Running the Demo
-
-From `cli/`:
-
-```bash
-dart run bin/glue_theme_demo.dart
-```
-
-Use page `5` for the realistic scenario and streaming/scroll interaction checks.
+5. Add tests for new formatting/navigation behavior.
