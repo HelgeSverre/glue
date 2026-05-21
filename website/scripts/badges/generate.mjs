@@ -106,8 +106,12 @@ function generateSvg(
   cornerRadius = 0,
 ) {
   const layout = LAYOUT[style];
-  const { labelTextX, labelWidth, messageTextX, messageWidth } =
-    deriveGeometry(layout, label, message, showIcon);
+  const { labelTextX, labelWidth, messageTextX, messageWidth } = deriveGeometry(
+    layout,
+    label,
+    message,
+    showIcon,
+  );
   const width = labelWidth + messageWidth;
   const height = layout.height;
 
@@ -201,7 +205,10 @@ async function buildBadge(config, style, variant) {
   );
 
   await writeFile(path.join(BADGES_DIR, `${fileBase}.svg`), svg, "utf-8");
-  await writeFile(path.join(BADGES_DIR, `${fileBase}.png`), await renderPng(svg));
+  await writeFile(
+    path.join(BADGES_DIR, `${fileBase}.png`),
+    await renderPng(svg),
+  );
 
   return {
     id: fileBase,

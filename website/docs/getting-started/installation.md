@@ -4,7 +4,7 @@
 
 Before installing Glue, make sure you have the following:
 
-- **Dart SDK 3.0+** -- available at [dart.dev/get-dart](https://dart.dev/get-dart)
+- **Dart SDK 3.12+** -- available at [dart.dev/get-dart](https://dart.dev/get-dart)
 - **Git** -- required for worktree support and cloning the repository
 - **API key** for at least one LLM provider (Anthropic, OpenAI, Gemini, Mistral, Groq, OpenRouter, GitHub Copilot via OAuth device-code, or a local Ollama instance — no key needed for Ollama or Copilot)
 
@@ -19,15 +19,13 @@ Clone the repository and install using `just` or run directly with Dart:
 ```bash
 # Clone the repository
 git clone https://github.com/helgesverre/glue.git
+cd glue
 
-# Navigate to the CLI package
-cd glue/cli
-
-# Install (option A: using just)
-just install
+# Install (option A: using just) — compiles → dist/glue, symlinks ~/.local/bin/glue
+just cli::install
 
 # Install (option B: run directly with Dart)
-dart run bin/glue.dart
+dart run cli/bin/glue.dart
 ```
 
 ## Verify the Installation

@@ -30,10 +30,10 @@ That's it — Zed spawns `glue serve` over stdio, opens an ACP session, and your
 
 `glue serve` supports two transports. Editors use **stdio**; browser and notebook clients use **WebSocket**.
 
-| Transport     | Use when                                                                | Flag                              |
-| ------------- | ----------------------------------------------------------------------- | --------------------------------- |
-| stdio         | Default. Editor spawns Glue as a subprocess and pipes JSON-RPC.         | `--stdio` (default)               |
-| WebSocket     | Browser/notebook clients (marimo, `use-acp`) that can't spawn a process. | `--port N` (implies `--no-stdio`) |
+| Transport | Use when                                                                 | Flag                              |
+| --------- | ------------------------------------------------------------------------ | --------------------------------- |
+| stdio     | Default. Editor spawns Glue as a subprocess and pipes JSON-RPC.          | `--stdio` (default)               |
+| WebSocket | Browser/notebook clients (marimo, `use-acp`) that can't spawn a process. | `--port N` (implies `--no-stdio`) |
 
 ### stdio (editors)
 
@@ -76,15 +76,15 @@ glue serve [--stdio] [--port N] [--host H] [--ws-path P]
            [--token T] [--protocol acp] [--debug]
 ```
 
-| Flag                | Default     | Purpose                                                                            |
-| ------------------- | ----------- | ---------------------------------------------------------------------------------- |
-| `--stdio`           | `true`      | Speak ACP over stdin/stdout. This is what editors expect.                          |
-| `--port N`, `-p N`  | —           | Bind a WebSocket server on the given port. `0` picks an ephemeral port. Implies `--no-stdio`. |
-| `--host H`          | `127.0.0.1` | Bind address for `--port`. Pass `0.0.0.0` to expose on all interfaces (requires `--token`). |
-| `--ws-path P`       | `/acp`      | HTTP path that accepts the WebSocket upgrade. `*` accepts any path.                |
-| `--token T`         | —           | Bearer token required on every WebSocket connection. Required when `--host` is non-loopback. |
-| `--protocol`        | `acp`       | Protocol to serve. ACP only today; MCP-client support is on the roadmap.           |
-| `--debug`, `-d`     | `false`     | Enable debug observability sinks for the agent loop.                               |
+| Flag               | Default     | Purpose                                                                                       |
+| ------------------ | ----------- | --------------------------------------------------------------------------------------------- |
+| `--stdio`          | `true`      | Speak ACP over stdin/stdout. This is what editors expect.                                     |
+| `--port N`, `-p N` | —           | Bind a WebSocket server on the given port. `0` picks an ephemeral port. Implies `--no-stdio`. |
+| `--host H`         | `127.0.0.1` | Bind address for `--port`. Pass `0.0.0.0` to expose on all interfaces (requires `--token`).   |
+| `--ws-path P`      | `/acp`      | HTTP path that accepts the WebSocket upgrade. `*` accepts any path.                           |
+| `--token T`        | —           | Bearer token required on every WebSocket connection. Required when `--host` is non-loopback.  |
+| `--protocol`       | `acp`       | Protocol to serve. ACP only today; MCP-client support is on the roadmap.                      |
+| `--debug`, `-d`    | `false`     | Enable debug observability sinks for the agent loop.                                          |
 
 ## Editor configuration
 

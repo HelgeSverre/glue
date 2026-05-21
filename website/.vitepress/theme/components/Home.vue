@@ -48,7 +48,9 @@ const fallbackEvents: ShotEvent[] = [
   {
     kind: "tool_call",
     name: "read",
-    args: { path: "packages/glue_strategies/lib/src/llm/anthropic_client.dart" },
+    args: {
+      path: "packages/glue_strategies/lib/src/llm/anthropic_client.dart",
+    },
     phase: "running",
   },
   {
@@ -59,7 +61,9 @@ const fallbackEvents: ShotEvent[] = [
   {
     kind: "tool_call",
     name: "edit",
-    args: { path: "packages/glue_strategies/lib/src/llm/anthropic_client.dart" },
+    args: {
+      path: "packages/glue_strategies/lib/src/llm/anthropic_client.dart",
+    },
     phase: "running",
   },
   {

@@ -14,11 +14,11 @@
     "@fontsource/inter": "^5.2.8",
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@resvg/resvg-js": "^2.6.2",
-    "@types/node": "^22.19.17",
+    "@types/node": "^22.19.19",
     "gray-matter": "^4.0.3",
     "typescript": "^5.9.3",
     "vitepress": "^1.6.4",
-    "vue": "^3.5.32"
+    "vue": "^3.5.34"
   },
   "overrides": {
     "esbuild": "^0.25.0",

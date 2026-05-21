@@ -9,13 +9,13 @@ For the capability matrix and full background, see [**Runtimes →**](/runtimes)
 
 ## Available runtimes
 
-| Runtime   | Status        | Use when                                                                 |
-| --------- | ------------- | ------------------------------------------------------------------------ |
-| `host`    | shipping      | Default. Fast feedback, direct access to your tools.                     |
-| `docker`  | shipping      | Untrusted code, dependency installs, generated scripts.                  |
-| `daytona` | shipping      | General-purpose cloud sandbox (REST API; US + EU).                       |
-| `sprites` | shipping      | Persistent Fly.io sandbox; resumes by name; auto-sleeps when idle.       |
-| `modal`   | shipping      | Modal sandbox tied to a Modal App; runaway-billing cap built in.         |
+| Runtime   | Status   | Use when                                                           |
+| --------- | -------- | ------------------------------------------------------------------ |
+| `host`    | shipping | Default. Fast feedback, direct access to your tools.               |
+| `docker`  | shipping | Untrusted code, dependency installs, generated scripts.            |
+| `daytona` | shipping | General-purpose cloud sandbox (REST API; US + EU).                 |
+| `sprites` | shipping | Persistent Fly.io sandbox; resumes by name; auto-sleeps when idle. |
+| `modal`   | shipping | Modal sandbox tied to a Modal App; runaway-billing cap built in.   |
 
 ## Selecting a runtime
 
@@ -44,19 +44,19 @@ Per-runtime options live in matching top-level YAML sections (`daytona:`,
 Cloud runtimes stage your working tree at `/workspace` via one of three
 strategies. `WorkspaceBootstrap` picks one per session:
 
-| Strategy | Used when | What it captures |
-|---|---|---|
-| **resume** | `/workspace/.git` already exists in the sandbox (Sprites persistent sandbox) | Whatever the previous session left there |
-| **bundle** | Host has `git` AND bundle fits the runtime's upload cap | Uncommitted edits, unpushed commits, untracked files, repos with no remote — everything visible to `git add -A` on the host |
-| **clone-from-remote** | Bundle path unavailable (no host git, or bundle too large) | Whatever's reachable on `origin` at host HEAD SHA |
+| Strategy              | Used when                                                                    | What it captures                                                                                                            |
+| --------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **resume**            | `/workspace/.git` already exists in the sandbox (Sprites persistent sandbox) | Whatever the previous session left there                                                                                    |
+| **bundle**            | Host has `git` AND bundle fits the runtime's upload cap                      | Uncommitted edits, unpushed commits, untracked files, repos with no remote — everything visible to `git add -A` on the host |
+| **clone-from-remote** | Bundle path unavailable (no host git, or bundle too large)                   | Whatever's reachable on `origin` at host HEAD SHA                                                                           |
 
 Per-runtime upload caps for the bundle path:
 
-| Runtime | Cap | Upload mechanism |
-|---|---|---|
-| Daytona | 200 MB | Multipart HTTP upload |
-| Modal | 30 MB | base64-in-JSON to Python sidecar |
-| Sprites | 3 MB | base64-over-shell exec |
+| Runtime | Cap    | Upload mechanism                 |
+| ------- | ------ | -------------------------------- |
+| Daytona | 200 MB | Multipart HTTP upload            |
+| Modal   | 30 MB  | base64-in-JSON to Python sidecar |
+| Sprites | 3 MB   | base64-over-shell exec           |
 
 Run `glue doctor` to verify host `git` is available — without it, every
 cloud session is forced through clone-from-remote, which requires a

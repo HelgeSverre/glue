@@ -68,12 +68,12 @@ Or set `DAYTONA_SNAPSHOT`.
 Daytona uses the **bundle path** by default:
 
 1. Glue runs `git --git-dir=<temp> --work-tree=<your-cwd> init && add -A
-   && commit -m "glue bootstrap"` on the **host** — your real `.git`
+&& commit -m "glue bootstrap"` on the **host** — your real `.git`
    is never touched.
 2. The resulting bundle (≤200 MB cap for Daytona's multipart upload)
    is uploaded to the sandbox at `/tmp/glue-bootstrap.bundle`.
 3. The sandbox clones from the bundle: `git clone /tmp/glue-bootstrap.bundle
-   /workspace`.
+/workspace`.
 
 What you get for free:
 
@@ -100,12 +100,12 @@ sandbox-accessible auth.
 
 ## All Daytona options
 
-| YAML key                    | Env var                      | Default                          |
-| --------------------------- | ---------------------------- | -------------------------------- |
-| `daytona.api_key`           | `DAYTONA_API_KEY`            | required                         |
-| `daytona.api_base_url`      | `DAYTONA_API_BASE_URL`       | `https://app.daytona.io/api`     |
-| `daytona.toolbox_base_url`  | `DAYTONA_TOOLBOX_BASE_URL`   | per-sandbox; proxy override only |
-| `daytona.snapshot`          | `DAYTONA_SNAPSHOT`           | org default                      |
+| YAML key                   | Env var                    | Default                          |
+| -------------------------- | -------------------------- | -------------------------------- |
+| `daytona.api_key`          | `DAYTONA_API_KEY`          | required                         |
+| `daytona.api_base_url`     | `DAYTONA_API_BASE_URL`     | `https://app.daytona.io/api`     |
+| `daytona.toolbox_base_url` | `DAYTONA_TOOLBOX_BASE_URL` | per-sandbox; proxy override only |
+| `daytona.snapshot`         | `DAYTONA_SNAPSHOT`         | org default                      |
 
 ## See also
 

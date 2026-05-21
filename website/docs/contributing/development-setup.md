@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Dart SDK 3.0+
+- Dart SDK 3.12+
 - Git
 - [just](https://github.com/casey/just) command runner (recommended)
 
@@ -10,18 +10,18 @@
 
 ```bash
 git clone https://github.com/helgesverre/glue.git
-cd glue/cli
-dart pub get
+cd glue
+dart pub get    # resolves the whole pub workspace (cli + glue_*)
 ```
 
 ## Run from Source
 
 ```bash
 # Run directly
-dart run bin/glue.dart
+dart run cli/bin/glue.dart
 
 # Or build and install (from cli/)
-just install    # compiles + symlinks to ~/.local/bin/glue
+cd cli && just install    # compiles → ../dist/glue, symlinks ~/.local/bin/glue
 ```
 
 ## Available Just Commands
@@ -67,8 +67,14 @@ the full monorepo quality gate.
 
 ## Project Structure
 
+The repo is a [Dart pub workspace](https://dart.dev/tools/pub/workspaces): a
+single `pubspec.lock` and `.dart_tool/` at the root are shared by every member
+package. Each package's `pubspec.yaml` opts in with `resolution: workspace`.
+
 ```
 glue/
+  pubspec.yaml               # Workspace root (lists members)
+  analysis_options.yaml      # Shared lint + analyzer config (each package includes it)
   cli/                       # Binary entry, App controller, TUI, slash commands
   packages/
     glue_core/               # Pure data types and contracts
@@ -78,4 +84,5 @@ glue/
     glue_server/             # ACP server + SessionEvent → ACP mapping
   website/                   # Unified marketing + docs site (VitePress)
   docs/                      # Canonical reference material (models.yaml, plans, design)
+  dist/glue                  # AOT binary output (gitignored, from `just cli::build`)
 ```

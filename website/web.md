@@ -93,14 +93,14 @@ Six verbs, all running against a single browser session that persists across
 tool calls within the same turn. The agent can navigate, fill a form, submit,
 and read the result without reopening the tab.
 
-| Action         | Use for                                                         |
-| -------------- | --------------------------------------------------------------- |
-| `navigate`     | Open a URL; waits for network idle.                             |
-| `click`        | Click any selector in the live DOM.                             |
-| `type`         | Fill an input.                                                  |
-| `screenshot`   | Full page or a single element, saved to disk.                   |
-| `extract_text` | Cleaned markdown of the current page (capped at ~50k tokens).   |
-| `evaluate`     | Run arbitrary JavaScript in page context and return the result. |
+| Action         | Use for                                                                                                                                           |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `navigate`     | Open a URL. Waits for the page `load` event by default; pass `wait_until` to switch (`domcontentloaded` \| `networkalmostidle` \| `networkidle`). |
+| `click`        | Click any selector in the live DOM.                                                                                                               |
+| `type`         | Fill an input.                                                                                                                                    |
+| `screenshot`   | Full page or a single element, saved to disk.                                                                                                     |
+| `extract_text` | Cleaned markdown of the current page (capped at ~50k tokens).                                                                                     |
+| `evaluate`     | Run arbitrary JavaScript in page context and return the result.                                                                                   |
 
 ### Backends
 

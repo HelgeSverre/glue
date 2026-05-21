@@ -73,7 +73,7 @@ insurance against a crashed glue process leaving sandboxes billing.
 ## What happens on session start
 
 1. The Python sidecar launches and calls `Sandbox.create("sleep",
-   "infinity")` inside the configured Modal App.
+"infinity")` inside the configured Modal App.
 2. Workspace bootstrap stages your working tree at `/workspace` —
    see [Bootstrap strategy](#bootstrap-strategy) below.
 3. Tools and bash run via sidecar JSON-RPC.
@@ -114,14 +114,14 @@ If you're hitting this regularly, raise `sandbox_timeout_seconds`.
 
 ## All Modal options
 
-| YAML key                          | Env var                | Default                       |
-| --------------------------------- | ---------------------- | ----------------------------- |
-| `modal.python_path`               | `MODAL_PYTHON`         | auto-detected from `modal` CLI |
-| `modal.modal_cli`                 | `MODAL_CLI`            | `modal` (on PATH)             |
-| `modal.app_name`                  | `MODAL_APP`            | `glue`                        |
-| `modal.image`                     | `MODAL_IMAGE`          | Modal's default image         |
-| `modal.sandbox_timeout_seconds`   | `MODAL_SANDBOX_TIMEOUT` | `1800`                       |
-| `modal.delete_on_close`           | `MODAL_DELETE_ON_CLOSE` | `true`                       |
+| YAML key                        | Env var                 | Default                        |
+| ------------------------------- | ----------------------- | ------------------------------ |
+| `modal.python_path`             | `MODAL_PYTHON`          | auto-detected from `modal` CLI |
+| `modal.modal_cli`               | `MODAL_CLI`             | `modal` (on PATH)              |
+| `modal.app_name`                | `MODAL_APP`             | `glue`                         |
+| `modal.image`                   | `MODAL_IMAGE`           | Modal's default image          |
+| `modal.sandbox_timeout_seconds` | `MODAL_SANDBOX_TIMEOUT` | `1800`                         |
+| `modal.delete_on_close`         | `MODAL_DELETE_ON_CLOSE` | `true`                         |
 
 ## See also
 

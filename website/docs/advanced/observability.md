@@ -70,13 +70,13 @@ observability:
 
 If a key is not set in `config.yaml`, Glue reads the standard OTEL env vars:
 
-| Setting            | Environment variables (first match wins)                                                   |
-| ------------------ | ------------------------------------------------------------------------------------------ |
+| Setting            | Environment variables (first match wins)                                                          |
+| ------------------ | ------------------------------------------------------------------------------------------------- |
 | Endpoint           | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `PHOENIX_COLLECTOR_ENDPOINT` |
-| Headers            | `OTEL_EXPORTER_OTLP_TRACES_HEADERS`, `OTEL_EXPORTER_OTLP_HEADERS`, `PHOENIX_API_KEY`       |
-| Service name       | `OTEL_SERVICE_NAME`                                                                        |
-| Resource attrs     | `OTEL_RESOURCE_ATTRIBUTES`, `PHOENIX_PROJECT_NAME`                                         |
-| Master kill switch | `OTEL_SDK_DISABLED=1` disables export even when an endpoint is set                         |
+| Headers            | `OTEL_EXPORTER_OTLP_TRACES_HEADERS`, `OTEL_EXPORTER_OTLP_HEADERS`, `PHOENIX_API_KEY`              |
+| Service name       | `OTEL_SERVICE_NAME`                                                                               |
+| Resource attrs     | `OTEL_RESOURCE_ATTRIBUTES`, `PHOENIX_PROJECT_NAME`                                                |
+| Master kill switch | `OTEL_SDK_DISABLED=1` disables export even when an endpoint is set                                |
 
 `PHOENIX_PROJECT_NAME`, when set, is mapped to the
 `openinference.project.name` resource attribute (and a default of `glue` is

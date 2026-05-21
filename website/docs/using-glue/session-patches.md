@@ -48,13 +48,13 @@ shutdown instead of silence:
 
 Reasons surfaced today:
 
-| Reason | Meaning |
-|---|---|
+| Reason           | Meaning                                                                                                   |
+| ---------------- | --------------------------------------------------------------------------------------------------------- |
 | `noBootstrapSha` | Runtime never recorded a baseline (typically a resumed Sprites sandbox where `bootstrap` short-circuited) |
-| `gitFailed` | `git` exited non-zero inside the sandbox (no repo, bad SHA, etc.) |
-| `executorDead` | Sandbox transport died (Modal sandbox auto-terminated, network drop) |
-| `runtimeNotGit` | Workspace isn't a git repo |
-| `notSupported` | Host/Docker runtime — captured silently, not surfaced as a warning |
+| `gitFailed`      | `git` exited non-zero inside the sandbox (no repo, bad SHA, etc.)                                         |
+| `executorDead`   | Sandbox transport died (Modal sandbox auto-terminated, network drop)                                      |
+| `runtimeNotGit`  | Workspace isn't a git repo                                                                                |
+| `notSupported`   | Host/Docker runtime — captured silently, not surfaced as a warning                                        |
 
 ## The `runtime.mbox.meta.json` sidecar
 

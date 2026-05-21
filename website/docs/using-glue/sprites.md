@@ -85,18 +85,18 @@ e.g.:
 ```
 
 This is a deliberate choice: a silent `null` baseline used to drop
-*every* change from the resumed session. If you want this session to
+_every_ change from the resumed session. If you want this session to
 build on the previous one, commit the previous work inside the sandbox
 first. If you don't, delete the sprite.
 :::
 
 ## All Sprites options
 
-| YAML key                  | Env var                      | Default              |
-| ------------------------- | ---------------------------- | -------------------- |
-| `sprites.sprite_cli`      | `SPRITES_CLI`                | `sprite` (on PATH)   |
-| `sprites.sprite_name`     | `SPRITES_NAME`               | auto-generated       |
-| `sprites.delete_on_close` | `SPRITES_DELETE_ON_CLOSE`    | `true`               |
+| YAML key                  | Env var                   | Default            |
+| ------------------------- | ------------------------- | ------------------ |
+| `sprites.sprite_cli`      | `SPRITES_CLI`             | `sprite` (on PATH) |
+| `sprites.sprite_name`     | `SPRITES_NAME`            | auto-generated     |
+| `sprites.delete_on_close` | `SPRITES_DELETE_ON_CLOSE` | `true`             |
 
 ## See also
 

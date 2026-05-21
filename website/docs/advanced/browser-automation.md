@@ -122,12 +122,12 @@ over writing keys into `config.yaml`.
 For risky or noisy browsing, pair the browser backend with a runtime that
 doesn't touch your host:
 
-| Goal                              | Runtime + backend                                                 |
-| --------------------------------- | ----------------------------------------------------------------- |
-| Develop an automation quickly     | `host` runtime + `local` browser (`headed: true`)                 |
-| Untrusted site inspection         | `docker` runtime + `docker` browser                               |
+| Goal                              | Runtime + backend                                                         |
+| --------------------------------- | ------------------------------------------------------------------------- |
+| Develop an automation quickly     | `host` runtime + `local` browser (`headed: true`)                         |
+| Untrusted site inspection         | `docker` runtime + `docker` browser                                       |
 | High-volume scraping              | `daytona` / `sprites` / `modal` runtime + `steel` / `browserbase` browser |
-| Agent-driven multi-step workflows | Any runtime + `steel`, `browserbase`, `anchor`, or `hyperbrowser` |
+| Agent-driven multi-step workflows | Any runtime + `steel`, `browserbase`, `anchor`, or `hyperbrowser`         |
 
 ## Providers we're evaluating
 

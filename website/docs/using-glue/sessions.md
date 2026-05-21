@@ -6,12 +6,12 @@ Every conversation is automatically saved. You can resume any past session witho
 
 Sessions are stored in `~/.glue/sessions/{timestamp}-{id}/` with these files:
 
-| File                     | Contents                                                                                |
-| ------------------------ | --------------------------------------------------------------------------------------- |
-| `meta.json`              | Session ID, working directory, model, provider, start/end times                         |
-| `conversation.jsonl`     | Line-delimited event log (messages, tool calls, results)                                |
-| `state.json`             | Mutable per-session state (e.g. Docker mounts in use)                                   |
-| `runtime.mbox`           | Cloud-runtime only: agent's workspace changes as a `git format-patch` mbox              |
+| File                     | Contents                                                                                 |
+| ------------------------ | ---------------------------------------------------------------------------------------- |
+| `meta.json`              | Session ID, working directory, model, provider, start/end times                          |
+| `conversation.jsonl`     | Line-delimited event log (messages, tool calls, results)                                 |
+| `state.json`             | Mutable per-session state (e.g. Docker mounts in use)                                    |
+| `runtime.mbox`           | Cloud-runtime only: agent's workspace changes as a `git format-patch` mbox               |
 | `runtime.mbox.meta.json` | Cloud-runtime only: sidecar with runtime ID, sandbox ID, bootstrap SHA, capture metadata |
 
 For cloud runtimes (Daytona, Sprites, Modal), the `runtime.mbox` is written

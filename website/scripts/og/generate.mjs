@@ -277,8 +277,7 @@ async function main() {
     const subtitleLineHeight = Math.round(subtitleSize * 1.3);
     const subtitleLines = splitLines(String(subtitle), 1040, subtitleSize, 2);
 
-    const HEADLINE_Y =
-      HEADLINE_CAP_TOP + Math.round(size * CAP_HEIGHT_RATIO);
+    const HEADLINE_Y = HEADLINE_CAP_TOP + Math.round(size * CAP_HEIGHT_RATIO);
     const HEADLINE_TSPANS = tspansForHeadline(
       lines,
       HEADLINE_Y,
