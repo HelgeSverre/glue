@@ -28,8 +28,6 @@ jobs:
             asset: glue-linux-arm64
           - os: macos-15
             asset: glue-macos-arm64
-          - os: macos-13
-            asset: glue-macos-x64
           - os: windows-latest
             asset: glue-windows-x64.exe
 
@@ -214,7 +212,6 @@ jobs:
           }
 
           sha_macos_arm64="$(extract_sha glue-macos-arm64.tar.gz)"
-          sha_macos_x64="$(extract_sha glue-macos-x64.tar.gz)"
           sha_linux_x64="$(extract_sha glue-linux-x64.tar.gz)"
           sha_linux_arm64="$(extract_sha glue-linux-arm64.tar.gz)"
 
@@ -224,7 +221,6 @@ jobs:
           sed \
             -e "s|{{VERSION}}|${version}|g" \
             -e "s|{{SHA256_MACOS_ARM64}}|${sha_macos_arm64}|g" \
-            -e "s|{{SHA256_MACOS_X64}}|${sha_macos_x64}|g" \
             -e "s|{{SHA256_LINUX_X64}}|${sha_linux_x64}|g" \
             -e "s|{{SHA256_LINUX_ARM64}}|${sha_linux_arm64}|g" \
             "$tmpl" > "$out"

@@ -10,8 +10,7 @@ class Glue < Formula
       sha256 "{{SHA256_MACOS_ARM64}}"
     end
     on_intel do
-      url "https://github.com/HelgeSverre/glue/releases/download/v{{VERSION}}/glue-macos-x64.tar.gz"
-      sha256 "{{SHA256_MACOS_X64}}"
+      odie "glue does not ship Intel Mac binaries. Apple Silicon (arm64) only."
     end
   end
 
