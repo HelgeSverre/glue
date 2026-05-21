@@ -113,6 +113,125 @@ class OAuthDiscoveryException implements Exception {
   String toString() => 'OAuthDiscoveryException: $message';
 }
 
+// ─── Protected Resource Metadata Discovery (RFC 9728) ──────────────────────
+
+/// Parsed RFC 9728 protected resource metadata document.
+class ProtectedResourceMetadata {
+  const ProtectedResourceMetadata({
+    required this.resource,
+    required this.authorizationServers,
+    this.scopesSupported = const [],
+    required this.metadataUrl,
+  });
+
+  /// `resource` field — should equal the MCP server's origin.
+  final Uri resource;
+
+  /// `authorization_servers` — MCP requires at least one.
+  final List<Uri> authorizationServers;
+
+  /// `scopes_supported` — passed through to authorize URL when no
+  /// `WWW-Authenticate` scope is available.
+  final List<String> scopesSupported;
+
+  /// URL the metadata was fetched from — cached in config to skip
+  /// rediscovery next session.
+  final Uri metadataUrl;
+}
+
+/// Discovers RFC 9728 protected resource metadata for an MCP server.
+///
+/// Tries, in order:
+///   1. [resourceMetadataUrl] when supplied (from `WWW-Authenticate` or
+///      cached config).
+///   2. `<server>/.well-known/oauth-protected-resource{path}` — RFC 9728
+///      path-suffix form.
+///   3. `<server>/.well-known/oauth-protected-resource` — root form.
+///
+/// Throws [OAuthDiscoveryException] when nothing returns valid metadata.
+Future<ProtectedResourceMetadata> discoverProtectedResourceMetadata({
+  required Uri serverUrl,
+  Uri? resourceMetadataUrl,
+  http.Client? httpClient,
+}) async {
+  final client = httpClient ?? http.Client();
+  final ownsClient = httpClient == null;
+  try {
+    final candidates = <Uri>[
+      ...?resourceMetadataUrl == null ? null : [resourceMetadataUrl],
+      _wellKnownPathSuffix(serverUrl),
+      _wellKnownRoot(serverUrl),
+    ];
+    for (final url in candidates) {
+      try {
+        final parsed = await _fetchMetadata(client, url);
+        if (parsed != null) return parsed;
+      } catch (_) {
+        continue;
+      }
+    }
+    throw OAuthDiscoveryException(
+      'no protected-resource metadata locatable for $serverUrl',
+    );
+  } finally {
+    if (ownsClient) client.close();
+  }
+}
+
+Uri _wellKnownPathSuffix(Uri server) {
+  // RFC 9728: insert /.well-known/oauth-protected-resource AFTER the
+  // host, prefixed to the original path. Example:
+  //   https://api.example.com/foo/mcp
+  //   → https://api.example.com/.well-known/oauth-protected-resource/foo/mcp
+  final path = server.path.isEmpty || server.path == '/'
+      ? ''
+      : server.path;
+  return server.replace(
+    path: '/.well-known/oauth-protected-resource$path',
+    query: null,
+    fragment: null,
+  );
+}
+
+Uri _wellKnownRoot(Uri server) {
+  return server.replace(
+    path: '/.well-known/oauth-protected-resource',
+    query: null,
+    fragment: null,
+  );
+}
+
+Future<ProtectedResourceMetadata?> _fetchMetadata(
+  http.Client client,
+  Uri url,
+) async {
+  final res = await client.get(
+    url,
+    headers: const {'Accept': 'application/json'},
+  );
+  if (res.statusCode != 200) return null;
+  final json = jsonDecode(res.body);
+  if (json is! Map<String, dynamic>) return null;
+  final resourceRaw = json['resource'];
+  final authServersRaw = json['authorization_servers'];
+  if (resourceRaw is! String || authServersRaw is! List) return null;
+  final authServers = authServersRaw
+      .whereType<String>()
+      .map(Uri.tryParse)
+      .whereType<Uri>()
+      .toList();
+  if (authServers.isEmpty) return null;
+  return ProtectedResourceMetadata(
+    resource: Uri.parse(resourceRaw),
+    authorizationServers: authServers,
+    scopesSupported: (json['scopes_supported'] as List?)
+            ?.whereType<String>()
+            .toList() ??
+        const [],
+    metadataUrl: url,
+  );
+}
+
 // ─── WWW-Authenticate parsing (RFC 6750, RFC 7235) ────────────────────────
 
 /// Parsed `WWW-Authenticate: Bearer …` challenge. Only Bearer is
