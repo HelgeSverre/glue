@@ -1090,7 +1090,12 @@ class App {
     const sep = ' · ';
     final scrollSeg = _scrollOffset > 0 ? '↑$_scrollOffset' : null;
     final mcpUnhealthy = _mcpPool.unhealthyCount;
-    final mcpSeg = mcpUnhealthy > 0 ? 'MCP:$mcpUnhealthy⚠' : null;
+    final mcpAwaitingAuth = _mcpPool.awaitingAuthCount;
+    final mcpSeg = mcpUnhealthy == 0
+        ? null
+        : (mcpUnhealthy == mcpAwaitingAuth
+            ? 'MCP:$mcpAwaitingAuth🔑'
+            : 'MCP:$mcpUnhealthy⚠');
     final rightSegs = [
       formatStatusModelLabel(
         _config?.activeModel,

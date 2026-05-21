@@ -517,7 +517,7 @@ class McpSlashCommand extends SlashCommand {
       lines.add(
         '  ${s.id.padRight(20)} '
         '${_stateLabel(s.state)}  '
-        '(${s.toolCount} tool${s.toolCount == 1 ? '' : 's'})',
+        '(${s.toolCount} tool${s.toolCount == 1 ? '' : 's'})${_authTag(s)}',
       );
       if (s.lastError != null) {
         lines.add('    last error: ${s.lastError}');
@@ -542,6 +542,24 @@ class McpSlashCommand extends SlashCommand {
     McpDead(:final reason) => 'dead — $reason',
     McpAwaitingAuth() => 'needs auth',
   };
+
+  String _authTag(McpServerSnapshot s) {
+    final spec = s.spec;
+    if (spec is! McpHttpServerSpec && spec is! McpWebSocketServerSpec) {
+      return '';
+    }
+    final hasToken = ctx.config?.credentials
+            .getField('mcp:${s.id}', McpOAuthFields.accessToken) !=
+        null;
+    final authKind = spec is McpHttpServerSpec
+        ? spec.auth
+        : (spec as McpWebSocketServerSpec).auth;
+    return switch (authKind) {
+      McpOAuthAuth() when hasToken => '  · oauth (signed in)',
+      McpOAuthAuth() => '  · oauth (not signed in)',
+      _ => '',
+    };
+  }
 
   String _detailFor(McpServerSpec spec) => switch (spec) {
     McpStdioServerSpec(:final command) => command,
