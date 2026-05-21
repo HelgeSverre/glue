@@ -107,6 +107,77 @@ void main() {
       );
     });
   });
+
+  group('discoverAuthorizationServerMetadata', () {
+    test('returns endpoints from RFC 8414 metadata', () async {
+      final client = _FakeHttpClient({
+        Uri.parse(
+                'https://auth.example/.well-known/oauth-authorization-server'):
+            const _Response(
+          200,
+          '{'
+          '"issuer":"https://auth.example",'
+          '"authorization_endpoint":"https://auth.example/authorize",'
+          '"token_endpoint":"https://auth.example/token",'
+          '"registration_endpoint":"https://auth.example/register"'
+          '}',
+        ),
+      });
+      final endpoints = await discoverAuthorizationServerMetadata(
+        authServer: Uri.parse('https://auth.example'),
+        httpClient: client,
+      );
+      expect(endpoints.tokenEndpoint,
+          Uri.parse('https://auth.example/token'));
+      expect(endpoints.registrationEndpoint,
+          Uri.parse('https://auth.example/register'));
+    });
+
+    test('rejects metadata whose issuer does not match URL', () async {
+      final client = _FakeHttpClient({
+        Uri.parse(
+                'https://auth.example/.well-known/oauth-authorization-server'):
+            const _Response(
+          200,
+          '{'
+          '"issuer":"https://attacker.example",'
+          '"authorization_endpoint":"https://attacker.example/authorize",'
+          '"token_endpoint":"https://attacker.example/token"'
+          '}',
+        ),
+      });
+      expect(
+        () => discoverAuthorizationServerMetadata(
+          authServer: Uri.parse('https://auth.example'),
+          httpClient: client,
+        ),
+        throwsA(isA<OAuthDiscoveryException>()),
+      );
+    });
+
+    test('falls back to OIDC discovery path on 404', () async {
+      final client = _FakeHttpClient({
+        Uri.parse(
+                'https://auth.example/.well-known/oauth-authorization-server'):
+            const _Response(404, ''),
+        Uri.parse('https://auth.example/.well-known/openid-configuration'):
+            const _Response(
+          200,
+          '{'
+          '"issuer":"https://auth.example",'
+          '"authorization_endpoint":"https://auth.example/authorize",'
+          '"token_endpoint":"https://auth.example/token"'
+          '}',
+        ),
+      });
+      final endpoints = await discoverAuthorizationServerMetadata(
+        authServer: Uri.parse('https://auth.example'),
+        httpClient: client,
+      );
+      expect(endpoints.tokenEndpoint,
+          Uri.parse('https://auth.example/token'));
+    });
+  });
 }
 
 class _Response {

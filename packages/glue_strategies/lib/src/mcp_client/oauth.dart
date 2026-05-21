@@ -106,6 +106,64 @@ Future<OAuthEndpoints> discoverOAuthEndpoints(
   }
 }
 
+/// Discovers RFC 8414 authorization server metadata for [authServer].
+/// Falls back to OIDC discovery (`/.well-known/openid-configuration`).
+///
+/// Validates the `issuer` field equals the URL the metadata was fetched
+/// from — required by RFC 8414 §3.3 and MCP §"After retrieving a
+/// metadata document".
+///
+/// Throws [OAuthDiscoveryException] when no compliant metadata is found.
+Future<OAuthEndpoints> discoverAuthorizationServerMetadata({
+  required Uri authServer,
+  http.Client? httpClient,
+}) async {
+  final client = httpClient ?? http.Client();
+  final ownsClient = httpClient == null;
+  try {
+    final candidates = [
+      authServer.replace(
+        path: '/.well-known/oauth-authorization-server${authServer.path}',
+      ),
+      authServer.replace(
+        path: '/.well-known/openid-configuration${authServer.path}',
+      ),
+      // Common server convention — path BEFORE well-known.
+      authServer.replace(
+        path: '${authServer.path}/.well-known/openid-configuration',
+      ),
+    ];
+    for (final url in candidates) {
+      try {
+        final res = await client.get(
+          url,
+          headers: const {'Accept': 'application/json'},
+        );
+        if (res.statusCode != 200) continue;
+        final json = jsonDecode(res.body);
+        if (json is! Map<String, dynamic>) continue;
+        final issuer = json['issuer'] as String?;
+        if (issuer == null || Uri.tryParse(issuer) != authServer) {
+          // Issuer mismatch — reject per spec.
+          throw OAuthDiscoveryException(
+            'metadata issuer "$issuer" does not match $authServer',
+          );
+        }
+        return OAuthEndpoints.fromMetadata(json);
+      } on OAuthDiscoveryException {
+        rethrow;
+      } catch (_) {
+        continue;
+      }
+    }
+    throw OAuthDiscoveryException(
+      'no authorization-server metadata locatable for $authServer',
+    );
+  } finally {
+    if (ownsClient) client.close();
+  }
+}
+
 class OAuthDiscoveryException implements Exception {
   const OAuthDiscoveryException(this.message);
   final String message;
