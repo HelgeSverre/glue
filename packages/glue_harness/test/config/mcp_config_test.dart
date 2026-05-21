@@ -108,6 +108,25 @@ mcp:
 ''');
       expect(cfg.servers.single, isA<McpWebSocketServerSpec>());
     });
+
+    test('parses cached resource_metadata_url + authorization_server', () {
+      final cfg = parse('''
+mcp:
+  servers:
+    foo:
+      url: "https://foo.example/mcp"
+      auth:
+        kind: oauth
+      resource_metadata_url: "https://foo.example/.well-known/oauth-protected-resource"
+      authorization_server: "https://auth.foo.example"
+''');
+      final spec = cfg.servers.single as McpHttpServerSpec;
+      expect(
+        spec.resourceMetadataUrl,
+        Uri.parse('https://foo.example/.well-known/oauth-protected-resource'),
+      );
+      expect(spec.authorizationServer, Uri.parse('https://auth.foo.example'));
+    });
   });
 
   group('parseMcpConfig — env-var expansion', () {

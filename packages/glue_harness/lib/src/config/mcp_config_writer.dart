@@ -153,12 +153,46 @@ class McpConfigWriter {
             '${inner}working_directory: ${_scalar(workingDirectory)}',
           );
         }
-      case McpHttpServerSpec(:final url, :final auth):
+      case McpHttpServerSpec(
+        :final url,
+        :final auth,
+        :final resourceMetadataUrl,
+        :final authorizationServer,
+      ):
         lines.writeln('${inner}url: ${_scalar(url.toString())}');
         _writeAuth(lines, auth, indent: inner);
-      case McpWebSocketServerSpec(:final url, :final auth):
+        if (resourceMetadataUrl != null) {
+          lines.writeln(
+            '${inner}resource_metadata_url: '
+            '${_scalar(resourceMetadataUrl.toString())}',
+          );
+        }
+        if (authorizationServer != null) {
+          lines.writeln(
+            '${inner}authorization_server: '
+            '${_scalar(authorizationServer.toString())}',
+          );
+        }
+      case McpWebSocketServerSpec(
+        :final url,
+        :final auth,
+        :final resourceMetadataUrl,
+        :final authorizationServer,
+      ):
         lines.writeln('${inner}url: ${_scalar(url.toString())}');
         _writeAuth(lines, auth, indent: inner);
+        if (resourceMetadataUrl != null) {
+          lines.writeln(
+            '${inner}resource_metadata_url: '
+            '${_scalar(resourceMetadataUrl.toString())}',
+          );
+        }
+        if (authorizationServer != null) {
+          lines.writeln(
+            '${inner}authorization_server: '
+            '${_scalar(authorizationServer.toString())}',
+          );
+        }
     }
     if (!spec.enabled) lines.writeln('${inner}enabled: false');
     if (spec.callTimeoutSeconds != null) {
@@ -264,6 +298,50 @@ class McpConfigWriter {
     );
   }
 
+  /// Updates a server's `auth`, `resource_metadata_url`, and
+  /// `authorization_server` keys atomically. Used after a successful
+  /// OAuth flow to (a) write back `auth: {kind: oauth}` when previously
+  /// `none` and (b) cache the discovered URLs to skip rediscovery next
+  /// session.
+  ///
+  /// Idempotent — re-running with the same arguments is a no-op modulo
+  /// the file mtime.
+  void updateAuth(
+    String id, {
+    required McpAuthSpec auth,
+    Uri? resourceMetadataUrl,
+    Uri? authorizationServer,
+  }) {
+    if (!hasServer(id)) {
+      throw McpConfigWriteError("Server '$id' is not in config.yaml.");
+    }
+    _mutate((editor) {
+      final authMap = _authToYaml(auth);
+      if (authMap != null) {
+        editor.update(['mcp', 'servers', id, 'auth'], authMap);
+      } else {
+        // McpNoAuth — remove any existing auth key. Safe if absent.
+        try {
+          editor.remove(['mcp', 'servers', id, 'auth']);
+        } catch (_) {
+          // No key to remove; that's fine.
+        }
+      }
+      if (resourceMetadataUrl != null) {
+        editor.update(
+          ['mcp', 'servers', id, 'resource_metadata_url'],
+          resourceMetadataUrl.toString(),
+        );
+      }
+      if (authorizationServer != null) {
+        editor.update(
+          ['mcp', 'servers', id, 'authorization_server'],
+          authorizationServer.toString(),
+        );
+      }
+    });
+  }
+
   // ─── internals ───────────────────────────────────────────────────────────
 
   /// Applies [op] to a `YamlEditor`, validates the result re-parses, then
@@ -325,14 +403,36 @@ class McpConfigWriter {
         if (workingDirectory != null) {
           out['working_directory'] = workingDirectory;
         }
-      case McpHttpServerSpec(:final url, :final auth):
+      case McpHttpServerSpec(
+        :final url,
+        :final auth,
+        :final resourceMetadataUrl,
+        :final authorizationServer,
+      ):
         out['url'] = url.toString();
         final authMap = _authToYaml(auth);
         if (authMap != null) out['auth'] = authMap;
-      case McpWebSocketServerSpec(:final url, :final auth):
+        if (resourceMetadataUrl != null) {
+          out['resource_metadata_url'] = resourceMetadataUrl.toString();
+        }
+        if (authorizationServer != null) {
+          out['authorization_server'] = authorizationServer.toString();
+        }
+      case McpWebSocketServerSpec(
+        :final url,
+        :final auth,
+        :final resourceMetadataUrl,
+        :final authorizationServer,
+      ):
         out['url'] = url.toString();
         final authMap = _authToYaml(auth);
         if (authMap != null) out['auth'] = authMap;
+        if (resourceMetadataUrl != null) {
+          out['resource_metadata_url'] = resourceMetadataUrl.toString();
+        }
+        if (authorizationServer != null) {
+          out['authorization_server'] = authorizationServer.toString();
+        }
     }
     if (!spec.enabled) out['enabled'] = false;
     if (spec.callTimeoutSeconds != null) {

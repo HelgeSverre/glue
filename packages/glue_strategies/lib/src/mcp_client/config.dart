@@ -53,12 +53,22 @@ class McpHttpServerSpec extends McpServerSpec {
     required super.id,
     required this.url,
     this.auth = const McpNoAuth(),
+    this.resourceMetadataUrl,
+    this.authorizationServer,
     super.enabled,
     super.callTimeoutSeconds,
   });
 
   final Uri url;
   final McpAuthSpec auth;
+
+  /// Cached RFC 9728 resource-metadata URL discovered on a prior
+  /// session. Skips one HTTP round-trip at startup. Self-healing —
+  /// stale value just falls back to fresh discovery.
+  final Uri? resourceMetadataUrl;
+
+  /// Cached authorization server URL discovered on a prior session.
+  final Uri? authorizationServer;
 }
 
 class McpWebSocketServerSpec extends McpServerSpec {
@@ -66,12 +76,22 @@ class McpWebSocketServerSpec extends McpServerSpec {
     required super.id,
     required this.url,
     this.auth = const McpNoAuth(),
+    this.resourceMetadataUrl,
+    this.authorizationServer,
     super.enabled,
     super.callTimeoutSeconds,
   });
 
   final Uri url;
   final McpAuthSpec auth;
+
+  /// Cached RFC 9728 resource-metadata URL discovered on a prior
+  /// session. Skips one HTTP round-trip at startup. Self-healing —
+  /// stale value just falls back to fresh discovery.
+  final Uri? resourceMetadataUrl;
+
+  /// Cached authorization server URL discovered on a prior session.
+  final Uri? authorizationServer;
 }
 
 // ─── Auth ──────────────────────────────────────────────────────────────────

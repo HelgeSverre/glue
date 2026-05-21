@@ -256,6 +256,72 @@ mcp:
     });
   });
 
+  group('McpConfigWriter.updateAuth', () {
+    test('updateAuth writes kind:oauth + cached discovery URLs', () {
+      final dir = _scratch();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final configPath = '${dir.path}/config.yaml';
+      File(configPath).writeAsStringSync('''
+mcp:
+  servers:
+    foo:
+      url: "https://foo.example/mcp"
+''');
+
+      final writer = McpConfigWriter(configPath);
+      writer.updateAuth(
+        'foo',
+        auth: const McpOAuthAuth(),
+        resourceMetadataUrl: Uri.parse(
+          'https://foo.example/.well-known/oauth-protected-resource',
+        ),
+        authorizationServer: Uri.parse('https://auth.foo.example'),
+      );
+
+      final content = _read(configPath);
+      expect(content, contains('kind: oauth'));
+      expect(content, contains('resource_metadata_url:'));
+      expect(content, contains('authorization_server:'));
+    });
+
+    test('updateAuth removes auth key when given McpNoAuth', () {
+      final dir = _scratch();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final configPath = '${dir.path}/config.yaml';
+      File(configPath).writeAsStringSync('''
+mcp:
+  servers:
+    foo:
+      url: "https://foo.example/mcp"
+      auth:
+        kind: oauth
+''');
+
+      McpConfigWriter(configPath).updateAuth(
+        'foo',
+        auth: const McpNoAuth(),
+      );
+
+      final entry = _serverEntry(configPath, 'foo');
+      expect(entry.containsKey('auth'), isFalse);
+    });
+
+    test('updateAuth throws when server id is unknown', () {
+      final dir = _scratch();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final configPath = '${dir.path}/config.yaml';
+      File(configPath).writeAsStringSync('mcp:\n  servers: {}\n');
+
+      expect(
+        () => McpConfigWriter(configPath).updateAuth(
+          'ghost',
+          auth: const McpOAuthAuth(),
+        ),
+        throwsA(isA<McpConfigWriteError>()),
+      );
+    });
+  });
+
   group('McpConfigWriter.hasServer', () {
     test('returns true/false based on YAML state', () {
       final dir = _scratch();

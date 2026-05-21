@@ -127,6 +127,8 @@ McpServerSpec _parseServer(
         auth: auth,
         enabled: enabled,
         callTimeoutSeconds: callTimeout,
+        resourceMetadataUrl: _optionalUri(raw['resource_metadata_url']),
+        authorizationServer: _optionalUri(raw['authorization_server']),
       );
     }
     return McpHttpServerSpec(
@@ -135,12 +137,19 @@ McpServerSpec _parseServer(
       auth: auth,
       enabled: enabled,
       callTimeoutSeconds: callTimeout,
+      resourceMetadataUrl: _optionalUri(raw['resource_metadata_url']),
+      authorizationServer: _optionalUri(raw['authorization_server']),
     );
   }
 
   throw ConfigError(
     '`mcp.servers.$id` must set either `command` (stdio) or `url` (HTTP/WS).',
   );
+}
+
+Uri? _optionalUri(Object? raw) {
+  if (raw is! String || raw.isEmpty) return null;
+  return Uri.tryParse(raw);
 }
 
 McpAuthSpec _parseAuth(
