@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:glue_server/glue_server.dart';
 import 'package:glue_strategies/src/mcp_client/client.dart';
 import 'package:glue_strategies/src/mcp_client/protocol.dart';
 import 'package:glue_strategies/src/mcp_client/transport/http_sse.dart';
@@ -266,6 +267,46 @@ void main() {
       expect(receivedSessionIds.skip(1), everyElement('sess-xyz'));
 
       await client.close();
+    });
+  });
+
+  group('McpHttpTransport — 401 challenge', () {
+    test('surfaces WWW-Authenticate header via McpHttpTransportError',
+        () async {
+      final server = await _FakeHttpMcpServer.bind(
+        handler: (req) async {
+          req.response.statusCode = 401;
+          req.response.headers.add(
+            'WWW-Authenticate',
+            'Bearer resource_metadata="https://example/.well-known/oauth-protected-resource"',
+          );
+          await req.response.close();
+        },
+      );
+      addTearDown(server.close);
+
+      final transport = McpHttpTransport(endpoint: server.url);
+      final errors = <Object>[];
+      transport.incoming.listen(
+        (_) {},
+        onError: errors.add,
+      );
+
+      transport.send(
+        const JsonRpcRequest(id: 1, method: 'initialize', params: {}),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      expect(errors, isNotEmpty);
+      final err = errors.single;
+      expect(err, isA<McpHttpTransportError>());
+      final transportErr = err as McpHttpTransportError;
+      expect(transportErr.statusCode, 401);
+      expect(
+        transportErr.wwwAuthenticate,
+        'Bearer resource_metadata="https://example/.well-known/oauth-protected-resource"',
+      );
+      await transport.close();
     });
   });
 }

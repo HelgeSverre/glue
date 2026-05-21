@@ -109,9 +109,15 @@ class McpHttpTransport implements JsonRpcTransport {
         (acc, chunk) => acc..addAll(chunk),
       );
       final text = utf8.decode(bodyBytes, allowMalformed: true);
+      final wwwAuth = streamed.headers['www-authenticate'] ??
+          streamed.headers['WWW-Authenticate'];
       if (!_closed) {
         _incoming.addError(
-          McpHttpTransportError(statusCode: streamed.statusCode, body: text),
+          McpHttpTransportError(
+            statusCode: streamed.statusCode,
+            body: text,
+            wwwAuthenticate: wwwAuth,
+          ),
         );
       }
       return;
@@ -155,10 +161,21 @@ class McpHttpTransport implements JsonRpcTransport {
 /// Surfaced via the [JsonRpcTransport.incoming] stream's error channel
 /// when the server returns a non-2xx HTTP status. The [McpClient] in
 /// turn maps it to an [McpCallFailure] for the agent loop.
+///
+/// On 401 responses the [wwwAuthenticate] header (if any) is captured
+/// — the pool consumes it to discover OAuth metadata per RFC 9728.
 class McpHttpTransportError implements Exception {
-  const McpHttpTransportError({required this.statusCode, required this.body});
+  const McpHttpTransportError({
+    required this.statusCode,
+    required this.body,
+    this.wwwAuthenticate,
+  });
   final int statusCode;
   final String body;
+
+  /// Raw `WWW-Authenticate` header from the response. Populated when
+  /// the server returns 401. `null` for other failure statuses.
+  final String? wwwAuthenticate;
 
   @override
   String toString() =>
