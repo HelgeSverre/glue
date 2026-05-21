@@ -794,6 +794,66 @@ void clearMcpOAuthTokens({
   credentials.setFields(providerId, next);
 }
 
+/// Scope of an MCP auth invalidation. Mirrors the TS SDK's
+/// `OAuthClientProvider.invalidateCredentials(scope)` granularity so
+/// we can drop just the bit that failed without round-tripping DCR
+/// or rediscovery.
+enum McpAuthInvalidation {
+  /// Wipe everything: tokens, client registration, scope, expires_at.
+  all,
+
+  /// Clear access_token, refresh_token, expires_at, scope. Used after
+  /// refresh-token failure; the DCR client_id stays so we don't need to
+  /// re-register.
+  tokens,
+
+  /// Clear oauth_client_id + oauth_client_secret. Used when the auth
+  /// server rejects our stored client (e.g. registration expired).
+  client,
+
+  /// Clear cached discovery URLs on the server spec. Implemented at the
+  /// config writer level, not here — included for symmetry.
+  discovery,
+}
+
+/// Drops [scope]'s portion of MCP OAuth credentials for [serverId].
+/// No-op for [McpAuthInvalidation.discovery] (handled in the config
+/// writer).
+void invalidateMcpAuth({
+  required String serverId,
+  required McpAuthInvalidation scope,
+  required CredentialStore credentials,
+}) {
+  final providerId = 'mcp:$serverId';
+  final existing = credentials.getFields(providerId);
+  final drop = switch (scope) {
+    McpAuthInvalidation.all => {
+        McpOAuthFields.accessToken,
+        McpOAuthFields.refreshToken,
+        McpOAuthFields.expiresAtIso,
+        McpOAuthFields.scope,
+        McpOAuthFields.clientId,
+        McpOAuthFields.clientSecret,
+      },
+    McpAuthInvalidation.tokens => {
+        McpOAuthFields.accessToken,
+        McpOAuthFields.refreshToken,
+        McpOAuthFields.expiresAtIso,
+        McpOAuthFields.scope,
+      },
+    McpAuthInvalidation.client => {
+        McpOAuthFields.clientId,
+        McpOAuthFields.clientSecret,
+      },
+    McpAuthInvalidation.discovery => const <String>{},
+  };
+  final next = <String, String>{
+    for (final e in existing.entries)
+      if (!drop.contains(e.key)) e.key: e.value,
+  };
+  credentials.setFields(providerId, next);
+}
+
 /// Reads the current OAuth access token for [serverId]. Returns `null`
 /// when nothing is stored. Does not refresh — callers handle expiry
 /// elsewhere.
