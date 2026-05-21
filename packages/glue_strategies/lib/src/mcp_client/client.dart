@@ -17,6 +17,8 @@ import 'dart:async';
 import 'package:glue_server/glue_server.dart';
 
 import 'package:glue_strategies/src/mcp_client/protocol.dart';
+import 'package:glue_strategies/src/mcp_client/transport/http_sse.dart'
+    show McpHttpTransportError;
 
 /// A peer-side notification flowing from the server. `tools/list_changed`
 /// is the only one we currently care about, but we surface everything so
@@ -36,6 +38,7 @@ class McpCallFailure implements Exception {
     this.code,
     this.message,
     this.retryable = false,
+    this.wwwAuthenticate,
   });
 
   /// Short machine reason. Stable. Drives metadata.
@@ -49,6 +52,11 @@ class McpCallFailure implements Exception {
 
   /// Whether the agent loop may retry the same call.
   final bool retryable;
+
+  /// Raw `WWW-Authenticate` header, when this failure originated from
+  /// a 401 transport error. Consumed by the pool to drive RFC 9728
+  /// discovery and refresh-token grant.
+  final String? wwwAuthenticate;
 
   @override
   String toString() =>
@@ -236,6 +244,17 @@ class McpClient {
   }
 
   void _handleTransportError(Object error) {
+    if (error is McpHttpTransportError && error.statusCode == 401) {
+      _failAllPending(
+        McpCallFailure(
+          reason: 'auth_expired',
+          message: error.body.isEmpty ? '401 Unauthorized' : error.body,
+          retryable: true,
+          wwwAuthenticate: error.wwwAuthenticate,
+        ),
+      );
+      return;
+    }
     _failAllPending(
       McpCallFailure(
         reason: 'transport_error',

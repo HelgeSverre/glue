@@ -1,6 +1,7 @@
 import 'package:glue_server/glue_server.dart';
 import 'package:glue_strategies/src/mcp_client/client.dart';
 import 'package:glue_strategies/src/mcp_client/protocol.dart';
+import 'package:glue_strategies/src/mcp_client/transport/http_sse.dart';
 import 'package:test/test.dart';
 
 import 'in_memory_transport.dart';
@@ -232,6 +233,35 @@ void main() {
         await client.close();
       },
     );
+  });
+
+  group('McpClient auth handling', () {
+    test('401 from transport surfaces as auth_expired retryable failure',
+        () async {
+      final transport = InMemoryMcpTransport();
+      final client = McpClient(transport: transport);
+      final pending = client.callTool('foo', {});
+      transport.pushError(
+        const McpHttpTransportError(
+          statusCode: 401,
+          body: '',
+          wwwAuthenticate:
+              'Bearer resource_metadata="https://example/.well-known/oauth-protected-resource"',
+        ),
+      );
+      final err = await pending.then<McpCallFailure?>(
+        (_) => null,
+        onError: (Object e) => e as McpCallFailure,
+      );
+      expect(err, isNotNull);
+      expect(err!.reason, 'auth_expired');
+      expect(err.retryable, isTrue);
+      expect(
+        err.wwwAuthenticate,
+        'Bearer resource_metadata="https://example/.well-known/oauth-protected-resource"',
+      );
+      await client.close();
+    });
   });
 
   group('McpClient notifications', () {

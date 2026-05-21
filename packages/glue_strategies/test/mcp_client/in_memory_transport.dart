@@ -50,6 +50,13 @@ class InMemoryMcpTransport implements JsonRpcTransport {
     _incoming.add(message);
   }
 
+  /// Push an error into the incoming stream — simulates a transport-level
+  /// failure like a 401 response surfacing as `McpHttpTransportError`.
+  void pushError(Object error) {
+    if (_closed) return;
+    _incoming.addError(error);
+  }
+
   /// Simulate a transport drop. All current and future pending calls
   /// on the client side should fail with `retryable: true`.
   void simulateDrop() {
