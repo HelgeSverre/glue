@@ -46,6 +46,20 @@ jobs:
       - name: Install dependencies
         run: dart pub get
 
+      - name: Sync pubspec version to tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          raw_tag="${{ github.event.inputs.tag || github.ref_name }}"
+          tag_version="${raw_tag#v}"
+          # sed -i.bak works on both GNU and BSD sed.
+          sed -i.bak "s/^version: .*/version: ${tag_version}/" pubspec.yaml
+          rm pubspec.yaml.bak
+          dart run tool/gen_version.dart
+          # Stage so gen_build_info doesn't tag the build as +dirty.
+          git -C .. add cli/pubspec.yaml packages/glue_core/lib/src/version_generated.dart
+          grep '^version:' pubspec.yaml
+
       - name: Build binary
         shell: bash
         run: |
