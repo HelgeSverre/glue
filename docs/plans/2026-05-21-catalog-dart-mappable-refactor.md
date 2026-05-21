@@ -201,8 +201,8 @@ dart test test/integration/model_flag_resolution_test.dart
 # 4. Full quality gate
 cd .. && just check
 
-# 5. AOT bundle still builds (catches const-vs-final regressions)
-cd cli && just build && ./dist/bundle/bin/glue --version
+# 5. AOT binary still builds (catches const-vs-final regressions)
+cd cli && just build && ../dist/glue --version
 
 # 6. Drift detection
 just gen-check  # passes after step 2
