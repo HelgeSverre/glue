@@ -12,6 +12,7 @@ import 'package:glue/src/input/text_area_editor.dart';
 import 'package:glue/src/input/streaming_input_handler.dart';
 import 'package:glue/src/input/file_expander.dart';
 import 'package:glue_harness/glue_harness.dart';
+import 'package:glue/src/commands/config_command.dart' show userConfigPath;
 import 'package:glue/src/commands/builtin_commands.dart';
 import 'package:glue/src/commands/slash_command_context.dart';
 import 'package:glue/src/commands/slash_commands.dart';
@@ -2732,9 +2733,14 @@ class App {
       case McpPoolServerAuthRequiredEvent(
         :final serverId,
         :final reauthCommand,
+        :final resourceMetadataUrl,
+        :final wwwAuthenticate,
       ):
-        _addSystemMessage(
-          '↳ MCP re-auth required ($serverId). Run: $reauthCommand',
+        _autoOpenAuthFlow(
+          serverId: serverId,
+          reauthCommand: reauthCommand,
+          resourceMetadataUrl: resourceMetadataUrl,
+          wwwAuthenticate: wwwAuthenticate,
         );
       case McpPoolToolListChangedEvent(
         :final serverId,
@@ -2750,6 +2756,122 @@ class App {
         );
     }
     _render();
+  }
+
+  // ── MCP auto auth flow ─────────────────────────────────────────────────
+
+  void _autoOpenAuthFlow({
+    required String serverId,
+    required String reauthCommand,
+    required Uri? resourceMetadataUrl,
+    required String? wwwAuthenticate,
+  }) {
+    final config = _config;
+    if (config == null) {
+      _addSystemMessage(
+        '↳ MCP re-auth required ($serverId). Run: $reauthCommand',
+      );
+      return;
+    }
+
+    final snapshot = _mcpPool.server(serverId);
+    final spec = snapshot?.spec;
+    final baseUrl = switch (spec) {
+      McpHttpServerSpec(:final url) => url,
+      McpWebSocketServerSpec(:final url) => url,
+      _ => null,
+    };
+    if (baseUrl == null) {
+      _addSystemMessage(
+        '↳ MCP re-auth required ($serverId). Run: $reauthCommand',
+      );
+      return;
+    }
+
+    final cachedMeta = resourceMetadataUrl ??
+        switch (spec) {
+          McpHttpServerSpec(:final resourceMetadataUrl) => resourceMetadataUrl,
+          McpWebSocketServerSpec(:final resourceMetadataUrl) =>
+            resourceMetadataUrl,
+          _ => null,
+        };
+
+    _addSystemMessage(
+      '↳ MCP "$serverId" needs auth — starting OAuth flow.',
+    );
+
+    final runner = McpAuthFlowRunner(
+      serverId: serverId,
+      serverUrl: baseUrl,
+      credentials: config.credentials,
+      wwwAuthenticate: wwwAuthenticate,
+      cachedResourceMetadataUrl: cachedMeta,
+      openBrowser: _openMcpAuthBrowser,
+    );
+
+    runner.states.listen((state) {
+      switch (state) {
+        case McpAuthFlowDiscovering():
+          _addSystemMessage('  • Discovering OAuth metadata…');
+        case McpAuthFlowRegistering():
+          _addSystemMessage('  • Registering OAuth client (DCR)…');
+        case McpAuthFlowAwaitingCallback(:final authUrl):
+          _addSystemMessage('  • Open in browser: $authUrl');
+        case McpAuthFlowSuccess(
+          :final resourceMetadataUrl,
+          :final authorizationServer,
+        ):
+          _writeBackMcpAuthConfig(
+            serverId,
+            resourceMetadataUrl,
+            authorizationServer,
+          );
+          _addSystemMessage('  ✓ Signed in to "$serverId". Reconnecting…');
+          _mcpPool.reconnect(serverId);
+        case McpAuthFlowError(:final message):
+          _addSystemMessage('  ✗ OAuth failed for "$serverId": $message');
+        case McpAuthFlowCancelled():
+          _addSystemMessage('  ✗ OAuth cancelled for "$serverId".');
+      }
+      _render();
+    });
+
+    unawaited(runner.run());
+  }
+
+  void _writeBackMcpAuthConfig(
+    String serverId,
+    Uri? resourceMetadataUrl,
+    Uri? authorizationServer,
+  ) {
+    try {
+      final writer = McpConfigWriter(userConfigPath(_environment));
+      writer.updateAuth(
+        serverId,
+        auth: const McpOAuthAuth(),
+        resourceMetadataUrl: resourceMetadataUrl,
+        authorizationServer: authorizationServer,
+      );
+    } catch (_) {
+      // Non-fatal — tokens are stored, just the config write-back didn't take.
+    }
+  }
+
+  Future<void> _openMcpAuthBrowser(String url) async {
+    try {
+      if (Platform.isMacOS) {
+        await Process.start('open', [url], mode: ProcessStartMode.detached);
+      } else if (Platform.isLinux) {
+        await Process.start('xdg-open', [url], mode: ProcessStartMode.detached);
+      } else if (Platform.isWindows) {
+        await Process.start('rundll32', [
+          'url.dll,FileProtocolHandler',
+          url,
+        ], mode: ProcessStartMode.detached);
+      }
+    } catch (_) {
+      // URL is already printed via system message.
+    }
   }
 
   // ── Subagent updates ───────────────────────────────────────────────────
