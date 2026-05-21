@@ -19,6 +19,7 @@ export 'package:glue_strategies/src/llm/ollama_client.dart';
 export 'package:glue_strategies/src/llm/openai_client.dart';
 export 'package:glue_strategies/src/llm/sse.dart';
 export 'package:glue_strategies/src/llm/tool_schema.dart';
+export 'package:glue_strategies/src/mcp_client/auth_flow.dart';
 export 'package:glue_strategies/src/mcp_client/client.dart';
 export 'package:glue_strategies/src/mcp_client/config.dart';
 export 'package:glue_strategies/src/mcp_client/connection_state.dart';

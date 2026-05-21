@@ -722,72 +722,60 @@ class McpAuthLoginCommand extends Command<int> {
     final baseUrl = spec is McpHttpServerSpec
         ? spec.url
         : (spec as McpWebSocketServerSpec).url;
+    final cachedMeta = spec is McpHttpServerSpec
+        ? spec.resourceMetadataUrl
+        : (spec as McpWebSocketServerSpec).resourceMetadataUrl;
+
+    final runner = McpAuthFlowRunner(
+      serverId: serverId,
+      serverUrl: baseUrl,
+      credentials: config.credentials,
+      cachedResourceMetadataUrl: cachedMeta,
+      openBrowser: _openBrowser,
+    );
+    runner.states.listen((state) {
+      switch (state) {
+        case McpAuthFlowDiscovering():
+          stdout.writeln('Discovering OAuth metadata for $serverId…');
+        case McpAuthFlowRegistering():
+          stdout.writeln('Registering OAuth client (DCR)…');
+        case McpAuthFlowAwaitingCallback(:final authUrl):
+          stdout.writeln('Open this URL to sign in: $authUrl');
+        case McpAuthFlowSuccess(
+            :final resourceMetadataUrl,
+            :final authorizationServer,
+          ):
+          stdout.writeln('Stored OAuth tokens for "$serverId".');
+          try {
+            final writer = McpConfigWriter(
+              userConfigPath(Environment.detect()),
+            );
+            writer.updateAuth(
+              serverId,
+              auth: const McpOAuthAuth(),
+              resourceMetadataUrl: resourceMetadataUrl,
+              authorizationServer: authorizationServer,
+            );
+          } on McpConfigWriteError catch (e) {
+            stderr.writeln(
+              'Warning: could not update config.yaml: ${e.message}',
+            );
+          }
+        case McpAuthFlowError(:final message):
+          stderr.writeln('OAuth login failed: $message');
+        case McpAuthFlowCancelled():
+          stderr.writeln('Cancelled.');
+      }
+    });
 
     try {
-      stdout.writeln('Discovering OAuth metadata for $serverId…');
-      final endpoints = await discoverOAuthEndpoints(baseUrl);
-
-      OAuthClient client;
-      final existingClientId = config.credentials.getField(
-        'mcp:$serverId',
-        McpOAuthFields.clientId,
-      );
-      if (existingClientId != null) {
-        client = OAuthClient(
-          clientId: existingClientId,
-          clientSecret: config.credentials.getField(
-            'mcp:$serverId',
-            McpOAuthFields.clientSecret,
-          ),
-        );
-        stdout.writeln('Reusing registered client_id.');
-      } else if (endpoints.registrationEndpoint != null) {
-        stdout.writeln('Registering OAuth client (DCR)…');
-        // Loopback URI here is a stub for registration; the actual
-        // redirect URI is bound at flow time. Many servers accept
-        // multiple URIs at registration, so register a wildcard-shaped
-        // localhost one.
-        client = await registerOAuthClient(
-          registrationEndpoint: endpoints.registrationEndpoint!,
-          redirectUri: Uri.parse('http://127.0.0.1/callback'),
-          clientName: 'glue',
-        );
-      } else {
-        stderr.writeln(
-          'No registration_endpoint advertised and no client_id stored '
-          'for "$serverId". Pre-register a client out-of-band, then set '
-          '`oauth_client_id` via `glue mcp auth set <server>` (not yet '
-          'supported for non-DCR servers).',
-        );
-        return 1;
-      }
-
-      stdout.writeln('Opening browser…');
-      final tokens = await runOAuthAuthorizationCodeFlow(
-        endpoints: endpoints,
-        client: client,
-        onAuthUrl: (url) {
-          stdout.writeln('Browse to: $url');
-          _openBrowser(url);
-        },
-      );
-
-      storeMcpOAuthTokens(
-        serverId: serverId,
-        client: client,
-        tokens: tokens,
-        credentials: config.credentials,
-      );
-      stdout.writeln('Stored OAuth tokens for "$serverId".');
-      return 0;
+      final terminal = await runner.run();
+      return terminal is McpAuthFlowSuccess ? 0 : 1;
     } on StateError {
       stderr.writeln(
         'Server "$serverId" is not in your config. '
         'Known: ${config.mcp.servers.map((s) => s.id).join(", ")}.',
       );
-      return 1;
-    } on Exception catch (e) {
-      stderr.writeln('OAuth login failed: $e');
       return 1;
     }
   }
