@@ -1,0 +1,36 @@
+class Glue < Formula
+  desc "Terminal-native coding agent"
+  homepage "https://getglue.dev"
+  version "{{VERSION}}"
+  license "MIT"
+
+  on_macos do
+    on_arm do
+      url "https://github.com/HelgeSverre/glue/releases/download/v{{VERSION}}/glue-macos-arm64.tar.gz"
+      sha256 "{{SHA256_MACOS_ARM64}}"
+    end
+    on_intel do
+      url "https://github.com/HelgeSverre/glue/releases/download/v{{VERSION}}/glue-macos-x64.tar.gz"
+      sha256 "{{SHA256_MACOS_X64}}"
+    end
+  end
+
+  on_linux do
+    on_intel do
+      url "https://github.com/HelgeSverre/glue/releases/download/v{{VERSION}}/glue-linux-x64.tar.gz"
+      sha256 "{{SHA256_LINUX_X64}}"
+    end
+    on_arm do
+      url "https://github.com/HelgeSverre/glue/releases/download/v{{VERSION}}/glue-linux-arm64.tar.gz"
+      sha256 "{{SHA256_LINUX_ARM64}}"
+    end
+  end
+
+  def install
+    bin.install "glue"
+  end
+
+  test do
+    assert_match(/\d+\.\d+\.\d+/, shell_output("#{bin}/glue --version"))
+  end
+end
