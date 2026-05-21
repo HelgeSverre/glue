@@ -109,7 +109,8 @@ class McpHttpTransport implements JsonRpcTransport {
         (acc, chunk) => acc..addAll(chunk),
       );
       final text = utf8.decode(bodyBytes, allowMalformed: true);
-      final wwwAuth = streamed.headers['www-authenticate'] ??
+      final wwwAuth =
+          streamed.headers['www-authenticate'] ??
           streamed.headers['WWW-Authenticate'];
       if (!_closed) {
         _incoming.addError(

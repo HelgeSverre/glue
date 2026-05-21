@@ -297,10 +297,7 @@ mcp:
         kind: oauth
 ''');
 
-      McpConfigWriter(configPath).updateAuth(
-        'foo',
-        auth: const McpNoAuth(),
-      );
+      McpConfigWriter(configPath).updateAuth('foo', auth: const McpNoAuth());
 
       final entry = _serverEntry(configPath, 'foo');
       expect(entry.containsKey('auth'), isFalse);
@@ -313,10 +310,9 @@ mcp:
       File(configPath).writeAsStringSync('mcp:\n  servers: {}\n');
 
       expect(
-        () => McpConfigWriter(configPath).updateAuth(
-          'ghost',
-          auth: const McpOAuthAuth(),
-        ),
+        () => McpConfigWriter(
+          configPath,
+        ).updateAuth('ghost', auth: const McpOAuthAuth()),
         throwsA(isA<McpConfigWriteError>()),
       );
     });

@@ -10,8 +10,10 @@ void main() {
         'scope="read write"',
       );
       expect(challenge?.scheme, 'Bearer');
-      expect(challenge?.resourceMetadata,
-          Uri.parse('https://example.com/.well-known/oauth-protected-resource'));
+      expect(
+        challenge?.resourceMetadata,
+        Uri.parse('https://example.com/.well-known/oauth-protected-resource'),
+      );
       expect(challenge?.scope, ['read', 'write']);
     });
 
@@ -20,8 +22,10 @@ void main() {
         'Bearer error="invalid_token", error_description="token expired, please refresh"',
       );
       expect(challenge?.scheme, 'Bearer');
-      expect(challenge?.parameters['error_description'],
-          'token expired, please refresh');
+      expect(
+        challenge?.parameters['error_description'],
+        'token expired, please refresh',
+      );
     });
 
     test('returns null when scheme is not Bearer', () {
@@ -44,27 +48,32 @@ void main() {
   group('discoverProtectedResourceMetadata', () {
     test('uses URL from WWW-Authenticate when supplied', () async {
       final client = _FakeHttpClient({
-        Uri.parse('https://meta.example/oauth-protected-resource'): const _Response(
+        Uri.parse(
+          'https://meta.example/oauth-protected-resource',
+        ): const _Response(
           200,
           '{"resource":"https://mcp.example","authorization_servers":["https://auth.example"]}',
         ),
       });
       final meta = await discoverProtectedResourceMetadata(
         serverUrl: Uri.parse('https://mcp.example/mcp'),
-        resourceMetadataUrl:
-            Uri.parse('https://meta.example/oauth-protected-resource'),
+        resourceMetadataUrl: Uri.parse(
+          'https://meta.example/oauth-protected-resource',
+        ),
         httpClient: client,
       );
-      expect(meta.authorizationServers.first,
-          Uri.parse('https://auth.example'));
+      expect(
+        meta.authorizationServers.first,
+        Uri.parse('https://auth.example'),
+      );
       expect(meta.resource, Uri.parse('https://mcp.example'));
     });
 
     test('falls back to path-suffixed well-known when no hint', () async {
       final client = _FakeHttpClient({
         Uri.parse(
-                'https://mcp.example/.well-known/oauth-protected-resource/mcp'):
-            const _Response(
+          'https://mcp.example/.well-known/oauth-protected-resource/mcp',
+        ): const _Response(
           200,
           '{"resource":"https://mcp.example","authorization_servers":["https://auth.example"]}',
         ),
@@ -73,17 +82,23 @@ void main() {
         serverUrl: Uri.parse('https://mcp.example/mcp'),
         httpClient: client,
       );
-      expect(meta.authorizationServers.first,
-          Uri.parse('https://auth.example'));
+      expect(
+        meta.authorizationServers.first,
+        Uri.parse('https://auth.example'),
+      );
     });
 
     test('falls back to root well-known on 404 of path variant', () async {
       final client = _FakeHttpClient({
         Uri.parse(
-                'https://mcp.example/.well-known/oauth-protected-resource/mcp'):
-            const _Response(404, ''),
-        Uri.parse('https://mcp.example/.well-known/oauth-protected-resource'):
-            const _Response(
+          'https://mcp.example/.well-known/oauth-protected-resource/mcp',
+        ): const _Response(
+          404,
+          '',
+        ),
+        Uri.parse(
+          'https://mcp.example/.well-known/oauth-protected-resource',
+        ): const _Response(
           200,
           '{"resource":"https://mcp.example","authorization_servers":["https://auth.example"]}',
         ),
@@ -92,8 +107,10 @@ void main() {
         serverUrl: Uri.parse('https://mcp.example/mcp'),
         httpClient: client,
       );
-      expect(meta.authorizationServers.first,
-          Uri.parse('https://auth.example'));
+      expect(
+        meta.authorizationServers.first,
+        Uri.parse('https://auth.example'),
+      );
     });
 
     test('throws when no metadata can be located', () async {
@@ -112,8 +129,8 @@ void main() {
     test('returns endpoints from RFC 8414 metadata', () async {
       final client = _FakeHttpClient({
         Uri.parse(
-                'https://auth.example/.well-known/oauth-authorization-server'):
-            const _Response(
+          'https://auth.example/.well-known/oauth-authorization-server',
+        ): const _Response(
           200,
           '{'
           '"issuer":"https://auth.example",'
@@ -127,17 +144,18 @@ void main() {
         authServer: Uri.parse('https://auth.example'),
         httpClient: client,
       );
-      expect(endpoints.tokenEndpoint,
-          Uri.parse('https://auth.example/token'));
-      expect(endpoints.registrationEndpoint,
-          Uri.parse('https://auth.example/register'));
+      expect(endpoints.tokenEndpoint, Uri.parse('https://auth.example/token'));
+      expect(
+        endpoints.registrationEndpoint,
+        Uri.parse('https://auth.example/register'),
+      );
     });
 
     test('rejects metadata whose issuer does not match URL', () async {
       final client = _FakeHttpClient({
         Uri.parse(
-                'https://auth.example/.well-known/oauth-authorization-server'):
-            const _Response(
+          'https://auth.example/.well-known/oauth-authorization-server',
+        ): const _Response(
           200,
           '{'
           '"issuer":"https://attacker.example",'
@@ -158,10 +176,14 @@ void main() {
     test('falls back to OIDC discovery path on 404', () async {
       final client = _FakeHttpClient({
         Uri.parse(
-                'https://auth.example/.well-known/oauth-authorization-server'):
-            const _Response(404, ''),
-        Uri.parse('https://auth.example/.well-known/openid-configuration'):
-            const _Response(
+          'https://auth.example/.well-known/oauth-authorization-server',
+        ): const _Response(
+          404,
+          '',
+        ),
+        Uri.parse(
+          'https://auth.example/.well-known/openid-configuration',
+        ): const _Response(
           200,
           '{'
           '"issuer":"https://auth.example",'
@@ -174,8 +196,7 @@ void main() {
         authServer: Uri.parse('https://auth.example'),
         httpClient: client,
       );
-      expect(endpoints.tokenEndpoint,
-          Uri.parse('https://auth.example/token'));
+      expect(endpoints.tokenEndpoint, Uri.parse('https://auth.example/token'));
     });
   });
 
@@ -187,8 +208,8 @@ void main() {
           '{"resource":"https://mcp.example","authorization_servers":["https://auth.example"]}',
         ),
         Uri.parse(
-                'https://auth.example/.well-known/oauth-authorization-server'):
-            const _Response(
+          'https://auth.example/.well-known/oauth-authorization-server',
+        ): const _Response(
           200,
           '{'
           '"issuer":"https://auth.example",'
@@ -203,20 +224,23 @@ void main() {
             'Bearer resource_metadata="https://meta.example/protected", scope="read"',
         httpClient: client,
       );
-      expect(discovery.endpoints.tokenEndpoint,
-          Uri.parse('https://auth.example/token'));
-      expect(discovery.resourceMetadataUrl,
-          Uri.parse('https://meta.example/protected'));
-      expect(discovery.authorizationServer,
-          Uri.parse('https://auth.example'));
+      expect(
+        discovery.endpoints.tokenEndpoint,
+        Uri.parse('https://auth.example/token'),
+      );
+      expect(
+        discovery.resourceMetadataUrl,
+        Uri.parse('https://meta.example/protected'),
+      );
+      expect(discovery.authorizationServer, Uri.parse('https://auth.example'));
       expect(discovery.scopes, ['read']); // header wins over metadata
     });
 
     test('falls back to legacy direct discovery when no RFC 9728', () async {
       final client = _FakeHttpClient({
         Uri.parse(
-                'https://mcp.example/.well-known/oauth-authorization-server'):
-            const _Response(
+          'https://mcp.example/.well-known/oauth-authorization-server',
+        ): const _Response(
           200,
           '{'
           '"issuer":"https://mcp.example",'
@@ -229,8 +253,10 @@ void main() {
         serverUrl: Uri.parse('https://mcp.example'),
         httpClient: client,
       );
-      expect(discovery.endpoints.tokenEndpoint,
-          Uri.parse('https://mcp.example/token'));
+      expect(
+        discovery.endpoints.tokenEndpoint,
+        Uri.parse('https://mcp.example/token'),
+      );
       expect(discovery.resourceMetadataUrl, isNull);
     });
   });

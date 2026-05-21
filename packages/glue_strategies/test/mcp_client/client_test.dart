@@ -236,8 +236,7 @@ void main() {
   });
 
   group('McpClient auth handling', () {
-    test('401 from transport surfaces as auth_expired retryable failure',
-        () async {
+    test('401 from transport surfaces as auth_expired retryable failure', () async {
       final transport = InMemoryMcpTransport();
       final client = McpClient(transport: transport);
       final pending = client.callTool('foo', {});

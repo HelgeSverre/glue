@@ -328,16 +328,20 @@ class McpConfigWriter {
         }
       }
       if (resourceMetadataUrl != null) {
-        editor.update(
-          ['mcp', 'servers', id, 'resource_metadata_url'],
-          resourceMetadataUrl.toString(),
-        );
+        editor.update([
+          'mcp',
+          'servers',
+          id,
+          'resource_metadata_url',
+        ], resourceMetadataUrl.toString());
       }
       if (authorizationServer != null) {
-        editor.update(
-          ['mcp', 'servers', id, 'authorization_server'],
-          authorizationServer.toString(),
-        );
+        editor.update([
+          'mcp',
+          'servers',
+          id,
+          'authorization_server',
+        ], authorizationServer.toString());
       }
     });
   }

@@ -56,13 +56,14 @@ class McpAuthFlowCancelled extends McpAuthFlowState {
 /// Pluggable Authorization-Code+PKCE flow. Default is the real
 /// `runOAuthAuthorizationCodeFlow`. Tests inject a stub that emits the
 /// auth URL via [onAuthUrl] and returns synthesized tokens.
-typedef OAuthCodeFlow = Future<OAuthTokens> Function({
-  required OAuthEndpoints endpoints,
-  required OAuthClient client,
-  required List<String> scopes,
-  required void Function(String authUrl) onAuthUrl,
-  http.Client? httpClient,
-});
+typedef OAuthCodeFlow =
+    Future<OAuthTokens> Function({
+      required OAuthEndpoints endpoints,
+      required OAuthClient client,
+      required List<String> scopes,
+      required void Function(String authUrl) onAuthUrl,
+      http.Client? httpClient,
+    });
 
 class McpAuthFlowRunner {
   McpAuthFlowRunner({
@@ -76,9 +77,9 @@ class McpAuthFlowRunner {
     Future<void> Function(String url)? openBrowser,
     OAuthCodeFlow? codeFlow,
     // ignore: prefer_initializing_formals
-  })  : _httpClient = httpClient,
-        _openBrowser = openBrowser ?? _noopOpen,
-        _codeFlow = codeFlow ?? _defaultCodeFlow;
+  }) : _httpClient = httpClient,
+       _openBrowser = openBrowser ?? _noopOpen,
+       _codeFlow = codeFlow ?? _defaultCodeFlow;
 
   final String serverId;
   final Uri serverUrl;
@@ -159,10 +160,12 @@ class McpAuthFlowRunner {
         tokens: tokens,
         credentials: credentials,
       );
-      return await _terminal(McpAuthFlowSuccess(
-        resourceMetadataUrl: discovery.resourceMetadataUrl,
-        authorizationServer: discovery.authorizationServer,
-      ));
+      return await _terminal(
+        McpAuthFlowSuccess(
+          resourceMetadataUrl: discovery.resourceMetadataUrl,
+          authorizationServer: discovery.authorizationServer,
+        ),
+      );
     } catch (e) {
       return _terminal(McpAuthFlowError(e.toString()));
     }

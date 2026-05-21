@@ -164,8 +164,10 @@ Future<McpAuthDiscovery> discoverMcpAuth({
     );
   } on OAuthDiscoveryException {
     // Last-resort: legacy direct probe against the server URL.
-    final endpoints =
-        await discoverOAuthEndpoints(serverUrl, httpClient: httpClient);
+    final endpoints = await discoverOAuthEndpoints(
+      serverUrl,
+      httpClient: httpClient,
+    );
     return McpAuthDiscovery(
       endpoints: endpoints,
       scopes: challenge?.scope ?? const [],
@@ -308,9 +310,7 @@ Uri _wellKnownPathSuffix(Uri server) {
   // host, prefixed to the original path. Example:
   //   https://api.example.com/foo/mcp
   //   → https://api.example.com/.well-known/oauth-protected-resource/foo/mcp
-  final path = server.path.isEmpty || server.path == '/'
-      ? ''
-      : server.path;
+  final path = server.path.isEmpty || server.path == '/' ? '' : server.path;
   return server.replace(
     path: '/.well-known/oauth-protected-resource$path',
     query: null,
@@ -349,9 +349,8 @@ Future<ProtectedResourceMetadata?> _fetchMetadata(
   return ProtectedResourceMetadata(
     resource: Uri.parse(resourceRaw),
     authorizationServers: authServers,
-    scopesSupported: (json['scopes_supported'] as List?)
-            ?.whereType<String>()
-            .toList() ??
+    scopesSupported:
+        (json['scopes_supported'] as List?)?.whereType<String>().toList() ??
         const [],
     metadataUrl: url,
   );
@@ -828,23 +827,23 @@ void invalidateMcpAuth({
   final existing = credentials.getFields(providerId);
   final drop = switch (scope) {
     McpAuthInvalidation.all => {
-        McpOAuthFields.accessToken,
-        McpOAuthFields.refreshToken,
-        McpOAuthFields.expiresAtIso,
-        McpOAuthFields.scope,
-        McpOAuthFields.clientId,
-        McpOAuthFields.clientSecret,
-      },
+      McpOAuthFields.accessToken,
+      McpOAuthFields.refreshToken,
+      McpOAuthFields.expiresAtIso,
+      McpOAuthFields.scope,
+      McpOAuthFields.clientId,
+      McpOAuthFields.clientSecret,
+    },
     McpAuthInvalidation.tokens => {
-        McpOAuthFields.accessToken,
-        McpOAuthFields.refreshToken,
-        McpOAuthFields.expiresAtIso,
-        McpOAuthFields.scope,
-      },
+      McpOAuthFields.accessToken,
+      McpOAuthFields.refreshToken,
+      McpOAuthFields.expiresAtIso,
+      McpOAuthFields.scope,
+    },
     McpAuthInvalidation.client => {
-        McpOAuthFields.clientId,
-        McpOAuthFields.clientSecret,
-      },
+      McpOAuthFields.clientId,
+      McpOAuthFields.clientSecret,
+    },
     McpAuthInvalidation.discovery => const <String>{},
   };
   final next = <String, String>{

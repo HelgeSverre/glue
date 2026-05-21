@@ -271,8 +271,7 @@ void main() {
   });
 
   group('McpHttpTransport — 401 challenge', () {
-    test('surfaces WWW-Authenticate header via McpHttpTransportError',
-        () async {
+    test('surfaces WWW-Authenticate header via McpHttpTransportError', () async {
       final server = await _FakeHttpMcpServer.bind(
         handler: (req) async {
           req.response.statusCode = 401;
@@ -287,10 +286,7 @@ void main() {
 
       final transport = McpHttpTransport(endpoint: server.url);
       final errors = <Object>[];
-      transport.incoming.listen(
-        (_) {},
-        onError: errors.add,
-      );
+      transport.incoming.listen((_) {}, onError: errors.add);
 
       transport.send(
         const JsonRpcRequest(id: 1, method: 'initialize', params: {}),

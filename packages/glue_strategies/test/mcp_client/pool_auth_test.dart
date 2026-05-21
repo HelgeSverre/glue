@@ -124,10 +124,7 @@ void main() {
                   ];
                 } else if (msg.method == 'tools/list') {
                   return [
-                    JsonRpcResponse(
-                      id: msg.id,
-                      result: {'tools': const []},
-                    ),
+                    JsonRpcResponse(id: msg.id, result: {'tools': const []}),
                   ];
                 }
               }

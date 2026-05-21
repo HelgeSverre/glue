@@ -49,10 +49,7 @@ ModelCatalog loadCatalog({
   var defaults = bundled.defaults;
   var version = bundled.version;
   var updatedAt = bundled.updatedAt;
-  for (final layer in [
-    ?cachedRemote,
-    ?localOverrides,
-  ]) {
+  for (final layer in [?cachedRemote, ?localOverrides]) {
     defaults = layer.defaults;
     if (layer.version != 0) version = layer.version;
     if (layer.updatedAt.isNotEmpty) updatedAt = layer.updatedAt;

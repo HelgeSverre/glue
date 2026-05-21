@@ -5,9 +5,10 @@ import 'package:glue_strategies/src/mcp_client/oauth.dart';
 import 'package:test/test.dart';
 
 CredentialStore _store() => CredentialStore(
-      path: '${Directory.systemTemp.createTempSync('oauth_invalidate_').path}/creds.json',
-      env: const {},
-    );
+  path:
+      '${Directory.systemTemp.createTempSync('oauth_invalidate_').path}/creds.json',
+  env: const {},
+);
 
 void main() {
   group('invalidateMcpAuth', () {
