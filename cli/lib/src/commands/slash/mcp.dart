@@ -407,6 +407,13 @@ class McpSlashCommand extends SlashCommand {
       if (idx == null) return;
       final action = actions[idx];
       switch (action) {
+        case _McpAction.authenticate:
+        case _McpAction.reauthenticate:
+          final result = _authLogin([server.id]);
+          if (result.isNotEmpty) ctx.conversation.notify(result);
+        case _McpAction.signOut:
+          final result = _authLogout([server.id]);
+          if (result.isNotEmpty) ctx.conversation.notify(result);
         case _McpAction.reconnect:
           ctx.mcpPool.reconnect(server.id);
           ctx.conversation.notify('Reconnecting "${server.id}"…');
@@ -473,11 +480,26 @@ class McpSlashCommand extends SlashCommand {
   }
 
   List<_McpAction> _actionsFor(McpServerSnapshot s) {
+    final isRemote =
+        s.spec is McpHttpServerSpec || s.spec is McpWebSocketServerSpec;
+    final hasAccessToken =
+        isRemote &&
+        ctx.config != null &&
+        ctx.config!.credentials.getField(
+              'mcp:${s.id}',
+              McpOAuthFields.accessToken,
+            ) !=
+            null;
+
     return [
+      if (isRemote && (s.state is McpAwaitingAuth || !hasAccessToken))
+        _McpAction.authenticate,
+      if (isRemote && hasAccessToken) _McpAction.reauthenticate,
       _McpAction.reconnect,
       _McpAction.toggle,
       if (s.tools.isNotEmpty) _McpAction.viewTools,
       _McpAction.copyId,
+      if (isRemote && hasAccessToken) _McpAction.signOut,
       if (s.lastError != null) _McpAction.showError,
     ];
   }
@@ -528,7 +550,32 @@ class McpSlashCommand extends SlashCommand {
   };
 }
 
+/// Returns the auth-related action labels for a server, in display
+/// order. Pure helper — exposed at top-level for testability.
+///
+/// stdio servers always return an empty list. For HTTP/WS servers:
+///   • `'Authenticate'` when no access token is stored OR the server is
+///     in [McpAwaitingAuth].
+///   • `'Re-authenticate'` + `'Sign out'` when an access token is
+///     stored.
+List<String> resolveMcpAuthActions({
+  required McpServerSpec spec,
+  required McpConnectionState state,
+  required bool hasAccessToken,
+}) {
+  final isRemote =
+      spec is McpHttpServerSpec || spec is McpWebSocketServerSpec;
+  if (!isRemote) return const [];
+  if (state is McpAwaitingAuth || !hasAccessToken) {
+    return const ['Authenticate'];
+  }
+  return const ['Re-authenticate', 'Sign out'];
+}
+
 enum _McpAction {
+  authenticate,
+  reauthenticate,
+  signOut,
   reconnect,
   toggle,
   viewTools,
@@ -536,6 +583,9 @@ enum _McpAction {
   showError;
 
   String label(McpServerSnapshot s) => switch (this) {
+    _McpAction.authenticate => 'Authenticate',
+    _McpAction.reauthenticate => 'Re-authenticate',
+    _McpAction.signOut => 'Sign out',
     _McpAction.reconnect => 'Reconnect',
     _McpAction.toggle =>
       s.enabled ? 'Disable for this session' : 'Enable and connect',
