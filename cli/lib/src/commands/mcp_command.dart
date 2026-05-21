@@ -742,9 +742,9 @@ class McpAuthLoginCommand extends Command<int> {
         case McpAuthFlowAwaitingCallback(:final authUrl):
           stdout.writeln('Open this URL to sign in: $authUrl');
         case McpAuthFlowSuccess(
-            :final resourceMetadataUrl,
-            :final authorizationServer,
-          ):
+          :final resourceMetadataUrl,
+          :final authorizationServer,
+        ):
           stdout.writeln('Stored OAuth tokens for "$serverId".');
           try {
             final writer = McpConfigWriter(

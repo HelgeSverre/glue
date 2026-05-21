@@ -122,7 +122,9 @@ String _emptyReasonText(McpServerToolListing server) {
     McpServerListingStatus.reconnecting => 'reconnecting; tools unknown',
     McpServerListingStatus.disconnected => 'not connected; tools unknown',
     McpServerListingStatus.needsAuth =>
-      error == null ? 'needs auth; run `/mcp auth login`' : 'needs auth: $error',
+      error == null
+          ? 'needs auth; run `/mcp auth login`'
+          : 'needs auth: $error',
     McpServerListingStatus.dead =>
       error == null ? 'dead; tools unknown' : 'dead: $error',
     McpServerListingStatus.disabled => 'disabled; enable to list tools',

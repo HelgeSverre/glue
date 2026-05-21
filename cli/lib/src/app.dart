@@ -1094,8 +1094,8 @@ class App {
     final mcpSeg = mcpUnhealthy == 0
         ? null
         : (mcpUnhealthy == mcpAwaitingAuth
-            ? 'MCP:$mcpAwaitingAuth🔑'
-            : 'MCP:$mcpUnhealthy⚠');
+              ? 'MCP:$mcpAwaitingAuth🔑'
+              : 'MCP:$mcpUnhealthy⚠');
     final rightSegs = [
       formatStatusModelLabel(
         _config?.activeModel,
@@ -2793,7 +2793,8 @@ class App {
       return;
     }
 
-    final cachedMeta = resourceMetadataUrl ??
+    final cachedMeta =
+        resourceMetadataUrl ??
         switch (spec) {
           McpHttpServerSpec(:final resourceMetadataUrl) => resourceMetadataUrl,
           McpWebSocketServerSpec(:final resourceMetadataUrl) =>
@@ -2801,9 +2802,7 @@ class App {
           _ => null,
         };
 
-    _addSystemMessage(
-      '↳ MCP "$serverId" needs auth — starting OAuth flow.',
-    );
+    _addSystemMessage('↳ MCP "$serverId" needs auth — starting OAuth flow.');
 
     final runner = McpAuthFlowRunner(
       serverId: serverId,

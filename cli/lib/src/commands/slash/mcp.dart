@@ -286,11 +286,7 @@ class McpSlashCommand extends SlashCommand {
       if (Platform.isMacOS) {
         await Process.start('open', [url], mode: ProcessStartMode.detached);
       } else if (Platform.isLinux) {
-        await Process.start(
-          'xdg-open',
-          [url],
-          mode: ProcessStartMode.detached,
-        );
+        await Process.start('xdg-open', [url], mode: ProcessStartMode.detached);
       } else if (Platform.isWindows) {
         await Process.start('rundll32', [
           'url.dll,FileProtocolHandler',
@@ -548,8 +544,11 @@ class McpSlashCommand extends SlashCommand {
     if (spec is! McpHttpServerSpec && spec is! McpWebSocketServerSpec) {
       return '';
     }
-    final hasToken = ctx.config?.credentials
-            .getField('mcp:${s.id}', McpOAuthFields.accessToken) !=
+    final hasToken =
+        ctx.config?.credentials.getField(
+          'mcp:${s.id}',
+          McpOAuthFields.accessToken,
+        ) !=
         null;
     final authKind = spec is McpHttpServerSpec
         ? spec.auth
@@ -581,8 +580,7 @@ List<String> resolveMcpAuthActions({
   required McpConnectionState state,
   required bool hasAccessToken,
 }) {
-  final isRemote =
-      spec is McpHttpServerSpec || spec is McpWebSocketServerSpec;
+  final isRemote = spec is McpHttpServerSpec || spec is McpWebSocketServerSpec;
   if (!isRemote) return const [];
   if (state is McpAwaitingAuth || !hasAccessToken) {
     return const ['Authenticate'];
