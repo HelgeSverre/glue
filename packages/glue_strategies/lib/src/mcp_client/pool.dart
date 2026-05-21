@@ -20,6 +20,7 @@ import 'package:glue_strategies/src/credentials/credential_store.dart';
 import 'package:glue_strategies/src/mcp_client/client.dart';
 import 'package:glue_strategies/src/mcp_client/config.dart';
 import 'package:glue_strategies/src/mcp_client/connection_state.dart';
+import 'package:glue_strategies/src/mcp_client/oauth.dart';
 import 'package:glue_strategies/src/mcp_client/protocol.dart';
 import 'package:glue_strategies/src/mcp_client/tool_factory.dart';
 import 'package:glue_strategies/src/mcp_client/transport/http_sse.dart';
@@ -73,8 +74,19 @@ class McpPoolServerAuthRequiredEvent extends McpPoolEvent {
   const McpPoolServerAuthRequiredEvent({
     required super.serverId,
     required this.reauthCommand,
+    this.resourceMetadataUrl,
+    this.wwwAuthenticate,
   });
   final String reauthCommand;
+
+  /// `resource_metadata` URL from the server's `WWW-Authenticate` header,
+  /// if any. Surfaces this back into [McpAuthFlowRunner.cachedResourceMetadataUrl]
+  /// so the panel doesn't re-probe.
+  final Uri? resourceMetadataUrl;
+
+  /// Raw `WWW-Authenticate` header. Used by the auth flow to feed
+  /// `discoverMcpAuth` directly.
+  final String? wwwAuthenticate;
 }
 
 class McpPoolToolListChangedEvent extends McpPoolEvent {
@@ -94,6 +106,13 @@ class McpPoolToolListChangedEvent extends McpPoolEvent {
 /// the network.
 typedef McpClientFactory =
     Future<McpClient> Function(McpServerSpec spec, CredentialStore credentials);
+
+/// Pluggable refresh-grant call. Default is `null` — the pool only
+/// attempts silent refresh when a runner is configured. Production
+/// wires a closure that resolves the auth-server endpoints from the
+/// cached `authorizationServer` field on the spec.
+typedef McpRefreshGrant =
+    Future<OAuthTokens> Function(String serverId, String refreshToken);
 
 /// Default factory — spawns real transports for each spec type.
 Future<McpClient> defaultMcpClientFactory(
@@ -155,8 +174,11 @@ class McpClientPool {
     required this.credentials,
     Set<String>? reservedToolNames,
     McpClientFactory? clientFactory,
+    McpRefreshGrant? refreshGrant,
   }) : _reservedToolNames = reservedToolNames ?? const {},
-       _clientFactory = clientFactory ?? defaultMcpClientFactory {
+       _clientFactory = clientFactory ?? defaultMcpClientFactory,
+       // ignore: prefer_initializing_formals
+       _refreshGrant = refreshGrant {
     for (final spec in config.servers) {
       _servers[spec.id] = McpServerSnapshot(
         spec: spec,
@@ -169,6 +191,7 @@ class McpClientPool {
   final CredentialStore credentials;
   final Set<String> _reservedToolNames;
   final McpClientFactory _clientFactory;
+  final McpRefreshGrant? _refreshGrant;
 
   final Map<String, McpServerSnapshot> _servers = {};
   final Map<String, McpClient> _clients = {};
@@ -315,6 +338,12 @@ class McpClientPool {
       // Clean up the half-started client if any.
       final client = _clients.remove(s.id);
       await client?.close();
+
+      if (e.reason == 'auth_expired') {
+        await _handleAuthChallenge(s, e);
+        return;
+      }
+
       _events.add(
         McpPoolServerErrorEvent(
           serverId: s.id,
@@ -383,6 +412,73 @@ class McpClientPool {
       if (current.state is! McpReconnecting) return;
       _connect(current);
     });
+  }
+
+  /// Handles an `auth_expired` failure: try silent refresh once, and on
+  /// failure park the server in [McpAwaitingAuth] without arming a retry
+  /// timer.
+  Future<void> _handleAuthChallenge(
+    McpServerSnapshot s,
+    McpCallFailure failure,
+  ) async {
+    final spec = s.spec;
+
+    // Step A — silent refresh, if we have a refresh token + grant.
+    final refresh = credentials.getField(
+      'mcp:${s.id}',
+      McpOAuthFields.refreshToken,
+    );
+    if (refresh != null && _refreshGrant != null) {
+      try {
+        final tokens = await _refreshGrant.call(s.id, refresh);
+        final clientId = credentials.getField(
+          'mcp:${s.id}',
+          McpOAuthFields.clientId,
+        );
+        if (clientId != null) {
+          storeMcpOAuthTokens(
+            serverId: s.id,
+            client: OAuthClient(
+              clientId: clientId,
+              clientSecret: credentials.getField(
+                'mcp:${s.id}',
+                McpOAuthFields.clientSecret,
+              ),
+            ),
+            tokens: tokens,
+            credentials: credentials,
+          );
+          // Single retry with fresh tokens. NOT counted against attempts.
+          _attempts[s.id] = 0;
+          s.state = const McpDisconnected();
+          await _connect(s);
+          return;
+        }
+      } catch (_) {
+        invalidateMcpAuth(
+          serverId: s.id,
+          scope: McpAuthInvalidation.tokens,
+          credentials: credentials,
+        );
+        // Fall through to AwaitingAuth.
+      }
+    }
+
+    // Step B — park as awaiting-auth. No retry timer.
+    s.state = McpAwaitingAuth(lastError: s.lastError);
+    _events.add(
+      McpPoolServerAuthRequiredEvent(
+        serverId: s.id,
+        reauthCommand: '/mcp auth login ${s.id}',
+        resourceMetadataUrl: switch (spec) {
+          McpHttpServerSpec(:final resourceMetadataUrl) => resourceMetadataUrl,
+          McpWebSocketServerSpec(:final resourceMetadataUrl) =>
+            resourceMetadataUrl,
+          _ => null,
+        },
+        wwwAuthenticate: failure.wwwAuthenticate,
+      ),
+    );
   }
 
   void _cancelRetry(String serverId) {
