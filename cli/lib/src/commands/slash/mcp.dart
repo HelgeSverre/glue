@@ -1,7 +1,11 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:glue_harness/glue_harness.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 
 import 'package:glue/src/commands/arg_completers.dart' as arg_completers;
+import 'package:glue/src/commands/config_command.dart' show userConfigPath;
 import 'package:glue/src/commands/mcp_tools_format.dart';
 import 'package:glue/src/commands/slash_command_context.dart';
 import 'package:glue/src/commands/slash_commands.dart';
@@ -207,60 +211,95 @@ class McpSlashCommand extends SlashCommand {
     Uri baseUrl,
     CredentialStore credentials,
   ) {
-    () async {
-      try {
-        ctx.conversation.notify('Discovering OAuth metadata…');
-        final endpoints = await discoverOAuthEndpoints(baseUrl);
+    final snapshot = ctx.mcpPool.server(serverId);
+    final spec = snapshot?.spec;
+    final cachedMeta = switch (spec) {
+      McpHttpServerSpec(:final resourceMetadataUrl) => resourceMetadataUrl,
+      McpWebSocketServerSpec(:final resourceMetadataUrl) => resourceMetadataUrl,
+      _ => null,
+    };
 
-        OAuthClient client;
-        final existingClientId = credentials.getField(
-          'mcp:$serverId',
-          McpOAuthFields.clientId,
-        );
-        if (existingClientId != null) {
-          client = OAuthClient(
-            clientId: existingClientId,
-            clientSecret: credentials.getField(
-              'mcp:$serverId',
-              McpOAuthFields.clientSecret,
-            ),
-          );
-        } else if (endpoints.registrationEndpoint != null) {
-          ctx.conversation.notify('Registering OAuth client (DCR)…');
-          client = await registerOAuthClient(
-            registrationEndpoint: endpoints.registrationEndpoint!,
-            redirectUri: Uri.parse('http://127.0.0.1/callback'),
-            clientName: 'glue',
-          );
-        } else {
+    final runner = McpAuthFlowRunner(
+      serverId: serverId,
+      serverUrl: baseUrl,
+      credentials: credentials,
+      cachedResourceMetadataUrl: cachedMeta,
+      openBrowser: _openBrowserSlash,
+    );
+
+    runner.states.listen((state) {
+      switch (state) {
+        case McpAuthFlowDiscovering():
           ctx.conversation.notify(
-            'OAuth login failed: no registration_endpoint and no client_id stored.',
+            'Discovering OAuth metadata for "$serverId"…',
           );
-          return;
-        }
-
-        final tokens = await runOAuthAuthorizationCodeFlow(
-          endpoints: endpoints,
-          client: client,
-          onAuthUrl: (url) {
-            ctx.conversation.notify('Open in your browser: $url');
-          },
-        );
-
-        storeMcpOAuthTokens(
-          serverId: serverId,
-          client: client,
-          tokens: tokens,
-          credentials: credentials,
-        );
-        ctx.conversation.notify(
-          'Stored OAuth tokens for "$serverId". '
-          'Reconnect via `/mcp reconnect $serverId` once that command lands.',
-        );
-      } on Exception catch (e) {
-        ctx.conversation.notify('OAuth login failed for "$serverId": $e');
+        case McpAuthFlowRegistering():
+          ctx.conversation.notify('Registering OAuth client (DCR)…');
+        case McpAuthFlowAwaitingCallback(:final authUrl):
+          ctx.conversation.notify('Open in your browser: $authUrl');
+        case McpAuthFlowSuccess(
+          :final resourceMetadataUrl,
+          :final authorizationServer,
+        ):
+          ctx.conversation.notify('Signed in to "$serverId". Reconnecting…');
+          _writeBackAuthConfig(
+            serverId,
+            resourceMetadataUrl,
+            authorizationServer,
+          );
+          ctx.mcpPool.reconnect(serverId);
+        case McpAuthFlowError(:final message):
+          ctx.conversation.notify('OAuth failed for "$serverId": $message');
+        case McpAuthFlowCancelled():
+          ctx.conversation.notify('OAuth cancelled for "$serverId".');
       }
-    }();
+    });
+
+    // Fire and forget — state listener handles all outcomes.
+    unawaited(runner.run());
+  }
+
+  void _writeBackAuthConfig(
+    String serverId,
+    Uri? resourceMetadataUrl,
+    Uri? authorizationServer,
+  ) {
+    try {
+      final writer = McpConfigWriter(userConfigPath(Environment.detect()));
+      writer.updateAuth(
+        serverId,
+        auth: const McpOAuthAuth(),
+        resourceMetadataUrl: resourceMetadataUrl,
+        authorizationServer: authorizationServer,
+      );
+    } catch (_) {
+      // Non-fatal — tokens are already stored. Surface a soft warning.
+      ctx.conversation.notify(
+        'Tokens stored, but could not update config.yaml '
+        '(auth state may not persist between sessions).',
+      );
+    }
+  }
+
+  Future<void> _openBrowserSlash(String url) async {
+    try {
+      if (Platform.isMacOS) {
+        await Process.start('open', [url], mode: ProcessStartMode.detached);
+      } else if (Platform.isLinux) {
+        await Process.start(
+          'xdg-open',
+          [url],
+          mode: ProcessStartMode.detached,
+        );
+      } else if (Platform.isWindows) {
+        await Process.start('rundll32', [
+          'url.dll,FileProtocolHandler',
+          url,
+        ], mode: ProcessStartMode.detached);
+      }
+    } catch (_) {
+      // User can copy-paste — the URL was printed.
+    }
   }
 
   String _authLogout(List<String> args) {
