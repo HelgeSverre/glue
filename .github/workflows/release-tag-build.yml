@@ -235,10 +235,10 @@ jobs:
           raw_tag="${{ github.event.inputs.tag || github.ref_name }}"
           git config user.name  "glue-release-bot"
           git config user.email "glue-release-bot@users.noreply.github.com"
-          if git diff --quiet -- Formula/glue.rb; then
+          git add Formula/glue.rb
+          if git diff --cached --quiet -- Formula/glue.rb; then
             echo "Formula/glue.rb unchanged; nothing to commit."
             exit 0
           fi
-          git add Formula/glue.rb
           git commit -m "glue ${raw_tag}"
           git push origin HEAD
