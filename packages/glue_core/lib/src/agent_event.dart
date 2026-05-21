@@ -65,3 +65,26 @@ class AgentError extends AgentEvent {
   final Object error;
   AgentError(this.error);
 }
+
+/// Non-fatal informational message addressed to the user via the
+/// transcript surface. Use for soft-degradation announcements — e.g.
+/// "tools disabled for this session because the model doesn't support
+/// them" — where the agent loop kept running but the user should know
+/// something changed.
+///
+/// **Every new surface (TUI, ACP, JSON, print) must learn to render
+/// this** — it's not optional. The fallback behaviour is to skip the
+/// notice silently, which masks soft degradation from users.
+class AgentNotice extends AgentEvent {
+  AgentNotice(this.message, {this.kind = 'info'});
+
+  /// Single-line human-readable text. No leading marker glyph — surfaces
+  /// add their own (TUI uses `markerInfo`/`markerWarn`, --print uses
+  /// `! ` on stderr).
+  final String message;
+
+  /// `info` (default) for "FYI" messages, `warning` for soft-degradation
+  /// announcements the user should react to. Forward-compatible string
+  /// rather than an enum so adding new kinds doesn't break compile.
+  final String kind;
+}

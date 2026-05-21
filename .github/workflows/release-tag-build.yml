@@ -46,19 +46,24 @@ jobs:
       - name: Install dependencies
         run: dart pub get
 
-      - name: Build executable
+      - name: Build binary
+        shell: bash
         run: |
-          BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          GIT_SHA="$(git rev-parse --short "$GITHUB_SHA")"
-          BUILT_BY="${GITHUB_ACTOR:-github-actions[bot]}@${RUNNER_OS:-unknown}"
-          dart compile exe bin/glue.dart -o "${{ matrix.asset }}" \
-            --define=GLUE_BUILD_TIME="$BUILD_TIME" \
-            --define=GLUE_GIT_SHA="$GIT_SHA" \
-            --define=GLUE_GIT_DIRTY= \
-            --define=GLUE_BUILT_BY="$BUILT_BY"
+          set -euo pipefail
+          dart run tool/gen_build_info.dart
+          rm -rf ../dist
+          dart build cli bin/glue.dart -o ../dist
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            mv ../dist/bundle/bin/glue.exe "../dist/${{ matrix.asset }}"
+          else
+            mv ../dist/bundle/bin/glue "../dist/${{ matrix.asset }}"
+          fi
+          rm -rf ../dist/bundle
 
       - name: Compute SHA-256 checksum
+        shell: bash
         run: |
+          cd ../dist
           if command -v shasum >/dev/null 2>&1; then
             shasum -a 256 "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
           else
@@ -66,19 +71,14 @@ jobs:
           fi
           cat "${{ matrix.asset }}.sha256"
 
-      - name: Smoke test (unix)
-        if: runner.os != 'Windows'
-        run: |
-          chmod +x "${{ matrix.asset }}"
-          ./"${{ matrix.asset }}" --version
-
-      - name: Smoke test (windows)
-        if: runner.os == 'Windows'
-        run: ./"${{ matrix.asset }}" --version
+      - name: Smoke test
+        shell: bash
+        run: "../dist/${{ matrix.asset }} --version"
 
       - name: Verify artifacts locally (act)
         if: ${{ env.ACT }}
-        run: ls -la "${{ matrix.asset }}" "${{ matrix.asset }}.sha256"
+        shell: bash
+        run: ls -la "../dist/${{ matrix.asset }}" "../dist/${{ matrix.asset }}.sha256"
 
       - name: Upload build artifact
         if: ${{ !env.ACT }}
@@ -86,8 +86,8 @@ jobs:
         with:
           name: ${{ matrix.asset }}
           path: |
-            cli/${{ matrix.asset }}
-            cli/${{ matrix.asset }}.sha256
+            dist/${{ matrix.asset }}
+            dist/${{ matrix.asset }}.sha256
           if-no-files-found: error
 
   release:

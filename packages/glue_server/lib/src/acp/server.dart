@@ -120,7 +120,7 @@ class AcpServer {
   void _dispatch(JsonRpcMessage message) {
     switch (message) {
       case JsonRpcRequest(:final id, :final method, :final params):
-        unawaited(_handleRequest(id: id, method: method, params: params));
+        _handleRequest(id: id, method: method, params: params);
       case JsonRpcNotification(:final method, :final params):
         _handleNotification(method: method, params: params);
       case JsonRpcResponse(:final id, :final result):
@@ -138,14 +138,16 @@ class AcpServer {
     try {
       switch (method) {
         case AcpMethod.initialize:
-          transport.send(JsonRpcResponse(
-            id: id,
-            result: InitializeResult(
-              protocolVersion: config.protocolVersion,
-              agentInfo: config.agentInfo,
-              agentCapabilities: config.agentCapabilities,
-            ).toJson(),
-          ));
+          transport.send(
+            JsonRpcResponse(
+              id: id,
+              result: InitializeResult(
+                protocolVersion: config.protocolVersion,
+                agentInfo: config.agentInfo,
+                agentCapabilities: config.agentCapabilities,
+              ).toJson(),
+            ),
+          );
         case AcpMethod.sessionNew:
           if (params == null) {
             _replyInvalidParams(id, 'session/new requires params');
@@ -154,10 +156,12 @@ class AcpServer {
           final newParams = SessionNewParams.fromJson(params);
           final sessionId = await delegate.createSession(newParams);
           _knownSessions.add(sessionId);
-          transport.send(JsonRpcResponse(
-            id: id,
-            result: SessionNewResult(sessionId: sessionId).toJson(),
-          ));
+          transport.send(
+            JsonRpcResponse(
+              id: id,
+              result: SessionNewResult(sessionId: sessionId).toJson(),
+            ),
+          );
         case AcpMethod.sessionPrompt:
           if (params == null) {
             _replyInvalidParams(id, 'session/prompt requires params');
@@ -165,18 +169,22 @@ class AcpServer {
           }
           final promptParams = SessionPromptParams.fromJson(params);
           if (!_knownSessions.contains(promptParams.sessionId)) {
-            transport.send(JsonRpcError(
-              id: id,
-              code: JsonRpcErrorCode.sessionNotFound,
-              message: 'unknown session: ${promptParams.sessionId}',
-            ));
+            transport.send(
+              JsonRpcError(
+                id: id,
+                code: JsonRpcErrorCode.sessionNotFound,
+                message: 'unknown session: ${promptParams.sessionId}',
+              ),
+            );
             return;
           }
           final stopReason = await _runPrompt(promptParams);
-          transport.send(JsonRpcResponse(
-            id: id,
-            result: SessionPromptResult(stopReason: stopReason).toJson(),
-          ));
+          transport.send(
+            JsonRpcResponse(
+              id: id,
+              result: SessionPromptResult(stopReason: stopReason).toJson(),
+            ),
+          );
         case AcpMethod.sessionUsageSummary:
           final sessionId = (params?['sessionId'] as String?)?.trim();
           if (sessionId == null || sessionId.isEmpty) {
@@ -184,31 +192,39 @@ class AcpServer {
             return;
           }
           if (!_knownSessions.contains(sessionId)) {
-            transport.send(JsonRpcError(
-              id: id,
-              code: JsonRpcErrorCode.sessionNotFound,
-              message: 'unknown session: $sessionId',
-            ));
+            transport.send(
+              JsonRpcError(
+                id: id,
+                code: JsonRpcErrorCode.sessionNotFound,
+                message: 'unknown session: $sessionId',
+              ),
+            );
             return;
           }
-          transport.send(JsonRpcResponse(
-            id: id,
-            result: delegate.usageSummary(sessionId).toJson(),
-          ));
+          transport.send(
+            JsonRpcResponse(
+              id: id,
+              result: delegate.usageSummary(sessionId).toJson(),
+            ),
+          );
         default:
-          transport.send(JsonRpcError(
-            id: id,
-            code: JsonRpcErrorCode.methodNotFound,
-            message: 'method "$method" is not implemented',
-          ));
+          transport.send(
+            JsonRpcError(
+              id: id,
+              code: JsonRpcErrorCode.methodNotFound,
+              message: 'method "$method" is not implemented',
+            ),
+          );
       }
     } on Object catch (e, st) {
-      transport.send(JsonRpcError(
-        id: id,
-        code: JsonRpcErrorCode.internalError,
-        message: 'internal error: $e',
-        data: st.toString(),
-      ));
+      transport.send(
+        JsonRpcError(
+          id: id,
+          code: JsonRpcErrorCode.internalError,
+          message: 'internal error: $e',
+          data: st.toString(),
+        ),
+      );
     }
   }
 
@@ -224,10 +240,7 @@ class AcpServer {
     // Other notifications are accepted silently in this scaffold.
   }
 
-  void _handlePeerResponse({
-    required Object id,
-    required Object? result,
-  }) {
+  void _handlePeerResponse({required Object id, required Object? result}) {
     if (id is! int) return;
     final pending = _pendingPermissions.remove(id);
     if (pending == null) return;
@@ -258,11 +271,13 @@ class AcpServer {
   }
 
   void _replyInvalidParams(Object id, String message) {
-    transport.send(JsonRpcError(
-      id: id,
-      code: JsonRpcErrorCode.invalidParams,
-      message: message,
-    ));
+    transport.send(
+      JsonRpcError(
+        id: id,
+        code: JsonRpcErrorCode.invalidParams,
+        message: message,
+      ),
+    );
   }
 
   /// Runs a single prompt, streaming `session/update` notifications and
@@ -301,73 +316,83 @@ class AcpServer {
       await for (final event in stream) {
         switch (event) {
           case AgentTextDelta(:final delta):
-            transport.send(JsonRpcNotification(
-              method: AcpMethod.sessionUpdate,
-              params: SessionUpdateNotification(
-                sessionId: sessionId,
-                update: AgentMessageChunkUpdate(delta),
-              ).toJson(),
-            ));
+            transport.send(
+              JsonRpcNotification(
+                method: AcpMethod.sessionUpdate,
+                params: SessionUpdateNotification(
+                  sessionId: sessionId,
+                  update: AgentMessageChunkUpdate(delta),
+                ).toJson(),
+              ),
+            );
           case AgentThinkingDelta():
             // Reasoning traces are a phase-2 ACP feature; agent_event_mapping
             // returns null so we drop the event here.
             break;
           case AgentToolCallPending(:final id, :final name):
             if (announced.add(id.value)) {
-              transport.send(JsonRpcNotification(
-                method: AcpMethod.sessionUpdate,
-                params: SessionUpdateNotification(
-                  sessionId: sessionId,
-                  update: ToolCallUpdate(
-                    toolCallId: id.value,
-                    title: name,
-                    kind_: toolNameToAcpKind(name),
-                    status: ToolCallStatus.pending,
-                  ),
-                ).toJson(),
-              ));
+              transport.send(
+                JsonRpcNotification(
+                  method: AcpMethod.sessionUpdate,
+                  params: SessionUpdateNotification(
+                    sessionId: sessionId,
+                    update: ToolCallUpdate(
+                      toolCallId: id.value,
+                      title: name,
+                      kind_: toolNameToAcpKind(name),
+                      status: ToolCallStatus.pending,
+                    ),
+                  ).toJson(),
+                ),
+              );
             }
           case AgentToolCall(:final call):
             if (announced.add(call.id.value)) {
-              transport.send(JsonRpcNotification(
-                method: AcpMethod.sessionUpdate,
-                params: SessionUpdateNotification(
-                  sessionId: sessionId,
-                  update: ToolCallUpdate(
-                    toolCallId: call.id.value,
-                    title: call.name,
-                    kind_: toolNameToAcpKind(call.name),
-                    status: ToolCallStatus.inProgress,
-                    rawInput: call.arguments,
-                  ),
-                ).toJson(),
-              ));
+              transport.send(
+                JsonRpcNotification(
+                  method: AcpMethod.sessionUpdate,
+                  params: SessionUpdateNotification(
+                    sessionId: sessionId,
+                    update: ToolCallUpdate(
+                      toolCallId: call.id.value,
+                      title: call.name,
+                      kind_: toolNameToAcpKind(call.name),
+                      status: ToolCallStatus.inProgress,
+                      rawInput: call.arguments,
+                    ),
+                  ).toJson(),
+                ),
+              );
             } else {
-              transport.send(JsonRpcNotification(
+              transport.send(
+                JsonRpcNotification(
+                  method: AcpMethod.sessionUpdate,
+                  params: SessionUpdateNotification(
+                    sessionId: sessionId,
+                    update: ToolCallStatusUpdate(
+                      toolCallId: call.id.value,
+                      status: ToolCallStatus.inProgress,
+                    ),
+                  ).toJson(),
+                ),
+              );
+            }
+          case AgentToolResult(:final result):
+            transport.send(
+              JsonRpcNotification(
                 method: AcpMethod.sessionUpdate,
                 params: SessionUpdateNotification(
                   sessionId: sessionId,
                   update: ToolCallStatusUpdate(
-                    toolCallId: call.id.value,
-                    status: ToolCallStatus.inProgress,
+                    toolCallId: result.callId.value,
+                    status: result.success
+                        ? ToolCallStatus.completed
+                        : ToolCallStatus.failed,
+                    content: _toolResultContent(result),
                   ),
                 ).toJson(),
-              ));
-            }
-          case AgentToolResult(:final result):
-            transport.send(JsonRpcNotification(
-              method: AcpMethod.sessionUpdate,
-              params: SessionUpdateNotification(
-                sessionId: sessionId,
-                update: ToolCallStatusUpdate(
-                  toolCallId: result.callId.value,
-                  status: result.success
-                      ? ToolCallStatus.completed
-                      : ToolCallStatus.failed,
-                  content: _toolResultContent(result),
-                ),
-              ).toJson(),
-            ));
+              ),
+            );
           case AgentUsage():
             // Token usage flows through to ACP clients via the upcoming
             // `session/usage_summary` request; per-call deltas don't need
@@ -377,13 +402,29 @@ class AcpServer {
             stopReason = StopReason.endTurn;
           case AgentError(:final error):
             stopReason = StopReason.refusal;
-            transport.send(JsonRpcNotification(
-              method: AcpMethod.sessionUpdate,
-              params: SessionUpdateNotification(
-                sessionId: sessionId,
-                update: AgentMessageChunkUpdate('\n[error] $error'),
-              ).toJson(),
-            ));
+            transport.send(
+              JsonRpcNotification(
+                method: AcpMethod.sessionUpdate,
+                params: SessionUpdateNotification(
+                  sessionId: sessionId,
+                  update: AgentMessageChunkUpdate('\n[error] $error'),
+                ).toJson(),
+              ),
+            );
+          case AgentNotice(:final message, :final kind):
+            // Soft-degradation announcement. Inline in the message stream
+            // so ACP clients see it in the transcript.
+            transport.send(
+              JsonRpcNotification(
+                method: AcpMethod.sessionUpdate,
+                params: SessionUpdateNotification(
+                  sessionId: sessionId,
+                  update: AgentMessageChunkUpdate(
+                    '${kind == 'warning' ? '!' : '·'} $message\n',
+                  ),
+                ).toJson(),
+              ),
+            );
         }
       }
     } on _PromptCancelled {
@@ -403,20 +444,22 @@ class AcpServer {
     final completer = Completer<RequestPermissionResult>();
     _pendingPermissions[id] = completer;
 
-    transport.send(JsonRpcRequest(
-      id: id,
-      method: AcpMethod.sessionRequestPermission,
-      params: RequestPermissionParams(
-        sessionId: sessionId,
-        toolCallId: call.id.value,
-        title: call.name,
-        kind_: toolNameToAcpKind(call.name),
-        options: const [
-          PermissionOption(optionId: 'allow', label: 'Allow'),
-          PermissionOption(optionId: 'deny', label: 'Deny'),
-        ],
-      ).toJson(),
-    ));
+    transport.send(
+      JsonRpcRequest(
+        id: id,
+        method: AcpMethod.sessionRequestPermission,
+        params: RequestPermissionParams(
+          sessionId: sessionId,
+          toolCallId: call.id.value,
+          title: call.name,
+          kind_: toolNameToAcpKind(call.name),
+          options: const [
+            PermissionOption(optionId: 'allow', label: 'Allow'),
+            PermissionOption(optionId: 'deny', label: 'Deny'),
+          ],
+        ).toJson(),
+      ),
+    );
 
     final result = await completer.future;
     return switch (result.outcome) {
@@ -450,11 +493,7 @@ List<AcpToolCallContent> _toolResultContent(ToolResult result) {
     final oldText = diff['old_text'];
     final newText = diff['new_text'];
     if (path is String && oldText is String && newText is String) {
-      out.add(AcpToolCallDiff(
-        path: path,
-        oldText: oldText,
-        newText: newText,
-      ));
+      out.add(AcpToolCallDiff(path: path, oldText: oldText, newText: newText));
     }
   }
 

@@ -8,7 +8,7 @@ deps:
     dart pub get
 
 # Static analysis
-analyze:
+analyze: deps
     dart analyze --fatal-infos
 
 # Format all Dart files
@@ -46,7 +46,7 @@ gen-check:
      fi
 
 # Quality gate: gen-check + analyze + test
-check: gen-check analyze test
+check: deps gen-check analyze test
 
 # Cleanup
 clean:

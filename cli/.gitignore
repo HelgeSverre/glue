@@ -1,5 +1,8 @@
-.local-chrome/
-.playwright-mcp/
-/glue
+# CLI-package-local ignores. Repo-wide patterns live in the root .gitignore.
 
+# Generated diagrams (from `just cli::diagrams`).
 diagrams/*
+
+# Stale per-package binaries from ad-hoc `dart compile exe -o glue`
+# invocations. The canonical build target is <repo>/dist/glue.
+/glue

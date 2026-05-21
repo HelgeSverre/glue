@@ -17,8 +17,8 @@ import 'package:glue_harness/src/tools/subagent_tools.dart';
 /// `subagent_spawned`, `subagent_event`, `subagent_completed`. The
 /// `subagent_event` payload nests a serialised inner [AgentEvent] under
 /// `inner`.
-typedef SubagentEventSink = void Function(
-    String type, Map<String, dynamic> data);
+typedef SubagentEventSink =
+    void Function(String type, Map<String, dynamic> data);
 
 /// An update from a running subagent, forwarded to the UI.
 class SubagentUpdate {
@@ -90,7 +90,7 @@ class AgentManager {
     this.obs,
     this.onPersistEvent,
   }) : allowedSubagentTools =
-            allowedSubagentTools ?? ToolPermissions.subagentSafeTools;
+           allowedSubagentTools ?? ToolPermissions.subagentSafeTools;
 
   SubagentId _mintSubagentId() {
     final ts = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
@@ -146,8 +146,10 @@ class AgentManager {
         parentSubagentId: subagentId.value,
       );
     } else {
-      subagentTools.removeWhere((name, _) =>
-          name == 'spawn_subagent' || name == 'spawn_parallel_subagents');
+      subagentTools.removeWhere(
+        (name, _) =>
+            name == 'spawn_subagent' || name == 'spawn_parallel_subagents',
+      );
     }
 
     // Create a span for the subagent execution.
@@ -158,18 +160,18 @@ class AgentManager {
         'subagent.task': task,
         'subagent.depth': currentDepth,
         'subagent.model': ref.toString(),
-        if (index != null) 'subagent.index': index,
-        if (total != null) 'subagent.total': total,
+        'subagent.index': ?index,
+        'subagent.total': ?total,
       },
     );
 
     onPersistEvent?.call('subagent_spawned', {
       'subagent_id': subagentId.value,
-      if (parentSubagentId != null) 'parent_subagent_id': parentSubagentId,
+      'parent_subagent_id': ?parentSubagentId,
       'task': task,
       'depth': currentDepth,
-      if (index != null) 'index': index,
-      if (total != null) 'total': total,
+      'index': ?index,
+      'total': ?total,
       'model': ref.toString(),
     });
 
@@ -180,6 +182,23 @@ class AgentManager {
       obs: obs,
       traceParent: span,
     );
+
+    // Boot-time tool-capability preflight (subagent variant). Same
+    // contract as ServiceLocator: catalog says no `tools` → start in
+    // chat-only mode, emit a one-shot notice. Subagents with overridden
+    // tool-less models won't kill the parent session — they degrade.
+    final subagentModelDef =
+        config.catalogData.providers[ref.providerId]?.models[ref.modelId];
+    if (subagentModelDef != null &&
+        subagentModelDef.capabilities.isNotEmpty &&
+        !subagentModelDef.capabilities.contains('tools')) {
+      core.toolFilter = (_) => false;
+      core.setStartupNotice(
+        'Subagent model "$ref" does not support tool calling — '
+        'running in chat-only mode.',
+        kind: 'warning',
+      );
+    }
 
     // Streaming text/thinking deltas are coalesced into one persisted row
     // per logical message instead of one row per token. Without this, a
@@ -203,7 +222,7 @@ class AgentManager {
           'subagent_id': subagentId.value,
           'inner': {
             'type': 'assistant_thinking',
-            'text': thinkingBuf.toString()
+            'text': thinkingBuf.toString(),
           },
         });
         thinkingBuf.clear();
@@ -215,12 +234,9 @@ class AgentManager {
       policy: ToolApprovalPolicy.allowlist,
       allowedTools: allowedSubagentTools,
       onEvent: (event) {
-        _updateController.add(SubagentUpdate(
-          task: task,
-          index: index,
-          total: total,
-          event: event,
-        ));
+        _updateController.add(
+          SubagentUpdate(task: task, index: index, total: total, event: event),
+        );
         switch (event) {
           case AgentTextDelta(:final delta):
             textBuf.write(delta);
@@ -302,44 +318,49 @@ class AgentManager {
 Map<String, dynamic> serializeAgentEvent(AgentEvent event) {
   return switch (event) {
     AgentTextDelta(:final delta) => {
-        'type': 'assistant_message',
-        'text': delta,
-      },
+      'type': 'assistant_message',
+      'text': delta,
+    },
     AgentThinkingDelta(:final delta) => {
-        'type': 'assistant_thinking',
-        'text': delta,
-      },
+      'type': 'assistant_thinking',
+      'text': delta,
+    },
     AgentToolCallPending(:final id, :final name) => {
-        'type': 'tool_call_pending',
-        'id': id.value,
-        'name': name,
-      },
+      'type': 'tool_call_pending',
+      'id': id.value,
+      'name': name,
+    },
     AgentToolCall(:final call) => {
-        'type': 'tool_call',
-        'id': call.id.value,
-        'name': call.name,
-        'arguments': call.arguments,
-      },
+      'type': 'tool_call',
+      'id': call.id.value,
+      'name': call.name,
+      'arguments': call.arguments,
+    },
     AgentToolResult(:final result) => {
-        'type': 'tool_result',
-        'call_id': result.callId.value,
-        'success': result.success,
-        'content': result.content,
-        if (result.summary != null) 'summary': result.summary,
-      },
+      'type': 'tool_result',
+      'call_id': result.callId.value,
+      'success': result.success,
+      'content': result.content,
+      if (result.summary != null) 'summary': result.summary,
+    },
     AgentDone() => {'type': 'agent_done'},
     AgentError(:final error) => {
-        'type': 'agent_error',
-        'error': error.toString(),
-      },
+      'type': 'agent_error',
+      'error': error.toString(),
+    },
     AgentUsage(:final usage) => {
-        'type': 'usage',
-        'input_tokens': usage.inputTokens,
-        'output_tokens': usage.outputTokens,
-        if (usage.cacheReadTokens != null)
-          'cache_read_tokens': usage.cacheReadTokens,
-        if (usage.cacheCreationTokens != null)
-          'cache_creation_tokens': usage.cacheCreationTokens,
-      },
+      'type': 'usage',
+      'input_tokens': usage.inputTokens,
+      'output_tokens': usage.outputTokens,
+      if (usage.cacheReadTokens != null)
+        'cache_read_tokens': usage.cacheReadTokens,
+      if (usage.cacheCreationTokens != null)
+        'cache_creation_tokens': usage.cacheCreationTokens,
+    },
+    AgentNotice(:final message, :final kind) => {
+      'type': 'agent_notice',
+      'kind': kind,
+      'message': message,
+    },
   };
 }

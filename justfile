@@ -10,16 +10,19 @@ default:
     @just --list --list-submodules
 
 # Monorepo test pass
-test: glue_core::test glue_strategies::test glue_harness::test glue_server::test glue_runtimes::test cli::test
+test: deps glue_core::test glue_strategies::test glue_harness::test glue_server::test glue_runtimes::test cli::test
+
+# Get all dependencies (Dart + JS)
+deps: glue_core::deps glue_strategies::deps glue_harness::deps glue_server::deps glue_runtimes::deps cli::deps website::deps
 
 # Monorepo build pass (CLI binary + unified site)
-build: cli::build website::build
+build: deps cli::build website::build
 
 # Monorepo cleanup
 clean: glue_core::clean glue_strategies::clean glue_harness::clean glue_server::clean glue_runtimes::clean cli::clean website::clean
 
 # Monorepo quality gate
-check: glue_core::check glue_strategies::check glue_harness::check glue_server::check glue_runtimes::check cli::check website::check
+check: deps glue_core::check glue_strategies::check glue_harness::check glue_server::check glue_runtimes::check cli::check website::check
 
 # Monorepo format pass
 format: glue_core::format glue_strategies::format glue_harness::format glue_server::format glue_runtimes::format cli::format

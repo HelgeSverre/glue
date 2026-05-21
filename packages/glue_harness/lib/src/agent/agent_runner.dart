@@ -70,6 +70,12 @@ class AgentRunner {
           break;
         case AgentError(:final error):
           buf.write('\nError: $error');
+        case AgentNotice():
+          // Headless mode forwards the notice via [onEvent] (parent
+          // surface decides how to render it) but doesn't fold it into
+          // the structured result — it's an out-of-band signal, not the
+          // agent's answer.
+          break;
       }
     }
 

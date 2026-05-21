@@ -8,7 +8,7 @@ deps:
     dart pub get
 
 # Static analysis
-analyze:
+analyze: deps
     dart analyze --fatal-infos
 
 # Format all Dart files
@@ -21,7 +21,7 @@ test *args:
     @if [ -d test ]; then dart test {{args}}; else echo "glue_strategies: no test/ directory, skipping."; fi
 
 # Quality gate: analyze + test
-check: analyze test
+check: deps analyze test
 
 # Cleanup
 clean:

@@ -102,24 +102,25 @@ class _ToolCallUiState {
   final String name;
   Map<String, dynamic>? args;
   _ToolPhase phase;
-  _ToolCallUiState(
-      {required this.id,
-      required this.name,
-      this.phase = _ToolPhase.preparing});
+  _ToolCallUiState({
+    required this.id,
+    required this.name,
+    this.phase = _ToolPhase.preparing,
+  });
 
   ToolCallRenderState toRenderState() => ToolCallRenderState(
-        name: name,
-        args: args,
-        phase: switch (phase) {
-          _ToolPhase.preparing => ToolCallPhase.preparing,
-          _ToolPhase.awaitingApproval => ToolCallPhase.awaitingApproval,
-          _ToolPhase.running => ToolCallPhase.running,
-          _ToolPhase.done => ToolCallPhase.done,
-          _ToolPhase.denied => ToolCallPhase.denied,
-          _ToolPhase.cancelled => ToolCallPhase.cancelled,
-          _ToolPhase.error => ToolCallPhase.error,
-        },
-      );
+    name: name,
+    args: args,
+    phase: switch (phase) {
+      _ToolPhase.preparing => ToolCallPhase.preparing,
+      _ToolPhase.awaitingApproval => ToolCallPhase.awaitingApproval,
+      _ToolPhase.running => ToolCallPhase.running,
+      _ToolPhase.done => ToolCallPhase.done,
+      _ToolPhase.denied => ToolCallPhase.denied,
+      _ToolPhase.cancelled => ToolCallPhase.cancelled,
+      _ToolPhase.error => ToolCallPhase.error,
+    },
+  );
 }
 
 class _TitleTarget {
@@ -155,7 +156,7 @@ class App {
     '⠦',
     '⠧',
     '⠇',
-    '⠏'
+    '⠏',
   ];
 
   static const _minRenderInterval = Duration(milliseconds: 16); // ~60fps
@@ -258,57 +259,47 @@ class App {
     required this.layout,
     required this.editor,
     required this.agent,
-    required String modelId,
-    AgentManager? manager,
+    required this._modelId,
+    this._manager,
     McpClientPool? mcpPool,
-    LlmClientFactory? llmFactory,
+    this._llmFactory,
     GlueConfig? config,
-    String? systemPrompt,
+    this._systemPrompt,
     Set<String>? extraTrustedTools,
     SessionStore? sessionStore,
     CommandExecutor? executor,
-    Future<void> Function()? runtimeClose,
-    Future<RuntimeDiffOutcome> Function()? runtimeDiff,
-    RuntimeInfoSnapshot? runtimeInfo,
+    this._runtimeClose,
+    this._runtimeDiff,
+    this._runtimeInfo,
     ShellJobManager? jobManager,
-    bool startupContinue = false,
-    String? startupPrompt,
-    bool printMode = false,
-    bool jsonMode = false,
-    String? resumeSessionId,
+    this._startupContinue = false,
+    this._startupPrompt,
+    this._printMode = false,
+    this._jsonMode = false,
+    this._resumeSessionId,
     Observability? obs,
-    DebugController? debugController,
+    this._debugController,
     SkillRuntime? skillRuntime,
     Environment? environment,
-  })  : _modelId = modelId,
-        _environment = environment ?? Environment.detect(),
-        _manager = manager,
-        _mcpPool = mcpPool ??
-            McpClientPool(
-              config: const McpConfig(),
-              credentials: config?.credentials ??
-                  CredentialStore(path: '/dev/null', env: const {}),
-            ),
-        _llmFactory = llmFactory,
-        _config = config,
-        _systemPrompt = systemPrompt,
-        _executor = executor ?? HostExecutor(const ShellConfig()),
-        _runtimeClose = runtimeClose,
-        _runtimeDiff = runtimeDiff,
-        _runtimeInfo = runtimeInfo,
-        _jobManager = jobManager ??
-            ShellJobManager(
-              executor ?? HostExecutor(const ShellConfig()),
-              obs: obs,
-            ),
-        _startupContinue = startupContinue,
-        _startupPrompt = startupPrompt,
-        _printMode = printMode,
-        _jsonMode = jsonMode,
-        _resumeSessionId = resumeSessionId,
-        _obs = obs,
-        _debugController = debugController,
-        _approvalMode = config?.approvalMode ?? ApprovalMode.confirm {
+  }) : _environment = environment ?? Environment.detect(),
+       _mcpPool =
+           mcpPool ??
+           McpClientPool(
+             config: const McpConfig(),
+             credentials:
+                 config?.credentials ??
+                 CredentialStore(path: '/dev/null', env: const {}),
+           ),
+       _config = config,
+       _executor = executor ?? HostExecutor(const ShellConfig()),
+       _jobManager =
+           jobManager ??
+           ShellJobManager(
+             executor ?? HostExecutor(const ShellConfig()),
+             obs: obs,
+           ),
+       _obs = obs,
+       _approvalMode = config?.approvalMode ?? ApprovalMode.confirm {
     _cwd = _environment.cwd;
     _sessionManager = SessionManager(
       environment: _environment,
@@ -321,12 +312,10 @@ class App {
     _manager?.onSubagentUsage = (stats) {
       _sessionManager.recordUsage(stats, role: 'subagent');
     };
-    _panels = ModalSurface(
-      panelStack: _panelStack,
-      render: _render,
-    );
+    _panels = ModalSurface(panelStack: _panelStack, render: _render);
     _toast = Toast(onRender: _render);
-    _skillRuntime = skillRuntime ??
+    _skillRuntime =
+        skillRuntime ??
         SkillRuntime(
           cwd: _cwd,
           extraPathsProvider: () => _config?.skillPaths ?? const [],
@@ -342,11 +331,11 @@ class App {
   }
 
   PermissionGate get _permissionGate => PermissionGate(
-        approvalMode: _approvalMode,
-        trustedTools: _autoApprovedTools,
-        tools: agent.tools,
-        cwd: _cwd,
-      );
+    approvalMode: _approvalMode,
+    trustedTools: _autoApprovedTools,
+    tools: agent.tools,
+    cwd: _cwd,
+  );
 
   /// Convenience factory that creates a fully wired [App] with real
   /// LLM provider and subagent system.
@@ -456,7 +445,9 @@ class App {
             );
           }
       }
-    } catch (_) {/* shutdown must not block on diff failure */}
+    } catch (_) {
+      /* shutdown must not block on diff failure */
+    }
   }
 
   static const int _runtimePatchSizeCapBytes = 50 * 1024 * 1024;
@@ -476,17 +467,16 @@ class App {
     final metaPath = p.join(sessionDir, 'runtime.$ext.meta.json');
     final cappedPatch = patch.length > _runtimePatchSizeCapBytes
         ? '${patch.substring(0, _runtimePatchSizeCapBytes)}\n'
-            '<<< truncated: original was ${patch.length} bytes, '
-            'cap is $_runtimePatchSizeCapBytes >>>\n'
+              '<<< truncated: original was ${patch.length} bytes, '
+              'cap is $_runtimePatchSizeCapBytes >>>\n'
         : patch;
     final truncated = patch.length > _runtimePatchSizeCapBytes;
-    File(truncated ? '$patchPath.truncated' : patchPath)
-        .writeAsStringSync(cappedPatch);
-    File(metaPath).writeAsStringSync('${jsonEncode({
-          ...meta.toJson(),
-          'truncated': truncated,
-          'truncation_cap_bytes': _runtimePatchSizeCapBytes,
-        })}\n');
+    File(
+      truncated ? '$patchPath.truncated' : patchPath,
+    ).writeAsStringSync(cappedPatch);
+    File(metaPath).writeAsStringSync(
+      '${jsonEncode({...meta.toJson(), 'truncated': truncated, 'truncation_cap_bytes': _runtimePatchSizeCapBytes})}\n',
+    );
     // Phase 3: record the patch path + close time on the session
     // meta so `glue session …` can find it without scanning the
     // filesystem.
@@ -527,11 +517,13 @@ class App {
     terminal.clearScreen();
     layout.apply();
 
-    _blocks.add(ConversationEntry.system(
-      '\x1b[33m◆\x1b[0m Glue v${AppConstants.version} — $_modelId\n'
-      'Working directory: ${_environment.shortenPath(_cwd)}\n'
-      'Type /help for commands.',
-    ));
+    _blocks.add(
+      ConversationEntry.system(
+        '\x1b[33m◆\x1b[0m Glue v${AppConstants.version} — $_modelId\n'
+        'Working directory: ${_environment.shortenPath(_cwd)}\n'
+        'Type /help for commands.',
+      ),
+    );
 
     final termSub = terminal.events.listen(_handleTerminalEvent);
     final appSub = _events.stream.listen(_handleAppEvent);
@@ -547,8 +539,9 @@ class App {
         _commands.execute('/resume');
         _render();
       } else {
-        final match =
-            sessions.where((s) => s.id.value == _resumeSessionId).toList();
+        final match = sessions
+            .where((s) => s.id.value == _resumeSessionId)
+            .toList();
         if (match.isNotEmpty) {
           final result = _resumeSession(match.first);
           if (result.isNotEmpty) {
@@ -556,9 +549,9 @@ class App {
           }
           _render();
         } else {
-          _blocks.add(ConversationEntry.system(
-            'Session $_resumeSessionId not found.',
-          ));
+          _blocks.add(
+            ConversationEntry.system('Session $_resumeSessionId not found.'),
+          );
           _render();
         }
       }
@@ -619,8 +612,9 @@ class App {
       terminal.disableRawMode();
       final sessionId = _sessionManager.currentSessionId;
       if (sessionId != null) {
-        stdout
-            .writeln('\n\x1b[33m◆\x1b[0m Holding it together till next time.');
+        stdout.writeln(
+          '\n\x1b[33m◆\x1b[0m Holding it together till next time.',
+        );
         stdout.writeln('  \x1b[90m\$ glue --resume $sessionId\x1b[0m');
       }
       terminal.dispose();
@@ -773,10 +767,7 @@ class App {
           'Model is not installed locally.',
           'This downloads several GB and may take a while.',
         ],
-        choices: const [
-          ModalChoice('Yes', 'y'),
-          ModalChoice('No', 'n'),
-        ],
+        choices: const [ModalChoice('Yes', 'y'), ModalChoice('No', 'n')],
       );
       _render();
 
@@ -864,7 +855,9 @@ class App {
 
     if (_blocks.length > AppConstants.maxConversationBlocks) {
       _blocks.removeRange(
-          0, _blocks.length - AppConstants.maxConversationBlocks);
+        0,
+        _blocks.length - AppConstants.maxConversationBlocks,
+      );
     }
     final dockInsets = _dockManager.resolveInsets(
       terminalColumns: terminal.columns,
@@ -927,20 +920,22 @@ class App {
         EntryKind.thinking => renderer.renderThinking(block.text),
         EntryKind.toolCall => renderer.renderToolCall(block.text, block.args),
         EntryKind.toolCallRef => renderer.renderToolCallRef(
-            _toolUi[ToolCallId(block.text)]?.toRenderState(),
-          ),
+          _toolUi[ToolCallId(block.text)]?.toRenderState(),
+        ),
         EntryKind.toolResult => renderer.renderToolResult(block.text),
         EntryKind.error => renderer.renderError(block.text),
         EntryKind.subagent => renderer.renderSubagent(block.text),
-        EntryKind.subagentGroup => renderer.renderSubagent(block.group!.expanded
-            ? '${block.group!.summary}\n${block.group!.entries.map((e) => e.render(expanded: true)).join('\n')}'
-            : block.group!.summary),
+        EntryKind.subagentGroup => renderer.renderSubagent(
+          block.group!.expanded
+              ? '${block.group!.summary}\n${block.group!.entries.map((e) => e.render(expanded: true)).join('\n')}'
+              : block.group!.summary,
+        ),
         EntryKind.system => renderer.renderSystem(block.text),
         EntryKind.bash => renderer.renderBash(
-            block.expandedText ?? 'shell',
-            block.text,
-            maxLines: _config?.bashMaxLines ?? 50,
-          ),
+          block.expandedText ?? 'shell',
+          block.text,
+          maxLines: _config?.bashMaxLines ?? 50,
+        ),
       };
       pushBlock(
         blockId: block.id,
@@ -1006,8 +1001,8 @@ class App {
     final overlayHeight = _shellComplete.active
         ? _shellComplete.overlayHeight
         : _autocomplete.active
-            ? _autocomplete.overlayHeight
-            : _atHint.overlayHeight;
+        ? _autocomplete.overlayHeight
+        : _atHint.overlayHeight;
     layout.setOverlayHeight(overlayHeight);
 
     // 3. Compute visible window.
@@ -1016,8 +1011,10 @@ class App {
     final maxScroll = (totalLines - viewportHeight).clamp(0, totalLines);
     _scrollOffset = _scrollOffset.clamp(0, maxScroll);
 
-    final firstLine =
-        (totalLines - viewportHeight - _scrollOffset).clamp(0, totalLines);
+    final firstLine = (totalLines - viewportHeight - _scrollOffset).clamp(
+      0,
+      totalLines,
+    );
     final endLine = (firstLine + viewportHeight).clamp(0, totalLines);
     final visibleLines = firstLine < endLine
         ? outputLines.sublist(firstLine, endLine)
@@ -1095,11 +1092,14 @@ class App {
     final mcpSeg = mcpUnhealthy > 0 ? 'MCP:$mcpUnhealthy⚠' : null;
     final rightSegs = [
       formatStatusModelLabel(
-          _config?.activeModel, _config?.catalogData, _modelId),
+        _config?.activeModel,
+        _config?.catalogData,
+        _modelId,
+      ),
       modeLabel,
       ansiTruncate(shortCwd, 30),
-      if (scrollSeg != null) scrollSeg,
-      if (mcpSeg != null) mcpSeg,
+      ?scrollSeg,
+      ?mcpSeg,
       '${formatCompactTokens(agent.stats.totalTokens)} tokens',
     ];
     final statusRight = ' ${rightSegs.join(sep)} ';
@@ -1136,8 +1136,10 @@ class App {
     if (y < layout.outputTop || y > layout.outputBottom) return null;
     final viewportHeight = layout.outputBottom - layout.outputTop + 1;
     final totalLines = _outputLineAnchors.length;
-    final firstLine =
-        (totalLines - viewportHeight - _scrollOffset).clamp(0, totalLines);
+    final firstLine = (totalLines - viewportHeight - _scrollOffset).clamp(
+      0,
+      totalLines,
+    );
     final visibleIdx = firstLine + (y - layout.outputTop);
     if (visibleIdx < 0 || visibleIdx >= totalLines) return null;
     final anchor = _outputLineAnchors[visibleIdx];
@@ -1252,8 +1254,11 @@ class App {
       final startCol = _charOffsetToCol(plain, lineStartCharOffset);
       final endCol = _charOffsetToCol(plain, lineEndCharOffset);
       if (endCol <= startCol) continue;
-      visibleLines[i] =
-          applySelectionHighlight(visibleLines[i], startCol, endCol);
+      visibleLines[i] = applySelectionHighlight(
+        visibleLines[i],
+        startCol,
+        endCol,
+      );
     }
   }
 
@@ -1384,11 +1389,7 @@ class App {
       _render();
       return;
     }
-    _dragState = DragState(
-      originX: event.x,
-      originY: event.y,
-      origin: origin,
-    );
+    _dragState = DragState(originX: event.x, originY: event.y, origin: origin);
     _render();
   }
 
@@ -1457,8 +1458,10 @@ class App {
     if (y < layout.outputTop || y > layout.outputBottom) return;
     final viewportHeight = layout.outputBottom - layout.outputTop + 1;
     final totalLines = _outputLineAnchors.length;
-    final firstLine =
-        (totalLines - viewportHeight - _scrollOffset).clamp(0, totalLines);
+    final firstLine = (totalLines - viewportHeight - _scrollOffset).clamp(
+      0,
+      totalLines,
+    );
     final idx = firstLine + (y - layout.outputTop);
     if (idx < 0 || idx >= _outputLineAnchors.length) return;
     final anchor = _outputLineAnchors[idx];
@@ -1483,8 +1486,10 @@ class App {
     if (y < layout.outputTop || y > layout.outputBottom) return;
     final viewportHeight = layout.outputBottom - layout.outputTop + 1;
     final totalLines = _outputLineGroups.length;
-    final firstLine =
-        (totalLines - viewportHeight - _scrollOffset).clamp(0, totalLines);
+    final firstLine = (totalLines - viewportHeight - _scrollOffset).clamp(
+      0,
+      totalLines,
+    );
     final idx = firstLine + (y - layout.outputTop);
     if (idx < 0 || idx >= _outputLineGroups.length) return;
     final group = _outputLineGroups[idx];
@@ -1687,7 +1692,8 @@ class App {
             // Slash-autocomplete: Enter on an exact match submits instead
             // of re-accepting the same text — fall through to submit below.
             final isEnter = event.key == Key.enter;
-            final isEnterOnExactMatch = isEnter &&
+            final isEnterOnExactMatch =
+                isEnter &&
                 identical(activeOverlay, _autocomplete) &&
                 _autocomplete.selectedText == editor.text;
             if (isEnterOnExactMatch) {
@@ -1723,8 +1729,9 @@ class App {
               requestExit();
             } else {
               _lastCtrlC = now;
-              _blocks
-                  .add(ConversationEntry.system('Press Ctrl+C again to exit.'));
+              _blocks.add(
+                ConversationEntry.system('Press Ctrl+C again to exit.'),
+              );
               _render();
             }
           case InputAction.changed:
@@ -1808,7 +1815,8 @@ class App {
 
   void _startAgent(String displayMessage, {String? expandedMessage}) {
     _blocks.add(
-        ConversationEntry.user(displayMessage, expandedText: expandedMessage));
+      ConversationEntry.user(displayMessage, expandedText: expandedMessage),
+    );
     _mode = AppMode.streaming;
     _startSpinner();
     _streamingText = '';
@@ -1870,8 +1878,9 @@ class App {
         // in _blocks matches the actual conversation flow.
         _flushThinking();
         if (_streamingText.isNotEmpty) {
-          _sessionManager
-              .logEvent('assistant_message', {'text': _streamingText});
+          _sessionManager.logEvent('assistant_message', {
+            'text': _streamingText,
+          });
           _flushAssistant();
         }
         _toolUi[id] = _ToolCallUiState(id: id, name: name);
@@ -1990,7 +1999,8 @@ class App {
           if (result.metadata.isNotEmpty) 'metadata': result.metadata,
         });
         _blocks.add(
-            ConversationEntry.toolResult(result.summary ?? result.content));
+          ConversationEntry.toolResult(result.summary ?? result.content),
+        );
         _mode = AppMode.streaming;
         _startSpinner();
         _render();
@@ -1998,17 +2008,15 @@ class App {
       case AgentUsage(:final usage):
         // Forward main-agent token usage to the session log so resumes and
         // /share output reflect cumulative cost.
-        _sessionManager.recordUsage(
-          UsageStats()..record(usage),
-          role: 'main',
-        );
+        _sessionManager.recordUsage(UsageStats()..record(usage), role: 'main');
 
       case AgentDone():
         _flushThinking();
         if (_streamingText.isNotEmpty) {
           _ensureSessionStore();
-          _sessionManager
-              .logEvent('assistant_message', {'text': _streamingText});
+          _sessionManager.logEvent('assistant_message', {
+            'text': _streamingText,
+          });
           _flushAssistant();
         }
         _reevaluateTitle();
@@ -2021,6 +2029,19 @@ class App {
         _stopSpinner();
         _mode = AppMode.idle;
         _render();
+
+      case AgentNotice(:final message, :final kind):
+        // Soft-degradation announcement: routed through the existing
+        // system-message rendering (gray, single-line) with a marker
+        // glyph prefix so the user notices it scroll past. Persists into
+        // the session log for replay/share visibility.
+        final glyph = kind == 'warning' ? '!' : '·';
+        _blocks.add(ConversationEntry.system('$glyph $message'));
+        _sessionManager.logEvent('agent_notice', {
+          'kind': kind,
+          'message': message,
+        });
+        _render();
     }
   }
 
@@ -2029,11 +2050,9 @@ class App {
       final result = await agent.executeTool(call);
       agent.completeToolCall(result);
     } catch (e) {
-      agent.completeToolCall(ToolResult(
-        callId: call.id,
-        content: 'Tool error: $e',
-        success: false,
-      ));
+      agent.completeToolCall(
+        ToolResult(callId: call.id, content: 'Tool error: $e', success: false),
+      );
     }
   }
 
@@ -2096,8 +2115,9 @@ class App {
     _toolUi[call.id]?.phase = _ToolPhase.awaitingApproval;
     _stopSpinner();
     _mode = AppMode.confirming;
-    final bodyLines =
-        call.arguments.entries.map((e) => '${e.key}: ${e.value}').toList();
+    final bodyLines = call.arguments.entries
+        .map((e) => '${e.key}: ${e.value}')
+        .toList();
     if (bodyLines.isEmpty) bodyLines.add('(no arguments)');
     _activeModal = ConfirmModal(
       title: 'Approve tool: ${call.name}',
@@ -2178,12 +2198,14 @@ class App {
       if (_resumeSessionId != null) {
         if (_resumeSessionId.isEmpty) {
           stderr.writeln(
-              'Error: --print does not support bare --resume; pass a session ID.');
+            'Error: --print does not support bare --resume; pass a session ID.',
+          );
           return;
         }
         final sessions = _sessionManager.listSessions();
-        final match =
-            sessions.where((s) => s.id.value == _resumeSessionId).toList();
+        final match = sessions
+            .where((s) => s.id.value == _resumeSessionId)
+            .toList();
         if (match.isEmpty) {
           stderr.writeln('Session $_resumeSessionId not found.');
           return;
@@ -2212,8 +2234,10 @@ class App {
         return;
       }
 
-      final fullPrompt =
-          App.buildPrintPrompt(prompt: prompt, stdinContent: stdinContent);
+      final fullPrompt = App.buildPrintPrompt(
+        prompt: prompt,
+        stdinContent: stdinContent,
+      );
       expanded = expandFileRefs(fullPrompt);
 
       _sessionManager.logEvent('user_message', {'text': expanded});
@@ -2257,11 +2281,13 @@ class App {
               final result = await agent.executeTool(call);
               agent.completeToolCall(result);
             } catch (e) {
-              agent.completeToolCall(ToolResult(
-                callId: call.id,
-                content: 'Tool error: $e',
-                success: false,
-              ));
+              agent.completeToolCall(
+                ToolResult(
+                  callId: call.id,
+                  content: 'Tool error: $e',
+                  success: false,
+                ),
+              );
             }
 
           case AgentDone():
@@ -2269,15 +2295,24 @@ class App {
 
           case AgentError(:final error):
             if (turnSpan != null && turnSpan.endTime == null) {
-              _obs!.endSpan(turnSpan, extra: {
-                'error': true,
-                'error.type': error.runtimeType.toString(),
-                'error.message': error.toString(),
-              });
+              _obs!.endSpan(
+                turnSpan,
+                extra: {
+                  'error': true,
+                  'error.type': error.runtimeType.toString(),
+                  'error.message': error.toString(),
+                },
+              );
               turnSpan = null;
             }
             stderr.writeln(error);
             return;
+
+          case AgentNotice(:final message, :final kind):
+            // Soft-degradation announcement in --print mode: stderr
+            // only, so stdout stays clean for piping the model output.
+            final glyph = kind == 'warning' ? '!' : '·';
+            stderr.writeln('$glyph $message');
 
           default:
             break;
@@ -2304,11 +2339,14 @@ class App {
       }
     } catch (e) {
       if (turnSpan != null && turnSpan.endTime == null) {
-        _obs!.endSpan(turnSpan, extra: {
-          'error': true,
-          'error.type': e.runtimeType.toString(),
-          'error.message': e.toString(),
-        });
+        _obs!.endSpan(
+          turnSpan,
+          extra: {
+            'error': true,
+            'error.type': e.runtimeType.toString(),
+            'error.message': e.toString(),
+          },
+        );
         turnSpan = null;
       }
       stderr.writeln('Error: $e');
@@ -2318,11 +2356,14 @@ class App {
       if (turnSpan != null) {
         final obs = _obs!;
         if (turnSpan.endTime == null) {
-          obs.endSpan(turnSpan, extra: {
-            'output.value': redactBody(assistantText.toString()),
-            'output.length': assistantText.length,
-            if (cancelled) 'cancelled': true,
-          });
+          obs.endSpan(
+            turnSpan,
+            extra: {
+              'output.value': redactBody(assistantText.toString()),
+              'output.length': assistantText.length,
+              if (cancelled) 'cancelled': true,
+            },
+          );
         }
         if (obs.activeSpan == turnSpan) obs.activeSpan = null;
       }
@@ -2402,7 +2443,8 @@ class App {
       }
     }
 
-    final hasEnoughContext = (firstAssistantMessage != null &&
+    final hasEnoughContext =
+        (firstAssistantMessage != null &&
             firstAssistantMessage.trim().length >= 40) ||
         toolNames.isNotEmpty ||
         firstUserMessage != null &&
@@ -2488,14 +2530,16 @@ class App {
   /// composes the same primitives directly via [_conversation] —
   /// duplication is deliberate; each call site is self-contained.
   String _resumeSession(SessionMeta session) {
-    final result =
-        _sessionManager.resumeSession(session: session, agent: agent);
+    final result = _sessionManager.resumeSession(
+      session: session,
+      agent: agent,
+    );
     _conversation.resetForReplay();
     _sessionManager
       ..titleInitialRequested = session.title != null
       ..titleReevaluationRequested =
           session.titleState == SessionTitleState.stable ||
-              session.titleGenerationCount >= 2
+          session.titleGenerationCount >= 2
       ..titleManuallyOverridden =
           session.titleSource == SessionTitleSource.user;
 
@@ -2511,8 +2555,9 @@ class App {
     final usage = result.replay.totalUsage;
     if (usage.totalCalls > 0) {
       final summary = StringBuffer(
-          'Carry-over: ${formatCompactTokens(usage.totalTokens)} tokens '
-          'over ${usage.totalCalls} call${usage.totalCalls == 1 ? '' : 's'}');
+        'Carry-over: ${formatCompactTokens(usage.totalTokens)} tokens '
+        'over ${usage.totalCalls} call${usage.totalCalls == 1 ? '' : 's'}',
+      );
       final hit = usage.cacheHitRate;
       if (hit != null &&
           (usage.totalCacheRead > 0 || usage.totalCacheWrite > 0)) {
@@ -2567,10 +2612,12 @@ class App {
       final running = await _executor.startStreaming(command);
       _bashRunHandle = running;
 
-      final stdoutFuture =
-          running.stdout.transform(const SystemEncoding().decoder).join();
-      final stderrFuture =
-          running.stderr.transform(const SystemEncoding().decoder).join();
+      final stdoutFuture = running.stdout
+          .transform(const SystemEncoding().decoder)
+          .join();
+      final stderrFuture = running.stderr
+          .transform(const SystemEncoding().decoder)
+          .join();
 
       final exitCode = await running.exitCode;
       _bashRunHandle = null;
@@ -2591,20 +2638,26 @@ class App {
         _blocks.add(ConversationEntry.system('Exit code: $exitCode'));
       }
       if (span != null && _obs != null && span.endTime == null) {
-        _obs.endSpan(span, extra: {
-          'process.exit_code': exitCode,
-          'process.output_length': stripped.length,
-        });
+        _obs.endSpan(
+          span,
+          extra: {
+            'process.exit_code': exitCode,
+            'process.output_length': stripped.length,
+          },
+        );
       }
     } catch (e) {
       _bashRunHandle = null;
       _blocks.add(ConversationEntry.error('Bash error: $e'));
       if (span != null && _obs != null && span.endTime == null) {
-        _obs.endSpan(span, extra: {
-          'error': true,
-          'error.type': e.runtimeType.toString(),
-          'error.message': e.toString(),
-        });
+        _obs.endSpan(
+          span,
+          extra: {
+            'error': true,
+            'error.type': e.runtimeType.toString(),
+            'error.message': e.toString(),
+          },
+        );
       }
     }
     _bashSpan = null;
@@ -2615,14 +2668,12 @@ class App {
   void _cancelBash() {
     final span = _bashSpan;
     if (span != null && _obs != null && span.endTime == null) {
-      _obs.endSpan(span, extra: {
-        'cancelled': true,
-      });
+      _obs.endSpan(span, extra: {'cancelled': true});
     }
     _bashSpan = null;
     final handle = _bashRunHandle;
     _bashRunHandle = null;
-    if (handle != null) unawaited(handle.kill());
+    if (handle != null) handle.kill();
     // Mirror the agent-cancel contract: every transition back to idle also
     // stops the spinner, even if this particular path didn't start it.
     _stopSpinner();
@@ -2652,7 +2703,8 @@ class App {
         final cmd = job?.command ?? '?';
         final label = exitCode == 0 ? 'exited' : 'failed';
         _blocks.add(
-            ConversationEntry.system('↳ Job #$id $label ($exitCode): $cmd'));
+          ConversationEntry.system('↳ Job #$id $label ($exitCode): $cmd'),
+        );
         _render();
       case JobError(:final id, :final error):
         _blocks.add(ConversationEntry.system('↳ Job #$id error: $error'));
@@ -2665,10 +2717,10 @@ class App {
   void _handleMcpEvent(McpPoolEvent event) {
     switch (event) {
       case McpPoolServerConnectedEvent(
-          :final serverId,
-          :final serverName,
-          :final toolNames,
-        ):
+        :final serverId,
+        :final serverName,
+        :final toolNames,
+      ):
         final count = toolNames.length;
         _addSystemMessage(
           '↳ MCP connected: $serverId ($serverName, $count tool${count == 1 ? '' : 's'})',
@@ -2678,17 +2730,17 @@ class App {
       case McpPoolServerErrorEvent(:final serverId, :final message):
         _addSystemMessage('↳ MCP error ($serverId): $message');
       case McpPoolServerAuthRequiredEvent(
-          :final serverId,
-          :final reauthCommand,
-        ):
+        :final serverId,
+        :final reauthCommand,
+      ):
         _addSystemMessage(
           '↳ MCP re-auth required ($serverId). Run: $reauthCommand',
         );
       case McpPoolToolListChangedEvent(
-          :final serverId,
-          :final added,
-          :final removed,
-        ):
+        :final serverId,
+        :final added,
+        :final removed,
+      ):
         final changes = <String>[
           if (added.isNotEmpty) '+${added.length}',
           if (removed.isNotEmpty) '-${removed.length}',
@@ -2704,21 +2756,19 @@ class App {
 
   void _handleSubagentUpdate(SubagentUpdate update) {
     final groupKey = '${update.task}:${update.index ?? 0}';
-    final group = _subagentGroups.putIfAbsent(
-      groupKey,
-      () {
-        final g = SubagentGroup(
-          task: update.task,
-          index: update.index,
-          total: update.total,
-        );
-        _blocks.add(ConversationEntry.subagentGroup(g));
-        return g;
-      },
-    );
+    final group = _subagentGroups.putIfAbsent(groupKey, () {
+      final g = SubagentGroup(
+        task: update.task,
+        index: update.index,
+        total: update.total,
+      );
+      _blocks.add(ConversationEntry.subagentGroup(g));
+      return g;
+    });
 
-    final prefix =
-        update.index != null ? '↳ [${update.index! + 1}/${update.total}]' : '↳';
+    final prefix = update.index != null
+        ? '↳ [${update.index! + 1}/${update.total}]'
+        : '↳';
 
     switch (update.event) {
       case AgentToolCall(:final call):
@@ -2727,20 +2777,24 @@ class App {
             .take(2)
             .map((e) => '${e.key}: ${e.value}')
             .join(', ');
-        group.entries
-            .add(SubagentEntry('$prefix ▶ ${call.name}  $argsPreview'));
+        group.entries.add(
+          SubagentEntry('$prefix ▶ ${call.name}  $argsPreview'),
+        );
         _render();
       case AgentToolResult(:final result):
-        final display = result.summary ??
+        final display =
+            result.summary ??
             (result.content.length > 80
                 ? '${result.content.substring(0, 80)}…'
                 : result.content);
-        group.entries.add(SubagentEntry(
-          '$prefix ✓ ${display.replaceAll('\n', ' ')}',
-          rawContent: result.summary != null || result.content.length > 80
-              ? result.content
-              : null,
-        ));
+        group.entries.add(
+          SubagentEntry(
+            '$prefix ✓ ${display.replaceAll('\n', ' ')}',
+            rawContent: result.summary != null || result.content.length > 80
+                ? result.content
+                : null,
+          ),
+        );
         _render();
       case AgentError(:final error):
         group.entries.add(SubagentEntry('$prefix ✗ Error: $error'));
@@ -2760,6 +2814,13 @@ class App {
       case AgentDone():
         group.done = true;
         group.currentTool = null;
+        _render();
+      case AgentNotice(:final message, :final kind):
+        // Subagent emitted a notice (e.g. its own model lacks tools and
+        // it's running chat-only). Surface inside the subagent group
+        // fold so the parent transcript shows the soft degradation.
+        final glyph = kind == 'warning' ? '!' : '·';
+        group.entries.add(SubagentEntry('$prefix $glyph $message'));
         _render();
     }
   }

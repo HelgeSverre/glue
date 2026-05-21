@@ -1,62 +1,46 @@
-# macOS
+# ── OS ──────────────────────────────────────────────────────────────────────
 .DS_Store
 
-# Dart
+# ── Dart / pub workspace ────────────────────────────────────────────────────
 .dart_tool/
 pubspec.lock
-*.dart.js
-*.js_
-*.js.deps
-*.js.map
 
-# IDE
+# ── Build outputs ──────────────────────────────────────────────────────────
+# AOT binary lands at <repo>/dist/glue (via `just cli::build`).
+dist/
+build/
+cli/doc/api/
+
+# Generated source files (rebuilt by `just gen` in each package).
+packages/glue_harness/lib/src/config/build_info_generated.dart
+
+# ── IDE / editors ──────────────────────────────────────────────────────────
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
 
-# Vercel
-.vercel/
-
-# Build outputs
-build/
-dist/
-cli/glue
-/glue
-cli/doc/api/
-playwright-report/
-test-results/
-
-# Environment
+# ── Environment / secrets ──────────────────────────────────────────────────
 .env
 .env.local
+settings.local.json
 
-# Aider
-.junie*
-.aider*
-
-# Worktrees
+# ── Worktrees ──────────────────────────────────────────────────────────────
 .worktrees/
 
-# Temporary directories in cli/
-cli/.local-chrome
-cli/.worktrees
-cli/.junie
-cli/.playwright-mcp
+# ── Browser / scraping caches ──────────────────────────────────────────────
+.local-chrome/
 .playwright-mcp/
-
-# DevDocs (generated)
-website/api/
-website/node_modules/
-website/.vitepress/dist/
-website/.vitepress/cache/
-website/.vitepress/sidebar.json
-
-# JavaScript dependencies
-node_modules/
-
-# Browser probe (generated outputs)
+playwright-report/
+test-results/
 browser/probe/browser/
-settings.local.json
+
+# ── JS / website ───────────────────────────────────────────────────────────
+node_modules/
+.vercel/
+
+# ── Misc tools ─────────────────────────────────────────────────────────────
+.junie*
+.aider*
 mlflow.db

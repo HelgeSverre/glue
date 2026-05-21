@@ -30,6 +30,12 @@ SessionUpdate? agentEventToAcpUpdate(AgentEvent event) {
       null, // surfaced via session/usage_summary, not session/update
     AgentDone() => null, // server returns SessionPromptResult
     AgentError() => null, // server emits a JSON-RPC error
+    AgentNotice(:final message, :final kind) =>
+      // Soft-degradation announcement. Surfaced through the
+      // agent-message-chunk channel with a leading marker glyph so ACP
+      // clients see it inline in the transcript. Glyph mirrors the TUI
+      // and --print-mode surfaces.
+      AgentMessageChunkUpdate('${kind == 'warning' ? '!' : '·'} $message\n'),
   };
 }
 

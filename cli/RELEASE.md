@@ -57,7 +57,7 @@ Tags: `v{MAJOR}.{MINOR}.{PATCH}` (e.g., `v0.2.0`). Pre-releases: `v0.3.0-beta.1`
 ### `just release <version>` (cli/justfile)
 
 1. Updates `pubspec.yaml` version via `sed`
-2. Compiles AOT binary
+2. Compiles AOT binary via `dart build cli` → `../dist/glue`
 3. Commits as `release: v<version>`
 4. Creates tag `v<version>`
 5. Prints reminder to `git push && git push --tags`
@@ -66,7 +66,7 @@ Tags: `v{MAJOR}.{MINOR}.{PATCH}` (e.g., `v0.2.0`). Pre-releases: `v0.3.0-beta.1`
 
 ### GitHub Actions (`release-tag-build.yml`)
 
-Triggers on `v*` tag push. Builds Linux, macOS, Windows binaries via `dart compile exe`. Uploads as GitHub Release artifacts via `softprops/action-gh-release@v2`. Works for stable and pre-release tags.
+Triggers on `v*` tag push. Builds Linux, macOS, Windows binaries via `dart build cli` (output renamed to `dist/<asset>` per platform). Uploads as GitHub Release artifacts. Works for stable and pre-release tags.
 
 ### CI Pipelines
 
