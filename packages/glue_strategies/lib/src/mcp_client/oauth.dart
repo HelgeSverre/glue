@@ -113,6 +113,101 @@ class OAuthDiscoveryException implements Exception {
   String toString() => 'OAuthDiscoveryException: $message';
 }
 
+// ─── WWW-Authenticate parsing (RFC 6750, RFC 7235) ────────────────────────
+
+/// Parsed `WWW-Authenticate: Bearer …` challenge. Only Bearer is
+/// relevant for MCP — other schemes return `null` from
+/// [parseWwwAuthenticate].
+class WwwAuthenticateChallenge {
+  const WwwAuthenticateChallenge({
+    required this.scheme,
+    required this.parameters,
+  });
+
+  final String scheme;
+  final Map<String, String> parameters;
+
+  /// `resource_metadata` parameter from RFC 9728 §5.1. The MCP spec
+  /// requires servers to advertise this URL on 401.
+  Uri? get resourceMetadata {
+    final raw = parameters['resource_metadata'];
+    if (raw == null || raw.isEmpty) return null;
+    return Uri.tryParse(raw);
+  }
+
+  /// Space-delimited scopes from RFC 6750 §3. Empty list when absent.
+  List<String> get scope {
+    final raw = parameters['scope'];
+    if (raw == null || raw.isEmpty) return const [];
+    return raw.split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
+  }
+}
+
+/// Parses a `WWW-Authenticate` header. Returns `null` when the header
+/// is missing, empty, or carries a non-Bearer scheme.
+///
+/// Handles RFC 7235 quoted-string values (which may contain commas).
+WwwAuthenticateChallenge? parseWwwAuthenticate(String? header) {
+  if (header == null) return null;
+  final trimmed = header.trim();
+  if (trimmed.isEmpty) return null;
+
+  final spaceIdx = trimmed.indexOf(' ');
+  final scheme = spaceIdx < 0 ? trimmed : trimmed.substring(0, spaceIdx);
+  if (scheme.toLowerCase() != 'bearer') return null;
+
+  final rest = spaceIdx < 0 ? '' : trimmed.substring(spaceIdx + 1);
+  final params = _parseAuthParams(rest);
+  return WwwAuthenticateChallenge(scheme: 'Bearer', parameters: params);
+}
+
+/// Tokenizes `name=value` (or `name="value"`) pairs separated by commas.
+/// Quoted-string values may contain commas; the parser respects the
+/// quoting and ignores those.
+Map<String, String> _parseAuthParams(String input) {
+  final out = <String, String>{};
+  var i = 0;
+  while (i < input.length) {
+    while (i < input.length && (input[i] == ' ' || input[i] == ',')) {
+      i++;
+    }
+    if (i >= input.length) break;
+
+    final nameStart = i;
+    while (i < input.length && input[i] != '=' && input[i] != ',') {
+      i++;
+    }
+    final name = input.substring(nameStart, i).trim();
+    if (name.isEmpty || i >= input.length || input[i] != '=') {
+      while (i < input.length && input[i] != ',') {
+        i++;
+      }
+      continue;
+    }
+    i++; // consume '='
+
+    String value;
+    if (i < input.length && input[i] == '"') {
+      i++;
+      final valueStart = i;
+      while (i < input.length && input[i] != '"') {
+        if (input[i] == r'\' && i + 1 < input.length) i++;
+        i++;
+      }
+      value = input.substring(valueStart, i);
+      if (i < input.length) i++; // consume closing quote
+    } else {
+      final valueStart = i;
+      while (i < input.length && input[i] != ',') {
+        i++;
+      }
+      value = input.substring(valueStart, i).trim();
+    }
+    out[name.toLowerCase()] = value;
+  }
+  return out;
+}
+
 // ─── Dynamic Client Registration (RFC 7591) ────────────────────────────────
 
 class OAuthClient {
