@@ -14,38 +14,12 @@
 # the OpenAI API wire format", not "this provider is OpenAI".
 
 version: 1
-updated_at: 2026-05-20
+updated_at: 2026-05-21
 
 defaults:
   model: anthropic/claude-sonnet-4-6
   small_model: openai/gpt-5.4-mini
   local_model: ollama/qwen3-coder:30b
-
-catalog:
-  source: bundled
-  refresh: manual # never | manual | daily | startup
-  remote_url: null
-  cache_path: ~/.glue/cache/models.yaml
-  local_overrides: ~/.glue/models.yaml
-  merge_order:
-    - bundled
-    - cached_remote
-    - local_overrides
-  fallback: bundled
-
-selection:
-  hide_disabled_providers: true
-  hide_unavailable_credentials: false
-  show_experimental: false
-  default_filter:
-    capabilities:
-      - chat
-      - tools
-  sort:
-    - recommended
-    - provider
-    - speed
-    - name
 
 capabilities:
   chat: Text chat.
@@ -66,6 +40,7 @@ providers:
     name: Anthropic
     adapter: anthropic
     enabled: true
+    base_url: https://api.anthropic.com
     docs_url: https://docs.anthropic.com/
     auth:
       api_key: env:ANTHROPIC_API_KEY
@@ -511,47 +486,3 @@ providers:
         speed: depends_on_hardware
         cost: local
         notes: Rename this entry to the model served by vLLM, LM Studio, or another local gateway.
-
-profiles:
-  coding:
-    description: Default interactive coding session.
-    recommended:
-      - anthropic/claude-opus-4-7
-      - anthropic/claude-sonnet-4-6
-      - openai/gpt-5.5
-      - openai/o3
-      - mistral/devstral-latest
-      - groq/llama-4-scout-17b-16e-instruct
-  cheap:
-    description: Low-cost summaries, titles, and quick checks.
-    recommended:
-      - openai/gpt-5.4-mini
-      - openai/gpt-5.4-nano
-      - anthropic/claude-haiku-4-5
-      - gemini/gemini-3.5-flash
-      - mistral/mistral-small-latest
-  local:
-    description: No hosted provider call.
-    recommended:
-      - ollama/qwen3-coder:30b
-      - ollama/qwen3-coder-next:latest
-      - ollama/qwen3.6:35b
-      - ollama/gemma4:26b
-      - ollama/devstral:24b
-      - ollama/qwen3:8b
-      - local-vllm/local-model
-  research:
-    description: Browser, scraping, long context, and extraction tasks.
-    recommended:
-      - gemini/gemini-3.5-flash
-      - gemini/gemini-3.1-pro-preview
-      - openai/gpt-5.4-mini
-      - anthropic/claude-sonnet-4-6
-  reasoning:
-    description: Hard problems that benefit from explicit long-chain thinking.
-    recommended:
-      - openai/o3
-      - openai/gpt-5.5-pro
-      - anthropic/claude-opus-4-7
-      - mistral/magistral-medium-latest
-      - groq/gpt-oss-120b

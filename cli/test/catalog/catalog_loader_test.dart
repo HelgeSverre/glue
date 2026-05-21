@@ -156,6 +156,94 @@ providers:
       expect(merged.providers['openai']!.name, 'OpenAI Local');
     });
 
+    test('sanitized cached remote preserves bundled auth and base_url', () {
+      // Reproduces the regression: `glue catalog refresh` writes a sanitized
+      // cache (auth clamped to {api_key: none}, base_url stripped). Without
+      // field-merge, the cached layer used to wipe out bundled credentials,
+      // breaking env-var autoload and /provider for every default provider.
+      final bundled = _catalog('''
+version: 1
+defaults:
+  model: openai/gpt-5.4
+capabilities: {}
+providers:
+  openai:
+    name: OpenAI
+    adapter: openai
+    base_url: https://api.openai.com/v1
+    docs_url: https://platform.openai.com/docs/
+    auth:
+      api_key: env:OPENAI_API_KEY
+    models:
+      gpt-5.4:
+        name: GPT-5.4
+        recommended: true
+''');
+      final sanitizedCache = _catalog('''
+version: 1
+defaults:
+  model: openai/gpt-5.4
+capabilities: {}
+providers:
+  openai:
+    name: OpenAI
+    adapter: openai
+    docs_url: https://platform.openai.com/docs/
+    auth:
+      api_key: none
+    models:
+      gpt-5.4:
+        name: GPT-5.4
+        recommended: true
+      gpt-5.5:
+        name: GPT-5.5
+        recommended: true
+''');
+      final merged = loadCatalog(
+        bundled: bundled,
+        cachedRemote: sanitizedCache,
+      );
+      final openai = merged.providers['openai']!;
+      expect(
+        openai.baseUrl,
+        'https://api.openai.com/v1',
+        reason: 'stripped base_url must fall back to bundled',
+      );
+      expect(
+        openai.auth.kind,
+        AuthKind.apiKey,
+        reason: 'clamped auth must fall back to bundled',
+      );
+      expect(openai.auth.envVar, 'OPENAI_API_KEY');
+      expect(
+        openai.models.keys,
+        containsAll(['gpt-5.4', 'gpt-5.5']),
+        reason: 'refreshed model list from cache should be visible',
+      );
+    });
+
+    test('cached remote can introduce a brand-new provider unchanged', () {
+      final bundled = _catalog(_bundled);
+      final remote = _catalog('''
+version: 1
+defaults:
+  model: anthropic/claude-sonnet-4.6
+capabilities: {}
+providers:
+  new-provider:
+    name: New Provider
+    adapter: openai
+    auth:
+      api_key: none
+    models:
+      shiny:
+        name: Shiny
+''');
+      final merged = loadCatalog(bundled: bundled, cachedRemote: remote);
+      expect(merged.providers.keys, contains('new-provider'));
+      expect(merged.providers['new-provider']!.name, 'New Provider');
+    });
+
     test('capabilities map is merged (union)', () {
       final bundled = _catalog(_bundled);
       final overrides = _catalog('''

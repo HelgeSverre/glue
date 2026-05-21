@@ -7,7 +7,7 @@ import 'package:glue_core/glue_core.dart';
 
 const ModelCatalog bundledCatalog = ModelCatalog(
   version: 1,
-  updatedAt: '2026-05-20',
+  updatedAt: '2026-05-21',
   defaults: DefaultsConfig(
     model: 'anthropic/claude-sonnet-4-6',
     smallModel: 'openai/gpt-5.4-mini',
@@ -34,7 +34,7 @@ const ModelCatalog bundledCatalog = ModelCatalog(
       adapter: 'anthropic',
       compatibility: null,
       enabled: true,
-      baseUrl: null,
+      baseUrl: 'https://api.anthropic.com',
       docsUrl: 'https://docs.anthropic.com/',
       auth: AuthSpec(
         kind: AuthKind.apiKey,
