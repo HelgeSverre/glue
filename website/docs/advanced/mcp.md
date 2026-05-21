@@ -38,11 +38,17 @@ mcp:
         kind: bearer
         token: "${WIKI_MCP_TOKEN}"
 
-    # http+sse with OAuth 2.1 (run `glue mcp auth login <server>` first)
+    # http+sse with OAuth 2.1 — or just leave `auth:` off and Glue will
+    # auto-detect the OAuth requirement on the first 401 and prompt you
+    # to sign in. The fields below are written back automatically after
+    # the first successful login (cached so subsequent sessions skip
+    # the discovery probe).
     notion:
       url: "https://mcp.notion.com"
       auth:
         kind: oauth
+      # resource_metadata_url: "https://mcp.notion.com/.well-known/oauth-protected-resource"
+      # authorization_server: "https://auth.notion.com"
 
     # WebSocket
     ws-server:
@@ -116,21 +122,53 @@ glue mcp auth set <server> --bearer
 
 ### OAuth 2.1 with PKCE and DCR
 
-For HTTP servers that advertise OAuth (Notion, etc.), run:
+The fastest path is to do nothing extra: add the server with just a `url`,
+start Glue, and the first 401 from the server kicks off the OAuth flow
+automatically. After you sign in, Glue persists tokens and writes
+`auth: {kind: oauth}` (plus the discovered metadata URLs) back into your
+`config.yaml`.
+
+If you'd rather start the flow on demand:
 
 ```sh
-glue mcp auth login <server>
+glue mcp auth login <server>          # CLI
+/mcp auth login <server>              # inside a Glue session
 ```
 
-Glue will:
+Either way, Glue follows the current MCP authorization spec:
 
-1. Discover the authorization-server metadata at `<base>/.well-known/oauth-authorization-server` (RFC 8414) or fall back to OIDC.
-2. Dynamically register a client (RFC 7591) if the server supports it, otherwise reuse the stored `client_id`.
-3. Open your browser with a PKCE challenge + fresh state, bind a one-shot loopback HTTP server on `127.0.0.1`, and capture the redirect.
-4. Exchange the authorization code for tokens at the token endpoint.
-5. Persist tokens encrypted under `mcp:<server-id>:oauth_*` in your credential store.
+1. **Discover protected resource metadata** (RFC 9728) — parses
+   `WWW-Authenticate: Bearer resource_metadata="…"` on the 401, or
+   falls back to `/.well-known/oauth-protected-resource{path}` and the
+   root form. The document tells Glue which authorization server to
+   talk to.
+2. **Discover authorization server metadata** (RFC 8414) — fetches
+   `/.well-known/oauth-authorization-server` on the auth server, with
+   OIDC discovery (`/.well-known/openid-configuration`) as a fallback.
+   Validates that the `issuer` field matches the URL the document was
+   fetched from.
+3. **Bind a loopback HTTP server on `127.0.0.1`** with a random port —
+   this becomes the exact `redirect_uri` used for the rest of the flow.
+4. **Register a client** via Dynamic Client Registration (RFC 7591)
+   when the auth server advertises a registration endpoint, using the
+   bound loopback URL so strict servers that require an exact
+   `redirect_uri` match are happy.
+5. **Open your browser** with a PKCE challenge + fresh `state` to the
+   authorization endpoint, capture the redirect on the loopback, and
+   exchange the code at the token endpoint.
+6. **Persist tokens** to your credential store under `mcp:<server-id>:oauth_*`
+   and reconnect the parked server immediately.
 
-Re-run the same command if your refresh token ever expires.
+If the access token expires mid-session, Glue runs the refresh-token
+grant silently and retries — you only see the OAuth flow again when the
+refresh token itself has expired or been revoked. Servers that 401 and
+are awaiting sign-in show up as `MCP:1🔑` in the status bar; the
+`/mcp` panel surfaces `Authenticate` / `Re-authenticate` / `Sign out`
+actions per server depending on credential state.
+
+To force a clean re-auth (e.g. if the server changed its DCR policy and
+your cached client got rejected), run `glue mcp auth logout <server>`
+followed by `glue mcp auth login <server>`.
 
 ## CLI commands
 
