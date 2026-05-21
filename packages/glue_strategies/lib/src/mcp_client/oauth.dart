@@ -35,6 +35,26 @@ import 'package:glue_strategies/src/credentials/credential_store.dart';
 
 // ─── Discovery ─────────────────────────────────────────────────────────────
 
+/// Result of [discoverMcpAuth] — everything needed to run the auth flow
+/// and cache the outcome in config.
+class McpAuthDiscovery {
+  const McpAuthDiscovery({
+    required this.endpoints,
+    required this.scopes,
+    this.resourceMetadataUrl,
+    this.authorizationServer,
+  });
+
+  final OAuthEndpoints endpoints;
+  final List<String> scopes;
+
+  /// `null` when discovery fell back to the legacy direct path.
+  final Uri? resourceMetadataUrl;
+
+  /// `null` when discovery fell back to the legacy direct path.
+  final Uri? authorizationServer;
+}
+
 class OAuthEndpoints {
   const OAuthEndpoints({
     required this.authorizationEndpoint,
@@ -103,6 +123,53 @@ Future<OAuthEndpoints> discoverOAuthEndpoints(
     );
   } finally {
     if (ownsClient) client.close();
+  }
+}
+
+/// MCP-spec discovery: RFC 9728 protected resource metadata → RFC 8414
+/// authorization server metadata. Falls back to the legacy direct probe
+/// against the server URL when no RFC 9728 metadata is found.
+///
+/// Scopes from `WWW-Authenticate` win over `scopes_supported` in
+/// protected-resource metadata (RFC 6750 + MCP spec).
+Future<McpAuthDiscovery> discoverMcpAuth({
+  required Uri serverUrl,
+  String? wwwAuthenticate,
+  Uri? cachedResourceMetadataUrl,
+  http.Client? httpClient,
+}) async {
+  final challenge = parseWwwAuthenticate(wwwAuthenticate);
+  final resourceMetadataUrl =
+      challenge?.resourceMetadata ?? cachedResourceMetadataUrl;
+
+  try {
+    final meta = await discoverProtectedResourceMetadata(
+      serverUrl: serverUrl,
+      resourceMetadataUrl: resourceMetadataUrl,
+      httpClient: httpClient,
+    );
+    final authServer = meta.authorizationServers.first;
+    final endpoints = await discoverAuthorizationServerMetadata(
+      authServer: authServer,
+      httpClient: httpClient,
+    );
+    final scopes = (challenge?.scope.isNotEmpty ?? false)
+        ? challenge!.scope
+        : meta.scopesSupported;
+    return McpAuthDiscovery(
+      endpoints: endpoints,
+      scopes: scopes,
+      resourceMetadataUrl: meta.metadataUrl,
+      authorizationServer: authServer,
+    );
+  } on OAuthDiscoveryException {
+    // Last-resort: legacy direct probe against the server URL.
+    final endpoints =
+        await discoverOAuthEndpoints(serverUrl, httpClient: httpClient);
+    return McpAuthDiscovery(
+      endpoints: endpoints,
+      scopes: challenge?.scope ?? const [],
+    );
   }
 }
 

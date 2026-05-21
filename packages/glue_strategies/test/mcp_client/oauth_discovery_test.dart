@@ -178,6 +178,62 @@ void main() {
           Uri.parse('https://auth.example/token'));
     });
   });
+
+  group('discoverMcpAuth', () {
+    test('end-to-end: header → protected metadata → auth server', () async {
+      final client = _FakeHttpClient({
+        Uri.parse('https://meta.example/protected'): const _Response(
+          200,
+          '{"resource":"https://mcp.example","authorization_servers":["https://auth.example"]}',
+        ),
+        Uri.parse(
+                'https://auth.example/.well-known/oauth-authorization-server'):
+            const _Response(
+          200,
+          '{'
+          '"issuer":"https://auth.example",'
+          '"authorization_endpoint":"https://auth.example/authorize",'
+          '"token_endpoint":"https://auth.example/token"'
+          '}',
+        ),
+      });
+      final discovery = await discoverMcpAuth(
+        serverUrl: Uri.parse('https://mcp.example/mcp'),
+        wwwAuthenticate:
+            'Bearer resource_metadata="https://meta.example/protected", scope="read"',
+        httpClient: client,
+      );
+      expect(discovery.endpoints.tokenEndpoint,
+          Uri.parse('https://auth.example/token'));
+      expect(discovery.resourceMetadataUrl,
+          Uri.parse('https://meta.example/protected'));
+      expect(discovery.authorizationServer,
+          Uri.parse('https://auth.example'));
+      expect(discovery.scopes, ['read']); // header wins over metadata
+    });
+
+    test('falls back to legacy direct discovery when no RFC 9728', () async {
+      final client = _FakeHttpClient({
+        Uri.parse(
+                'https://mcp.example/.well-known/oauth-authorization-server'):
+            const _Response(
+          200,
+          '{'
+          '"issuer":"https://mcp.example",'
+          '"authorization_endpoint":"https://mcp.example/authorize",'
+          '"token_endpoint":"https://mcp.example/token"'
+          '}',
+        ),
+      });
+      final discovery = await discoverMcpAuth(
+        serverUrl: Uri.parse('https://mcp.example'),
+        httpClient: client,
+      );
+      expect(discovery.endpoints.tokenEndpoint,
+          Uri.parse('https://mcp.example/token'));
+      expect(discovery.resourceMetadataUrl, isNull);
+    });
+  });
 }
 
 class _Response {
