@@ -67,6 +67,7 @@ void main() {
         McpConnected() => 'connected',
         McpReconnecting() => 'reconnecting',
         McpDead() => 'dead',
+        McpAwaitingAuth() => 'awaiting_auth',
       };
       expect(label(const McpDisconnected()), 'disconnected');
       expect(label(const McpConnecting(attempt: 1)), 'connecting');
@@ -91,6 +92,7 @@ void main() {
         'reconnecting',
       );
       expect(label(const McpDead(reason: 'crash_loop')), 'dead');
+      expect(label(const McpAwaitingAuth()), 'awaiting_auth');
     });
   });
 }

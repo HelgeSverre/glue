@@ -195,13 +195,22 @@ class McpClientPool {
   /// Namespaced names; safe to add directly to an agent's tool registry.
   Iterable<McpTool> get allTools => _servers.values.expand((s) => s.tools);
 
-  /// Count of servers in `reconnecting` or `dead` state. Drives the
-  /// status-bar "MCP: 2 dead, 1 reconnecting" badge.
+  /// Count of servers in `reconnecting`, `dead`, or `awaiting auth`
+  /// state. Drives the status-bar "MCP: N unhealthy" badge.
   int get unhealthyCount {
     return _servers.values.where((s) {
       final state = s.state;
-      return state is McpReconnecting || state is McpDead;
+      return state is McpReconnecting ||
+          state is McpDead ||
+          state is McpAwaitingAuth;
     }).length;
+  }
+
+  /// Number of servers in [McpAwaitingAuth] specifically — drives the
+  /// `MCP: 1 needs auth` status-bar label when the unhealthy set is
+  /// auth-only.
+  int get awaitingAuthCount {
+    return _servers.values.where((s) => s.state is McpAwaitingAuth).length;
   }
 
   /// Fire `connect()` for every enabled server in parallel; don't await.

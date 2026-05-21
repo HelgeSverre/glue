@@ -55,6 +55,14 @@ class McpDead extends McpConnectionState {
   final String reason;
 }
 
+/// Server is parked because OAuth is required. Distinct from [McpDead]:
+/// no reconnect timer armed, no budget consumed. Cleared by a successful
+/// auth flow (via `pool.reconnect`).
+class McpAwaitingAuth extends McpConnectionState {
+  const McpAwaitingAuth({this.lastError});
+  final String? lastError;
+}
+
 /// Backoff delay for reconnection attempts, with jitter.
 ///
 /// `attempt` is 1-indexed. Returns

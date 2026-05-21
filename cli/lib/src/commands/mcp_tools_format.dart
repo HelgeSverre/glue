@@ -16,6 +16,7 @@ enum McpServerListingStatus {
   connecting,
   reconnecting,
   disconnected,
+  needsAuth,
   dead,
   disabled,
 }
@@ -79,6 +80,7 @@ String _annotation(McpServerToolListing server, {required bool ansi}) {
     McpServerListingStatus.connecting => ' (connecting)',
     McpServerListingStatus.reconnecting => ' (reconnecting)',
     McpServerListingStatus.disconnected => ' (not connected)',
+    McpServerListingStatus.needsAuth => ' (needs auth)',
     McpServerListingStatus.dead => ' (dead)',
     McpServerListingStatus.disabled => ' (disabled)',
   };
@@ -92,6 +94,7 @@ Styled Function(Styled) _annotationStyle(McpServerListingStatus s) =>
       McpServerListingStatus.connecting => (x) => x.yellow,
       McpServerListingStatus.reconnecting => (x) => x.yellow,
       McpServerListingStatus.disconnected => (x) => x.yellow,
+      McpServerListingStatus.needsAuth => (x) => x.yellow,
       McpServerListingStatus.dead => (x) => x.red,
       McpServerListingStatus.disabled => (x) => x.gray,
     };
@@ -104,6 +107,7 @@ String _emptyReasonLine(McpServerToolListing server, {required bool ansi}) {
     McpServerListingStatus.connecting => markerWarn,
     McpServerListingStatus.reconnecting => markerWarn,
     McpServerListingStatus.disconnected => markerWarn,
+    McpServerListingStatus.needsAuth => markerWarn,
     McpServerListingStatus.dead => markerError,
     McpServerListingStatus.disabled => markerInfo,
   };
@@ -117,6 +121,8 @@ String _emptyReasonText(McpServerToolListing server) {
     McpServerListingStatus.connecting => 'still connecting; tools unknown',
     McpServerListingStatus.reconnecting => 'reconnecting; tools unknown',
     McpServerListingStatus.disconnected => 'not connected; tools unknown',
+    McpServerListingStatus.needsAuth =>
+      error == null ? 'needs auth; run `/mcp auth login`' : 'needs auth: $error',
     McpServerListingStatus.dead =>
       error == null ? 'dead; tools unknown' : 'dead: $error',
     McpServerListingStatus.disabled => 'disabled; enable to list tools',
@@ -144,5 +150,6 @@ McpServerListingStatus _statusOf(McpServerSnapshot s) {
     McpReconnecting() => McpServerListingStatus.reconnecting,
     McpDead() => McpServerListingStatus.dead,
     McpDisconnected() => McpServerListingStatus.disconnected,
+    McpAwaitingAuth() => McpServerListingStatus.needsAuth,
   };
 }

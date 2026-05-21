@@ -479,6 +479,7 @@ class McpSlashCommand extends SlashCommand {
     McpConnected(:final serverName) => 'connected ($serverName)',
     McpReconnecting(:final attempt) => 'reconnecting (#$attempt)',
     McpDead(:final reason) => 'dead — $reason',
+    McpAwaitingAuth() => 'needs auth',
   };
 
   String _detailFor(McpServerSpec spec) => switch (spec) {
