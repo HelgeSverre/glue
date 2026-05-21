@@ -22,7 +22,7 @@ The entry point is `glue acp`. It exposes the full Glue harness (tool calls, run
    }
    ```
 
-3. Restart Zed, open the agent panel, and pick **Glue**.
+3. Open the agent panel and pick **Glue**. (Zed hot-reloads `settings.json` — no restart needed.)
 
 That's it — Zed spawns `glue acp` over stdio, opens an ACP session, and your prompts run through Glue's harness.
 
@@ -30,10 +30,10 @@ That's it — Zed spawns `glue acp` over stdio, opens an ACP session, and your p
 
 `glue acp` supports two transports. Editors use **stdio**; browser and notebook clients use **WebSocket**.
 
-| Transport | Use when                                                                 | Flag                              |
-| --------- | ------------------------------------------------------------------------ | --------------------------------- |
-| stdio     | Default. Editor spawns Glue as a subprocess and pipes JSON-RPC.          | `--stdio` (default)               |
-| WebSocket | Browser/notebook clients (marimo, `use-acp`) that can't spawn a process. | `--port N` (implies `--no-stdio`) |
+| Transport | Use when                                                          | Flag                              |
+| --------- | ----------------------------------------------------------------- | --------------------------------- |
+| stdio     | Default. Editor spawns Glue as a subprocess and pipes JSON-RPC.   | `--stdio` (default)               |
+| WebSocket | Browser and notebook clients that can't spawn a local subprocess. | `--port N` (implies `--no-stdio`) |
 
 ### stdio (editors)
 
@@ -41,28 +41,30 @@ That's it — Zed spawns `glue acp` over stdio, opens an ACP session, and your p
 glue acp              # what the editor runs
 ```
 
-In stdio mode, stdout is the protocol channel — `glue acp` writes nothing to stdout itself. If you run `glue acp` in a regular terminal (no client attached), you'll see a one-line hint on stderr and the command exits cleanly:
+In stdio mode, stdin and stdout are the JSON-RPC protocol channel — `glue acp` writes nothing to stdout and nothing to stderr on startup. It's meant to be spawned by an editor, not invoked manually.
 
-```
-● glue acp  speaks ACP over stdin/stdout — meant to be spawned by an editor
-  docs https://getglue.dev/docs/advanced/acp-server
-```
+If you run it interactively, it will simply wait for JSON-RPC messages on stdin and look idle. Press Ctrl+D (closes stdin) or Ctrl+C to exit.
 
 ### WebSocket (browser, notebook)
 
 ```sh
-glue acp --port 3000
-glue acp --port 3000 --host 0.0.0.0 --token secret123
+glue acp --port 3000                                  # loopback, no auth
+glue acp --port 3000 --host 0.0.0.0 --token secret123 # LAN, token required
 ```
 
-On startup `glue acp` prints the URL and (if configured) the auth requirement:
+On startup, the WebSocket transport prints a multi-line banner to **stderr** (stdout is reserved for the protocol). Loopback, no token:
 
 ```
-● glue acp  ACP over WebSocket
-  url  ws://127.0.0.1:3000/acp
-  auth bearer token required
-  docs https://getglue.dev/docs/advanced/acp-server
-  stop Ctrl+C
+● glue acp ACP over WebSocket
+  ✓ url  ws://127.0.0.1:3000/acp
+  · docs https://getglue.dev/docs/advanced/acp-server
+  · stop Ctrl+C
+```
+
+With `--token`, an additional warning line appears between `url` and `docs`:
+
+```
+  ! auth bearer token required
 ```
 
 ::: warning Non-loopback hosts require a token
@@ -204,10 +206,6 @@ JetBrains can expose its built-in IntelliJ MCP server (file navigation, refactor
 
 These settings apply to every agent. Per-agent overrides are documented as possible by JetBrains but the exact key shape isn't public yet — stick with top-level defaults.
 
-::: warning WSL not supported
-JetBrains ACP agents are not supported under WSL as of 2026-Q1. Run on the host OS instead.
-:::
-
 JetBrains reference: [AI Assistant — ACP](https://www.jetbrains.com/help/ai-assistant/acp.html) · [ACP Agent Registry](https://blog.jetbrains.com/ai/2026/01/acp-agent-registry/).
 
 ### VS Code
@@ -340,7 +338,7 @@ A canonical, community-maintained list of ACP clients lives at <https://agentcli
 - **stdio is implicitly trusted** — only the parent process can talk to it.
 - **WebSocket on loopback (`127.0.0.1`)** is reachable only from the host. Still consider a token if other users share the machine.
 - **WebSocket on non-loopback hosts** requires `--token`. Glue refuses to start without one.
-- **Permission gating still applies.** Every tool call goes through the same approval modes (`auto-approve`, `ask`, `deny`) as the interactive TUI. Configure them in `~/.glue/config.yaml`.
+- **Permission gating still applies.** Every tool call goes through the same approval gate as the interactive TUI. The mode (`confirm` or `auto`) is set in `~/.glue/config.yaml`. In `confirm` mode, read-only and trusted tools run automatically; mutating tools are routed to the editor as an ACP `session/request_permission` so the user clicks Approve/Deny in their IDE. In `auto` mode, every tool runs without prompting.
 
 ## See also
 

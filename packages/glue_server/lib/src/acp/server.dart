@@ -8,7 +8,7 @@
 /// The server itself has **no dependency on glue_harness** — the
 /// delegate is the wiring point. A test can stand up an [AcpServer]
 /// with a fake delegate and exercise the full protocol without the
-/// real agent loop. The cli's `glue serve --stdio` provides a
+/// real agent loop. The cli's `glue acp --stdio` provides a
 /// production delegate that uses [`AgentCore`] + `SessionManager` from
 /// glue_harness.
 library;

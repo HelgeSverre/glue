@@ -1,5 +1,5 @@
 /// Shared brand and severity-marker glyphs used across the Glue CLI surface
-/// (`catalog`, `doctor`, `serve`, …). Centralized so every command renders a
+/// (`catalog`, `doctor`, `acp`, …). Centralized so every command renders a
 /// consistent header style.
 ///
 /// All markers go through `styledOrPlain` so they collapse to a plain glyph
