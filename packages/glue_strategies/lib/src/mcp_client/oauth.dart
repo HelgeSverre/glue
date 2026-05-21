@@ -537,17 +537,31 @@ Future<OAuthTokens> runOAuthAuthorizationCodeFlow({
   List<String> scopes = const [],
   Duration timeout = const Duration(minutes: 5),
   int redirectPort = 0,
+  HttpServer? preboundServer,
+  Uri? preboundRedirectUri,
   required void Function(String authUrl) onAuthUrl,
   http.Client? httpClient,
 }) async {
   final pkce = _generatePkce();
   final state = _generateState();
 
-  final server = await HttpServer.bind(
-    InternetAddress.loopbackIPv4,
-    redirectPort,
-  );
-  final redirectUri = Uri.parse('http://127.0.0.1:${server.port}/callback');
+  final HttpServer server;
+  final Uri redirectUri;
+  final bool ownsServer;
+  if (preboundServer != null) {
+    server = preboundServer;
+    redirectUri =
+        preboundRedirectUri ??
+        Uri.parse('http://127.0.0.1:${preboundServer.port}/callback');
+    ownsServer = false;
+  } else {
+    server = await HttpServer.bind(
+      InternetAddress.loopbackIPv4,
+      redirectPort,
+    );
+    redirectUri = Uri.parse('http://127.0.0.1:${server.port}/callback');
+    ownsServer = true;
+  }
 
   // Build authorization URL.
   final authUri = endpoints.authorizationEndpoint.replace(
@@ -609,7 +623,7 @@ Future<OAuthTokens> runOAuthAuthorizationCodeFlow({
     error = 'timeout';
   } finally {
     await sub.cancel();
-    await server.close(force: true);
+    if (ownsServer) await server.close(force: true);
   }
 
   if (error != null || code == null) {

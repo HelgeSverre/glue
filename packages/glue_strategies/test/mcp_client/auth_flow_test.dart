@@ -52,6 +52,8 @@ void main() {
                 required scopes,
                 required onAuthUrl,
                 httpClient,
+                preboundServer,
+                preboundRedirectUri,
               }) async {
                 onAuthUrl(
                   'https://auth.example/authorize?state=fake&code_challenge=x',
@@ -108,6 +110,8 @@ void main() {
               required scopes,
               required onAuthUrl,
               httpClient,
+              preboundServer,
+              preboundRedirectUri,
             }) async {
               onAuthUrl('https://auth.example/authorize?state=fake');
               return const OAuthTokens(accessToken: 'AT');

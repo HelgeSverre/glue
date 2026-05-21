@@ -12,6 +12,7 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
@@ -63,6 +64,8 @@ typedef OAuthCodeFlow =
       required List<String> scopes,
       required void Function(String authUrl) onAuthUrl,
       http.Client? httpClient,
+      HttpServer? preboundServer,
+      Uri? preboundRedirectUri,
     });
 
 class McpAuthFlowRunner {
@@ -102,6 +105,7 @@ class McpAuthFlowRunner {
 
   /// Runs the flow end-to-end. Resolves with the terminal state.
   Future<McpAuthFlowState> run() async {
+    HttpServer? loopback;
     try {
       _emit(const McpAuthFlowDiscovering());
       final discovery = await discoverMcpAuth(
@@ -112,26 +116,43 @@ class McpAuthFlowRunner {
       );
       if (_cancelled) return await _terminal(const McpAuthFlowCancelled());
 
+      // Bind the loopback server BEFORE DCR so we can register the exact
+      // redirect_uri the flow will use. Many auth servers (incl.
+      // SmartBear) require an exact match between the registered URI and
+      // the one sent at authorize/token time, even though RFC 8252 §7.3
+      // says they shouldn't.
+      loopback = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      final redirectUri = Uri.parse(
+        'http://127.0.0.1:${loopback.port}/callback',
+      );
+
       OAuthClient client;
       final existingClientId = credentials.getField(
         'mcp:$serverId',
         McpOAuthFields.clientId,
       );
-      if (existingClientId != null) {
+      if (discovery.endpoints.registrationEndpoint != null) {
+        // Re-register every time DCR is available. The bound port
+        // changes between sessions, so a cached client_id from a
+        // different port would fail validation on strict servers. DCR
+        // is cheap.
+        _emit(const McpAuthFlowRegistering());
+        client = await registerOAuthClient(
+          registrationEndpoint: discovery.endpoints.registrationEndpoint!,
+          redirectUri: redirectUri,
+          clientName: 'glue',
+          httpClient: _httpClient,
+        );
+      } else if (existingClientId != null) {
+        // No DCR endpoint — must use a pre-registered client. Hope the
+        // operator registered http://127.0.0.1:* or the exact port we
+        // got.
         client = OAuthClient(
           clientId: existingClientId,
           clientSecret: credentials.getField(
             'mcp:$serverId',
             McpOAuthFields.clientSecret,
           ),
-        );
-      } else if (discovery.endpoints.registrationEndpoint != null) {
-        _emit(const McpAuthFlowRegistering());
-        client = await registerOAuthClient(
-          registrationEndpoint: discovery.endpoints.registrationEndpoint!,
-          redirectUri: Uri.parse('http://127.0.0.1/callback'),
-          clientName: 'glue',
-          httpClient: _httpClient,
         );
       } else {
         return await _terminal(
@@ -146,6 +167,8 @@ class McpAuthFlowRunner {
         endpoints: discovery.endpoints,
         client: client,
         scopes: discovery.scopes,
+        preboundServer: loopback,
+        preboundRedirectUri: redirectUri,
         onAuthUrl: (url) {
           _emit(McpAuthFlowAwaitingCallback(authUrl: Uri.parse(url)));
           unawaited(_openBrowser(url));
@@ -168,6 +191,16 @@ class McpAuthFlowRunner {
       );
     } catch (e) {
       return _terminal(McpAuthFlowError(e.toString()));
+    } finally {
+      // The code flow normally closes the server, but if we errored
+      // before entering it (e.g. DCR failure), close it ourselves.
+      // Double-close on an already-closed HttpServer is safe but we
+      // wrap defensively.
+      if (loopback != null) {
+        try {
+          await loopback.close(force: true);
+        } catch (_) {}
+      }
     }
   }
 
@@ -192,6 +225,8 @@ Future<OAuthTokens> _defaultCodeFlow({
   required List<String> scopes,
   required void Function(String authUrl) onAuthUrl,
   http.Client? httpClient,
+  HttpServer? preboundServer,
+  Uri? preboundRedirectUri,
 }) {
   return runOAuthAuthorizationCodeFlow(
     endpoints: endpoints,
@@ -199,5 +234,7 @@ Future<OAuthTokens> _defaultCodeFlow({
     scopes: scopes,
     onAuthUrl: onAuthUrl,
     httpClient: httpClient,
+    preboundServer: preboundServer,
+    preboundRedirectUri: preboundRedirectUri,
   );
 }
