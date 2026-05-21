@@ -11,6 +11,7 @@ Core system design and terminology.
 
 Schemas and formats for Glue's configuration and data files.
 
+- **[known-terminal-issues.md](known-terminal-issues.md)** — Known terminal emulator limitations and diagnostics for interactive TUI glitches
 - **[glue-home-layout.md](reference/glue-home-layout.md)** — `~/.glue/` directory structure and file lifecycle
 - **[config-yaml.md](reference/config-yaml.md)** — `~/.glue/config.yaml` user configuration schema
 - **[config-store-json.md](reference/config-store-json.md)** — `~/.glue/preferences.json` runtime state (internal)
