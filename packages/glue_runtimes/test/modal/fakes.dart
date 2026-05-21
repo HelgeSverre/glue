@@ -33,8 +33,10 @@ class FakeModalSidecar implements ModalSidecarBase {
   }
 
   @override
-  Future<ModalExecResult> execCapture(String command,
-      {Duration? timeout}) async {
+  Future<ModalExecResult> execCapture(
+    String command, {
+    Duration? timeout,
+  }) async {
     executedCommands.add(command);
     return execResults[command] ??
         ModalExecResult(exitCode: 0, stdout: '', stderr: '');
@@ -59,11 +61,13 @@ class FakeModalSidecar implements ModalSidecarBase {
     final base = path.endsWith('/') ? path : '$path/';
     return files.keys
         .where((p) => p.startsWith(base))
-        .map((p) => ModalFsEntry(
-              name: p.substring(base.length),
-              isDirectory: false,
-              size: files[p]!.length,
-            ))
+        .map(
+          (p) => ModalFsEntry(
+            name: p.substring(base.length),
+            isDirectory: false,
+            size: files[p]!.length,
+          ),
+        )
         .toList();
   }
 
@@ -79,7 +83,7 @@ class FakeModalSidecar implements ModalSidecarBase {
   /// Maps the next-to-be-started stream to a canned (stdout, stderr,
   /// exitCode) script. Each entry is consumed in order.
   final List<({List<String> stdout, List<String> stderr, int exitCode})>
-      streamScripts = [];
+  streamScripts = [];
 
   int _nextStreamId = 0;
 
@@ -89,8 +93,12 @@ class FakeModalSidecar implements ModalSidecarBase {
     final sid = 's${++_nextStreamId}';
     final cmd = ModalRunningCommand(
       streamId: sid,
-      killer: () async {/* no-op */},
-      forceShutdown: () async {/* no-op */},
+      killer: () async {
+        /* no-op */
+      },
+      forceShutdown: () async {
+        /* no-op */
+      },
     );
     final script = streamScripts.isNotEmpty
         ? streamScripts.removeAt(0)

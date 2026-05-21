@@ -20,9 +20,7 @@ void main() {
     test('uses catalog default when no CLI or env model is set', () {
       final home = _scratch();
       addTearDown(() => home.deleteSync(recursive: true));
-      final config = GlueConfig.load(
-        environment: _envWith(home: home),
-      );
+      final config = GlueConfig.load(environment: _envWith(home: home));
       expect(config.activeModel.providerId, 'anthropic');
       expect(config.activeModel.modelId, 'claude-sonnet-4-6');
     });
@@ -150,10 +148,7 @@ anthropic:
 
       final otel = config.observability.otel;
       expect(otel.isConfigured, isTrue);
-      expect(
-        otel.endpoint,
-        'https://app.phoenix.arize.com/s/helge-sverre',
-      );
+      expect(otel.endpoint, 'https://app.phoenix.arize.com/s/helge-sverre');
       expect(otel.headers['Authorization'], 'Bearer test-phoenix-key');
       expect(
         otel.resourceAttributes['openinference.project.name'],
@@ -229,23 +224,25 @@ observability:
       );
     });
 
-    test('OTEL_SDK_DISABLED disables exporter auto-enable from environment',
-        () {
-      final home = _scratch();
-      addTearDown(() => home.deleteSync(recursive: true));
-      final config = GlueConfig.load(
-        environment: _envWith(
-          home: home,
-          vars: {
-            'OTEL_EXPORTER_OTLP_ENDPOINT': 'https://collector.example.test',
-            'OTEL_SDK_DISABLED': 'true',
-          },
-        ),
-      );
+    test(
+      'OTEL_SDK_DISABLED disables exporter auto-enable from environment',
+      () {
+        final home = _scratch();
+        addTearDown(() => home.deleteSync(recursive: true));
+        final config = GlueConfig.load(
+          environment: _envWith(
+            home: home,
+            vars: {
+              'OTEL_EXPORTER_OTLP_ENDPOINT': 'https://collector.example.test',
+              'OTEL_SDK_DISABLED': 'true',
+            },
+          ),
+        );
 
-      expect(config.observability.otel.enabled, isFalse);
-      expect(config.observability.otel.isConfigured, isFalse);
-    });
+        expect(config.observability.otel.enabled, isFalse);
+        expect(config.observability.otel.isConfigured, isFalse);
+      },
+    );
   });
 
   group('GlueConfig.validate', () {
@@ -262,9 +259,7 @@ observability:
     test('throws for anthropic when ANTHROPIC_API_KEY is missing', () {
       final home = _scratch();
       addTearDown(() => home.deleteSync(recursive: true));
-      final config = GlueConfig.load(
-        environment: _envWith(home: home),
-      );
+      final config = GlueConfig.load(environment: _envWith(home: home));
       expect(config.validate, throwsA(isA<ConfigError>()));
     });
 
@@ -378,9 +373,7 @@ anthropic_prompt_cache: true
     test('resolves known provider + model', () {
       final home = _scratch();
       addTearDown(() => home.deleteSync(recursive: true));
-      final config = GlueConfig.load(
-        environment: _envWith(home: home),
-      );
+      final config = GlueConfig.load(environment: _envWith(home: home));
       final ref = ModelRef.parse('anthropic/claude-sonnet-4.6');
       final provider = config.resolveProvider(ref);
       final model = config.resolveModel(ref);
@@ -391,9 +384,7 @@ anthropic_prompt_cache: true
     test('unknown provider throws ConfigError', () {
       final home = _scratch();
       addTearDown(() => home.deleteSync(recursive: true));
-      final config = GlueConfig.load(
-        environment: _envWith(home: home),
-      );
+      final config = GlueConfig.load(environment: _envWith(home: home));
       expect(
         () => config.resolveProvider(ModelRef.parse('nowhere/xyz')),
         throwsA(isA<ConfigError>()),
@@ -403,9 +394,7 @@ anthropic_prompt_cache: true
     test('unknown model on known provider yields a synthetic ModelDef', () {
       final home = _scratch();
       addTearDown(() => home.deleteSync(recursive: true));
-      final config = GlueConfig.load(
-        environment: _envWith(home: home),
-      );
+      final config = GlueConfig.load(environment: _envWith(home: home));
       final model = config.resolveModel(
         ModelRef.parse('anthropic/my-custom-experiment'),
       );

@@ -110,7 +110,8 @@ String _render(ModelCatalog c) {
         ..writeln('          isDefault: ${m.isDefault},')
         ..writeln('          enabled: ${m.enabled},')
         ..writeln(
-            '          capabilities: ${_renderStringSet(m.capabilities)},')
+          '          capabilities: ${_renderStringSet(m.capabilities)},',
+        )
         ..writeln('          contextWindow: ${m.contextWindow},')
         ..writeln('          maxOutputTokens: ${m.maxOutputTokens},')
         ..writeln('          speed: ${_strOrNull(m.speed)},')
@@ -157,8 +158,10 @@ String _renderStringSet(Set<String> s) {
 }
 
 String _str(String s) {
-  final escaped =
-      s.replaceAll(r'\', r'\\').replaceAll(r'$', r'\$').replaceAll("'", r"\'");
+  final escaped = s
+      .replaceAll(r'\', r'\\')
+      .replaceAll(r'$', r'\$')
+      .replaceAll("'", r"\'");
   return "'$escaped'";
 }
 

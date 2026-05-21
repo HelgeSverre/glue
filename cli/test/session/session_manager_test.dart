@@ -48,8 +48,10 @@ void main() {
   });
 
   test('ensureSessionStore lazily creates and reuses session store', () {
-    final manager =
-        SessionManager(environment: environment, observability: obs);
+    final manager = SessionManager(
+      environment: environment,
+      observability: obs,
+    );
 
     final first = manager.ensureSessionStore(
       cwd: environment.cwd,
@@ -62,21 +64,27 @@ void main() {
 
     expect(identical(first, second), isTrue);
     expect(Directory(first.sessionDir).existsSync(), isTrue);
-    expect(sink.spans.where((span) => span.name == 'session.create'),
-        hasLength(1));
+    expect(
+      sink.spans.where((span) => span.name == 'session.create'),
+      hasLength(1),
+    );
   });
 
   test('resumeSession restores agent conversation and replay entries', () {
-    final manager =
-        SessionManager(environment: environment, observability: obs);
+    final manager = SessionManager(
+      environment: environment,
+      observability: obs,
+    );
     final meta = SessionMeta(
       id: const SessionId('resume-1'),
       cwd: environment.cwd,
       modelRef: 'anthropic/claude-sonnet-4.6',
       startTime: DateTime.now(),
     );
-    final store =
-        SessionStore(sessionDir: environment.sessionDir(meta.id), meta: meta);
+    final store = SessionStore(
+      sessionDir: environment.sessionDir(meta.id),
+      meta: meta,
+    );
     store.logEvent('user_message', {'text': 'hello'});
     store.logEvent('assistant_message', {'text': 'hi'});
     store.logEvent('tool_call', {
@@ -105,16 +113,20 @@ void main() {
   });
 
   test('resumeSession reuses summary-first tool result text for replay UI', () {
-    final manager =
-        SessionManager(environment: environment, observability: obs);
+    final manager = SessionManager(
+      environment: environment,
+      observability: obs,
+    );
     final meta = SessionMeta(
       id: const SessionId('resume-summary'),
       cwd: environment.cwd,
       modelRef: 'anthropic/claude-sonnet-4.6',
       startTime: DateTime.now(),
     );
-    final store =
-        SessionStore(sessionDir: environment.sessionDir(meta.id), meta: meta);
+    final store = SessionStore(
+      sessionDir: environment.sessionDir(meta.id),
+      meta: meta,
+    );
     store.logEvent('assistant_message', {'text': 'checking'});
     store.logEvent('tool_call', {
       'id': 'c1',
@@ -141,8 +153,10 @@ void main() {
   });
 
   test('resumeSession on empty conversation does not create extra session', () {
-    final manager =
-        SessionManager(environment: environment, observability: obs);
+    final manager = SessionManager(
+      environment: environment,
+      observability: obs,
+    );
     final meta = SessionMeta(
       id: const SessionId('resume-empty'),
       cwd: environment.cwd,
@@ -155,10 +169,9 @@ void main() {
 
     expect(result.hasConversation, isFalse);
     expect(result.message, contains('no conversation data'));
-    final dirs = Directory(environment.sessionsDir)
-        .listSync()
-        .whereType<Directory>()
-        .toList();
+    final dirs = Directory(
+      environment.sessionsDir,
+    ).listSync().whereType<Directory>().toList();
     expect(dirs, hasLength(1));
     expect(manager.currentSessionId, 'resume-empty');
     final span = sink.spans.lastWhere((span) => span.name == 'session.resume');
@@ -166,8 +179,10 @@ void main() {
   });
 
   test('forkSession creates new session and replays truncated history', () {
-    final manager =
-        SessionManager(environment: environment, observability: obs);
+    final manager = SessionManager(
+      environment: environment,
+      observability: obs,
+    );
     final oldStore = manager.ensureSessionStore(
       cwd: environment.cwd,
       modelRef: 'anthropic/claude-sonnet-4.6',
@@ -189,8 +204,9 @@ void main() {
     expect(manager.currentSessionId, isNot(oldId));
     expect(manager.currentStore!.meta.forkedFrom, oldId);
 
-    final events =
-        SessionStore.loadConversation(manager.currentStore!.sessionDir);
+    final events = SessionStore.loadConversation(
+      manager.currentStore!.sessionDir,
+    );
     expect(events.where((e) => e['type'] == 'user_message'), hasLength(1));
     expect(events.first['text'], 'first question');
     expect(agent.conversation.map((m) => m.role), [Role.user]);
@@ -200,8 +216,10 @@ void main() {
   });
 
   test('updateSessionModel persists modelRef to meta.json', () {
-    final manager =
-        SessionManager(environment: environment, observability: obs);
+    final manager = SessionManager(
+      environment: environment,
+      observability: obs,
+    );
     final store = manager.ensureSessionStore(
       cwd: environment.cwd,
       modelRef: 'anthropic/claude-sonnet-4.6',
@@ -209,15 +227,17 @@ void main() {
 
     manager.updateSessionModel(modelRef: 'openai/gpt-4.1');
 
-    final metaJson = jsonDecode(
-      File('${store.sessionDir}/meta.json').readAsStringSync(),
-    ) as Map<String, dynamic>;
+    final metaJson =
+        jsonDecode(File('${store.sessionDir}/meta.json').readAsStringSync())
+            as Map<String, dynamic>;
     expect(metaJson['model_ref'], 'openai/gpt-4.1');
   });
 
   test('generateTitle sets provisional auto title and logs event', () async {
-    final manager =
-        SessionManager(environment: environment, observability: obs);
+    final manager = SessionManager(
+      environment: environment,
+      observability: obs,
+    );
     final store = manager.ensureSessionStore(
       cwd: environment.cwd,
       modelRef: 'anthropic/claude-sonnet-4.6',
@@ -235,16 +255,21 @@ void main() {
     final events = SessionStore.loadConversation(store.sessionDir);
     expect(events.last['type'], 'title_generated');
     expect(events.last['title'], 'Fix flaky docker test');
-    final span =
-        sink.spans.lastWhere((span) => span.name == 'session.title.generate');
+    final span = sink.spans.lastWhere(
+      (span) => span.name == 'session.title.generate',
+    );
     expect(span.attributes['title.generated'], isTrue);
     expect(
-        span.attributes['title.output_length'], 'Fix flaky docker test'.length);
+      span.attributes['title.output_length'],
+      'Fix flaky docker test'.length,
+    );
   });
 
   test('renameTitle marks title as user-owned and stable', () async {
-    final manager =
-        SessionManager(environment: environment, observability: obs);
+    final manager = SessionManager(
+      environment: environment,
+      observability: obs,
+    );
     final store = manager.ensureSessionStore(
       cwd: environment.cwd,
       modelRef: 'anthropic/claude-sonnet-4.6',
@@ -256,59 +281,66 @@ void main() {
     expect(store.meta.titleSource, SessionTitleSource.user);
     expect(store.meta.titleState, SessionTitleState.stable);
     expect(store.meta.titleRenamedAt, isNotNull);
-    final span =
-        sink.spans.lastWhere((span) => span.name == 'session.title.rename');
+    final span = sink.spans.lastWhere(
+      (span) => span.name == 'session.title.rename',
+    );
     expect(span.attributes['title.renamed'], isTrue);
   });
 
-  test('recordUsage updates SessionMeta totals and writes a usage row',
-      () async {
-    final manager =
-        SessionManager(environment: environment, observability: obs);
-    final store = manager.ensureSessionStore(
-      cwd: environment.cwd,
-      modelRef: 'anthropic/claude-sonnet-4.6',
-    );
+  test(
+    'recordUsage updates SessionMeta totals and writes a usage row',
+    () async {
+      final manager = SessionManager(
+        environment: environment,
+        observability: obs,
+      );
+      final store = manager.ensureSessionStore(
+        cwd: environment.cwd,
+        modelRef: 'anthropic/claude-sonnet-4.6',
+      );
 
-    manager.recordUsage(
-      UsageStats(
-        inputTokens: 100,
-        outputTokens: 50,
-        cacheReadTokens: 800,
-        cacheCreationTokens: 200,
-        turnCount: 1,
-      ),
-      role: 'main',
-    );
-    manager.recordUsage(
-      UsageStats(inputTokens: 5, outputTokens: 3, turnCount: 1),
-      role: 'subagent',
-    );
-    manager.recordUsage(
-      UsageStats(inputTokens: 30, outputTokens: 6, turnCount: 1),
-      role: 'title',
-    );
+      manager.recordUsage(
+        UsageStats(
+          inputTokens: 100,
+          outputTokens: 50,
+          cacheReadTokens: 800,
+          cacheCreationTokens: 200,
+          turnCount: 1,
+        ),
+        role: 'main',
+      );
+      manager.recordUsage(
+        UsageStats(inputTokens: 5, outputTokens: 3, turnCount: 1),
+        role: 'subagent',
+      );
+      manager.recordUsage(
+        UsageStats(inputTokens: 30, outputTokens: 6, turnCount: 1),
+        role: 'title',
+      );
 
-    // Totals fold every billable bucket on the meta.
-    expect(store.meta.tokenCount, 100 + 50 + 800 + 200 + 5 + 3 + 30 + 6);
-    expect(store.meta.cacheReadTokens, 800);
-    expect(store.meta.cacheCreationTokens, 200);
+      // Totals fold every billable bucket on the meta.
+      expect(store.meta.tokenCount, 100 + 50 + 800 + 200 + 5 + 3 + 30 + 6);
+      expect(store.meta.cacheReadTokens, 800);
+      expect(store.meta.cacheCreationTokens, 200);
 
-    // The conversation log records per-role usage rows.
-    final convPath =
-        '${environment.sessionDir(store.meta.id)}/conversation.jsonl';
-    final lines = await File(convPath).readAsLines();
-    final usageEvents = lines
-        .map((l) => jsonDecode(l) as Map<String, dynamic>)
-        .where((e) => e['type'] == 'usage')
-        .toList();
-    expect(usageEvents.map((e) => e['role']), ['main', 'subagent', 'title']);
-    expect(usageEvents.first['cache_read_tokens'], 800);
-  });
+      // The conversation log records per-role usage rows.
+      final convPath =
+          '${environment.sessionDir(store.meta.id)}/conversation.jsonl';
+      final lines = await File(convPath).readAsLines();
+      final usageEvents = lines
+          .map((l) => jsonDecode(l) as Map<String, dynamic>)
+          .where((e) => e['type'] == 'usage')
+          .toList();
+      expect(usageEvents.map((e) => e['role']), ['main', 'subagent', 'title']);
+      expect(usageEvents.first['cache_read_tokens'], 800);
+    },
+  );
 
   test('recordUsage is a no-op when no session store is active', () {
-    final manager =
-        SessionManager(environment: environment, observability: obs);
+    final manager = SessionManager(
+      environment: environment,
+      observability: obs,
+    );
     expect(
       () => manager.recordUsage(
         UsageStats(inputTokens: 1, outputTokens: 1, turnCount: 1),
@@ -319,8 +351,10 @@ void main() {
   });
 
   test('recordUsage skips empty stats', () {
-    final manager =
-        SessionManager(environment: environment, observability: obs);
+    final manager = SessionManager(
+      environment: environment,
+      observability: obs,
+    );
     final store = manager.ensureSessionStore(
       cwd: environment.cwd,
       modelRef: 'anthropic/claude-sonnet-4.6',
@@ -330,8 +364,10 @@ void main() {
   });
 
   test('reevaluateTitle promotes provisional auto title to stable', () async {
-    final manager =
-        SessionManager(environment: environment, observability: obs);
+    final manager = SessionManager(
+      environment: environment,
+      observability: obs,
+    );
     final store = manager.ensureSessionStore(
       cwd: environment.cwd,
       modelRef: 'anthropic/claude-sonnet-4.6',
@@ -353,8 +389,9 @@ void main() {
     expect(store.meta.title, 'Docker resume test flakiness');
     expect(store.meta.titleState, SessionTitleState.stable);
     expect(store.meta.titleGenerationCount, 2);
-    final span =
-        sink.spans.lastWhere((span) => span.name == 'session.title.reevaluate');
+    final span = sink.spans.lastWhere(
+      (span) => span.name == 'session.title.reevaluate',
+    );
     expect(span.attributes['title.generated'], isTrue);
     expect(span.attributes['title.replaced'], isTrue);
   });

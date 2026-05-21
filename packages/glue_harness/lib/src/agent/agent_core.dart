@@ -58,6 +58,22 @@ class AgentCore {
     return tools.values.where(toolFilter!).toList();
   }
 
+  /// One-shot notice yielded at the start of the first [run] call.
+  ///
+  /// Set by [ServiceLocator] / [AgentManager] when boot-time inspection of
+  /// the model catalog finds something the user should know about — e.g.
+  /// "your model doesn't support tool calling; starting in chat-only
+  /// mode". Cleared after it's yielded once. Surfaces (TUI, ACP, --print)
+  /// render `AgentNotice` uniformly.
+  AgentNotice? _startupNotice;
+
+  /// Queue a one-shot [AgentNotice] to fire at the top of the next
+  /// [run]. Overwrites any previously-queued startup notice — we only
+  /// surface one per session boot to keep the transcript tidy.
+  void setStartupNotice(String message, {String kind = 'info'}) {
+    _startupNotice = AgentNotice(message, kind: kind);
+  }
+
   /// Completers keyed by tool call ID for parallel tool execution.
   final Map<ToolCallId, Completer<ToolResult>> _pendingToolResults = {};
 
@@ -65,11 +81,9 @@ class AgentCore {
     required this.llm,
     required this.tools,
     String? modelId,
-    Observability? obs,
-    ObservabilitySpan? traceParent,
-  })  : modelId = modelId ?? 'unknown',
-        _obs = obs,
-        _traceParent = traceParent;
+    this._obs,
+    this._traceParent,
+  }) : modelId = modelId ?? 'unknown';
 
   /// The full conversation history.
   List<Message> get conversation => List.unmodifiable(_conversation);
@@ -89,6 +103,15 @@ class AgentCore {
     String userMessage, {
     List<ContentPart>? userContentParts,
   }) async* {
+    // Drain a one-shot startup notice (set by ServiceLocator /
+    // AgentManager when boot-time inspection flagged something — e.g.
+    // catalogued tool-less model). Fires once per session.
+    final startup = _startupNotice;
+    if (startup != null) {
+      _startupNotice = null;
+      yield startup;
+    }
+
     _conversation.add(
       Message.user(userMessage, contentParts: userContentParts),
     );
@@ -152,17 +175,20 @@ class AgentCore {
                 // back to the model.
                 yield AgentThinkingDelta(text);
               case ToolCallStart(:final id, :final name):
-                llmSpan?.addEvent('llm.tool_call.start', attributes: {
-                  'tool_call.id': id,
-                  'tool.name': name,
-                });
+                llmSpan?.addEvent(
+                  'llm.tool_call.start',
+                  attributes: {'tool_call.id': id, 'tool.name': name},
+                );
                 yield AgentToolCallPending(id: id, name: name);
               case ToolCallComplete(:final toolCall):
                 toolCalls.add(toolCall);
-                llmSpan?.addEvent('llm.tool_call.complete', attributes: {
-                  'tool_call.id': toolCall.id,
-                  'tool.name': toolCall.name,
-                });
+                llmSpan?.addEvent(
+                  'llm.tool_call.complete',
+                  attributes: {
+                    'tool_call.id': toolCall.id,
+                    'tool.name': toolCall.name,
+                  },
+                );
                 final completer = Completer<ToolResult>();
                 _pendingToolResults[toolCall.id] = completer;
                 toolFutures.add(completer.future);
@@ -182,6 +208,26 @@ class AgentCore {
                 yield AgentUsage(usage);
             }
           }
+        } on ToolsNotSupportedException catch (e) {
+          // Soft fallback: this provider rejected our tools payload
+          // because the underlying model doesn't support function
+          // calling. Disable tools for the rest of the session, tell
+          // the user once, and retry this turn — the user message is
+          // still at the tail of _conversation and the next iteration
+          // resends it without a tools array.
+          //
+          // The exception is thrown BEFORE any chunk is yielded (the
+          // 400 is the first thing the daemon returns) so we haven't
+          // emitted any partial assistant text or tool calls to the
+          // user; the retry is a clean re-do of this turn.
+          toolFilter = (_) => false;
+          yield AgentNotice(
+            'Model "${e.modelId}" does not support tool calling — '
+            'continuing in chat-only mode for this session. '
+            'Use /model to switch to a tool-capable model.',
+            kind: 'warning',
+          );
+          continue;
         } finally {
           if (_obs != null && llmSpan != null && _obs.activeSpan == llmSpan) {
             _obs.activeSpan = previousActive;
@@ -195,39 +241,48 @@ class AgentCore {
             final cacheSavingsPct = (sawCacheStats && billableInput > 0)
                 ? (cacheReadTokens * 100 / billableInput)
                 : 0.0;
-            _obs!.endSpan(llmSpan, extra: {
-              'llm.token_count.prompt': inputTokens,
-              'llm.token_count.completion': outputTokens,
-              'llm.token_count.total': inputTokens + outputTokens,
-              'llm.output_messages.count': 1,
-              'llm.output_text.length': assistantText.length,
-              'llm.tool_call_count': toolCalls.length,
-              if (sawCacheStats) 'llm.cache_read_tokens': cacheReadTokens,
-              if (sawCacheStats)
-                'llm.cache_creation_tokens': cacheCreationTokens,
-              if (sawCacheStats)
-                'llm.cache_savings_pct':
-                    double.parse(cacheSavingsPct.toStringAsFixed(1)),
-              'output.value': redactBody(
-                assistantText.toString(),
-                maxBytes: 65536,
-              ),
-            });
+            _obs!.endSpan(
+              llmSpan,
+              extra: {
+                'llm.token_count.prompt': inputTokens,
+                'llm.token_count.completion': outputTokens,
+                'llm.token_count.total': inputTokens + outputTokens,
+                'llm.output_messages.count': 1,
+                'llm.output_text.length': assistantText.length,
+                'llm.tool_call_count': toolCalls.length,
+                if (sawCacheStats) 'llm.cache_read_tokens': cacheReadTokens,
+                if (sawCacheStats)
+                  'llm.cache_creation_tokens': cacheCreationTokens,
+                if (sawCacheStats)
+                  'llm.cache_savings_pct': double.parse(
+                    cacheSavingsPct.toStringAsFixed(1),
+                  ),
+                'output.value': redactBody(
+                  assistantText.toString(),
+                  maxBytes: 65536,
+                ),
+              },
+            );
           }
         }
 
-        _conversation.add(Message.assistant(
-          text: assistantText.toString(),
-          toolCalls: toolCalls,
-        ));
+        _conversation.add(
+          Message.assistant(
+            text: assistantText.toString(),
+            toolCalls: toolCalls,
+          ),
+        );
 
         // No tool calls → turn is complete.
         if (toolCalls.isEmpty) {
           if (iterationSpan != null) {
-            _obs!.endSpan(iterationSpan, extra: {
-              'agent.iteration.tool_call_count': 0,
-              'agent.iteration.output_text.length': assistantText.length,
-            });
+            _obs!.endSpan(
+              iterationSpan,
+              extra: {
+                'agent.iteration.tool_call_count': 0,
+                'agent.iteration.output_text.length': assistantText.length,
+              },
+            );
           }
           break;
         }
@@ -239,21 +294,27 @@ class AgentCore {
 
         // Add results to conversation and yield events
         for (var i = 0; i < toolCalls.length; i++) {
-          _conversation.add(Message.toolResult(
-            callId: toolCalls[i].id,
-            content: results[i].content,
-            toolName: toolCalls[i].name,
-            contentParts: results[i].contentParts,
-          ));
+          _conversation.add(
+            Message.toolResult(
+              callId: toolCalls[i].id,
+              content: results[i].content,
+              toolName: toolCalls[i].name,
+              contentParts: results[i].contentParts,
+            ),
+          );
           yield AgentToolResult(results[i]);
         }
         if (iterationSpan != null) {
-          _obs!.endSpan(iterationSpan, extra: {
-            'agent.iteration.tool_call_count': toolCalls.length,
-            'agent.iteration.output_text.length': assistantText.length,
-            'agent.iteration.tool_success_count':
-                results.where((r) => r.success).length,
-          });
+          _obs!.endSpan(
+            iterationSpan,
+            extra: {
+              'agent.iteration.tool_call_count': toolCalls.length,
+              'agent.iteration.output_text.length': assistantText.length,
+              'agent.iteration.tool_success_count': results
+                  .where((r) => r.success)
+                  .length,
+            },
+          );
         }
 
         // Loop: send tool results back to the LLM.
@@ -330,11 +391,13 @@ class AgentCore {
         for (final tc in msg.toolCalls) {
           final alreadyHasResult = resultIdsAfter.contains(tc.id);
           if (!alreadyHasResult) {
-            _conversation.add(Message.toolResult(
-              callId: tc.id,
-              content: '[cancelled by user]',
-              toolName: tc.name,
-            ));
+            _conversation.add(
+              Message.toolResult(
+                callId: tc.id,
+                content: '[cancelled by user]',
+                toolName: tc.name,
+              ),
+            );
           }
         }
         break;
@@ -379,28 +442,34 @@ class AgentCore {
       final result = await tool.execute(call.arguments);
       stopwatch.stop();
       if (span != null) {
-        _obs!.endSpan(span, extra: {
-          'tool.duration_ms': stopwatch.elapsedMilliseconds,
-          'tool.success': true,
-          'tool.output': redactBody(result.content, maxBytes: 65536),
-          'output.value': redactBody(result.content, maxBytes: 65536),
-          if (result.summary != null) 'tool.summary': result.summary,
-          if (result.metadata.isNotEmpty)
-            'tool.metadata': jsonEncode(result.metadata),
-        });
+        _obs!.endSpan(
+          span,
+          extra: {
+            'tool.duration_ms': stopwatch.elapsedMilliseconds,
+            'tool.success': true,
+            'tool.output': redactBody(result.content, maxBytes: 65536),
+            'output.value': redactBody(result.content, maxBytes: 65536),
+            if (result.summary != null) 'tool.summary': result.summary,
+            if (result.metadata.isNotEmpty)
+              'tool.metadata': jsonEncode(result.metadata),
+          },
+        );
       }
       return result.withCallId(call.id);
     } catch (e, st) {
       stopwatch.stop();
       if (span != null) {
-        _obs!.endSpan(span, extra: {
-          'tool.duration_ms': stopwatch.elapsedMilliseconds,
-          'tool.success': false,
-          'error': true,
-          'error.type': e.runtimeType.toString(),
-          'error.message': e.toString(),
-          'error.stack': st.toString(),
-        });
+        _obs!.endSpan(
+          span,
+          extra: {
+            'tool.duration_ms': stopwatch.elapsedMilliseconds,
+            'tool.success': false,
+            'error': true,
+            'error.type': e.runtimeType.toString(),
+            'error.message': e.toString(),
+            'error.stack': st.toString(),
+          },
+        );
       }
       return ToolResult(
         callId: call.id,
@@ -420,11 +489,7 @@ String _conversationSummary(List<Message> messages) {
       if (message.toolCalls.isNotEmpty)
         'tool_calls': [
           for (final call in message.toolCalls)
-            {
-              'id': call.id,
-              'name': call.name,
-              'arguments': call.arguments,
-            }
+            {'id': call.id, 'name': call.name, 'arguments': call.arguments},
         ],
       if (message.toolCallId != null) 'tool_call_id': message.toolCallId,
       if (message.toolName != null) 'tool_name': message.toolName,

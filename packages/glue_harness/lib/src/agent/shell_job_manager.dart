@@ -17,7 +17,7 @@ enum JobStatus {
 
   /// The user (or shutdown) explicitly killed the process — distinguished
   /// from [failed] so the UI can show "killed" instead of "error".
-  killed
+  killed,
 }
 
 sealed class JobEvent {}
@@ -76,7 +76,7 @@ class ShellJobManager {
   final _jobs = <int, ShellJob>{};
   final _events = StreamController<JobEvent>.broadcast();
 
-  ShellJobManager(this.executor, {Observability? obs}) : _obs = obs;
+  ShellJobManager(this.executor, {this._obs});
 
   Stream<JobEvent> get events => _events.stream;
 
@@ -114,49 +114,58 @@ class ShellJobManager {
       _jobs[id] = job;
       _events.add(JobStarted(id, command));
 
-      handle.stdout.transform(const SystemEncoding().decoder).listen(
-            job.output.addText,
-          );
-      handle.stderr.transform(const SystemEncoding().decoder).listen(
-            job.output.addText,
-          );
+      handle.stdout
+          .transform(const SystemEncoding().decoder)
+          .listen(job.output.addText);
+      handle.stderr
+          .transform(const SystemEncoding().decoder)
+          .listen(job.output.addText);
 
-      unawaited(() async {
+      () async {
         try {
           final code = await handle.exitCode;
           job.exitCode = code;
           if (job.status == JobStatus.killed) return;
           job.status = code == 0 ? JobStatus.exited : JobStatus.failed;
-          _endSpan(job, extra: {
-            'process.exit_code': code,
-            'shell.job.output_lines': job.output.lineCount,
-            'shell.job.status': job.status.name,
-          });
+          _endSpan(
+            job,
+            extra: {
+              'process.exit_code': code,
+              'shell.job.output_lines': job.output.lineCount,
+              'shell.job.status': job.status.name,
+            },
+          );
           _events.add(JobExited(id, code));
         } catch (e, st) {
           if (job.status == JobStatus.killed) return;
           job.status = JobStatus.failed;
-          _endSpan(job, extra: {
-            'shell.job.status': job.status.name,
-            'error': true,
-            'error.type': e.runtimeType.toString(),
-            'error.message': e.toString(),
-            'error.stack': st.toString(),
-          });
+          _endSpan(
+            job,
+            extra: {
+              'shell.job.status': job.status.name,
+              'error': true,
+              'error.type': e.runtimeType.toString(),
+              'error.message': e.toString(),
+              'error.stack': st.toString(),
+            },
+          );
           _events.add(JobError(id, e));
         }
-      }());
+      }();
 
       return job;
     } catch (e, st) {
       if (span != null && _obs != null) {
-        _obs.endSpan(span, extra: {
-          'shell.job.status': JobStatus.failed.name,
-          'error': true,
-          'error.type': e.runtimeType.toString(),
-          'error.message': e.toString(),
-          'error.stack': st.toString(),
-        });
+        _obs.endSpan(
+          span,
+          extra: {
+            'shell.job.status': JobStatus.failed.name,
+            'error': true,
+            'error.type': e.runtimeType.toString(),
+            'error.message': e.toString(),
+            'error.stack': st.toString(),
+          },
+        );
       }
       rethrow;
     }
@@ -171,12 +180,15 @@ class ShellJobManager {
     final job = _jobs[id];
     if (job == null || job.status != JobStatus.running) return;
     job.status = JobStatus.killed;
-    _endSpan(job, extra: {
-      'shell.job.status': job.status.name,
-      'cancelled': true,
-      'shell.job.output_lines': job.output.lineCount,
-    });
-    unawaited(job.handle.kill());
+    _endSpan(
+      job,
+      extra: {
+        'shell.job.status': job.status.name,
+        'cancelled': true,
+        'shell.job.output_lines': job.output.lineCount,
+      },
+    );
+    job.handle.kill();
   }
 
   /// Tears down the manager, stopping all running jobs.
@@ -185,16 +197,20 @@ class ShellJobManager {
   /// up with SIGKILL for any stubborn processes. The [events] stream is
   /// closed after cleanup, so no further events will be emitted.
   Future<void> shutdown() async {
-    final running =
-        _jobs.values.where((j) => j.status == JobStatus.running).toList();
+    final running = _jobs.values
+        .where((j) => j.status == JobStatus.running)
+        .toList();
     for (final j in running) {
       j.status = JobStatus.killed;
-      _endSpan(j, extra: {
-        'shell.job.status': j.status.name,
-        'cancelled': true,
-        'shell.job.output_lines': j.output.lineCount,
-      });
-      unawaited(j.handle.kill());
+      _endSpan(
+        j,
+        extra: {
+          'shell.job.status': j.status.name,
+          'cancelled': true,
+          'shell.job.output_lines': j.output.lineCount,
+        },
+      );
+      j.handle.kill();
     }
     if (running.isNotEmpty) {
       await Future.delayed(const Duration(milliseconds: 800));

@@ -33,8 +33,8 @@ class OpenAiClient implements LlmClient {
     this.profile = CompatibilityProfile.openai,
     this.extraHeaders = const {},
     http.Client Function()? requestClientFactory,
-  })  : _requestClientFactory = requestClientFactory ?? http.Client.new,
-        _baseUri = Uri.parse(baseUrl);
+  }) : _requestClientFactory = requestClientFactory ?? http.Client.new,
+       _baseUri = Uri.parse(baseUrl);
 
   @override
   Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
@@ -76,15 +76,13 @@ class OpenAiClient implements LlmClient {
 
       if (response.statusCode != 200) {
         final errorBody = await response.stream.bytesToString();
-        throw Exception(
-          'OpenAI API error ${response.statusCode}: $errorBody',
-        );
+        throw Exception('OpenAI API error ${response.statusCode}: $errorBody');
       }
 
       yield* parseStreamEvents(
-        decodeSse(response.stream).map(
-          (e) => jsonDecode(e.data) as Map<String, dynamic>,
-        ),
+        decodeSse(
+          response.stream,
+        ).map((e) => jsonDecode(e.data) as Map<String, dynamic>),
       );
     } finally {
       requestClient.close();
@@ -115,7 +113,8 @@ class OpenAiClient implements LlmClient {
       }
 
       final choice = (choices.first as Map).cast<String, dynamic>();
-      final delta = (choice['delta'] as Map?)?.cast<String, dynamic>() ??
+      final delta =
+          (choice['delta'] as Map?)?.cast<String, dynamic>() ??
           <String, dynamic>{};
       final finishReason = choice['finish_reason'] as String?;
 
@@ -168,11 +167,9 @@ class OpenAiClient implements LlmClient {
           } on FormatException {
             args = <String, dynamic>{'_raw': argsStr};
           }
-          yield ToolCallComplete(ToolCall(
-            id: builder.id,
-            name: builder.name,
-            arguments: args,
-          ));
+          yield ToolCallComplete(
+            ToolCall(id: builder.id, name: builder.name, arguments: args),
+          );
         }
         toolBuilders.clear();
       }
@@ -201,8 +198,8 @@ class OpenAiClient implements LlmClient {
 ///   `cache_creation_input_tokens` / `cache_read_input_tokens` if seen,
 ///   but the OpenAI-shaped path is the primary expectation.
 UsageInfo _usageInfoFromOpenAi(Map<String, dynamic> usage) {
-  final promptDetails =
-      (usage['prompt_tokens_details'] as Map?)?.cast<String, dynamic>();
+  final promptDetails = (usage['prompt_tokens_details'] as Map?)
+      ?.cast<String, dynamic>();
   final cachedTokens = promptDetails?['cached_tokens'] as int?;
   final cacheWriteOpenRouter = usage['cache_write_tokens'] as int?;
   final cacheCreateAnthropic = usage['cache_creation_input_tokens'] as int?;

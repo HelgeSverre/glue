@@ -9,10 +9,7 @@ void main() {
     });
 
     test('resolvedProvider prefers brave over tavily', () {
-      const config = WebSearchConfig(
-        braveApiKey: 'key1',
-        tavilyApiKey: 'key2',
-      );
+      const config = WebSearchConfig(braveApiKey: 'key1', tavilyApiKey: 'key2');
       expect(config.resolvedProvider, WebSearchProviderType.brave);
     });
 

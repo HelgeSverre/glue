@@ -41,12 +41,13 @@ class Layout {
   int get outputTop => 1 + _dockTop;
 
   /// Last row of the scrollable output zone.
-  int get outputBottom => (terminal.rows -
-          _statusHeight -
-          _inputHeight -
-          _overlayHeight -
-          _dockBottom)
-      .clamp(outputTop, terminal.rows);
+  int get outputBottom =>
+      (terminal.rows -
+              _statusHeight -
+              _inputHeight -
+              _overlayHeight -
+              _dockBottom)
+          .clamp(outputTop, terminal.rows);
 
   /// Left column of the scrollable output zone.
   int get outputLeft => 1 + _dockLeft;
@@ -89,8 +90,10 @@ class Layout {
 
   /// Update the input zone height (e.g. for multi-line editing).
   void setInputHeight(int lines) {
-    _inputHeight =
-        lines.clamp(1, terminal.rows ~/ AppConstants.inputAreaDivisor);
+    _inputHeight = lines.clamp(
+      1,
+      terminal.rows ~/ AppConstants.inputAreaDivisor,
+    );
     apply();
   }
 
@@ -112,8 +115,10 @@ class Layout {
   ///
   /// Only calls [apply] if the height actually changed to avoid flicker.
   void setOverlayHeight(int lines) {
-    final clamped =
-        lines.clamp(0, terminal.rows ~/ AppConstants.inputAreaDivisor);
+    final clamped = lines.clamp(
+      0,
+      terminal.rows ~/ AppConstants.inputAreaDivisor,
+    );
     if (clamped == _overlayHeight) return;
     _overlayHeight = clamped;
     apply();
@@ -252,11 +257,13 @@ class Layout {
 
       if (runes.isEmpty) {
         // Empty line — still gets one visual row.
-        visualLines.add(_VisualLine(
-          text: '',
-          logicalRow: logRow,
-          isFirstOfLogical: isFirstChunk,
-        ));
+        visualLines.add(
+          _VisualLine(
+            text: '',
+            logicalRow: logRow,
+            isFirstOfLogical: isFirstChunk,
+          ),
+        );
         if (logRow == cursorRow && cursorCol == 0) {
           cursorVisualRow = visualLines.length - 1;
           cursorScreenCol = prefixWidth + 1;
@@ -282,11 +289,13 @@ class Layout {
             charIdx++;
           }
 
-          visualLines.add(_VisualLine(
-            text: chunk.toString(),
-            logicalRow: logRow,
-            isFirstOfLogical: isFirstChunk,
-          ));
+          visualLines.add(
+            _VisualLine(
+              text: chunk.toString(),
+              logicalRow: logRow,
+              isFirstOfLogical: isFirstChunk,
+            ),
+          );
 
           // Track cursor position: cursor is in this chunk when its
           // column falls within [chunkStartIdx, charIdx) — or at charIdx

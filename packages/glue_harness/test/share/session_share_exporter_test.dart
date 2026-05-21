@@ -11,8 +11,9 @@ void main() {
     late SessionStore store;
 
     setUp(() {
-      tempDir =
-          Directory.systemTemp.createTempSync('session_share_exporter_test_');
+      tempDir = Directory.systemTemp.createTempSync(
+        'session_share_exporter_test_',
+      );
       sessionDir = '${tempDir.path}/session-1';
       store = SessionStore(
         sessionDir: sessionDir,
@@ -44,8 +45,10 @@ void main() {
       expect(result.htmlPath, isNotNull);
       expect(result.markdownPath, isNull);
       expect(File(result.htmlPath!).existsSync(), isTrue);
-      expect(File(result.htmlPath!).readAsStringSync(),
-          contains('<!DOCTYPE html>'));
+      expect(
+        File(result.htmlPath!).readAsStringSync(),
+        contains('<!DOCTYPE html>'),
+      );
       expect(result.htmlPath, endsWith('glue-session-session-1.html'));
     });
 

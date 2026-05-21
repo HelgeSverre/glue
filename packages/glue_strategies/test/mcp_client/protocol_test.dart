@@ -29,9 +29,7 @@ void main() {
       final result = McpInitializeResult.fromJson({
         'protocolVersion': '2025-03-26',
         'serverInfo': {'name': 'srv', 'version': '1.0.0'},
-        'capabilities': {
-          'sampling': {},
-        },
+        'capabilities': {'sampling': {}},
       });
       expect(result.capabilities.supportsSampling, isTrue);
     });
@@ -53,11 +51,7 @@ void main() {
       final r = McpToolCallResult.fromJson({
         'content': [
           {'type': 'text', 'text': 'before'},
-          {
-            'type': 'image',
-            'data': '...base64...',
-            'mimeType': 'image/png',
-          },
+          {'type': 'image', 'data': '...base64...', 'mimeType': 'image/png'},
           {'type': 'text', 'text': 'after'},
         ],
       });

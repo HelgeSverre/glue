@@ -13,16 +13,18 @@ import 'package:test/test.dart';
 Future<ProcessResult> _runGlue(List<String> args, {String stdin = ''}) async {
   final process = await Process.start(
     'dart',
-    ['run', 'bin/glue.dart', ...args],
+    ['run', '--verbosity=error', 'bin/glue.dart', ...args],
     workingDirectory: Directory.current.path,
     runInShell: true,
   );
   process.stdin.write(stdin);
   await process.stdin.close();
-  final stdoutBytes =
-      await process.stdout.transform(const SystemEncoding().decoder).join();
-  final stderrBytes =
-      await process.stderr.transform(const SystemEncoding().decoder).join();
+  final stdoutBytes = await process.stdout
+      .transform(const SystemEncoding().decoder)
+      .join();
+  final stderrBytes = await process.stderr
+      .transform(const SystemEncoding().decoder)
+      .join();
   final exitCode = await process.exitCode;
   return ProcessResult(process.pid, exitCode, stdoutBytes, stderrBytes);
 }

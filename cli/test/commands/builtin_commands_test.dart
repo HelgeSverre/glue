@@ -92,12 +92,14 @@ class _CommandTestFixture {
     SessionManager? session,
     SkillRuntime? skills,
     AgentCore? agent,
-  })  : environment = environment ?? _isolatedEnv(),
-        session = session ??
-            SessionManager(environment: environment ?? _isolatedEnv()),
-        skills = skills ??
-            SkillRuntime(cwd: '/tmp', extraPathsProvider: () => const []),
-        agent = agent ?? AgentCore(llm: _NoopLlm(), tools: const {}) {
+  }) : environment = environment ?? _isolatedEnv(),
+       session =
+           session ??
+           SessionManager(environment: environment ?? _isolatedEnv()),
+       skills =
+           skills ??
+           SkillRuntime(cwd: '/tmp', extraPathsProvider: () => const []),
+       agent = agent ?? AgentCore(llm: _NoopLlm(), tools: const {}) {
     blocks = <ConversationEntry>[];
     panelStack = <PanelOverlay>[];
     subagentGroups = <String, SubagentGroup>{};
@@ -153,31 +155,30 @@ class _CommandTestFixture {
 
   SlashCommandContext build({
     Iterable<SlashCommand> Function()? commandsGetter,
-  }) =>
-      SlashCommandContext(
-        configGetter: () => config,
-        llmFactoryGetter: () => llmFactory,
-        agentGetter: () => agent,
-        cwdGetter: () => environment.cwd,
-        modelIdGetter: () => 'test/model',
-        isIdleGetter: () => true,
-        environment: environment,
-        session: session,
-        skills: skills,
-        debug: null,
-        dockManager: dockManager,
-        editor: editor,
-        mcpPool: mcpPool,
-        autoApprovedTools: const <String>{},
-        ensureSession: () {},
-        backfillTitle: (_) {},
-        switchModel: (_) => '',
-        conversation: conversation,
-        approval: approval,
-        lifecycle: lifecycle,
-        panels: panels,
-        commandsGetter: commandsGetter ?? () => const [],
-      );
+  }) => SlashCommandContext(
+    configGetter: () => config,
+    llmFactoryGetter: () => llmFactory,
+    agentGetter: () => agent,
+    cwdGetter: () => environment.cwd,
+    modelIdGetter: () => 'test/model',
+    isIdleGetter: () => true,
+    environment: environment,
+    session: session,
+    skills: skills,
+    debug: null,
+    dockManager: dockManager,
+    editor: editor,
+    mcpPool: mcpPool,
+    autoApprovedTools: const <String>{},
+    ensureSession: () {},
+    backfillTitle: (_) {},
+    switchModel: (_) => '',
+    conversation: conversation,
+    approval: approval,
+    lifecycle: lifecycle,
+    panels: panels,
+    commandsGetter: commandsGetter ?? () => const [],
+  );
 }
 
 void main() {
@@ -332,8 +333,11 @@ void main() {
     test('/provider remove without args returns usage hint', () {
       final registry = createRegistry();
       final result = registry.execute('/provider remove');
-      expect(result, 'Config not ready.',
-          reason: 'fixture has no config; short-circuit fires before usage');
+      expect(
+        result,
+        'Config not ready.',
+        reason: 'fixture has no config; short-circuit fires before usage',
+      );
     });
 
     test('/provider with unknown subcommand reports usage', () {
@@ -362,13 +366,15 @@ void main() {
       expect(result, 'Usage: /share [html|md|gist]');
     });
 
-    test('/skills returns empty inline output (panel orchestration is async)',
-        () {
-      final fx = _CommandTestFixture();
-      final registry = createRegistry(fixture: fx);
-      final result = registry.execute('/skills');
-      expect(result, '');
-    });
+    test(
+      '/skills returns empty inline output (panel orchestration is async)',
+      () {
+        final fx = _CommandTestFixture();
+        final registry = createRegistry(fixture: fx);
+        final result = registry.execute('/skills');
+        expect(result, '');
+      },
+    );
 
     test('/skills <name> returns the activating banner inline', () {
       final fx = _CommandTestFixture();
@@ -430,49 +436,52 @@ void main() {
       app.requestExit();
       await runFuture;
 
-      expect(app.editor.text, isEmpty,
-          reason:
-              'opening the resume panel should not inject conversation text');
+      expect(
+        app.editor.text,
+        isEmpty,
+        reason: 'opening the resume panel should not inject conversation text',
+      );
       expect(
         SessionStore.listSessions(environment.sessionsDir).map((s) => s.id),
         contains('resume-target'),
       );
     });
 
-    test('resume with startup prompt submits the prompt after resuming',
-        () async {
-      final meta = SessionMeta(
-        id: const SessionId('resume-target'),
-        cwd: environment.cwd,
-        modelRef: 'anthropic/claude-sonnet-4.6',
-        startTime: DateTime.now(),
-        title: 'Saved work',
-      );
-      final store =
-          SessionStore(sessionDir: environment.sessionDir(meta.id), meta: meta);
-      store.logEvent('user_message', {'text': 'Earlier context'});
-      store.logEvent('assistant_message', {'text': 'Prior answer'});
+    test(
+      'resume with startup prompt submits the prompt after resuming',
+      () async {
+        final meta = SessionMeta(
+          id: const SessionId('resume-target'),
+          cwd: environment.cwd,
+          modelRef: 'anthropic/claude-sonnet-4.6',
+          startTime: DateTime.now(),
+          title: 'Saved work',
+        );
+        final store = SessionStore(
+          sessionDir: environment.sessionDir(meta.id),
+          meta: meta,
+        );
+        store.logEvent('user_message', {'text': 'Earlier context'});
+        store.logEvent('assistant_message', {'text': 'Prior answer'});
 
-      final app = App(
-        terminal: _NoopTerminal(),
-        layout: Layout(_NoopTerminal()),
-        editor: TextAreaEditor(),
-        agent: AgentCore(llm: _NoopLlm(), tools: const {}),
-        modelId: 'anthropic/claude-sonnet-4.6',
-        startupPrompt: 'bar',
-        resumeSessionId: 'resume-target',
-        environment: environment,
-      );
+        final app = App(
+          terminal: _NoopTerminal(),
+          layout: Layout(_NoopTerminal()),
+          editor: TextAreaEditor(),
+          agent: AgentCore(llm: _NoopLlm(), tools: const {}),
+          modelId: 'anthropic/claude-sonnet-4.6',
+          startupPrompt: 'bar',
+          resumeSessionId: 'resume-target',
+          environment: environment,
+        );
 
-      final runFuture = app.run();
-      await Future<void>.delayed(const Duration(milliseconds: 20));
-      app.requestExit();
-      await runFuture;
+        final runFuture = app.run();
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        app.requestExit();
+        await runFuture;
 
-      expect(
-        app.agent.conversation.map((m) => m.text),
-        contains('bar'),
-      );
-    });
+        expect(app.agent.conversation.map((m) => m.text), contains('bar'));
+      },
+    );
   });
 }

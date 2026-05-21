@@ -11,11 +11,7 @@ sealed class JsonRpcMessage {
 
 /// A JSON-RPC request — has an [id] and expects a [JsonRpcResponse].
 class JsonRpcRequest extends JsonRpcMessage {
-  const JsonRpcRequest({
-    required this.id,
-    required this.method,
-    this.params,
-  });
+  const JsonRpcRequest({required this.id, required this.method, this.params});
 
   /// Either an int or a String per JSON-RPC 2.0 §3.
   final Object id;

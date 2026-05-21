@@ -25,10 +25,7 @@ class TavilySearchProvider implements WebSearchProvider {
   bool get isConfigured => apiKey != null && apiKey!.isNotEmpty;
 
   @override
-  Future<WebSearchResponse> search(
-    String query, {
-    int maxResults = 5,
-  }) async {
+  Future<WebSearchResponse> search(String query, {int maxResults = 5}) async {
     if (!isConfigured) {
       throw StateError('Tavily API key not configured');
     }

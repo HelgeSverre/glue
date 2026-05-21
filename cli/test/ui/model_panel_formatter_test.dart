@@ -12,19 +12,18 @@ CatalogRow _row({
   String? cost,
   String? speed,
   ModelAvailability availability = ModelAvailability.unknown,
-}) =>
-    (
-      providerId: providerId,
-      providerName: providerName,
-      model: ModelDef(
-        id: modelId,
-        name: modelName,
-        notes: notes,
-        cost: cost,
-        speed: speed,
-      ),
-      availability: availability,
-    );
+}) => (
+  providerId: providerId,
+  providerName: providerName,
+  model: ModelDef(
+    id: modelId,
+    name: modelName,
+    notes: notes,
+    cost: cost,
+    speed: speed,
+  ),
+  availability: availability,
+);
 
 ModelRef _ref(String s) => ModelRef.parse(s);
 
@@ -35,10 +34,9 @@ void main() {
     );
 
     test('renders wider output at a wider content width', () {
-      final builder = buildModelPanel(
-        [entry],
-        currentRef: _ref('anthropic/claude-sonnet-4.6'),
-      );
+      final builder = buildModelPanel([
+        entry,
+      ], currentRef: _ref('anthropic/claude-sonnet-4.6'));
       final wide = builder.renderRow(0, 80);
       final narrow = builder.renderRow(0, 28);
       expect(
@@ -48,10 +46,7 @@ void main() {
     });
 
     test('initialIndex points to the current model', () {
-      final entries = [
-        entry,
-        _row(modelId: 'haiku', modelName: 'Haiku'),
-      ];
+      final entries = [entry, _row(modelId: 'haiku', modelName: 'Haiku')];
       final builder = buildModelPanel(
         entries,
         currentRef: _ref('anthropic/haiku'),
@@ -60,23 +55,14 @@ void main() {
     });
 
     test('empty entries still produces a valid builder', () {
-      final builder = buildModelPanel(
-        const [],
-        currentRef: _ref('x/y'),
-      );
+      final builder = buildModelPanel(const [], currentRef: _ref('x/y'));
       expect(builder.rowCount, 0);
       expect(builder.initialIndex, 0);
     });
 
     test('provider header appears only on the first row of each group', () {
-      final entries = [
-        entry,
-        _row(modelId: 'haiku', modelName: 'Haiku'),
-      ];
-      final builder = buildModelPanel(
-        entries,
-        currentRef: _ref('x/y'),
-      );
+      final entries = [entry, _row(modelId: 'haiku', modelName: 'Haiku')];
+      final builder = buildModelPanel(entries, currentRef: _ref('x/y'));
       final row0 = stripAnsi(builder.renderRow(0, 80));
       final row1 = stripAnsi(builder.renderRow(1, 80));
       expect(row0, contains('Anthropic'));
@@ -132,21 +118,18 @@ void main() {
     });
 
     test('renderHeader returns a non-empty list', () {
-      final builder = buildModelPanel(
-        [
-          (
-            providerId: 'anthropic',
-            providerName: 'Anthropic',
-            model: const ModelDef(
-              id: 'sonnet',
-              name: 'Sonnet',
-              capabilities: {'chat'},
-            ),
-            availability: ModelAvailability.unknown,
+      final builder = buildModelPanel([
+        (
+          providerId: 'anthropic',
+          providerName: 'Anthropic',
+          model: const ModelDef(
+            id: 'sonnet',
+            name: 'Sonnet',
+            capabilities: {'chat'},
           ),
-        ],
-        currentRef: const ModelRef(providerId: 'x', modelId: 'y'),
-      );
+          availability: ModelAvailability.unknown,
+        ),
+      ], currentRef: const ModelRef(providerId: 'x', modelId: 'y'));
       expect(builder.renderHeader(80), isNotEmpty);
     });
   });

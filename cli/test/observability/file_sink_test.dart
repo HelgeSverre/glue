@@ -27,8 +27,10 @@ void main() {
     final files = tempDir.listSync().whereType<File>().toList();
     expect(files, hasLength(1));
 
-    final lines =
-        files.first.readAsLinesSync().where((l) => l.isNotEmpty).toList();
+    final lines = files.first
+        .readAsLinesSync()
+        .where((l) => l.isNotEmpty)
+        .toList();
     expect(lines, hasLength(1));
 
     final decoded = jsonDecode(lines.first) as Map<String, dynamic>;
@@ -69,8 +71,10 @@ void main() {
     await sink.flush();
 
     final files = tempDir.listSync().whereType<File>().toList();
-    final lines =
-        files.first.readAsLinesSync().where((l) => l.isNotEmpty).toList();
+    final lines = files.first
+        .readAsLinesSync()
+        .where((l) => l.isNotEmpty)
+        .toList();
     expect(lines, hasLength(2));
 
     final decoded1 = jsonDecode(lines[0]) as Map<String, dynamic>;
@@ -103,8 +107,10 @@ void main() {
     await sink.close();
 
     final files = tempDir.listSync().whereType<File>().toList();
-    final lines =
-        files.first.readAsLinesSync().where((l) => l.isNotEmpty).toList();
+    final lines = files.first
+        .readAsLinesSync()
+        .where((l) => l.isNotEmpty)
+        .toList();
     expect(lines, hasLength(1));
   });
 }

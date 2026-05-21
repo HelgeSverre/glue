@@ -32,15 +32,14 @@ class ModalRuntime implements RuntimeSession {
   final bool resumed;
 
   ModalRuntime._({
-    required ModalSidecarBase sidecar,
-    required ModalConfig config,
+    required this._sidecar,
+    required this._config,
     required this.sandboxId,
     required this.executor,
     required this.workspace,
     required this.bootstrapSha,
     required this.resumed,
-  })  : _sidecar = sidecar,
-        _config = config;
+  });
 
   @override
   String get id => 'modal';
@@ -57,8 +56,9 @@ class ModalRuntime implements RuntimeSession {
     final sidecar = sidecarOverride ?? ModalSidecar(config);
     try {
       await sidecar.start();
-      final sandboxId =
-          sidecar is ModalSidecar ? (sidecar.sandboxId ?? '') : '';
+      final sandboxId = sidecar is ModalSidecar
+          ? (sidecar.sandboxId ?? '')
+          : '';
 
       final bootstrap = ModalBootstrap(
         sidecar: sidecar,
@@ -121,7 +121,8 @@ class ModalRuntime implements RuntimeSession {
     if (!_sidecar.isReady) {
       return const RuntimeDiffOutcomeUnavailable(
         reason: RuntimeDiffUnavailableReason.executorDead,
-        hint: 'modal sidecar is no longer reachable (sandbox may have '
+        hint:
+            'modal sidecar is no longer reachable (sandbox may have '
             'auto-terminated on sandbox_timeout_seconds, or the python '
             'process exited); end-of-session diff cannot be captured',
       );

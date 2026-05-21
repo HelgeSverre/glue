@@ -31,11 +31,13 @@ class _ToolCallLlm implements LlmClient {
     if (_callCount == 1) {
       yield TextDelta('Let me check. ');
       yield ToolCallStart(id: const ToolCallId('tc1'), name: 'list_directory');
-      yield ToolCallComplete(ToolCall(
-        id: const ToolCallId('tc1'),
-        name: 'list_directory',
-        arguments: {'path': '.'},
-      ));
+      yield ToolCallComplete(
+        ToolCall(
+          id: const ToolCallId('tc1'),
+          name: 'list_directory',
+          arguments: {'path': '.'},
+        ),
+      );
       yield UsageInfo(inputTokens: 10, outputTokens: 10);
     } else {
       yield TextDelta('Found the files.');
@@ -112,20 +114,20 @@ void main() {
 
   group('AgentCore.ensureToolResultsComplete', () {
     test('injects synthetic tool_result for unmatched tool_use', () {
-      final core = AgentCore(
-        llm: _TextOnlyLlm('hi'),
-        tools: {},
-      );
+      final core = AgentCore(llm: _TextOnlyLlm('hi'), tools: {});
       core.addMessage(Message.user('do something'));
-      core.addMessage(Message.assistant(
-        text: 'Sure',
-        toolCalls: [
-          ToolCall(
+      core.addMessage(
+        Message.assistant(
+          text: 'Sure',
+          toolCalls: [
+            ToolCall(
               id: const ToolCallId('tc1'),
               name: 'write_file',
-              arguments: {'path': 'a.txt'}),
-        ],
-      ));
+              arguments: {'path': 'a.txt'},
+            ),
+          ],
+        ),
+      );
       // No tool_result — simulates cancel mid-execution.
 
       core.ensureToolResultsComplete();
@@ -138,58 +140,71 @@ void main() {
     });
 
     test('does not duplicate tool_result that already exists', () {
-      final core = AgentCore(
-        llm: _TextOnlyLlm('hi'),
-        tools: {},
-      );
+      final core = AgentCore(llm: _TextOnlyLlm('hi'), tools: {});
       core.addMessage(Message.user('do something'));
-      core.addMessage(Message.assistant(
-        text: 'Sure',
-        toolCalls: [
-          ToolCall(
-              id: const ToolCallId('tc1'), name: 'write_file', arguments: {}),
-        ],
-      ));
-      core.addMessage(Message.toolResult(
-        callId: const ToolCallId('tc1'),
-        content: 'done',
-        toolName: 'write_file',
-      ));
+      core.addMessage(
+        Message.assistant(
+          text: 'Sure',
+          toolCalls: [
+            ToolCall(
+              id: const ToolCallId('tc1'),
+              name: 'write_file',
+              arguments: {},
+            ),
+          ],
+        ),
+      );
+      core.addMessage(
+        Message.toolResult(
+          callId: const ToolCallId('tc1'),
+          content: 'done',
+          toolName: 'write_file',
+        ),
+      );
 
       core.ensureToolResultsComplete();
 
-      final results =
-          core.conversation.where((m) => m.role == Role.toolResult).toList();
+      final results = core.conversation
+          .where((m) => m.role == Role.toolResult)
+          .toList();
       expect(results, hasLength(1));
       expect(results.first.text, 'done');
     });
 
     test('repairs only missing results in multi-tool call', () {
-      final core = AgentCore(
-        llm: _TextOnlyLlm('hi'),
-        tools: {},
-      );
+      final core = AgentCore(llm: _TextOnlyLlm('hi'), tools: {});
       core.addMessage(Message.user('do two things'));
-      core.addMessage(Message.assistant(
-        text: 'Sure',
-        toolCalls: [
-          ToolCall(
-              id: const ToolCallId('tc1'), name: 'read_file', arguments: {}),
-          ToolCall(
-              id: const ToolCallId('tc2'), name: 'write_file', arguments: {}),
-        ],
-      ));
+      core.addMessage(
+        Message.assistant(
+          text: 'Sure',
+          toolCalls: [
+            ToolCall(
+              id: const ToolCallId('tc1'),
+              name: 'read_file',
+              arguments: {},
+            ),
+            ToolCall(
+              id: const ToolCallId('tc2'),
+              name: 'write_file',
+              arguments: {},
+            ),
+          ],
+        ),
+      );
       // Only tc1 got a result before cancel.
-      core.addMessage(Message.toolResult(
-        callId: const ToolCallId('tc1'),
-        content: 'file contents',
-        toolName: 'read_file',
-      ));
+      core.addMessage(
+        Message.toolResult(
+          callId: const ToolCallId('tc1'),
+          content: 'file contents',
+          toolName: 'read_file',
+        ),
+      );
 
       core.ensureToolResultsComplete();
 
-      final results =
-          core.conversation.where((m) => m.role == Role.toolResult).toList();
+      final results = core.conversation
+          .where((m) => m.role == Role.toolResult)
+          .toList();
       expect(results, hasLength(2));
       expect(results[0].toolCallId, 'tc1');
       expect(results[0].text, 'file contents');
@@ -198,10 +213,7 @@ void main() {
     });
 
     test('no-op when conversation has no tool calls', () {
-      final core = AgentCore(
-        llm: _TextOnlyLlm('hi'),
-        tools: {},
-      );
+      final core = AgentCore(llm: _TextOnlyLlm('hi'), tools: {});
       core.addMessage(Message.user('hello'));
       core.addMessage(Message.assistant(text: 'hi there'));
 
@@ -211,10 +223,7 @@ void main() {
     });
 
     test('no-op on empty conversation', () {
-      final core = AgentCore(
-        llm: _TextOnlyLlm('hi'),
-        tools: {},
-      );
+      final core = AgentCore(llm: _TextOnlyLlm('hi'), tools: {});
 
       core.ensureToolResultsComplete();
 

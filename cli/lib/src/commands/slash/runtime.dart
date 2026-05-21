@@ -39,10 +39,12 @@ class RuntimeCommand extends SlashCommand {
           );
         }
       case 'daytona':
-        final baseUrl = (config.runtimeOptions['api_base_url'] as String?) ??
+        final baseUrl =
+            (config.runtimeOptions['api_base_url'] as String?) ??
             ctx.environment.vars['DAYTONA_API_BASE_URL'] ??
             'https://app.daytona.io/api';
-        final snapshot = (config.runtimeOptions['snapshot'] as String?) ??
+        final snapshot =
+            (config.runtimeOptions['snapshot'] as String?) ??
             ctx.environment.vars['DAYTONA_SNAPSHOT'];
         buf.writeln('  Daytona base URL: $baseUrl');
         buf.writeln(
@@ -51,20 +53,24 @@ class RuntimeCommand extends SlashCommand {
               : '  Daytona snapshot: $snapshot',
         );
       case 'modal':
-        final appName = (config.runtimeOptions['app_name'] as String?) ??
+        final appName =
+            (config.runtimeOptions['app_name'] as String?) ??
             ctx.environment.vars['MODAL_APP'] ??
             'glue';
-        final image = (config.runtimeOptions['image'] as String?) ??
+        final image =
+            (config.runtimeOptions['image'] as String?) ??
             ctx.environment.vars['MODAL_IMAGE'];
         buf.writeln('  Modal app: $appName');
-        buf.writeln(image == null
-            ? '  Image: modal default Debian'
-            : '  Image: $image');
+        buf.writeln(
+          image == null ? '  Image: modal default Debian' : '  Image: $image',
+        );
       case 'sprites':
-        final cliPath = (config.runtimeOptions['sprite_cli'] as String?) ??
+        final cliPath =
+            (config.runtimeOptions['sprite_cli'] as String?) ??
             ctx.environment.vars['SPRITES_CLI'] ??
             'sprite';
-        final name = (config.runtimeOptions['sprite_name'] as String?) ??
+        final name =
+            (config.runtimeOptions['sprite_name'] as String?) ??
             ctx.environment.vars['SPRITES_NAME'];
         buf.writeln('  Sprites CLI: $cliPath');
         buf.writeln(
@@ -77,9 +83,7 @@ class RuntimeCommand extends SlashCommand {
     }
     final registered = RuntimeFactory.registeredAdapters().toList();
     if (registered.isNotEmpty) {
-      buf.writeln(
-        'Registered cloud adapters: ${registered.join(', ')}',
-      );
+      buf.writeln('Registered cloud adapters: ${registered.join(', ')}');
     }
     buf.writeln(
       'Override with the GLUE_RUNTIME env var or the `runtime:` config key.',

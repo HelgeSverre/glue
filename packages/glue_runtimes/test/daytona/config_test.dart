@@ -57,10 +57,9 @@ void main() {
     });
 
     test('honours toolbox override from options', () {
-      final c = daytonaConfigFromOptions(
-        const {'toolbox_base_url': 'https://proxy.staging/'},
-        env: const {},
-      );
+      final c = daytonaConfigFromOptions(const {
+        'toolbox_base_url': 'https://proxy.staging/',
+      }, env: const {});
       expect(c.toolboxBaseUrlOverride, 'https://proxy.staging/');
     });
   });

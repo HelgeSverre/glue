@@ -103,22 +103,23 @@ void main() {
   }
 
   test(
-      'round-trips initialize + tools/list + tools/call against a real subprocess',
-      () async {
-    await withClient((client) async {
-      final init = await client.initialize();
-      expect(init.serverInfo.name, 'echo');
-      expect(init.protocolVersion, '2025-03-26');
+    'round-trips initialize + tools/list + tools/call against a real subprocess',
+    () async {
+      await withClient((client) async {
+        final init = await client.initialize();
+        expect(init.serverInfo.name, 'echo');
+        expect(init.protocolVersion, '2025-03-26');
 
-      final tools = await client.listTools();
-      expect(tools, hasLength(1));
-      expect(tools.first.name, 'echo');
+        final tools = await client.listTools();
+        expect(tools, hasLength(1));
+        expect(tools.first.name, 'echo');
 
-      final result = await client.callTool('echo', {'message': 'hi there'});
-      expect(result.isError, isFalse);
-      expect(result.textPayload, 'echo: hi there');
-    });
-  });
+        final result = await client.callTool('echo', {'message': 'hi there'});
+        expect(result.isError, isFalse);
+        expect(result.textPayload, 'echo: hi there');
+      });
+    },
+  );
 
   test('close() shuts the child process down', () async {
     final transport = await McpStdioTransport.spawn(

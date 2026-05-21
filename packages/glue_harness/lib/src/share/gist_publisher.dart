@@ -1,9 +1,7 @@
 import 'dart:io';
 
-typedef GhRunner = Future<ProcessResult> Function(
-  String executable,
-  List<String> arguments,
-);
+typedef GhRunner =
+    Future<ProcessResult> Function(String executable, List<String> arguments);
 
 class GistPublishError implements Exception {
   final String message;
@@ -17,10 +15,7 @@ class GistPublishResult {
   final String filePath;
   final String url;
 
-  const GistPublishResult({
-    required this.filePath,
-    required this.url,
-  });
+  const GistPublishResult({required this.filePath, required this.url});
 }
 
 class SessionGistPublisher {
@@ -45,10 +40,12 @@ class SessionGistPublisher {
       description,
     ]);
     if (result.exitCode != 0) {
-      throw GistPublishError(_failureMessage(
-        prefix: 'GitHub CLI failed to create a gist.',
-        result: result,
-      ));
+      throw GistPublishError(
+        _failureMessage(
+          prefix: 'GitHub CLI failed to create a gist.',
+          result: result,
+        ),
+      );
     }
 
     final url = _extractUrl(result.stdout.toString());
@@ -65,11 +62,13 @@ class SessionGistPublisher {
     final result = await _runGh(['auth', 'status']);
     if (result.exitCode == 0) return;
 
-    throw GistPublishError(_failureMessage(
-      prefix:
-          'GitHub CLI is not authenticated. Run `gh auth login` and try again.',
-      result: result,
-    ));
+    throw GistPublishError(
+      _failureMessage(
+        prefix:
+            'GitHub CLI is not authenticated. Run `gh auth login` and try again.',
+        result: result,
+      ),
+    );
   }
 
   Future<ProcessResult> _runGh(List<String> arguments) async {

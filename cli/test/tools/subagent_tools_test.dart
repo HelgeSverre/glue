@@ -60,8 +60,7 @@ void main() {
       final result = (await tool.execute({
         'task': 'quick task',
         'model_ref': 'anthropic/claude-haiku-4-5',
-      }))
-          .content;
+      })).content;
       expect(result, contains('Done:'));
     });
   });
@@ -85,8 +84,7 @@ void main() {
       final tool = SpawnParallelSubagentsTool(manager);
       final result = (await tool.execute({
         'tasks': ['Task A', 'Task B'],
-      }))
-          .content;
+      })).content;
       final decoded = jsonDecode(result) as Map<String, dynamic>;
       final results = decoded['results'] as List;
       expect(results, hasLength(2));

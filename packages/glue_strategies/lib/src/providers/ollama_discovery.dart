@@ -64,8 +64,8 @@ class OllamaDiscovery {
     this.timeout = const Duration(seconds: 2),
     this.cacheTtl = const Duration(seconds: 30),
     DateTime Function()? now,
-  })  : _clientFactory = clientFactory ?? http.Client.new,
-        _now = now ?? DateTime.now;
+  }) : _clientFactory = clientFactory ?? http.Client.new,
+       _now = now ?? DateTime.now;
 
   /// Ollama's HTTP root. Accepts the `/v1` suffix (OpenAI-compat path) and
   /// the bare form — we normalise internally so callers don't have to.
@@ -86,10 +86,7 @@ class OllamaDiscovery {
     }
 
     final models = await _fetch();
-    _cache[key] = _CacheEntry(
-      models: models,
-      expiresAt: _now().add(cacheTtl),
-    );
+    _cache[key] = _CacheEntry(models: models, expiresAt: _now().add(cacheTtl));
     return models;
   }
 
@@ -151,8 +148,8 @@ class OllamaDiscovery {
     final stripped = path.endsWith('/v1')
         ? path.substring(0, path.length - 3)
         : path.endsWith('/v1/')
-            ? path.substring(0, path.length - 4)
-            : path;
+        ? path.substring(0, path.length - 4)
+        : path;
     return baseUrl.replace(
       path: '${stripped.endsWith('/') ? stripped : "$stripped/"}api/pull',
     );
@@ -199,8 +196,8 @@ class OllamaDiscovery {
     final stripped = path.endsWith('/v1')
         ? path.substring(0, path.length - 3)
         : path.endsWith('/v1/')
-            ? path.substring(0, path.length - 4)
-            : path;
+        ? path.substring(0, path.length - 4)
+        : path;
     return baseUrl.replace(
       path: '${stripped.endsWith('/') ? stripped : "$stripped/"}api/tags',
     );

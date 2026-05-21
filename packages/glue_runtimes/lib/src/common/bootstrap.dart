@@ -115,7 +115,8 @@ class BootstrapException implements Exception {
     this.remediationHint,
   });
   @override
-  String toString() => 'BootstrapException($stage/${kind.name}'
+  String toString() =>
+      'BootstrapException($stage/${kind.name}'
       '${exitCode == null ? '' : ', exit=$exitCode'}): '
       '$message${output == null ? '' : '\n$output'}'
       '${remediationHint == null ? '' : '\n→ $remediationHint'}';
@@ -131,7 +132,8 @@ class BootstrapException implements Exception {
       lower.contains('single sign-on')) {
     return (
       kind: BootstrapErrorKind.saml,
-      hint: 'remote enforces SAML/SSO — authorize your token with '
+      hint:
+          'remote enforces SAML/SSO — authorize your token with '
           '`gh auth refresh -s` or via your provider\'s authorization URL',
     );
   }
@@ -143,7 +145,8 @@ class BootstrapException implements Exception {
       lower.contains('permission denied (publickey)')) {
     return (
       kind: BootstrapErrorKind.auth,
-      hint: 'sandbox could not authenticate to the remote. Switch to a '
+      hint:
+          'sandbox could not authenticate to the remote. Switch to a '
           'runtime that supports bundle bootstrap (Daytona, Modal, '
           'Sprites in this build) so credentials stay on the host, or '
           'inject an HTTPS token into the clone URL.',
@@ -155,7 +158,8 @@ class BootstrapException implements Exception {
       lower.contains('network is unreachable')) {
     return (
       kind: BootstrapErrorKind.network,
-      hint: 'sandbox cannot reach the remote — check egress policy / '
+      hint:
+          'sandbox cannot reach the remote — check egress policy / '
           'VPN reachability, or use bundle bootstrap to avoid the '
           'sandbox-side fetch entirely',
     );
@@ -164,7 +168,8 @@ class BootstrapException implements Exception {
       lower.contains('not found') && lower.contains('git')) {
     return (
       kind: BootstrapErrorKind.missingBinary,
-      hint: 'sandbox image is missing `git` — pin a runtime image '
+      hint:
+          'sandbox image is missing `git` — pin a runtime image '
           'that includes it',
     );
   }
@@ -236,7 +241,8 @@ class WorkspaceBootstrap {
         throw BootstrapException(
           stage: 'prep',
           kind: BootstrapErrorKind.prep,
-          remediationHint: 'workspace prep failed (typically `sudo mkdir` '
+          remediationHint:
+              'workspace prep failed (typically `sudo mkdir` '
               'or chown) — check the sandbox image has the expected user '
               'and sudo configured',
           message: 'pre-clone prep failed',
@@ -261,8 +267,10 @@ class WorkspaceBootstrap {
       } on _BundleSkipped catch (skip) {
         // Bundle exceeds runtime cap or host has no git — try
         // clone-from-remote next.
-        stderr.writeln('[glue bootstrap] bundle path unavailable '
-            '(${skip.reason}); falling back to clone-from-remote');
+        stderr.writeln(
+          '[glue bootstrap] bundle path unavailable '
+          '(${skip.reason}); falling back to clone-from-remote',
+        );
       }
     }
 
@@ -309,7 +317,8 @@ class WorkspaceBootstrap {
       throw BootstrapException(
         stage: 'upload',
         kind: BootstrapErrorKind.upload,
-        remediationHint: 'bundle upload failed; if the bundle is large, '
+        remediationHint:
+            'bundle upload failed; if the bundle is large, '
             'try a runtime with a larger upload cap (Daytona) or push '
             'the working tree to a remote first to take the clone path',
         message: 'bundle upload to $runtimeBundlePath failed',
@@ -330,7 +339,8 @@ class WorkspaceBootstrap {
       throw BootstrapException(
         stage: 'clone-bundle',
         kind: BootstrapErrorKind.cloneBundle,
-        remediationHint: 'sandbox image likely missing `git` — pin a '
+        remediationHint:
+            'sandbox image likely missing `git` — pin a '
             'runtime image that includes it (see `glue doctor`)',
         message:
             'sandbox failed to clone uploaded bundle at $runtimeBundlePath',
@@ -360,7 +370,8 @@ class WorkspaceBootstrap {
     if (remoteUrl == null || sha == null) {
       throw const BootstrapException(
         stage: 'clone',
-        message: 'no bundle transport AND host is not a git repo with '
+        message:
+            'no bundle transport AND host is not a git repo with '
             'a reachable remote. Either: (a) use a runtime adapter that '
             'supports bundle bootstrap, or (b) push your changes to a '
             'reachable remote first.',
@@ -390,7 +401,8 @@ class WorkspaceBootstrap {
       throw BootstrapException(
         stage: 'checkout',
         kind: BootstrapErrorKind.checkout,
-        remediationHint: 'host HEAD ($sha) is not reachable from the '
+        remediationHint:
+            'host HEAD ($sha) is not reachable from the '
             'remote. Push the commit, or use a runtime adapter that '
             'supports bundle bootstrap so the working tree ships '
             'directly from the host.',
@@ -415,22 +427,21 @@ class WorkspaceBootstrap {
   }
 
   static Future<String?> _gitRemoteUrl(String cwd) async {
-    final result = await Process.run(
-      'git',
-      ['config', '--get', 'remote.origin.url'],
-      workingDirectory: cwd,
-    );
+    final result = await Process.run('git', [
+      'config',
+      '--get',
+      'remote.origin.url',
+    ], workingDirectory: cwd);
     if (result.exitCode != 0) return null;
     final url = (result.stdout as String).trim();
     return url.isEmpty ? null : url;
   }
 
   static Future<String?> _gitHeadSha(String cwd) async {
-    final result = await Process.run(
-      'git',
-      ['rev-parse', 'HEAD'],
-      workingDirectory: cwd,
-    );
+    final result = await Process.run('git', [
+      'rev-parse',
+      'HEAD',
+    ], workingDirectory: cwd);
     if (result.exitCode != 0) return null;
     final sha = (result.stdout as String).trim();
     return sha.isEmpty ? null : sha;

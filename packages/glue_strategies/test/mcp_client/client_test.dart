@@ -13,94 +13,113 @@ JsonRpcError _err(Object id, int code, String message) =>
 
 void main() {
   group('McpClient.initialize', () {
-    test('happy path negotiates protocol version and returns server info',
-        () async {
-      final transport = InMemoryMcpTransport(respond: (out) async {
-        if (out is JsonRpcRequest && out.method == McpMethod.initialize) {
-          return [
-            _ok(out.id, {
-              'protocolVersion': mcpProtocolVersion,
-              'serverInfo': {'name': 'fake-server', 'version': '1.0.0'},
-              'capabilities': {
-                'tools': {'listChanged': true},
-              },
-            }),
-          ];
-        }
-        return [];
-      });
-      final client = McpClient(transport: transport);
+    test(
+      'happy path negotiates protocol version and returns server info',
+      () async {
+        final transport = InMemoryMcpTransport(
+          respond: (out) async {
+            if (out is JsonRpcRequest && out.method == McpMethod.initialize) {
+              return [
+                _ok(out.id, {
+                  'protocolVersion': mcpProtocolVersion,
+                  'serverInfo': {'name': 'fake-server', 'version': '1.0.0'},
+                  'capabilities': {
+                    'tools': {'listChanged': true},
+                  },
+                }),
+              ];
+            }
+            return [];
+          },
+        );
+        final client = McpClient(transport: transport);
 
-      final result = await client.initialize();
-      expect(result.protocolVersion, mcpProtocolVersion);
-      expect(result.serverInfo.name, 'fake-server');
-      expect(result.capabilities.tools?.listChanged, isTrue);
+        final result = await client.initialize();
+        expect(result.protocolVersion, mcpProtocolVersion);
+        expect(result.serverInfo.name, 'fake-server');
+        expect(result.capabilities.tools?.listChanged, isTrue);
 
-      // We should have sent: initialize request, then initialized notification.
-      expect(transport.outgoing.length, 2);
-      expect(transport.outgoing[0], isA<JsonRpcRequest>());
-      expect((transport.outgoing[0] as JsonRpcRequest).method,
-          McpMethod.initialize);
-      expect(transport.outgoing[1], isA<JsonRpcNotification>());
-      expect((transport.outgoing[1] as JsonRpcNotification).method,
-          McpMethod.initialized);
+        // We should have sent: initialize request, then initialized notification.
+        expect(transport.outgoing.length, 2);
+        expect(transport.outgoing[0], isA<JsonRpcRequest>());
+        expect(
+          (transport.outgoing[0] as JsonRpcRequest).method,
+          McpMethod.initialize,
+        );
+        expect(transport.outgoing[1], isA<JsonRpcNotification>());
+        expect(
+          (transport.outgoing[1] as JsonRpcNotification).method,
+          McpMethod.initialized,
+        );
 
-      await client.close();
-    });
+        await client.close();
+      },
+    );
 
-    test('refuses protocol versions below the minimum-supported floor',
-        () async {
-      final transport = InMemoryMcpTransport(respond: (out) async {
-        if (out is JsonRpcRequest && out.method == McpMethod.initialize) {
-          return [
-            _ok(out.id, {
-              'protocolVersion': '2024-01-01', // way below minimum
-              'serverInfo': {'name': 'ancient', 'version': '0.1'},
-              'capabilities': const {},
-            }),
-          ];
-        }
-        return [];
-      });
-      final client = McpClient(transport: transport);
+    test(
+      'refuses protocol versions below the minimum-supported floor',
+      () async {
+        final transport = InMemoryMcpTransport(
+          respond: (out) async {
+            if (out is JsonRpcRequest && out.method == McpMethod.initialize) {
+              return [
+                _ok(out.id, {
+                  'protocolVersion': '2024-01-01', // way below minimum
+                  'serverInfo': {'name': 'ancient', 'version': '0.1'},
+                  'capabilities': const {},
+                }),
+              ];
+            }
+            return [];
+          },
+        );
+        final client = McpClient(transport: transport);
 
-      await expectLater(
-        client.initialize(),
-        throwsA(isA<McpCallFailure>()
-            .having((e) => e.reason, 'reason', 'protocol_too_old')),
-      );
-      await client.close();
-    });
+        await expectLater(
+          client.initialize(),
+          throwsA(
+            isA<McpCallFailure>().having(
+              (e) => e.reason,
+              'reason',
+              'protocol_too_old',
+            ),
+          ),
+        );
+        await client.close();
+      },
+    );
   });
 
   group('McpClient.listTools', () {
     test('returns parsed descriptors', () async {
-      final transport = InMemoryMcpTransport(respond: (out) async {
-        if (out is JsonRpcRequest && out.method == McpMethod.toolsList) {
-          return [
-            _ok(out.id, {
-              'tools': [
-                {
-                  'name': 'echo',
-                  'description': 'echoes its input',
-                  'inputSchema': {
-                    'type': 'object',
-                    'properties': {
-                      'message': {'type': 'string'},
+      final transport = InMemoryMcpTransport(
+        respond: (out) async {
+          if (out is JsonRpcRequest && out.method == McpMethod.toolsList) {
+            return [
+              _ok(out.id, {
+                'tools': [
+                  {
+                    'name': 'echo',
+                    'description': 'echoes its input',
+                    'inputSchema': {
+                      'type': 'object',
+                      'properties': {
+                        'message': {'type': 'string'},
+                      },
                     },
                   },
-                },
-                {
-                  'name': 'add',
-                  'description': 'adds two numbers',
-                  'inputSchema': {'type': 'object'},
-                },
-              ],
-            }),
-          ];
-        }
-        return [];
-      });
+                  {
+                    'name': 'add',
+                    'description': 'adds two numbers',
+                    'inputSchema': {'type': 'object'},
+                  },
+                ],
+              }),
+            ];
+          }
+          return [];
+        },
+      );
       final client = McpClient(transport: transport);
 
       final tools = await client.listTools();
@@ -114,19 +133,21 @@ void main() {
 
   group('McpClient.callTool', () {
     test('returns text content concatenated as textPayload', () async {
-      final transport = InMemoryMcpTransport(respond: (out) async {
-        if (out is JsonRpcRequest && out.method == McpMethod.toolsCall) {
-          return [
-            _ok(out.id, {
-              'content': [
-                {'type': 'text', 'text': 'line 1'},
-                {'type': 'text', 'text': 'line 2'},
-              ],
-            }),
-          ];
-        }
-        return [];
-      });
+      final transport = InMemoryMcpTransport(
+        respond: (out) async {
+          if (out is JsonRpcRequest && out.method == McpMethod.toolsCall) {
+            return [
+              _ok(out.id, {
+                'content': [
+                  {'type': 'text', 'text': 'line 1'},
+                  {'type': 'text', 'text': 'line 2'},
+                ],
+              }),
+            ];
+          }
+          return [];
+        },
+      );
       final client = McpClient(transport: transport);
 
       final result = await client.callTool('echo', {'msg': 'hi'});
@@ -136,41 +157,47 @@ void main() {
     });
 
     test('surfaces server error as McpCallFailure with code', () async {
-      final transport = InMemoryMcpTransport(respond: (out) async {
-        if (out is JsonRpcRequest && out.method == McpMethod.toolsCall) {
-          return [_err(out.id, -32602, 'invalid args')];
-        }
-        return [];
-      });
+      final transport = InMemoryMcpTransport(
+        respond: (out) async {
+          if (out is JsonRpcRequest && out.method == McpMethod.toolsCall) {
+            return [_err(out.id, -32602, 'invalid args')];
+          }
+          return [];
+        },
+      );
       final client = McpClient(transport: transport);
 
       await expectLater(
         client.callTool('bad', const {}),
-        throwsA(isA<McpCallFailure>()
-            .having((e) => e.code, 'code', -32602)
-            .having((e) => e.retryable, 'retryable', isFalse)),
+        throwsA(
+          isA<McpCallFailure>()
+              .having((e) => e.code, 'code', -32602)
+              .having((e) => e.retryable, 'retryable', isFalse),
+        ),
       );
       await client.close();
     });
 
     test('retries once on rate-limit error then succeeds', () async {
       var attempts = 0;
-      final transport = InMemoryMcpTransport(respond: (out) async {
-        if (out is JsonRpcRequest && out.method == McpMethod.toolsCall) {
-          attempts++;
-          if (attempts == 1) {
-            return [_err(out.id, McpErrorCode.rateLimited, 'slow down')];
+      final transport = InMemoryMcpTransport(
+        respond: (out) async {
+          if (out is JsonRpcRequest && out.method == McpMethod.toolsCall) {
+            attempts++;
+            if (attempts == 1) {
+              return [_err(out.id, McpErrorCode.rateLimited, 'slow down')];
+            }
+            return [
+              _ok(out.id, {
+                'content': [
+                  {'type': 'text', 'text': 'done'},
+                ],
+              }),
+            ];
           }
-          return [
-            _ok(out.id, {
-              'content': [
-                {'type': 'text', 'text': 'done'},
-              ],
-            }),
-          ];
-        }
-        return [];
-      });
+          return [];
+        },
+      );
       final client = McpClient(transport: transport);
 
       final result = await client.callTool('slow', const {});
@@ -181,26 +208,30 @@ void main() {
   });
 
   group('McpClient drop handling', () {
-    test('pending callTool resolves with retryable failure on transport drop',
-        () async {
-      // Transport that never responds — we hold the request open and
-      // then simulate a drop.
-      final transport = InMemoryMcpTransport(respond: (_) async => []);
-      final client = McpClient(transport: transport);
+    test(
+      'pending callTool resolves with retryable failure on transport drop',
+      () async {
+        // Transport that never responds — we hold the request open and
+        // then simulate a drop.
+        final transport = InMemoryMcpTransport(respond: (_) async => []);
+        final client = McpClient(transport: transport);
 
-      final futureFailure = client.callTool('hang', const {});
-      // Let the request flush to the transport.
-      await Future<void>.delayed(Duration.zero);
-      transport.simulateDrop();
+        final futureFailure = client.callTool('hang', const {});
+        // Let the request flush to the transport.
+        await Future<void>.delayed(Duration.zero);
+        transport.simulateDrop();
 
-      await expectLater(
-        futureFailure,
-        throwsA(isA<McpCallFailure>()
-            .having((e) => e.reason, 'reason', 'disconnected')
-            .having((e) => e.retryable, 'retryable', isTrue)),
-      );
-      await client.close();
-    });
+        await expectLater(
+          futureFailure,
+          throwsA(
+            isA<McpCallFailure>()
+                .having((e) => e.reason, 'reason', 'disconnected')
+                .having((e) => e.retryable, 'retryable', isTrue),
+          ),
+        );
+        await client.close();
+      },
+    );
   });
 
   group('McpClient notifications', () {
@@ -225,22 +256,26 @@ void main() {
   });
 
   group('McpClient timeout', () {
-    test('times out a request after callTimeout with retryable failure',
-        () async {
-      // Transport that never responds.
-      final transport = InMemoryMcpTransport(respond: (_) async => []);
-      final client = McpClient(
-        transport: transport,
-        callTimeout: const Duration(milliseconds: 50),
-      );
+    test(
+      'times out a request after callTimeout with retryable failure',
+      () async {
+        // Transport that never responds.
+        final transport = InMemoryMcpTransport(respond: (_) async => []);
+        final client = McpClient(
+          transport: transport,
+          callTimeout: const Duration(milliseconds: 50),
+        );
 
-      await expectLater(
-        client.callTool('hang', const {}),
-        throwsA(isA<McpCallFailure>()
-            .having((e) => e.reason, 'reason', 'timeout')
-            .having((e) => e.retryable, 'retryable', isTrue)),
-      );
-      await client.close();
-    });
+        await expectLater(
+          client.callTool('hang', const {}),
+          throwsA(
+            isA<McpCallFailure>()
+                .having((e) => e.reason, 'reason', 'timeout')
+                .having((e) => e.retryable, 'retryable', isTrue),
+          ),
+        );
+        await client.close();
+      },
+    );
   });
 }

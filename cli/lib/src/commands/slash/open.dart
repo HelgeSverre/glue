@@ -26,7 +26,8 @@ class OpenCommand extends SlashCommand {
   String get name => 'open';
 
   @override
-  String get description => 'Open a Glue directory in your file manager '
+  String get description =>
+      'Open a Glue directory in your file manager '
       '(${_openTargets.join(', ')})';
 
   @override

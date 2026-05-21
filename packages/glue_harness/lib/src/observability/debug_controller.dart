@@ -1,7 +1,7 @@
 class DebugController {
   bool _enabled;
 
-  DebugController({bool enabled = false}) : _enabled = enabled;
+  DebugController({this._enabled = false});
 
   bool get enabled => _enabled;
 

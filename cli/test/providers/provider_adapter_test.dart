@@ -23,8 +23,7 @@ class _FakeAdapter extends ProviderAdapter {
     required ResolvedProvider provider,
     required ResolvedModel model,
     required String systemPrompt,
-  }) =>
-      _FakeClient();
+  }) => _FakeClient();
 }
 
 ProviderDef _provider({
@@ -32,15 +31,14 @@ ProviderDef _provider({
   String adapter = 'fake',
   String? compatibility,
   AuthSpec auth = const AuthSpec(kind: AuthKind.none),
-}) =>
-    ProviderDef(
-      id: id,
-      name: id,
-      adapter: adapter,
-      compatibility: compatibility,
-      auth: auth,
-      models: const {},
-    );
+}) => ProviderDef(
+  id: id,
+  name: id,
+  adapter: adapter,
+  compatibility: compatibility,
+  auth: auth,
+  models: const {},
+);
 
 void main() {
   group('ResolvedProvider', () {

@@ -17,11 +17,7 @@ ModelCatalog loadCatalog({
   ModelCatalog? cachedRemote,
   ModelCatalog? localOverrides,
 }) {
-  final layers = [
-    bundled,
-    if (cachedRemote != null) cachedRemote,
-    if (localOverrides != null) localOverrides
-  ];
+  final layers = [bundled, ?cachedRemote, ?localOverrides];
 
   final capabilities = <String, String>{};
   final providers = <String, ProviderDef>{};

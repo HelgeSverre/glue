@@ -22,10 +22,7 @@ const Map<String, String> openTargets = {
   'cache': 'cache/',
 };
 
-List<SlashArgCandidate> openArgCandidates(
-  List<String> prior,
-  String partial,
-) {
+List<SlashArgCandidate> openArgCandidates(List<String> prior, String partial) {
   if (prior.isNotEmpty) return const [];
   return openTargets.entries
       .where((e) => e.key.startsWith(partial))
@@ -43,11 +40,13 @@ const Map<String, String> providerSubcommands = {
 List<SlashArgCandidate> providerSubcommandCandidates(String partial) {
   return providerSubcommands.entries
       .where((e) => e.key.startsWith(partial))
-      .map((e) => SlashArgCandidate(
-            value: e.key,
-            description: e.value,
-            continues: e.key != 'list',
-          ))
+      .map(
+        (e) => SlashArgCandidate(
+          value: e.key,
+          description: e.value,
+          continues: e.key != 'list',
+        ),
+      )
       .toList();
 }
 
@@ -79,7 +78,8 @@ List<SlashArgCandidate> modelRefCandidates(
   for (final p in providers.values) {
     for (final m in p.models.values) {
       final ref = '${p.id}/${m.id}';
-      final matches = p.id.toLowerCase().startsWith(partial) ||
+      final matches =
+          p.id.toLowerCase().startsWith(partial) ||
           m.id.toLowerCase().contains(partial) ||
           m.name.toLowerCase().contains(partial) ||
           ref.toLowerCase().contains(partial);
@@ -98,10 +98,7 @@ List<SlashArgCandidate> skillCandidates(
 ) {
   return skills
       .where((s) => s.name.toLowerCase().startsWith(partial))
-      .map((s) => SlashArgCandidate(
-            value: s.name,
-            description: s.description,
-          ))
+      .map((s) => SlashArgCandidate(value: s.name, description: s.description))
       .toList();
 }
 
@@ -126,10 +123,7 @@ List<SlashArgCandidate> sessionArgCandidates(
       .toList();
 }
 
-List<SlashArgCandidate> shareArgCandidates(
-  List<String> prior,
-  String partial,
-) {
+List<SlashArgCandidate> shareArgCandidates(List<String> prior, String partial) {
   if (prior.isNotEmpty) return const [];
   return shareFormats.entries
       .where((e) => e.key.startsWith(partial))
@@ -155,22 +149,26 @@ const Map<String, String> mcpAuthSubcommands = {
 List<SlashArgCandidate> mcpSubcommandCandidates(String partial) {
   return mcpSubcommands.entries
       .where((e) => e.key.startsWith(partial))
-      .map((e) => SlashArgCandidate(
-            value: e.key,
-            description: e.value,
-            continues: e.key != 'list' && e.key != 'help',
-          ))
+      .map(
+        (e) => SlashArgCandidate(
+          value: e.key,
+          description: e.value,
+          continues: e.key != 'list' && e.key != 'help',
+        ),
+      )
       .toList();
 }
 
 List<SlashArgCandidate> mcpAuthSubcommandCandidates(String partial) {
   return mcpAuthSubcommands.entries
       .where((e) => e.key.startsWith(partial))
-      .map((e) => SlashArgCandidate(
-            value: e.key,
-            description: e.value,
-            continues: e.key != 'status',
-          ))
+      .map(
+        (e) => SlashArgCandidate(
+          value: e.key,
+          description: e.value,
+          continues: e.key != 'status',
+        ),
+      )
       .toList();
 }
 
@@ -184,18 +182,20 @@ List<SlashArgCandidate> mcpServerIdCandidates(
 }) {
   final needle = partial.toLowerCase();
   return servers
-      .where((s) =>
-          (!requireRemote || s.spec is! McpStdioServerSpec) &&
-          s.id.toLowerCase().startsWith(needle))
-      .map((s) => SlashArgCandidate(
-            value: s.id,
-            description: _mcpKindLabel(s.spec),
-          ))
+      .where(
+        (s) =>
+            (!requireRemote || s.spec is! McpStdioServerSpec) &&
+            s.id.toLowerCase().startsWith(needle),
+      )
+      .map(
+        (s) =>
+            SlashArgCandidate(value: s.id, description: _mcpKindLabel(s.spec)),
+      )
       .toList();
 }
 
 String _mcpKindLabel(McpServerSpec spec) => switch (spec) {
-      McpStdioServerSpec() => 'stdio',
-      McpHttpServerSpec() => 'http+sse',
-      McpWebSocketServerSpec() => 'websocket',
-    };
+  McpStdioServerSpec() => 'stdio',
+  McpHttpServerSpec() => 'http+sse',
+  McpWebSocketServerSpec() => 'websocket',
+};

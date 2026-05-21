@@ -5,13 +5,17 @@ void main() {
   group('CompatibilityProfile.fromString', () {
     test('maps known profile ids', () {
       expect(
-          CompatibilityProfile.fromString('groq'), CompatibilityProfile.groq);
+        CompatibilityProfile.fromString('groq'),
+        CompatibilityProfile.groq,
+      );
       expect(
         CompatibilityProfile.fromString('openrouter'),
         CompatibilityProfile.openrouter,
       );
       expect(
-          CompatibilityProfile.fromString('vllm'), CompatibilityProfile.vllm);
+        CompatibilityProfile.fromString('vllm'),
+        CompatibilityProfile.vllm,
+      );
       expect(
         CompatibilityProfile.fromString('mistral'),
         CompatibilityProfile.mistral,
@@ -22,8 +26,7 @@ void main() {
       );
     });
 
-    test(
-        'ollama is no longer a compatibility profile — falls through to '
+    test('ollama is no longer a compatibility profile — falls through to '
         'openai (Ollama has a dedicated adapter now)', () {
       expect(
         CompatibilityProfile.fromString('ollama'),
@@ -33,7 +36,9 @@ void main() {
 
     test('defaults to openai for unknown / null values', () {
       expect(
-          CompatibilityProfile.fromString(null), CompatibilityProfile.openai);
+        CompatibilityProfile.fromString(null),
+        CompatibilityProfile.openai,
+      );
       expect(
         CompatibilityProfile.fromString('unknown-vendor'),
         CompatibilityProfile.openai,

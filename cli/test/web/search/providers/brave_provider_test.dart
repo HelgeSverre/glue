@@ -21,7 +21,8 @@ void main() {
     });
 
     test('parseResponse handles valid JSON', () {
-      final json = jsonDecode('''{
+      final json =
+          jsonDecode('''{
         "web": {
           "results": [
             {
@@ -36,7 +37,8 @@ void main() {
             }
           ]
         }
-      }''') as Map<String, dynamic>;
+      }''')
+              as Map<String, dynamic>;
 
       final results = BraveSearchProvider.parseResponse(json, 'test');
       expect(results.results, hasLength(2));

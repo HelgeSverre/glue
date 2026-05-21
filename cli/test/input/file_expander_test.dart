@@ -11,10 +11,10 @@ void main() {
     });
 
     test('multiple tokens in one message', () {
-      expect(
-        extractFileRefs('@foo.dart and @bar.json'),
-        ['foo.dart', 'bar.json'],
-      );
+      expect(extractFileRefs('@foo.dart and @bar.json'), [
+        'foo.dart',
+        'bar.json',
+      ]);
     });
 
     test('no tokens returns empty list', () {
@@ -30,24 +30,19 @@ void main() {
     });
 
     test('paths with subdirectories', () {
-      expect(
-        extractFileRefs('@lib/src/agent/core.dart'),
-        ['lib/src/agent/core.dart'],
-      );
+      expect(extractFileRefs('@lib/src/agent/core.dart'), [
+        'lib/src/agent/core.dart',
+      ]);
     });
 
     test('double-quoted paths with spaces', () {
-      expect(
-        extractFileRefs('@"path with spaces/file.dart"'),
-        ['path with spaces/file.dart'],
-      );
+      expect(extractFileRefs('@"path with spaces/file.dart"'), [
+        'path with spaces/file.dart',
+      ]);
     });
 
     test('single-quoted paths', () {
-      expect(
-        extractFileRefs("@'some/path.dart'"),
-        ['some/path.dart'],
-      );
+      expect(extractFileRefs("@'some/path.dart'"), ['some/path.dart']);
     });
   });
 
@@ -113,8 +108,11 @@ void main() {
       }.entries) {
         File(p.join(tmpDir.path, entry.key)).writeAsStringSync('x');
         final result = expandFileRefs('@${entry.key}', cwd: tmpDir.path);
-        expect(result, contains('```${entry.value}'),
-            reason: '${entry.key} should map to ${entry.value}');
+        expect(
+          result,
+          contains('```${entry.value}'),
+          reason: '${entry.key} should map to ${entry.value}',
+        );
       }
     });
 

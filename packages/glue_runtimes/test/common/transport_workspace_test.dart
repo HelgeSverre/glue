@@ -82,19 +82,21 @@ void main() {
       expect(utf8.decode(fs.files['/workspace/x.txt']!), 'héllo');
     });
 
-    test('list anchors entry paths under the requested dir + flags dirs',
-        () async {
-      final fs = _FakeFs()
-        ..dirs.add('/workspace')
-        ..dirs.add('/workspace/lib')
-        ..files['/workspace/README.md'] = utf8.encode('x');
-      final ws = TransportWorkspace(fs: fs, mapping: mapping);
-      final entries = await ws.list('/workspace');
-      expect(
-        entries.map((e) => (e.path, e.isDirectory)).toSet(),
-        {('/workspace/lib', true), ('/workspace/README.md', false)},
-      );
-    });
+    test(
+      'list anchors entry paths under the requested dir + flags dirs',
+      () async {
+        final fs = _FakeFs()
+          ..dirs.add('/workspace')
+          ..dirs.add('/workspace/lib')
+          ..files['/workspace/README.md'] = utf8.encode('x');
+        final ws = TransportWorkspace(fs: fs, mapping: mapping);
+        final entries = await ws.list('/workspace');
+        expect(entries.map((e) => (e.path, e.isDirectory)).toSet(), {
+          ('/workspace/lib', true),
+          ('/workspace/README.md', false),
+        });
+      },
+    );
 
     test('list on non-directory throws WorkspaceAccessError', () async {
       final fs = _FakeFs()..files['/workspace/file'] = utf8.encode('x');

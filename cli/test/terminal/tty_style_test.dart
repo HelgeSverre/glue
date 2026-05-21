@@ -5,8 +5,11 @@ import 'package:test/test.dart';
 void main() {
   group('styledOrPlain', () {
     test('returns plain text when ANSI is disabled', () {
-      final result =
-          styledOrPlain('hello', (s) => s.bold.red, ansiEnabled: false);
+      final result = styledOrPlain(
+        'hello',
+        (s) => s.bold.red,
+        ansiEnabled: false,
+      );
       expect(result, equals('hello'));
     });
 
@@ -25,12 +28,14 @@ void main() {
       expect(brandDot, equals('●'));
     });
 
-    test('markerOk / markerWarn / markerError / markerInfo are plain glyphs',
-        () {
-      expect(markerOk, equals('✓'));
-      expect(markerWarn, equals('!'));
-      expect(markerError, equals('✗'));
-      expect(markerInfo, equals('·'));
-    });
+    test(
+      'markerOk / markerWarn / markerError / markerInfo are plain glyphs',
+      () {
+        expect(markerOk, equals('✓'));
+        expect(markerWarn, equals('!'));
+        expect(markerError, equals('✗'));
+        expect(markerInfo, equals('·'));
+      },
+    );
   });
 }

@@ -94,10 +94,10 @@ void main() {
               'content': {
                 'role': 'model',
                 'parts': [
-                  {'text': 'Hello '}
+                  {'text': 'Hello '},
                 ],
-              }
-            }
+              },
+            },
           ],
         },
         {
@@ -106,10 +106,10 @@ void main() {
               'content': {
                 'role': 'model',
                 'parts': [
-                  {'text': 'world'}
+                  {'text': 'world'},
                 ],
-              }
-            }
+              },
+            },
           ],
         },
         {
@@ -132,111 +132,120 @@ void main() {
       expect(usage.outputTokens, 5);
     });
 
-    test('emits ToolCallStart + ToolCallComplete for functionCall parts',
-        () async {
-      final events = [
-        {
-          'candidates': [
-            {
-              'content': {
-                'role': 'model',
-                'parts': [
-                  {
-                    'functionCall': {
-                      'name': 'read_file',
-                      'args': {'path': 'main.dart'},
+    test(
+      'emits ToolCallStart + ToolCallComplete for functionCall parts',
+      () async {
+        final events = [
+          {
+            'candidates': [
+              {
+                'content': {
+                  'role': 'model',
+                  'parts': [
+                    {
+                      'functionCall': {
+                        'name': 'read_file',
+                        'args': {'path': 'main.dart'},
+                      },
                     },
-                  }
-                ],
+                  ],
+                },
+                'finishReason': 'STOP',
               },
-              'finishReason': 'STOP',
-            }
-          ],
-          'usageMetadata': {
-            'promptTokenCount': 12,
-            'candidatesTokenCount': 4,
-            'totalTokenCount': 16,
+            ],
+            'usageMetadata': {
+              'promptTokenCount': 12,
+              'candidatesTokenCount': 4,
+              'totalTokenCount': 16,
+            },
           },
-        },
-      ];
-      final chunks = await GeminiProvider.parseStreamEvents(
-        Stream.fromIterable(events),
-      ).toList();
+        ];
+        final chunks = await GeminiProvider.parseStreamEvents(
+          Stream.fromIterable(events),
+        ).toList();
 
-      final starts = chunks.whereType<ToolCallStart>().toList();
-      final completes = chunks.whereType<ToolCallComplete>().toList();
-      expect(starts, hasLength(1));
-      expect(completes, hasLength(1));
-      expect(starts.first.id, completes.first.toolCall.id);
-      expect(completes.first.toolCall.name, 'read_file');
-      expect(completes.first.toolCall.arguments['path'], 'main.dart');
+        final starts = chunks.whereType<ToolCallStart>().toList();
+        final completes = chunks.whereType<ToolCallComplete>().toList();
+        expect(starts, hasLength(1));
+        expect(completes, hasLength(1));
+        expect(starts.first.id, completes.first.toolCall.id);
+        expect(completes.first.toolCall.name, 'read_file');
+        expect(completes.first.toolCall.arguments['path'], 'main.dart');
 
-      // ToolCallStart precedes ToolCallComplete.
-      final startIdx = chunks.indexWhere((c) => c is ToolCallStart);
-      final completeIdx = chunks.indexWhere((c) => c is ToolCallComplete);
-      expect(startIdx, lessThan(completeIdx));
-    });
+        // ToolCallStart precedes ToolCallComplete.
+        final startIdx = chunks.indexWhere((c) => c is ToolCallStart);
+        final completeIdx = chunks.indexWhere((c) => c is ToolCallComplete);
+        expect(startIdx, lessThan(completeIdx));
+      },
+    );
 
-    test('captures thoughtSignature from a thinking-mode functionCall part',
-        () async {
-      final events = [
-        {
-          'candidates': [
-            {
-              'content': {
-                'role': 'model',
-                'parts': [
-                  {
-                    'functionCall': {
-                      'name': 'web_search',
-                      'args': {'query': 'who is Necati Özmen'},
+    test(
+      'captures thoughtSignature from a thinking-mode functionCall part',
+      () async {
+        final events = [
+          {
+            'candidates': [
+              {
+                'content': {
+                  'role': 'model',
+                  'parts': [
+                    {
+                      'functionCall': {
+                        'name': 'web_search',
+                        'args': {'query': 'who is Necati Özmen'},
+                      },
+                      'thoughtSignature': 'opaque-token-abc123',
                     },
-                    'thoughtSignature': 'opaque-token-abc123',
-                  }
-                ],
+                  ],
+                },
+                'finishReason': 'STOP',
               },
-              'finishReason': 'STOP',
-            }
-          ],
-        },
-      ];
-      final chunks = await GeminiProvider.parseStreamEvents(
-        Stream.fromIterable(events),
-      ).toList();
-      final completes = chunks.whereType<ToolCallComplete>().toList();
-      expect(completes, hasLength(1));
-      expect(completes.first.toolCall.thoughtSignature, 'opaque-token-abc123');
-    });
+            ],
+          },
+        ];
+        final chunks = await GeminiProvider.parseStreamEvents(
+          Stream.fromIterable(events),
+        ).toList();
+        final completes = chunks.whereType<ToolCallComplete>().toList();
+        expect(completes, hasLength(1));
+        expect(
+          completes.first.toolCall.thoughtSignature,
+          'opaque-token-abc123',
+        );
+      },
+    );
 
-    test('captures thoughtSignature when nested under functionCall (alt shape)',
-        () async {
-      final events = [
-        {
-          'candidates': [
-            {
-              'content': {
-                'role': 'model',
-                'parts': [
-                  {
-                    'functionCall': {
-                      'name': 'web_search',
-                      'args': {'query': 'q'},
-                      'thoughtSignature': 'nested-token-xyz',
+    test(
+      'captures thoughtSignature when nested under functionCall (alt shape)',
+      () async {
+        final events = [
+          {
+            'candidates': [
+              {
+                'content': {
+                  'role': 'model',
+                  'parts': [
+                    {
+                      'functionCall': {
+                        'name': 'web_search',
+                        'args': {'query': 'q'},
+                        'thoughtSignature': 'nested-token-xyz',
+                      },
                     },
-                  }
-                ],
+                  ],
+                },
+                'finishReason': 'STOP',
               },
-              'finishReason': 'STOP',
-            }
-          ],
-        },
-      ];
-      final chunks = await GeminiProvider.parseStreamEvents(
-        Stream.fromIterable(events),
-      ).toList();
-      final completes = chunks.whereType<ToolCallComplete>().toList();
-      expect(completes.first.toolCall.thoughtSignature, 'nested-token-xyz');
-    });
+            ],
+          },
+        ];
+        final chunks = await GeminiProvider.parseStreamEvents(
+          Stream.fromIterable(events),
+        ).toList();
+        final completes = chunks.whereType<ToolCallComplete>().toList();
+        expect(completes.first.toolCall.thoughtSignature, 'nested-token-xyz');
+      },
+    );
 
     test('thoughtSignature is null when the field is absent', () async {
       final events = [
@@ -251,11 +260,11 @@ void main() {
                       'name': 'read_file',
                       'args': {'path': 'x.dart'},
                     },
-                  }
+                  },
                 ],
               },
               'finishReason': 'STOP',
-            }
+            },
           ],
         },
       ];
@@ -263,34 +272,37 @@ void main() {
         Stream.fromIterable(events),
       ).toList();
       expect(
-          chunks.whereType<ToolCallComplete>().single.toolCall.thoughtSignature,
-          isNull);
+        chunks.whereType<ToolCallComplete>().single.toolCall.thoughtSignature,
+        isNull,
+      );
     });
 
-    test('always emits a UsageInfo even when usageMetadata is absent',
-        () async {
-      final events = <Map<String, dynamic>>[
-        {
-          'candidates': [
-            {
-              'content': {
-                'role': 'model',
-                'parts': [
-                  {'text': 'hi'}
-                ],
-              }
-            }
-          ],
-        },
-      ];
-      final chunks = await GeminiProvider.parseStreamEvents(
-        Stream.fromIterable(events),
-      ).toList();
+    test(
+      'always emits a UsageInfo even when usageMetadata is absent',
+      () async {
+        final events = <Map<String, dynamic>>[
+          {
+            'candidates': [
+              {
+                'content': {
+                  'role': 'model',
+                  'parts': [
+                    {'text': 'hi'},
+                  ],
+                },
+              },
+            ],
+          },
+        ];
+        final chunks = await GeminiProvider.parseStreamEvents(
+          Stream.fromIterable(events),
+        ).toList();
 
-      final usage = chunks.whereType<UsageInfo>().single;
-      expect(usage.inputTokens, 0);
-      expect(usage.outputTokens, 0);
-    });
+        final usage = chunks.whereType<UsageInfo>().single;
+        expect(usage.inputTokens, 0);
+        expect(usage.outputTokens, 0);
+      },
+    );
   });
 }
 
@@ -301,18 +313,14 @@ class _FakeTool extends Tool {
   String get description => 'Echo a message a number of times.';
   @override
   List<ToolParameter> get parameters => const [
-        ToolParameter(
-          name: 'msg',
-          type: 'string',
-          description: 'Message to echo.',
-        ),
-        ToolParameter(
-          name: 'count',
-          type: 'integer',
-          description: 'Repeat count.',
-          required: false,
-        ),
-      ];
+    ToolParameter(name: 'msg', type: 'string', description: 'Message to echo.'),
+    ToolParameter(
+      name: 'count',
+      type: 'integer',
+      description: 'Repeat count.',
+      required: false,
+    ),
+  ];
   @override
   Future<ToolResult> execute(Map<String, dynamic> args) async =>
       ToolResult(content: 'noop');
@@ -325,13 +333,13 @@ class _ArrayTool extends Tool {
   String get description => 'Apply tags.';
   @override
   List<ToolParameter> get parameters => const [
-        ToolParameter(
-          name: 'tags',
-          type: 'array',
-          description: 'List of tags.',
-          items: {'type': 'string'},
-        ),
-      ];
+    ToolParameter(
+      name: 'tags',
+      type: 'array',
+      description: 'List of tags.',
+      items: {'type': 'string'},
+    ),
+  ];
   @override
   Future<ToolResult> execute(Map<String, dynamic> args) async =>
       ToolResult(content: 'noop');

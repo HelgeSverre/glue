@@ -55,8 +55,11 @@ class DockerBrowserProvider implements BrowserEndpointProvider {
   @override
   Future<BrowserEndpoint> provision() async {
     try {
-      final versionResult = await Process.run(
-          'docker', ['version', '--format', '{{.Server.Version}}']);
+      final versionResult = await Process.run('docker', [
+        'version',
+        '--format',
+        '{{.Server.Version}}',
+      ]);
       if (versionResult.exitCode != 0) {
         throw StateError('Docker is not available');
       }

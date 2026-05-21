@@ -61,14 +61,8 @@ void main() {
         path: '${dir.path}/credentials.json',
         env: const {},
       );
-      expect(
-        store.resolve(const StoredCredential('anthropic')),
-        'sk-stored',
-      );
-      expect(
-        store.resolve(const StoredCredential('openai')),
-        isNull,
-      );
+      expect(store.resolve(const StoredCredential('anthropic')), 'sk-stored');
+      expect(store.resolve(const StoredCredential('openai')), isNull);
     });
 
     test('missing credentials file is treated as empty (not an error)', () {
@@ -155,10 +149,9 @@ void main() {
       expect((providers['anthropic'] as Map)['api_key'], 'sk-v1');
       expect((providers['openai'] as Map)['api_key'], 'sk-v2');
       expect(
-        Directory(dir.path)
-            .listSync()
-            .where((e) => e.path.endsWith('.tmp'))
-            .length,
+        Directory(
+          dir.path,
+        ).listSync().where((e) => e.path.endsWith('.tmp')).length,
         0,
         reason: 'temp files must be cleaned up after atomic rename',
       );
@@ -166,10 +159,7 @@ void main() {
   });
 
   group('CredentialStore.resolveForProvider', () {
-    ProviderDef provider({
-      required String id,
-      required AuthSpec auth,
-    }) =>
+    ProviderDef provider({required String id, required AuthSpec auth}) =>
         ProviderDef(
           id: id,
           name: id,
@@ -185,8 +175,10 @@ void main() {
         path: '${dir.path}/credentials.json',
         env: const {},
       );
-      final p =
-          provider(id: 'ollama', auth: const AuthSpec(kind: AuthKind.none));
+      final p = provider(
+        id: 'ollama',
+        auth: const AuthSpec(kind: AuthKind.none),
+      );
       expect(store.resolveForProvider(p), isNull);
     });
 
@@ -199,8 +191,10 @@ void main() {
       );
       final p = provider(
         id: 'anthropic',
-        auth:
-            const AuthSpec(kind: AuthKind.apiKey, envVar: 'ANTHROPIC_API_KEY'),
+        auth: const AuthSpec(
+          kind: AuthKind.apiKey,
+          envVar: 'ANTHROPIC_API_KEY',
+        ),
       );
       expect(store.resolveForProvider(p), 'sk-env');
     });
@@ -215,8 +209,10 @@ void main() {
       store.setApiKey('anthropic', 'sk-stored-fallback');
       final p = provider(
         id: 'anthropic',
-        auth:
-            const AuthSpec(kind: AuthKind.apiKey, envVar: 'ANTHROPIC_API_KEY'),
+        auth: const AuthSpec(
+          kind: AuthKind.apiKey,
+          envVar: 'ANTHROPIC_API_KEY',
+        ),
       );
       expect(
         store.resolveForProvider(p),

@@ -1,3 +1,5 @@
+import 'package:glue_harness/src/config/build_info_generated.dart';
+
 /// Build metadata injected via `dart compile --define` flags.
 ///
 /// Populated by `just build` / `just release` with the build timestamp and
@@ -5,21 +7,17 @@
 /// and the formatted output falls back to `(dev)`.
 class BuildInfo {
   /// ISO-8601 UTC timestamp of when the binary was compiled.
-  static const String buildTime =
-      String.fromEnvironment('GLUE_BUILD_TIME', defaultValue: '');
+  static const String buildTime = packageBuildTime;
 
   /// Short git SHA (e.g. `a1b2c3d`) at compile time.
-  static const String gitSha =
-      String.fromEnvironment('GLUE_GIT_SHA', defaultValue: '');
+  static const String gitSha = packageGitSha;
 
   /// Non-empty marker (e.g. `+dirty`) when the working tree had uncommitted
   /// changes at compile time.
-  static const String gitDirty =
-      String.fromEnvironment('GLUE_GIT_DIRTY', defaultValue: '');
+  static const String gitDirty = packageGitDirty;
 
   /// Host that produced the build — typically `$USER@$HOSTNAME` or `ci`.
-  static const String builtBy =
-      String.fromEnvironment('GLUE_BUILT_BY', defaultValue: '');
+  static const String builtBy = packageBuiltBy;
 
   /// True when any build metadata was injected at compile time.
   static bool get isReleaseBuild => buildTime.isNotEmpty || gitSha.isNotEmpty;

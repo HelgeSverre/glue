@@ -12,30 +12,26 @@ import 'package:glue_server/src/jsonrpc/messages.dart';
 Map<String, Object?> encodeJsonRpc(JsonRpcMessage message) {
   return switch (message) {
     JsonRpcRequest(:final id, :final method, :final params) => {
-        'jsonrpc': '2.0',
-        'id': id,
-        'method': method,
-        if (params != null) 'params': params,
-      },
+      'jsonrpc': '2.0',
+      'id': id,
+      'method': method,
+      'params': ?params,
+    },
     JsonRpcNotification(:final method, :final params) => {
-        'jsonrpc': '2.0',
-        'method': method,
-        if (params != null) 'params': params,
-      },
+      'jsonrpc': '2.0',
+      'method': method,
+      'params': ?params,
+    },
     JsonRpcResponse(:final id, :final result) => {
-        'jsonrpc': '2.0',
-        'id': id,
-        'result': result,
-      },
+      'jsonrpc': '2.0',
+      'id': id,
+      'result': result,
+    },
     JsonRpcError(:final id, :final code, :final message, :final data) => {
-        'jsonrpc': '2.0',
-        'id': id,
-        'error': {
-          'code': code,
-          'message': message,
-          if (data != null) 'data': data,
-        },
-      },
+      'jsonrpc': '2.0',
+      'id': id,
+      'error': {'code': code, 'message': message, 'data': ?data},
+    },
   };
 }
 
@@ -97,11 +93,7 @@ JsonRpcMessage decodeJsonRpc(Map<String, Object?> payload) {
     final paramsRaw = payload['params'];
     final params = paramsRaw is Map ? paramsRaw.cast<String, Object?>() : null;
     if (hasId) {
-      return JsonRpcRequest(
-        id: payload['id']!,
-        method: method,
-        params: params,
-      );
+      return JsonRpcRequest(id: payload['id']!, method: method, params: params);
     }
     return JsonRpcNotification(method: method, params: params);
   }

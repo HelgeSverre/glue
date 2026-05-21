@@ -94,12 +94,14 @@ List<McpTool> buildMcpTools({
 }) {
   return descriptors
       .where((d) => !reservedNames.contains(d.name))
-      .map((d) => McpTool(
-            client: client,
-            serverId: serverId,
-            bareName: d.name,
-            descriptor: d,
-          ))
+      .map(
+        (d) => McpTool(
+          client: client,
+          serverId: serverId,
+          bareName: d.name,
+          descriptor: d,
+        ),
+      )
       .toList();
 }
 
@@ -115,8 +117,9 @@ List<ToolParameter> _parametersFromInputSchema(Map<String, dynamic> schema) {
   return properties.entries.map((entry) {
     final paramName = entry.key.toString();
     final raw = entry.value;
-    final prop =
-        raw is Map ? raw.cast<String, dynamic>() : const <String, dynamic>{};
+    final prop = raw is Map
+        ? raw.cast<String, dynamic>()
+        : const <String, dynamic>{};
     return ToolParameter(
       name: paramName,
       type: (prop['type'] as String?) ?? 'string',

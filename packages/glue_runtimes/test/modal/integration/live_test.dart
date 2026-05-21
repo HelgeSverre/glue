@@ -32,31 +32,35 @@ void main() {
       }
     });
 
-    test('start / exec / read / write / shutdown round-trip', () async {
-      const config = ModalConfig(appName: 'glue-it');
-      final sidecar = ModalSidecar(config);
+    test(
+      'start / exec / read / write / shutdown round-trip',
+      () async {
+        const config = ModalConfig(appName: 'glue-it');
+        final sidecar = ModalSidecar(config);
 
-      try {
-        await sidecar.start();
+        try {
+          await sidecar.start();
 
-        // Sync exec
-        final exec = await sidecar.execCapture('echo hello');
-        expect(exec.exitCode, 0);
-        expect(exec.stdout.trim(), 'hello');
+          // Sync exec
+          final exec = await sidecar.execCapture('echo hello');
+          expect(exec.exitCode, 0);
+          expect(exec.stdout.trim(), 'hello');
 
-        // FS round-trip via sidecar helpers
-        await sidecar.writeFile(
-          '/tmp/glue-it.txt',
-          'glue-modal-integration\n'.codeUnits,
-        );
-        final bytes = await sidecar.readFile('/tmp/glue-it.txt');
-        expect(String.fromCharCodes(bytes).trim(), 'glue-modal-integration');
+          // FS round-trip via sidecar helpers
+          await sidecar.writeFile(
+            '/tmp/glue-it.txt',
+            'glue-modal-integration\n'.codeUnits,
+          );
+          final bytes = await sidecar.readFile('/tmp/glue-it.txt');
+          expect(String.fromCharCodes(bytes).trim(), 'glue-modal-integration');
 
-        final entries = await sidecar.listDir('/tmp');
-        expect(entries.any((e) => e.name == 'glue-it.txt'), isTrue);
-      } finally {
-        await sidecar.shutdown();
-      }
-    }, timeout: const Timeout(Duration(minutes: 3)));
+          final entries = await sidecar.listDir('/tmp');
+          expect(entries.any((e) => e.name == 'glue-it.txt'), isTrue);
+        } finally {
+          await sidecar.shutdown();
+        }
+      },
+      timeout: const Timeout(Duration(minutes: 3)),
+    );
   });
 }

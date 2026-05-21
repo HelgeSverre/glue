@@ -142,7 +142,8 @@ class McpClient {
         'arguments': arguments,
       });
       return McpToolCallResult.fromJson(
-          (result as Map).cast<String, dynamic>());
+        (result as Map).cast<String, dynamic>(),
+      );
     } on McpCallFailure catch (e) {
       if (e.code != McpErrorCode.rateLimited) rethrow;
       // Retry once after the server-suggested delay.
@@ -155,16 +156,15 @@ class McpClient {
         'arguments': arguments,
       });
       return McpToolCallResult.fromJson(
-          (result as Map).cast<String, dynamic>());
+        (result as Map).cast<String, dynamic>(),
+      );
     }
   }
 
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
-    _failAllPending(
-      const McpCallFailure(reason: 'shutdown', retryable: false),
-    );
+    _failAllPending(const McpCallFailure(reason: 'shutdown', retryable: false));
     await _incomingSub?.cancel();
     _incomingSub = null;
     await transport.close();
@@ -211,32 +211,38 @@ class McpClient {
       case JsonRpcError(:final id, :final code, :final message):
         final intId = _coerceId(id);
         final c = intId != null ? _pending.remove(intId) : null;
-        c?.completeError(McpCallFailure(
-          reason: 'server_error',
-          code: code,
-          message: message,
-          retryable: code == McpErrorCode.rateLimited,
-        ));
+        c?.completeError(
+          McpCallFailure(
+            reason: 'server_error',
+            code: code,
+            message: message,
+            retryable: code == McpErrorCode.rateLimited,
+          ),
+        );
       case JsonRpcNotification(:final method, :final params):
         _notifications.add(McpNotification(method: method, params: params));
       case JsonRpcRequest():
         // Servers may send requests (e.g. sampling). We don't support any
         // server→client requests in v1; reply with method-not-found so
         // the server gets a clean negative rather than a hang.
-        transport.send(JsonRpcError(
-          id: msg.id,
-          code: -32601,
-          message: 'Method not found: ${msg.method}',
-        ));
+        transport.send(
+          JsonRpcError(
+            id: msg.id,
+            code: -32601,
+            message: 'Method not found: ${msg.method}',
+          ),
+        );
     }
   }
 
   void _handleTransportError(Object error) {
-    _failAllPending(McpCallFailure(
-      reason: 'transport_error',
-      message: error.toString(),
-      retryable: true,
-    ));
+    _failAllPending(
+      McpCallFailure(
+        reason: 'transport_error',
+        message: error.toString(),
+        retryable: true,
+      ),
+    );
   }
 
   void _handleTransportDone() {

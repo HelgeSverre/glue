@@ -80,10 +80,10 @@ void main() {
     });
 
     test('shows args when provided', () {
-      final output = renderer.renderToolCall(
-        'readFile',
-        {'path': '/tmp/test.txt', 'encoding': 'utf8'},
-      );
+      final output = renderer.renderToolCall('readFile', {
+        'path': '/tmp/test.txt',
+        'encoding': 'utf8',
+      });
       expect(output, contains('path'));
       expect(output, contains('/tmp/test.txt'));
       expect(output, contains('encoding'));
@@ -232,24 +232,25 @@ void main() {
 
   group('renderToolCall file path links', () {
     test('tool call with path arg wraps in OSC 8 file:// link', () {
-      final result =
-          renderer.renderToolCall('read_file', {'path': '/src/main.dart'});
+      final result = renderer.renderToolCall('read_file', {
+        'path': '/src/main.dart',
+      });
       expect(result, contains('\x1b]8;;file:///src/main.dart\x07'));
       expect(result, contains('/src/main.dart'));
       expect(result, contains('\x1b]8;;\x07'));
     });
 
     test('tool call with relative path arg wraps in OSC 8 link', () {
-      final result =
-          renderer.renderToolCall('read_file', {'path': 'lib/foo.dart'});
+      final result = renderer.renderToolCall('read_file', {
+        'path': 'lib/foo.dart',
+      });
       expect(result, contains(osc8FileLink('lib/foo.dart')));
     });
 
     test('tool call with url arg wraps in OSC 8 link', () {
-      final result = renderer.renderToolCall(
-        'web_fetch',
-        {'url': 'https://example.com/docs'},
-      );
+      final result = renderer.renderToolCall('web_fetch', {
+        'url': 'https://example.com/docs',
+      });
       expect(result, contains('\x1b]8;;https://example.com/docs\x07'));
     });
 
@@ -267,8 +268,9 @@ void main() {
 
   group('renderToolResult grep output links', () {
     test('grep-style file:line output gets file path linked', () {
-      final result =
-          renderer.renderToolResult('src/main.dart:42:  print("hello");');
+      final result = renderer.renderToolResult(
+        'src/main.dart:42:  print("hello");',
+      );
       expect(
         result,
         contains('\x1b]8;;${File('src/main.dart').absolute.uri}\x07'),
@@ -288,8 +290,9 @@ void main() {
     });
 
     test('bare URLs in tool results are linked', () {
-      final result = renderer
-          .renderToolResult('Published gist: https://gist.github.com/x/y');
+      final result = renderer.renderToolResult(
+        'Published gist: https://gist.github.com/x/y',
+      );
       expect(result, contains('\x1b]8;;https://gist.github.com/x/y\x07'));
     });
   });
@@ -322,8 +325,10 @@ void main() {
     test('renders side borders on content lines', () {
       final output = renderer.renderBash('ls', 'file.txt');
       final stripped = stripAnsi(output);
-      final contentLines =
-          stripped.split('\n').where((l) => l.contains('file.txt')).toList();
+      final contentLines = stripped
+          .split('\n')
+          .where((l) => l.contains('file.txt'))
+          .toList();
       expect(contentLines, isNotEmpty);
       for (final line in contentLines) {
         expect(line, contains('│'));

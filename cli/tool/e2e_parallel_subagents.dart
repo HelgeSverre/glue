@@ -57,9 +57,11 @@ void main() async {
   final manager = AgentManager(
     tools: {
       'list_directory': ListDirectoryTool(
-          LocalWorkspace(WorkspaceMapping.host(fixturesDir.path))),
-      'read_file':
-          ReadFileTool(LocalWorkspace(WorkspaceMapping.host(fixturesDir.path))),
+        LocalWorkspace(WorkspaceMapping.host(fixturesDir.path)),
+      ),
+      'read_file': ReadFileTool(
+        LocalWorkspace(WorkspaceMapping.host(fixturesDir.path)),
+      ),
     },
     llmFactory: llmFactory,
     config: config,
@@ -97,8 +99,9 @@ void main() async {
     print('  id=$id depth=$depth index=$index parent=$parent');
   }
 
-  final completed =
-      events.where((e) => e['type'] == 'subagent_completed').toList();
+  final completed = events
+      .where((e) => e['type'] == 'subagent_completed')
+      .toList();
   print('subagent_completed rows: ${completed.length}');
 
   // --- Build transcript and verify ---
@@ -110,7 +113,8 @@ void main() async {
   print('\nTop-level subagent groups: ${groups.length}');
   for (final g in groups) {
     print(
-        '  ${g.subagentId}  nestingLevel=${g.nestingLevel}  children=${g.children.length}');
+      '  ${g.subagentId}  nestingLevel=${g.nestingLevel}  children=${g.children.length}',
+    );
   }
 
   // --- Render HTML ---
@@ -124,11 +128,14 @@ void main() async {
   print('\nHTML written to: $htmlPath');
 
   // --- Asserts ---
-  final ok = spawned.length == 3 &&
+  final ok =
+      spawned.length == 3 &&
       completed.length == 3 &&
-      spawned.every((row) =>
-          (row['depth'] as int? ?? -1) == 0 &&
-          row['parent_subagent_id'] == null) &&
+      spawned.every(
+        (row) =>
+            (row['depth'] as int? ?? -1) == 0 &&
+            row['parent_subagent_id'] == null,
+      ) &&
       groups.length == 3 &&
       groups.every((g) => g.nestingLevel == 0);
   print(ok ? '\nPASS' : '\nFAIL');

@@ -30,9 +30,7 @@ class ModelRef {
     final providerId = input.substring(0, slash);
     final modelId = input.substring(slash + 1);
     if (modelId.isEmpty) {
-      throw ModelRefParseException(
-        'model id is empty in "$input"',
-      );
+      throw ModelRefParseException('model id is empty in "$input"');
     }
     return ModelRef(providerId: providerId, modelId: modelId);
   }

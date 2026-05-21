@@ -43,8 +43,10 @@ void main() {
         });
       });
 
-      final result =
-          await exchangeGithubTokenForCopilotToken('gho_xxx', client: client);
+      final result = await exchangeGithubTokenForCopilotToken(
+        'gho_xxx',
+        client: client,
+      );
 
       expect(captured!.headers['authorization'], 'token gho_xxx');
       expect(result.token, 'tid=abc;exp=123');
@@ -69,10 +71,7 @@ void main() {
     test('returns cached token when not near expiry', () async {
       final dir = _scratch();
       addTearDown(() => dir.deleteSync(recursive: true));
-      final store = CredentialStore(
-        path: '${dir.path}/c.json',
-        env: const {},
-      );
+      final store = CredentialStore(path: '${dir.path}/c.json', env: const {});
       final future = DateTime.now().toUtc().add(const Duration(minutes: 20));
       store.setFields('copilot', {
         'github_token': 'gho_xxx',
@@ -90,10 +89,7 @@ void main() {
     test('re-exchanges when token is past expiry', () async {
       final dir = _scratch();
       addTearDown(() => dir.deleteSync(recursive: true));
-      final store = CredentialStore(
-        path: '${dir.path}/c.json',
-        env: const {},
-      );
+      final store = CredentialStore(path: '${dir.path}/c.json', env: const {});
       final past = DateTime.now().toUtc().subtract(const Duration(minutes: 5));
       store.setFields('copilot', {
         'github_token': 'gho_xxx',
@@ -106,7 +102,8 @@ void main() {
         callCount++;
         return _jsonResponse(200, {
           'token': 'tid=fresh',
-          'expires_at': DateTime.now()
+          'expires_at':
+              DateTime.now()
                   .add(const Duration(minutes: 30))
                   .millisecondsSinceEpoch ~/
               1000,
@@ -122,16 +119,14 @@ void main() {
     test('re-exchanges when no copilot_token is stored yet', () async {
       final dir = _scratch();
       addTearDown(() => dir.deleteSync(recursive: true));
-      final store = CredentialStore(
-        path: '${dir.path}/c.json',
-        env: const {},
-      );
+      final store = CredentialStore(path: '${dir.path}/c.json', env: const {});
       store.setFields('copilot', {'github_token': 'gho_xxx'});
 
       final client = _FakeHttp((req) async {
         return _jsonResponse(200, {
           'token': 'tid=initial',
-          'expires_at': DateTime.now()
+          'expires_at':
+              DateTime.now()
                   .add(const Duration(minutes: 30))
                   .millisecondsSinceEpoch ~/
               1000,
@@ -145,10 +140,7 @@ void main() {
     test('throws when no github_token is stored', () async {
       final dir = _scratch();
       addTearDown(() => dir.deleteSync(recursive: true));
-      final store = CredentialStore(
-        path: '${dir.path}/c.json',
-        env: const {},
-      );
+      final store = CredentialStore(path: '${dir.path}/c.json', env: const {});
       final client = _FakeHttp(
         (req) async => throw StateError('no call expected'),
       );

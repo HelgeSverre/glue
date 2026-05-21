@@ -82,7 +82,7 @@ class McpStdioTransport implements JsonRpcTransport {
       // Drain stderr to a sink so the OS pipe doesn't fill and block
       // the child. The server's structured log lives in MCP
       // notifications; stderr is unstructured/diagnostic only.
-      unawaited(process.stderr.drain<void>());
+      process.stderr.drain<void>();
       return McpStdioTransport._(process, inner);
     } catch (e) {
       throw McpStdioTransportSpawnError(command, e);

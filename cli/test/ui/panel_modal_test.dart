@@ -100,8 +100,11 @@ void main() {
         test('each line has correct visible width', () {
           final lines = entry.value.renderFrame(30, 10, 'Test');
           for (var i = 0; i < lines.length; i++) {
-            expect(visibleLength(lines[i]), 30,
-                reason: 'line $i has wrong width');
+            expect(
+              visibleLength(lines[i]),
+              30,
+              reason: 'line $i has wrong width',
+            );
           }
         });
 
@@ -201,8 +204,11 @@ void main() {
     test('preserves line count', () {
       for (final style in BarrierStyle.values) {
         final result = applyBarrier(style, testLines);
-        expect(result.length, testLines.length,
-            reason: '${style.name} changed line count');
+        expect(
+          result.length,
+          testLines.length,
+          reason: '${style.name} changed line count',
+        );
       }
     });
   });
@@ -330,20 +336,22 @@ void main() {
       expect(firstLine, contains('\x1b[2m'));
     });
 
-    test('render with barrier none preserves ANSI background outside panel',
-        () {
-      final noBarrier = PanelModal(
-        title: 'TEST',
-        lines: const ['x'],
-        barrier: BarrierStyle.none,
-        width: PanelFixed(20),
-        height: PanelFixed(6),
-      );
-      final bg = List.generate(12, (_) => '\x1b[31m${'x' * 40}\x1b[0m');
-      final rendered = noBarrier.render(40, 12, bg);
-      final centerRow = rendered[5];
-      expect(centerRow, contains('\x1b[31m'));
-    });
+    test(
+      'render with barrier none preserves ANSI background outside panel',
+      () {
+        final noBarrier = PanelModal(
+          title: 'TEST',
+          lines: const ['x'],
+          barrier: BarrierStyle.none,
+          width: PanelFixed(20),
+          height: PanelFixed(6),
+        );
+        final bg = List.generate(12, (_) => '\x1b[31m${'x' * 40}\x1b[0m');
+        final rendered = noBarrier.render(40, 12, bg);
+        final centerRow = rendered[5];
+        expect(centerRow, contains('\x1b[31m'));
+      },
+    );
   });
 
   group('PanelModal selectable', () {
@@ -462,10 +470,7 @@ void main() {
     });
 
     test('static PanelModal still renders provided lines', () {
-      final panel = PanelModal(
-        title: 'HELP',
-        lines: const ['STATIC'],
-      );
+      final panel = PanelModal(title: 'HELP', lines: const ['STATIC']);
       final grid = panel.render(80, 20, const []);
       final joined = grid.map(stripAnsi).join('\n');
       expect(joined, contains('STATIC'));

@@ -59,16 +59,18 @@ void main() {
       expect(toolResult.text, contains('Check diff first.'));
     });
 
-    test('fails cleanly for unknown skill without mutating conversation',
-        () async {
-      await expectLater(
-        () => activateSkillIntoConversation(
-          agent: agent,
-          skillName: 'does-not-exist',
-        ),
-        throwsA(isA<SkillActivationError>()),
-      );
-      expect(agent.conversation, isEmpty);
-    });
+    test(
+      'fails cleanly for unknown skill without mutating conversation',
+      () async {
+        await expectLater(
+          () => activateSkillIntoConversation(
+            agent: agent,
+            skillName: 'does-not-exist',
+          ),
+          throwsA(isA<SkillActivationError>()),
+        );
+        expect(agent.conversation, isEmpty);
+      },
+    );
   });
 }

@@ -68,18 +68,20 @@ void main() {
 
     await sink.flush();
 
-    expect(client.lastRequest?.url.toString(),
-        'https://collector.example.test/v1/traces');
+    expect(
+      client.lastRequest?.url.toString(),
+      'https://collector.example.test/v1/traces',
+    );
     expect(client.lastHeaders?['Authorization'], 'Bearer secret');
     expect(client.lastHeaders?['Content-Type'], 'application/json');
 
-    final decoded =
-        (jsonDecode(client.lastBody as String) as Map).cast<String, dynamic>();
+    final decoded = (jsonDecode(client.lastBody as String) as Map)
+        .cast<String, dynamic>();
     final resourceSpans = decoded['resourceSpans'] as List;
-    final firstResourceSpan =
-        (resourceSpans.single as Map).cast<String, dynamic>();
-    final resource =
-        (firstResourceSpan['resource'] as Map).cast<String, dynamic>();
+    final firstResourceSpan = (resourceSpans.single as Map)
+        .cast<String, dynamic>();
+    final resource = (firstResourceSpan['resource'] as Map)
+        .cast<String, dynamic>();
     final resourceAttrs = resource['attributes'] as List;
     expect(jsonEncode(resourceAttrs), contains('glue-test'));
     expect(jsonEncode(resourceAttrs), contains('test-project'));

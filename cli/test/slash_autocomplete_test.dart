@@ -5,18 +5,22 @@ import 'package:test/test.dart';
 SlashCommandRegistry _makeRegistry() {
   final reg = SlashCommandRegistry();
   registerBaseCommands(reg);
-  reg.register(SlashCommand.inline(
-    name: 'model',
-    description: 'Show or change model',
-    execute: (_) => '',
-  ));
-  reg.register(SlashCommand.inline(
-    name: 'exit',
-    description: 'Exit the application',
-    aliases: ['quit'],
-    hiddenAliases: ['q'],
-    execute: (_) => '',
-  ));
+  reg.register(
+    SlashCommand.inline(
+      name: 'model',
+      description: 'Show or change model',
+      execute: (_) => '',
+    ),
+  );
+  reg.register(
+    SlashCommand.inline(
+      name: 'exit',
+      description: 'Exit the application',
+      aliases: ['quit'],
+      hiddenAliases: ['q'],
+      execute: (_) => '',
+    ),
+  );
   return reg;
 }
 
@@ -24,27 +28,35 @@ void registerBaseCommands(
   SlashCommandRegistry reg, {
   bool includeModel = false,
 }) {
-  reg.register(SlashCommand.inline(
-    name: 'help',
-    description: 'Show available commands',
-    execute: (_) => '',
-  ));
-  reg.register(SlashCommand.inline(
-    name: 'clear',
-    description: 'Clear conversation history',
-    execute: (_) => '',
-  ));
-  reg.register(SlashCommand.inline(
-    name: 'compact',
-    description: 'Toggle compact mode',
-    execute: (_) => '',
-  ));
-  if (includeModel) {
-    reg.register(SlashCommand.inline(
-      name: 'model',
-      description: 'Show or change model',
+  reg.register(
+    SlashCommand.inline(
+      name: 'help',
+      description: 'Show available commands',
       execute: (_) => '',
-    ));
+    ),
+  );
+  reg.register(
+    SlashCommand.inline(
+      name: 'clear',
+      description: 'Clear conversation history',
+      execute: (_) => '',
+    ),
+  );
+  reg.register(
+    SlashCommand.inline(
+      name: 'compact',
+      description: 'Toggle compact mode',
+      execute: (_) => '',
+    ),
+  );
+  if (includeModel) {
+    reg.register(
+      SlashCommand.inline(
+        name: 'model',
+        description: 'Show or change model',
+        execute: (_) => '',
+      ),
+    );
   }
 }
 
@@ -194,37 +206,45 @@ void main() {
     setUp(() {
       registry = SlashCommandRegistry();
       registerBaseCommands(registry);
-      registry.register(SlashCommand.inline(
-        name: 'model',
-        description: 'Show or change model',
-        execute: (_) => '',
-        argCompleter: (prior, partial) {
-          if (prior.isNotEmpty) return const [];
-          const values = ['sonnet', 'opus', 'haiku'];
-          return values
-              .where((v) => v.startsWith(partial))
-              .map((v) => SlashArgCandidate(value: v, description: 'Claude $v'))
-              .toList();
-        },
-      ));
-      registry.register(SlashCommand.inline(
-        name: 'exit',
-        description: 'Exit the application',
-        aliases: ['quit'],
-        hiddenAliases: ['q'],
-        execute: (_) => '',
-        argCompleter: (prior, partial) {
-          const subs = ['now', 'later'];
-          return subs
-              .where((v) => v.startsWith(partial))
-              .map((v) => SlashArgCandidate(
+      registry.register(
+        SlashCommand.inline(
+          name: 'model',
+          description: 'Show or change model',
+          execute: (_) => '',
+          argCompleter: (prior, partial) {
+            if (prior.isNotEmpty) return const [];
+            const values = ['sonnet', 'opus', 'haiku'];
+            return values
+                .where((v) => v.startsWith(partial))
+                .map(
+                  (v) => SlashArgCandidate(value: v, description: 'Claude $v'),
+                )
+                .toList();
+          },
+        ),
+      );
+      registry.register(
+        SlashCommand.inline(
+          name: 'exit',
+          description: 'Exit the application',
+          aliases: ['quit'],
+          hiddenAliases: ['q'],
+          execute: (_) => '',
+          argCompleter: (prior, partial) {
+            const subs = ['now', 'later'];
+            return subs
+                .where((v) => v.startsWith(partial))
+                .map(
+                  (v) => SlashArgCandidate(
                     value: v,
                     description: 'Exit $v',
                     continues: v == 'later',
-                  ))
-              .toList();
-        },
-      ));
+                  ),
+                )
+                .toList();
+          },
+        ),
+      );
       ac = SlashAutocomplete(registry);
     });
 
@@ -308,17 +328,19 @@ void main() {
 
     test('nested args: priorArgs populated correctly', () {
       final reg = SlashCommandRegistry()
-        ..register(SlashCommand.inline(
-          name: 'clear',
-          description: 'clear',
-          execute: (_) => '',
-          argCompleter: (prior, partial) {
-            if (prior.length == 1 && prior[0] == 'all') {
-              return const [SlashArgCandidate(value: 'confirmed')];
-            }
-            return const [];
-          },
-        ));
+        ..register(
+          SlashCommand.inline(
+            name: 'clear',
+            description: 'clear',
+            execute: (_) => '',
+            argCompleter: (prior, partial) {
+              if (prior.length == 1 && prior[0] == 'all') {
+                return const [SlashArgCandidate(value: 'confirmed')];
+              }
+              return const [];
+            },
+          ),
+        );
       final ac = SlashAutocomplete(reg);
 
       ac.update('/clear all ', 11);
@@ -334,12 +356,14 @@ void main() {
     setUp(() {
       final registry = SlashCommandRegistry();
       registerBaseCommands(registry, includeModel: false);
-      registry.register(SlashCommand.inline(
-        name: 'model',
-        description: 'Show or change model',
-        execute: (_) => '',
-        argCompleter: (_, __) => const [SlashArgCandidate(value: 'sonnet')],
-      ));
+      registry.register(
+        SlashCommand.inline(
+          name: 'model',
+          description: 'Show or change model',
+          execute: (_) => '',
+          argCompleter: (_, _) => const [SlashArgCandidate(value: 'sonnet')],
+        ),
+      );
       ac = SlashAutocomplete(registry);
     });
 

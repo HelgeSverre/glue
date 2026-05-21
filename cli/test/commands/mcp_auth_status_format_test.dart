@@ -5,17 +5,28 @@ void main() {
   group('formatMcpAuthStatus', () {
     test('empty → "No MCP servers configured."', () {
       expect(
-          formatMcpAuthStatus(const []), contains('No MCP servers configured'));
+        formatMcpAuthStatus(const []),
+        contains('No MCP servers configured'),
+      );
     });
 
     test('each row prints id + auth kind + state tag', () {
       final result = formatMcpAuthStatus(const [
         McpAuthStatusRow(
-            id: 'github', kind: 'bearer', state: McpAuthState.stored),
+          id: 'github',
+          kind: 'bearer',
+          state: McpAuthState.stored,
+        ),
         McpAuthStatusRow(
-            id: 'api', kind: 'bearer', state: McpAuthState.missing),
+          id: 'api',
+          kind: 'bearer',
+          state: McpAuthState.missing,
+        ),
         McpAuthStatusRow(
-            id: 'saas', kind: 'oauth', state: McpAuthState.notLoggedIn),
+          id: 'saas',
+          kind: 'oauth',
+          state: McpAuthState.notLoggedIn,
+        ),
         McpAuthStatusRow(id: 'fs', kind: 'none', state: McpAuthState.none),
       ]);
       expect(result, contains('github'));
@@ -32,7 +43,10 @@ void main() {
     test('default (no TTY) emits no ANSI', () {
       final result = formatMcpAuthStatus(const [
         McpAuthStatusRow(
-            id: 'github', kind: 'bearer', state: McpAuthState.stored),
+          id: 'github',
+          kind: 'bearer',
+          state: McpAuthState.stored,
+        ),
       ]);
       expect(result, isNot(contains('\x1b[')));
     });
@@ -41,11 +55,20 @@ void main() {
       test('stored uses ✓, missing/not-logged-in use !, none uses ·', () {
         final result = formatMcpAuthStatus(const [
           McpAuthStatusRow(
-              id: 'stored', kind: 'bearer', state: McpAuthState.stored),
+            id: 'stored',
+            kind: 'bearer',
+            state: McpAuthState.stored,
+          ),
           McpAuthStatusRow(
-              id: 'gone', kind: 'bearer', state: McpAuthState.missing),
+            id: 'gone',
+            kind: 'bearer',
+            state: McpAuthState.missing,
+          ),
           McpAuthStatusRow(
-              id: 'fresh', kind: 'oauth', state: McpAuthState.notLoggedIn),
+            id: 'fresh',
+            kind: 'oauth',
+            state: McpAuthState.notLoggedIn,
+          ),
           McpAuthStatusRow(id: 'open', kind: 'none', state: McpAuthState.none),
         ], ansiEnabled: true);
         final lines = result.split('\n');

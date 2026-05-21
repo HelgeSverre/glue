@@ -105,20 +105,20 @@ class MountEntry {
   }
 
   Map<String, dynamic> toJson() => {
-        'host_path': hostPath,
-        'mode': mode.name,
-        if (containerPath != null) 'container_path': containerPath,
-        if (addedAt != null) 'added_at': addedAt!.toIso8601String(),
-      };
+    'host_path': hostPath,
+    'mode': mode.name,
+    if (containerPath != null) 'container_path': containerPath,
+    if (addedAt != null) 'added_at': addedAt!.toIso8601String(),
+  };
 
   factory MountEntry.fromJson(Map<String, dynamic> json) => MountEntry(
-        hostPath: json['host_path'] as String,
-        mode: json['mode'] == 'ro' ? MountMode.ro : MountMode.rw,
-        containerPath: json['container_path'] as String?,
-        addedAt: json['added_at'] != null
-            ? DateTime.parse(json['added_at'] as String)
-            : null,
-      );
+    hostPath: json['host_path'] as String,
+    mode: json['mode'] == 'ro' ? MountMode.ro : MountMode.rw,
+    containerPath: json['container_path'] as String?,
+    addedAt: json['added_at'] != null
+        ? DateTime.parse(json['added_at'] as String)
+        : null,
+  );
 }
 
 class DockerConfig {

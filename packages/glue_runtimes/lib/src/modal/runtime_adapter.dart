@@ -21,8 +21,8 @@ ModalConfig modalConfigFromOptions(
     image: (options['image'] as String?) ?? e['MODAL_IMAGE'],
     sandboxTimeoutSeconds:
         int.tryParse(options['sandbox_timeout_seconds']?.toString() ?? '') ??
-            int.tryParse(e['MODAL_SANDBOX_TIMEOUT'] ?? '') ??
-            1800,
+        int.tryParse(e['MODAL_SANDBOX_TIMEOUT'] ?? '') ??
+        1800,
     deleteOnClose: options['delete_on_close'] is bool
         ? options['delete_on_close'] as bool
         : (e['MODAL_DELETE_ON_CLOSE']?.toLowerCase() != 'false'),
@@ -32,15 +32,16 @@ ModalConfig modalConfigFromOptions(
 /// Registers the Modal adapter with [RuntimeFactory]. Call once at
 /// startup before [ServiceLocator.create].
 void registerModalRuntime() {
-  RuntimeFactory.register(
-    'modal',
-    ({required cwd, required options, eventSink}) async {
-      final config = modalConfigFromOptions(options);
-      return ModalRuntime.start(
-        config: config,
-        hostCwd: cwd,
-        eventSink: eventSink,
-      );
-    },
-  );
+  RuntimeFactory.register('modal', ({
+    required cwd,
+    required options,
+    eventSink,
+  }) async {
+    final config = modalConfigFromOptions(options);
+    return ModalRuntime.start(
+      config: config,
+      hostCwd: cwd,
+      eventSink: eventSink,
+    );
+  });
 }

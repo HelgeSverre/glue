@@ -49,20 +49,20 @@ class ProviderCommand extends SlashCommand {
 
   @override
   SlashArgCompleter? get argCompleter => (prior, partial) {
-        if (prior.isEmpty) {
-          return arg_completers.providerSubcommandCandidates(partial);
-        }
-        if (prior.length == 1 &&
-            const {'add', 'remove', 'test'}.contains(prior.first)) {
-          final config = ctx.config;
-          if (config == null) return const [];
-          return arg_completers.providerIdCandidates(
-            config.catalogData.providers,
-            partial,
-          );
-        }
-        return const [];
-      };
+    if (prior.isEmpty) {
+      return arg_completers.providerSubcommandCandidates(partial);
+    }
+    if (prior.length == 1 &&
+        const {'add', 'remove', 'test'}.contains(prior.first)) {
+      final config = ctx.config;
+      if (config == null) return const [];
+      return arg_completers.providerIdCandidates(
+        config.catalogData.providers,
+        partial,
+      );
+    }
+    return const [];
+  };
 
   @override
   String execute(List<String> args) {
@@ -132,8 +132,9 @@ class ProviderCommand extends SlashCommand {
   // ──────────────────────────────────────────────────────────────────────────
 
   void _openListPanel(GlueConfig config) {
-    final providers =
-        config.catalogData.providers.values.where((p) => p.enabled).toList();
+    final providers = config.catalogData.providers.values
+        .where((p) => p.enabled)
+        .toList();
     if (providers.isEmpty) {
       ctx.conversation.notify('No providers in the catalog.');
       return;
@@ -229,8 +230,9 @@ class ProviderCommand extends SlashCommand {
                 'Run /provider add ${provider.id}.',
               );
             case ProviderHealth.unknownAdapter:
-              ctx.conversation
-                  .notify('${provider.name}: adapter failed validation.');
+              ctx.conversation.notify(
+                '${provider.name}: adapter failed validation.',
+              );
           }
       }
     });
@@ -295,8 +297,9 @@ class ProviderCommand extends SlashCommand {
 
     final adapter = config.adapters.lookup(provider.adapter);
     if (adapter == null) {
-      ctx.conversation
-          .notify('No adapter for wire protocol "${provider.adapter}".');
+      ctx.conversation.notify(
+        'No adapter for wire protocol "${provider.adapter}".',
+      );
       return;
     }
 
@@ -356,8 +359,10 @@ class ProviderCommand extends SlashCommand {
     ProviderDef provider,
     DeviceCodeFlow flow,
   ) async {
-    final panel =
-        DeviceCodePanel(flow: flow, onNeedsRender: ctx.conversation.render);
+    final panel = DeviceCodePanel(
+      flow: flow,
+      onNeedsRender: ctx.conversation.render,
+    );
     ctx.panels.push(panel);
     final fields = await panel.result;
     ctx.panels.dismiss(panel);

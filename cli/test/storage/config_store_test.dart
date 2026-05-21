@@ -70,7 +70,7 @@ void main() {
   test('detects external file changes', () async {
     final store = ConfigStore(configPath);
     store.save({
-      'trusted_tools': ['gpt-4']
+      'trusted_tools': ['gpt-4'],
     });
     expect(store.trustedTools, ['gpt-4']);
 
@@ -79,7 +79,7 @@ void main() {
     const encoder = JsonEncoder.withIndent('  ');
     File(configPath).writeAsStringSync(
       encoder.convert({
-        'trusted_tools': ['claude-sonnet']
+        'trusted_tools': ['claude-sonnet'],
       }),
     );
 
@@ -90,7 +90,7 @@ void main() {
     final store = ConfigStore(configPath);
     store.save({
       'debug': true,
-      'trusted_tools': ['read_file']
+      'trusted_tools': ['read_file'],
     });
 
     store.update((c) {
@@ -107,7 +107,7 @@ void main() {
   test('handles corrupt JSON gracefully', () {
     final store = ConfigStore(configPath);
     store.save({
-      'trusted_tools': ['read_file']
+      'trusted_tools': ['read_file'],
     });
     expect(store.trustedTools, ['read_file']);
 

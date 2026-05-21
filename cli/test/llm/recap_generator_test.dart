@@ -6,16 +6,10 @@ class _FakeLlmClient implements LlmClient {
   final Object? error;
   List<Message>? lastMessages;
 
-  _FakeLlmClient({
-    this.chunks = const [],
-    this.error,
-  });
+  _FakeLlmClient({this.chunks = const [], this.error});
 
   @override
-  Stream<LlmChunk> stream(
-    List<Message> messages, {
-    List<Tool>? tools,
-  }) async* {
+  Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
     lastMessages = messages;
     if (error != null) {
       throw error!;
@@ -29,23 +23,29 @@ class _FakeLlmClient implements LlmClient {
 void main() {
   group('RecapGenerator.generateFromContext', () {
     test('returns recap text from streamed chunks', () async {
-      final llm = _FakeLlmClient(chunks: [
-        TextDelta('Investigated docker resume flake, '),
-        TextDelta('then patched the executor fallback.'),
-      ]);
+      final llm = _FakeLlmClient(
+        chunks: [
+          TextDelta('Investigated docker resume flake, '),
+          TextDelta('then patched the executor fallback.'),
+        ],
+      );
       final generator = RecapGenerator(llmClient: llm);
 
-      final recap = await generator.generateFromContext(const TitleContext(
-        firstUserMessage: 'help debug this',
-        latestUserMessage: 'it fails in docker only',
-        firstAssistantMessage: 'I found a flaky resume test.',
-        latestAssistantMessage: 'Docker resume handling was patched.',
-        toolNames: ['read_file', 'run_shell_command'],
-        cwdBasename: 'glue',
-      ));
+      final recap = await generator.generateFromContext(
+        const TitleContext(
+          firstUserMessage: 'help debug this',
+          latestUserMessage: 'it fails in docker only',
+          firstAssistantMessage: 'I found a flaky resume test.',
+          latestAssistantMessage: 'Docker resume handling was patched.',
+          toolNames: ['read_file', 'run_shell_command'],
+          cwdBasename: 'glue',
+        ),
+      );
 
-      expect(recap,
-          'Investigated docker resume flake, then patched the executor fallback.');
+      expect(
+        recap,
+        'Investigated docker resume flake, then patched the executor fallback.',
+      );
       expect(llm.lastMessages, isNotNull);
       expect(llm.lastMessages!.single.text, contains('<first_user>'));
       expect(llm.lastMessages!.single.text, contains('<tools>'));
@@ -53,18 +53,13 @@ void main() {
 
     test('forwards UsageInfo chunks via onUsage', () async {
       final usage = UsageInfo(inputTokens: 12, outputTokens: 7);
-      final llm = _FakeLlmClient(chunks: [
-        TextDelta('Did the thing.'),
-        usage,
-      ]);
+      final llm = _FakeLlmClient(chunks: [TextDelta('Did the thing.'), usage]);
       final received = <UsageInfo>[];
-      final generator = RecapGenerator(
-        llmClient: llm,
-        onUsage: received.add,
-      );
+      final generator = RecapGenerator(llmClient: llm, onUsage: received.add);
 
-      final recap = await generator
-          .generateFromContext(const TitleContext(firstUserMessage: 'go'));
+      final recap = await generator.generateFromContext(
+        const TitleContext(firstUserMessage: 'go'),
+      );
 
       expect(recap, 'Did the thing.');
       expect(received, hasLength(1));
@@ -77,8 +72,9 @@ void main() {
       final generator = RecapGenerator(llmClient: llm);
 
       expect(
-        await generator
-            .generateFromContext(const TitleContext(firstUserMessage: 'go')),
+        await generator.generateFromContext(
+          const TitleContext(firstUserMessage: 'go'),
+        ),
         isNull,
       );
     });
@@ -88,8 +84,9 @@ void main() {
       final generator = RecapGenerator(llmClient: llm);
 
       expect(
-        await generator
-            .generateFromContext(const TitleContext(firstUserMessage: 'go')),
+        await generator.generateFromContext(
+          const TitleContext(firstUserMessage: 'go'),
+        ),
         isNull,
       );
     });

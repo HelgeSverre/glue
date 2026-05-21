@@ -124,10 +124,7 @@ void main() {
     });
 
     test('unknown tool returns error without contentParts', () async {
-      final core = AgentCore(
-        llm: _StubLlm(),
-        tools: {},
-      );
+      final core = AgentCore(llm: _StubLlm(), tools: {});
       final result = await core.executeTool(
         ToolCall(id: const ToolCallId('c1'), name: 'nope', arguments: {}),
       );

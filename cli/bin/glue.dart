@@ -77,45 +77,58 @@ void main(List<String> args) async {
 
 class GlueCommandRunner extends CompletionCommandRunner<int> {
   GlueCommandRunner()
-      : super(
-          'glue',
-          '\x1b[38;2;250;204;21m\u25cf\x1b[0m \x1b[1mglue\x1b[0m'
-              ' v${AppConstants.version} — $appDescription',
-        ) {
+    : super(
+        'glue',
+        '\x1b[38;2;250;204;21m\u25cf\x1b[0m \x1b[1mglue\x1b[0m'
+            ' v${AppConstants.version} — $appDescription',
+      ) {
     argParser
       ..addFlag('version', abbr: 'v', negatable: false, help: 'Print version.')
-      ..addFlag('where',
-          negatable: false,
-          help: 'Print the GLUE_HOME directory and resolved paths for config, '
-              'credentials, sessions, logs, and cache.')
-      ..addFlag('print',
-          abbr: 'p',
-          negatable: false,
-          help: 'Print response to stdout without interactive mode.')
-      ..addFlag('json',
-          negatable: false,
-          help: 'Output session conversation as JSON (implies --print).')
+      ..addFlag(
+        'where',
+        negatable: false,
+        help:
+            'Print the GLUE_HOME directory and resolved paths for config, '
+            'credentials, sessions, logs, and cache.',
+      )
+      ..addFlag(
+        'print',
+        abbr: 'p',
+        negatable: false,
+        help: 'Print response to stdout without interactive mode.',
+      )
+      ..addFlag(
+        'json',
+        negatable: false,
+        help: 'Output session conversation as JSON (implies --print).',
+      )
       ..addOption('model', abbr: 'm', help: 'LLM model to use.')
       ..addFlag(
         'resume',
         abbr: 'r',
         negatable: false,
-        help: 'Resume a session by ID/query, or open the resume panel when '
+        help:
+            'Resume a session by ID/query, or open the resume panel when '
             'omitted.',
       )
       ..addOption('resume-id', hide: true)
-      ..addFlag('continue',
-          negatable: false, help: 'Resume most recent session.')
-      ..addFlag('debug',
-          abbr: 'd',
-          negatable: false,
-          help: 'Enable debug mode (verbose logging).');
+      ..addFlag(
+        'continue',
+        negatable: false,
+        help: 'Resume most recent session.',
+      )
+      ..addFlag(
+        'debug',
+        abbr: 'd',
+        negatable: false,
+        help: 'Enable debug mode (verbose logging).',
+      );
     addCommand(CompletionsCommand());
     addCommand(CatalogCommand());
     addCommand(ConfigCommand());
     addCommand(DoctorCommand());
     addCommand(McpCommand());
-    addCommand(ServeCommand());
+    addCommand(AcpCommand());
     addCommand(SessionCommand());
   }
 
@@ -152,9 +165,7 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
       if (topLevelResults.flag('debug')) {
         stdout.writeln(BuildInfo.details(appVersion: AppConstants.version));
       } else {
-        stdout.writeln(
-          'glue v${AppConstants.version} (${BuildInfo.summary})',
-        );
+        stdout.writeln('glue v${AppConstants.version} (${BuildInfo.summary})');
       }
       return 0;
     }
@@ -190,14 +201,13 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
     final debug = topLevelResults.flag('debug');
 
     if (debug && !jsonMode) {
-      stderr.writeln(
-        '[glue] v${AppConstants.version} (${BuildInfo.summary})',
-      );
+      stderr.writeln('[glue] v${AppConstants.version} (${BuildInfo.summary})');
     }
 
     // Positional args form the prompt.
-    final prompt =
-        topLevelResults.rest.isNotEmpty ? topLevelResults.rest.join(' ') : null;
+    final prompt = topLevelResults.rest.isNotEmpty
+        ? topLevelResults.rest.join(' ')
+        : null;
 
     final app = await App.create(
       model: model,
@@ -344,15 +354,14 @@ class DoctorCommand extends Command<int> {
   @override
   Future<int> run() async {
     final report = runDoctor(Environment.detect());
-    stdout.write(renderDoctorReport(
-      report,
-      verbose: argResults!.flag('verbose'),
-    ));
+    stdout.write(
+      renderDoctorReport(report, verbose: argResults!.flag('verbose')),
+    );
     return report.hasErrors ? 1 : 0;
   }
 }
 
-/// `glue serve` — expose Glue's harness over an external protocol.
+/// `glue acp` — expose Glue's harness over an external protocol.
 ///
 /// Today: ACP over stdio (`--stdio`, the default). Planned: MCP, HTTP +
 /// SSE, WebSocket. See:
@@ -363,36 +372,41 @@ class DoctorCommand extends Command<int> {
 /// per-session [AgentCore] instances, runs prompts through the harness,
 /// and routes `PermissionGate` "ask" decisions through ACP's
 /// `session/request_permission`.
-class ServeCommand extends Command<int> {
-  ServeCommand() {
+class AcpCommand extends Command<int> {
+  AcpCommand() {
     argParser
       ..addFlag(
         'stdio',
         defaultsTo: true,
-        help: 'Speak ACP over stdin/stdout (line-delimited JSON-RPC). '
+        help:
+            'Speak ACP over stdin/stdout (line-delimited JSON-RPC). '
             'This is the default and is what editors expect.',
       )
       ..addOption(
         'port',
         abbr: 'p',
-        help: 'Run the ACP server over WebSocket on the given port '
+        help:
+            'Run the ACP server over WebSocket on the given port '
             '(implies --no-stdio). 0 binds an ephemeral port.',
       )
       ..addOption(
         'host',
         defaultsTo: '127.0.0.1',
-        help: 'Bind address for --port mode. Defaults to loopback; '
+        help:
+            'Bind address for --port mode. Defaults to loopback; '
             'pass 0.0.0.0 to expose on all interfaces (use with care).',
       )
       ..addOption(
         'ws-path',
         defaultsTo: '/acp',
-        help: 'HTTP path that accepts the WebSocket upgrade. Use `*` to '
+        help:
+            'HTTP path that accepts the WebSocket upgrade. Use `*` to '
             'accept any path.',
       )
       ..addOption(
         'token',
-        help: 'Require this bearer token on every WS connection (sent as '
+        help:
+            'Require this bearer token on every WS connection (sent as '
             '`Authorization: Bearer …` header or `?token=…` query). '
             'Required when --host is non-loopback.',
       )
@@ -400,7 +414,8 @@ class ServeCommand extends Command<int> {
         'protocol',
         defaultsTo: 'acp',
         allowed: ['acp'],
-        help: 'Protocol to serve. ACP only for now; MCP-client support '
+        help:
+            'Protocol to serve. ACP only for now; MCP-client support '
             'lives in glue_strategies — see '
             'docs/plans/2026-04-29-mcp-client.md.',
       )
@@ -413,15 +428,16 @@ class ServeCommand extends Command<int> {
   }
 
   @override
-  String get name => 'serve';
+  String get name => 'acp';
 
   @override
   String get description =>
       'Serve Glue\'s harness as an ACP agent over stdio or WebSocket.';
 
   @override
-  String get usageFooter => '\n'
-      'glue serve speaks ACP (Agent Client Protocol) — it is meant to be\n'
+  String get usageFooter =>
+      '\n'
+      'glue acp speaks ACP (Agent Client Protocol) — it is meant to be\n'
       'spawned by an editor or notebook client, not run interactively.\n'
       '\n'
       'Editor setup (Zed, VS Code, JetBrains, Neovim, Emacs, marimo):\n'
@@ -450,10 +466,7 @@ class ServeCommand extends Command<int> {
 
   Future<int> _runStdio(AppServices services) async {
     final delegate = CliAcpDelegate(services: services);
-    final transport = LineDelimitedTransport(
-      input: stdin,
-      output: stdout,
-    );
+    final transport = LineDelimitedTransport(input: stdin, output: stdout);
     final server = AcpServer(
       transport: transport,
       delegate: delegate,
@@ -502,13 +515,14 @@ class ServeCommand extends Command<int> {
       bearerToken: (token != null && token.isNotEmpty) ? token : null,
     );
     final boundPort = await httpHost.start(address: address, port: port);
-    final url = 'ws://${address.host}:$boundPort'
+    final url =
+        'ws://${address.host}:$boundPort'
         '${wsPath == '*' ? '' : wsPath}';
     // stderr is the human banner channel here because stdout is reserved
     // for the ACP/JSON-RPC stream. styledOrPlain still suppresses ANSI when
     // stderr is captured (no TTY) or NO_COLOR is set.
     stderr.writeln(
-      '$brandDot ${styledOrPlain('glue serve', (s) => s.bold)} '
+      '$brandDot ${styledOrPlain('glue acp', (s) => s.bold)} '
       '${styledOrPlain('ACP over WebSocket', (s) => s.gray)}',
     );
     stderr.writeln('  $markerOk ${styledOrPlain('url ', (s) => s.gray)} $url');
@@ -523,7 +537,8 @@ class ServeCommand extends Command<int> {
       'https://getglue.dev/docs/advanced/acp-server',
     );
     stderr.writeln(
-        '  $markerInfo ${styledOrPlain('stop', (s) => s.gray)} Ctrl+C');
+      '  $markerInfo ${styledOrPlain('stop', (s) => s.gray)} Ctrl+C',
+    );
 
     // Run until SIGINT.
     final exitSignal = Completer<void>();
@@ -541,13 +556,13 @@ class ServeCommand extends Command<int> {
   }
 
   AcpServerConfig _config() => const AcpServerConfig(
-        protocolVersion: 1,
-        agentInfo: AgentInfo(
-          name: 'glue',
-          title: 'Glue',
-          version: AppConstants.version,
-        ),
-      );
+    protocolVersion: 1,
+    agentInfo: AgentInfo(
+      name: 'glue',
+      title: 'Glue',
+      version: AppConstants.version,
+    ),
+  );
 }
 
 Future<InternetAddress?> _resolveBindAddress(String host) async {
@@ -563,13 +578,7 @@ Future<InternetAddress?> _resolveBindAddress(String host) async {
   }
 }
 
-enum CompletionShell {
-  bash,
-  zsh,
-  fish,
-  powershell,
-  sh,
-}
+enum CompletionShell { bash, zsh, fish, powershell, sh }
 
 const _supportedShellValues = [
   'bash',
@@ -577,7 +586,7 @@ const _supportedShellValues = [
   'fish',
   'powershell',
   'pwsh',
-  'sh'
+  'sh',
 ];
 
 abstract class _CompletionsLeafCommand extends Command<int> {
@@ -768,8 +777,9 @@ void _uninstallCliCompletion(
 
 void _installFishCompletion(String executableName) {
   final home = _homeDirectory();
-  final completionsDir =
-      Directory(p.join(home, '.config', 'fish', 'completions'));
+  final completionsDir = Directory(
+    p.join(home, '.config', 'fish', 'completions'),
+  );
   completionsDir.createSync(recursive: true);
   final scriptFile = File(p.join(completionsDir.path, '$executableName.fish'));
   scriptFile.writeAsStringSync(_fishCompletionScript(executableName));
@@ -813,8 +823,9 @@ void _installPowerShellCompletion(String executableName) {
 
 void _uninstallPowerShellCompletion(String executableName) {
   final home = _homeDirectory();
-  final scriptFile =
-      File(p.join(home, '.glue', 'completions', '$executableName.ps1'));
+  final scriptFile = File(
+    p.join(home, '.glue', 'completions', '$executableName.ps1'),
+  );
   if (scriptFile.existsSync()) {
     scriptFile.deleteSync();
   }
@@ -841,10 +852,11 @@ String _homeDirectory() {
 String _resolvePowerShellProfilePath(String home) {
   for (final executable in ['pwsh', 'powershell']) {
     try {
-      final result = Process.runSync(
-        executable,
-        ['-NoProfile', '-Command', r'$PROFILE.CurrentUserAllHosts'],
-      );
+      final result = Process.runSync(executable, [
+        '-NoProfile',
+        '-Command',
+        r'$PROFILE.CurrentUserAllHosts',
+      ]);
       if (result.exitCode == 0) {
         final path = (result.stdout as String).trim();
         if (path.isNotEmpty) {
@@ -858,10 +870,18 @@ String _resolvePowerShellProfilePath(String home) {
 
   if (Platform.isWindows) {
     return p.join(
-        home, 'Documents', 'PowerShell', 'Microsoft.PowerShell_profile.ps1');
+      home,
+      'Documents',
+      'PowerShell',
+      'Microsoft.PowerShell_profile.ps1',
+    );
   }
   return p.join(
-      home, '.config', 'powershell', 'Microsoft.PowerShell_profile.ps1');
+    home,
+    '.config',
+    'powershell',
+    'Microsoft.PowerShell_profile.ps1',
+  );
 }
 
 String _psSingleQuoted(String value) {
@@ -890,8 +910,11 @@ void _upsertManagedBlock(
 
 void _removeManagedBlock(File file, String startMarker, String endMarker) {
   final content = file.readAsStringSync();
-  final updated =
-      _withoutManagedBlock(content, startMarker, endMarker).trimRight();
+  final updated = _withoutManagedBlock(
+    content,
+    startMarker,
+    endMarker,
+  ).trimRight();
   if (updated.isEmpty) {
     file.writeAsStringSync('');
   } else {
@@ -900,7 +923,10 @@ void _removeManagedBlock(File file, String startMarker, String endMarker) {
 }
 
 String _withoutManagedBlock(
-    String content, String startMarker, String endMarker) {
+  String content,
+  String startMarker,
+  String endMarker,
+) {
   var updated = content;
   while (true) {
     final start = updated.indexOf(startMarker);
@@ -1012,8 +1038,9 @@ class SessionListCommand extends Command<int> {
         .map((s) => (s.meta.runtimeId ?? 'host').length)
         .fold<int>(0, (a, b) => a > b ? a : b);
     for (final s in sessions) {
-      final patch =
-          s.patchPath == null ? '-' : '${s.patchSizeBytes ?? 0} bytes';
+      final patch = s.patchPath == null
+          ? '-'
+          : '${s.patchSizeBytes ?? 0} bytes';
       final runtime = s.meta.runtimeId ?? 'host';
       final title = s.meta.title ?? '(untitled)';
       stdout.writeln(
@@ -1052,7 +1079,8 @@ class SessionShowCommand extends Command<int> {
     );
     void row(String key, String value) {
       stdout.writeln(
-          '  ${styledOrPlain(key.padRight(11), (x) => x.gray)} $value');
+        '  ${styledOrPlain(key.padRight(11), (x) => x.gray)} $value',
+      );
     }
 
     row('started:', m.startTime.toIso8601String());
@@ -1077,7 +1105,8 @@ class SessionShowCommand extends Command<int> {
       final lines = body.split('\n').take(40).join('\n');
       stdout.writeln();
       stdout.writeln(
-          styledOrPlain('--- patch (first 40 lines) ---', (x) => x.gray));
+        styledOrPlain('--- patch (first 40 lines) ---', (x) => x.gray),
+      );
       stdout.writeln(lines);
     }
     return 0;
@@ -1121,13 +1150,15 @@ class SessionApplyCommand extends Command<int> {
       )
       ..addOption(
         'branch',
-        help: 'Branch name to create from current HEAD before applying. '
+        help:
+            'Branch name to create from current HEAD before applying. '
             'Default: glue/<session-id>.',
       )
       ..addFlag(
         'in-place',
         negatable: false,
-        help: 'Apply directly to current HEAD instead of creating a branch '
+        help:
+            'Apply directly to current HEAD instead of creating a branch '
             '(overrides Q6 default).',
       );
   }
@@ -1143,8 +1174,10 @@ class SessionApplyCommand extends Command<int> {
   Future<int> run() async {
     final args = argResults!.rest;
     if (args.isEmpty) {
-      stderr.writeln('Usage: glue session apply <id> [--target <dir>] '
-          '[--branch <name>] [--in-place]');
+      stderr.writeln(
+        'Usage: glue session apply <id> [--target <dir>] '
+        '[--branch <name>] [--in-place]',
+      );
       return 64;
     }
     final env = Environment.detect();
@@ -1163,7 +1196,8 @@ class SessionApplyCommand extends Command<int> {
       stdout.writeln('$markerOk ${result.message}');
       if (result.branch != null) {
         stdout.writeln(
-            '  ${styledOrPlain('on branch:', (x) => x.gray)} ${result.branch}');
+          '  ${styledOrPlain('on branch:', (x) => x.gray)} ${result.branch}',
+        );
       }
       return 0;
     }

@@ -70,13 +70,15 @@ class McpAddCommand extends Command<int> {
         'auth',
         allowed: ['none', 'bearer', 'oauth'],
         defaultsTo: 'none',
-        help: 'Auth kind for http/ws. Use `glue mcp auth …` to store the '
+        help:
+            'Auth kind for http/ws. Use `glue mcp auth …` to store the '
             'token/run OAuth.',
       )
       ..addMultiOption(
         'env',
         abbr: 'e',
-        help: 'Environment variable to pass to a stdio subprocess '
+        help:
+            'Environment variable to pass to a stdio subprocess '
             '(KEY=value, repeatable).',
       )
       ..addOption('cwd', help: 'Working directory for a stdio subprocess.')
@@ -102,33 +104,33 @@ class McpAddCommand extends Command<int> {
 
   @override
   String get description => [
-        'Add a new MCP server entry to ~/.glue/config.yaml.',
-        '',
-        'Examples:',
-        '  # 1. Local stdio via npx (Playwright browser automation)',
-        '  glue mcp add playwright --transport stdio \\',
-        '    -- npx -y @playwright/mcp@latest',
-        '',
-        '  # 2. Local stdio via docker (GitHub server, PAT in env)',
-        '  glue mcp add github --transport stdio \\',
-        '    -e GITHUB_PERSONAL_ACCESS_TOKEN=ghp_xxx \\',
-        '    -- docker run -i --rm -e GITHUB_PERSONAL_ACCESS_TOKEN \\',
-        '       ghcr.io/github/github-mcp-server',
-        '',
-        '  # 3. Hosted HTTP, no auth (Context7 docs lookup)',
-        '  glue mcp add context7 --transport http \\',
-        '    --url https://mcp.context7.com/mcp',
-        '',
-        '  # 4. Hosted HTTP with a bearer token (GitHub Copilot MCP)',
-        '  glue mcp add github-hosted --transport http \\',
-        '    --url https://api.githubcopilot.com/mcp/ --auth bearer',
-        '  glue mcp auth set github-hosted --bearer    # then store the PAT',
-        '',
-        '  # 5. Hosted HTTP with OAuth (when the server advertises DCR)',
-        '  glue mcp add some-saas --transport http \\',
-        '    --url https://mcp.example.com --auth oauth',
-        '  glue mcp auth login some-saas               # opens browser',
-      ].join('\n');
+    'Add a new MCP server entry to ~/.glue/config.yaml.',
+    '',
+    'Examples:',
+    '  # 1. Local stdio via npx (Playwright browser automation)',
+    '  glue mcp add playwright --transport stdio \\',
+    '    -- npx -y @playwright/mcp@latest',
+    '',
+    '  # 2. Local stdio via docker (GitHub server, PAT in env)',
+    '  glue mcp add github --transport stdio \\',
+    '    -e GITHUB_PERSONAL_ACCESS_TOKEN=ghp_xxx \\',
+    '    -- docker run -i --rm -e GITHUB_PERSONAL_ACCESS_TOKEN \\',
+    '       ghcr.io/github/github-mcp-server',
+    '',
+    '  # 3. Hosted HTTP, no auth (Context7 docs lookup)',
+    '  glue mcp add context7 --transport http \\',
+    '    --url https://mcp.context7.com/mcp',
+    '',
+    '  # 4. Hosted HTTP with a bearer token (GitHub Copilot MCP)',
+    '  glue mcp add github-hosted --transport http \\',
+    '    --url https://api.githubcopilot.com/mcp/ --auth bearer',
+    '  glue mcp auth set github-hosted --bearer    # then store the PAT',
+    '',
+    '  # 5. Hosted HTTP with OAuth (when the server advertises DCR)',
+    '  glue mcp add some-saas --transport http \\',
+    '    --url https://mcp.example.com --auth oauth',
+    '  glue mcp auth login some-saas               # opens browser',
+  ].join('\n');
 
   @override
   String get invocation =>
@@ -184,18 +186,22 @@ class McpAddCommand extends Command<int> {
         : 'Run "glue" to load it.';
     stdout.writeln(styledOrPlain(hint, (s) => s.gray, ansiEnabled: ansi));
     if (spec is McpHttpServerSpec && spec.auth is McpBearerAuth) {
-      stdout.writeln(styledOrPlain(
-        'Auth set to bearer. Store the token with '
-        '"glue mcp auth set $id --bearer".',
-        (s) => s.gray,
-        ansiEnabled: ansi,
-      ));
+      stdout.writeln(
+        styledOrPlain(
+          'Auth set to bearer. Store the token with '
+          '"glue mcp auth set $id --bearer".',
+          (s) => s.gray,
+          ansiEnabled: ansi,
+        ),
+      );
     } else if (spec is McpHttpServerSpec && spec.auth is McpOAuthAuth) {
-      stdout.writeln(styledOrPlain(
-        'Auth set to OAuth. Sign in with "glue mcp auth login $id".',
-        (s) => s.gray,
-        ansiEnabled: ansi,
-      ));
+      stdout.writeln(
+        styledOrPlain(
+          'Auth set to OAuth. Sign in with "glue mcp auth login $id".',
+          (s) => s.gray,
+          ansiEnabled: ansi,
+        ),
+      );
     }
     return 0;
   }
@@ -396,9 +402,7 @@ class McpDisableCommand extends Command<int> {
 
 Future<int> _setEnabled(ArgResults results, {required bool enabled}) async {
   if (results.rest.length != 1) {
-    stderr.writeln(
-      'Usage: glue mcp ${enabled ? 'enable' : 'disable'} <id>',
-    );
+    stderr.writeln('Usage: glue mcp ${enabled ? 'enable' : 'disable'} <id>');
     return 1;
   }
   final id = results.rest.single;
@@ -456,8 +460,8 @@ class McpToolsCommand extends Command<int> {
     final selected = argResults.rest.isEmpty
         ? config.mcp.servers
         : config.mcp.servers
-            .where((s) => s.id == argResults.rest.single)
-            .toList();
+              .where((s) => s.id == argResults.rest.single)
+              .toList();
 
     if (argResults.rest.isNotEmpty && selected.isEmpty) {
       final serverId = argResults.rest.single;
@@ -534,20 +538,24 @@ class McpListCommand extends Command<int> {
     if (config == null) return 1;
 
     final rows = config.mcp.servers
-        .map((spec) => McpServerListRow(
-              id: spec.id,
-              kind: switch (spec) {
-                McpStdioServerSpec() => 'stdio',
-                McpHttpServerSpec() => 'http+sse',
-                McpWebSocketServerSpec() => 'websocket',
-              },
-              enabled: spec.enabled,
-            ))
+        .map(
+          (spec) => McpServerListRow(
+            id: spec.id,
+            kind: switch (spec) {
+              McpStdioServerSpec() => 'stdio',
+              McpHttpServerSpec() => 'http+sse',
+              McpWebSocketServerSpec() => 'websocket',
+            },
+            enabled: spec.enabled,
+          ),
+        )
         .toList();
-    stdout.writeln(formatMcpServerList(
-      rows,
-      configPath: userConfigPath(Environment.detect()),
-    ));
+    stdout.writeln(
+      formatMcpServerList(
+        rows,
+        configPath: userConfigPath(Environment.detect()),
+      ),
+    );
     return 0;
   }
 }
@@ -583,24 +591,25 @@ class McpAuthStatusCommand extends Command<int> {
     if (config == null) return 1;
 
     final rows = config.mcp.servers.map((spec) {
-      final fields =
-          config.credentials.getFields(McpCredentialKeys.providerId(spec.id));
+      final fields = config.credentials.getFields(
+        McpCredentialKeys.providerId(spec.id),
+      );
       final hasBearer = fields.containsKey(McpCredentialKeys.bearer);
       final hasOAuth = fields.containsKey(McpOAuthFields.accessToken);
       final authKind = spec is McpHttpServerSpec
           ? spec.auth
           : spec is McpWebSocketServerSpec
-              ? spec.auth
-              : const McpNoAuth();
+          ? spec.auth
+          : const McpNoAuth();
       final (kind, state) = switch (authKind) {
         McpBearerAuth() => (
-            'bearer',
-            hasBearer ? McpAuthState.stored : McpAuthState.missing,
-          ),
+          'bearer',
+          hasBearer ? McpAuthState.stored : McpAuthState.missing,
+        ),
         McpOAuthAuth() => (
-            'oauth',
-            hasOAuth ? McpAuthState.stored : McpAuthState.notLoggedIn,
-          ),
+          'oauth',
+          hasOAuth ? McpAuthState.stored : McpAuthState.notLoggedIn,
+        ),
         McpNoAuth() => ('none', McpAuthState.none),
       };
       return McpAuthStatusRow(id: spec.id, kind: kind, state: state);
@@ -669,10 +678,9 @@ class McpAuthSetCommand extends Command<int> {
       return 1;
     }
 
-    config.credentials.setFields(
-      McpCredentialKeys.providerId(serverId),
-      {McpCredentialKeys.bearer: token},
-    );
+    config.credentials.setFields(McpCredentialKeys.providerId(serverId), {
+      McpCredentialKeys.bearer: token,
+    });
     stdout.writeln('Stored bearer token for "$serverId".');
     return 0;
   }
@@ -720,13 +728,17 @@ class McpAuthLoginCommand extends Command<int> {
       final endpoints = await discoverOAuthEndpoints(baseUrl);
 
       OAuthClient client;
-      final existingClientId =
-          config.credentials.getField('mcp:$serverId', McpOAuthFields.clientId);
+      final existingClientId = config.credentials.getField(
+        'mcp:$serverId',
+        McpOAuthFields.clientId,
+      );
       if (existingClientId != null) {
         client = OAuthClient(
           clientId: existingClientId,
-          clientSecret: config.credentials
-              .getField('mcp:$serverId', McpOAuthFields.clientSecret),
+          clientSecret: config.credentials.getField(
+            'mcp:$serverId',
+            McpOAuthFields.clientSecret,
+          ),
         );
         stdout.writeln('Reusing registered client_id.');
       } else if (endpoints.registrationEndpoint != null) {
@@ -756,7 +768,7 @@ class McpAuthLoginCommand extends Command<int> {
         client: client,
         onAuthUrl: (url) {
           stdout.writeln('Browse to: $url');
-          unawaited(_openBrowser(url));
+          _openBrowser(url);
         },
       );
 
@@ -827,8 +839,10 @@ Future<void> _openBrowser(String url) async {
     } else if (Platform.isLinux) {
       await Process.start('xdg-open', [url], mode: ProcessStartMode.detached);
     } else if (Platform.isWindows) {
-      await Process.start('rundll32', ['url.dll,FileProtocolHandler', url],
-          mode: ProcessStartMode.detached);
+      await Process.start('rundll32', [
+        'url.dll,FileProtocolHandler',
+        url,
+      ], mode: ProcessStartMode.detached);
     }
   } catch (_) {
     // User can copy-paste — we already printed the URL.

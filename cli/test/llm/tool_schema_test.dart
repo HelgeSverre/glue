@@ -12,13 +12,13 @@ class _ArrayParamTool extends Tool {
 
   @override
   List<ToolParameter> get parameters => const [
-        ToolParameter(
-          name: 'items_list',
-          type: 'array',
-          description: 'A list of strings.',
-          items: {'type': 'string'},
-        ),
-      ];
+    ToolParameter(
+      name: 'items_list',
+      type: 'array',
+      description: 'A list of strings.',
+      items: {'type': 'string'},
+    ),
+  ];
 
   @override
   Future<ToolResult> execute(Map<String, dynamic> args) async =>
@@ -46,8 +46,9 @@ void main() {
     test('includes items on array-typed parameters', () {
       const encoder = AnthropicToolEncoder();
       final schemas = encoder.encodeAll([_ArrayParamTool()]);
-      final props = (schemas.first['input_schema']
-          as Map<String, dynamic>)['properties'] as Map<String, dynamic>;
+      final props =
+          (schemas.first['input_schema'] as Map<String, dynamic>)['properties']
+              as Map<String, dynamic>;
       final itemsList = props['items_list'] as Map<String, dynamic>;
       expect(itemsList['type'], 'array');
       expect(itemsList['items'], {'type': 'string'});
@@ -73,13 +74,17 @@ void main() {
     test('includes items on array-typed parameters', () {
       const encoder = OpenAiToolEncoder();
       final schemas = encoder.encodeAll([_ArrayParamTool()]);
-      final params = (schemas.first['function']
-          as Map<String, dynamic>)['parameters'] as Map<String, dynamic>;
+      final params =
+          (schemas.first['function'] as Map<String, dynamic>)['parameters']
+              as Map<String, dynamic>;
       final props = params['properties'] as Map<String, dynamic>;
       final itemsList = props['items_list'] as Map<String, dynamic>;
       expect(itemsList['type'], 'array');
-      expect(itemsList['items'], {'type': 'string'},
-          reason: 'OpenAI strict validator requires items on array schemas');
+      expect(
+        itemsList['items'],
+        {'type': 'string'},
+        reason: 'OpenAI strict validator requires items on array schemas',
+      );
     });
   });
 }

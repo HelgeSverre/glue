@@ -6,10 +6,14 @@ void main() {
     test('host factory produces an identity mapping', () {
       final m = WorkspaceMapping.host('/Users/h/code/glue');
       expect(m.isIdentity, isTrue);
-      expect(m.toRuntimePath('/Users/h/code/glue/lib/foo.dart'),
-          '/Users/h/code/glue/lib/foo.dart');
-      expect(m.toHostPath('/Users/h/code/glue/lib/foo.dart'),
-          '/Users/h/code/glue/lib/foo.dart');
+      expect(
+        m.toRuntimePath('/Users/h/code/glue/lib/foo.dart'),
+        '/Users/h/code/glue/lib/foo.dart',
+      );
+      expect(
+        m.toHostPath('/Users/h/code/glue/lib/foo.dart'),
+        '/Users/h/code/glue/lib/foo.dart',
+      );
     });
 
     test('docker-style mapping translates host → /workspace', () {
@@ -19,8 +23,10 @@ void main() {
       );
       expect(m.isIdentity, isFalse);
       expect(m.toRuntimePath('/Users/h/code/glue'), '/workspace');
-      expect(m.toRuntimePath('/Users/h/code/glue/lib/foo.dart'),
-          '/workspace/lib/foo.dart');
+      expect(
+        m.toRuntimePath('/Users/h/code/glue/lib/foo.dart'),
+        '/workspace/lib/foo.dart',
+      );
     });
 
     test('docker-style mapping translates /workspace → host', () {
@@ -29,8 +35,10 @@ void main() {
         runtimeCwd: '/workspace',
       );
       expect(m.toHostPath('/workspace'), '/Users/h/code/glue');
-      expect(m.toHostPath('/workspace/lib/foo.dart'),
-          '/Users/h/code/glue/lib/foo.dart');
+      expect(
+        m.toHostPath('/workspace/lib/foo.dart'),
+        '/Users/h/code/glue/lib/foo.dart',
+      );
     });
 
     test('toRuntimePath returns null for paths outside hostCwd', () {
@@ -51,10 +59,7 @@ void main() {
     });
 
     test('artifactsDir defaults under runtimeCwd', () {
-      final m = WorkspaceMapping(
-        hostCwd: '/h/cwd',
-        runtimeCwd: '/workspace',
-      );
+      final m = WorkspaceMapping(hostCwd: '/h/cwd', runtimeCwd: '/workspace');
       expect(m.artifactsDir, '/workspace/.glue/artifacts');
     });
 

@@ -18,7 +18,7 @@ import 'package:glue_strategies/src/credentials/credential_ref.dart';
 
 class CredentialStore {
   CredentialStore({required this.path, Map<String, String>? env})
-      : _env = env ?? Platform.environment;
+    : _env = env ?? Platform.environment;
 
   /// Absolute path to `credentials.json`.
   final String path;

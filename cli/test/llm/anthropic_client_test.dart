@@ -9,23 +9,25 @@ import 'package:test/test.dart';
 
 void main() {
   group('AnthropicClient request body', () {
-    test('sends top-level cache_control when promptCacheEnabled is true',
-        () async {
-      final captured = _CapturingHttpClient(_minimalSseResponse());
-      final client = AnthropicClient(
-        apiKey: 'sk-test',
-        model: 'claude-sonnet-4-6',
-        systemPrompt: 'You are Glue.',
-        requestClientFactory: () => captured,
-      );
+    test(
+      'sends top-level cache_control when promptCacheEnabled is true',
+      () async {
+        final captured = _CapturingHttpClient(_minimalSseResponse());
+        final client = AnthropicClient(
+          apiKey: 'sk-test',
+          model: 'claude-sonnet-4-6',
+          systemPrompt: 'You are Glue.',
+          requestClientFactory: () => captured,
+        );
 
-      await client.stream([Message.user('hi')]).drain<void>();
+        await client.stream([Message.user('hi')]).drain<void>();
 
-      final body = jsonDecode(captured.body!) as Map<String, dynamic>;
-      expect(body['cache_control'], {'type': 'ephemeral'});
-      // Caching is GA on Claude 4.x; the legacy beta header must be absent.
-      expect(captured.headers, isNot(contains('anthropic-beta')));
-    });
+        final body = jsonDecode(captured.body!) as Map<String, dynamic>;
+        expect(body['cache_control'], {'type': 'ephemeral'});
+        // Caching is GA on Claude 4.x; the legacy beta header must be absent.
+        expect(captured.headers, isNot(contains('anthropic-beta')));
+      },
+    );
 
     test('omits cache_control when promptCacheEnabled is false', () async {
       final captured = _CapturingHttpClient(_minimalSseResponse());
@@ -51,29 +53,29 @@ void main() {
           'type': 'message_start',
           'message': {
             'id': 'm1',
-            'usage': {'input_tokens': 10, 'output_tokens': 0}
-          }
+            'usage': {'input_tokens': 10, 'output_tokens': 0},
+          },
         }),
         _sseData({
           'type': 'content_block_start',
           'index': 0,
-          'content_block': {'type': 'text', 'text': ''}
+          'content_block': {'type': 'text', 'text': ''},
         }),
         _sseData({
           'type': 'content_block_delta',
           'index': 0,
-          'delta': {'type': 'text_delta', 'text': 'Hello '}
+          'delta': {'type': 'text_delta', 'text': 'Hello '},
         }),
         _sseData({
           'type': 'content_block_delta',
           'index': 0,
-          'delta': {'type': 'text_delta', 'text': 'world'}
+          'delta': {'type': 'text_delta', 'text': 'world'},
         }),
         _sseData({'type': 'content_block_stop', 'index': 0}),
         _sseData({
           'type': 'message_delta',
           'delta': {'stop_reason': 'end_turn'},
-          'usage': {'output_tokens': 5}
+          'usage': {'output_tokens': 5},
         }),
         _sseData({'type': 'message_stop'}),
       ];
@@ -94,8 +96,8 @@ void main() {
           'type': 'message_start',
           'message': {
             'id': 'm1',
-            'usage': {'input_tokens': 10, 'output_tokens': 0}
-          }
+            'usage': {'input_tokens': 10, 'output_tokens': 0},
+          },
         }),
         _sseData({
           'type': 'content_block_start',
@@ -103,27 +105,27 @@ void main() {
           'content_block': {
             'type': 'tool_use',
             'id': 'tc1',
-            'name': 'read_file'
-          }
+            'name': 'read_file',
+          },
         }),
         _sseData({
           'type': 'content_block_delta',
           'index': 0,
-          'delta': {'type': 'input_json_delta', 'partial_json': '{"path"'}
+          'delta': {'type': 'input_json_delta', 'partial_json': '{"path"'},
         }),
         _sseData({
           'type': 'content_block_delta',
           'index': 0,
           'delta': {
             'type': 'input_json_delta',
-            'partial_json': ': "main.dart"}'
-          }
+            'partial_json': ': "main.dart"}',
+          },
         }),
         _sseData({'type': 'content_block_stop', 'index': 0}),
         _sseData({
           'type': 'message_delta',
           'delta': {'stop_reason': 'tool_use'},
-          'usage': {'output_tokens': 15}
+          'usage': {'output_tokens': 15},
         }),
         _sseData({'type': 'message_stop'}),
       ];
@@ -144,8 +146,8 @@ void main() {
           'type': 'message_start',
           'message': {
             'id': 'm1',
-            'usage': {'input_tokens': 10, 'output_tokens': 0}
-          }
+            'usage': {'input_tokens': 10, 'output_tokens': 0},
+          },
         }),
         _sseData({
           'type': 'content_block_start',
@@ -153,22 +155,22 @@ void main() {
           'content_block': {
             'type': 'tool_use',
             'id': 'tc1',
-            'name': 'write_file'
-          }
+            'name': 'write_file',
+          },
         }),
         _sseData({
           'type': 'content_block_delta',
           'index': 0,
           'delta': {
             'type': 'input_json_delta',
-            'partial_json': '{"path": "a.txt"}'
-          }
+            'partial_json': '{"path": "a.txt"}',
+          },
         }),
         _sseData({'type': 'content_block_stop', 'index': 0}),
         _sseData({
           'type': 'message_delta',
           'delta': {'stop_reason': 'tool_use'},
-          'usage': {'output_tokens': 10}
+          'usage': {'output_tokens': 10},
         }),
         _sseData({'type': 'message_stop'}),
       ];
@@ -188,101 +190,109 @@ void main() {
       expect(startIdx, lessThan(deltaIdx));
     });
 
-    test('emits ThinkingDelta for extended-thinking content_block_delta',
-        () async {
-      final events = Stream.fromIterable([
-        _sseData({
-          'type': 'message_start',
-          'message': {
-            'id': 'm1',
-            'usage': {'input_tokens': 10, 'output_tokens': 0},
-          },
-        }),
-        _sseData({
-          'type': 'content_block_start',
-          'index': 0,
-          'content_block': {'type': 'thinking', 'thinking': ''},
-        }),
-        _sseData({
-          'type': 'content_block_delta',
-          'index': 0,
-          'delta': {'type': 'thinking_delta', 'thinking': 'Let me think...'},
-        }),
-        _sseData({
-          'type': 'content_block_delta',
-          'index': 0,
-          'delta': {'type': 'thinking_delta', 'thinking': ' carefully.'},
-        }),
-        _sseData({'type': 'content_block_stop', 'index': 0}),
-        _sseData({
-          'type': 'content_block_start',
-          'index': 1,
-          'content_block': {'type': 'text', 'text': ''},
-        }),
-        _sseData({
-          'type': 'content_block_delta',
-          'index': 1,
-          'delta': {'type': 'text_delta', 'text': 'The answer is 42.'},
-        }),
-        _sseData({'type': 'content_block_stop', 'index': 1}),
-        _sseData({'type': 'message_stop'}),
-      ]);
+    test(
+      'emits ThinkingDelta for extended-thinking content_block_delta',
+      () async {
+        final events = Stream.fromIterable([
+          _sseData({
+            'type': 'message_start',
+            'message': {
+              'id': 'm1',
+              'usage': {'input_tokens': 10, 'output_tokens': 0},
+            },
+          }),
+          _sseData({
+            'type': 'content_block_start',
+            'index': 0,
+            'content_block': {'type': 'thinking', 'thinking': ''},
+          }),
+          _sseData({
+            'type': 'content_block_delta',
+            'index': 0,
+            'delta': {'type': 'thinking_delta', 'thinking': 'Let me think...'},
+          }),
+          _sseData({
+            'type': 'content_block_delta',
+            'index': 0,
+            'delta': {'type': 'thinking_delta', 'thinking': ' carefully.'},
+          }),
+          _sseData({'type': 'content_block_stop', 'index': 0}),
+          _sseData({
+            'type': 'content_block_start',
+            'index': 1,
+            'content_block': {'type': 'text', 'text': ''},
+          }),
+          _sseData({
+            'type': 'content_block_delta',
+            'index': 1,
+            'delta': {'type': 'text_delta', 'text': 'The answer is 42.'},
+          }),
+          _sseData({'type': 'content_block_stop', 'index': 1}),
+          _sseData({'type': 'message_stop'}),
+        ]);
 
-      final chunks = await AnthropicClient.parseStreamEvents(events).toList();
-      final thinking =
-          chunks.whereType<ThinkingDelta>().map((c) => c.text).toList();
-      final text = chunks.whereType<TextDelta>().map((c) => c.text).toList();
-      expect(thinking, ['Let me think...', ' carefully.']);
-      expect(text, ['The answer is 42.']);
-    });
+        final chunks = await AnthropicClient.parseStreamEvents(events).toList();
+        final thinking = chunks
+            .whereType<ThinkingDelta>()
+            .map((c) => c.text)
+            .toList();
+        final text = chunks.whereType<TextDelta>().map((c) => c.text).toList();
+        expect(thinking, ['Let me think...', ' carefully.']);
+        expect(text, ['The answer is 42.']);
+      },
+    );
 
-    test('ignores redacted_thinking blocks (no human-readable content)',
-        () async {
-      final events = Stream.fromIterable([
-        _sseData({
-          'type': 'content_block_delta',
-          'index': 0,
-          'delta': {'type': 'redacted_thinking', 'data': 'base64-blob'},
-        }),
-        _sseData({'type': 'message_stop'}),
-      ]);
-      final chunks = await AnthropicClient.parseStreamEvents(events).toList();
-      expect(chunks.whereType<ThinkingDelta>(), isEmpty);
-    });
+    test(
+      'ignores redacted_thinking blocks (no human-readable content)',
+      () async {
+        final events = Stream.fromIterable([
+          _sseData({
+            'type': 'content_block_delta',
+            'index': 0,
+            'delta': {'type': 'redacted_thinking', 'data': 'base64-blob'},
+          }),
+          _sseData({'type': 'message_stop'}),
+        ]);
+        final chunks = await AnthropicClient.parseStreamEvents(events).toList();
+        expect(chunks.whereType<ThinkingDelta>(), isEmpty);
+      },
+    );
 
-    test('surfaces cache_read and cache_creation tokens from message_start',
-        () async {
-      final events = [
-        _sseData({
-          'type': 'message_start',
-          'message': {
-            'id': 'm1',
-            'usage': {
-              'input_tokens': 12,
-              'cache_read_input_tokens': 9500,
-              'cache_creation_input_tokens': 800,
-              'output_tokens': 0,
-            }
-          }
-        }),
-        _sseData({
-          'type': 'message_delta',
-          'delta': {'stop_reason': 'end_turn'},
-          'usage': {'output_tokens': 42}
-        }),
-        _sseData({'type': 'message_stop'}),
-      ];
+    test(
+      'surfaces cache_read and cache_creation tokens from message_start',
+      () async {
+        final events = [
+          _sseData({
+            'type': 'message_start',
+            'message': {
+              'id': 'm1',
+              'usage': {
+                'input_tokens': 12,
+                'cache_read_input_tokens': 9500,
+                'cache_creation_input_tokens': 800,
+                'output_tokens': 0,
+              },
+            },
+          }),
+          _sseData({
+            'type': 'message_delta',
+            'delta': {'stop_reason': 'end_turn'},
+            'usage': {'output_tokens': 42},
+          }),
+          _sseData({'type': 'message_stop'}),
+        ];
 
-      final chunks = await AnthropicClient.parseStreamEvents(
-        Stream.fromIterable(events),
-      ).toList();
+        final chunks = await AnthropicClient.parseStreamEvents(
+          Stream.fromIterable(events),
+        ).toList();
 
-      final usage = chunks.whereType<UsageInfo>().single;
-      expect(usage.inputTokens, 12);
-      expect(usage.outputTokens, 42);
-      expect(usage.cacheReadTokens, 9500);
-      expect(usage.cacheCreationTokens, 800);
-    });
+        final usage = chunks.whereType<UsageInfo>().single;
+        expect(usage.inputTokens, 12);
+        expect(usage.outputTokens, 42);
+        expect(usage.cacheReadTokens, 9500);
+        expect(usage.cacheCreationTokens, 800);
+      },
+    );
 
     test('leaves cache fields null when the provider omits them', () async {
       final events = [
@@ -290,22 +300,20 @@ void main() {
           'type': 'message_start',
           'message': {
             'id': 'm1',
-            'usage': {'input_tokens': 12, 'output_tokens': 0}
-          }
+            'usage': {'input_tokens': 12, 'output_tokens': 0},
+          },
         }),
         _sseData({
           'type': 'message_delta',
           'delta': {'stop_reason': 'end_turn'},
-          'usage': {'output_tokens': 7}
+          'usage': {'output_tokens': 7},
         }),
         _sseData({'type': 'message_stop'}),
       ];
 
       final usage = (await AnthropicClient.parseStreamEvents(
         Stream.fromIterable(events),
-      ).toList())
-          .whereType<UsageInfo>()
-          .single;
+      ).toList()).whereType<UsageInfo>().single;
 
       expect(usage.cacheReadTokens, isNull);
       expect(usage.cacheCreationTokens, isNull);

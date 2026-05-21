@@ -40,7 +40,9 @@ void main() {
       createSkill(skillsDir, 'second');
       runtime.refresh();
       expect(
-          runtime.list().map((s) => s.name), containsAll(['first', 'second']));
+        runtime.list().map((s) => s.name),
+        containsAll(['first', 'second']),
+      );
     });
 
     test('loadBody can use refreshFirst', () {

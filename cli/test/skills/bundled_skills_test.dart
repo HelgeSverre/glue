@@ -10,8 +10,9 @@ void main() {
   test('bundled skills directory contains parseable builtins', () {
     expect(Directory(bundledDir).existsSync(), isTrue);
 
-    final tempHome =
-        Directory.systemTemp.createTempSync('bundled_skills_home_');
+    final tempHome = Directory.systemTemp.createTempSync(
+      'bundled_skills_home_',
+    );
     addTearDown(() => tempHome.deleteSync(recursive: true));
 
     final registry = SkillRegistry.discover(
@@ -83,9 +84,11 @@ void main() {
         final pathOnly = link.split('#').first;
         if (pathOnly.isEmpty) continue;
 
-        final resolvedPath =
-            p.normalize(p.join(p.dirname(skillFile.path), pathOnly));
-        final exists = FileSystemEntity.typeSync(resolvedPath) !=
+        final resolvedPath = p.normalize(
+          p.join(p.dirname(skillFile.path), pathOnly),
+        );
+        final exists =
+            FileSystemEntity.typeSync(resolvedPath) !=
             FileSystemEntityType.notFound;
 
         expect(

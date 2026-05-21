@@ -20,10 +20,8 @@ class SlashArgCandidate {
 /// [priorArgs] holds the complete arg tokens typed before the one being
 /// completed. [partial] is the lowercased partial text of the token under
 /// the cursor (empty string when the buffer ends with a space).
-typedef SlashArgCompleter = List<SlashArgCandidate> Function(
-  List<String> priorArgs,
-  String partial,
-);
+typedef SlashArgCompleter =
+    List<SlashArgCandidate> Function(List<String> priorArgs, String partial);
 
 /// Base type for a registered slash command.
 ///
@@ -77,9 +75,9 @@ class _InlineSlashCommand extends SlashCommand {
     required this.description,
     this.aliases = const [],
     this.hiddenAliases = const [],
-    required String Function(List<String> args) execute,
+    required this._execute,
     this.argCompleter,
-  }) : _execute = execute;
+  });
 
   @override
   String execute(List<String> args) => _execute(args);

@@ -42,10 +42,16 @@ Future<void> testBash() async {
 
   // Command completion.
   final cmds = await c.complete('ech');
-  check('compgen -c "ech" returns results', cmds.isNotEmpty,
-      'got ${cmds.length} results');
-  check('"echo" is in results', cmds.any((r) => r.text == 'echo'),
-      'results: ${cmds.map((r) => r.text).take(10).toList()}');
+  check(
+    'compgen -c "ech" returns results',
+    cmds.isNotEmpty,
+    'got ${cmds.length} results',
+  );
+  check(
+    '"echo" is in results',
+    cmds.any((r) => r.text == 'echo'),
+    'results: ${cmds.map((r) => r.text).take(10).toList()}',
+  );
 
   // File completion in temp dir.
   final dir = Directory.systemTemp.createTempSync('docker_test_');
@@ -55,33 +61,52 @@ Future<void> testBash() async {
     Directory('${dir.path}/alpha_dir').createSync();
 
     final files = await c.complete('ls ${dir.path}/alpha');
-    check('compgen -f returns file results', files.isNotEmpty,
-        'got ${files.length} results');
+    check(
+      'compgen -f returns file results',
+      files.isNotEmpty,
+      'got ${files.length} results',
+    );
 
     final texts = files.map((r) => r.text).toSet();
-    check('alpha.txt in results', texts.contains('${dir.path}/alpha.txt'),
-        'results: $texts');
-    check('alpha_two.txt in results',
-        texts.contains('${dir.path}/alpha_two.txt'), 'results: $texts');
-    check('alpha_dir in results', texts.contains('${dir.path}/alpha_dir'),
-        'results: $texts');
+    check(
+      'alpha.txt in results',
+      texts.contains('${dir.path}/alpha.txt'),
+      'results: $texts',
+    );
+    check(
+      'alpha_two.txt in results',
+      texts.contains('${dir.path}/alpha_two.txt'),
+      'results: $texts',
+    );
+    check(
+      'alpha_dir in results',
+      texts.contains('${dir.path}/alpha_dir'),
+      'results: $texts',
+    );
 
     // Check isDirectory flag.
     final dirCandidate = files.where((r) => r.text.endsWith('alpha_dir'));
-    check('alpha_dir marked as directory',
-        dirCandidate.isNotEmpty && dirCandidate.first.isDirectory);
+    check(
+      'alpha_dir marked as directory',
+      dirCandidate.isNotEmpty && dirCandidate.first.isDirectory,
+    );
 
     final fileCandidate = files.where((r) => r.text.endsWith('alpha.txt'));
-    check('alpha.txt not marked as directory',
-        fileCandidate.isNotEmpty && !fileCandidate.first.isDirectory);
+    check(
+      'alpha.txt not marked as directory',
+      fileCandidate.isNotEmpty && !fileCandidate.first.isDirectory,
+    );
   } finally {
     dir.deleteSync(recursive: true);
   }
 
   // Empty token after space — should complete files in cwd.
   final cwd = await c.complete('ls ');
-  check('compgen -f "" returns cwd files', cwd.isNotEmpty,
-      'got ${cwd.length} results');
+  check(
+    'compgen -f "" returns cwd files',
+    cwd.isNotEmpty,
+    'got ${cwd.length} results',
+  );
 }
 
 Future<void> testFish() async {
@@ -97,15 +122,24 @@ Future<void> testFish() async {
 
   // Command completion.
   final cmds = await c.complete('echo');
-  check('complete -C "echo" returns results', cmds.isNotEmpty,
-      'got ${cmds.length} results');
-  check('"echo" is in results', cmds.any((r) => r.text == 'echo'),
-      'results: ${cmds.map((r) => r.text).take(10).toList()}');
+  check(
+    'complete -C "echo" returns results',
+    cmds.isNotEmpty,
+    'got ${cmds.length} results',
+  );
+  check(
+    '"echo" is in results',
+    cmds.any((r) => r.text == 'echo'),
+    'results: ${cmds.map((r) => r.text).take(10).toList()}',
+  );
 
   // Fish provides descriptions.
   final withDesc = cmds.where((r) => r.description != null);
-  check('some results have descriptions', withDesc.isNotEmpty,
-      '${withDesc.length}/${cmds.length} have descriptions');
+  check(
+    'some results have descriptions',
+    withDesc.isNotEmpty,
+    '${withDesc.length}/${cmds.length} have descriptions',
+  );
 
   // File completion.
   final dir = Directory.systemTemp.createTempSync('docker_test_fish_');
@@ -114,8 +148,11 @@ Future<void> testFish() async {
     Directory('${dir.path}/beta_dir').createSync();
 
     final files = await c.complete('ls ${dir.path}/beta');
-    check('fish file completion returns results', files.isNotEmpty,
-        'got ${files.length} results');
+    check(
+      'fish file completion returns results',
+      files.isNotEmpty,
+      'got ${files.length} results',
+    );
   } finally {
     dir.deleteSync(recursive: true);
   }
@@ -133,8 +170,11 @@ Future<void> testZsh() async {
   }
 
   final cmds = await c.complete('ech');
-  check('zsh (bash fallback) compgen -c "ech" works', cmds.isNotEmpty,
-      'got ${cmds.length} results');
+  check(
+    'zsh (bash fallback) compgen -c "ech" works',
+    cmds.isNotEmpty,
+    'got ${cmds.length} results',
+  );
   check('"echo" in zsh results', cmds.any((r) => r.text == 'echo'));
 }
 
@@ -149,8 +189,11 @@ Future<void> testSh() async {
   }
 
   final cmds = await c.complete('ech');
-  check('sh (bash fallback) compgen -c "ech" works', cmds.isNotEmpty,
-      'got ${cmds.length} results');
+  check(
+    'sh (bash fallback) compgen -c "ech" works',
+    cmds.isNotEmpty,
+    'got ${cmds.length} results',
+  );
   check('"echo" in sh results', cmds.any((r) => r.text == 'echo'));
 }
 

@@ -32,11 +32,12 @@ class SkillRuntime {
     String? home,
     Environment? environment,
   }) : environment = _resolveEnvironment(
-          cwd: cwd,
-          home: home,
-          environment: environment,
-        ) {
-    this.bundledPathsProvider = bundledPathsProvider ??
+         cwd: cwd,
+         home: home,
+         environment: environment,
+       ) {
+    this.bundledPathsProvider =
+        bundledPathsProvider ??
         () => discoverBundledSkillPaths(environment: this.environment.vars);
     _registry = SkillRegistry.discover(
       cwd: cwd,

@@ -130,11 +130,11 @@ class McpConfigWriter {
     lines.writeln('$indent${spec.id}:');
     switch (spec) {
       case McpStdioServerSpec(
-          :final command,
-          :final args,
-          :final env,
-          :final workingDirectory,
-        ):
+        :final command,
+        :final args,
+        :final env,
+        :final workingDirectory,
+      ):
         lines.writeln('${inner}command: ${_scalar(command)}');
         if (args.isNotEmpty) {
           lines.writeln('${inner}args:');
@@ -167,8 +167,11 @@ class McpConfigWriter {
     return lines.toString();
   }
 
-  void _writeAuth(StringBuffer out, McpAuthSpec auth,
-      {required String indent}) {
+  void _writeAuth(
+    StringBuffer out,
+    McpAuthSpec auth, {
+    required String indent,
+  }) {
     switch (auth) {
       case McpNoAuth():
         return;
@@ -188,7 +191,8 @@ class McpConfigWriter {
   String _scalar(String value) {
     if (value.isEmpty) return '""';
     const reserved = {'true', 'false', 'null', 'yes', 'no', 'on', 'off', '~'};
-    final needsQuote = reserved.contains(value.toLowerCase()) ||
+    final needsQuote =
+        reserved.contains(value.toLowerCase()) ||
         RegExp(r'^[-+]?\d').hasMatch(value) ||
         RegExp(r'''[:#'"\[\]{}|>*&!%@`]''').hasMatch(value);
     if (!needsQuote) return value;
@@ -255,10 +259,9 @@ class McpConfigWriter {
     if (!hasServer(id)) {
       throw McpConfigWriteError("Server '$id' is not in config.yaml.");
     }
-    _mutate((editor) => editor.update(
-          ['mcp', 'servers', id, 'enabled'],
-          enabled,
-        ));
+    _mutate(
+      (editor) => editor.update(['mcp', 'servers', id, 'enabled'], enabled),
+    );
   }
 
   // ─── internals ───────────────────────────────────────────────────────────
@@ -286,8 +289,10 @@ class McpConfigWriter {
   }
 
   Map<dynamic, dynamic> _root(YamlEditor editor) {
-    final root =
-        editor.parseAt([], orElse: () => wrapAsYamlNode(<dynamic, dynamic>{}));
+    final root = editor.parseAt(
+      [],
+      orElse: () => wrapAsYamlNode(<dynamic, dynamic>{}),
+    );
     final value = root.value;
     return value is Map ? value : const <dynamic, dynamic>{};
   }
@@ -309,11 +314,11 @@ class McpConfigWriter {
     final out = <String, dynamic>{};
     switch (spec) {
       case McpStdioServerSpec(
-          :final command,
-          :final args,
-          :final env,
-          :final workingDirectory,
-        ):
+        :final command,
+        :final args,
+        :final env,
+        :final workingDirectory,
+      ):
         out['command'] = command;
         if (args.isNotEmpty) out['args'] = args;
         if (env.isNotEmpty) out['env'] = env;
@@ -339,10 +344,7 @@ class McpConfigWriter {
   Map<String, dynamic>? _authToYaml(McpAuthSpec auth) {
     return switch (auth) {
       McpNoAuth() => null,
-      McpBearerAuth(:final token) => {
-          'kind': 'bearer',
-          if (token != null) 'token': token,
-        },
+      McpBearerAuth(:final token) => {'kind': 'bearer', 'token': ?token},
       McpOAuthAuth() => {'kind': 'oauth'},
     };
   }

@@ -62,26 +62,32 @@ void main() {
   group('McpConnectionState (sealed)', () {
     test('exhaustive switch compiles', () {
       String label(McpConnectionState s) => switch (s) {
-            McpDisconnected() => 'disconnected',
-            McpConnecting() => 'connecting',
-            McpConnected() => 'connected',
-            McpReconnecting() => 'reconnecting',
-            McpDead() => 'dead',
-          };
+        McpDisconnected() => 'disconnected',
+        McpConnecting() => 'connecting',
+        McpConnected() => 'connected',
+        McpReconnecting() => 'reconnecting',
+        McpDead() => 'dead',
+      };
       expect(label(const McpDisconnected()), 'disconnected');
       expect(label(const McpConnecting(attempt: 1)), 'connecting');
       expect(
-        label(McpConnected(
-          connectedAt: DateTime(2026),
-          serverName: 'srv',
-          serverVersion: '1',
-          protocolVersion: '2025-03-26',
-        )),
+        label(
+          McpConnected(
+            connectedAt: DateTime(2026),
+            serverName: 'srv',
+            serverVersion: '1',
+            protocolVersion: '2025-03-26',
+          ),
+        ),
         'connected',
       );
       expect(
-        label(const McpReconnecting(
-            attempt: 3, nextAttemptIn: Duration(seconds: 4))),
+        label(
+          const McpReconnecting(
+            attempt: 3,
+            nextAttemptIn: Duration(seconds: 4),
+          ),
+        ),
         'reconnecting',
       );
       expect(label(const McpDead(reason: 'crash_loop')), 'dead');

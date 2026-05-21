@@ -14,7 +14,9 @@ void main() {
       expect(out, isNotNull);
       // \e]52;c;<base64-of-hi>\e\\
       expect(
-          out, equals('\x1b]52;c;${base64.encode(utf8.encode('hi'))}\x1b\\'));
+        out,
+        equals('\x1b]52;c;${base64.encode(utf8.encode('hi'))}\x1b\\'),
+      );
     });
 
     test('wraps the sequence in tmux passthrough when TMUX is set', () {

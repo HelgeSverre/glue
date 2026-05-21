@@ -17,9 +17,7 @@ class JinaReaderClient {
   Uri buildReaderUrl(String targetUrl) => Uri.parse('$baseUrl/$targetUrl');
 
   Map<String, String> get headers {
-    final h = <String, String>{
-      'Accept': 'text/markdown',
-    };
+    final h = <String, String>{'Accept': 'text/markdown'};
     if (apiKey != null && apiKey!.isNotEmpty) {
       h['Authorization'] = 'Bearer $apiKey';
     }

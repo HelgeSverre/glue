@@ -6,23 +6,25 @@ import 'package:test/test.dart';
 void main() {
   group('ResponsiveTable', () {
     ResponsiveTable<Map<String, String>> buildTable() => ResponsiveTable(
-          columns: const [
-            TableColumn(key: 'a', header: 'A'),
-            TableColumn(key: 'b', header: 'B'),
-          ],
-          rows: const [
-            {'a': 'alpha', 'b': 'bravo'},
-            {'a': 'gamma', 'b': 'delta'},
-          ],
-          getValues: (row) => row,
-        );
+      columns: const [
+        TableColumn(key: 'a', header: 'A'),
+        TableColumn(key: 'b', header: 'B'),
+      ],
+      rows: const [
+        {'a': 'alpha', 'b': 'bravo'},
+        {'a': 'gamma', 'b': 'delta'},
+      ],
+      getValues: (row) => row,
+    );
 
     test('renderRow returns wider output at a wider width', () {
       final table = buildTable();
       final wide = table.renderRow(0, 40);
       final narrow = table.renderRow(0, 12);
-      expect(stripAnsi(wide).length,
-          greaterThanOrEqualTo(stripAnsi(narrow).length));
+      expect(
+        stripAnsi(wide).length,
+        greaterThanOrEqualTo(stripAnsi(narrow).length),
+      );
     });
 
     test('renderHeader returns the column headers', () {
@@ -38,7 +40,7 @@ void main() {
       final table = ResponsiveTable(
         columns: const [TableColumn(key: 'a', header: 'A')],
         rows: const [
-          {'a': 'x'}
+          {'a': 'x'},
         ],
         getValues: (row) => row,
         includeDivider: false,
@@ -67,10 +69,7 @@ void main() {
     });
 
     test('sourceAt returns original row objects', () {
-      final sourceRows = [
-        ('sessionA', 'alpha'),
-        ('sessionB', 'beta'),
-      ];
+      final sourceRows = [('sessionA', 'alpha'), ('sessionB', 'beta')];
       final table = ResponsiveTable<(String, String)>(
         columns: const [TableColumn(key: 'id', header: 'ID')],
         rows: sourceRows,

@@ -18,7 +18,8 @@ class WebSearchResult {
     buf.writeln(snippet);
     if (publishedAt != null) {
       buf.writeln(
-          'Published: ${publishedAt!.toIso8601String().split('T').first}');
+        'Published: ${publishedAt!.toIso8601String().split('T').first}',
+      );
     }
     return buf.toString();
   }

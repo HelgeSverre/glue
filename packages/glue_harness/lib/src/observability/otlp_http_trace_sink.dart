@@ -9,15 +9,13 @@ import 'package:http/http.dart' as http;
 /// Exports completed Glue spans using OTLP/HTTP JSON.
 class OtlpHttpTraceSink extends ObservabilitySink {
   OtlpHttpTraceSink({
-    required OtelConfig config,
+    required this._config,
     http.Client? client,
     DateTime Function()? now,
-    int maxBatchSize = 64,
-  })  : _config = config,
-        _client = client ?? http.Client(),
-        _ownsClient = client == null,
-        _now = now ?? DateTime.now,
-        _maxBatchSize = maxBatchSize;
+    this._maxBatchSize = 64,
+  }) : _client = client ?? http.Client(),
+       _ownsClient = client == null,
+       _now = now ?? DateTime.now;
 
   final OtelConfig _config;
   final http.Client _client;
@@ -82,8 +80,8 @@ class OtlpHttpTraceSink extends ObservabilitySink {
 
   static String _generateSessionId() {
     final ts = DateTime.now().millisecondsSinceEpoch.toRadixString(36);
-    final rand =
-        (DateTime.now().microsecondsSinceEpoch & 0xFFFFFF).toRadixString(36);
+    final rand = (DateTime.now().microsecondsSinceEpoch & 0xFFFFFF)
+        .toRadixString(36);
     return 'glue-$ts-$rand';
   }
 
@@ -104,14 +102,11 @@ class OtlpHttpTraceSink extends ObservabilitySink {
           },
           'scopeSpans': [
             {
-              'scope': {
-                'name': 'glue',
-                'version': AppConstants.version,
-              },
+              'scope': {'name': 'glue', 'version': AppConstants.version},
               'spans': spans.map(_spanToOtlp).toList(),
-            }
+            },
           ],
-        }
+        },
       ],
     };
   }
@@ -143,7 +138,7 @@ class OtlpHttpTraceSink extends ObservabilitySink {
                     if (_attributeSupported(entry.value))
                       _kv(entry.key, entry.value as Object),
                 ],
-            }
+            },
         ],
       'status': {
         'code': switch (span.statusCode) {
@@ -172,9 +167,9 @@ String redactOtelHeadersForDisplay(Map<String, String> headers) {
 }
 
 Map<String, dynamic> _kv(String key, Object value) => {
-      'key': key,
-      'value': _anyValue(value),
-    };
+  'key': key,
+  'value': _anyValue(value),
+};
 
 Map<String, dynamic> _anyValue(Object value) {
   if (value is String) return {'stringValue': value};
@@ -218,8 +213,9 @@ bool _attributeSupported(Object? value) {
     return true;
   }
   if (value is List) {
-    return value.every((item) =>
-        item is String || item is bool || item is int || item is double);
+    return value.every(
+      (item) => item is String || item is bool || item is int || item is double,
+    );
   }
   return true;
 }

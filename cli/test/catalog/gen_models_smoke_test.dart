@@ -27,8 +27,11 @@ void main() {
         final generated = bundledCatalog.providers[providerId]!;
         final expected = fromYaml.providers[providerId]!;
         expect(generated.adapter, expected.adapter, reason: providerId);
-        expect(generated.compatibility, expected.compatibility,
-            reason: providerId);
+        expect(
+          generated.compatibility,
+          expected.compatibility,
+          reason: providerId,
+        );
         expect(generated.baseUrl, expected.baseUrl, reason: providerId);
         expect(generated.auth.kind, expected.auth.kind, reason: providerId);
         expect(generated.auth.envVar, expected.auth.envVar, reason: providerId);
@@ -36,18 +39,23 @@ void main() {
       }
     });
 
-    test('generator --check succeeds (committed file is up to date)', () async {
-      final result = await Process.run(
-        'dart',
-        ['run', 'tool/gen_models.dart', '--check'],
-      );
-      expect(
-        result.exitCode,
-        0,
-        reason:
-            'Generated file is stale. Run `dart run tool/gen_models.dart` to regenerate.\n'
-            'stdout:\n${result.stdout}\nstderr:\n${result.stderr}',
-      );
-    }, tags: ['codegen']);
+    test(
+      'generator --check succeeds (committed file is up to date)',
+      () async {
+        final result = await Process.run('dart', [
+          'run',
+          'tool/gen_models.dart',
+          '--check',
+        ]);
+        expect(
+          result.exitCode,
+          0,
+          reason:
+              'Generated file is stale. Run `dart run tool/gen_models.dart` to regenerate.\n'
+              'stdout:\n${result.stdout}\nstderr:\n${result.stderr}',
+        );
+      },
+      tags: ['codegen'],
+    );
   });
 }

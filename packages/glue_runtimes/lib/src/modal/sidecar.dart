@@ -26,11 +26,7 @@ class ModalFsEntry {
   final bool isDirectory;
   final int size;
 
-  ModalFsEntry({
-    required this.name,
-    required this.isDirectory,
-    this.size = 0,
-  });
+  ModalFsEntry({required this.name, required this.isDirectory, this.size = 0});
 }
 
 /// File stat result.
@@ -102,8 +98,10 @@ class ModalSidecar implements ModalSidecarBase {
     final python = await _resolvePython();
     if (python == null) return false;
     try {
-      final res = await Process.run(
-          python, ['-c', 'import modal; print(modal.__version__)']);
+      final res = await Process.run(python, [
+        '-c',
+        'import modal; print(modal.__version__)',
+      ]);
       return res.exitCode == 0;
     } on ProcessException {
       return false;
@@ -118,7 +116,8 @@ class ModalSidecar implements ModalSidecarBase {
       throw const RuntimeApiException(
         runtimeId: 'modal',
         endpoint: 'start',
-        message: 'no python interpreter with the modal package found — set '
+        message:
+            'no python interpreter with the modal package found — set '
             '`MODAL_PYTHON` or `modal.python_path` in config.',
       );
     }
@@ -262,13 +261,14 @@ class ModalSidecar implements ModalSidecarBase {
   }
 
   @override
-  Future<ModalExecResult> execCapture(String command,
-      {Duration? timeout}) async {
-    final res = await _send(
-      'exec',
-      {'command': command, if (timeout != null) 'timeout': timeout.inSeconds},
-      timeout: timeout == null ? null : timeout + const Duration(seconds: 30),
-    );
+  Future<ModalExecResult> execCapture(
+    String command, {
+    Duration? timeout,
+  }) async {
+    final res = await _send('exec', {
+      'command': command,
+      if (timeout != null) 'timeout': timeout.inSeconds,
+    }, timeout: timeout == null ? null : timeout + const Duration(seconds: 30));
     return ModalExecResult(
       exitCode: (res['exit_code'] ?? -1) as int,
       stdout: (res['stdout'] ?? '') as String,
@@ -285,8 +285,10 @@ class ModalSidecar implements ModalSidecarBase {
 
   @override
   Future<void> writeFile(String path, List<int> bytes) async {
-    await _send(
-        'write_file', {'path': path, 'content_b64': base64Encode(bytes)});
+    await _send('write_file', {
+      'path': path,
+      'content_b64': base64Encode(bytes),
+    });
   }
 
   @override
@@ -307,11 +309,13 @@ class ModalSidecar implements ModalSidecarBase {
     final entries = (res['entries'] as List?) ?? const [];
     return entries
         .whereType<Map<String, dynamic>>()
-        .map((e) => ModalFsEntry(
-              name: (e['name'] ?? '') as String,
-              isDirectory: (e['is_dir'] ?? false) as bool,
-              size: (e['size'] ?? 0) as int,
-            ))
+        .map(
+          (e) => ModalFsEntry(
+            name: (e['name'] ?? '') as String,
+            isDirectory: (e['is_dir'] ?? false) as bool,
+            size: (e['size'] ?? 0) as int,
+          ),
+        )
         .toList();
   }
 
@@ -367,7 +371,9 @@ class ModalSidecar implements ModalSidecarBase {
       // error — swallow it.
       try {
         await _send('shutdown', {}).timeout(const Duration(seconds: 10));
-      } catch (_) {/* fallthrough to forced cleanup */}
+      } catch (_) {
+        /* fallthrough to forced cleanup */
+      }
     } finally {
       try {
         _proc!.stdin.close();
@@ -427,7 +433,9 @@ class ModalSidecar implements ModalSidecarBase {
           }
         }
       }
-    } catch (_) {/* fall through */}
+    } catch (_) {
+      /* fall through */
+    }
     // Last resort: hope a system python has the package.
     return 'python3';
   }

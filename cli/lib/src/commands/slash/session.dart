@@ -63,7 +63,7 @@ class SessionCommand extends SlashCommand {
     final startedLabel = startedAt == null
         ? '(not started)'
         : '${startedAt.toLocal().toIso8601String().substring(0, 19)} '
-            '(${startedAt.timeAgo})';
+              '(${startedAt.timeAgo})';
 
     final buf = StringBuffer()
       ..writeln('Session Info')
@@ -75,8 +75,10 @@ class SessionCommand extends SlashCommand {
       ..writeln('  Tokens used:  ${ctx.agent.stats.totalTokens}')
       ..writeln('  Messages:     ${ctx.agent.conversation.length}')
       ..writeln('  Tools:        ${ctx.agent.tools.length} registered')
-      ..writeln('  Approval:     ${ctx.approval.mode.label} '
-          '(Shift+Tab to toggle)')
+      ..writeln(
+        '  Approval:     ${ctx.approval.mode.label} '
+        '(Shift+Tab to toggle)',
+      )
       ..writeln('  Auto-approve: ${trusted.join(", ")}');
     // Phase 3: surface cloud runtime info when present so the user
     // knows where the patch is going to land.
@@ -84,8 +86,10 @@ class SessionCommand extends SlashCommand {
       buf
         ..writeln('  Runtime:      ${meta.runtimeId}')
         ..writeln('  Sandbox:      ${meta.sandboxId ?? "(unknown)"}')
-        ..writeln('  Patch on close: '
-            '~/.glue/sessions/${meta.id.value}/runtime.mbox');
+        ..writeln(
+          '  Patch on close: '
+          '~/.glue/sessions/${meta.id.value}/runtime.mbox',
+        );
     }
     return buf.toString();
   }

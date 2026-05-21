@@ -32,10 +32,7 @@ void main() {
     });
 
     test('requestCompletions activates with results', () async {
-      completer.nextResults = [
-        ShellCandidate('echo'),
-        ShellCandidate('exit'),
-      ];
+      completer.nextResults = [ShellCandidate('echo'), ShellCandidate('exit')];
       await ac.requestCompletions('e', 1);
       expect(ac.active, isTrue);
       expect(ac.matchCount, 2);
@@ -93,10 +90,7 @@ void main() {
 
     test('render window scrolls to keep the selection visible', () async {
       // 12 matches, maxVisible is 8 — selection at 9 must be rendered.
-      completer.nextResults = List.generate(
-        12,
-        (i) => ShellCandidate('cmd$i'),
-      );
+      completer.nextResults = List.generate(12, (i) => ShellCandidate('cmd$i'));
       await ac.requestCompletions('c', 1);
 
       for (var i = 0; i < 9; i++) {
@@ -106,26 +100,34 @@ void main() {
 
       final lines = ac.render(80);
       expect(lines.length, 8);
-      expect(lines.any((l) => l.contains('cmd9')), isTrue,
-          reason: 'selection at index 9 should be inside the visible window');
-      expect(lines.any((l) => l.contains('cmd0')), isFalse,
-          reason: 'index 0 should have scrolled off the top');
-    });
-
-    test('render window snaps to bottom after wrapping up from index 0',
-        () async {
-      completer.nextResults = List.generate(
-        12,
-        (i) => ShellCandidate('cmd$i'),
+      expect(
+        lines.any((l) => l.contains('cmd9')),
+        isTrue,
+        reason: 'selection at index 9 should be inside the visible window',
       );
-      await ac.requestCompletions('c', 1);
-      // Up from 0 wraps to last index.
-      ac.moveUp();
-      expect(ac.selected, 11);
-
-      final lines = ac.render(80);
-      expect(lines.any((l) => l.contains('cmd11')), isTrue);
+      expect(
+        lines.any((l) => l.contains('cmd0')),
+        isFalse,
+        reason: 'index 0 should have scrolled off the top',
+      );
     });
+
+    test(
+      'render window snaps to bottom after wrapping up from index 0',
+      () async {
+        completer.nextResults = List.generate(
+          12,
+          (i) => ShellCandidate('cmd$i'),
+        );
+        await ac.requestCompletions('c', 1);
+        // Up from 0 wraps to last index.
+        ac.moveUp();
+        expect(ac.selected, 11);
+
+        final lines = ac.render(80);
+        expect(lines.any((l) => l.contains('cmd11')), isTrue);
+      },
+    );
 
     test('accept splices correctly for single-word input', () async {
       completer.nextResults = [ShellCandidate('echo')];
@@ -150,9 +152,7 @@ void main() {
     });
 
     test('accept adds trailing space for non-directory', () async {
-      completer.nextResults = [
-        ShellCandidate('file.txt', isDirectory: false),
-      ];
+      completer.nextResults = [ShellCandidate('file.txt', isDirectory: false)];
       await ac.requestCompletions('cat f', 5);
 
       final result = ac.accept('', 0);
@@ -161,9 +161,7 @@ void main() {
     });
 
     test('accept adds trailing slash for directory', () async {
-      completer.nextResults = [
-        ShellCandidate('src', isDirectory: true),
-      ];
+      completer.nextResults = [ShellCandidate('src', isDirectory: true)];
       await ac.requestCompletions('ls s', 4);
 
       final result = ac.accept('', 0);
@@ -192,10 +190,7 @@ void main() {
     });
 
     test('dismiss resets all state', () async {
-      completer.nextResults = [
-        ShellCandidate('a'),
-        ShellCandidate('b'),
-      ];
+      completer.nextResults = [ShellCandidate('a'), ShellCandidate('b')];
       await ac.requestCompletions('x', 1);
       ac.moveDown();
 
@@ -240,18 +235,17 @@ void main() {
     });
 
     test('overlayHeight capped at maxVisible', () async {
-      completer.nextResults =
-          List.generate(20, (i) => ShellCandidate('item_$i'));
+      completer.nextResults = List.generate(
+        20,
+        (i) => ShellCandidate('item_$i'),
+      );
       await ac.requestCompletions('x', 1);
       expect(ac.matchCount, 20);
       expect(ac.overlayHeight, 8); // maxVisibleDropdownItems
     });
 
     test('overlayHeight matches match count when under max', () async {
-      completer.nextResults = [
-        ShellCandidate('a'),
-        ShellCandidate('b'),
-      ];
+      completer.nextResults = [ShellCandidate('a'), ShellCandidate('b')];
       await ac.requestCompletions('x', 1);
       expect(ac.overlayHeight, 2);
     });
@@ -268,9 +262,7 @@ void main() {
     });
 
     test('render shows directory icon for directories', () async {
-      completer.nextResults = [
-        ShellCandidate('src', isDirectory: true),
-      ];
+      completer.nextResults = [ShellCandidate('src', isDirectory: true)];
       await ac.requestCompletions('s', 1);
       final lines = ac.render(80);
       expect(lines[0], contains('📁'));

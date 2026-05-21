@@ -50,8 +50,13 @@ class KeyEvent extends TerminalEvent {
   final bool alt;
   final bool shift;
   final int? charCode;
-  KeyEvent(this.key,
-      {this.ctrl = false, this.alt = false, this.shift = false, this.charCode});
+  KeyEvent(
+    this.key, {
+    this.ctrl = false,
+    this.alt = false,
+    this.shift = false,
+    this.charCode,
+  });
 
   @override
   String toString() =>
@@ -358,21 +363,20 @@ class Terminal {
   }
 
   KeyEvent _controlChar(int byte) => switch (byte) {
-        0x01 => KeyEvent(Key.ctrlA),
-        0x03 => KeyEvent(Key.ctrlC, ctrl: true),
-        0x04 => KeyEvent(Key.ctrlD, ctrl: true),
-        0x05 => KeyEvent(Key.ctrlE),
-        0x0a =>
-          KeyEvent(Key.enter), // LF — some terminals send this instead of CR
-        0x0b => KeyEvent(Key.ctrlK, ctrl: true),
-        0x0c => KeyEvent(Key.ctrlL, ctrl: true),
-        0x0d => KeyEvent(Key.enter),
-        0x09 => KeyEvent(Key.tab),
-        0x15 => KeyEvent(Key.ctrlU, ctrl: true),
-        0x17 => KeyEvent(Key.ctrlW, ctrl: true),
-        0x7f => KeyEvent(Key.backspace),
-        _ => KeyEvent(Key.unknown, ctrl: true, charCode: byte),
-      };
+    0x01 => KeyEvent(Key.ctrlA),
+    0x03 => KeyEvent(Key.ctrlC, ctrl: true),
+    0x04 => KeyEvent(Key.ctrlD, ctrl: true),
+    0x05 => KeyEvent(Key.ctrlE),
+    0x0a => KeyEvent(Key.enter), // LF — some terminals send this instead of CR
+    0x0b => KeyEvent(Key.ctrlK, ctrl: true),
+    0x0c => KeyEvent(Key.ctrlL, ctrl: true),
+    0x0d => KeyEvent(Key.enter),
+    0x09 => KeyEvent(Key.tab),
+    0x15 => KeyEvent(Key.ctrlU, ctrl: true),
+    0x17 => KeyEvent(Key.ctrlW, ctrl: true),
+    0x7f => KeyEvent(Key.backspace),
+    _ => KeyEvent(Key.unknown, ctrl: true, charCode: byte),
+  };
 
   /// Parse a CSI sequence starting after `ESC [`.
   /// Returns (event, nextIndex, complete). If [complete] is false, the
@@ -404,7 +408,7 @@ class Terminal {
       return (
         _parseSgrMouse(paramStr.substring(1), finalByte == 0x4d),
         i,
-        true
+        true,
       );
     }
 
@@ -450,9 +454,10 @@ class Terminal {
       9 => KeyEvent(Key.tab, shift: isShift, alt: isAlt, ctrl: isCtrl),
       27 => KeyEvent(Key.escape, shift: isShift, alt: isAlt, ctrl: isCtrl),
       127 => KeyEvent(Key.backspace, shift: isShift, alt: isAlt, ctrl: isCtrl),
-      _ => keycode >= 32 && keycode < 127
-          ? CharEvent(String.fromCharCode(keycode), alt: isAlt)
-          : KeyEvent(Key.unknown, charCode: keycode),
+      _ =>
+        keycode >= 32 && keycode < 127
+            ? CharEvent(String.fromCharCode(keycode), alt: isAlt)
+            : KeyEvent(Key.unknown, charCode: keycode),
     };
   }
 
@@ -497,11 +502,16 @@ class Terminal {
         13 => KeyEvent(Key.enter, shift: isShift, alt: isAlt, ctrl: isCtrl),
         9 => KeyEvent(Key.tab, shift: isShift, alt: isAlt, ctrl: isCtrl),
         27 => KeyEvent(Key.escape, shift: isShift, alt: isAlt, ctrl: isCtrl),
-        127 =>
-          KeyEvent(Key.backspace, shift: isShift, alt: isAlt, ctrl: isCtrl),
-        _ => keycode >= 32 && keycode < 127
-            ? CharEvent(String.fromCharCode(keycode), alt: isAlt)
-            : KeyEvent(Key.unknown, charCode: keycode),
+        127 => KeyEvent(
+          Key.backspace,
+          shift: isShift,
+          alt: isAlt,
+          ctrl: isCtrl,
+        ),
+        _ =>
+          keycode >= 32 && keycode < 127
+              ? CharEvent(String.fromCharCode(keycode), alt: isAlt)
+              : KeyEvent(Key.unknown, charCode: keycode),
       };
     }
 

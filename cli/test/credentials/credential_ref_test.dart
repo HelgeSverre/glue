@@ -26,7 +26,9 @@ void main() {
 
     test('InlineCredential equality includes the value', () {
       expect(
-          const InlineCredential('k1'), equals(const InlineCredential('k1')));
+        const InlineCredential('k1'),
+        equals(const InlineCredential('k1')),
+      );
       expect(
         const InlineCredential('k1'),
         isNot(equals(const InlineCredential('k2'))),

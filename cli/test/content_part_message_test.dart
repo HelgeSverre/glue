@@ -18,8 +18,10 @@ void main() {
     });
 
     test('has null contentParts when not provided', () {
-      final result =
-          ToolResult(callId: const ToolCallId('c2'), content: 'text');
+      final result = ToolResult(
+        callId: const ToolCallId('c2'),
+        content: 'text',
+      );
       expect(result.contentParts, isNull);
     });
 

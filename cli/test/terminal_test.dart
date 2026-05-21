@@ -7,8 +7,10 @@ void main() {
 
   group('Cell', () {
     test('same char and style are equal', () {
-      expect(Cell('a', style: AnsiStyle.bold),
-          equals(Cell('a', style: AnsiStyle.bold)));
+      expect(
+        Cell('a', style: AnsiStyle.bold),
+        equals(Cell('a', style: AnsiStyle.bold)),
+      );
     });
 
     test('different char are not equal', () {
@@ -16,8 +18,10 @@ void main() {
     });
 
     test('different style are not equal', () {
-      expect(Cell('a', style: AnsiStyle.bold),
-          isNot(equals(Cell('a', style: AnsiStyle.dim))));
+      expect(
+        Cell('a', style: AnsiStyle.bold),
+        isNot(equals(Cell('a', style: AnsiStyle.dim))),
+      );
     });
 
     test('null style vs non-null style are not equal', () {
@@ -35,14 +39,14 @@ void main() {
 
   group('ConfirmModal', () {
     ConfirmModal makeModal() => ConfirmModal(
-          title: 'Apply changes?',
-          bodyLines: ['File: foo.dart', 'Size: 42 bytes'],
-          choices: [
-            const ModalChoice('Yes', 'y'),
-            const ModalChoice('No', 'n'),
-            const ModalChoice('Always', 'a'),
-          ],
-        );
+      title: 'Apply changes?',
+      bodyLines: ['File: foo.dart', 'Size: 42 bytes'],
+      choices: [
+        const ModalChoice('Yes', 'y'),
+        const ModalChoice('No', 'n'),
+        const ModalChoice('Always', 'a'),
+      ],
+    );
 
     test('isComplete is false initially', () {
       final modal = makeModal();

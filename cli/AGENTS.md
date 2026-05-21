@@ -10,7 +10,7 @@
 
 ## Architecture
 
-Dart 3.4+ terminal TUI app. `App` (lib/src/app.dart) is the main controller wiring terminal I/O, agent loop, and rendering. `AgentCore` runs the LLM↔tool ReAct loop emitting `AgentEvent`s. LLM providers (Anthropic/OpenAI/Ollama) implement `LlmClient` in lib/src/llm/. `AgentManager`+`AgentRunner` handle headless subagent execution. `GlueConfig` resolves settings from CLI args → env vars → ~/.glue/config.yaml → defaults. Layout divides terminal into output/overlay/status/input zones.
+Dart 3.12+ terminal TUI app. `App` (lib/src/app.dart) is the main controller wiring terminal I/O, agent loop, and rendering. `AgentCore` runs the LLM↔tool ReAct loop emitting `AgentEvent`s. LLM providers (Anthropic/OpenAI/Ollama) implement `LlmClient` in lib/src/llm/. `AgentManager`+`AgentRunner` handle headless subagent execution. `GlueConfig` resolves settings from CLI args → env vars → ~/.glue/config.yaml → defaults. Layout divides terminal into output/overlay/status/input zones.
 
 Command execution uses `CommandExecutor` abstraction (`lib/src/shell/`): `HostExecutor` runs commands via the user's shell (respects `$SHELL`, configurable via `GLUE_SHELL`); `DockerExecutor` runs commands in ephemeral Docker containers with bind-mounted directories. `ExecutorFactory` selects the executor based on config with automatic host fallback. `SessionState` persists session-scoped Docker mounts.
 

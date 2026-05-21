@@ -29,24 +29,26 @@ void main() {
       expect(renders, 2); // show + auto-dismiss
     });
 
-    test('a second show() cancels the prior timer (no double-dismiss)',
-        () async {
-      var renders = 0;
-      final toast = Toast(
-        onRender: () => renders++,
-        successDuration: const Duration(milliseconds: 25),
-      );
-      toast.show('first');
-      toast.show('second');
-      // Long enough for the first timer to have fired if it weren't cancelled,
-      // not long enough for the second.
-      await Future<void>.delayed(const Duration(milliseconds: 15));
-      expect(toast.visible, isTrue);
-      await Future<void>.delayed(const Duration(milliseconds: 40));
-      expect(toast.visible, isFalse);
-      // show #1 + show #2 + final dismiss = 3
-      expect(renders, 3);
-    });
+    test(
+      'a second show() cancels the prior timer (no double-dismiss)',
+      () async {
+        var renders = 0;
+        final toast = Toast(
+          onRender: () => renders++,
+          successDuration: const Duration(milliseconds: 25),
+        );
+        toast.show('first');
+        toast.show('second');
+        // Long enough for the first timer to have fired if it weren't cancelled,
+        // not long enough for the second.
+        await Future<void>.delayed(const Duration(milliseconds: 15));
+        expect(toast.visible, isTrue);
+        await Future<void>.delayed(const Duration(milliseconds: 40));
+        expect(toast.visible, isFalse);
+        // show #1 + show #2 + final dismiss = 3
+        expect(renders, 3);
+      },
+    );
 
     test('error kind uses errorDuration not successDuration', () async {
       final toast = Toast(

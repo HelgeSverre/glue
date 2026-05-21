@@ -32,23 +32,22 @@ String osc8FileLink(String path, [String? text]) {
 // "(see https://example.com)". The lookbehinds avoid re-wrapping URLs already
 // embedded in OSC 8 hyperlinks.
 final _bareUrlPattern = RegExp(
-  r'(?<!\x1b\]8;;)(?<!\x07)https?://[^\s<>\[\])`\x07\x1b' "'" r'"]+',
+  r'(?<!\x1b\]8;;)(?<!\x07)https?://[^\s<>\[\])`\x07\x1b'
+  "'"
+  r'"]+',
 );
 
 /// Convert bare http/https URLs in [text] into OSC 8 hyperlinks.
 String linkifyUrls(String text) {
-  return text.replaceAllMapped(
-    _bareUrlPattern,
-    (m) {
-      var url = m.group(0)!;
-      var suffix = '';
-      while (url.isNotEmpty && '.,;:!?)'.contains(url[url.length - 1])) {
-        suffix = url[url.length - 1] + suffix;
-        url = url.substring(0, url.length - 1);
-      }
-      return '${osc8Link(url)}$suffix';
-    },
-  );
+  return text.replaceAllMapped(_bareUrlPattern, (m) {
+    var url = m.group(0)!;
+    var suffix = '';
+    while (url.isNotEmpty && '.,;:!?)'.contains(url[url.length - 1])) {
+      suffix = url[url.length - 1] + suffix;
+      url = url.substring(0, url.length - 1);
+    }
+    return '${osc8Link(url)}$suffix';
+  });
 }
 
 // Precompiled patterns for ANSI escape sequence matching.
@@ -223,8 +222,10 @@ String wrapIndented(
   String firstPrefix = '',
   String nextPrefix = '',
 }) {
-  final prefixWidth =
-      max(visibleLength(firstPrefix), visibleLength(nextPrefix));
+  final prefixWidth = max(
+    visibleLength(firstPrefix),
+    visibleLength(nextPrefix),
+  );
   final contentWidth = width - prefixWidth;
   if (contentWidth <= 0) return '$firstPrefix$text';
   final wrapped = ansiWrap(text, contentWidth);

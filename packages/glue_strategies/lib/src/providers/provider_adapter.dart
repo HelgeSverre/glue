@@ -37,7 +37,8 @@ abstract class ProviderAdapter {
   /// Only invoked by explicit user commands (e.g. `/models refresh`). Must
   /// never run during startup — Glue ships a curated catalog instead.
   Future<List<DiscoveredModel>> discoverModels(
-      ResolvedProvider provider) async {
+    ResolvedProvider provider,
+  ) async {
     return const [];
   }
 
@@ -91,12 +92,10 @@ abstract class ProviderAdapter {
 
 class AdapterRegistry {
   AdapterRegistry(Iterable<ProviderAdapter> adapters)
-      : _byId = <String, ProviderAdapter>{} {
+    : _byId = <String, ProviderAdapter>{} {
     for (final adapter in adapters) {
       if (_byId.containsKey(adapter.adapterId)) {
-        throw ArgumentError(
-          'duplicate adapter id: "${adapter.adapterId}"',
-        );
+        throw ArgumentError('duplicate adapter id: "${adapter.adapterId}"');
       }
       _byId[adapter.adapterId] = adapter;
     }

@@ -26,10 +26,8 @@ class RecapGenerator {
   /// accounted for in session totals.
   void Function(UsageInfo)? onUsage;
 
-  RecapGenerator({
-    required LlmClient llmClient,
-    this.onUsage,
-  }) : _llm = llmClient;
+  RecapGenerator({required LlmClient llmClient, this.onUsage})
+    : _llm = llmClient;
 
   Future<String?> generateFromContext(TitleContext context) async {
     try {
@@ -45,12 +43,14 @@ class RecapGenerator {
       }
       if (context.firstAssistantMessage case final text? when text.isNotEmpty) {
         buffer.writeln(
-            '<first_assistant>${_truncate(text, 400)}</first_assistant>');
+          '<first_assistant>${_truncate(text, 400)}</first_assistant>',
+        );
       }
       if (context.latestAssistantMessage case final text?
           when text.isNotEmpty) {
         buffer.writeln(
-            '<latest_assistant>${_truncate(text, 400)}</latest_assistant>');
+          '<latest_assistant>${_truncate(text, 400)}</latest_assistant>',
+        );
       }
       if (context.toolNames.isNotEmpty) {
         buffer.writeln('<tools>${context.toolNames.join(', ')}</tools>');
@@ -81,8 +81,10 @@ class RecapGenerator {
   static String? sanitize(String? raw) {
     if (raw == null) return null;
 
-    var cleaned =
-        raw.replaceAll(_nonAsciiRe, '').replaceAll(_whitespaceRe, ' ').trim();
+    var cleaned = raw
+        .replaceAll(_nonAsciiRe, '')
+        .replaceAll(_whitespaceRe, ' ')
+        .trim();
 
     while (cleaned.isNotEmpty &&
         (cleaned.startsWith('"') || cleaned.startsWith("'"))) {

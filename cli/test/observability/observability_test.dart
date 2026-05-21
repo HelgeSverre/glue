@@ -214,20 +214,22 @@ void main() {
       expect(obs.debugEnabled, isFalse);
     });
 
-    test('startAutoFlush creates periodic flush and close cancels it',
-        () async {
-      final sink = _MockSink();
-      obs.addSink(sink);
-      obs.startAutoFlush(const Duration(milliseconds: 10));
+    test(
+      'startAutoFlush creates periodic flush and close cancels it',
+      () async {
+        final sink = _MockSink();
+        obs.addSink(sink);
+        obs.startAutoFlush(const Duration(milliseconds: 10));
 
-      await Future<void>.delayed(const Duration(milliseconds: 60));
-      final countBeforeClose = sink.flushCount;
-      expect(countBeforeClose, greaterThanOrEqualTo(1));
+        await Future<void>.delayed(const Duration(milliseconds: 60));
+        final countBeforeClose = sink.flushCount;
+        expect(countBeforeClose, greaterThanOrEqualTo(1));
 
-      await obs.close();
-      await Future<void>.delayed(const Duration(milliseconds: 60));
-      expect(sink.flushCount, countBeforeClose);
-    });
+        await obs.close();
+        await Future<void>.delayed(const Duration(milliseconds: 60));
+        expect(sink.flushCount, countBeforeClose);
+      },
+    );
 
     test('activeSpan is used as default parent', () {
       final parent = obs.startSpan('parent');

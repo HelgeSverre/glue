@@ -247,8 +247,9 @@ String? _extractDocComment(String source, int offset) {
   if (docLines.isEmpty) return null;
 
   // Strip {@category ...} tags from the doc comment text.
-  final cleaned =
-      docLines.map((l) => l.replaceAll(_categoryPattern, '').trim()).toList();
+  final cleaned = docLines
+      .map((l) => l.replaceAll(_categoryPattern, '').trim())
+      .toList();
   // Remove leading/trailing empty lines.
   while (cleaned.isNotEmpty && cleaned.first.isEmpty) {
     cleaned.removeAt(0);
@@ -331,8 +332,9 @@ List<DartMember> _extractMembers(String classBody, String className) {
     if (RegExp(r'\._\s*\(').hasMatch(sig)) continue;
 
     final doc = _extractDocComment(classBody, m.start);
-    members
-        .add(DartMember(kind: 'constructor', signature: sig, docComment: doc));
+    members.add(
+      DartMember(kind: 'constructor', signature: sig, docComment: doc),
+    );
   }
 
   // Method patterns.
@@ -377,11 +379,9 @@ List<DartMember> _extractMembers(String classBody, String className) {
     // Skip if it looks like a method (already captured).
     if (type == 'void' || type == 'Future' || type == 'Stream') continue;
     final doc = _extractDocComment(classBody, m.start);
-    members.add(DartMember(
-      kind: 'property',
-      signature: '$type $name',
-      docComment: doc,
-    ));
+    members.add(
+      DartMember(kind: 'property', signature: '$type $name', docComment: doc),
+    );
   }
 
   // Getter patterns.
@@ -394,11 +394,9 @@ List<DartMember> _extractMembers(String classBody, String className) {
     final name = m.group(2)!;
     if (name.startsWith('_')) continue;
     final doc = _extractDocComment(classBody, m.start);
-    members.add(DartMember(
-      kind: 'getter',
-      signature: '$type get $name',
-      docComment: doc,
-    ));
+    members.add(
+      DartMember(kind: 'getter', signature: '$type get $name', docComment: doc),
+    );
   }
 
   return members;
@@ -444,14 +442,16 @@ DartFile _parseFile(
     final doc = _extractDocComment(source, m.start);
     final members = _extractMembers(classBody, name);
 
-    classes.add(DartClass(
-      name: name,
-      docComment: doc,
-      declaration: declLine.trim(),
-      members: members,
-      isSealed: isSealed,
-      isAbstract: isAbstract,
-    ));
+    classes.add(
+      DartClass(
+        name: name,
+        docComment: doc,
+        declaration: declLine.trim(),
+        members: members,
+        isSealed: isSealed,
+        isAbstract: isAbstract,
+      ),
+    );
   }
 
   // Enums.
@@ -500,8 +500,16 @@ DartFile _parseFile(
     final name = m.group(2)!;
     if (name.startsWith('_')) continue;
     // Skip class/enum keywords captured accidentally.
-    if (['class', 'enum', 'mixin', 'import', 'export', 'if', 'for', 'while']
-        .contains(returnType)) {
+    if ([
+      'class',
+      'enum',
+      'mixin',
+      'import',
+      'export',
+      'if',
+      'for',
+      'while',
+    ].contains(returnType)) {
       continue;
     }
     if (['class', 'enum', 'mixin', 'import', 'export'].contains(name)) {
@@ -509,8 +517,9 @@ DartFile _parseFile(
     }
     final doc = _extractDocComment(source, m.start);
     final sig = '$returnType $name(${m.group(3)})';
-    topLevelFunctions
-        .add(DartFunction(name: name, signature: sig, docComment: doc));
+    topLevelFunctions.add(
+      DartFunction(name: name, signature: sig, docComment: doc),
+    );
   }
 
   // Top-level constants.
@@ -520,8 +529,9 @@ DartFile _parseFile(
     final name = m.group(2)!;
     if (name.startsWith('_')) continue;
     final doc = _extractDocComment(source, m.start);
-    topLevelConstants
-        .add(DartConstant(name: name, type: type, docComment: doc));
+    topLevelConstants.add(
+      DartConstant(name: name, type: type, docComment: doc),
+    );
   }
 
   return DartFile(
@@ -564,7 +574,8 @@ String _generateMarkdown(DartFile df) {
   final githubPath = df.relativePath;
   final filename = df.relativePath.split('/').last;
   buf.writeln(
-      '*Source: [$filename]($_githubRepoBase${df.githubPrefix}$githubPath)*');
+    '*Source: [$filename]($_githubRepoBase${df.githubPrefix}$githubPath)*',
+  );
   buf.writeln();
 
   // Library doc.
@@ -613,8 +624,9 @@ String _generateMarkdown(DartFile df) {
       }
 
       // Split members by kind.
-      final constructors =
-          cls.members.where((m) => m.kind == 'constructor').toList();
+      final constructors = cls.members
+          .where((m) => m.kind == 'constructor')
+          .toList();
       final methods = cls.members.where((m) => m.kind == 'method').toList();
       final properties = cls.members
           .where((m) => m.kind == 'property' || m.kind == 'getter')
@@ -648,7 +660,8 @@ String _generateMarkdown(DartFile df) {
           final name = parts.last.replaceAll(RegExp(r'^get\s+'), '');
           final desc = p.docComment?.replaceAll('\n', ' ') ?? '';
           buf.writeln(
-              '| `${_escapeAngleBrackets(name)}` | `${_escapeAngleBrackets(type)}` | ${_escapeAngleBrackets(desc)} |');
+            '| `${_escapeAngleBrackets(name)}` | `${_escapeAngleBrackets(type)}` | ${_escapeAngleBrackets(desc)} |',
+          );
         }
         buf.writeln();
       }
@@ -691,7 +704,8 @@ String _generateMarkdown(DartFile df) {
     for (final c in df.topLevelConstants) {
       final desc = c.docComment?.replaceAll('\n', ' ') ?? '';
       buf.writeln(
-          '| `${c.name}` | `${_escapeAngleBrackets(c.type)}` | ${_escapeAngleBrackets(desc)} |');
+        '| `${c.name}` | `${_escapeAngleBrackets(c.type)}` | ${_escapeAngleBrackets(desc)} |',
+      );
     }
     buf.writeln();
   }
@@ -704,7 +718,8 @@ String _generateMarkdown(DartFile df) {
 // ---------------------------------------------------------------------------
 
 List<Map<String, dynamic>> _generateSidebar(
-    Map<String, List<DartFile>> modules) {
+  Map<String, List<DartFile>> modules,
+) {
   final sidebar = <Map<String, dynamic>>[];
 
   for (final mod in _moduleOrder) {
@@ -716,10 +731,7 @@ List<Map<String, dynamic>> _generateSidebar(
 
     final items = <Map<String, dynamic>>[];
     for (final f in files) {
-      items.add({
-        'text': f.primaryName,
-        'link': '/api/${f.module}/${f.kebab}',
-      });
+      items.add({'text': f.primaryName, 'link': '/api/${f.module}/${f.kebab}'});
     }
 
     sidebar.add({
@@ -735,10 +747,9 @@ List<Map<String, dynamic>> _generateSidebar(
     final files = modules[mod]!;
     files.sortBy((f) => f.stem);
     final items = files
-        .map((f) => {
-              'text': f.primaryName,
-              'link': '/api/${f.module}/${f.kebab}',
-            })
+        .map(
+          (f) => {'text': f.primaryName, 'link': '/api/${f.module}/${f.kebab}'},
+        )
         .toList();
     sidebar.add({
       'text': _moduleDisplayName(mod),
@@ -850,13 +861,14 @@ void main() {
         .whereType<File>()
         .where((f) => f.path.endsWith('.dart'))
         .where((f) {
-      final name = f.uri.pathSegments.last;
-      // Skip part-of files (named with a leading underscore) and
-      // generated files (`*_generated.dart`).
-      if (name.startsWith('_')) return false;
-      if (name.endsWith('_generated.dart')) return false;
-      return true;
-    }).toList();
+          final name = f.uri.pathSegments.last;
+          // Skip part-of files (named with a leading underscore) and
+          // generated files (`*_generated.dart`).
+          if (name.startsWith('_')) return false;
+          if (name.endsWith('_generated.dart')) return false;
+          return true;
+        })
+        .toList();
 
     for (final file in dartFiles) {
       final relative = file.path.replaceFirst('${srcDir.path}/', '');

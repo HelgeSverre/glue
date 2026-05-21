@@ -21,7 +21,8 @@ void main() {
     });
 
     test('parseResponse handles valid JSON', () {
-      final json = jsonDecode('''{
+      final json =
+          jsonDecode('''{
         "success": true,
         "data": [
           {
@@ -31,7 +32,8 @@ void main() {
             "markdown": "# Full Content"
           }
         ]
-      }''') as Map<String, dynamic>;
+      }''')
+              as Map<String, dynamic>;
 
       final results = FirecrawlSearchProvider.parseResponse(json, 'test');
       expect(results.results, hasLength(1));
@@ -40,10 +42,7 @@ void main() {
     });
 
     test('parseResponse handles empty data', () {
-      final json = <String, dynamic>{
-        'success': true,
-        'data': <dynamic>[],
-      };
+      final json = <String, dynamic>{'success': true, 'data': <dynamic>[]};
       final results = FirecrawlSearchProvider.parseResponse(json, 'test');
       expect(results.results, isEmpty);
     });

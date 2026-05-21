@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square&labelColor=0a0a0b" alt="license MIT"></a>
-  <img src="https://img.shields.io/badge/dart-3.4+-3b82f6?style=flat-square&labelColor=0a0a0b" alt="dart 3.4+">
+  <img src="https://img.shields.io/badge/dart-3.12+-3b82f6?style=flat-square&labelColor=0a0a0b" alt="dart 3.12+">
   <img src="https://img.shields.io/badge/platform-macos%20%7C%20linux%20%7C%20windows-7a7a7a?style=flat-square&labelColor=0a0a0b" alt="platform macos linux windows">
   <img src="https://img.shields.io/badge/status-alpha-facc15?style=flat-square&labelColor=0a0a0b" alt="status alpha">
   <a href="https://getglue.dev"><img src="https://img.shields.io/badge/website-getglue.dev-facc15?style=flat-square&labelColor=0a0a0b" alt="getglue.dev"></a>
@@ -26,7 +26,7 @@ Edits files, runs shell, keeps resumable sessions — the usual things. The web 
 
 ## Quick start
 
-Requires [Dart SDK](https://dart.dev/get-dart) ≥ 3.4 and [just](https://github.com/casey/just).
+Requires [Dart SDK](https://dart.dev/get-dart) ≥ 3.12 and [just](https://github.com/casey/just).
 
 ```bash
 cd cli

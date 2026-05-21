@@ -55,14 +55,16 @@ sealed class AcpContentBlock {
   static AcpContentBlock fromContentPart(ContentPart part) {
     return switch (part) {
       TextPart(:final text) => AcpTextBlock(text),
-      ImagePart() =>
-        AcpImageBlock(mimeType: part.mimeType, data: part.toBase64()),
+      ImagePart() => AcpImageBlock(
+        mimeType: part.mimeType,
+        data: part.toBase64(),
+      ),
       ResourceLinkPart() => AcpResourceLinkBlock(
-          uri: part.uri,
-          name: part.name,
-          description: part.description,
-          mimeType: part.mimeType,
-        ),
+        uri: part.uri,
+        name: part.name,
+        description: part.description,
+        mimeType: part.mimeType,
+      ),
     };
   }
 }
@@ -92,11 +94,11 @@ class AcpImageBlock extends AcpContentBlock {
 
   @override
   Map<String, Object?> toJson() => {
-        'type': 'image',
-        'mimeType': mimeType,
-        'data': data,
-        if (uri != null) 'uri': uri,
-      };
+    'type': 'image',
+    'mimeType': mimeType,
+    'data': data,
+    if (uri != null) 'uri': uri,
+  };
 }
 
 class AcpAudioBlock extends AcpContentBlock {
@@ -106,10 +108,10 @@ class AcpAudioBlock extends AcpContentBlock {
 
   @override
   Map<String, Object?> toJson() => {
-        'type': 'audio',
-        'mimeType': mimeType,
-        'data': data,
-      };
+    'type': 'audio',
+    'mimeType': mimeType,
+    'data': data,
+  };
 }
 
 class AcpResourceLinkBlock extends AcpContentBlock {
@@ -127,12 +129,12 @@ class AcpResourceLinkBlock extends AcpContentBlock {
 
   @override
   Map<String, Object?> toJson() => {
-        'type': 'resource_link',
-        'uri': uri,
-        if (name != null) 'name': name,
-        if (description != null) 'description': description,
-        if (mimeType != null) 'mimeType': mimeType,
-      };
+    'type': 'resource_link',
+    'uri': uri,
+    if (name != null) 'name': name,
+    if (description != null) 'description': description,
+    if (mimeType != null) 'mimeType': mimeType,
+  };
 }
 
 /// Fallback for blocks we don't know about. Preserves the original
@@ -163,9 +165,9 @@ class AcpToolCallContentValue extends AcpToolCallContent {
 
   @override
   Map<String, Object?> toJson() => {
-        'type': 'content',
-        'content': block.toJson(),
-      };
+    'type': 'content',
+    'content': block.toJson(),
+  };
 }
 
 /// `{type: 'diff', path, oldText, newText}` — for write_file / edit_file.
@@ -182,11 +184,11 @@ class AcpToolCallDiff extends AcpToolCallContent {
 
   @override
   Map<String, Object?> toJson() => {
-        'type': 'diff',
-        'path': path,
-        'oldText': oldText,
-        'newText': newText,
-      };
+    'type': 'diff',
+    'path': path,
+    'oldText': oldText,
+    'newText': newText,
+  };
 }
 
 /// `{type: 'terminal', terminalId}` — references a live terminal handle
@@ -197,7 +199,7 @@ class AcpToolCallTerminal extends AcpToolCallContent {
 
   @override
   Map<String, Object?> toJson() => {
-        'type': 'terminal',
-        'terminalId': terminalId,
-      };
+    'type': 'terminal',
+    'terminalId': terminalId,
+  };
 }

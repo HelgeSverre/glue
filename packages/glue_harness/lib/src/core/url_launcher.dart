@@ -17,20 +17,15 @@ library;
 
 import 'dart:io';
 
-typedef ProcessRunner = Future<ProcessResult> Function(
-  String executable,
-  List<String> arguments,
-);
+typedef ProcessRunner =
+    Future<ProcessResult> Function(String executable, List<String> arguments);
 typedef FileExistsCheck = bool Function(String path);
 
 /// Open [url] in the default browser. Returns false (never throws) when:
 ///   - [url] isn't http/https or contains shell metacharacters
 ///   - the launched command exits non-zero
 ///   - the launcher itself throws (`ProcessException`, etc.)
-Future<bool> openInBrowser(
-  String url, {
-  ProcessRunner? runner,
-}) async {
+Future<bool> openInBrowser(String url, {ProcessRunner? runner}) async {
   if (!_isSafeHttpUrl(url)) return false;
   final run = runner ?? Process.run;
   final (exe, args) = _commandFor(url);
@@ -113,7 +108,7 @@ bool _isHtmlPath(String path) {
   if (Platform.isWindows) {
     return (
       'rundll32',
-      ['url.dll,FileProtocolHandler', File(path).absolute.uri.toString()]
+      ['url.dll,FileProtocolHandler', File(path).absolute.uri.toString()],
     );
   }
   return ('xdg-open', [path]);

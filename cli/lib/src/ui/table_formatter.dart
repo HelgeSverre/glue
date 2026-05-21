@@ -24,10 +24,7 @@ class TableRender {
   final List<String> headerLines;
   final List<String> rowLines;
 
-  const TableRender({
-    required this.headerLines,
-    required this.rowLines,
-  });
+  const TableRender({required this.headerLines, required this.rowLines});
 }
 
 class TableFormatter {
@@ -106,10 +103,7 @@ class TableFormatter {
       }
     }
 
-    return TableRender(
-      headerLines: headerLines,
-      rowLines: rowLines,
-    );
+    return TableRender(headerLines: headerLines, rowLines: rowLines);
   }
 
   static void _fitWidthsToBudget({

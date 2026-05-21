@@ -59,7 +59,7 @@ class OAuthEndpoints {
     final reg = json['registration_endpoint'] as String?;
     final scopes =
         (json['scopes_supported'] as List?)?.cast<String>().toList() ??
-            const <String>[];
+        const <String>[];
     return OAuthEndpoints(
       authorizationEndpoint: Uri.parse(auth),
       tokenEndpoint: Uri.parse(token),
@@ -85,9 +85,10 @@ Future<OAuthEndpoints> discoverOAuthEndpoints(
     ];
     for (final path in paths) {
       final url = serverBaseUrl.replace(path: path);
-      final res = await client.get(url, headers: const {
-        'Accept': 'application/json',
-      });
+      final res = await client.get(
+        url,
+        headers: const {'Accept': 'application/json'},
+      );
       if (res.statusCode != 200) continue;
       try {
         final json = jsonDecode(res.body) as Map<String, dynamic>;
@@ -151,9 +152,7 @@ Future<OAuthClient> registerOAuthClient({
     final json = jsonDecode(res.body) as Map<String, dynamic>;
     final clientId = json['client_id'] as String?;
     if (clientId == null) {
-      throw const OAuthRegistrationException(
-        'DCR response missing client_id',
-      );
+      throw const OAuthRegistrationException('DCR response missing client_id');
     }
     return OAuthClient(
       clientId: clientId,
@@ -206,8 +205,10 @@ Future<OAuthTokens> runOAuthAuthorizationCodeFlow({
   final pkce = _generatePkce();
   final state = _generateState();
 
-  final server =
-      await HttpServer.bind(InternetAddress.loopbackIPv4, redirectPort);
+  final server = await HttpServer.bind(
+    InternetAddress.loopbackIPv4,
+    redirectPort,
+  );
   final redirectUri = Uri.parse('http://127.0.0.1:${server.port}/callback');
 
   // Build authorization URL.
@@ -345,9 +346,7 @@ OAuthTokens _parseTokenResponse(String body) {
   final json = jsonDecode(body) as Map<String, dynamic>;
   final accessToken = json['access_token'] as String?;
   if (accessToken == null) {
-    throw const OAuthFlowException(
-      'token response missing access_token',
-    );
+    throw const OAuthFlowException('token response missing access_token');
   }
   final expiresIn = json['expires_in'];
   DateTime? expiresAt;
@@ -382,8 +381,9 @@ _Pkce _generatePkce() {
   // 32 random bytes → 43 chars after base64url no-pad.
   final bytes = List<int>.generate(32, (_) => rng.nextInt(256));
   final verifier = base64UrlEncode(bytes).replaceAll('=', '');
-  final challenge = base64UrlEncode(sha256.convert(utf8.encode(verifier)).bytes)
-      .replaceAll('=', '');
+  final challenge = base64UrlEncode(
+    sha256.convert(utf8.encode(verifier)).bytes,
+  ).replaceAll('=', '');
   return _Pkce(verifier, challenge);
 }
 

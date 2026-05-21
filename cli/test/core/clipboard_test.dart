@@ -72,58 +72,61 @@ void main() {
       expect(calls, 1);
     });
 
-    test('writes the provided text to the process stdin and closes it',
-        () async {
-      _FakeStdin? capturedStdin;
-      await copyToClipboard(
-        'hello',
-        runner: (exe, args) async {
-          final stdin = _FakeStdin();
-          capturedStdin = stdin;
-          return ClipboardProcess(stdin: stdin, exitCode: Future.value(0));
-        },
-      );
-      expect(utf8.decode(capturedStdin!.buffer.toBytes()), 'hello');
-      expect(capturedStdin!.closed, isTrue);
-    });
-
     test(
-      'falls back to the next command on non-zero exit',
+      'writes the provided text to the process stdin and closes it',
       () async {
-        if (!Platform.isLinux) return;
-        var calls = 0;
-        final ok = await copyToClipboard(
-          'X',
+        _FakeStdin? capturedStdin;
+        await copyToClipboard(
+          'hello',
           runner: (exe, args) async {
-            calls++;
-            return _proc(exit: calls == 1 ? 1 : 0);
+            final stdin = _FakeStdin();
+            capturedStdin = stdin;
+            return ClipboardProcess(stdin: stdin, exitCode: Future.value(0));
           },
         );
-        expect(ok, isTrue);
-        expect(calls, greaterThan(1));
+        expect(utf8.decode(capturedStdin!.buffer.toBytes()), 'hello');
+        expect(capturedStdin!.closed, isTrue);
       },
     );
 
-    test('returns false when every command throws and OSC52 also fails',
-        () async {
+    test('falls back to the next command on non-zero exit', () async {
+      if (!Platform.isLinux) return;
+      var calls = 0;
       final ok = await copyToClipboard(
         'X',
-        environmentOverride: const {},
-        osc52Writer: (_) => throw StateError('osc52 disabled in this test'),
-        runner: (_, __) async => throw const ProcessException('nope', []),
+        runner: (exe, args) async {
+          calls++;
+          return _proc(exit: calls == 1 ? 1 : 0);
+        },
       );
-      expect(ok, isFalse);
+      expect(ok, isTrue);
+      expect(calls, greaterThan(1));
     });
 
-    test('returns false when every command exits non-zero and OSC52 fails',
-        () async {
-      final ok = await copyToClipboard(
-        'X',
-        environmentOverride: const {},
-        osc52Writer: (_) => throw StateError('osc52 disabled in this test'),
-        runner: (_, __) async => _proc(exit: 1),
-      );
-      expect(ok, isFalse);
-    });
+    test(
+      'returns false when every command throws and OSC52 also fails',
+      () async {
+        final ok = await copyToClipboard(
+          'X',
+          environmentOverride: const {},
+          osc52Writer: (_) => throw StateError('osc52 disabled in this test'),
+          runner: (_, _) async => throw const ProcessException('nope', []),
+        );
+        expect(ok, isFalse);
+      },
+    );
+
+    test(
+      'returns false when every command exits non-zero and OSC52 fails',
+      () async {
+        final ok = await copyToClipboard(
+          'X',
+          environmentOverride: const {},
+          osc52Writer: (_) => throw StateError('osc52 disabled in this test'),
+          runner: (_, _) async => _proc(exit: 1),
+        );
+        expect(ok, isFalse);
+      },
+    );
   });
 }

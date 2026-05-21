@@ -44,8 +44,8 @@ class InitializeParams {
   factory InitializeParams.fromJson(Map<String, Object?> json) =>
       InitializeParams(
         protocolVersion: (json['protocolVersion'] as num).toInt(),
-        clientCapabilities:
-            (json['clientCapabilities'] as Map?)?.cast<String, Object?>(),
+        clientCapabilities: (json['clientCapabilities'] as Map?)
+            ?.cast<String, Object?>(),
         clientInfo: json['clientInfo'] is Map
             ? ClientInfo.fromJson(
                 (json['clientInfo']! as Map).cast<String, Object?>(),
@@ -61,10 +61,10 @@ class ClientInfo {
   final String? version;
 
   factory ClientInfo.fromJson(Map<String, Object?> json) => ClientInfo(
-        name: json['name'] as String,
-        title: json['title'] as String?,
-        version: json['version'] as String?,
-      );
+    name: json['name'] as String,
+    title: json['title'] as String?,
+    version: json['version'] as String?,
+  );
 }
 
 class InitializeResult {
@@ -79,10 +79,10 @@ class InitializeResult {
   final Map<String, Object?> agentCapabilities;
 
   Map<String, Object?> toJson() => {
-        'protocolVersion': protocolVersion,
-        'agentInfo': agentInfo.toJson(),
-        'agentCapabilities': agentCapabilities,
-      };
+    'protocolVersion': protocolVersion,
+    'agentInfo': agentInfo.toJson(),
+    'agentCapabilities': agentCapabilities,
+  };
 }
 
 class AgentInfo {
@@ -92,10 +92,10 @@ class AgentInfo {
   final String? version;
 
   Map<String, Object?> toJson() => {
-        'name': name,
-        if (title != null) 'title': title,
-        if (version != null) 'version': version,
-      };
+    'name': name,
+    if (title != null) 'title': title,
+    if (version != null) 'version': version,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -210,9 +210,9 @@ class AgentMessageChunkUpdate extends SessionUpdate {
 
   @override
   Map<String, Object?> toJson() => {
-        'sessionUpdate': kind,
-        'content': {'type': 'text', 'text': text},
-      };
+    'sessionUpdate': kind,
+    'content': {'type': 'text', 'text': text},
+  };
 }
 
 class AgentThoughtChunkUpdate extends SessionUpdate {
@@ -224,9 +224,9 @@ class AgentThoughtChunkUpdate extends SessionUpdate {
 
   @override
   Map<String, Object?> toJson() => {
-        'sessionUpdate': kind,
-        'content': {'type': 'text', 'text': text},
-      };
+    'sessionUpdate': kind,
+    'content': {'type': 'text', 'text': text},
+  };
 }
 
 class ToolCallUpdate extends SessionUpdate {
@@ -249,13 +249,13 @@ class ToolCallUpdate extends SessionUpdate {
 
   @override
   Map<String, Object?> toJson() => {
-        'sessionUpdate': kind,
-        'toolCallId': toolCallId,
-        'title': title,
-        'kind': kind_.wireName,
-        'status': status.wireName,
-        if (rawInput != null) 'rawInput': rawInput,
-      };
+    'sessionUpdate': kind,
+    'toolCallId': toolCallId,
+    'title': title,
+    'kind': kind_.wireName,
+    'status': status.wireName,
+    if (rawInput != null) 'rawInput': rawInput,
+  };
 }
 
 class ToolCallStatusUpdate extends SessionUpdate {
@@ -274,12 +274,11 @@ class ToolCallStatusUpdate extends SessionUpdate {
 
   @override
   Map<String, Object?> toJson() => {
-        'sessionUpdate': kind,
-        'toolCallId': toolCallId,
-        'status': status.wireName,
-        if (content.isNotEmpty)
-          'content': [for (final c in content) c.toJson()],
-      };
+    'sessionUpdate': kind,
+    'toolCallId': toolCallId,
+    'status': status.wireName,
+    if (content.isNotEmpty) 'content': [for (final c in content) c.toJson()],
+  };
 }
 
 enum ToolCallKind {
@@ -315,9 +314,9 @@ class SessionUpdateNotification {
   final SessionUpdate update;
 
   Map<String, Object?> toJson() => {
-        'sessionId': sessionId,
-        'update': update.toJson(),
-      };
+    'sessionId': sessionId,
+    'update': update.toJson(),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -340,12 +339,12 @@ class RequestPermissionParams {
   final List<PermissionOption> options;
 
   Map<String, Object?> toJson() => {
-        'sessionId': sessionId,
-        'toolCallId': toolCallId,
-        'title': title,
-        'kind': kind_.wireName,
-        'options': [for (final o in options) o.toJson()],
-      };
+    'sessionId': sessionId,
+    'toolCallId': toolCallId,
+    'title': title,
+    'kind': kind_.wireName,
+    'options': [for (final o in options) o.toJson()],
+  };
 }
 
 class PermissionOption {
@@ -360,10 +359,10 @@ class PermissionOption {
   final String? description;
 
   Map<String, Object?> toJson() => {
-        'optionId': optionId,
-        'label': label,
-        if (description != null) 'description': description,
-      };
+    'optionId': optionId,
+    'label': label,
+    if (description != null) 'description': description,
+  };
 }
 
 class RequestPermissionResult {

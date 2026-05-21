@@ -22,12 +22,10 @@ class _StubDockedPanel extends DockedPanel {
     required this.edge,
     required this.mode,
     required this.extent,
-    bool visible = true,
     bool hasFocus = true,
-    bool handleResult = true,
-  })  : _visible = visible,
-        _focus = hasFocus,
-        _handleResult = handleResult;
+    this._handleResult = true,
+  }) : _visible = true,
+       _focus = hasFocus;
 
   @override
   bool get visible => _visible;
@@ -60,53 +58,63 @@ void main() {
   group('DockManager.resolveInsets', () {
     test('uses max pinned extent per edge and ignores floating panels', () {
       final manager = DockManager();
-      manager.add(_StubDockedPanel(
-        edge: DockEdge.left,
-        mode: DockMode.pinned,
-        extent: 16,
-      ));
-      manager.add(_StubDockedPanel(
-        edge: DockEdge.left,
-        mode: DockMode.pinned,
-        extent: 8,
-      ));
-      manager.add(_StubDockedPanel(
-        edge: DockEdge.right,
-        mode: DockMode.floating,
-        extent: 20,
-      ));
-      manager.add(_StubDockedPanel(
-        edge: DockEdge.top,
-        mode: DockMode.pinned,
-        extent: 3,
-      ));
+      manager.add(
+        _StubDockedPanel(
+          edge: DockEdge.left,
+          mode: DockMode.pinned,
+          extent: 16,
+        ),
+      );
+      manager.add(
+        _StubDockedPanel(edge: DockEdge.left, mode: DockMode.pinned, extent: 8),
+      );
+      manager.add(
+        _StubDockedPanel(
+          edge: DockEdge.right,
+          mode: DockMode.floating,
+          extent: 20,
+        ),
+      );
+      manager.add(
+        _StubDockedPanel(edge: DockEdge.top, mode: DockMode.pinned, extent: 3),
+      );
 
-      final insets =
-          manager.resolveInsets(terminalColumns: 120, terminalRows: 40);
+      final insets = manager.resolveInsets(
+        terminalColumns: 120,
+        terminalRows: 40,
+      );
       expect(insets.left, 16);
       expect(insets.top, 3);
       expect(insets.right, 0);
       expect(insets.bottom, 0);
     });
 
-    test('normalizes oversized left/right insets to keep one output column',
-        () {
-      final manager = DockManager();
-      manager.add(_StubDockedPanel(
-        edge: DockEdge.left,
-        mode: DockMode.pinned,
-        extent: 200,
-      ));
-      manager.add(_StubDockedPanel(
-        edge: DockEdge.right,
-        mode: DockMode.pinned,
-        extent: 200,
-      ));
+    test(
+      'normalizes oversized left/right insets to keep one output column',
+      () {
+        final manager = DockManager();
+        manager.add(
+          _StubDockedPanel(
+            edge: DockEdge.left,
+            mode: DockMode.pinned,
+            extent: 200,
+          ),
+        );
+        manager.add(
+          _StubDockedPanel(
+            edge: DockEdge.right,
+            mode: DockMode.pinned,
+            extent: 200,
+          ),
+        );
 
-      final insets =
-          manager.resolveInsets(terminalColumns: 80, terminalRows: 24);
-      expect(insets.left + insets.right, 79);
-    });
+        final insets = manager.resolveInsets(
+          terminalColumns: 80,
+          terminalRows: 24,
+        );
+        expect(insets.left + insets.right, 79);
+      },
+    );
   });
 
   group('DockManager.handleEvent', () {
@@ -137,16 +145,20 @@ void main() {
   group('DockManager.buildRenderPlans', () {
     test('creates pinned and floating panel rectangles from viewport', () {
       final manager = DockManager();
-      manager.add(_StubDockedPanel(
-        edge: DockEdge.left,
-        mode: DockMode.pinned,
-        extent: 10,
-      ));
-      manager.add(_StubDockedPanel(
-        edge: DockEdge.right,
-        mode: DockMode.floating,
-        extent: 30,
-      ));
+      manager.add(
+        _StubDockedPanel(
+          edge: DockEdge.left,
+          mode: DockMode.pinned,
+          extent: 10,
+        ),
+      );
+      manager.add(
+        _StubDockedPanel(
+          edge: DockEdge.right,
+          mode: DockMode.floating,
+          extent: 30,
+        ),
+      );
 
       final plans = manager.buildRenderPlans(
         viewport: const DockViewport(
@@ -173,11 +185,13 @@ void main() {
 
     test('places pinned bottom panel in reserved bottom dock zone', () {
       final manager = DockManager();
-      manager.add(_StubDockedPanel(
-        edge: DockEdge.bottom,
-        mode: DockMode.pinned,
-        extent: 2,
-      ));
+      manager.add(
+        _StubDockedPanel(
+          edge: DockEdge.bottom,
+          mode: DockMode.pinned,
+          extent: 2,
+        ),
+      );
 
       final plans = manager.buildRenderPlans(
         viewport: const DockViewport(

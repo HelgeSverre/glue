@@ -20,8 +20,7 @@ class _StubFetcher implements RemoteCatalogFetcher {
     Uri uri, {
     String? ifModifiedSince,
     Duration timeout = const Duration(seconds: 10),
-  }) =>
-      _fn(uri);
+  }) => _fn(uri);
 }
 
 Directory _scratch() =>
@@ -48,8 +47,11 @@ void main() {
       );
 
       expect(outcome, isA<RefreshWrote>());
-      expect(attempted, hasLength(1),
-          reason: 'fallback should not run after success');
+      expect(
+        attempted,
+        hasLength(1),
+        reason: 'fallback should not run after success',
+      );
       expect(File(cachePath).readAsStringSync(), contains('version'));
     });
 
@@ -75,53 +77,62 @@ void main() {
       );
 
       expect(outcome, isA<RefreshWrote>());
-      expect(attempted.map((u) => u.host),
-          ['primary.invalid', 'fallback.invalid']);
+      expect(attempted.map((u) => u.host), [
+        'primary.invalid',
+        'fallback.invalid',
+      ]);
       expect(File(cachePath).existsSync(), isTrue);
     });
 
-    test('returns RefreshAllFailed with each reason when nothing works',
-        () async {
-      final dir = _scratch();
-      addTearDown(() => dir.deleteSync(recursive: true));
-      final cachePath = '${dir.path}/models.yaml';
+    test(
+      'returns RefreshAllFailed with each reason when nothing works',
+      () async {
+        final dir = _scratch();
+        addTearDown(() => dir.deleteSync(recursive: true));
+        final cachePath = '${dir.path}/models.yaml';
 
-      final outcome = await refreshCatalog(
-        candidates: [
-          Uri.parse('https://a.invalid/m.yaml'),
-          Uri.parse('https://b.invalid/m.yaml'),
-        ],
-        cachePath: cachePath,
-        fetcher: _StubFetcher(
-          (uri) async => FetchFailed(reason: 'dns: ${uri.host}'),
-        ),
-      );
+        final outcome = await refreshCatalog(
+          candidates: [
+            Uri.parse('https://a.invalid/m.yaml'),
+            Uri.parse('https://b.invalid/m.yaml'),
+          ],
+          cachePath: cachePath,
+          fetcher: _StubFetcher(
+            (uri) async => FetchFailed(reason: 'dns: ${uri.host}'),
+          ),
+        );
 
-      expect(outcome, isA<RefreshAllFailed>());
-      final failures = (outcome as RefreshAllFailed).failures;
-      expect(failures, hasLength(2));
-      expect(failures[0].reason, 'dns: a.invalid');
-      expect(failures[1].reason, 'dns: b.invalid');
-      expect(File(cachePath).existsSync(), isFalse,
-          reason: 'cache must not be created on total failure');
-    });
+        expect(outcome, isA<RefreshAllFailed>());
+        final failures = (outcome as RefreshAllFailed).failures;
+        expect(failures, hasLength(2));
+        expect(failures[0].reason, 'dns: a.invalid');
+        expect(failures[1].reason, 'dns: b.invalid');
+        expect(
+          File(cachePath).existsSync(),
+          isFalse,
+          reason: 'cache must not be created on total failure',
+        );
+      },
+    );
 
-    test('treats FetchNotModified as success without rewriting cache',
-        () async {
-      final dir = _scratch();
-      addTearDown(() => dir.deleteSync(recursive: true));
-      final cachePath = '${dir.path}/models.yaml';
-      File(cachePath).writeAsStringSync('existing');
+    test(
+      'treats FetchNotModified as success without rewriting cache',
+      () async {
+        final dir = _scratch();
+        addTearDown(() => dir.deleteSync(recursive: true));
+        final cachePath = '${dir.path}/models.yaml';
+        File(cachePath).writeAsStringSync('existing');
 
-      final outcome = await refreshCatalog(
-        candidates: [Uri.parse('https://a.invalid/m.yaml')],
-        cachePath: cachePath,
-        fetcher: _StubFetcher((_) async => const FetchNotModified()),
-      );
+        final outcome = await refreshCatalog(
+          candidates: [Uri.parse('https://a.invalid/m.yaml')],
+          cachePath: cachePath,
+          fetcher: _StubFetcher((_) async => const FetchNotModified()),
+        );
 
-      expect(outcome, isA<RefreshNotModified>());
-      expect(File(cachePath).readAsStringSync(), 'existing');
-    });
+        expect(outcome, isA<RefreshNotModified>());
+        expect(File(cachePath).readAsStringSync(), 'existing');
+      },
+    );
   });
 
   group('defaultCatalogUrls', () {
@@ -129,7 +140,9 @@ void main() {
       expect(defaultCatalogUrls, hasLength(1));
       expect(defaultCatalogUrls.single, contains('raw.githubusercontent.com'));
       expect(
-          defaultCatalogUrls.single, endsWith('/docs/reference/models.yaml'));
+        defaultCatalogUrls.single,
+        endsWith('/docs/reference/models.yaml'),
+      );
     });
   });
 }

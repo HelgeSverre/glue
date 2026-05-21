@@ -189,7 +189,8 @@ void _printHumanReport(
     print('check_layers: ${violations.length} layer violation(s)\n');
     final byPair = <String, List<_Violation>>{};
     for (final v in violations) {
-      final key = '${v.fromSubsystem} (${v.fromLayer.name}) → '
+      final key =
+          '${v.fromSubsystem} (${v.fromLayer.name}) → '
           '${v.toSubsystem} (${v.toLayer.name})';
       (byPair[key] ??= <_Violation>[]).add(v);
     }
@@ -203,8 +204,10 @@ void _printHumanReport(
   }
 
   if (unknownSubsystems.isNotEmpty) {
-    print('check_layers: unknown subsystems (add to _subsystemLayers): '
-        '${unknownSubsystems.toList()..sort()}');
+    print(
+      'check_layers: unknown subsystems (add to _subsystemLayers): '
+      '${unknownSubsystems.toList()..sort()}',
+    );
   }
 
   if (!strict && violations.isNotEmpty) {
@@ -232,10 +235,10 @@ class _Violation {
   final String importPath;
 
   Map<String, dynamic> toJson() => {
-        'file': file,
-        'line': line,
-        'from': {'subsystem': fromSubsystem, 'layer': fromLayer.name},
-        'to': {'subsystem': toSubsystem, 'layer': toLayer.name},
-        'import': importPath,
-      };
+    'file': file,
+    'line': line,
+    'from': {'subsystem': fromSubsystem, 'layer': fromLayer.name},
+    'to': {'subsystem': toSubsystem, 'layer': toLayer.name},
+    'import': importPath,
+  };
 }

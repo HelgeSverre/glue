@@ -12,23 +12,23 @@ extension RuntimeDiffOutcomeAdapter on DiffOutcome {
     final self = this;
     return switch (self) {
       DiffSuccess() => RuntimeDiffOutcomeSuccess(
-          patch: self.patch,
-          meta: _toSurfaceMeta(self.meta),
-        ),
+        patch: self.patch,
+        meta: _toSurfaceMeta(self.meta),
+      ),
       DiffEmpty() => RuntimeDiffOutcomeEmpty(meta: _toSurfaceMeta(self.meta)),
       DiffUnavailable() => RuntimeDiffOutcomeUnavailable(
-          reason: switch (self.reason) {
-            DiffUnavailableReason.noBootstrapSha =>
-              RuntimeDiffUnavailableReason.noBootstrapSha,
-            DiffUnavailableReason.gitFailed =>
-              RuntimeDiffUnavailableReason.gitFailed,
-            DiffUnavailableReason.executorDead =>
-              RuntimeDiffUnavailableReason.executorDead,
-            DiffUnavailableReason.runtimeNotGit =>
-              RuntimeDiffUnavailableReason.runtimeNotGit,
-          },
-          hint: self.hint,
-        ),
+        reason: switch (self.reason) {
+          DiffUnavailableReason.noBootstrapSha =>
+            RuntimeDiffUnavailableReason.noBootstrapSha,
+          DiffUnavailableReason.gitFailed =>
+            RuntimeDiffUnavailableReason.gitFailed,
+          DiffUnavailableReason.executorDead =>
+            RuntimeDiffUnavailableReason.executorDead,
+          DiffUnavailableReason.runtimeNotGit =>
+            RuntimeDiffUnavailableReason.runtimeNotGit,
+        },
+        hint: self.hint,
+      ),
     };
   }
 }
@@ -172,7 +172,8 @@ Future<DiffOutcome> captureWorkspaceDiff({
   if (bootstrapSha == null || bootstrapSha.isEmpty) {
     return const DiffUnavailable(
       reason: DiffUnavailableReason.noBootstrapSha,
-      hint: 'runtime did not record a bootstrap commit (resumed sandbox?); '
+      hint:
+          'runtime did not record a bootstrap commit (resumed sandbox?); '
           'commit changes inside the sandbox before exiting to preserve them',
     );
   }
@@ -207,9 +208,10 @@ Future<DiffOutcome> captureWorkspaceDiff({
   if (formatPatch.exitCode != 0) {
     return DiffUnavailable(
       reason: DiffUnavailableReason.gitFailed,
-      hint: 'git format-patch exited ${formatPatch.exitCode}: '
-              '${formatPatch.stderr.isEmpty ? formatPatch.stdout : formatPatch.stderr}'
-          .trim(),
+      hint:
+          'git format-patch exited ${formatPatch.exitCode}: '
+                  '${formatPatch.stderr.isEmpty ? formatPatch.stdout : formatPatch.stderr}'
+              .trim(),
     );
   }
 
@@ -228,14 +230,17 @@ Future<DiffOutcome> captureWorkspaceDiff({
   if (workTree.exitCode != 0) {
     return DiffUnavailable(
       reason: DiffUnavailableReason.gitFailed,
-      hint: 'git diff exited ${workTree.exitCode}: '
-              '${workTree.stderr.isEmpty ? workTree.stdout : workTree.stderr}'
-          .trim(),
+      hint:
+          'git diff exited ${workTree.exitCode}: '
+                  '${workTree.stderr.isEmpty ? workTree.stdout : workTree.stderr}'
+              .trim(),
     );
   }
 
-  final mbox =
-      [formatPatch.stdout, workTree.stdout].where((s) => s.isNotEmpty).join();
+  final mbox = [
+    formatPatch.stdout,
+    workTree.stdout,
+  ].where((s) => s.isNotEmpty).join();
   final meta = DiffMeta(
     runtimeId: runtimeId,
     sandboxId: sandboxId,

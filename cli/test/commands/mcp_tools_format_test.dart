@@ -62,17 +62,19 @@ void main() {
       expect(result, contains('handshake timeout'));
     });
 
-    test('connected server with zero tools → notes the empty advertisement',
-        () {
-      final result = formatMcpToolsByServer(const [
-        McpServerToolListing(
-          id: 'empty',
-          status: McpServerListingStatus.connected,
-        ),
-      ]);
-      expect(result, contains('empty'));
-      expect(result, contains('no tools'));
-    });
+    test(
+      'connected server with zero tools → notes the empty advertisement',
+      () {
+        final result = formatMcpToolsByServer(const [
+          McpServerToolListing(
+            id: 'empty',
+            status: McpServerListingStatus.connected,
+          ),
+        ]);
+        expect(result, contains('empty'));
+        expect(result, contains('no tools'));
+      },
+    );
 
     group('with ANSI enabled', () {
       test('server header is prefixed with the brand dot', () {
@@ -84,10 +86,16 @@ void main() {
           ),
         ], ansiEnabled: true);
         expect(result, contains('●'));
-        expect(result.indexOf('●'), lessThan(result.indexOf('fs')),
-            reason: 'brand dot must precede the id');
-        expect(result, contains('\x1b['),
-            reason: 'expected ANSI sequences when ansiEnabled: true');
+        expect(
+          result.indexOf('●'),
+          lessThan(result.indexOf('fs')),
+          reason: 'brand dot must precede the id',
+        );
+        expect(
+          result,
+          contains('\x1b['),
+          reason: 'expected ANSI sequences when ansiEnabled: true',
+        );
       });
 
       test('dead server\'s empty-reason line uses the error marker (✗)', () {
@@ -160,8 +168,11 @@ void main() {
       final fsIndex = result.indexOf('fs');
       final dbIndex = result.indexOf('db');
       expect(fsIndex, greaterThanOrEqualTo(0));
-      expect(dbIndex, greaterThan(fsIndex),
-          reason: 'groups should appear in input order');
+      expect(
+        dbIndex,
+        greaterThan(fsIndex),
+        reason: 'groups should appear in input order',
+      );
       expect(result, contains('  read'));
       expect(result, contains('  query'));
     });

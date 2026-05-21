@@ -194,8 +194,9 @@ class RuntimeFactory {
       // Force-disable docker when runtime=host even if `docker.enabled`
       // is true in user config (e.g. a leftover); pass through
       // unchanged for runtime=docker.
-      final effectiveDockerConfig =
-          runtime == 'docker' ? dockerConfig : const DockerConfig();
+      final effectiveDockerConfig = runtime == 'docker'
+          ? dockerConfig
+          : const DockerConfig();
       final executor = await ExecutorFactory.create(
         shellConfig: shellConfig,
         dockerConfig: effectiveDockerConfig,
@@ -256,7 +257,8 @@ class _BuiltinRuntimeSession implements RuntimeSession {
   Future<RuntimeDiffOutcome> diffSinceBootstrap() async =>
       const RuntimeDiffOutcomeUnavailable(
         reason: RuntimeDiffUnavailableReason.notSupported,
-        hint: 'host/docker runtimes work directly on the host filesystem; '
+        hint:
+            'host/docker runtimes work directly on the host filesystem; '
             'no end-of-session diff is captured',
       );
 }
@@ -291,8 +293,9 @@ class RuntimeInfoSnapshot {
 /// Signature a cloud runtime adapter must implement. [options] is the
 /// YAML section from the user's config for this adapter (parsed by
 /// the harness as a generic untyped map).
-typedef RuntimeAdapter = Future<RuntimeSession> Function({
-  required String cwd,
-  required Map<String, Object?> options,
-  RuntimeEventSink? eventSink,
-});
+typedef RuntimeAdapter =
+    Future<RuntimeSession> Function({
+      required String cwd,
+      required Map<String, Object?> options,
+      RuntimeEventSink? eventSink,
+    });

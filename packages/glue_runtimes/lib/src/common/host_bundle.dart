@@ -93,7 +93,8 @@ Future<HostBundle> buildHostBundle({
   if (await _isBareRepo(hostCwd)) {
     throw const HostBundleException(
       stage: 'init',
-      message: 'host cwd is a bare/mirror git repository; cloud runtimes '
+      message:
+          'host cwd is a bare/mirror git repository; cloud runtimes '
           'need a working tree to mirror. Clone the bare repo to a '
           'regular working tree and re-run from there.',
     );
@@ -157,10 +158,7 @@ Future<HostBundle> buildHostBundle({
     cwd: hostCwd,
     env: env,
     stage: 'sha',
-  ))
-      .stdout
-      .toString()
-      .trim();
+  )).stdout.toString().trim();
 
   await _git(
     [
@@ -232,11 +230,10 @@ Future<ProcessResult> _git(
 
 Future<bool> _isBareRepo(String hostCwd) async {
   try {
-    final r = await Process.run(
-      'git',
-      ['rev-parse', '--is-bare-repository'],
-      workingDirectory: hostCwd,
-    );
+    final r = await Process.run('git', [
+      'rev-parse',
+      '--is-bare-repository',
+    ], workingDirectory: hostCwd);
     if (r.exitCode != 0) return false;
     return (r.stdout as String).trim().toLowerCase() == 'true';
   } catch (_) {
@@ -246,11 +243,11 @@ Future<bool> _isBareRepo(String hostCwd) async {
 
 Future<String?> _readHostRemoteUrl(String hostCwd) async {
   try {
-    final r = await Process.run(
-      'git',
-      ['config', '--get', 'remote.origin.url'],
-      workingDirectory: hostCwd,
-    );
+    final r = await Process.run('git', [
+      'config',
+      '--get',
+      'remote.origin.url',
+    ], workingDirectory: hostCwd);
     if (r.exitCode != 0) return null;
     final url = (r.stdout as String).trim();
     return url.isEmpty ? null : url;
@@ -260,7 +257,8 @@ Future<String?> _readHostRemoteUrl(String hostCwd) async {
 }
 
 Future<String> _defaultSessionDir(String sessionId) async {
-  final home = Platform.environment['GLUE_HOME'] ??
+  final home =
+      Platform.environment['GLUE_HOME'] ??
       p.join(Platform.environment['HOME'] ?? '.', '.glue');
   return p.join(home, 'sessions', sessionId);
 }

@@ -65,14 +65,13 @@ class DaytonaConfig {
     String? snapshot,
     Duration? startTimeout,
     Duration? execTimeout,
-  }) =>
-      DaytonaConfig(
-        apiKey: apiKey ?? this.apiKey,
-        apiBaseUrl: apiBaseUrl ?? this.apiBaseUrl,
-        toolboxBaseUrlOverride:
-            toolboxBaseUrlOverride ?? this.toolboxBaseUrlOverride,
-        snapshot: snapshot ?? this.snapshot,
-        startTimeout: startTimeout ?? this.startTimeout,
-        execTimeout: execTimeout ?? this.execTimeout,
-      );
+  }) => DaytonaConfig(
+    apiKey: apiKey ?? this.apiKey,
+    apiBaseUrl: apiBaseUrl ?? this.apiBaseUrl,
+    toolboxBaseUrlOverride:
+        toolboxBaseUrlOverride ?? this.toolboxBaseUrlOverride,
+    snapshot: snapshot ?? this.snapshot,
+    startTimeout: startTimeout ?? this.startTimeout,
+    execTimeout: execTimeout ?? this.execTimeout,
+  );
 }

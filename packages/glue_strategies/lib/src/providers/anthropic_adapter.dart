@@ -9,9 +9,9 @@ import 'package:http/http.dart' as http;
 
 class AnthropicAdapter extends ProviderAdapter {
   AnthropicAdapter({
-    http.Client Function()? requestClientFactory,
+    this._requestClientFactory,
     this.promptCacheEnabled = true,
-  }) : _requestClientFactory = requestClientFactory;
+  });
 
   final http.Client Function()? _requestClientFactory;
 

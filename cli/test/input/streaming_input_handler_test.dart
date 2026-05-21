@@ -7,22 +7,28 @@ import 'package:test/test.dart';
 
 SlashCommandRegistry _makeRegistry() {
   final reg = SlashCommandRegistry();
-  reg.register(SlashCommand.inline(
-    name: 'help',
-    description: 'Show available commands',
-    execute: (_) => 'Help output',
-  ));
-  reg.register(SlashCommand.inline(
-    name: 'clear',
-    description: 'Clear conversation history',
-    execute: (_) => 'Cleared.',
-  ));
-  reg.register(SlashCommand.inline(
-    name: 'info',
-    description: 'Show session info',
-    aliases: ['status'],
-    execute: (_) => 'Info output',
-  ));
+  reg.register(
+    SlashCommand.inline(
+      name: 'help',
+      description: 'Show available commands',
+      execute: (_) => 'Help output',
+    ),
+  );
+  reg.register(
+    SlashCommand.inline(
+      name: 'clear',
+      description: 'Clear conversation history',
+      execute: (_) => 'Cleared.',
+    ),
+  );
+  reg.register(
+    SlashCommand.inline(
+      name: 'info',
+      description: 'Show session info',
+      aliases: ['status'],
+      execute: (_) => 'Info output',
+    ),
+  );
   return reg;
 }
 
@@ -50,9 +56,11 @@ void main() {
       );
 
       expect(result.action, StreamingAction.render);
-      expect(autocomplete.active, isTrue,
-          reason:
-              'Autocomplete must activate when "/" is typed during streaming');
+      expect(
+        autocomplete.active,
+        isTrue,
+        reason: 'Autocomplete must activate when "/" is typed during streaming',
+      );
       expect(autocomplete.matchCount, 4); // help, clear, info, status (alias)
     });
 
@@ -175,39 +183,44 @@ void main() {
 
       expect(result.action, StreamingAction.render);
       expect(result.commandOutput, 'Help output');
-      expect(editor.text, isEmpty,
-          reason: 'Editor should be cleared after slash command execution');
+      expect(
+        editor.text,
+        isEmpty,
+        reason: 'Editor should be cleared after slash command execution',
+      );
       expect(autocomplete.active, isFalse);
     });
 
-    test('Enter executes slash command without autocomplete during streaming',
-        () {
-      // Type "/help" fully without using autocomplete.
-      for (final c in ['/', 'h', 'e', 'l', 'p']) {
-        handleStreamingInput(
-          event: CharEvent(c),
+    test(
+      'Enter executes slash command without autocomplete during streaming',
+      () {
+        // Type "/help" fully without using autocomplete.
+        for (final c in ['/', 'h', 'e', 'l', 'p']) {
+          handleStreamingInput(
+            event: CharEvent(c),
+            isBashRunning: false,
+            editor: editor,
+            autocomplete: autocomplete,
+            commands: commands,
+          );
+        }
+        // Autocomplete dismisses when there's a full match — dismiss it
+        // to simulate the user pressing enter without autocomplete active.
+        autocomplete.dismiss();
+
+        final result = handleStreamingInput(
+          event: KeyEvent(Key.enter),
           isBashRunning: false,
           editor: editor,
           autocomplete: autocomplete,
           commands: commands,
         );
-      }
-      // Autocomplete dismisses when there's a full match — dismiss it
-      // to simulate the user pressing enter without autocomplete active.
-      autocomplete.dismiss();
 
-      final result = handleStreamingInput(
-        event: KeyEvent(Key.enter),
-        isBashRunning: false,
-        editor: editor,
-        autocomplete: autocomplete,
-        commands: commands,
-      );
-
-      expect(result.action, StreamingAction.render);
-      expect(result.commandOutput, 'Help output');
-      expect(editor.text, isEmpty);
-    });
+        expect(result.action, StreamingAction.render);
+        expect(result.commandOutput, 'Help output');
+        expect(editor.text, isEmpty);
+      },
+    );
 
     test('Enter swallows non-slash text during streaming', () {
       // Type "hello" and press Enter.
@@ -231,9 +244,13 @@ void main() {
 
       expect(result.action, StreamingAction.swallowed);
       expect(result.commandOutput, isNull);
-      expect(editor.text, 'hello',
-          reason: 'Non-slash text should remain in buffer for when agent '
-              'finishes');
+      expect(
+        editor.text,
+        'hello',
+        reason:
+            'Non-slash text should remain in buffer for when agent '
+            'finishes',
+      );
     });
   });
 
@@ -260,8 +277,11 @@ void main() {
         commands: commands,
       );
 
-      expect(result.action, StreamingAction.render,
-          reason: 'Escape should dismiss autocomplete, not cancel agent');
+      expect(
+        result.action,
+        StreamingAction.render,
+        reason: 'Escape should dismiss autocomplete, not cancel agent',
+      );
       expect(autocomplete.active, isFalse);
     });
 
@@ -312,8 +332,11 @@ void main() {
         commands: commands,
       );
 
-      expect(result.action, StreamingAction.cancelAgent,
-          reason: 'Ctrl+C should always cancel the agent');
+      expect(
+        result.action,
+        StreamingAction.cancelAgent,
+        reason: 'Ctrl+C should always cancel the agent',
+      );
     });
 
     test('cancels bash when bash running', () {
@@ -349,8 +372,11 @@ void main() {
       );
 
       expect(editor.text, 'hi');
-      expect(autocomplete.active, isFalse,
-          reason: 'Autocomplete should not activate for non-slash text');
+      expect(
+        autocomplete.active,
+        isFalse,
+        reason: 'Autocomplete should not activate for non-slash text',
+      );
     });
   });
 }

@@ -38,8 +38,9 @@ void main() {
 
     test('startStreaming returns RunningCommand', () async {
       final cmd = await executor.startStreaming('echo streaming');
-      final output =
-          await cmd.stdout.transform(const SystemEncoding().decoder).join();
+      final output = await cmd.stdout
+          .transform(const SystemEncoding().decoder)
+          .join();
       final code = await cmd.exitCode;
       expect(output.trim(), 'streaming');
       expect(code, 0);
@@ -47,8 +48,10 @@ void main() {
 
     test('emits Started → Completed when given an event sink', () async {
       final events = <RuntimeEvent>[];
-      final executor = HostExecutor(const ShellConfig(executable: 'sh'),
-          eventSink: events.add);
+      final executor = HostExecutor(
+        const ShellConfig(executable: 'sh'),
+        eventSink: events.add,
+      );
       final result = await executor.runCapture('echo hi');
       expect(result.exitCode, 0);
       expect(events, hasLength(2));
@@ -63,8 +66,10 @@ void main() {
 
     test('emits Cancelled when runCapture times out', () async {
       final events = <RuntimeEvent>[];
-      final executor = HostExecutor(const ShellConfig(executable: 'sh'),
-          eventSink: events.add);
+      final executor = HostExecutor(
+        const ShellConfig(executable: 'sh'),
+        eventSink: events.add,
+      );
       final result = await executor.runCapture(
         'sleep 10',
         timeout: const Duration(milliseconds: 50),

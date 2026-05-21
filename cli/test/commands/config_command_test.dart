@@ -17,8 +17,10 @@ void main() {
       expect(result.status, ConfigInitStatus.created);
       expect(result.path, env.configYamlPath);
       expect(File(env.configYamlPath).existsSync(), isTrue);
-      expect(File(env.configYamlPath).readAsStringSync(),
-          contains('active_model:'));
+      expect(
+        File(env.configYamlPath).readAsStringSync(),
+        contains('active_model:'),
+      );
     });
 
     test('respects GLUE_HOME override', () {
@@ -47,14 +49,17 @@ void main() {
 
       final env = Environment.test(home: tempDir.path);
       Directory(env.glueDir).createSync(recursive: true);
-      File(env.configYamlPath)
-          .writeAsStringSync('active_model: custom/model\n');
+      File(
+        env.configYamlPath,
+      ).writeAsStringSync('active_model: custom/model\n');
 
       final result = initUserConfig(env);
 
       expect(result.status, ConfigInitStatus.exists);
-      expect(File(env.configYamlPath).readAsStringSync(),
-          'active_model: custom/model\n');
+      expect(
+        File(env.configYamlPath).readAsStringSync(),
+        'active_model: custom/model\n',
+      );
     });
 
     test('overwrites existing file with force', () {
@@ -65,16 +70,21 @@ void main() {
 
       final env = Environment.test(home: tempDir.path);
       Directory(env.glueDir).createSync(recursive: true);
-      File(env.configYamlPath)
-          .writeAsStringSync('active_model: custom/model\n');
+      File(
+        env.configYamlPath,
+      ).writeAsStringSync('active_model: custom/model\n');
 
       final result = initUserConfig(env, force: true);
 
       expect(result.status, ConfigInitStatus.overwritten);
-      expect(File(env.configYamlPath).readAsStringSync(),
-          contains('Glue config.yaml'));
-      expect(File(env.configYamlPath).readAsStringSync(),
-          isNot(contains('custom/model')));
+      expect(
+        File(env.configYamlPath).readAsStringSync(),
+        contains('Glue config.yaml'),
+      );
+      expect(
+        File(env.configYamlPath).readAsStringSync(),
+        isNot(contains('custom/model')),
+      );
     });
 
     test('template uses v2 keys and omits stale top-level fields', () {
@@ -123,8 +133,9 @@ void main() {
 
       final env = Environment.test(home: tempDir.path);
       Directory(env.glueDir).createSync(recursive: true);
-      File(env.configYamlPath)
-          .writeAsStringSync('active_model: ollama/qwen2.5-coder:32b\n');
+      File(
+        env.configYamlPath,
+      ).writeAsStringSync('active_model: ollama/qwen2.5-coder:32b\n');
 
       final result = validateUserConfig(env);
 
@@ -140,8 +151,9 @@ void main() {
 
       final env = Environment.test(home: tempDir.path);
       Directory(env.glueDir).createSync(recursive: true);
-      File(env.configYamlPath)
-          .writeAsStringSync('active_model: anthropic/claude-sonnet-4.6\n');
+      File(
+        env.configYamlPath,
+      ).writeAsStringSync('active_model: anthropic/claude-sonnet-4.6\n');
 
       final result = validateUserConfig(env);
 

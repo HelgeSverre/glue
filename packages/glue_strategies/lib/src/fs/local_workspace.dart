@@ -56,9 +56,10 @@ class LocalWorkspace implements Workspace {
   }
 
   @override
-  Future<bool> exists(String path) =>
-      FileSystemEntity.type(_resolve(path), followLinks: true)
-          .then((t) => t != FileSystemEntityType.notFound);
+  Future<bool> exists(String path) => FileSystemEntity.type(
+    _resolve(path),
+    followLinks: true,
+  ).then((t) => t != FileSystemEntityType.notFound);
 
   @override
   Future<bool> isDirectory(String path) async {
@@ -81,10 +82,9 @@ class LocalWorkspace implements Workspace {
       final runtimePath = mapping.isIdentity
           ? hostPath
           : (mapping.toRuntimePath(hostPath) ?? hostPath);
-      entries.add(WorkspaceEntry(
-        path: runtimePath,
-        isDirectory: entry is Directory,
-      ));
+      entries.add(
+        WorkspaceEntry(path: runtimePath, isDirectory: entry is Directory),
+      );
     }
     return entries;
   }

@@ -70,14 +70,16 @@ void main() {
 
     test('load ignores unknown future schema versions', () {
       final file = File(p.join(tmpDir.path, 'state.json'));
-      file.writeAsStringSync(jsonEncode({
-        'version': 99,
-        'docker': {
-          'mounts': [
-            {'host_path': '/future', 'mode': 'rw'}
-          ],
-        },
-      }));
+      file.writeAsStringSync(
+        jsonEncode({
+          'version': 99,
+          'docker': {
+            'mounts': [
+              {'host_path': '/future', 'mode': 'rw'},
+            ],
+          },
+        }),
+      );
 
       final state = SessionState.load(tmpDir.path);
       expect(state.dockerMounts, isEmpty);

@@ -12,8 +12,11 @@ void main() {
 
     test('mentions stdio + npx in examples', () {
       expect(help, contains('Examples:'));
-      expect(help, contains('npx'),
-          reason: 'npx-based servers are the most common shape');
+      expect(
+        help,
+        contains('npx'),
+        reason: 'npx-based servers are the most common shape',
+      );
       expect(help, contains('--transport stdio'));
     });
 
@@ -24,9 +27,11 @@ void main() {
     });
 
     test('mentions docker as a local stdio shape', () {
-      expect(help, contains('docker'),
-          reason:
-              'a docker-run stdio example covers the local-container shape');
+      expect(
+        help,
+        contains('docker'),
+        reason: 'a docker-run stdio example covers the local-container shape',
+      );
     });
   });
 }

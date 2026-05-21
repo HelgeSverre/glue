@@ -34,8 +34,7 @@ All commands assume working directory is `cli/` unless noted.
 
 ```sh
 # Build & run
-dart compile exe bin/glue.dart -o glue    # AOT binary
-just build                                 # Same as above via justfile
+just build                                 # AOT binary → ../dist/glue (via `dart build cli`)
 dart run bin/glue.dart                     # Run from source
 
 # Quality gate (run before committing)

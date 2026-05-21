@@ -48,15 +48,15 @@ class RecapCommand extends SlashCommand {
   Future<void> _run(LlmClient llm) async {
     final generator = RecapGenerator(
       llmClient: llm,
-      onUsage: (usage) => ctx.session.recordUsage(
-        UsageStats()..record(usage),
-        role: 'recap',
-      ),
+      onUsage: (usage) =>
+          ctx.session.recordUsage(UsageStats()..record(usage), role: 'recap'),
     );
     final summary = await generator.generateFromContext(_buildContext());
-    ctx.conversation.notify(summary == null || summary.isEmpty
-        ? 'Could not generate recap.'
-        : 'Recap: $summary');
+    ctx.conversation.notify(
+      summary == null || summary.isEmpty
+          ? 'Could not generate recap.'
+          : 'Recap: $summary',
+    );
   }
 
   LlmClient? _resolveLlm() {
@@ -65,10 +65,7 @@ class RecapCommand extends SlashCommand {
     if (config == null || factory == null) return null;
     final ref = config.smallModel ?? config.activeModel;
     try {
-      return factory.createFor(
-        ref,
-        systemPrompt: RecapGenerator.systemPrompt,
-      );
+      return factory.createFor(ref, systemPrompt: RecapGenerator.systemPrompt);
     } on ConfigError {
       return null;
     }

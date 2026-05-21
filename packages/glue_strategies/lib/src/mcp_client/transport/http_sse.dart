@@ -53,7 +53,7 @@ class McpHttpTransport implements JsonRpcTransport {
   @override
   void send(JsonRpcMessage message) {
     if (_closed) return;
-    unawaited(_send(message));
+    _send(message);
   }
 
   @override
@@ -89,7 +89,8 @@ class McpHttpTransport implements JsonRpcTransport {
 
     // Capture session id from the response (canonical header is
     // `Mcp-Session-Id`; servers also commonly use lowercase).
-    final sessionId = streamed.headers['mcp-session-id'] ??
+    final sessionId =
+        streamed.headers['mcp-session-id'] ??
         streamed.headers['Mcp-Session-Id'];
     if (sessionId != null && sessionId.isNotEmpty) {
       _sessionId = sessionId;
@@ -110,10 +111,7 @@ class McpHttpTransport implements JsonRpcTransport {
       final text = utf8.decode(bodyBytes, allowMalformed: true);
       if (!_closed) {
         _incoming.addError(
-          McpHttpTransportError(
-            statusCode: streamed.statusCode,
-            body: text,
-          ),
+          McpHttpTransportError(statusCode: streamed.statusCode, body: text),
         );
       }
       return;

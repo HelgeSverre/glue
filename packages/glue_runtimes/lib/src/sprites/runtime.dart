@@ -35,15 +35,14 @@ class SpritesRuntime implements RuntimeSession {
   final bool resumed;
 
   SpritesRuntime._({
-    required SpritesCliBase cli,
-    required SpritesConfig config,
+    required this._cli,
+    required this._config,
     required this.spriteName,
     required this.executor,
     required this.workspace,
     required this.bootstrapSha,
     required this.resumed,
-  })  : _cli = cli,
-        _config = config;
+  });
 
   @override
   String get id => 'sprites';
@@ -68,7 +67,8 @@ class SpritesRuntime implements RuntimeSession {
       );
     }
 
-    final name = config.spriteName ??
+    final name =
+        config.spriteName ??
         'glue-${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}';
 
     var createdHere = false;

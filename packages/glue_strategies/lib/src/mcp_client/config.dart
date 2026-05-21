@@ -102,10 +102,7 @@ class McpOAuthAuth extends McpAuthSpec {
 // ─── Tool policy ───────────────────────────────────────────────────────────
 
 class McpToolPolicy {
-  const McpToolPolicy({
-    this.autoApprove = const [],
-    this.deny = const [],
-  });
+  const McpToolPolicy({this.autoApprove = const [], this.deny = const []});
 
   /// Namespaced names or glob patterns (`*.read_file`).
   final List<String> autoApprove;

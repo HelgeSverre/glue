@@ -4,8 +4,36 @@ All notable changes to Glue CLI will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **`AgentNotice` event** in `glue_core` — provider-neutral soft-
+  degradation signal carrying a `message` + `kind` (`info` /
+  `warning`). Rendered as a dim system line in the TUI, sent as a
+  marker-prefixed `AgentMessageChunkUpdate` over ACP, and printed to
+  stderr with a glyph prefix in `--print` mode. First user: the
+  tool-less Ollama soft fallback below.
+- **`ToolsNotSupportedException`** in `glue_core` — typed exception
+  thrown by `OllamaClient` when the daemon returns `400` with a
+  body matching `does not support tools`, replacing the previous raw
+  `Exception`. Other adapters can throw the same shape if they ever
+  expose tool-less models.
+- **`web_browser.navigate` accepts a `wait_until` parameter** so the
+  agent can self-correct: `"load"` (default), `"domcontentloaded"`
+  (fastest, DOM parsed), `"networkalmostidle"` (≤2 in-flight for 500 ms),
+  or `"networkidle"` (strict). Invalid values are rejected before the
+  browser is provisioned. Implemented in
+  `packages/glue_harness/lib/src/tools/web_browser_tool.dart`.
+
 ### Changed
 
+- **`glue serve` renamed to `glue acp`** — the ACP server subcommand now
+  matches the convention used by every other ACP-speaking agent
+  (`opencode acp`, `goose acp`, …). No backward-compat alias: editors with
+  `"args": ["serve"]` in `~/.config/zed/settings.json`,
+  `~/.jetbrains/acp.json`, or equivalent must update to `"args": ["acp"]`.
+  Help text, the WebSocket startup banner, and
+  [docs/advanced/acp-server](https://getglue.dev/docs/advanced/acp-server)
+  all reflect the new name.
 - **Dart SDK floor bumped to 3.12.0** across every package (`cli`, `glue_core`,
   `glue_strategies`, `glue_runtimes`, `glue_harness`, `glue_server`). Enables
   the 3.12 private-named-parameter syntax and is required for pub workspaces.
@@ -24,32 +52,15 @@ false` everywhere (was mixed) and adds `unnecessary_to_list_in_spreads: true`
   workflow renames per-platform (`dist/glue-linux-x64`, etc.) and uploads from
   there. `just cli::install` now symlinks `<repo>/dist/glue` →
   `~/.local/bin/glue`.
-
-### Refactored
-
 - **Constructor boilerplate trimmed via Dart 3.12 private initialising
   formals.** ~30 constructors across `cli/`, `glue_harness`, `glue_strategies`,
   `glue_runtimes`, and `glue_server` migrated from `: _field = field`
   initializer lists to `this._field` parameters. Call-site API is unchanged
   (the public parameter name is the field name without the underscore).
-- **`unawaited(...)` wrappers removed in `lib/`.** With `unawaited_futures: false`
-  the wrappers were pure noise; 17 call sites across `cli/lib`,
+- **`unawaited(...)` wrappers removed in `lib/`.** With `unawaited_futures:
+false` the wrappers were pure noise; 17 call sites across `cli/lib`,
   `glue_harness`, `glue_server`, and `glue_strategies` were unwrapped. Test
   files were left alone (intent-signaling use is still useful there).
-
-### Fixed
-
-- **`bin/glue serve` tests no longer break when run from the workspace root.**
-  `cli/test/bin/glue_serve_test.dart` and `glue_serve_ws_test.dart` previously
-  hardcoded `Directory.current.path` as the working dir for the spawned `glue`
-  process, which fails when the test runner is launched from the repo root via
-  `dart test cli`. A `_cliPackageRoot()` helper now resolves the cli package
-  from either cwd.
-- **Dropped dead `win32` direct dependency** from `cli/pubspec.yaml` — it was
-  declared but never imported. (The four `code_assets`/`hooks`/`mason_logger`/
-  `native_toolchain_c` pub-outdated warnings remain: they're pulled in
-  transitively via `cli_completion → mason_logger → win32` and can't move
-  until those packages bump upstream.)
 
 ### Fixed
 
@@ -65,32 +76,6 @@ false` everywhere (was mixed) and adds `unnecessary_to_list_in_spreads: true`
   a tool-less model override degrade rather than killing the parent
   session. `glue doctor` adds a new info finding ("Agent model")
   when the active model is catalogued without tool support.
-
-### Added
-
-- **`AgentNotice` event** in `glue_core` — provider-neutral soft-
-  degradation signal carrying a `message` + `kind` (`info` /
-  `warning`). Rendered as a dim system line in the TUI, sent as a
-  marker-prefixed `AgentMessageChunkUpdate` over ACP, and printed to
-  stderr with a glyph prefix in `--print` mode. First user: the
-  tool-less Ollama soft fallback above.
-- **`ToolsNotSupportedException`** in `glue_core` — typed exception
-  thrown by `OllamaClient` when the daemon returns `400` with a
-  body matching `does not support tools`, replacing the previous raw
-  `Exception`. Other adapters can throw the same shape if they ever
-  expose tool-less models.
-
-### Removed
-
-- **Dormant `OllamaShow` + `ToolCapabilityProbe` scaffolding** — a
-  7-lens swarm review of the original hard-fail-with-probe design
-  concluded the runtime catch approach is strictly better (matches
-  Continue.dev, Aider/LiteLLM, Codex, OpenCode; no per-boot
-  `/api/show` round-trip; no second source of capability truth).
-  The probe code is replaced by the soft-fallback path above.
-
-### Fixed
-
 - **`web_browser` `navigate` no longer times out on ad/tracker-heavy
   sites.** Default wait condition changed from Puppeteer's strictest
   `Until.networkIdle` (requires the page to make **zero** network
@@ -101,15 +86,26 @@ false` everywhere (was mixed) and adds `unnecessary_to_list_in_spreads: true`
   Previously, navigating to such sites surfaced a `TimeoutException:
 Navigation Timeout Exceeded: 30000ms exceeded` to the agent even
   though the page had visibly loaded and was fully usable.
+- **`bin/glue serve` tests no longer break when run from the workspace root.**
+  `cli/test/bin/glue_serve_test.dart` and `glue_serve_ws_test.dart` previously
+  hardcoded `Directory.current.path` as the working dir for the spawned `glue`
+  process, which fails when the test runner is launched from the repo root via
+  `dart test cli`. A `_cliPackageRoot()` helper now resolves the cli package
+  from either cwd.
 
-### Added
+### Removed
 
-- **`web_browser.navigate` accepts a `wait_until` parameter** so the
-  agent can self-correct: `"load"` (default), `"domcontentloaded"`
-  (fastest, DOM parsed), `"networkalmostidle"` (≤2 in-flight for 500 ms),
-  or `"networkidle"` (strict). Invalid values are rejected before the
-  browser is provisioned. Implemented in
-  `packages/glue_harness/lib/src/tools/web_browser_tool.dart`.
+- **Dormant `OllamaShow` + `ToolCapabilityProbe` scaffolding** — a
+  7-lens swarm review of the original hard-fail-with-probe design
+  concluded the runtime catch approach is strictly better (matches
+  Continue.dev, Aider/LiteLLM, Codex, OpenCode; no per-boot
+  `/api/show` round-trip; no second source of capability truth).
+  The probe code is replaced by the soft-fallback path above.
+- **Dead `win32` direct dependency** dropped from `cli/pubspec.yaml` — it was
+  declared but never imported. (The four `code_assets`/`hooks`/`mason_logger`/
+  `native_toolchain_c` pub-outdated warnings remain: they're pulled in
+  transitively via `cli_completion → mason_logger → win32` and can't move
+  until those packages bump upstream.)
 
 ## [0.6.0] - 2026-05-20
 

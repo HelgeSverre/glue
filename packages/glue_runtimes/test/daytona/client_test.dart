@@ -17,31 +17,41 @@ void main() {
   );
 
   group('DaytonaClient.createSandbox', () {
-    test('POSTs /sandbox with empty body when no snapshot configured',
-        () async {
-      http.BaseRequest? captured;
-      final mock = MockClient((req) async {
-        captured = req;
-        return http.Response(
-          jsonEncode({
-            'id': 'sb-123',
-            'state': 'started',
-            'toolboxProxyUrl': 'https://proxy.app-eu.daytona.io/toolbox',
-          }),
-          200,
+    test(
+      'POSTs /sandbox with empty body when no snapshot configured',
+      () async {
+        http.BaseRequest? captured;
+        final mock = MockClient((req) async {
+          captured = req;
+          return http.Response(
+            jsonEncode({
+              'id': 'sb-123',
+              'state': 'started',
+              'toolboxProxyUrl': 'https://proxy.app-eu.daytona.io/toolbox',
+            }),
+            200,
+          );
+        });
+        final client = DaytonaClient(config: config, httpClient: mock);
+        final result = await client.createSandbox();
+        expect(result.id, 'sb-123');
+        expect(result.state, 'started');
+        expect(
+          result.toolboxBaseUrl,
+          'https://proxy.app-eu.daytona.io/toolbox',
         );
-      });
-      final client = DaytonaClient(config: config, httpClient: mock);
-      final result = await client.createSandbox();
-      expect(result.id, 'sb-123');
-      expect(result.state, 'started');
-      expect(result.toolboxBaseUrl, 'https://proxy.app-eu.daytona.io/toolbox');
-      final body =
-          jsonDecode((captured! as http.Request).body) as Map<String, dynamic>;
-      expect(body, isEmpty,
-          reason: 'glue must not send cpu/memory/disk — Daytona rejects '
-              'those alongside the default snapshot.');
-    });
+        final body =
+            jsonDecode((captured! as http.Request).body)
+                as Map<String, dynamic>;
+        expect(
+          body,
+          isEmpty,
+          reason:
+              'glue must not send cpu/memory/disk — Daytona rejects '
+              'those alongside the default snapshot.',
+        );
+      },
+    );
 
     test('POSTs /sandbox with snapshot when configured', () async {
       http.BaseRequest? captured;
@@ -66,14 +76,16 @@ void main() {
     });
 
     test('uses the toolboxBaseUrlOverride when set', () async {
-      final mock = MockClient((_) async => http.Response(
-            jsonEncode({
-              'id': 'sb-x',
-              // Server returns the real per-sandbox URL...
-              'toolboxProxyUrl': 'https://proxy.app-eu.daytona.io/toolbox',
-            }),
-            200,
-          ));
+      final mock = MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'id': 'sb-x',
+            // Server returns the real per-sandbox URL...
+            'toolboxProxyUrl': 'https://proxy.app-eu.daytona.io/toolbox',
+          }),
+          200,
+        ),
+      );
       final client = DaytonaClient(
         config: const DaytonaConfig(
           apiKey: 'sk-test',
@@ -91,9 +103,11 @@ void main() {
       final client = DaytonaClient(config: config, httpClient: mock);
       await expectLater(
         client.createSandbox(),
-        throwsA(isA<RuntimeApiException>()
-            .having((e) => e.statusCode, 'statusCode', 429)
-            .having((e) => e.endpoint, 'endpoint', 'create_sandbox')),
+        throwsA(
+          isA<RuntimeApiException>()
+              .having((e) => e.statusCode, 'statusCode', 429)
+              .having((e) => e.endpoint, 'endpoint', 'create_sandbox'),
+        ),
       );
     });
 
@@ -104,8 +118,13 @@ void main() {
       final client = DaytonaClient(config: config, httpClient: mock);
       await expectLater(
         client.createSandbox(),
-        throwsA(isA<RuntimeApiException>()
-            .having((e) => e.message, 'message', contains('toolboxProxyUrl'))),
+        throwsA(
+          isA<RuntimeApiException>().having(
+            (e) => e.message,
+            'message',
+            contains('toolboxProxyUrl'),
+          ),
+        ),
       );
     });
   });
@@ -121,12 +140,17 @@ void main() {
         );
       });
       final client = DaytonaClient(config: config, httpClient: mock);
-      final r = await client.execCapture(sandbox, 'echo hello',
-          timeout: const Duration(seconds: 5));
+      final r = await client.execCapture(
+        sandbox,
+        'echo hello',
+        timeout: const Duration(seconds: 5),
+      );
       expect(r.exitCode, 0);
       expect(r.result, 'hello world\n');
-      expect(captured!.url.toString(),
-          'https://proxy.app-eu.daytona.io/toolbox/sb-123/process/execute');
+      expect(
+        captured!.url.toString(),
+        'https://proxy.app-eu.daytona.io/toolbox/sb-123/process/execute',
+      );
       final body =
           jsonDecode((captured! as http.Request).body) as Map<String, dynamic>;
       expect(body['command'], 'echo hello');
@@ -134,10 +158,10 @@ void main() {
     });
 
     test('handles a non-zero exit code without raising', () async {
-      final mock = MockClient((_) async => http.Response(
-            jsonEncode({'result': 'nope\n', 'exitCode': 1}),
-            200,
-          ));
+      final mock = MockClient(
+        (_) async =>
+            http.Response(jsonEncode({'result': 'nope\n', 'exitCode': 1}), 200),
+      );
       final client = DaytonaClient(config: config, httpClient: mock);
       final r = await client.execCapture(sandbox, 'false');
       expect(r.exitCode, 1);
@@ -174,41 +198,59 @@ void main() {
         ),
       );
       final client = DaytonaClient(config: config, httpClient: mock);
-      final cmd = await client.executeSessionCommand(sandbox, 'bg-1', 'sleep 5',
-          runAsync: true);
+      final cmd = await client.executeSessionCommand(
+        sandbox,
+        'bg-1',
+        'sleep 5',
+        runAsync: true,
+      );
       expect(cmd.commandId, 'cmd-42');
       expect(cmd.sessionId, 'bg-1');
     });
 
     test('getSessionCommandLogs returns the raw body string', () async {
-      final mock =
-          MockClient((_) async => http.Response('hello\nworld\n', 200));
+      final mock = MockClient(
+        (_) async => http.Response('hello\nworld\n', 200),
+      );
       final client = DaytonaClient(config: config, httpClient: mock);
-      final logs =
-          await client.getSessionCommandLogs(sandbox, 'bg-1', 'cmd-42');
+      final logs = await client.getSessionCommandLogs(
+        sandbox,
+        'bg-1',
+        'cmd-42',
+      );
       expect(logs, 'hello\nworld\n');
     });
 
     test('getSessionCommandStatus parses exitCode (null until done)', () async {
-      final mock = MockClient((_) async => http.Response(
-            jsonEncode({'command': 'echo hi', 'exitCode': null}),
-            200,
-          ));
+      final mock = MockClient(
+        (_) async => http.Response(
+          jsonEncode({'command': 'echo hi', 'exitCode': null}),
+          200,
+        ),
+      );
       final client = DaytonaClient(config: config, httpClient: mock);
       final s = await client.getSessionCommandStatus(sandbox, 'bg-1', 'cmd-42');
       expect(s.exitCode, isNull);
     });
 
-    test('getSessionCommandStatus returns the int exitCode once done',
-        () async {
-      final mock = MockClient((_) async => http.Response(
+    test(
+      'getSessionCommandStatus returns the int exitCode once done',
+      () async {
+        final mock = MockClient(
+          (_) async => http.Response(
             jsonEncode({'command': 'echo hi', 'exitCode': 0}),
             200,
-          ));
-      final client = DaytonaClient(config: config, httpClient: mock);
-      final s = await client.getSessionCommandStatus(sandbox, 'bg-1', 'cmd-42');
-      expect(s.exitCode, 0);
-    });
+          ),
+        );
+        final client = DaytonaClient(config: config, httpClient: mock);
+        final s = await client.getSessionCommandStatus(
+          sandbox,
+          'bg-1',
+          'cmd-42',
+        );
+        expect(s.exitCode, 0);
+      },
+    );
 
     test('deleteSession DELETEs /process/session/<sid>', () async {
       http.BaseRequest? captured;
@@ -253,38 +295,43 @@ void main() {
     });
 
     test('readFile translates HTTP 404 into RuntimeApiException', () async {
-      final mock = MockClient(
-        (_) async => http.Response('not found', 404),
-      );
+      final mock = MockClient((_) async => http.Response('not found', 404));
       final client = DaytonaClient(config: config, httpClient: mock);
       await expectLater(
         client.readFile(sandbox, '/missing'),
-        throwsA(isA<RuntimeApiException>()
-            .having((e) => e.statusCode, 'statusCode', 404)),
+        throwsA(
+          isA<RuntimeApiException>().having(
+            (e) => e.statusCode,
+            'statusCode',
+            404,
+          ),
+        ),
       );
     });
   });
 
   group('DaytonaClient.listDir / stat', () {
-    test('list uses /files/ (trailing slash to avoid the 301 redirect)',
-        () async {
-      http.BaseRequest? captured;
-      final mock = MockClient((req) async {
-        captured = req;
-        return http.Response(
-          jsonEncode([
-            {'name': 'a.txt', 'isDir': false, 'size': 12},
-            {'name': 'sub', 'isDir': true, 'size': 0},
-          ]),
-          200,
-        );
-      });
-      final client = DaytonaClient(config: config, httpClient: mock);
-      final entries = await client.listDir(sandbox, '/workspace');
-      expect(entries, hasLength(2));
-      expect(captured!.url.path, '/toolbox/sb-123/files/');
-      expect(captured!.url.queryParameters['path'], '/workspace');
-    });
+    test(
+      'list uses /files/ (trailing slash to avoid the 301 redirect)',
+      () async {
+        http.BaseRequest? captured;
+        final mock = MockClient((req) async {
+          captured = req;
+          return http.Response(
+            jsonEncode([
+              {'name': 'a.txt', 'isDir': false, 'size': 12},
+              {'name': 'sub', 'isDir': true, 'size': 0},
+            ]),
+            200,
+          );
+        });
+        final client = DaytonaClient(config: config, httpClient: mock);
+        final entries = await client.listDir(sandbox, '/workspace');
+        expect(entries, hasLength(2));
+        expect(captured!.url.path, '/toolbox/sb-123/files/');
+        expect(captured!.url.queryParameters['path'], '/workspace');
+      },
+    );
 
     test('stat returns null on 404', () async {
       final mock = MockClient((_) async => http.Response('not found', 404));

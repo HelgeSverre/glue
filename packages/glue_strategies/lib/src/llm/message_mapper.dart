@@ -74,7 +74,7 @@ class AnthropicMessageMapper extends MessageMapper {
             mapped.add({
               'role': 'user',
               'content': [
-                {'type': 'text', 'text': msg.text ?? ''}
+                {'type': 'text', 'text': msg.text ?? ''},
               ],
             });
           }
@@ -116,7 +116,7 @@ class AnthropicMessageMapper extends MessageMapper {
                       'type': 'base64',
                       'media_type': part.mimeType,
                       'data': part.toBase64(),
-                    }
+                    },
                   }
                 else if (part is ResourceLinkPart)
                   {'type': 'text', 'text': part.toMarkdownLink()},
@@ -135,7 +135,7 @@ class AnthropicMessageMapper extends MessageMapper {
                 'type': 'tool_result',
                 'tool_use_id': msg.toolCallId,
                 'content': toolContent,
-              }
+              },
             ],
           });
       }
@@ -194,10 +194,7 @@ class GeminiMessageMapper extends MessageMapper {
             parts.add({'text': msg.text});
           }
           for (final tc in msg.toolCalls) {
-            final fc = <String, dynamic>{
-              'name': tc.name,
-              'args': tc.arguments,
-            };
+            final fc = <String, dynamic>{'name': tc.name, 'args': tc.arguments};
             final part = <String, dynamic>{'functionCall': fc};
             // Echo back the opaque thoughtSignature captured from the
             // previous response. Required for thinking-mode Gemini models —
@@ -229,8 +226,9 @@ class GeminiMessageMapper extends MessageMapper {
             'functionResponse': {
               'name': name,
               'response': {
-                'content':
-                    textContent.isNotEmpty ? textContent : (msg.text ?? ''),
+                'content': textContent.isNotEmpty
+                    ? textContent
+                    : (msg.text ?? ''),
               },
             },
           });
@@ -317,7 +315,7 @@ class OpenAiMessageMapper extends MessageMapper {
                     'name': tc.name,
                     'arguments': jsonEncode(tc.arguments),
                   },
-                }
+                },
             ];
           }
           mapped.add(entry);

@@ -25,24 +25,25 @@ class BraveSearchProvider implements WebSearchProvider {
   bool get isConfigured => apiKey != null && apiKey!.isNotEmpty;
 
   @override
-  Future<WebSearchResponse> search(
-    String query, {
-    int maxResults = 5,
-  }) async {
+  Future<WebSearchResponse> search(String query, {int maxResults = 5}) async {
     if (!isConfigured) {
       throw StateError('Brave Search API key not configured');
     }
 
-    final uri = Uri.parse(_baseUrl).replace(queryParameters: {
-      'q': query,
-      'count': maxResults.toString(),
-    });
+    final uri = Uri.parse(
+      _baseUrl,
+    ).replace(queryParameters: {'q': query, 'count': maxResults.toString()});
 
-    final response = await _client.get(uri, headers: {
-      'Accept': 'application/json',
-      'Accept-Encoding': 'gzip',
-      'X-Subscription-Token': apiKey!,
-    }).timeout(Duration(seconds: timeoutSeconds));
+    final response = await _client
+        .get(
+          uri,
+          headers: {
+            'Accept': 'application/json',
+            'Accept-Encoding': 'gzip',
+            'X-Subscription-Token': apiKey!,
+          },
+        )
+        .timeout(Duration(seconds: timeoutSeconds));
 
     if (response.statusCode != 200) {
       throw HttpException(
@@ -71,11 +72,7 @@ class BraveSearchProvider implements WebSearchProvider {
       );
     }).toList();
 
-    return WebSearchResponse(
-      provider: 'brave',
-      query: query,
-      results: results,
-    );
+    return WebSearchResponse(provider: 'brave', query: query, results: results);
   }
 }
 

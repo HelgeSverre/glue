@@ -33,8 +33,10 @@ ModelCatalog parseCatalogYaml(String yaml) {
 ModelCatalog _parseCatalog(Map<dynamic, dynamic> root) {
   final version = root['version'];
   if (version is! int) {
-    throw CatalogParseException('version is required and must be an integer',
-        path: 'version');
+    throw CatalogParseException(
+      'version is required and must be an integer',
+      path: 'version',
+    );
   }
 
   final defaults = _parseDefaults(root['defaults']);
@@ -71,8 +73,10 @@ DefaultsConfig _parseDefaults(Object? node) {
 Map<String, String> _parseCapabilities(Object? node) {
   if (node == null) return const {};
   if (node is! Map) {
-    throw CatalogParseException('capabilities must be a mapping',
-        path: 'capabilities');
+    throw CatalogParseException(
+      'capabilities must be a mapping',
+      path: 'capabilities',
+    );
   }
   final out = <String, String>{};
   node.forEach((key, value) {
@@ -84,8 +88,10 @@ Map<String, String> _parseCapabilities(Object? node) {
 Map<String, ProviderDef> _parseProviders(Object? node) {
   if (node == null) return const {};
   if (node is! Map) {
-    throw CatalogParseException('providers must be a mapping',
-        path: 'providers');
+    throw CatalogParseException(
+      'providers must be a mapping',
+      path: 'providers',
+    );
   }
   final out = <String, ProviderDef>{};
   node.forEach((key, value) {
@@ -97,8 +103,10 @@ Map<String, ProviderDef> _parseProviders(Object? node) {
 
 ProviderDef _parseProvider(String id, Object? node) {
   if (node is! Map) {
-    throw CatalogParseException('provider must be a mapping',
-        path: 'providers.$id');
+    throw CatalogParseException(
+      'provider must be a mapping',
+      path: 'providers.$id',
+    );
   }
 
   final name = node['name']?.toString() ?? id;
@@ -159,19 +167,17 @@ AuthSpec _parseAuth(Object? node, {required String path}) {
   // Shorthand form: `auth: {api_key: env:NAME}` or `auth: {api_key: none}`.
   final raw = node['api_key']?.toString();
   if (raw == null || raw.isEmpty) {
-    throw CatalogParseException('auth.api_key is required',
-        path: '$path.api_key');
+    throw CatalogParseException(
+      'auth.api_key is required',
+      path: '$path.api_key',
+    );
   }
   if (raw == 'none') {
     return AuthSpec(kind: AuthKind.none, helpUrl: helpUrl);
   }
   if (raw.startsWith('env:')) {
     final envVar = _extractEnvVar(raw, path);
-    return AuthSpec(
-      kind: AuthKind.apiKey,
-      envVar: envVar,
-      helpUrl: helpUrl,
-    );
+    return AuthSpec(kind: AuthKind.apiKey, envVar: envVar, helpUrl: helpUrl);
   }
   throw CatalogParseException(
     'auth.api_key must be one of: env:NAME, none (got "$raw"). '

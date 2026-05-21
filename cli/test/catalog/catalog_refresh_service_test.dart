@@ -18,8 +18,7 @@ class _StubFetcher implements RemoteCatalogFetcher {
     Uri uri, {
     String? ifModifiedSince,
     Duration timeout = const Duration(seconds: 10),
-  }) =>
-      _fn(uri);
+  }) => _fn(uri);
 }
 
 Directory _scratch() =>
@@ -27,41 +26,46 @@ Directory _scratch() =>
 
 void main() {
   group('CatalogRefreshService', () {
-    test('refresh writes sanitized YAML to the cache path on success',
-        () async {
-      final dir = _scratch();
-      addTearDown(() => dir.deleteSync(recursive: true));
-      final cachePath = '${dir.path}/models.yaml';
+    test(
+      'refresh writes sanitized YAML to the cache path on success',
+      () async {
+        final dir = _scratch();
+        addTearDown(() => dir.deleteSync(recursive: true));
+        final cachePath = '${dir.path}/models.yaml';
 
-      final service = CatalogRefreshService(
-        cachePath: cachePath,
-        fetcher: _StubFetcher((uri) async => const FetchUpdated(
-              yaml: '{"version":1,"providers":{}}',
-            )),
-      );
+        final service = CatalogRefreshService(
+          cachePath: cachePath,
+          fetcher: _StubFetcher(
+            (uri) async =>
+                const FetchUpdated(yaml: '{"version":1,"providers":{}}'),
+          ),
+        );
 
-      await service.refresh(Uri.parse('https://example.com/c.yaml'));
-      expect(File(cachePath).existsSync(), isTrue);
-      expect(File(cachePath).readAsStringSync(), contains('version'));
-    });
+        await service.refresh(Uri.parse('https://example.com/c.yaml'));
+        expect(File(cachePath).existsSync(), isTrue);
+        expect(File(cachePath).readAsStringSync(), contains('version'));
+      },
+    );
 
-    test('refresh does not throw or rewrite the cache on FetchFailed',
-        () async {
-      final dir = _scratch();
-      addTearDown(() => dir.deleteSync(recursive: true));
-      final cachePath = '${dir.path}/models.yaml';
-      File(cachePath).writeAsStringSync('pre-existing-cache');
+    test(
+      'refresh does not throw or rewrite the cache on FetchFailed',
+      () async {
+        final dir = _scratch();
+        addTearDown(() => dir.deleteSync(recursive: true));
+        final cachePath = '${dir.path}/models.yaml';
+        File(cachePath).writeAsStringSync('pre-existing-cache');
 
-      final service = CatalogRefreshService(
-        cachePath: cachePath,
-        fetcher: _StubFetcher(
-          (uri) async => const FetchFailed(reason: 'network unreachable'),
-        ),
-      );
+        final service = CatalogRefreshService(
+          cachePath: cachePath,
+          fetcher: _StubFetcher(
+            (uri) async => const FetchFailed(reason: 'network unreachable'),
+          ),
+        );
 
-      await service.refresh(Uri.parse('https://example.com/c.yaml'));
-      expect(File(cachePath).readAsStringSync(), 'pre-existing-cache');
-    });
+        await service.refresh(Uri.parse('https://example.com/c.yaml'));
+        expect(File(cachePath).readAsStringSync(), 'pre-existing-cache');
+      },
+    );
 
     test('refresh leaves cache unchanged on FetchNotModified', () async {
       final dir = _scratch();
@@ -78,35 +82,37 @@ void main() {
       expect(File(cachePath).readAsStringSync(), 'valid-cache');
     });
 
-    test('scheduleNonBlocking returns immediately and runs the fetch async',
-        () async {
-      final dir = _scratch();
-      addTearDown(() => dir.deleteSync(recursive: true));
-      final cachePath = '${dir.path}/models.yaml';
+    test(
+      'scheduleNonBlocking returns immediately and runs the fetch async',
+      () async {
+        final dir = _scratch();
+        addTearDown(() => dir.deleteSync(recursive: true));
+        final cachePath = '${dir.path}/models.yaml';
 
-      final completer = Completer<void>();
-      final service = CatalogRefreshService(
-        cachePath: cachePath,
-        fetcher: _StubFetcher((uri) async {
-          await Future<void>.delayed(const Duration(milliseconds: 50));
-          completer.complete();
-          return const FetchUpdated(yaml: '{"version":1,"providers":{}}');
-        }),
-      );
+        final completer = Completer<void>();
+        final service = CatalogRefreshService(
+          cachePath: cachePath,
+          fetcher: _StubFetcher((uri) async {
+            await Future<void>.delayed(const Duration(milliseconds: 50));
+            completer.complete();
+            return const FetchUpdated(yaml: '{"version":1,"providers":{}}');
+          }),
+        );
 
-      final stopwatch = Stopwatch()..start();
-      final pending = service.scheduleNonBlocking(
-        Uri.parse('https://example.com/c.yaml'),
-      );
-      stopwatch.stop();
+        final stopwatch = Stopwatch()..start();
+        final pending = service.scheduleNonBlocking(
+          Uri.parse('https://example.com/c.yaml'),
+        );
+        stopwatch.stop();
 
-      expect(
-        stopwatch.elapsedMilliseconds,
-        lessThan(20),
-        reason: 'scheduleNonBlocking must not await the fetch',
-      );
-      await pending;
-      expect(completer.isCompleted, isTrue);
-    });
+        expect(
+          stopwatch.elapsedMilliseconds,
+          lessThan(20),
+          reason: 'scheduleNonBlocking must not await the fetch',
+        );
+        await pending;
+        expect(completer.isCompleted, isTrue);
+      },
+    );
   });
 }

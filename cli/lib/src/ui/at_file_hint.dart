@@ -172,8 +172,9 @@ class AtFileHint implements AutocompleteOverlay {
               entry.relPath.indexOf('/') == entry.relPath.length - 1)) {
         continue;
       }
-      candidates
-          .add(_Candidate(entry.relPath, entry.relPath, entry.isDirectory));
+      candidates.add(
+        _Candidate(entry.relPath, entry.relPath, entry.isDirectory),
+      );
     }
 
     if (candidates.isEmpty) {
@@ -237,11 +238,7 @@ class AtFileHint implements AutocompleteOverlay {
         if (name.startsWith('.')) continue;
         final isDir = child is Directory;
         final relPath = relPrefix.isEmpty ? name : '$relPrefix/$name';
-        entries.add(_TreeEntry(
-          isDir ? '$relPath/' : relPath,
-          name,
-          isDir,
-        ));
+        entries.add(_TreeEntry(isDir ? '$relPath/' : relPath, name, isDir));
         if (isDir && depth <= AppConstants.atFileHintMaxTreeDepth) {
           queue.add((child.path, relPath, depth + 1));
         }
@@ -317,9 +314,11 @@ class AtFileHint implements AutocompleteOverlay {
           : content;
       final padCount = width - visibleLength(truncated);
       final padded = '$truncated${' ' * (padCount > 0 ? padCount : 0)}';
-      lines.add(globalIndex == _selected
-          ? '${padded.styled.bg256(24).brightWhite}'
-          : '${padded.styled.bg256(236).white}');
+      lines.add(
+        globalIndex == _selected
+            ? '${padded.styled.bg256(24).brightWhite}'
+            : '${padded.styled.bg256(236).white}',
+      );
     }
 
     return lines;

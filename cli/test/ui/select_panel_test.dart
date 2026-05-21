@@ -42,9 +42,7 @@ void main() {
     test('enter with no match returns null', () async {
       final panel = SelectPanel<String>(
         title: 'Pick',
-        options: [
-          SelectOption(value: 'alpha', label: 'alpha'),
-        ],
+        options: [SelectOption(value: 'alpha', label: 'alpha')],
       );
 
       panel.render(80, 20, const []);
@@ -81,8 +79,7 @@ void main() {
       expect(visibleLength(centerRow), equals(80));
     });
 
-    test('SelectOption.responsive label builder is called with content width',
-        () {
+    test('SelectOption.responsive label builder is called with content width', () {
       final widths = <int>[];
       final panel = SelectPanel<String>(
         title: 'Pick',
@@ -110,15 +107,17 @@ void main() {
       // Exact values are brittle to the panel-sizing rule, so assert inequality only.
     });
 
-    test('SelectOption.label getter returns the builder result at width 80',
-        () {
-      final opt = SelectOption.responsive(
-        value: 'x',
-        build: (w) => 'rendered@$w',
-        searchText: 'x',
-      );
-      expect(opt.label, 'rendered@80');
-    });
+    test(
+      'SelectOption.label getter returns the builder result at width 80',
+      () {
+        final opt = SelectOption.responsive(
+          value: 'x',
+          build: (w) => 'rendered@$w',
+          searchText: 'x',
+        );
+        expect(opt.label, 'rendered@80');
+      },
+    );
 
     test('headerBuilder is called per render with the panel content width', () {
       final widths = <int>[];

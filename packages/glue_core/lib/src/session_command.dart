@@ -19,10 +19,7 @@ sealed class SessionCommand {
 
 /// Send a user message into the session.
 class SendMessageCommand extends SessionCommand {
-  const SendMessageCommand({
-    required this.text,
-    this.attachments = const [],
-  });
+  const SendMessageCommand({required this.text, this.attachments = const []});
 
   final String text;
   final List<Attachment> attachments;

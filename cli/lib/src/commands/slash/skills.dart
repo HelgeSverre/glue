@@ -19,7 +19,8 @@ class SkillsCommand extends SlashCommand {
   String get description => 'Browse skills or activate one by name';
 
   @override
-  SlashArgCompleter? get argCompleter => (prior, partial) => prior.isEmpty
+  SlashArgCompleter? get argCompleter =>
+      (prior, partial) => prior.isEmpty
       ? arg_completers.skillCandidates(ctx.skills.list(), partial)
       : const [];
 
@@ -38,8 +39,9 @@ class SkillsCommand extends SlashCommand {
   void _openPicker() {
     final registry = ctx.skills.refresh();
     if (registry.isEmpty) {
-      ctx.conversation
-          .notify('No skills found.\n\n${skillDiscoveryHelpText()}');
+      ctx.conversation.notify(
+        'No skills found.\n\n${skillDiscoveryHelpText()}',
+      );
       return;
     }
     final panel = _findOrCreatePanel();
@@ -78,10 +80,12 @@ class SkillsCommand extends SlashCommand {
         'name': 'skill',
         'content': activation.content,
       });
-      ctx.conversation
-          .addEntry(ConversationEntry.toolCall('skill', {'name': skillName}));
-      ctx.conversation
-          .addEntry(ConversationEntry.toolResult(activation.content));
+      ctx.conversation.addEntry(
+        ConversationEntry.toolCall('skill', {'name': skillName}),
+      );
+      ctx.conversation.addEntry(
+        ConversationEntry.toolResult(activation.content),
+      );
     } on SkillActivationError catch (e) {
       ctx.conversation.notify(e.message);
     } catch (e) {

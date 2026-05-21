@@ -31,8 +31,8 @@ class SkillsDockedPanel extends DockedPanel {
     this.edge = DockEdge.bottom,
     this.mode = DockMode.floating,
     this.extent = 14,
-    bool visible = false,
-  }) : _visible = visible {
+    this._visible = false,
+  }) {
     updateSkills(skills);
   }
 
@@ -136,8 +136,10 @@ class SkillsDockedPanel extends DockedPanel {
       case KeyEvent(key: Key.pageDown):
         if (filtered.isEmpty) return true;
         final selectedPos = _selectedPosition(filtered);
-        final nextPos =
-            min(max(0, filtered.length - 1), selectedPos + visibleHeight);
+        final nextPos = min(
+          max(0, filtered.length - 1),
+          selectedPos + visibleHeight,
+        );
         _selectedIndex = filtered[nextPos];
         _scrollOffset = min(maxScroll, _scrollOffset + visibleHeight);
         return true;
@@ -183,8 +185,9 @@ class SkillsDockedPanel extends DockedPanel {
     final rightLines = _buildDetail(selectedIndex, rightWidth);
 
     final hasOverflow = filtered.length > listHeight;
-    final totalPages =
-        listHeight > 0 ? (filtered.length + listHeight - 1) ~/ listHeight : 1;
+    final totalPages = listHeight > 0
+        ? (filtered.length + listHeight - 1) ~/ listHeight
+        : 1;
     final currentPage = (_scrollOffset ~/ max(listHeight, 1)) + 1;
 
     const divider = '\x1b[2m│\x1b[0m';
@@ -209,10 +212,13 @@ class SkillsDockedPanel extends DockedPanel {
           lines.add(border.last);
           continue;
         }
-        final before =
-            border.last.substring(0, _ansiIndex(border.last, insertPos));
-        final after = border.last
-            .substring(_ansiIndex(border.last, insertPos + indicator.length));
+        final before = border.last.substring(
+          0,
+          _ansiIndex(border.last, insertPos),
+        );
+        final after = border.last.substring(
+          _ansiIndex(border.last, insertPos + indicator.length),
+        );
         lines.add('$before$indicator$after');
         continue;
       }
@@ -223,8 +229,10 @@ class SkillsDockedPanel extends DockedPanel {
       String rightContent;
 
       if (contentRow == 0) {
-        leftContent =
-            _padAnsi(_buildFilterRow(leftWidth, filtered.length), leftWidth);
+        leftContent = _padAnsi(
+          _buildFilterRow(leftWidth, filtered.length),
+          leftWidth,
+        );
         rightContent = _padAnsi(
           '\x1b[2mType to filter | Enter select | Esc close\x1b[0m',
           rightWidth,
@@ -275,14 +283,16 @@ class SkillsDockedPanel extends DockedPanel {
           skill.name.length > current ? skill.name.length : current,
     );
 
-    return filteredSkills.map((skill) {
-      final sourceTag = switch (skill.source) {
-        SkillSource.project => '${green}project$rst',
-        SkillSource.global => '${cyan}global$rst',
-        SkillSource.custom => '${cyan}custom$rst',
-      };
-      return '${skill.name.padRight(maxNameLen)}  $sourceTag';
-    }).toList(growable: false);
+    return filteredSkills
+        .map((skill) {
+          final sourceTag = switch (skill.source) {
+            SkillSource.project => '${green}project$rst',
+            SkillSource.global => '${cyan}global$rst',
+            SkillSource.custom => '${cyan}custom$rst',
+          };
+          return '${skill.name.padRight(maxNameLen)}  $sourceTag';
+        })
+        .toList(growable: false);
   }
 
   List<String> _buildDetail(int index, int width) {
@@ -322,7 +332,9 @@ class SkillsDockedPanel extends DockedPanel {
     }
     if (_query.isEmpty) {
       return _padAnsi(
-          '\x1b[2m/ filter  (${_skills.length} skills)\x1b[0m', width);
+        '\x1b[2m/ filter  (${_skills.length} skills)\x1b[0m',
+        width,
+      );
     }
     return _padAnsi(
       '\x1b[2m/$_query  ($filteredCount/${_skills.length})\x1b[0m',
@@ -349,13 +361,15 @@ class SkillsDockedPanel extends DockedPanel {
         .split(RegExp(r'\s+'))
         .where((part) => part.isNotEmpty)
         .toList(growable: false);
-    return List<int>.generate(_skills.length, (i) => i).where((i) {
-      final haystack = _skillSearchText(_skills[i]);
-      for (final term in terms) {
-        if (!haystack.contains(term)) return false;
-      }
-      return true;
-    }).toList(growable: false);
+    return List<int>.generate(_skills.length, (i) => i)
+        .where((i) {
+          final haystack = _skillSearchText(_skills[i]);
+          for (final term in terms) {
+            if (!haystack.contains(term)) return false;
+          }
+          return true;
+        })
+        .toList(growable: false);
   }
 
   int _selectedPosition(List<int> filtered) {
@@ -396,9 +410,11 @@ class SkillsDockedPanel extends DockedPanel {
   }
 
   String _skillSearchText(SkillMeta skill) {
-    final metadata = skill.metadata.entries.map((entry) {
-      return '${entry.key} ${entry.value}';
-    }).join(' ');
+    final metadata = skill.metadata.entries
+        .map((entry) {
+          return '${entry.key} ${entry.value}';
+        })
+        .join(' ');
     return '${skill.name} ${skill.description} ${skill.source.name} '
             '${skill.skillDir} $metadata'
         .toLowerCase();

@@ -66,10 +66,11 @@ class PdfTextExtractor {
     try {
       await inputFile.writeAsBytes(bytes);
 
-      process = await Process.start(
-        'pdftotext',
-        ['-layout', inputFile.path, outputFile.path],
-      );
+      process = await Process.start('pdftotext', [
+        '-layout',
+        inputFile.path,
+        outputFile.path,
+      ]);
 
       // Consume stderr concurrently with exitCode to avoid deadlock
       // when pdftotext fills the pipe buffer.

@@ -8,9 +8,7 @@ import '../_helpers/test_config.dart';
 void main() {
   group('LlmClientFactory.createFor', () {
     test('returns AnthropicClient for anthropic/<model>', () {
-      final config = testConfig(
-        env: {'ANTHROPIC_API_KEY': 'sk-anthropic'},
-      );
+      final config = testConfig(env: {'ANTHROPIC_API_KEY': 'sk-anthropic'});
       final factory = LlmClientFactory(config);
       final client = factory.createFor(
         ModelRef.parse('anthropic/claude-sonnet-4.6'),

@@ -17,10 +17,7 @@ void main() {
     });
 
     test('uncatalogued tag on known provider passes through verbatim', () {
-      final out = resolveModelInput(
-        'ollama/gemma4:latest',
-        bundledCatalog,
-      );
+      final out = resolveModelInput('ollama/gemma4:latest', bundledCatalog);
       expect(out, isA<ResolvedPassthrough>());
       final pass = out as ResolvedPassthrough;
       expect(pass.providerKnown, isTrue);
@@ -42,8 +39,10 @@ void main() {
         bundledCatalog,
       );
       expect(out, isA<ResolvedPassthrough>());
-      expect((out as ResolvedPassthrough).ref.modelId,
-          'anthropic/claude-sonnet-4-6');
+      expect(
+        (out as ResolvedPassthrough).ref.modelId,
+        'anthropic/claude-sonnet-4-6',
+      );
     });
   });
 
@@ -99,26 +98,21 @@ void main() {
             name: 'Alpha',
             adapter: 'openai',
             auth: AuthSpec(kind: AuthKind.none),
-            models: {
-              'foo': ModelDef(id: 'foo', name: 'Foo'),
-            },
+            models: {'foo': ModelDef(id: 'foo', name: 'Foo')},
           ),
           'beta': ProviderDef(
             id: 'beta',
             name: 'Beta',
             adapter: 'openai',
             auth: AuthSpec(kind: AuthKind.none),
-            models: {
-              'foo': ModelDef(id: 'foo', name: 'Foo'),
-            },
+            models: {'foo': ModelDef(id: 'foo', name: 'Foo')},
           ),
         },
       );
 
       final out = resolveModelInput('foo', catalog);
       expect(out, isA<AmbiguousBareInput>());
-      final refs = (out as AmbiguousBareInput)
-          .candidates
+      final refs = (out as AmbiguousBareInput).candidates
           .map((c) => c.ref.toString())
           .toSet();
       expect(refs, {'alpha/foo', 'beta/foo'});

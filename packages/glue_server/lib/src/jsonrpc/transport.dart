@@ -32,10 +32,7 @@ abstract class JsonRpcTransport {
 ///
 /// This is the default framing for ACP and MCP over stdio.
 class LineDelimitedTransport implements JsonRpcTransport {
-  LineDelimitedTransport({
-    required Stream<List<int>> input,
-    required this.output,
-  }) : _input = input;
+  LineDelimitedTransport({required this._input, required this.output});
 
   final Stream<List<int>> _input;
   final Sink<List<int>> output;
@@ -51,8 +48,9 @@ class LineDelimitedTransport implements JsonRpcTransport {
     final controller = StreamController<JsonRpcMessage>();
     _controller = controller;
 
-    final lines =
-        _input.transform(utf8.decoder).transform(const LineSplitter());
+    final lines = _input
+        .transform(utf8.decoder)
+        .transform(const LineSplitter());
 
     _sub = lines.listen(
       (line) {

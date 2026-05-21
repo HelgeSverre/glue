@@ -58,7 +58,8 @@ class ShareMarkdownRenderer {
           ..writeln()
           ..writeln('```json')
           ..writeln(
-              prettyShareJson(entry.toolArguments ?? const <String, dynamic>{}))
+            prettyShareJson(entry.toolArguments ?? const <String, dynamic>{}),
+          )
           ..writeln('```')
           ..writeln();
       case ShareEntryKind.toolResult:
@@ -106,7 +107,8 @@ class ShareMarkdownRenderer {
           ..writeln()
           ..writeln('```json')
           ..writeln(
-              prettyShareJson(entry.toolArguments ?? const <String, dynamic>{}))
+            prettyShareJson(entry.toolArguments ?? const <String, dynamic>{}),
+          )
           ..writeln('```')
           ..writeln();
       case ShareEntryKind.toolResult:

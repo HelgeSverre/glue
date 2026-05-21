@@ -20,7 +20,8 @@ DaytonaConfig daytonaConfigFromOptions(
 }) {
   final e = env ?? Platform.environment;
   final apiKey = (options['api_key'] as String?) ?? e['DAYTONA_API_KEY'] ?? '';
-  final apiBaseUrl = (options['api_base_url'] as String?) ??
+  final apiBaseUrl =
+      (options['api_base_url'] as String?) ??
       e['DAYTONA_API_BASE_URL'] ??
       'https://app.daytona.io/api';
   final toolboxOverride =
@@ -44,17 +45,18 @@ DaytonaConfig daytonaConfigFromOptions(
 /// }
 /// ```
 void registerDaytonaRuntime() {
-  RuntimeFactory.register(
-    'daytona',
-    ({required cwd, required options, eventSink}) async {
-      final daytonaConfig = daytonaConfigFromOptions(options);
-      // DaytonaRuntime implements RuntimeSession directly, so the
-      // adapter just constructs and returns it.
-      return DaytonaRuntime.start(
-        config: daytonaConfig,
-        hostCwd: cwd,
-        eventSink: eventSink,
-      );
-    },
-  );
+  RuntimeFactory.register('daytona', ({
+    required cwd,
+    required options,
+    eventSink,
+  }) async {
+    final daytonaConfig = daytonaConfigFromOptions(options);
+    // DaytonaRuntime implements RuntimeSession directly, so the
+    // adapter just constructs and returns it.
+    return DaytonaRuntime.start(
+      config: daytonaConfig,
+      hostCwd: cwd,
+      eventSink: eventSink,
+    );
+  });
 }

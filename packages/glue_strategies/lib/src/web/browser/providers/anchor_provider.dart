@@ -12,10 +12,8 @@ class AnchorProvider implements BrowserEndpointProvider {
 
   static const _baseUrl = 'https://api.anchorbrowser.io/v1';
 
-  AnchorProvider({
-    required this.apiKey,
-    http.Client? client,
-  }) : _client = client ?? http.Client();
+  AnchorProvider({required this.apiKey, http.Client? client})
+    : _client = client ?? http.Client();
 
   @override
   String get name => 'anchor';

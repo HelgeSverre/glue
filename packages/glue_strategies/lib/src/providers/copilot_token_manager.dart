@@ -95,15 +95,14 @@ Future<String> freshCopilotToken(
 }) async {
   final github = store.getField('copilot', CopilotFields.githubToken);
   if (github == null || github.isEmpty) {
-    throw CopilotAuthException(
-      'not connected — run `/provider add copilot`',
-    );
+    throw CopilotAuthException('not connected — run `/provider add copilot`');
   }
 
   final cachedToken = store.getField('copilot', CopilotFields.copilotToken);
   final cachedExpiryStr = store.getField('copilot', CopilotFields.expiresAt);
-  final cachedExpiry =
-      cachedExpiryStr != null ? DateTime.tryParse(cachedExpiryStr) : null;
+  final cachedExpiry = cachedExpiryStr != null
+      ? DateTime.tryParse(cachedExpiryStr)
+      : null;
   if (cachedToken != null &&
       cachedToken.isNotEmpty &&
       cachedExpiry != null &&
@@ -111,8 +110,10 @@ Future<String> freshCopilotToken(
     return cachedToken;
   }
 
-  final exchange =
-      await exchangeGithubTokenForCopilotToken(github, client: client);
+  final exchange = await exchangeGithubTokenForCopilotToken(
+    github,
+    client: client,
+  );
   store.setFields('copilot', {
     CopilotFields.githubToken: github,
     CopilotFields.copilotToken: exchange.token,

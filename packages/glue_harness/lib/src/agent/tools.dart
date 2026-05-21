@@ -26,21 +26,18 @@ class ReadFileTool extends Tool {
 
   @override
   List<ToolParameter> get parameters => const [
-        ToolParameter(
-          name: 'path',
-          type: 'string',
-          description: 'Absolute or relative path to the file.',
-        ),
-      ];
+    ToolParameter(
+      name: 'path',
+      type: 'string',
+      description: 'Absolute or relative path to the file.',
+    ),
+  ];
 
   @override
   Future<ToolResult> execute(Map<String, dynamic> args) async {
     final path = args['path'];
     if (path is! String || path.isEmpty) {
-      return ToolResult(
-        success: false,
-        content: 'Error: no path provided',
-      );
+      return ToolResult(success: false, content: 'Error: no path provided');
     }
     if (!await workspace.exists(path)) {
       return ToolResult(
@@ -62,11 +59,7 @@ class ReadFileTool extends Tool {
     return ToolResult(
       content: text,
       summary: 'Read $path ($lineCount lines, $size bytes)',
-      metadata: {
-        'path': path,
-        'bytes': size,
-        'line_count': lineCount,
-      },
+      metadata: {'path': path, 'bytes': size, 'line_count': lineCount},
     );
   }
 }
@@ -97,33 +90,27 @@ class WriteFileTool extends Tool {
 
   @override
   List<ToolParameter> get parameters => const [
-        ToolParameter(
-          name: 'path',
-          type: 'string',
-          description: 'Absolute or relative path to the file.',
-        ),
-        ToolParameter(
-          name: 'content',
-          type: 'string',
-          description: 'The content to write.',
-        ),
-      ];
+    ToolParameter(
+      name: 'path',
+      type: 'string',
+      description: 'Absolute or relative path to the file.',
+    ),
+    ToolParameter(
+      name: 'content',
+      type: 'string',
+      description: 'The content to write.',
+    ),
+  ];
 
   @override
   Future<ToolResult> execute(Map<String, dynamic> args) async {
     final path = args['path'];
     final content = args['content'];
     if (path is! String || path.isEmpty) {
-      return ToolResult(
-        success: false,
-        content: 'Error: no path provided',
-      );
+      return ToolResult(success: false, content: 'Error: no path provided');
     }
     if (content is! String) {
-      return ToolResult(
-        success: false,
-        content: 'Error: no content provided',
-      );
+      return ToolResult(success: false, content: 'Error: no content provided');
     }
     final isNew = !await workspace.exists(path);
     final oldText = isNew ? '' : await workspace.readFileAsString(path);
@@ -141,11 +128,7 @@ class WriteFileTool extends Tool {
         'is_new_file': isNew,
         // ACP-side: glue_server emits these as a `diff` content block
         // on tool_call_update so editors can render a real diff view.
-        'diff': {
-          'path': path,
-          'old_text': oldText,
-          'new_text': content,
-        },
+        'diff': {'path': path, 'old_text': oldText, 'new_text': content},
       },
     );
   }
@@ -168,34 +151,33 @@ class BashTool extends Tool {
 
   @override
   List<ToolParameter> get parameters => const [
-        ToolParameter(
-          name: 'command',
-          type: 'string',
-          description: 'The shell command to execute.',
-        ),
-        ToolParameter(
-          name: 'timeout_seconds',
-          type: 'integer',
-          description:
-              'Timeout in seconds. 0 for no timeout. Default: ${AppConstants.bashTimeoutSeconds}.',
-          required: false,
-        ),
-      ];
+    ToolParameter(
+      name: 'command',
+      type: 'string',
+      description: 'The shell command to execute.',
+    ),
+    ToolParameter(
+      name: 'timeout_seconds',
+      type: 'integer',
+      description:
+          'Timeout in seconds. 0 for no timeout. Default: ${AppConstants.bashTimeoutSeconds}.',
+      required: false,
+    ),
+  ];
 
   @override
   Future<ToolResult> execute(Map<String, dynamic> args) async {
     final command = args['command'];
     if (command is! String || command.isEmpty) {
-      return ToolResult(
-        success: false,
-        content: 'Error: no command provided',
-      );
+      return ToolResult(success: false, content: 'Error: no command provided');
     }
     final t = args['timeout_seconds'];
-    final timeoutSeconds =
-        (t is num) ? t.toInt() : AppConstants.bashTimeoutSeconds;
-    final timeout =
-        timeoutSeconds == 0 ? null : Duration(seconds: timeoutSeconds);
+    final timeoutSeconds = (t is num)
+        ? t.toInt()
+        : AppConstants.bashTimeoutSeconds;
+    final timeout = timeoutSeconds == 0
+        ? null
+        : Duration(seconds: timeoutSeconds);
 
     final result = await executor.runCapture(command, timeout: timeout);
 
@@ -250,27 +232,24 @@ class GrepTool extends Tool {
 
   @override
   List<ToolParameter> get parameters => const [
-        ToolParameter(
-          name: 'pattern',
-          type: 'string',
-          description: 'Regex pattern to search for.',
-        ),
-        ToolParameter(
-          name: 'path',
-          type: 'string',
-          description: 'Directory to search in.',
-          required: false,
-        ),
-      ];
+    ToolParameter(
+      name: 'pattern',
+      type: 'string',
+      description: 'Regex pattern to search for.',
+    ),
+    ToolParameter(
+      name: 'path',
+      type: 'string',
+      description: 'Directory to search in.',
+      required: false,
+    ),
+  ];
 
   @override
   Future<ToolResult> execute(Map<String, dynamic> args) async {
     final pattern = args['pattern'];
     if (pattern is! String || pattern.isEmpty) {
-      return ToolResult(
-        success: false,
-        content: 'Error: no pattern provided',
-      );
+      return ToolResult(success: false, content: 'Error: no pattern provided');
     }
     final path = args['path'];
     final dir = (path is String && path.isNotEmpty) ? path : '.';
@@ -280,7 +259,8 @@ class GrepTool extends Tool {
     // in [pattern] and [dir] — both are user-controlled.
     final p = _shQuote(pattern);
     final d = _shQuote(dir);
-    final shellCmd = 'if command -v rg >/dev/null 2>&1; then '
+    final shellCmd =
+        'if command -v rg >/dev/null 2>&1; then '
         'rg --line-number --no-heading $p $d; '
         'else grep -rn $p $d; fi';
 
@@ -296,11 +276,7 @@ class GrepTool extends Tool {
         content:
             'Error: grep timed out after ${AppConstants.grepTimeoutSeconds} seconds',
         summary: 'grep: timed out',
-        metadata: {
-          'pattern': pattern,
-          'path': dir,
-          'timed_out': true,
-        },
+        metadata: {'pattern': pattern, 'path': dir, 'timed_out': true},
       );
     }
 
@@ -309,11 +285,7 @@ class GrepTool extends Tool {
       return ToolResult(
         content: 'No matches found.',
         summary: 'grep "$pattern": 0 matches',
-        metadata: {
-          'pattern': pattern,
-          'path': dir,
-          'match_count': 0,
-        },
+        metadata: {'pattern': pattern, 'path': dir, 'match_count': 0},
       );
     }
     final matchCount =
@@ -322,11 +294,7 @@ class GrepTool extends Tool {
       content: output,
       summary:
           'grep "$pattern": $matchCount match${matchCount == 1 ? '' : 'es'}',
-      metadata: {
-        'pattern': pattern,
-        'path': dir,
-        'match_count': matchCount,
-      },
+      metadata: {'pattern': pattern, 'path': dir, 'match_count': matchCount},
     );
   }
 
@@ -356,33 +324,32 @@ class EditFileTool extends Tool {
 
   @override
   List<ToolParameter> get parameters => const [
-        ToolParameter(
-          name: 'path',
-          type: 'string',
-          description: 'Absolute or relative path to the file.',
-        ),
-        ToolParameter(
-          name: 'old_string',
-          type: 'string',
-          description: 'The exact text to find (multi-line supported). '
-              'Must be unique in the file. Empty string to create a new file.',
-        ),
-        ToolParameter(
-          name: 'new_string',
-          type: 'string',
-          description: 'The replacement text (multi-line supported). '
-              'Empty string to delete the matched text.',
-        ),
-      ];
+    ToolParameter(
+      name: 'path',
+      type: 'string',
+      description: 'Absolute or relative path to the file.',
+    ),
+    ToolParameter(
+      name: 'old_string',
+      type: 'string',
+      description:
+          'The exact text to find (multi-line supported). '
+          'Must be unique in the file. Empty string to create a new file.',
+    ),
+    ToolParameter(
+      name: 'new_string',
+      type: 'string',
+      description:
+          'The replacement text (multi-line supported). '
+          'Empty string to delete the matched text.',
+    ),
+  ];
 
   @override
   Future<ToolResult> execute(Map<String, dynamic> args) async {
     final path = args['path'];
     if (path is! String || path.isEmpty) {
-      return ToolResult(
-        success: false,
-        content: 'Error: no path provided',
-      );
+      return ToolResult(success: false, content: 'Error: no path provided');
     }
     final oldString = args['old_string'] as String? ?? '';
     final newString = args['new_string'] as String? ?? '';
@@ -418,7 +385,8 @@ class EditFileTool extends Tool {
     if (firstIndex == -1) {
       return ToolResult(
         success: false,
-        content: 'Error: old_string not found in $path. '
+        content:
+            'Error: old_string not found in $path. '
             'Make sure it matches the file content exactly, '
             'including whitespace and indentation.',
         metadata: {'path': path},
@@ -429,13 +397,15 @@ class EditFileTool extends Tool {
     if (firstIndex != lastIndex) {
       return ToolResult(
         success: false,
-        content: 'Error: old_string appears multiple times in $path. '
+        content:
+            'Error: old_string appears multiple times in $path. '
             'Include more surrounding context lines to make the match unique.',
         metadata: {'path': path},
       );
     }
 
-    final newContent = content.substring(0, firstIndex) +
+    final newContent =
+        content.substring(0, firstIndex) +
         newString +
         content.substring(firstIndex + oldString.length);
 
@@ -472,21 +442,18 @@ class ListDirectoryTool extends Tool {
 
   @override
   List<ToolParameter> get parameters => const [
-        ToolParameter(
-          name: 'path',
-          type: 'string',
-          description: 'Path to the directory.',
-        ),
-      ];
+    ToolParameter(
+      name: 'path',
+      type: 'string',
+      description: 'Path to the directory.',
+    ),
+  ];
 
   @override
   Future<ToolResult> execute(Map<String, dynamic> args) async {
     final path = args['path'];
     if (path is! String || path.isEmpty) {
-      return ToolResult(
-        success: false,
-        content: 'Error: no path provided',
-      );
+      return ToolResult(success: false, content: 'Error: no path provided');
     }
     if (!await workspace.isDirectory(path)) {
       return ToolResult(
@@ -508,14 +475,11 @@ class ListDirectoryTool extends Tool {
     }
     return ToolResult(
       content: buf.toString(),
-      summary: '$path: ${entries.length}'
+      summary:
+          '$path: ${entries.length}'
           '${capped ? "+" : ""} '
           'entr${entries.length == 1 ? "y" : "ies"}',
-      metadata: {
-        'path': path,
-        'entry_count': entries.length,
-        'capped': capped,
-      },
+      metadata: {'path': path, 'entry_count': entries.length, 'capped': capped},
     );
   }
 }

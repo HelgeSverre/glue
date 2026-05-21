@@ -106,8 +106,11 @@ void main() {
 
       // No bare \x1b[0m should appear between open and close.
       final between = selectedLine.substring(afterOpen, closeTag);
-      expect(between.contains('\x1b[0m'), isFalse,
-          reason: 'ANSI reset inside selection breaks reverse video');
+      expect(
+        between.contains('\x1b[0m'),
+        isFalse,
+        reason: 'ANSI reset inside selection breaks reverse video',
+      );
     });
 
     test('barrier none keeps ANSI background on rows with overlay', () {

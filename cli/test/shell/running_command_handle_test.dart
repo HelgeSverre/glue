@@ -15,8 +15,9 @@ void main() {
     test('startStreaming returns a RunningCommandHandle', () async {
       final handle = await executor.startStreaming('echo hello');
       expect(handle, isA<RunningCommandHandle>());
-      final out =
-          await handle.stdout.transform(const SystemEncoding().decoder).join();
+      final out = await handle.stdout
+          .transform(const SystemEncoding().decoder)
+          .join();
       expect(out.trim(), 'hello');
       expect(await handle.exitCode, 0);
     });
@@ -25,8 +26,10 @@ void main() {
       final handle = await executor.startStreaming('sleep 30');
       await Future.delayed(const Duration(milliseconds: 50));
       await handle.kill();
-      final code = await handle.exitCode
-          .timeout(const Duration(seconds: 5), onTimeout: () => -999);
+      final code = await handle.exitCode.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => -999,
+      );
       expect(code, isNot(-999), reason: 'kill should terminate the process');
       expect(code, isNot(0));
     });
@@ -35,10 +38,15 @@ void main() {
       final handle = await executor.startStreaming('sleep 30');
       await Future.delayed(const Duration(milliseconds: 50));
       await handle.kill(force: true);
-      final code = await handle.exitCode
-          .timeout(const Duration(seconds: 5), onTimeout: () => -999);
-      expect(code, isNot(-999),
-          reason: 'force kill should terminate the process');
+      final code = await handle.exitCode.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => -999,
+      );
+      expect(
+        code,
+        isNot(-999),
+        reason: 'force kill should terminate the process',
+      );
     });
   });
 }

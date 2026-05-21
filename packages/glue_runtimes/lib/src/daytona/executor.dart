@@ -27,20 +27,23 @@ class DaytonaExecutor implements CommandExecutor {
     this.runtimeId = 'daytona',
     String? backgroundSessionId,
     this.eventSink,
-  }) : backgroundSessionId = backgroundSessionId ??
-            'glue-bg-${DateTime.now().microsecondsSinceEpoch}';
+  }) : backgroundSessionId =
+           backgroundSessionId ??
+           'glue-bg-${DateTime.now().microsecondsSinceEpoch}';
 
   @override
   Future<CaptureResult> runCapture(String command, {Duration? timeout}) async {
     final commandId = generateRuntimeCommandId();
-    eventSink?.call(RuntimeCommandStarted(
-      commandId: commandId,
-      runtimeId: runtimeId,
-      at: DateTime.now(),
-      command: command,
-      runtimeCwd: '/workspace',
-      sandboxId: sandbox.id,
-    ));
+    eventSink?.call(
+      RuntimeCommandStarted(
+        commandId: commandId,
+        runtimeId: runtimeId,
+        at: DateTime.now(),
+        command: command,
+        runtimeCwd: '/workspace',
+        sandboxId: sandbox.id,
+      ),
+    );
     final started = DateTime.now();
     try {
       final result = await client.execCapture(
@@ -48,14 +51,16 @@ class DaytonaExecutor implements CommandExecutor {
         command,
         timeout: timeout,
       );
-      eventSink?.call(RuntimeCommandCompleted(
-        commandId: commandId,
-        runtimeId: runtimeId,
-        at: DateTime.now(),
-        exitCode: result.exitCode,
-        duration: DateTime.now().difference(started),
-        stdoutBytes: result.result.length,
-      ));
+      eventSink?.call(
+        RuntimeCommandCompleted(
+          commandId: commandId,
+          runtimeId: runtimeId,
+          at: DateTime.now(),
+          exitCode: result.exitCode,
+          duration: DateTime.now().difference(started),
+          stdoutBytes: result.result.length,
+        ),
+      );
       // Daytona returns a single combined output; we forward it as
       // stdout and leave stderr empty (see DaytonaRunningCommand for
       // the same convention).
@@ -67,13 +72,15 @@ class DaytonaExecutor implements CommandExecutor {
         sessionId: sandbox.id,
       );
     } catch (e) {
-      eventSink?.call(RuntimeCommandFailed(
-        commandId: commandId,
-        runtimeId: runtimeId,
-        at: DateTime.now(),
-        errorType: e.runtimeType.toString(),
-        message: e.toString(),
-      ));
+      eventSink?.call(
+        RuntimeCommandFailed(
+          commandId: commandId,
+          runtimeId: runtimeId,
+          at: DateTime.now(),
+          errorType: e.runtimeType.toString(),
+          message: e.toString(),
+        ),
+      );
       rethrow;
     }
   }
@@ -81,14 +88,16 @@ class DaytonaExecutor implements CommandExecutor {
   @override
   Future<RunningCommandHandle> startStreaming(String command) async {
     final commandId = generateRuntimeCommandId();
-    eventSink?.call(RuntimeCommandStarted(
-      commandId: commandId,
-      runtimeId: runtimeId,
-      at: DateTime.now(),
-      command: command,
-      runtimeCwd: '/workspace',
-      sandboxId: sandbox.id,
-    ));
+    eventSink?.call(
+      RuntimeCommandStarted(
+        commandId: commandId,
+        runtimeId: runtimeId,
+        at: DateTime.now(),
+        command: command,
+        runtimeCwd: '/workspace',
+        sandboxId: sandbox.id,
+      ),
+    );
     final started = DateTime.now();
     if (!_sessionCreated) {
       await client.createSession(sandbox, backgroundSessionId);
@@ -108,13 +117,15 @@ class DaytonaExecutor implements CommandExecutor {
     final sink = eventSink;
     if (sink != null) {
       handle.exitCode.then((code) {
-        sink(RuntimeCommandCompleted(
-          commandId: commandId,
-          runtimeId: runtimeId,
-          at: DateTime.now(),
-          exitCode: code,
-          duration: DateTime.now().difference(started),
-        ));
+        sink(
+          RuntimeCommandCompleted(
+            commandId: commandId,
+            runtimeId: runtimeId,
+            at: DateTime.now(),
+            exitCode: code,
+            duration: DateTime.now().difference(started),
+          ),
+        );
       });
     }
     return handle;

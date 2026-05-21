@@ -28,34 +28,36 @@ Map<dynamic, dynamic> _serverEntry(String path, String id) =>
 
 void main() {
   group('McpConfigWriter.addServer', () {
-    test('adds stdio server to an empty config and the result re-parses',
-        () async {
-      final dir = _scratch();
-      addTearDown(() => dir.deleteSync(recursive: true));
-      final configPath = '${dir.path}/config.yaml';
+    test(
+      'adds stdio server to an empty config and the result re-parses',
+      () async {
+        final dir = _scratch();
+        addTearDown(() => dir.deleteSync(recursive: true));
+        final configPath = '${dir.path}/config.yaml';
 
-      McpConfigWriter(configPath).addServer(
-        const McpStdioServerSpec(
-          id: 'playwright',
-          command: 'npx',
-          args: ['-y', '@playwright/mcp@latest'],
-          env: {'PLAYWRIGHT_BROWSERS_PATH': '0'},
-        ),
-      );
+        McpConfigWriter(configPath).addServer(
+          const McpStdioServerSpec(
+            id: 'playwright',
+            command: 'npx',
+            args: ['-y', '@playwright/mcp@latest'],
+            env: {'PLAYWRIGHT_BROWSERS_PATH': '0'},
+          ),
+        );
 
-      final servers = _serversMap(configPath);
-      expect(servers.containsKey('playwright'), isTrue);
-      final entry = _serverEntry(configPath, 'playwright');
-      expect(entry['command'], 'npx');
-      expect(entry['args'], ['-y', '@playwright/mcp@latest']);
-      expect((entry['env'] as Map)['PLAYWRIGHT_BROWSERS_PATH'], '0');
+        final servers = _serversMap(configPath);
+        expect(servers.containsKey('playwright'), isTrue);
+        final entry = _serverEntry(configPath, 'playwright');
+        expect(entry['command'], 'npx');
+        expect(entry['args'], ['-y', '@playwright/mcp@latest']);
+        expect((entry['env'] as Map)['PLAYWRIGHT_BROWSERS_PATH'], '0');
 
-      // The full parser must also accept the file.
-      final yaml = loadYaml(_read(configPath)) as Map;
-      final parsed = parseMcpConfig(yaml['mcp'], const {});
-      expect(parsed.servers, hasLength(1));
-      expect(parsed.servers.first, isA<McpStdioServerSpec>());
-    });
+        // The full parser must also accept the file.
+        final yaml = loadYaml(_read(configPath)) as Map;
+        final parsed = parseMcpConfig(yaml['mcp'], const {});
+        expect(parsed.servers, hasLength(1));
+        expect(parsed.servers.first, isA<McpStdioServerSpec>());
+      },
+    );
 
     test('preserves comments and key order in a heavily-commented file', () {
       final dir = _scratch();
@@ -112,9 +114,7 @@ mcp:
       final configPath = '${dir.path}/config.yaml';
       final writer = McpConfigWriter(configPath);
 
-      writer.addServer(
-        const McpStdioServerSpec(id: 'x', command: 'a'),
-      );
+      writer.addServer(const McpStdioServerSpec(id: 'x', command: 'a'));
       expect(
         () => writer.addServer(const McpStdioServerSpec(id: 'x', command: 'b')),
         throwsA(isA<McpConfigWriteError>()),
@@ -127,30 +127,37 @@ mcp:
       expect(_serverEntry(configPath, 'x')['command'], 'b');
     });
 
-    test('creates mcp: block from scratch when bootstrapping from template',
-        () {
-      final dir = _scratch();
-      addTearDown(() => dir.deleteSync(recursive: true));
-      final configPath = '${dir.path}/config.yaml';
-      // File does not exist — _mutate should bootstrap from template.
+    test(
+      'creates mcp: block from scratch when bootstrapping from template',
+      () {
+        final dir = _scratch();
+        addTearDown(() => dir.deleteSync(recursive: true));
+        final configPath = '${dir.path}/config.yaml';
+        // File does not exist — _mutate should bootstrap from template.
 
-      McpConfigWriter(configPath).addServer(
-        const McpStdioServerSpec(id: 'foo', command: '/usr/bin/env'),
-      );
+        McpConfigWriter(configPath).addServer(
+          const McpStdioServerSpec(id: 'foo', command: '/usr/bin/env'),
+        );
 
-      final content = _read(configPath);
-      expect(content, contains('# Glue config.yaml'),
-          reason: 'template header preserved');
-      expect(content, contains('foo:'));
-      expect(content, contains('command: /usr/bin/env'));
+        final content = _read(configPath);
+        expect(
+          content,
+          contains('# Glue config.yaml'),
+          reason: 'template header preserved',
+        );
+        expect(content, contains('foo:'));
+        expect(content, contains('command: /usr/bin/env'));
 
-      // And the parser accepts it.
-      final root = loadYaml(content) as Map;
-      final parsed = parseMcpConfig(root['mcp'], const {});
-      expect(parsed.servers.single, isA<McpStdioServerSpec>());
-      expect((parsed.servers.single as McpStdioServerSpec).command,
-          '/usr/bin/env');
-    });
+        // And the parser accepts it.
+        final root = loadYaml(content) as Map;
+        final parsed = parseMcpConfig(root['mcp'], const {});
+        expect(parsed.servers.single, isA<McpStdioServerSpec>());
+        expect(
+          (parsed.servers.single as McpStdioServerSpec).command,
+          '/usr/bin/env',
+        );
+      },
+    );
 
     test('writes HTTP server with bearer auth block', () {
       final dir = _scratch();

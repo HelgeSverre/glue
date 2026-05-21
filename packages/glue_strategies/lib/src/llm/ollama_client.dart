@@ -46,8 +46,8 @@ class OllamaClient implements LlmClient {
     String baseUrl = 'http://localhost:11434',
     this.contextWindow,
     http.Client Function()? requestClientFactory,
-  })  : _requestClientFactory = requestClientFactory ?? http.Client.new,
-        _baseUri = Uri.parse(baseUrl);
+  }) : _requestClientFactory = requestClientFactory ?? http.Client.new,
+       _baseUri = Uri.parse(baseUrl);
 
   @override
   Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
@@ -93,9 +93,7 @@ class OllamaClient implements LlmClient {
                 if (body.isNotEmpty) body.write('\n');
                 body.write(extra);
               }
-              mappedMessages.add(
-                {'role': 'user', 'content': body.toString()},
-              );
+              mappedMessages.add({'role': 'user', 'content': body.toString()});
             } else {
               mappedMessages.add({'role': 'user', 'content': msg.text ?? ''});
             }
@@ -108,11 +106,8 @@ class OllamaClient implements LlmClient {
               entry['tool_calls'] = [
                 for (final tc in msg.toolCalls)
                   {
-                    'function': {
-                      'name': tc.name,
-                      'arguments': tc.arguments,
-                    },
-                  }
+                    'function': {'name': tc.name, 'arguments': tc.arguments},
+                  },
               ];
             }
             mappedMessages.add(entry);
@@ -122,8 +117,9 @@ class OllamaClient implements LlmClient {
                 : (msg.text ?? '');
             mappedMessages.add({
               'role': 'tool',
-              'content':
-                  textContent.isNotEmpty ? textContent : (msg.text ?? ''),
+              'content': textContent.isNotEmpty
+                  ? textContent
+                  : (msg.text ?? ''),
               'tool_name': msg.toolName ?? '',
             });
             if (msg.contentParts != null &&
@@ -160,10 +156,7 @@ class OllamaClient implements LlmClient {
         body['tools'] = const OpenAiToolEncoder().encodeAll(tools);
       }
 
-      final request = http.Request(
-        'POST',
-        _baseUri.resolve('/api/chat'),
-      );
+      final request = http.Request('POST', _baseUri.resolve('/api/chat'));
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode(body);
 
@@ -171,9 +164,17 @@ class OllamaClient implements LlmClient {
 
       if (response.statusCode != 200) {
         final errorBody = await response.stream.bytesToString();
-        throw Exception(
-          'Ollama API error ${response.statusCode}: $errorBody',
-        );
+        // Ollama returns 400 with body containing "does not support tools"
+        // when the loaded model has no function-calling support but we
+        // sent a `tools` array. Surface this as a typed exception so the
+        // agent loop can soft-degrade to chat-only instead of crashing.
+        // Loose match — body shape is `{"error":"<model> does not support tools"}`
+        // today but stay defensive about wording drift.
+        if (response.statusCode == 400 &&
+            errorBody.toLowerCase().contains('does not support tools')) {
+          throw ToolsNotSupportedException(model);
+        }
+        throw Exception('Ollama API error ${response.statusCode}: $errorBody');
       }
 
       yield* parseStreamEvents(decodeNdjson(response.stream));
@@ -217,12 +218,14 @@ class OllamaClient implements LlmClient {
             final id = ToolCallId('ollama_tc_$toolCallCounter');
             final name = fn['name'] as String;
             yield ToolCallStart(id: id, name: name);
-            yield ToolCallComplete(ToolCall(
-              id: id,
-              name: name,
-              // Ollama returns arguments as a parsed Map, not a JSON string.
-              arguments: Map<String, dynamic>.from(fn['arguments'] as Map),
-            ));
+            yield ToolCallComplete(
+              ToolCall(
+                id: id,
+                name: name,
+                // Ollama returns arguments as a parsed Map, not a JSON string.
+                arguments: Map<String, dynamic>.from(fn['arguments'] as Map),
+              ),
+            );
           }
         }
       }

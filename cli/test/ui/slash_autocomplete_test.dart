@@ -12,11 +12,13 @@ void main() {
       // Register 12 commands whose names all start with "cmd" so a single
       // prefix query produces a long match list.
       for (var i = 0; i < 12; i++) {
-        registry.register(SlashCommand.inline(
-          name: 'cmd${i.toString().padLeft(2, '0')}',
-          description: 'command number $i',
-          execute: (_) => '',
-        ));
+        registry.register(
+          SlashCommand.inline(
+            name: 'cmd${i.toString().padLeft(2, '0')}',
+            description: 'command number $i',
+            execute: (_) => '',
+          ),
+        );
       }
       ac = SlashAutocomplete(registry);
     });
@@ -37,10 +39,16 @@ void main() {
 
       final lines = ac.render(80);
       expect(lines.length, 8);
-      expect(lines.any((l) => l.contains('/cmd09')), isTrue,
-          reason: 'row 9 should be inside the visible window');
-      expect(lines.any((l) => l.contains('/cmd00')), isFalse,
-          reason: 'row 0 should have scrolled off');
+      expect(
+        lines.any((l) => l.contains('/cmd09')),
+        isTrue,
+        reason: 'row 9 should be inside the visible window',
+      );
+      expect(
+        lines.any((l) => l.contains('/cmd00')),
+        isFalse,
+        reason: 'row 0 should have scrolled off',
+      );
     });
 
     test('render window snaps to the bottom when Up wraps past index 0', () {

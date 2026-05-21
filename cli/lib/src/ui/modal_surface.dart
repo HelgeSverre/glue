@@ -4,11 +4,7 @@ import 'package:glue/src/ui/panel_modal.dart';
 /// directly; domain-specific picker/action assembly lives in the command
 /// classes themselves.
 class ModalSurface {
-  ModalSurface({
-    required List<PanelOverlay> panelStack,
-    required void Function() render,
-  })  : _panelStack = panelStack,
-        _render = render;
+  ModalSurface({required this._panelStack, required this._render});
 
   final List<PanelOverlay> _panelStack;
   final void Function() _render;

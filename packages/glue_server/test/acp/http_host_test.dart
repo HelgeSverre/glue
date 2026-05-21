@@ -49,12 +49,14 @@ void main() {
 
       final inbound = ws.asBroadcastStream();
 
-      ws.add(jsonEncode({
-        'jsonrpc': '2.0',
-        'id': 1,
-        'method': 'initialize',
-        'params': {'protocolVersion': 1},
-      }));
+      ws.add(
+        jsonEncode({
+          'jsonrpc': '2.0',
+          'id': 1,
+          'method': 'initialize',
+          'params': {'protocolVersion': 1},
+        }),
+      );
       final initResp = await inbound.first as String;
       final initJson = jsonDecode(initResp) as Map<String, Object?>;
       expect(initJson['id'], 1);
@@ -63,55 +65,58 @@ void main() {
         'glue',
       );
 
-      ws.add(jsonEncode({
-        'jsonrpc': '2.0',
-        'id': 2,
-        'method': 'session/new',
-        'params': {'cwd': '/tmp/x'},
-      }));
-      final newResp = await inbound.first as String;
-      final newJson = jsonDecode(newResp) as Map<String, Object?>;
-      expect(
-        (newJson['result']! as Map)['sessionId'],
-        startsWith('sess-'),
-      );
-    });
-
-    test('multiple clients: each connection has isolated session state',
-        () async {
-      // delegateFactory returns a fresh delegate per connection, so
-      // each WS client's `sess-1` is unique to its connection.
-      final host = AcpHttpHost(delegateFactory: _TextOnlyDelegate.new);
-      final port = await host.start(port: 0);
-      addTearDown(host.stop);
-
-      Future<String> firstSessionId(WebSocket ws) async {
-        final inbound = ws.asBroadcastStream();
-        ws.add(jsonEncode({
+      ws.add(
+        jsonEncode({
           'jsonrpc': '2.0',
-          'id': 1,
+          'id': 2,
           'method': 'session/new',
           'params': {'cwd': '/tmp/x'},
-        }));
-        final resp = await inbound.first as String;
-        final json = jsonDecode(resp) as Map<String, Object?>;
-        return (json['result']! as Map)['sessionId']! as String;
-      }
-
-      final a = await WebSocket.connect('ws://127.0.0.1:$port/acp');
-      addTearDown(a.close);
-      final b = await WebSocket.connect('ws://127.0.0.1:$port/acp');
-      addTearDown(b.close);
-
-      final aId = await firstSessionId(a);
-      final bId = await firstSessionId(b);
-
-      // Both connections see their first session as "sess-1" — proving
-      // the delegate per-connection has its own counter.
-      expect(aId, 'sess-1');
-      expect(bId, 'sess-1');
-      expect(host.activeConnections, 2);
+        }),
+      );
+      final newResp = await inbound.first as String;
+      final newJson = jsonDecode(newResp) as Map<String, Object?>;
+      expect((newJson['result']! as Map)['sessionId'], startsWith('sess-'));
     });
+
+    test(
+      'multiple clients: each connection has isolated session state',
+      () async {
+        // delegateFactory returns a fresh delegate per connection, so
+        // each WS client's `sess-1` is unique to its connection.
+        final host = AcpHttpHost(delegateFactory: _TextOnlyDelegate.new);
+        final port = await host.start(port: 0);
+        addTearDown(host.stop);
+
+        Future<String> firstSessionId(WebSocket ws) async {
+          final inbound = ws.asBroadcastStream();
+          ws.add(
+            jsonEncode({
+              'jsonrpc': '2.0',
+              'id': 1,
+              'method': 'session/new',
+              'params': {'cwd': '/tmp/x'},
+            }),
+          );
+          final resp = await inbound.first as String;
+          final json = jsonDecode(resp) as Map<String, Object?>;
+          return (json['result']! as Map)['sessionId']! as String;
+        }
+
+        final a = await WebSocket.connect('ws://127.0.0.1:$port/acp');
+        addTearDown(a.close);
+        final b = await WebSocket.connect('ws://127.0.0.1:$port/acp');
+        addTearDown(b.close);
+
+        final aId = await firstSessionId(a);
+        final bId = await firstSessionId(b);
+
+        // Both connections see their first session as "sess-1" — proving
+        // the delegate per-connection has its own counter.
+        expect(aId, 'sess-1');
+        expect(bId, 'sess-1');
+        expect(host.activeConnections, 2);
+      },
+    );
 
     test('rejects requests on the wrong path with 404', () async {
       final host = AcpHttpHost(delegateFactory: _TextOnlyDelegate.new);
@@ -120,8 +125,9 @@ void main() {
 
       final client = HttpClient();
       addTearDown(client.close);
-      final request =
-          await client.getUrl(Uri.parse('http://127.0.0.1:$port/wrong'));
+      final request = await client.getUrl(
+        Uri.parse('http://127.0.0.1:$port/wrong'),
+      );
       final response = await request.close();
       expect(response.statusCode, 404);
       await response.drain<void>();
@@ -134,8 +140,9 @@ void main() {
 
       final client = HttpClient();
       addTearDown(client.close);
-      final request =
-          await client.getUrl(Uri.parse('http://127.0.0.1:$port/acp'));
+      final request = await client.getUrl(
+        Uri.parse('http://127.0.0.1:$port/acp'),
+      );
       final response = await request.close();
       expect(response.statusCode, 400);
       await response.drain<void>();
@@ -153,8 +160,9 @@ void main() {
 
       final client = HttpClient();
       addTearDown(client.close);
-      final request =
-          await client.getUrl(Uri.parse('http://127.0.0.1:$port/acp'));
+      final request = await client.getUrl(
+        Uri.parse('http://127.0.0.1:$port/acp'),
+      );
       final response = await request.close();
       expect(response.statusCode, 401);
       expect(
@@ -195,12 +203,14 @@ void main() {
       );
       addTearDown(ws.close);
 
-      ws.add(jsonEncode({
-        'jsonrpc': '2.0',
-        'id': 1,
-        'method': 'initialize',
-        'params': {'protocolVersion': 1},
-      }));
+      ws.add(
+        jsonEncode({
+          'jsonrpc': '2.0',
+          'id': 1,
+          'method': 'initialize',
+          'params': {'protocolVersion': 1},
+        }),
+      );
       final reply = await ws.first as String;
       expect((jsonDecode(reply) as Map)['id'], 1);
     });
@@ -218,12 +228,14 @@ void main() {
       );
       addTearDown(ws.close);
 
-      ws.add(jsonEncode({
-        'jsonrpc': '2.0',
-        'id': 1,
-        'method': 'initialize',
-        'params': {'protocolVersion': 1},
-      }));
+      ws.add(
+        jsonEncode({
+          'jsonrpc': '2.0',
+          'id': 1,
+          'method': 'initialize',
+          'params': {'protocolVersion': 1},
+        }),
+      );
       final reply = await ws.first as String;
       expect((jsonDecode(reply) as Map)['id'], 1);
     });

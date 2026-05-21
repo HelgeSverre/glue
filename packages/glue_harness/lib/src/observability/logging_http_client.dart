@@ -15,16 +15,12 @@ import 'package:glue_harness/src/observability/redaction.dart';
 /// [Observability.activeSpan] so they stitch into the current agent turn.
 class LoggingHttpClient extends http.BaseClient {
   LoggingHttpClient({
-    required http.Client inner,
+    required this._inner,
     required Observability observability,
-    required String spanKind,
-    int maxBodyBytes = 65536,
-    Map<String, String> staticAttributes = const {},
-  })  : _inner = inner,
-        _obs = observability,
-        _spanKind = spanKind,
-        _maxBodyBytes = maxBodyBytes,
-        _staticAttributes = staticAttributes;
+    required this._spanKind,
+    this._maxBodyBytes = 65536,
+    this._staticAttributes = const {},
+  }) : _obs = observability;
 
   final http.Client _inner;
   final Observability _obs;
@@ -45,8 +41,10 @@ class LoggingHttpClient extends http.BaseClient {
     // skip body capture to avoid draining the caller's stream.
     if (request is http.Request) {
       attributes['http.request_body_size'] = request.bodyBytes.length;
-      attributes['http.request_body'] =
-          redactBody(request.body, maxBytes: _maxBodyBytes);
+      attributes['http.request_body'] = redactBody(
+        request.body,
+        maxBytes: _maxBodyBytes,
+      );
     }
 
     final span = _obs.startSpan(
@@ -59,12 +57,15 @@ class LoggingHttpClient extends http.BaseClient {
     try {
       response = await _inner.send(request);
     } catch (error, stack) {
-      _obs.endSpan(span, extra: {
-        'error': true,
-        'error.type': error.runtimeType.toString(),
-        'error.message': error.toString(),
-        'error.stack': stack.toString(),
-      });
+      _obs.endSpan(
+        span,
+        extra: {
+          'error': true,
+          'error.type': error.runtimeType.toString(),
+          'error.message': error.toString(),
+          'error.stack': stack.toString(),
+        },
+      );
       rethrow;
     }
 
@@ -84,29 +85,40 @@ class LoggingHttpClient extends http.BaseClient {
           sink.add(chunk);
         },
         handleError: (error, stack, sink) {
-          _obs.endSpan(span, extra: {
-            'http.status_code': response.statusCode,
-            'http.duration_ms':
-                DateTime.now().difference(started).inMilliseconds,
-            'error': true,
-            'error.type': error.runtimeType.toString(),
-            'error.message': error.toString(),
-            'error.stack': stack.toString(),
-          });
+          _obs.endSpan(
+            span,
+            extra: {
+              'http.status_code': response.statusCode,
+              'http.duration_ms': DateTime.now()
+                  .difference(started)
+                  .inMilliseconds,
+              'error': true,
+              'error.type': error.runtimeType.toString(),
+              'error.message': error.toString(),
+              'error.stack': stack.toString(),
+            },
+          );
           sink
             ..addError(error, stack)
             ..close();
         },
         handleDone: (sink) {
           final bodyText = utf8.decode(collected, allowMalformed: true);
-          _obs.endSpan(span, extra: {
-            'http.status_code': response.statusCode,
-            'http.response_headers': redactHeaders(response.headers),
-            'http.response_body_size': collected.length,
-            'http.response_body': redactBody(bodyText, maxBytes: _maxBodyBytes),
-            'http.duration_ms':
-                DateTime.now().difference(started).inMilliseconds,
-          });
+          _obs.endSpan(
+            span,
+            extra: {
+              'http.status_code': response.statusCode,
+              'http.response_headers': redactHeaders(response.headers),
+              'http.response_body_size': collected.length,
+              'http.response_body': redactBody(
+                bodyText,
+                maxBytes: _maxBodyBytes,
+              ),
+              'http.duration_ms': DateTime.now()
+                  .difference(started)
+                  .inMilliseconds,
+            },
+          );
           sink.close();
         },
       ),

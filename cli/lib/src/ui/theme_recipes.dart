@@ -22,11 +22,7 @@ class GlueRecipes {
     return paint(' $label ');
   }
 
-  String listItem(
-    String label, {
-    required bool selected,
-    String? description,
-  }) {
+  String listItem(String label, {required bool selected, String? description}) {
     final marker = selected ? t.accent('${t.brandDot} ') : '  ';
     final body = selected ? t.selection(label) : t.textPrimary(label);
     if (description == null || description.isEmpty) {

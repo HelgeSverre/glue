@@ -27,8 +27,9 @@ void main() {
         final url = Uri.parse(
           'https://registry.ollama.ai/v2/library/$model/manifests/$tag',
         );
-        final response =
-            await http.head(url).timeout(const Duration(seconds: 10));
+        final response = await http
+            .head(url)
+            .timeout(const Duration(seconds: 10));
         expect(
           response.statusCode,
           200,

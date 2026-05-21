@@ -48,47 +48,114 @@ const _copilotProvider = ProviderDef(
 
 void main() {
   group('CopilotAdapter.beginInteractiveAuth', () {
-    test('returns a DeviceCodeFlow whose progress stream drives token exchange',
-        () async {
-      final dir = _scratch();
-      addTearDown(() => dir.deleteSync(recursive: true));
-      final store = CredentialStore(
-        path: '${dir.path}/c.json',
-        env: const {},
-      );
+    test(
+      'returns a DeviceCodeFlow whose progress stream drives token exchange',
+      () async {
+        final dir = _scratch();
+        addTearDown(() => dir.deleteSync(recursive: true));
+        final store = CredentialStore(
+          path: '${dir.path}/c.json',
+          env: const {},
+        );
 
-      var pollCalls = 0;
-      final client = _RoutedHttp((req) {
-        final url = req.url.toString();
-        if (url.contains('login/device/code')) {
-          return _Handler((_) async => _json(200, {
+        var pollCalls = 0;
+        final client = _RoutedHttp((req) {
+          final url = req.url.toString();
+          if (url.contains('login/device/code')) {
+            return _Handler(
+              (_) async => _json(200, {
                 'device_code': 'DEV-CODE',
                 'user_code': 'ABCD-1234',
                 'verification_uri': 'https://github.com/login/device',
                 'expires_in': 900,
                 'interval': 0, // tests poll without delay
-              }));
-        }
-        if (url.contains('login/oauth/access_token')) {
-          pollCalls++;
-          return _Handler((_) async {
-            if (pollCalls == 1) {
-              return _json(200, {'error': 'authorization_pending'});
-            }
-            return _json(200, {
-              'access_token': 'gho_approved',
-              'token_type': 'bearer',
+              }),
+            );
+          }
+          if (url.contains('login/oauth/access_token')) {
+            pollCalls++;
+            return _Handler((_) async {
+              if (pollCalls == 1) {
+                return _json(200, {'error': 'authorization_pending'});
+              }
+              return _json(200, {
+                'access_token': 'gho_approved',
+                'token_type': 'bearer',
+              });
             });
-          });
-        }
-        if (url.contains('copilot_internal/v2/token')) {
-          return _Handler((_) async => _json(200, {
+          }
+          if (url.contains('copilot_internal/v2/token')) {
+            return _Handler(
+              (_) async => _json(200, {
                 'token': 'tid=session',
-                'expires_at': DateTime.now()
+                'expires_at':
+                    DateTime.now()
                         .add(const Duration(minutes: 30))
                         .millisecondsSinceEpoch ~/
                     1000,
-              }));
+              }),
+            );
+          }
+          return _Handler(
+            (req) async => http.StreamedResponse(
+              const Stream.empty(),
+              404,
+              headers: const {},
+            ),
+          );
+        });
+
+        final adapter = CopilotAdapter(client: client);
+        final flow = await adapter.beginInteractiveAuth(
+          provider: _copilotProvider,
+          store: store,
+        );
+        expect(flow, isA<DeviceCodeFlow>());
+        final device = flow! as DeviceCodeFlow;
+        expect(device.userCode, 'ABCD-1234');
+        expect(device.verificationUri, contains('github.com/login/device'));
+
+        // Drain the progress stream.
+        final events = <AuthFlowProgress>[];
+        await for (final ev in device.progress) {
+          events.add(ev);
+        }
+
+        expect(events.whereType<AuthFlowPolling>(), isNotEmpty);
+        expect(events.last, isA<AuthFlowSucceeded>());
+        final success = events.last as AuthFlowSucceeded;
+        expect(success.fields[CopilotFields.githubToken], 'gho_approved');
+        expect(success.fields[CopilotFields.copilotToken], 'tid=session');
+        expect(success.fields[CopilotFields.expiresAt], isNotEmpty);
+
+        // Also stored.
+        expect(
+          store.getField('copilot', CopilotFields.githubToken),
+          'gho_approved',
+        );
+      },
+    );
+
+    test('emits AuthFlowFailed on access_denied', () async {
+      final dir = _scratch();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final store = CredentialStore(path: '${dir.path}/c.json', env: const {});
+
+      final client = _RoutedHttp((req) {
+        final url = req.url.toString();
+        if (url.contains('login/device/code')) {
+          return _Handler(
+            (_) async => _json(200, {
+              'device_code': 'dc',
+              'user_code': 'XXXX',
+              'verification_uri': 'https://example',
+              'expires_in': 10,
+              'interval': 0,
+            }),
+          );
+        }
+        if (url.contains('login/oauth/access_token')) {
+          return _Handler((_) async => _json(200, {'error': 'access_denied'}));
         }
         return _Handler(
           (req) async => http.StreamedResponse(
@@ -100,66 +167,12 @@ void main() {
       });
 
       final adapter = CopilotAdapter(client: client);
-      final flow = await adapter.beginInteractiveAuth(
-        provider: _copilotProvider,
-        store: store,
-      );
-      expect(flow, isA<DeviceCodeFlow>());
-      final device = flow! as DeviceCodeFlow;
-      expect(device.userCode, 'ABCD-1234');
-      expect(device.verificationUri, contains('github.com/login/device'));
-
-      // Drain the progress stream.
-      final events = <AuthFlowProgress>[];
-      await for (final ev in device.progress) {
-        events.add(ev);
-      }
-
-      expect(events.whereType<AuthFlowPolling>(), isNotEmpty);
-      expect(events.last, isA<AuthFlowSucceeded>());
-      final success = events.last as AuthFlowSucceeded;
-      expect(success.fields[CopilotFields.githubToken], 'gho_approved');
-      expect(success.fields[CopilotFields.copilotToken], 'tid=session');
-      expect(success.fields[CopilotFields.expiresAt], isNotEmpty);
-
-      // Also stored.
-      expect(
-          store.getField('copilot', CopilotFields.githubToken), 'gho_approved');
-    });
-
-    test('emits AuthFlowFailed on access_denied', () async {
-      final dir = _scratch();
-      addTearDown(() => dir.deleteSync(recursive: true));
-      final store = CredentialStore(
-        path: '${dir.path}/c.json',
-        env: const {},
-      );
-
-      final client = _RoutedHttp((req) {
-        final url = req.url.toString();
-        if (url.contains('login/device/code')) {
-          return _Handler((_) async => _json(200, {
-                'device_code': 'dc',
-                'user_code': 'XXXX',
-                'verification_uri': 'https://example',
-                'expires_in': 10,
-                'interval': 0,
-              }));
-        }
-        if (url.contains('login/oauth/access_token')) {
-          return _Handler((_) async => _json(200, {'error': 'access_denied'}));
-        }
-        return _Handler(
-          (req) async => http.StreamedResponse(const Stream.empty(), 404,
-              headers: const {}),
-        );
-      });
-
-      final adapter = CopilotAdapter(client: client);
-      final flow = await adapter.beginInteractiveAuth(
-        provider: _copilotProvider,
-        store: store,
-      ) as DeviceCodeFlow;
+      final flow =
+          await adapter.beginInteractiveAuth(
+                provider: _copilotProvider,
+                store: store,
+              )
+              as DeviceCodeFlow;
 
       final last = await flow.progress.last;
       expect(last, isA<AuthFlowFailed>());
@@ -172,28 +185,16 @@ void main() {
     test('true when github_token is stored', () {
       final dir = _scratch();
       addTearDown(() => dir.deleteSync(recursive: true));
-      final store = CredentialStore(
-        path: '${dir.path}/c.json',
-        env: const {},
-      );
+      final store = CredentialStore(path: '${dir.path}/c.json', env: const {});
       store.setFields('copilot', {CopilotFields.githubToken: 'gho_x'});
-      expect(
-        CopilotAdapter().isConnected(_copilotProvider, store),
-        isTrue,
-      );
+      expect(CopilotAdapter().isConnected(_copilotProvider, store), isTrue);
     });
 
     test('false when not stored', () {
       final dir = _scratch();
       addTearDown(() => dir.deleteSync(recursive: true));
-      final store = CredentialStore(
-        path: '${dir.path}/c.json',
-        env: const {},
-      );
-      expect(
-        CopilotAdapter().isConnected(_copilotProvider, store),
-        isFalse,
-      );
+      final store = CredentialStore(path: '${dir.path}/c.json', env: const {});
+      expect(CopilotAdapter().isConnected(_copilotProvider, store), isFalse);
     });
   });
 
@@ -201,10 +202,7 @@ void main() {
     test('returns an LlmClient (integration happens in stream call)', () {
       final dir = _scratch();
       addTearDown(() => dir.deleteSync(recursive: true));
-      final store = CredentialStore(
-        path: '${dir.path}/c.json',
-        env: const {},
-      );
+      final store = CredentialStore(path: '${dir.path}/c.json', env: const {});
       store.setFields('copilot', {
         CopilotFields.githubToken: 'gho_x',
         CopilotFields.copilotToken: 'tid=valid',

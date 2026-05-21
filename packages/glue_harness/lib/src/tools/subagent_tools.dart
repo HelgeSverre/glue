@@ -5,12 +5,7 @@ import 'package:glue_core/glue_core.dart';
 
 /// Tool that spawns a single subagent to perform a focused task.
 class SpawnSubagentTool extends Tool {
-  SpawnSubagentTool(
-    this._manager, {
-    int depth = 0,
-    String? parentSubagentId,
-  })  : _depth = depth,
-        _parentSubagentId = parentSubagentId;
+  SpawnSubagentTool(this._manager, {this._depth = 0, this._parentSubagentId});
 
   final AgentManager _manager;
   final int _depth;
@@ -27,19 +22,20 @@ class SpawnSubagentTool extends Tool {
 
   @override
   List<ToolParameter> get parameters => const [
-        ToolParameter(
-          name: 'task',
-          type: 'string',
-          description: 'The task description for the subagent.',
-        ),
-        ToolParameter(
-          name: 'model_ref',
-          type: 'string',
-          description: 'Override model as `<provider>/<model>` (e.g. '
-              '"anthropic/claude-haiku-4-5"). Defaults to the active model.',
-          required: false,
-        ),
-      ];
+    ToolParameter(
+      name: 'task',
+      type: 'string',
+      description: 'The task description for the subagent.',
+    ),
+    ToolParameter(
+      name: 'model_ref',
+      type: 'string',
+      description:
+          'Override model as `<provider>/<model>` (e.g. '
+          '"anthropic/claude-haiku-4-5"). Defaults to the active model.',
+      required: false,
+    ),
+  ];
 
   @override
   Future<ToolResult> execute(Map<String, dynamic> args) async {
@@ -56,11 +52,7 @@ class SpawnSubagentTool extends Tool {
     return ToolResult(
       content: result,
       summary: 'subagent: $task',
-      metadata: {
-        'task': task,
-        if (override != null) 'model_ref': override,
-        'depth': _depth,
-      },
+      metadata: {'task': task, 'model_ref': ?override, 'depth': _depth},
     );
   }
 }
@@ -69,10 +61,9 @@ class SpawnSubagentTool extends Tool {
 class SpawnParallelSubagentsTool extends Tool {
   SpawnParallelSubagentsTool(
     this._manager, {
-    int depth = 0,
-    String? parentSubagentId,
-  })  : _depth = depth,
-        _parentSubagentId = parentSubagentId;
+    this._depth = 0,
+    this._parentSubagentId,
+  });
 
   final AgentManager _manager;
   final int _depth;
@@ -94,19 +85,19 @@ class SpawnParallelSubagentsTool extends Tool {
 
   @override
   List<ToolParameter> get parameters => const [
-        ToolParameter(
-          name: 'tasks',
-          type: 'array',
-          description: 'List of task descriptions, one per subagent.',
-          items: {'type': 'string'},
-        ),
-        ToolParameter(
-          name: 'model_ref',
-          type: 'string',
-          description: 'Override model as `<provider>/<model>`.',
-          required: false,
-        ),
-      ];
+    ToolParameter(
+      name: 'tasks',
+      type: 'array',
+      description: 'List of task descriptions, one per subagent.',
+      items: {'type': 'string'},
+    ),
+    ToolParameter(
+      name: 'model_ref',
+      type: 'string',
+      description: 'Override model as `<provider>/<model>`.',
+      required: false,
+    ),
+  ];
 
   @override
   Future<ToolResult> execute(Map<String, dynamic> args) async {
@@ -132,7 +123,7 @@ class SpawnParallelSubagentsTool extends Tool {
       summary: 'parallel subagents: ${tasks.length} tasks',
       metadata: {
         'task_count': tasks.length,
-        if (override != null) 'model_ref': override,
+        'model_ref': ?override,
         'depth': _depth,
       },
     );

@@ -31,10 +31,12 @@ String formatMcpServerList(
     ].join('\n');
   }
 
-  final idWidth =
-      rows.map((r) => r.id.length).fold<int>(0, (a, b) => a > b ? a : b);
-  final kindWidth =
-      rows.map((r) => r.kind.length).fold<int>(0, (a, b) => a > b ? a : b);
+  final idWidth = rows
+      .map((r) => r.id.length)
+      .fold<int>(0, (a, b) => a > b ? a : b);
+  final kindWidth = rows
+      .map((r) => r.kind.length)
+      .fold<int>(0, (a, b) => a > b ? a : b);
 
   final dot = ansi ? '$brandDot ' : '';
   final header =

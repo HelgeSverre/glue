@@ -84,9 +84,11 @@ String _render({required String template, required String css}) {
   final b = StringBuffer()
     ..writeln('// GENERATED — DO NOT EDIT.')
     ..writeln(
-        '// Source: packages/glue_harness/lib/src/share/html/share_page_template.html')
+      '// Source: packages/glue_harness/lib/src/share/html/share_page_template.html',
+    )
     ..writeln(
-        '//         packages/glue_harness/lib/src/share/html/share_page.css')
+      '//         packages/glue_harness/lib/src/share/html/share_page.css',
+    )
     ..writeln('// Regenerate with: dart run tool/gen_share_assets.dart')
     ..writeln('// ignore_for_file: lines_longer_than_80_chars')
     ..writeln()

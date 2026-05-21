@@ -42,10 +42,14 @@ List<SessionSummary> listSessions(Environment env) {
     final metaFile = File(p.join(entry.path, 'meta.json'));
     if (!metaFile.existsSync()) continue;
     try {
-      metas.add(SessionMeta.fromJson(
-        jsonDecode(metaFile.readAsStringSync()) as Map<String, dynamic>,
-      ));
-    } catch (_) {/* skip corrupt meta */}
+      metas.add(
+        SessionMeta.fromJson(
+          jsonDecode(metaFile.readAsStringSync()) as Map<String, dynamic>,
+        ),
+      );
+    } catch (_) {
+      /* skip corrupt meta */
+    }
   }
   metas.sort((a, b) => b.startTime.compareTo(a.startTime));
   return metas.map((m) => SessionSummary.from(m, env)).toList();
@@ -131,17 +135,17 @@ Future<SessionApplyResult> applySessionPatch({
   if (patchPath.endsWith('.truncated')) {
     return SessionApplyResult(
       ok: false,
-      message: 'patch is truncated (exceeded size cap during capture); '
+      message:
+          'patch is truncated (exceeded size cap during capture); '
           'cannot be applied — inspect $patchPath manually',
     );
   }
 
   // Confirm target is a git repo.
-  final inRepo = await Process.run(
-    'git',
-    ['rev-parse', '--is-inside-work-tree'],
-    workingDirectory: targetDir,
-  );
+  final inRepo = await Process.run('git', [
+    'rev-parse',
+    '--is-inside-work-tree',
+  ], workingDirectory: targetDir);
   if (inRepo.exitCode != 0) {
     return SessionApplyResult(
       ok: false,
@@ -151,13 +155,14 @@ Future<SessionApplyResult> applySessionPatch({
 
   // Q6 default: create a branch unless caller passes inPlace.
   if (!inPlace) {
-    final branchName = branch ??
+    final branchName =
+        branch ??
         'glue/${session.meta.id.value.replaceAll(RegExp(r'[^a-zA-Z0-9_.-]'), '-')}';
-    final co = await Process.run(
-      'git',
-      ['checkout', '-b', branchName],
-      workingDirectory: targetDir,
-    );
+    final co = await Process.run('git', [
+      'checkout',
+      '-b',
+      branchName,
+    ], workingDirectory: targetDir);
     if (co.exitCode != 0) {
       return SessionApplyResult(
         ok: false,
@@ -168,11 +173,11 @@ Future<SessionApplyResult> applySessionPatch({
   }
 
   // Try `git am --3way` first (proper apply for format-patch mbox).
-  final am = await Process.run(
-    'git',
-    ['am', '--3way', patchPath],
-    workingDirectory: targetDir,
-  );
+  final am = await Process.run('git', [
+    'am',
+    '--3way',
+    patchPath,
+  ], workingDirectory: targetDir);
   if (am.exitCode == 0) {
     return SessionApplyResult(
       ok: true,
@@ -181,19 +186,15 @@ Future<SessionApplyResult> applySessionPatch({
     );
   }
   // Abort the half-applied `git am` state before falling back.
-  await Process.run(
-    'git',
-    ['am', '--abort'],
-    workingDirectory: targetDir,
-  );
+  await Process.run('git', ['am', '--abort'], workingDirectory: targetDir);
 
   // Fall back to `git apply --3way` for patches without an mbox
   // header (working-tree-only diffs).
-  final apply = await Process.run(
-    'git',
-    ['apply', '--3way', patchPath],
-    workingDirectory: targetDir,
-  );
+  final apply = await Process.run('git', [
+    'apply',
+    '--3way',
+    patchPath,
+  ], workingDirectory: targetDir);
   if (apply.exitCode == 0) {
     return SessionApplyResult(
       ok: true,
@@ -205,21 +206,24 @@ Future<SessionApplyResult> applySessionPatch({
   // Scan for `.rej` files to help the user resolve conflicts.
   final rejected = <String>[];
   try {
-    final find = await Process.run(
-      'find',
-      [targetDir, '-name', '*.rej'],
-      workingDirectory: targetDir,
-    );
+    final find = await Process.run('find', [
+      targetDir,
+      '-name',
+      '*.rej',
+    ], workingDirectory: targetDir);
     if (find.exitCode == 0) {
       rejected.addAll(
         (find.stdout as String).trim().split('\n').where((s) => s.isNotEmpty),
       );
     }
-  } catch (_) {/* find isn't critical */}
+  } catch (_) {
+    /* find isn't critical */
+  }
 
   return SessionApplyResult(
     ok: false,
-    message: 'git am and git apply both failed. Inspect rejections or apply '
+    message:
+        'git am and git apply both failed. Inspect rejections or apply '
         'manually:\n  ${apply.stderr.toString().trim().split('\n').join('\n  ')}',
     branch: branch,
     rejectedFiles: rejected,

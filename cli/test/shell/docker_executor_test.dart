@@ -84,22 +84,26 @@ void main() {
     // the daemon is down, so the test would then fail trying to run a
     // container. `docker info` is the minimum probe that touches the
     // daemon.
-    test('runCapture executes in container', () async {
-      final result = await Process.run('docker', ['info']);
-      if (result.exitCode != 0) {
-        markTestSkipped('Docker daemon not available');
-        return;
-      }
+    test(
+      'runCapture executes in container',
+      () async {
+        final result = await Process.run('docker', ['info']);
+        if (result.exitCode != 0) {
+          markTestSkipped('Docker daemon not available');
+          return;
+        }
 
-      final executor = DockerExecutor(
-        config: const DockerConfig(image: 'alpine:latest', shell: 'sh'),
-        cwd: Directory.current.path,
-        mounts: [],
-      );
+        final executor = DockerExecutor(
+          config: const DockerConfig(image: 'alpine:latest', shell: 'sh'),
+          cwd: Directory.current.path,
+          mounts: [],
+        );
 
-      final r = await executor.runCapture('echo hello');
-      expect(r.stdout.trim(), 'hello');
-      expect(r.exitCode, 0);
-    }, timeout: const Timeout(Duration(seconds: 30)));
+        final r = await executor.runCapture('echo hello');
+        expect(r.stdout.trim(), 'hello');
+        expect(r.exitCode, 0);
+      },
+      timeout: const Timeout(Duration(seconds: 30)),
+    );
   });
 }

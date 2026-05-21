@@ -30,7 +30,9 @@ class MarkdownRenderer {
   //   - (?<!\x1b\]8;;) skips URLs in the href position
   //   - (?<!\x07) skips URLs in the display text position
   static final _bareUrlPattern = RegExp(
-    r'(?<!\x1b\]8;;)(?<!\x07)https?://[^\s<>\[\])`\x07\x1b' "'" r'"]+',
+    r'(?<!\x1b\]8;;)(?<!\x07)https?://[^\s<>\[\])`\x07\x1b'
+    "'"
+    r'"]+',
   );
 
   MarkdownRenderer(this.width);
@@ -82,25 +84,29 @@ class MarkdownRenderer {
       if (line.startsWith('#### ')) {
         final wrapped = ansiWrap(line.substring(5), width);
         output.addAll(
-            wrapped.split('\n').map((l) => l.styled.bold.yellow.toString()));
+          wrapped.split('\n').map((l) => l.styled.bold.yellow.toString()),
+        );
         continue;
       }
       if (line.startsWith('### ')) {
         final wrapped = ansiWrap(line.substring(4), width);
         output.addAll(
-            wrapped.split('\n').map((l) => l.styled.bold.yellow.toString()));
+          wrapped.split('\n').map((l) => l.styled.bold.yellow.toString()),
+        );
         continue;
       }
       if (line.startsWith('## ')) {
         final wrapped = ansiWrap(line.substring(3), width);
         output.addAll(
-            wrapped.split('\n').map((l) => l.styled.bold.yellow.toString()));
+          wrapped.split('\n').map((l) => l.styled.bold.yellow.toString()),
+        );
         continue;
       }
       if (line.startsWith('# ')) {
         final wrapped = ansiWrap(line.substring(2), width);
         output.addAll(
-            wrapped.split('\n').map((l) => l.styled.bold.yellow.toString()));
+          wrapped.split('\n').map((l) => l.styled.bold.yellow.toString()),
+        );
         continue;
       }
 
@@ -108,8 +114,12 @@ class MarkdownRenderer {
       if (line.startsWith('> ')) {
         final content = _renderInline(line.substring(2));
         final prefix = '│ '.styled.gray.toString();
-        final wrapped = wrapIndented(content, width,
-            firstPrefix: prefix, nextPrefix: prefix);
+        final wrapped = wrapIndented(
+          content,
+          width,
+          firstPrefix: prefix,
+          nextPrefix: prefix,
+        );
         output.addAll(wrapped.split('\n'));
         continue;
       }
@@ -121,8 +131,12 @@ class MarkdownRenderer {
         final content = _renderInline(ulMatch.group(2)!);
         final bullet = '$indent• ';
         final contPad = '$indent  ';
-        final wrapped = wrapIndented(content, width,
-            firstPrefix: bullet, nextPrefix: contPad);
+        final wrapped = wrapIndented(
+          content,
+          width,
+          firstPrefix: bullet,
+          nextPrefix: contPad,
+        );
         output.addAll(wrapped.split('\n'));
         continue;
       }
@@ -135,8 +149,12 @@ class MarkdownRenderer {
         final content = _renderInline(olMatch.group(3)!);
         final prefix = '$indent$num. ';
         final contPad = '$indent${' ' * (num.length + 2)}';
-        final wrapped = wrapIndented(content, width,
-            firstPrefix: prefix, nextPrefix: contPad);
+        final wrapped = wrapIndented(
+          content,
+          width,
+          firstPrefix: prefix,
+          nextPrefix: contPad,
+        );
         output.addAll(wrapped.split('\n'));
         continue;
       }
@@ -197,19 +215,16 @@ class MarkdownRenderer {
     // Runs after markdown links. The lookbehinds prevent re-matching URLs
     // already inside OSC 8 sequences (href position after \x1b]8;; and
     // display text position after \x07).
-    text = text.replaceAllMapped(
-      _bareUrlPattern,
-      (m) {
-        var url = m.group(0)!;
-        // Strip trailing punctuation that's likely not part of the URL
-        var suffix = '';
-        while (url.isNotEmpty && '.,;:!?)'.contains(url[url.length - 1])) {
-          suffix = url[url.length - 1] + suffix;
-          url = url.substring(0, url.length - 1);
-        }
-        return '${osc8Link(url)}$suffix';
-      },
-    );
+    text = text.replaceAllMapped(_bareUrlPattern, (m) {
+      var url = m.group(0)!;
+      // Strip trailing punctuation that's likely not part of the URL
+      var suffix = '';
+      while (url.isNotEmpty && '.,;:!?)'.contains(url[url.length - 1])) {
+        suffix = url[url.length - 1] + suffix;
+        url = url.substring(0, url.length - 1);
+      }
+      return '${osc8Link(url)}$suffix';
+    });
     return text;
   }
 
@@ -266,8 +281,9 @@ class MarkdownRenderer {
     }
 
     // Pre-render all cells so widths reflect actual visible output
-    final rendered =
-        rows.map((row) => row.map(_renderInline).toList()).toList();
+    final rendered = rows
+        .map((row) => row.map(_renderInline).toList())
+        .toList();
 
     // Compute column widths from rendered visible text
     final widths = List<int>.filled(colCount, 0);
@@ -325,8 +341,11 @@ class MarkdownRenderer {
     return '${'$left${parts.join(mid)}$right'.styled.gray}';
   }
 
-  String _tableDataRow(List<String> cells, List<int> widths,
-      {bool bold = false}) {
+  String _tableDataRow(
+    List<String> cells,
+    List<int> widths, {
+    bool bold = false,
+  }) {
     final pipe = '${'│'.styled.gray}';
     final parts = <String>[];
     for (var c = 0; c < cells.length; c++) {
@@ -335,8 +354,9 @@ class MarkdownRenderer {
       final colW = widths[c];
       final display = vis > colW ? ansiTruncate(cell, colW) : cell;
       final pad = colW - (vis > colW ? colW : vis);
-      final content =
-          bold ? '${display.styled.bold}${' ' * pad}' : '$display${' ' * pad}';
+      final content = bold
+          ? '${display.styled.bold}${' ' * pad}'
+          : '$display${' ' * pad}';
       parts.add(' $content ');
     }
     return '$pipe${parts.join(pipe)}$pipe';

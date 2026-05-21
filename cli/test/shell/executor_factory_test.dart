@@ -14,23 +14,27 @@ void main() {
       expect(executor, isA<HostExecutor>());
     });
 
-    test('returns HostExecutor with fallback when docker unavailable',
-        () async {
-      final executor = await ExecutorFactory.create(
-        shellConfig: const ShellConfig(),
-        dockerConfig: const DockerConfig(enabled: true, fallbackToHost: true),
-        cwd: Directory.current.path,
-        dockerAvailable: false,
-      );
-      expect(executor, isA<HostExecutor>());
-    });
+    test(
+      'returns HostExecutor with fallback when docker unavailable',
+      () async {
+        final executor = await ExecutorFactory.create(
+          shellConfig: const ShellConfig(),
+          dockerConfig: const DockerConfig(enabled: true, fallbackToHost: true),
+          cwd: Directory.current.path,
+          dockerAvailable: false,
+        );
+        expect(executor, isA<HostExecutor>());
+      },
+    );
 
     test('throws when docker required but unavailable', () async {
       expect(
         () => ExecutorFactory.create(
           shellConfig: const ShellConfig(),
-          dockerConfig:
-              const DockerConfig(enabled: true, fallbackToHost: false),
+          dockerConfig: const DockerConfig(
+            enabled: true,
+            fallbackToHost: false,
+          ),
           cwd: Directory.current.path,
           dockerAvailable: false,
         ),
@@ -60,8 +64,10 @@ void main() {
         dockerAvailable: true,
       );
       final docker = executor as DockerExecutor;
-      expect(docker.mounts.map((m) => m.hostPath),
-          containsAll(['/config/mount', '/session/mount']));
+      expect(
+        docker.mounts.map((m) => m.hostPath),
+        containsAll(['/config/mount', '/session/mount']),
+      );
     });
   });
 }

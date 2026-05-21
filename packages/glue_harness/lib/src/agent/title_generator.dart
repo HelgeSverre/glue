@@ -22,10 +22,8 @@ class TitleGenerator {
   /// title-generation cost is accounted for in session totals.
   void Function(UsageInfo)? onUsage;
 
-  TitleGenerator({
-    required LlmClient llmClient,
-    this.onUsage,
-  }) : _llm = llmClient;
+  TitleGenerator({required LlmClient llmClient, this.onUsage})
+    : _llm = llmClient;
 
   /// Generate a title from the first user message.
   ///
@@ -68,12 +66,14 @@ class TitleGenerator {
       }
       if (context.firstAssistantMessage case final text? when text.isNotEmpty) {
         buffer.writeln(
-            '<first_assistant>${_truncate(text, 300)}</first_assistant>');
+          '<first_assistant>${_truncate(text, 300)}</first_assistant>',
+        );
       }
       if (context.latestAssistantMessage case final text?
           when text.isNotEmpty) {
         buffer.writeln(
-            '<latest_assistant>${_truncate(text, 300)}</latest_assistant>');
+          '<latest_assistant>${_truncate(text, 300)}</latest_assistant>',
+        );
       }
       if (context.toolNames.isNotEmpty) {
         buffer.writeln('<tools>${context.toolNames.join(', ')}</tools>');
@@ -104,8 +104,10 @@ class TitleGenerator {
     if (raw == null) return null;
 
     // Keep only printable ASCII (space through tilde).
-    final cleaned =
-        raw.replaceAll(_nonAsciiRe, '').replaceAll(_whitespaceRe, ' ').trim();
+    final cleaned = raw
+        .replaceAll(_nonAsciiRe, '')
+        .replaceAll(_whitespaceRe, ' ')
+        .trim();
 
     if (cleaned.isEmpty) return null;
 

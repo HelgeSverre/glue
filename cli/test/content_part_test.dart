@@ -15,8 +15,10 @@ void main() {
     });
 
     test('ImagePart.toBase64 encodes correctly', () {
-      const part =
-          ImagePart(bytes: [72, 101, 108, 108, 111], mimeType: 'image/png');
+      const part = ImagePart(
+        bytes: [72, 101, 108, 108, 111],
+        mimeType: 'image/png',
+      );
       expect(part.toBase64(), 'SGVsbG8=');
     });
 
@@ -39,10 +41,11 @@ void main() {
     test('ContentPart.hasImages detects image parts', () {
       expect(ContentPart.hasImages([const TextPart('x')]), isFalse);
       expect(
-          ContentPart.hasImages([
-            const ImagePart(bytes: [1], mimeType: 'image/png')
-          ]),
-          isTrue);
+        ContentPart.hasImages([
+          const ImagePart(bytes: [1], mimeType: 'image/png'),
+        ]),
+        isTrue,
+      );
     });
 
     test('ContentPart.hasImages returns false for empty list', () {

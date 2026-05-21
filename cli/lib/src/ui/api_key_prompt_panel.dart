@@ -21,8 +21,8 @@ class ApiKeyPromptPanel implements PanelOverlay {
     this.helpUrl,
     PanelSize? width,
     PanelSize? height,
-  })  : _width = width ?? PanelFluid(0.7, 50),
-        _height = height ?? PanelFluid(0.4, 9);
+  }) : _width = width ?? PanelFluid(0.7, 50),
+       _height = height ?? PanelFluid(0.4, 9);
 
   final String providerId;
   final String providerName;
@@ -102,9 +102,7 @@ class ApiKeyPromptPanel implements PanelOverlay {
     content.add(' ${'API key:'.styled.dim} ${_maskedInput(innerW - 12)}');
     content.add('');
     if (hasEnvPresent) {
-      content.add(
-        ' ${'[using \$$envVar — leave blank to keep]'.styled.dim}',
-      );
+      content.add(' ${'[using \$$envVar — leave blank to keep]'.styled.dim}');
     } else if (helpUrl != null) {
       final url = helpUrl!;
       content.add(

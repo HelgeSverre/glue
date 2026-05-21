@@ -11,10 +11,8 @@ class DuckDuckGoSearchProvider implements WebSearchProvider {
   final http.Client _client;
   static const _baseUrl = 'https://html.duckduckgo.com/html/';
 
-  DuckDuckGoSearchProvider({
-    this.timeoutSeconds = 15,
-    http.Client? client,
-  }) : _client = client ?? http.Client();
+  DuckDuckGoSearchProvider({this.timeoutSeconds = 15, http.Client? client})
+    : _client = client ?? http.Client();
 
   @override
   String get name => 'duckduckgo';
@@ -23,18 +21,13 @@ class DuckDuckGoSearchProvider implements WebSearchProvider {
   bool get isConfigured => true;
 
   @override
-  Future<WebSearchResponse> search(
-    String query, {
-    int maxResults = 5,
-  }) async {
-    final response = await _client.get(
-      Uri.parse(_baseUrl).replace(queryParameters: {
-        'q': query,
-      }),
-      headers: {
-        'Accept': 'text/html,application/xhtml+xml',
-      },
-    ).timeout(Duration(seconds: timeoutSeconds));
+  Future<WebSearchResponse> search(String query, {int maxResults = 5}) async {
+    final response = await _client
+        .get(
+          Uri.parse(_baseUrl).replace(queryParameters: {'q': query}),
+          headers: {'Accept': 'text/html,application/xhtml+xml'},
+        )
+        .timeout(Duration(seconds: timeoutSeconds));
 
     if (response.statusCode != 200) {
       throw Exception(
@@ -66,14 +59,11 @@ class DuckDuckGoSearchProvider implements WebSearchProvider {
       final url = _resolveUrl(href);
       if (url == null) continue;
 
-      final snippet =
-          i < snippetNodes.length ? snippetNodes[i].text.trim() : '';
+      final snippet = i < snippetNodes.length
+          ? snippetNodes[i].text.trim()
+          : '';
       results.add(
-        WebSearchResult(
-          title: node.text.trim(),
-          url: url,
-          snippet: snippet,
-        ),
+        WebSearchResult(title: node.text.trim(), url: url, snippet: snippet),
       );
     }
 

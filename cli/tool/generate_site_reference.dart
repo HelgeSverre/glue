@@ -79,7 +79,7 @@ void _writeModels() {
         'recommended': m['recommended'] ?? false,
         'capabilities':
             (m['capabilities'] as YamlList?)?.cast<String>().toList() ??
-                const <String>[],
+            const <String>[],
         'notes': m['notes'] ?? '',
         'speed': m['speed'] ?? '',
         'cost': m['cost'] ?? '',
@@ -90,14 +90,17 @@ void _writeModels() {
 
   final sb = StringBuffer();
   sb.writeln(
-      '<!-- Generated from docs/reference/models.yaml. Do not edit by hand. -->');
+    '<!-- Generated from docs/reference/models.yaml. Do not edit by hand. -->',
+  );
   sb.writeln(
-      '<!-- Re-run: `just website::generate-reference` (or `dart run tool/generate_site_reference.dart` in cli/) -->');
+    '<!-- Re-run: `just website::generate-reference` (or `dart run tool/generate_site_reference.dart` in cli/) -->',
+  );
   sb.writeln();
   sb.writeln('# Model catalog');
   sb.writeln();
   sb.writeln(
-      'Source: [`docs/reference/models.yaml`](https://github.com/helgesverre/glue/blob/main/docs/reference/models.yaml)');
+    'Source: [`docs/reference/models.yaml`](https://github.com/helgesverre/glue/blob/main/docs/reference/models.yaml)',
+  );
   sb.writeln();
   sb.writeln('## Capabilities');
   sb.writeln();
@@ -111,7 +114,8 @@ void _writeModels() {
   sb.writeln('## Models');
   sb.writeln();
   sb.writeln(
-      '| ID | Recommended | Capabilities | Context | Speed | Cost | Notes |');
+    '| ID | Recommended | Capabilities | Context | Speed | Cost | Notes |',
+  );
   sb.writeln('| --- | :---: | --- | ---: | --- | --- | --- |');
   for (final r in rows) {
     final ctx = r['context_window'] == null ? '—' : '${r['context_window']}';
@@ -119,7 +123,8 @@ void _writeModels() {
     final caps = (r['capabilities'] as List<String>).join(', ');
     final notes = (r['notes'] as String).replaceAll('\n', ' ');
     sb.writeln(
-        '| `${r['provider']}/${r['id']}` | $rec | $caps | $ctx | ${r['speed']} | ${r['cost']} | $notes |');
+      '| `${r['provider']}/${r['id']}` | $rec | $caps | $ctx | ${r['speed']} | ${r['cost']} | $notes |',
+    );
   }
   sb.writeln();
 
@@ -149,7 +154,7 @@ void _writeModelsRecommendedJson() {
         'recommended': true,
         'capabilities':
             (m['capabilities'] as YamlList?)?.cast<String>().toList() ??
-                const <String>[],
+            const <String>[],
         'notes': m['notes']?.toString() ?? '',
       });
     }
@@ -172,14 +177,17 @@ void _writeRuntimeMatrix() {
 
   final sb = StringBuffer();
   sb.writeln(
-      '<!-- Generated from docs/reference/runtime-capabilities.yaml. Do not edit by hand. -->');
+    '<!-- Generated from docs/reference/runtime-capabilities.yaml. Do not edit by hand. -->',
+  );
   sb.writeln(
-      '<!-- Re-run: `just website::generate-reference` (or `dart run tool/generate_site_reference.dart` in cli/) -->');
+    '<!-- Re-run: `just website::generate-reference` (or `dart run tool/generate_site_reference.dart` in cli/) -->',
+  );
   sb.writeln();
   sb.writeln('# Runtime capability matrix');
   sb.writeln();
   sb.writeln(
-      'Source: [`docs/reference/runtime-capabilities.yaml`](https://github.com/helgesverre/glue/blob/main/docs/reference/runtime-capabilities.yaml)');
+    'Source: [`docs/reference/runtime-capabilities.yaml`](https://github.com/helgesverre/glue/blob/main/docs/reference/runtime-capabilities.yaml)',
+  );
   sb.writeln();
 
   sb.writeln('## Capabilities');
@@ -273,14 +281,17 @@ void _writeConfigExamples() {
 
   final sb = StringBuffer();
   sb.writeln(
-      '<!-- Generated from docs/reference/config-yaml.md. Do not edit by hand. -->');
+    '<!-- Generated from docs/reference/config-yaml.md. Do not edit by hand. -->',
+  );
   sb.writeln(
-      '<!-- Re-run: `just website::generate-reference` (or `dart run tool/generate_site_reference.dart` in cli/) -->');
+    '<!-- Re-run: `just website::generate-reference` (or `dart run tool/generate_site_reference.dart` in cli/) -->',
+  );
   sb.writeln();
   sb.writeln('# Config examples');
   sb.writeln();
   sb.writeln(
-      'Extracted from the `~/.glue/config.yaml` reference. Keep editing');
+    'Extracted from the `~/.glue/config.yaml` reference. Keep editing',
+  );
   sb.writeln('the source file, not this one.');
   sb.writeln();
 
@@ -334,9 +345,11 @@ void _writeSessionEvents() {
 
   final sb = StringBuffer();
   sb.writeln(
-      '<!-- Generated from docs/reference/session-storage.md. Do not edit by hand. -->');
+    '<!-- Generated from docs/reference/session-storage.md. Do not edit by hand. -->',
+  );
   sb.writeln(
-      '<!-- Re-run: `just website::generate-reference` (or `dart run tool/generate_site_reference.dart` in cli/) -->');
+    '<!-- Re-run: `just website::generate-reference` (or `dart run tool/generate_site_reference.dart` in cli/) -->',
+  );
   sb.writeln();
   sb.writeln('# Session event types');
   sb.writeln();
@@ -346,9 +359,11 @@ void _writeSessionEvents() {
 
   if (events.isEmpty) {
     sb.writeln(
-        '_No event rows parsed. Check that session-storage.md still uses_');
+      '_No event rows parsed. Check that session-storage.md still uses_',
+    );
     sb.writeln(
-        '_the `- \\`name\\` with ...` format under "Common event types"._');
+      '_the `- \\`name\\` with ...` format under "Common event types"._',
+    );
   } else {
     sb.writeln('| Event | Payload fields |');
     sb.writeln('| --- | --- |');
@@ -407,9 +422,11 @@ void _writeBrandTokens() {
 
   final sb = StringBuffer();
   sb.writeln(
-      '<!-- Generated from cli/lib/src/ui/theme_tokens.dart. Do not edit by hand. -->');
+    '<!-- Generated from cli/lib/src/ui/theme_tokens.dart. Do not edit by hand. -->',
+  );
   sb.writeln(
-      '<!-- Re-run: `just website::generate-reference` (or `dart run tool/generate_site_reference.dart` in cli/) -->');
+    '<!-- Re-run: `just website::generate-reference` (or `dart run tool/generate_site_reference.dart` in cli/) -->',
+  );
   sb.writeln();
   sb.writeln('## Terminal design tokens');
   sb.writeln();

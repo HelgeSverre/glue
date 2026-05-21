@@ -10,10 +10,7 @@ class ShareExportResult {
   final String? markdownPath;
   final String? htmlPath;
 
-  const ShareExportResult({
-    this.markdownPath,
-    this.htmlPath,
-  });
+  const ShareExportResult({this.markdownPath, this.htmlPath});
 }
 
 enum ShareFormat { html, markdown }
@@ -27,9 +24,9 @@ class SessionShareExporter {
     ShareTranscriptBuilder? builder,
     ShareMarkdownRenderer? markdownRenderer,
     ShareHtmlRenderer? htmlRenderer,
-  })  : _builder = builder ?? ShareTranscriptBuilder(),
-        _markdownRenderer = markdownRenderer ?? ShareMarkdownRenderer(),
-        _htmlRenderer = htmlRenderer ?? ShareHtmlRenderer();
+  }) : _builder = builder ?? ShareTranscriptBuilder(),
+       _markdownRenderer = markdownRenderer ?? ShareMarkdownRenderer(),
+       _htmlRenderer = htmlRenderer ?? ShareHtmlRenderer();
 
   Future<ShareExportResult> export({
     required SessionStore store,

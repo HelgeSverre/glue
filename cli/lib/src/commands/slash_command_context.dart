@@ -44,13 +44,13 @@ class SlashCommandContext {
     required this.panels,
     // Self-reference for /help-style enumeration
     required Iterable<SlashCommand> Function() commandsGetter,
-  })  : _config = configGetter,
-        _llmFactory = llmFactoryGetter,
-        _agent = agentGetter,
-        _cwd = cwdGetter,
-        _modelId = modelIdGetter,
-        _isIdle = isIdleGetter,
-        _commands = commandsGetter;
+  }) : _config = configGetter,
+       _llmFactory = llmFactoryGetter,
+       _agent = agentGetter,
+       _cwd = cwdGetter,
+       _modelId = modelIdGetter,
+       _isIdle = isIdleGetter,
+       _commands = commandsGetter;
 
   /// Currently-active config, if any. May be `null` until startup completes.
   GlueConfig? get config => _config();

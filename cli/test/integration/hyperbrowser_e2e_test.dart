@@ -37,33 +37,37 @@ String? _hyperbrowserApiKey() {
 
 void main() {
   group('Hyperbrowser e2e', () {
-    test('provisions a session and drives web_browser over CDP', () async {
-      final apiKey = _hyperbrowserApiKey();
-      if (apiKey == null || apiKey.isEmpty) {
-        markTestSkipped(
-          'Set HYPERBROWSER_API_KEY or web.browser.hyperbrowser.api_key in ~/.glue/config.yaml',
+    test(
+      'provisions a session and drives web_browser over CDP',
+      () async {
+        final apiKey = _hyperbrowserApiKey();
+        if (apiKey == null || apiKey.isEmpty) {
+          markTestSkipped(
+            'Set HYPERBROWSER_API_KEY or web.browser.hyperbrowser.api_key in ~/.glue/config.yaml',
+          );
+          return;
+        }
+
+        final manager = BrowserManager(
+          provider: HyperbrowserProvider(apiKey: apiKey),
         );
-        return;
-      }
+        final tool = WebBrowserTool(manager);
 
-      final manager = BrowserManager(
-        provider: HyperbrowserProvider(apiKey: apiKey),
-      );
-      final tool = WebBrowserTool(manager);
+        try {
+          final result = await tool.execute({
+            'action': 'navigate',
+            'url': 'https://example.com',
+          });
 
-      try {
-        final result = await tool.execute({
-          'action': 'navigate',
-          'url': 'https://example.com',
-        });
-
-        expect(result.success, isTrue);
-        expect(result.content, contains('Navigated to: https://example.com'));
-        expect(result.content, contains('Title: Example Domain'));
-        expect(result.content, contains('Backend: hyperbrowser'));
-      } finally {
-        await tool.dispose();
-      }
-    }, timeout: const Timeout(Duration(seconds: 90)));
+          expect(result.success, isTrue);
+          expect(result.content, contains('Navigated to: https://example.com'));
+          expect(result.content, contains('Title: Example Domain'));
+          expect(result.content, contains('Backend: hyperbrowser'));
+        } finally {
+          await tool.dispose();
+        }
+      },
+      timeout: const Timeout(Duration(seconds: 90)),
+    );
   });
 }

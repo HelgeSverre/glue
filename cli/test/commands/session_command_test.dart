@@ -44,9 +44,9 @@ void main() {
 
     test('reports patch path + size when present on disk', () async {
       _writeMeta(env, _meta(id: 'sid', runtimeId: 'daytona'));
-      final patchFile =
-          File(p.join(env.sessionDir(const SessionId('sid')), 'runtime.mbox'))
-            ..writeAsStringSync('From a Mon\nSubject: x\n\nbody\n');
+      final patchFile = File(
+        p.join(env.sessionDir(const SessionId('sid')), 'runtime.mbox'),
+      )..writeAsStringSync('From a Mon\nSubject: x\n\nbody\n');
 
       final result = listSessions(env);
       expect(result.first.patchPath, patchFile.path);
@@ -78,9 +78,12 @@ void main() {
 
     test('refuses to apply truncated patches', () async {
       _writeMeta(env, _meta(id: 'sid', runtimeId: 'daytona'));
-      final truncated = File(p.join(
-          env.sessionDir(const SessionId('sid')), 'runtime.mbox.truncated'))
-        ..writeAsStringSync('partial');
+      final truncated = File(
+        p.join(
+          env.sessionDir(const SessionId('sid')),
+          'runtime.mbox.truncated',
+        ),
+      )..writeAsStringSync('partial');
 
       final session = listSessions(env).first;
       expect(session.patchPath, truncated.path);
@@ -94,11 +97,7 @@ void main() {
   });
 }
 
-SessionMeta _meta({
-  required String id,
-  String? startTime,
-  String? runtimeId,
-}) {
+SessionMeta _meta({required String id, String? startTime, String? runtimeId}) {
   return SessionMeta(
     id: SessionId(id),
     cwd: '/x',
@@ -110,6 +109,7 @@ SessionMeta _meta({
 
 void _writeMeta(Environment env, SessionMeta meta) {
   final dir = Directory(env.sessionDir(meta.id))..createSync(recursive: true);
-  File(p.join(dir.path, 'meta.json'))
-      .writeAsStringSync(jsonEncode(meta.toJson()));
+  File(
+    p.join(dir.path, 'meta.json'),
+  ).writeAsStringSync(jsonEncode(meta.toJson()));
 }

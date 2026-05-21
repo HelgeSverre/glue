@@ -7,8 +7,8 @@ class SearchRouter {
 
   SearchRouter(
     this.providers, {
-    Set<String> freeFallbackProviders = const {'duckduckgo'},
-  }) : _freeFallbackProviders = freeFallbackProviders;
+    this._freeFallbackProviders = const {'duckduckgo'},
+  });
 
   WebSearchProvider? get defaultProvider {
     for (final p in providers) {
@@ -39,7 +39,8 @@ class SearchRouter {
     final configured = providers.where((p) => p.isConfigured).toList();
     final fallbackProviders = providers
         .where(
-            (p) => !p.isConfigured && _freeFallbackProviders.contains(p.name))
+          (p) => !p.isConfigured && _freeFallbackProviders.contains(p.name),
+        )
         .toList();
     final available = [...configured, ...fallbackProviders];
     if (available.isEmpty) {

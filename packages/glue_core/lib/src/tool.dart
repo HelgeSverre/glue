@@ -98,21 +98,21 @@ class ToolResult {
   }) : metadata = metadata ?? const {};
 
   factory ToolResult.denied(ToolCallId callId) => ToolResult(
-        callId: callId,
-        success: false,
-        content: 'User denied tool execution',
-      );
+    callId: callId,
+    success: false,
+    content: 'User denied tool execution',
+  );
 
   /// Returns a copy with [callId] set. The agent invokes this to stamp a
   /// tool's bare output with the originating call's identifier.
   ToolResult withCallId(ToolCallId id) => ToolResult(
-        callId: id,
-        success: success,
-        content: content,
-        summary: summary,
-        metadata: metadata,
-        contentParts: contentParts,
-      );
+    callId: id,
+    success: success,
+    content: content,
+    summary: summary,
+    metadata: metadata,
+    contentParts: contentParts,
+  );
 
   /// Serialises the LLM-facing payload into [ContentPart]s.
   ///
@@ -170,9 +170,7 @@ abstract class Tool {
       'input_schema': {
         'type': 'object',
         'properties': Map.fromEntries(
-          parameters.map(
-            (p) => MapEntry(p.name, p.toSchema()),
-          ),
+          parameters.map((p) => MapEntry(p.name, p.toSchema())),
         ),
         'required': requiredParameters.map((p) => p.name).toList(),
       },

@@ -34,37 +34,38 @@ void main() {
       }
     });
 
-    test('create / exec / read / write / delete round-trip', () async {
-      const config = SpritesConfig();
-      final cli = SpritesCli(config);
-      final name =
-          'glue-it-${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}';
+    test(
+      'create / exec / read / write / delete round-trip',
+      () async {
+        const config = SpritesConfig();
+        final cli = SpritesCli(config);
+        final name =
+            'glue-it-${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}';
 
-      try {
-        await cli.createSprite(name);
+        try {
+          await cli.createSprite(name);
 
-        // Sync exec
-        final exec = await cli.execCapture(name, 'echo hello');
-        expect(exec.exitCode, 0);
-        expect(exec.stdout.trim(), 'hello');
+          // Sync exec
+          final exec = await cli.execCapture(name, 'echo hello');
+          expect(exec.exitCode, 0);
+          expect(exec.stdout.trim(), 'hello');
 
-        // FS round-trip via the extension helpers
-        await cli.writeFileBytes(
-          name,
-          '/tmp/glue-it.txt',
-          'glue-integration\n'.codeUnits,
-        );
-        final bytes = await cli.readFileBytes(name, '/tmp/glue-it.txt');
-        expect(String.fromCharCodes(bytes).trim(), 'glue-integration');
+          // FS round-trip via the extension helpers
+          await cli.writeFileBytes(
+            name,
+            '/tmp/glue-it.txt',
+            'glue-integration\n'.codeUnits,
+          );
+          final bytes = await cli.readFileBytes(name, '/tmp/glue-it.txt');
+          expect(String.fromCharCodes(bytes).trim(), 'glue-integration');
 
-        final entries = await cli.listDir(name, '/tmp');
-        expect(
-          entries.any((e) => e.name == 'glue-it.txt'),
-          isTrue,
-        );
-      } finally {
-        await cli.deleteSprite(name);
-      }
-    }, timeout: const Timeout(Duration(minutes: 3)));
+          final entries = await cli.listDir(name, '/tmp');
+          expect(entries.any((e) => e.name == 'glue-it.txt'), isTrue);
+        } finally {
+          await cli.deleteSprite(name);
+        }
+      },
+      timeout: const Timeout(Duration(minutes: 3)),
+    );
   });
 }

@@ -25,15 +25,23 @@ void main() {
     });
 
     test('declares all 9 capability descriptions', () {
-      expect(catalog.capabilities.keys,
-          containsAll(['chat', 'tools', 'vision', 'coding']));
+      expect(
+        catalog.capabilities.keys,
+        containsAll(['chat', 'tools', 'vision', 'coding']),
+      );
     });
 
     test('has the expected provider set', () {
       expect(
         catalog.providers.keys.toSet(),
-        containsAll(
-            ['anthropic', 'openai', 'gemini', 'mistral', 'groq', 'ollama']),
+        containsAll([
+          'anthropic',
+          'openai',
+          'gemini',
+          'mistral',
+          'groq',
+          'ollama',
+        ]),
       );
     });
 
@@ -71,13 +79,15 @@ void main() {
       expect(anthropic.models.containsKey('claude-sonnet-4-7'), isFalse);
     });
 
-    test('openai catalog only advertises chat-completions-compatible models',
-        () {
-      final openai = catalog.providers['openai']!;
-      expect(openai.models.containsKey('gpt-5.3-codex'), isFalse);
-      expect(openai.models.containsKey('gpt-5.4'), isTrue);
-      expect(openai.models.containsKey('gpt-5.4-mini'), isTrue);
-    });
+    test(
+      'openai catalog only advertises chat-completions-compatible models',
+      () {
+        final openai = catalog.providers['openai']!;
+        expect(openai.models.containsKey('gpt-5.3-codex'), isFalse);
+        expect(openai.models.containsKey('gpt-5.4'), isTrue);
+        expect(openai.models.containsKey('gpt-5.4-mini'), isTrue);
+      },
+    );
 
     test('ollama provider uses api_key: none', () {
       final ollama = catalog.providers['ollama']!;
@@ -91,17 +101,19 @@ void main() {
       expect(groq.compatibility, 'groq');
     });
 
-    test('catalog keys are slug-shaped; slashes move to api_id (groq gpt-oss)',
-        () {
-      final groq = catalog.providers['groq']!;
-      final entry = groq.models['gpt-oss-120b'];
-      expect(entry, isNotNull, reason: 'key should be slugified');
-      expect(
-        entry!.apiId,
-        'openai/gpt-oss-120b',
-        reason: 'the upstream slug lives in api_id, not the key',
-      );
-    });
+    test(
+      'catalog keys are slug-shaped; slashes move to api_id (groq gpt-oss)',
+      () {
+        final groq = catalog.providers['groq']!;
+        final entry = groq.models['gpt-oss-120b'];
+        expect(entry, isNotNull, reason: 'key should be slugified');
+        expect(
+          entry!.apiId,
+          'openai/gpt-oss-120b',
+          reason: 'the upstream slug lives in api_id, not the key',
+        );
+      },
+    );
 
     test('api_id defaults to the catalog key when omitted', () {
       final anthropic = catalog.providers['anthropic']!;

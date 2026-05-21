@@ -55,23 +55,26 @@ class ShareTranscriptBuilder {
           // Subagents emit their activity via `subagent_event`, so reaching
           // this branch means the event came from the parent agent — even
           // while subagents are mid-flight.
-          entries.add(ShareEntry(
-            index: nextIndex++,
-            kind: switch (event.kind) {
-              NormalizedSessionEventKind.user => ShareEntryKind.user,
-              NormalizedSessionEventKind.assistant => ShareEntryKind.assistant,
-              NormalizedSessionEventKind.toolCall => ShareEntryKind.toolCall,
-              NormalizedSessionEventKind.toolResult =>
-                ShareEntryKind.toolResult,
-              _ => ShareEntryKind.assistant,
-            },
-            text: event.visibleText,
-            toolName: event.toolName,
-            toolArguments: event.kind == NormalizedSessionEventKind.toolCall
-                ? (event.toolArguments ?? const <String, dynamic>{})
-                : null,
-            nestingLevel: 0,
-          ));
+          entries.add(
+            ShareEntry(
+              index: nextIndex++,
+              kind: switch (event.kind) {
+                NormalizedSessionEventKind.user => ShareEntryKind.user,
+                NormalizedSessionEventKind.assistant =>
+                  ShareEntryKind.assistant,
+                NormalizedSessionEventKind.toolCall => ShareEntryKind.toolCall,
+                NormalizedSessionEventKind.toolResult =>
+                  ShareEntryKind.toolResult,
+                _ => ShareEntryKind.assistant,
+              },
+              text: event.visibleText,
+              toolName: event.toolName,
+              toolArguments: event.kind == NormalizedSessionEventKind.toolCall
+                  ? (event.toolArguments ?? const <String, dynamic>{})
+                  : null,
+              nestingLevel: 0,
+            ),
+          );
         case NormalizedSessionEventKind.subagentSpawned:
           final parent = resolveParent(event);
           final children = <ShareEntry>[];
@@ -107,15 +110,17 @@ class ShareTranscriptBuilder {
             NormalizedSessionEventKind.toolResult => ShareEntryKind.toolResult,
             _ => ShareEntryKind.subagentMessage,
           };
-          group.children.add(ShareEntry(
-            index: nextIndex++,
-            kind: childKind,
-            text: inner.visibleText,
-            toolName: inner.toolName,
-            toolArguments: inner.toolArguments,
-            subagentId: event.subagentId,
-            nestingLevel: group.nestingLevel + 1,
-          ));
+          group.children.add(
+            ShareEntry(
+              index: nextIndex++,
+              kind: childKind,
+              text: inner.visibleText,
+              toolName: inner.toolName,
+              toolArguments: inner.toolArguments,
+              subagentId: event.subagentId,
+              nestingLevel: group.nestingLevel + 1,
+            ),
+          );
         case NormalizedSessionEventKind.subagentCompleted:
           openGroups.remove(event.subagentId);
       }

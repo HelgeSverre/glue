@@ -55,10 +55,7 @@ class ConversationEntry {
   factory ConversationEntry.thinking(String text) =>
       ConversationEntry._(EntryKind.thinking, text);
 
-  factory ConversationEntry.toolCall(
-    String name,
-    Map<String, dynamic> args,
-  ) =>
+  factory ConversationEntry.toolCall(String name, Map<String, dynamic> args) =>
       ConversationEntry._(EntryKind.toolCall, name, args: args);
 
   factory ConversationEntry.toolCallRef(ToolCallId callId) =>
@@ -88,11 +85,12 @@ class SubagentEntry {
   SubagentEntry(this.display, {this.rawContent});
 
   String render({required bool expanded}) {
-    if (!expanded || rawContent == null) return display;
+    const innerIndent = '   ';
+    if (!expanded || rawContent == null) return '$innerIndent$display';
     final pretty = _tryPrettyJson(rawContent!);
-    if (pretty == null) return display;
+    if (pretty == null) return '$innerIndent$display';
     final indented = pretty.split('\n').map((l) => '          $l').join('\n');
-    return '$display\n$indented';
+    return '$innerIndent$display\n$indented';
   }
 
   static String? _tryPrettyJson(String text) {
@@ -126,8 +124,9 @@ class SubagentGroup {
     if (done) {
       return '↳ $prefix $taskPreview (${entries.length} steps, done ✓)';
     }
-    final activity =
-        currentTool != null ? '${entries.length} steps, $currentTool…' : '';
+    final activity = currentTool != null
+        ? '${entries.length} steps, $currentTool…'
+        : '';
     return '↳ $prefix $taskPreview ($activity)';
   }
 }

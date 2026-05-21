@@ -125,10 +125,14 @@ void main() {
       // Match names depend on sort order, so verify via the highlighted row:
       // only the selected row carries bg256(24) (dark blue). The others carry
       // bg256(236) (dark gray).
-      final selectedLines =
-          lines.where((l) => l.contains('\x1b[48;5;24m')).toList();
-      expect(selectedLines.length, 1,
-          reason: 'exactly one rendered row should carry the selection bg');
+      final selectedLines = lines
+          .where((l) => l.contains('\x1b[48;5;24m'))
+          .toList();
+      expect(
+        selectedLines.length,
+        1,
+        reason: 'exactly one rendered row should carry the selection bg',
+      );
     });
 
     test('accept returns @path', () {

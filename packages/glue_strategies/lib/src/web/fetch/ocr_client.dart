@@ -38,9 +38,9 @@ class OcrClient {
       );
 
   Map<String, String> get headers => {
-        'Authorization': 'Bearer $apiKey',
-        'Content-Type': 'application/json',
-      };
+    'Authorization': 'Bearer $apiKey',
+    'Content-Type': 'application/json',
+  };
 
   /// Extract text from PDF bytes via OCR API.
   Future<String?> extractText(Uint8List pdfBytes) async {
@@ -139,7 +139,8 @@ class OcrClient {
           'content': [
             {
               'type': 'input_text',
-              'text': 'Extract all text from this PDF document. '
+              'text':
+                  'Extract all text from this PDF document. '
                   'Return the text content as clean markdown, '
                   'preserving headings, lists, and structure.',
             },

@@ -66,11 +66,7 @@ class ModelCatalog {
 }
 
 class DefaultsConfig {
-  const DefaultsConfig({
-    required this.model,
-    this.smallModel,
-    this.localModel,
-  });
+  const DefaultsConfig({required this.model, this.smallModel, this.localModel});
 
   final String model;
   final String? smallModel;

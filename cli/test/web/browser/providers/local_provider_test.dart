@@ -14,9 +14,7 @@ void main() {
     });
 
     test('respects headed config', () {
-      final provider = LocalProvider(
-        const BrowserConfig(headed: true),
-      );
+      final provider = LocalProvider(const BrowserConfig(headed: true));
       expect(provider.headed, isTrue);
     });
   });

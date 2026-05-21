@@ -1,0 +1,13 @@
+name: glue_workspace
+publish_to: none
+
+environment:
+  sdk: '>=3.12.0 <4.0.0'
+
+workspace:
+  - cli
+  - packages/glue_core
+  - packages/glue_strategies
+  - packages/glue_runtimes
+  - packages/glue_harness
+  - packages/glue_server

@@ -26,10 +26,7 @@ class FirecrawlSearchProvider implements WebSearchProvider {
   bool get isConfigured => apiKey != null && apiKey!.isNotEmpty;
 
   @override
-  Future<WebSearchResponse> search(
-    String query, {
-    int maxResults = 5,
-  }) async {
+  Future<WebSearchResponse> search(String query, {int maxResults = 5}) async {
     if (!isConfigured) {
       throw StateError('Firecrawl API key not configured');
     }
@@ -41,10 +38,7 @@ class FirecrawlSearchProvider implements WebSearchProvider {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer $apiKey',
           },
-          body: jsonEncode({
-            'query': query,
-            'limit': maxResults,
-          }),
+          body: jsonEncode({'query': query, 'limit': maxResults}),
         )
         .timeout(Duration(seconds: timeoutSeconds));
 

@@ -30,30 +30,34 @@ void main() {
   });
 
   group('buildHostBundle', () {
-    test('builds a bundle from a non-git directory (no remote needed)',
-        () async {
-      final src = await Directory('${tmp.path}/src').create();
-      File('${src.path}/hello.txt').writeAsStringSync('hi\n');
+    test(
+      'builds a bundle from a non-git directory (no remote needed)',
+      () async {
+        final src = await Directory('${tmp.path}/src').create();
+        File('${src.path}/hello.txt').writeAsStringSync('hi\n');
 
-      final bundle = await buildHostBundle(
-        hostCwd: src.path,
-        sessionId: 'test-session',
-        sessionDir: sessionDir.path,
-      );
-      expect(bundle.path.existsSync(), isTrue);
-      expect(bundle.bundleSha, hasLength(40));
-      expect(bundle.sizeBytes, greaterThan(0));
+        final bundle = await buildHostBundle(
+          hostCwd: src.path,
+          sessionId: 'test-session',
+          sessionDir: sessionDir.path,
+        );
+        expect(bundle.path.existsSync(), isTrue);
+        expect(bundle.bundleSha, hasLength(40));
+        expect(bundle.sizeBytes, greaterThan(0));
 
-      // The bundle should be clonable into a fresh dir and contain
-      // the source file.
-      final clone = await Directory('${tmp.path}/clone').create();
-      final r = await Process.run(
-        'git',
-        ['clone', '-q', bundle.path.path, clone.path],
-      );
-      expect(r.exitCode, 0, reason: 'bundle should be clonable');
-      expect(File('${clone.path}/hello.txt').existsSync(), isTrue);
-    });
+        // The bundle should be clonable into a fresh dir and contain
+        // the source file.
+        final clone = await Directory('${tmp.path}/clone').create();
+        final r = await Process.run('git', [
+          'clone',
+          '-q',
+          bundle.path.path,
+          clone.path,
+        ]);
+        expect(r.exitCode, 0, reason: 'bundle should be clonable');
+        expect(File('${clone.path}/hello.txt').existsSync(), isTrue);
+      },
+    );
 
     test('captures uncommitted changes in an existing git repo', () async {
       final src = await Directory('${tmp.path}/src').create();
@@ -73,8 +77,11 @@ void main() {
       );
       final clone = await Directory('${tmp.path}/clone').create();
       await _git(['clone', '-q', bundle.path.path, clone.path], null);
-      expect(File('${clone.path}/dirty.txt').existsSync(), isTrue,
-          reason: 'uncommitted file must be in the bundle');
+      expect(
+        File('${clone.path}/dirty.txt').existsSync(),
+        isTrue,
+        reason: 'uncommitted file must be in the bundle',
+      );
     });
 
     test('respects .gitignore via `git add -A`', () async {
@@ -91,8 +98,11 @@ void main() {
       final clone = await Directory('${tmp.path}/clone').create();
       await _git(['clone', '-q', bundle.path.path, clone.path], null);
       expect(File('${clone.path}/included.txt').existsSync(), isTrue);
-      expect(File('${clone.path}/ignored.txt').existsSync(), isFalse,
-          reason: '.gitignore should be honored');
+      expect(
+        File('${clone.path}/ignored.txt').existsSync(),
+        isFalse,
+        reason: '.gitignore should be honored',
+      );
     });
 
     test('captures originRemoteUrl when host has one', () async {
@@ -100,10 +110,12 @@ void main() {
       await _git(['init', '-q'], src);
       await _git(['config', 'user.email', 'test@test'], src);
       await _git(['config', 'user.name', 'test'], src);
-      await _git(
-        ['remote', 'add', 'origin', 'https://example.invalid/foo.git'],
-        src,
-      );
+      await _git([
+        'remote',
+        'add',
+        'origin',
+        'https://example.invalid/foo.git',
+      ], src);
       File('${src.path}/a.txt').writeAsStringSync('a\n');
 
       final bundle = await buildHostBundle(

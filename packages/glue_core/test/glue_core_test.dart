@@ -34,41 +34,40 @@ void main() {
       // If a new variant is added to SessionEvent and not handled here,
       // this test will fail to compile.
       String name(SessionEvent e) => switch (e) {
-            UserMessageEvent() => 'UserMessageEvent',
-            AssistantThinkingStartedEvent() => 'AssistantThinkingStartedEvent',
-            AssistantChunkEvent() => 'AssistantChunkEvent',
-            AssistantMessageEvent() => 'AssistantMessageEvent',
-            AssistantThinkingCompletedEvent() =>
-              'AssistantThinkingCompletedEvent',
-            ToolCallStartedEvent() => 'ToolCallStartedEvent',
-            ToolCallProgressEvent() => 'ToolCallProgressEvent',
-            ToolCallCompletedEvent() => 'ToolCallCompletedEvent',
-            PermissionRequestedEvent() => 'PermissionRequestedEvent',
-            PermissionResolvedEvent() => 'PermissionResolvedEvent',
-            SubagentSpawnedEvent() => 'SubagentSpawnedEvent',
-            SubagentEventForwardedEvent() => 'SubagentEventForwardedEvent',
-            SubagentCompletedEvent() => 'SubagentCompletedEvent',
-            DeviceCodeRequestedEvent() => 'DeviceCodeRequestedEvent',
-            DeviceCodeResolvedEvent() => 'DeviceCodeResolvedEvent',
-            TurnStartedEvent() => 'TurnStartedEvent',
-            TurnCompletedEvent() => 'TurnCompletedEvent',
-            StatusChangeEvent() => 'StatusChangeEvent',
-            TitleGeneratedEvent() => 'TitleGeneratedEvent',
-            MetricsUpdatedEvent() => 'MetricsUpdatedEvent',
-            ErrorEvent() => 'ErrorEvent',
-            McpServerConnectedEvent() => 'McpServerConnectedEvent',
-            McpServerDisconnectedEvent() => 'McpServerDisconnectedEvent',
-            McpServerErrorEvent() => 'McpServerErrorEvent',
-            McpServerAuthRequiredEvent() => 'McpServerAuthRequiredEvent',
-            McpToolListChangedEvent() => 'McpToolListChangedEvent',
-            RuntimeCommandStartedEvent() => 'RuntimeCommandStartedEvent',
-            RuntimeCommandOutputEvent() => 'RuntimeCommandOutputEvent',
-            RuntimeCommandCompletedEvent() => 'RuntimeCommandCompletedEvent',
-            RuntimeCommandFailedEvent() => 'RuntimeCommandFailedEvent',
-            RuntimeCommandCancelledEvent() => 'RuntimeCommandCancelledEvent',
-            RuntimeContainerStartedEvent() => 'RuntimeContainerStartedEvent',
-            RuntimeContainerStoppedEvent() => 'RuntimeContainerStoppedEvent',
-          };
+        UserMessageEvent() => 'UserMessageEvent',
+        AssistantThinkingStartedEvent() => 'AssistantThinkingStartedEvent',
+        AssistantChunkEvent() => 'AssistantChunkEvent',
+        AssistantMessageEvent() => 'AssistantMessageEvent',
+        AssistantThinkingCompletedEvent() => 'AssistantThinkingCompletedEvent',
+        ToolCallStartedEvent() => 'ToolCallStartedEvent',
+        ToolCallProgressEvent() => 'ToolCallProgressEvent',
+        ToolCallCompletedEvent() => 'ToolCallCompletedEvent',
+        PermissionRequestedEvent() => 'PermissionRequestedEvent',
+        PermissionResolvedEvent() => 'PermissionResolvedEvent',
+        SubagentSpawnedEvent() => 'SubagentSpawnedEvent',
+        SubagentEventForwardedEvent() => 'SubagentEventForwardedEvent',
+        SubagentCompletedEvent() => 'SubagentCompletedEvent',
+        DeviceCodeRequestedEvent() => 'DeviceCodeRequestedEvent',
+        DeviceCodeResolvedEvent() => 'DeviceCodeResolvedEvent',
+        TurnStartedEvent() => 'TurnStartedEvent',
+        TurnCompletedEvent() => 'TurnCompletedEvent',
+        StatusChangeEvent() => 'StatusChangeEvent',
+        TitleGeneratedEvent() => 'TitleGeneratedEvent',
+        MetricsUpdatedEvent() => 'MetricsUpdatedEvent',
+        ErrorEvent() => 'ErrorEvent',
+        McpServerConnectedEvent() => 'McpServerConnectedEvent',
+        McpServerDisconnectedEvent() => 'McpServerDisconnectedEvent',
+        McpServerErrorEvent() => 'McpServerErrorEvent',
+        McpServerAuthRequiredEvent() => 'McpServerAuthRequiredEvent',
+        McpToolListChangedEvent() => 'McpToolListChangedEvent',
+        RuntimeCommandStartedEvent() => 'RuntimeCommandStartedEvent',
+        RuntimeCommandOutputEvent() => 'RuntimeCommandOutputEvent',
+        RuntimeCommandCompletedEvent() => 'RuntimeCommandCompletedEvent',
+        RuntimeCommandFailedEvent() => 'RuntimeCommandFailedEvent',
+        RuntimeCommandCancelledEvent() => 'RuntimeCommandCancelledEvent',
+        RuntimeContainerStartedEvent() => 'RuntimeContainerStartedEvent',
+        RuntimeContainerStoppedEvent() => 'RuntimeContainerStoppedEvent',
+      };
 
       const turn = TurnId('t1');
       final ts = DateTime(2026);
@@ -184,12 +183,7 @@ void main() {
       const turn = TurnId('t');
       final ts = DateTime(2026);
       final events = <SessionEvent>[
-        UserMessageEvent(
-          turnId: turn,
-          timestamp: ts,
-          sequence: 0,
-          text: 'hi',
-        ),
+        UserMessageEvent(turnId: turn, timestamp: ts, sequence: 0, text: 'hi'),
         TurnStartedEvent(
           turnId: turn,
           timestamp: ts,
@@ -213,14 +207,14 @@ void main() {
   group('SessionCommand exhaustiveness', () {
     test('switch covers every variant', () {
       String name(SessionCommand c) => switch (c) {
-            SendMessageCommand() => 'SendMessageCommand',
-            InterruptCommand() => 'InterruptCommand',
-            CancelCommand() => 'CancelCommand',
-            ResolvePermissionCommand() => 'ResolvePermissionCommand',
-            ResolveDeviceCodeCommand() => 'ResolveDeviceCodeCommand',
-            SwitchModelCommand() => 'SwitchModelCommand',
-            RegenerateCommand() => 'RegenerateCommand',
-          };
+        SendMessageCommand() => 'SendMessageCommand',
+        InterruptCommand() => 'InterruptCommand',
+        CancelCommand() => 'CancelCommand',
+        ResolvePermissionCommand() => 'ResolvePermissionCommand',
+        ResolveDeviceCodeCommand() => 'ResolveDeviceCodeCommand',
+        SwitchModelCommand() => 'SwitchModelCommand',
+        RegenerateCommand() => 'RegenerateCommand',
+      };
 
       expect(name(const InterruptCommand()), equals('InterruptCommand'));
       expect(name(const CancelCommand()), equals('CancelCommand'));
@@ -234,16 +228,17 @@ void main() {
   group('ToolResultSnapshot exhaustiveness', () {
     test('switch covers every variant', () {
       String name(ToolResultSnapshot r) => switch (r) {
-            ToolOkSnapshot() => 'ok',
-            ToolErrorSnapshot() => 'error',
-            ToolCancelledSnapshot() => 'cancelled',
-          };
+        ToolOkSnapshot() => 'ok',
+        ToolErrorSnapshot() => 'error',
+        ToolCancelledSnapshot() => 'cancelled',
+      };
 
       const id = ToolCallId('t');
       const elapsed = Duration.zero;
       expect(
         name(
-            const ToolOkSnapshot(id: id, elapsed: elapsed, contentSummary: '')),
+          const ToolOkSnapshot(id: id, elapsed: elapsed, contentSummary: ''),
+        ),
         equals('ok'),
       );
       expect(
@@ -251,13 +246,15 @@ void main() {
         equals('cancelled'),
       );
       expect(
-        name(const ToolErrorSnapshot(
-          id: id,
-          elapsed: elapsed,
-          message: '',
-          category: ErrorCategory.tool,
-          retryable: false,
-        )),
+        name(
+          const ToolErrorSnapshot(
+            id: id,
+            elapsed: elapsed,
+            message: '',
+            category: ErrorCategory.tool,
+            retryable: false,
+          ),
+        ),
         equals('error'),
       );
     });

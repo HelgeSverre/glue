@@ -230,79 +230,93 @@ void main() {
       // events were introduced). Pinning this so a future PR that
       // wires them gets a deliberate test failure here.
       expect(
-        sessionEventToAcpUpdate(RuntimeCommandStartedEvent(
-          turnId: turn,
-          timestamp: ts,
-          sequence: 0,
-          runtimeId: 'host',
-          commandId: 'c-1',
-          command: 'ls',
-          runtimeCwd: '/x',
-        )),
+        sessionEventToAcpUpdate(
+          RuntimeCommandStartedEvent(
+            turnId: turn,
+            timestamp: ts,
+            sequence: 0,
+            runtimeId: 'host',
+            commandId: 'c-1',
+            command: 'ls',
+            runtimeCwd: '/x',
+          ),
+        ),
         isNull,
       );
       expect(
-        sessionEventToAcpUpdate(RuntimeCommandOutputEvent(
-          turnId: turn,
-          timestamp: ts,
-          sequence: 0,
-          commandId: 'c-1',
-          stream: RuntimeOutputStream.stdout,
-          text: 'out',
-        )),
+        sessionEventToAcpUpdate(
+          RuntimeCommandOutputEvent(
+            turnId: turn,
+            timestamp: ts,
+            sequence: 0,
+            commandId: 'c-1',
+            stream: RuntimeOutputStream.stdout,
+            text: 'out',
+          ),
+        ),
         isNull,
       );
       expect(
-        sessionEventToAcpUpdate(RuntimeCommandCompletedEvent(
-          turnId: turn,
-          timestamp: ts,
-          sequence: 0,
-          commandId: 'c-1',
-          exitCode: 0,
-          duration: const Duration(milliseconds: 1),
-        )),
+        sessionEventToAcpUpdate(
+          RuntimeCommandCompletedEvent(
+            turnId: turn,
+            timestamp: ts,
+            sequence: 0,
+            commandId: 'c-1',
+            exitCode: 0,
+            duration: const Duration(milliseconds: 1),
+          ),
+        ),
         isNull,
       );
       expect(
-        sessionEventToAcpUpdate(RuntimeCommandFailedEvent(
-          turnId: turn,
-          timestamp: ts,
-          sequence: 0,
-          commandId: 'c-1',
-          errorType: 'X',
-          message: 'y',
-        )),
+        sessionEventToAcpUpdate(
+          RuntimeCommandFailedEvent(
+            turnId: turn,
+            timestamp: ts,
+            sequence: 0,
+            commandId: 'c-1',
+            errorType: 'X',
+            message: 'y',
+          ),
+        ),
         isNull,
       );
       expect(
-        sessionEventToAcpUpdate(RuntimeCommandCancelledEvent(
-          turnId: turn,
-          timestamp: ts,
-          sequence: 0,
-          commandId: 'c-1',
-          reason: RuntimeCancelReason.userCancelled,
-        )),
+        sessionEventToAcpUpdate(
+          RuntimeCommandCancelledEvent(
+            turnId: turn,
+            timestamp: ts,
+            sequence: 0,
+            commandId: 'c-1',
+            reason: RuntimeCancelReason.userCancelled,
+          ),
+        ),
         isNull,
       );
       expect(
-        sessionEventToAcpUpdate(RuntimeContainerStartedEvent(
-          turnId: turn,
-          timestamp: ts,
-          sequence: 0,
-          runtimeId: 'docker',
-          containerId: 'abc',
-        )),
+        sessionEventToAcpUpdate(
+          RuntimeContainerStartedEvent(
+            turnId: turn,
+            timestamp: ts,
+            sequence: 0,
+            runtimeId: 'docker',
+            containerId: 'abc',
+          ),
+        ),
         isNull,
       );
       expect(
-        sessionEventToAcpUpdate(RuntimeContainerStoppedEvent(
-          turnId: turn,
-          timestamp: ts,
-          sequence: 0,
-          runtimeId: 'docker',
-          containerId: 'abc',
-          reason: RuntimeContainerStopReason.sessionEnded,
-        )),
+        sessionEventToAcpUpdate(
+          RuntimeContainerStoppedEvent(
+            turnId: turn,
+            timestamp: ts,
+            sequence: 0,
+            runtimeId: 'docker',
+            containerId: 'abc',
+            reason: RuntimeContainerStopReason.sessionEnded,
+          ),
+        ),
         isNull,
       );
     });

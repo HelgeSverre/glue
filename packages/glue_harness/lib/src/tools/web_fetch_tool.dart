@@ -5,13 +5,15 @@ import 'package:http/http.dart' as http;
 class WebFetchTool extends Tool {
   final WebFetchClient _client;
 
-  WebFetchTool(WebFetchConfig config,
-      {PdfConfig? pdfConfig, http.Client? httpClient})
-      : _client = WebFetchClient(
-          config: config,
-          pdfConfig: pdfConfig,
-          client: httpClient,
-        );
+  WebFetchTool(
+    WebFetchConfig config, {
+    PdfConfig? pdfConfig,
+    http.Client? httpClient,
+  }) : _client = WebFetchClient(
+         config: config,
+         pdfConfig: pdfConfig,
+         client: httpClient,
+       );
 
   @override
   String get name => 'web_fetch';
@@ -24,27 +26,24 @@ class WebFetchTool extends Tool {
 
   @override
   List<ToolParameter> get parameters => const [
-        ToolParameter(
-          name: 'url',
-          type: 'string',
-          description: 'The URL to fetch (must be http or https).',
-        ),
-        ToolParameter(
-          name: 'max_tokens',
-          type: 'integer',
-          description: 'Maximum approximate token budget for the response.',
-          required: false,
-        ),
-      ];
+    ToolParameter(
+      name: 'url',
+      type: 'string',
+      description: 'The URL to fetch (must be http or https).',
+    ),
+    ToolParameter(
+      name: 'max_tokens',
+      type: 'integer',
+      description: 'Maximum approximate token budget for the response.',
+      required: false,
+    ),
+  ];
 
   @override
   Future<ToolResult> execute(Map<String, dynamic> args) async {
     final url = args['url'];
     if (url is! String || url.isEmpty) {
-      return ToolResult(
-        success: false,
-        content: 'Error: no URL provided',
-      );
+      return ToolResult(success: false, content: 'Error: no URL provided');
     }
 
     final maxTokens = args['max_tokens'] as int?;
@@ -86,11 +85,7 @@ class WebFetchTool extends Tool {
       content: body,
       summary: 'Fetched $url (${markdown.length} chars)',
       contentParts: contentParts,
-      metadata: {
-        'url': url,
-        'title': result.title,
-        'bytes': body.length,
-      },
+      metadata: {'url': url, 'title': result.title, 'bytes': body.length},
     );
   }
 }

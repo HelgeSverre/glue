@@ -53,18 +53,18 @@ class BrowserConfig {
 
   /// Whether the selected backend has valid credentials/configuration.
   bool get isConfigured => switch (backend) {
-        BrowserBackend.local => true,
-        BrowserBackend.docker => true,
-        BrowserBackend.steel => steelApiKey != null && steelApiKey!.isNotEmpty,
-        BrowserBackend.browserbase => browserbaseApiKey != null &&
-            browserbaseApiKey!.isNotEmpty &&
-            browserbaseProjectId != null &&
-            browserbaseProjectId!.isNotEmpty,
-        BrowserBackend.browserless =>
-          browserlessApiKey != null && browserlessApiKey!.isNotEmpty,
-        BrowserBackend.anchor =>
-          anchorApiKey != null && anchorApiKey!.isNotEmpty,
-        BrowserBackend.hyperbrowser =>
-          hyperbrowserApiKey != null && hyperbrowserApiKey!.isNotEmpty,
-      };
+    BrowserBackend.local => true,
+    BrowserBackend.docker => true,
+    BrowserBackend.steel => steelApiKey != null && steelApiKey!.isNotEmpty,
+    BrowserBackend.browserbase =>
+      browserbaseApiKey != null &&
+          browserbaseApiKey!.isNotEmpty &&
+          browserbaseProjectId != null &&
+          browserbaseProjectId!.isNotEmpty,
+    BrowserBackend.browserless =>
+      browserlessApiKey != null && browserlessApiKey!.isNotEmpty,
+    BrowserBackend.anchor => anchorApiKey != null && anchorApiKey!.isNotEmpty,
+    BrowserBackend.hyperbrowser =>
+      hyperbrowserApiKey != null && hyperbrowserApiKey!.isNotEmpty,
+  };
 }

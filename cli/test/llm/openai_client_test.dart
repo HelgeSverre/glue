@@ -12,23 +12,23 @@ void main() {
           'choices': [
             {
               'index': 0,
-              'delta': {'role': 'assistant', 'content': 'Hello '}
-            }
-          ]
+              'delta': {'role': 'assistant', 'content': 'Hello '},
+            },
+          ],
         },
         {
           'choices': [
             {
               'index': 0,
-              'delta': {'content': 'world'}
-            }
-          ]
+              'delta': {'content': 'world'},
+            },
+          ],
         },
         {
           'choices': [
-            {'index': 0, 'delta': {}, 'finish_reason': 'stop'}
+            {'index': 0, 'delta': {}, 'finish_reason': 'stop'},
           ],
-          'usage': {'prompt_tokens': 10, 'completion_tokens': 5}
+          'usage': {'prompt_tokens': 10, 'completion_tokens': 5},
         },
       ];
       final chunks = await OpenAiClient.parseStreamEvents(
@@ -52,48 +52,48 @@ void main() {
                     'index': 0,
                     'id': 'tc1',
                     'type': 'function',
-                    'function': {'name': 'read_file', 'arguments': ''}
-                  }
-                ]
-              }
-            }
-          ]
-        },
-        {
-          'choices': [
-            {
-              'index': 0,
-              'delta': {
-                'tool_calls': [
-                  {
-                    'index': 0,
-                    'function': {'arguments': '{"path":'}
-                  }
-                ]
-              }
-            }
-          ]
-        },
-        {
-          'choices': [
-            {
-              'index': 0,
-              'delta': {
-                'tool_calls': [
-                  {
-                    'index': 0,
-                    'function': {'arguments': ' "main.dart"}'}
-                  }
-                ]
-              }
-            }
-          ]
-        },
-        {
-          'choices': [
-            {'index': 0, 'delta': {}, 'finish_reason': 'tool_calls'}
+                    'function': {'name': 'read_file', 'arguments': ''},
+                  },
+                ],
+              },
+            },
           ],
-          'usage': {'prompt_tokens': 10, 'completion_tokens': 15}
+        },
+        {
+          'choices': [
+            {
+              'index': 0,
+              'delta': {
+                'tool_calls': [
+                  {
+                    'index': 0,
+                    'function': {'arguments': '{"path":'},
+                  },
+                ],
+              },
+            },
+          ],
+        },
+        {
+          'choices': [
+            {
+              'index': 0,
+              'delta': {
+                'tool_calls': [
+                  {
+                    'index': 0,
+                    'function': {'arguments': ' "main.dart"}'},
+                  },
+                ],
+              },
+            },
+          ],
+        },
+        {
+          'choices': [
+            {'index': 0, 'delta': {}, 'finish_reason': 'tool_calls'},
+          ],
+          'usage': {'prompt_tokens': 10, 'completion_tokens': 15},
         },
       ];
 
@@ -120,12 +120,12 @@ void main() {
                     'index': 0,
                     'id': 'tc1',
                     'type': 'function',
-                    'function': {'name': 'write_file', 'arguments': ''}
-                  }
-                ]
-              }
-            }
-          ]
+                    'function': {'name': 'write_file', 'arguments': ''},
+                  },
+                ],
+              },
+            },
+          ],
         },
         {
           'choices': [
@@ -135,18 +135,18 @@ void main() {
                 'tool_calls': [
                   {
                     'index': 0,
-                    'function': {'arguments': '{"path": "a.txt"}'}
-                  }
-                ]
-              }
-            }
-          ]
+                    'function': {'arguments': '{"path": "a.txt"}'},
+                  },
+                ],
+              },
+            },
+          ],
         },
         {
           'choices': [
-            {'index': 0, 'delta': {}, 'finish_reason': 'tool_calls'}
+            {'index': 0, 'delta': {}, 'finish_reason': 'tool_calls'},
           ],
-          'usage': {'prompt_tokens': 10, 'completion_tokens': 10}
+          'usage': {'prompt_tokens': 10, 'completion_tokens': 10},
         },
       ];
 
@@ -170,29 +170,29 @@ void main() {
           'choices': [
             {
               'index': 0,
-              'delta': {'reasoning': 'reasoning step 1'}
-            }
-          ]
+              'delta': {'reasoning': 'reasoning step 1'},
+            },
+          ],
         },
         {
           'choices': [
             {
               'index': 0,
-              'delta': {'reasoning': ' step 2'}
-            }
-          ]
+              'delta': {'reasoning': ' step 2'},
+            },
+          ],
         },
         {
           'choices': [
             {
               'index': 0,
-              'delta': {'content': 'final answer'}
-            }
-          ]
+              'delta': {'content': 'final answer'},
+            },
+          ],
         },
         {
           'choices': [
-            {'index': 0, 'delta': {}, 'finish_reason': 'stop'}
+            {'index': 0, 'delta': {}, 'finish_reason': 'stop'},
           ],
           'usage': {'prompt_tokens': 5, 'completion_tokens': 3},
         },
@@ -202,110 +202,111 @@ void main() {
         Stream.fromIterable(events),
       ).toList();
 
-      expect(
-        chunks.whereType<ThinkingDelta>().map((c) => c.text),
-        ['reasoning step 1', ' step 2'],
-      );
-      expect(
-        chunks.whereType<TextDelta>().map((c) => c.text),
-        ['final answer'],
-      );
+      expect(chunks.whereType<ThinkingDelta>().map((c) => c.text), [
+        'reasoning step 1',
+        ' step 2',
+      ]);
+      expect(chunks.whereType<TextDelta>().map((c) => c.text), [
+        'final answer',
+      ]);
     });
 
-    test('emits ThinkingDelta for delta.reasoning_content (proxy variant)',
-        () async {
-      final events = [
-        {
-          'choices': [
-            {
-              'index': 0,
-              'delta': {'reasoning_content': 'hmm'}
-            }
-          ]
-        },
-      ];
-      final chunks = await OpenAiClient.parseStreamEvents(
-        Stream.fromIterable(events),
-      ).toList();
-      expect(chunks.whereType<ThinkingDelta>().map((c) => c.text), ['hmm']);
-    });
-
-    test('surfaces cached_tokens from prompt_tokens_details (native OpenAI)',
-        () async {
-      final events = [
-        {
-          'choices': [],
-          'usage': {
-            'prompt_tokens': 4096,
-            'completion_tokens': 64,
-            'prompt_tokens_details': {'cached_tokens': 3500},
+    test(
+      'emits ThinkingDelta for delta.reasoning_content (proxy variant)',
+      () async {
+        final events = [
+          {
+            'choices': [
+              {
+                'index': 0,
+                'delta': {'reasoning_content': 'hmm'},
+              },
+            ],
           },
-        },
-      ];
+        ];
+        final chunks = await OpenAiClient.parseStreamEvents(
+          Stream.fromIterable(events),
+        ).toList();
+        expect(chunks.whereType<ThinkingDelta>().map((c) => c.text), ['hmm']);
+      },
+    );
 
-      final usage = (await OpenAiClient.parseStreamEvents(
-        Stream.fromIterable(events),
-      ).toList())
-          .whereType<UsageInfo>()
-          .single;
-
-      expect(usage.inputTokens, 4096);
-      expect(usage.outputTokens, 64);
-      expect(usage.cacheReadTokens, 3500);
-      expect(usage.cacheCreationTokens, isNull);
-    });
-
-    test('surfaces OpenRouter cache_write_tokens alongside cached_tokens',
-        () async {
-      // OpenRouter normalises the upstream Anthropic shape into
-      // OpenAI-shaped `prompt_tokens_details.cached_tokens` plus a sibling
-      // `cache_write_tokens`. We surface both into UsageInfo so cost
-      // estimation can distinguish reads from writes.
-      final events = [
-        {
-          'choices': [],
-          'usage': {
-            'prompt_tokens': 12000,
-            'completion_tokens': 128,
-            'prompt_tokens_details': {'cached_tokens': 9000},
-            'cache_write_tokens': 1200,
+    test(
+      'surfaces cached_tokens from prompt_tokens_details (native OpenAI)',
+      () async {
+        final events = [
+          {
+            'choices': [],
+            'usage': {
+              'prompt_tokens': 4096,
+              'completion_tokens': 64,
+              'prompt_tokens_details': {'cached_tokens': 3500},
+            },
           },
-        },
-      ];
+        ];
 
-      final usage = (await OpenAiClient.parseStreamEvents(
-        Stream.fromIterable(events),
-      ).toList())
-          .whereType<UsageInfo>()
-          .single;
+        final usage = (await OpenAiClient.parseStreamEvents(
+          Stream.fromIterable(events),
+        ).toList()).whereType<UsageInfo>().single;
 
-      expect(usage.cacheReadTokens, 9000);
-      expect(usage.cacheCreationTokens, 1200);
-    });
+        expect(usage.inputTokens, 4096);
+        expect(usage.outputTokens, 64);
+        expect(usage.cacheReadTokens, 3500);
+        expect(usage.cacheCreationTokens, isNull);
+      },
+    );
 
-    test('falls back to Anthropic-shape fields when proxy forwards them',
-        () async {
-      final events = [
-        {
-          'choices': [],
-          'usage': {
-            'prompt_tokens': 8000,
-            'completion_tokens': 50,
-            'cache_read_input_tokens': 7500,
-            'cache_creation_input_tokens': 400,
+    test(
+      'surfaces OpenRouter cache_write_tokens alongside cached_tokens',
+      () async {
+        // OpenRouter normalises the upstream Anthropic shape into
+        // OpenAI-shaped `prompt_tokens_details.cached_tokens` plus a sibling
+        // `cache_write_tokens`. We surface both into UsageInfo so cost
+        // estimation can distinguish reads from writes.
+        final events = [
+          {
+            'choices': [],
+            'usage': {
+              'prompt_tokens': 12000,
+              'completion_tokens': 128,
+              'prompt_tokens_details': {'cached_tokens': 9000},
+              'cache_write_tokens': 1200,
+            },
           },
-        },
-      ];
+        ];
 
-      final usage = (await OpenAiClient.parseStreamEvents(
-        Stream.fromIterable(events),
-      ).toList())
-          .whereType<UsageInfo>()
-          .single;
+        final usage = (await OpenAiClient.parseStreamEvents(
+          Stream.fromIterable(events),
+        ).toList()).whereType<UsageInfo>().single;
 
-      expect(usage.cacheReadTokens, 7500);
-      expect(usage.cacheCreationTokens, 400);
-    });
+        expect(usage.cacheReadTokens, 9000);
+        expect(usage.cacheCreationTokens, 1200);
+      },
+    );
+
+    test(
+      'falls back to Anthropic-shape fields when proxy forwards them',
+      () async {
+        final events = [
+          {
+            'choices': [],
+            'usage': {
+              'prompt_tokens': 8000,
+              'completion_tokens': 50,
+              'cache_read_input_tokens': 7500,
+              'cache_creation_input_tokens': 400,
+            },
+          },
+        ];
+
+        final usage = (await OpenAiClient.parseStreamEvents(
+          Stream.fromIterable(events),
+        ).toList()).whereType<UsageInfo>().single;
+
+        expect(usage.cacheReadTokens, 7500);
+        expect(usage.cacheCreationTokens, 400);
+      },
+    );
 
     test('leaves cache fields null when no caching info is reported', () async {
       final events = [
@@ -317,9 +318,7 @@ void main() {
 
       final usage = (await OpenAiClient.parseStreamEvents(
         Stream.fromIterable(events),
-      ).toList())
-          .whereType<UsageInfo>()
-          .single;
+      ).toList()).whereType<UsageInfo>().single;
 
       expect(usage.cacheReadTokens, isNull);
       expect(usage.cacheCreationTokens, isNull);

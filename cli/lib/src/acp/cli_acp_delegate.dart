@@ -170,7 +170,7 @@ class CliAcpDelegate extends AcpServerDelegate {
           'cache_read_tokens': stats.cacheReadTokens,
           'cache_creation_tokens': stats.cacheCreationTokens,
           'turn_count': stats.turnCount,
-        }
+        },
       ],
       sessionId: sessionId,
       modelLabel: services.config.activeModel.toString(),

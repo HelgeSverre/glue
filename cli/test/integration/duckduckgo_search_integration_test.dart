@@ -15,9 +15,11 @@ void main() {
       expect(response.query, 'helge sverre');
       expect(response.results, isNotEmpty);
       expect(
-        response.results.any((result) =>
-            result.title.isNotEmpty &&
-            result.url.toString().startsWith('http')),
+        response.results.any(
+          (result) =>
+              result.title.isNotEmpty &&
+              result.url.toString().startsWith('http'),
+        ),
         isTrue,
       );
     });

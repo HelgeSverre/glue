@@ -86,7 +86,8 @@ ModelPanelBuilder buildModelPanel(
     rows: indexed,
     getValues: (i) {
       final row = entries[i];
-      final isCurrent = row.providerId == currentRef.providerId &&
+      final isCurrent =
+          row.providerId == currentRef.providerId &&
           row.model.id == currentRef.modelId;
       return {
         'provider': headers[i],
@@ -169,11 +170,7 @@ List<CatalogRow> mergeOllamaDiscovery(
     out.add((
       providerId: 'ollama',
       providerName: providerName,
-      model: ModelDef(
-        id: tag.tag,
-        name: tag.tag,
-        notes: 'Installed locally.',
-      ),
+      model: ModelDef(id: tag.tag, name: tag.tag, notes: 'Installed locally.'),
       availability: ModelAvailability.installedOnly,
     ));
   }

@@ -18,10 +18,7 @@ typedef PathExistenceCheck = bool Function(String path, {required bool isDir});
 
 /// Builds the styled paths report. Ends with a trailing newline so callers
 /// can `stdout.write` it directly.
-String buildWhereReport(
-  Environment env, {
-  PathExistenceCheck? existsCheck,
-}) {
+String buildWhereReport(Environment env, {PathExistenceCheck? existsCheck}) {
   final check = existsCheck ?? _defaultExistenceCheck;
   final rows = <({String label, String path, bool isDir})>[
     (label: 'config.yaml', path: env.configYamlPath, isDir: false),
@@ -34,10 +31,12 @@ String buildWhereReport(
     (label: 'skills/', path: env.skillsDir, isDir: true),
   ];
 
-  final labelWidth =
-      rows.map((r) => r.label.length).fold<int>(0, (a, b) => a > b ? a : b);
-  final pathWidth =
-      rows.map((r) => r.path.length).fold<int>(0, (a, b) => a > b ? a : b);
+  final labelWidth = rows
+      .map((r) => r.label.length)
+      .fold<int>(0, (a, b) => a > b ? a : b);
+  final pathWidth = rows
+      .map((r) => r.path.length)
+      .fold<int>(0, (a, b) => a > b ? a : b);
 
   final buf = StringBuffer();
   buf.writeln('$brandDot ${styledOrPlain('Glue paths', (s) => s.bold)}');

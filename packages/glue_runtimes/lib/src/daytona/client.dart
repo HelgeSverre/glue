@@ -17,11 +17,7 @@ class DaytonaSandbox {
   final String? state;
   final String toolboxBaseUrl;
 
-  DaytonaSandbox({
-    required this.id,
-    required this.toolboxBaseUrl,
-    this.state,
-  });
+  DaytonaSandbox({required this.id, required this.toolboxBaseUrl, this.state});
 }
 
 /// Result of a synchronous `execCapture` call.
@@ -75,7 +71,7 @@ class DaytonaClient {
   final http.Client _http;
 
   DaytonaClient({required this.config, http.Client? httpClient})
-      : _http = httpClient ?? http.Client();
+    : _http = httpClient ?? http.Client();
 
   // ─── Sandbox lifecycle (control plane) ─────────────────────────────────
 
@@ -205,8 +201,8 @@ class DaytonaClient {
       body: {'command': command, 'runAsync': runAsync},
     );
     final json = _decodeJson(res, 'session_exec');
-    final cmdId =
-        (json['cmdId'] ?? json['commandId'] ?? json['id'])?.toString();
+    final cmdId = (json['cmdId'] ?? json['commandId'] ?? json['id'])
+        ?.toString();
     if (cmdId == null || cmdId.isEmpty) {
       throw RuntimeApiException(
         runtimeId: 'daytona',
@@ -297,8 +293,11 @@ class DaytonaClient {
     final req = http.MultipartRequest('POST', uri);
     req.headers.addAll(_headers());
     req.files.add(
-      http.MultipartFile.fromBytes('file', Uint8List.fromList(bytes),
-          filename: _basename(path)),
+      http.MultipartFile.fromBytes(
+        'file',
+        Uint8List.fromList(bytes),
+        filename: _basename(path),
+      ),
     );
     final streamed = await _http.send(req);
     final res = await http.Response.fromStream(streamed);
@@ -311,7 +310,9 @@ class DaytonaClient {
   /// (trailing slash — the no-slash form 301-redirects).
   /// Response: JSON array of `{name, isDir, size, …}`.
   Future<List<DaytonaFsEntry>> listDir(
-      DaytonaSandbox sandbox, String path) async {
+    DaytonaSandbox sandbox,
+    String path,
+  ) async {
     final uri = _toolboxUri(sandbox, '/files/', {'path': path});
     final res = await _http.get(uri, headers: _headers());
     _ensureOk(res, 'list_files');
@@ -319,7 +320,7 @@ class DaytonaClient {
     final list = decoded is List
         ? decoded
         : (decoded is Map ? (decoded['files'] ?? decoded['entries'] ?? []) : [])
-            as List;
+              as List;
     return list.whereType<Map<String, dynamic>>().map(_parseFsEntry).toList();
   }
 
@@ -335,10 +336,12 @@ class DaytonaClient {
     final json = _decodeJson(res, 'file_info');
     return DaytonaStat(
       size: (json['size'] ?? 0) as int,
-      isDirectory: (json['isDir'] ??
-          json['is_directory'] ??
-          json['isDirectory'] ??
-          false) as bool,
+      isDirectory:
+          (json['isDir'] ??
+                  json['is_directory'] ??
+                  json['isDirectory'] ??
+                  false)
+              as bool,
     );
   }
 
@@ -348,9 +351,7 @@ class DaytonaClient {
   // ─── Internal HTTP plumbing ────────────────────────────────────────────
 
   Map<String, String> _headers({bool json = false}) {
-    final h = <String, String>{
-      'Authorization': 'Bearer ${config.apiKey}',
-    };
+    final h = <String, String>{'Authorization': 'Bearer ${config.apiKey}'};
     if (json) h['Content-Type'] = 'application/json';
     return h;
   }
@@ -361,9 +362,9 @@ class DaytonaClient {
     Map<String, String>? query,
   ]) {
     final base = config.toolboxBaseUrlOverride ?? sandbox.toolboxBaseUrl;
-    return Uri.parse('$base/${sandbox.id}$path').replace(
-      queryParameters: query,
-    );
+    return Uri.parse(
+      '$base/${sandbox.id}$path',
+    ).replace(queryParameters: query);
   }
 
   Future<http.Response> _postApi({
@@ -372,8 +373,11 @@ class DaytonaClient {
     required Map<String, dynamic> body,
   }) async {
     final uri = Uri.parse('${config.apiBaseUrl}$path');
-    final res = await _http.post(uri,
-        headers: _headers(json: true), body: jsonEncode(body));
+    final res = await _http.post(
+      uri,
+      headers: _headers(json: true),
+      body: jsonEncode(body),
+    );
     _ensureOk(res, endpoint);
     return res;
   }
@@ -437,13 +441,11 @@ class DaytonaClient {
   }
 
   DaytonaFsEntry _parseFsEntry(Map<String, dynamic> e) => DaytonaFsEntry(
-        name: (e['name'] ?? '') as String,
-        isDirectory: (e['isDir'] ??
-            e['is_directory'] ??
-            e['isDirectory'] ??
-            false) as bool,
-        size: (e['size'] ?? 0) as int,
-      );
+    name: (e['name'] ?? '') as String,
+    isDirectory:
+        (e['isDir'] ?? e['is_directory'] ?? e['isDirectory'] ?? false) as bool,
+    size: (e['size'] ?? 0) as int,
+  );
 
   static String _basename(String path) {
     final slash = path.lastIndexOf('/');

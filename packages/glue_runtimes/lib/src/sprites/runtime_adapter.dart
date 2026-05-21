@@ -27,15 +27,16 @@ SpritesConfig spritesConfigFromOptions(
 /// Registers the Sprites adapter with [RuntimeFactory]. Call once at
 /// startup before [ServiceLocator.create].
 void registerSpritesRuntime() {
-  RuntimeFactory.register(
-    'sprites',
-    ({required cwd, required options, eventSink}) async {
-      final spritesConfig = spritesConfigFromOptions(options);
-      return SpritesRuntime.start(
-        config: spritesConfig,
-        hostCwd: cwd,
-        eventSink: eventSink,
-      );
-    },
-  );
+  RuntimeFactory.register('sprites', ({
+    required cwd,
+    required options,
+    eventSink,
+  }) async {
+    final spritesConfig = spritesConfigFromOptions(options);
+    return SpritesRuntime.start(
+      config: spritesConfig,
+      hostCwd: cwd,
+      eventSink: eventSink,
+    );
+  });
 }

@@ -164,10 +164,13 @@ void main() {
     });
 
     test('URLs with query strings and fragments', () {
-      final result =
-          renderer.render('Go to https://example.com/page?q=1&b=2#top');
+      final result = renderer.render(
+        'Go to https://example.com/page?q=1&b=2#top',
+      );
       expect(
-          result, contains('\x1b]8;;https://example.com/page?q=1&b=2#top\x07'));
+        result,
+        contains('\x1b]8;;https://example.com/page?q=1&b=2#top\x07'),
+      );
     });
 
     test('URL followed by period does not include trailing period', () {
@@ -193,15 +196,16 @@ void main() {
 
     test('URLs inside markdown links are NOT double-linked', () {
       final result = renderer.render('[click](https://example.com)');
-      final opens = RegExp(r'\x1b\]8;;https://example\.com\x07')
-          .allMatches(result)
-          .length;
+      final opens = RegExp(
+        r'\x1b\]8;;https://example\.com\x07',
+      ).allMatches(result).length;
       expect(opens, 1);
     });
 
     test('URL as link display text is NOT double-linked', () {
-      final result =
-          renderer.render('[https://inner.com](https://example.com)');
+      final result = renderer.render(
+        '[https://inner.com](https://example.com)',
+      );
       // Should have exactly 2 OSC 8 opens: one for the href, none extra
       final opens = '\x1b]8;;'.allMatches(result).length;
       expect(opens, 2); // 1 open + 1 close (close uses empty id)

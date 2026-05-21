@@ -21,8 +21,8 @@ class DeviceCodePanel implements PanelOverlay {
     this.onNeedsRender,
     PanelSize? width,
     PanelSize? height,
-  })  : _width = width ?? PanelFluid(0.7, 56),
-        _height = height ?? PanelFluid(0.4, 11) {
+  }) : _width = width ?? PanelFluid(0.7, 56),
+       _height = height ?? PanelFluid(0.4, 11) {
     _subscription = flow.progress.listen(
       (ev) {
         _latest = ev;
@@ -134,8 +134,10 @@ class DeviceCodePanel implements PanelOverlay {
       AuthFlowFailed(:final reason) => '✗  Failed: $reason',
     };
 
-    final linkedUri =
-        osc8Link(flow.verificationUri, flow.verificationUri).styled.cyan;
+    final linkedUri = osc8Link(
+      flow.verificationUri,
+      flow.verificationUri,
+    ).styled.cyan;
     final copiedHint = _copied ? '  (copied to clipboard)'.styled.dim : '';
     final content = <String>[
       '',

@@ -30,8 +30,7 @@ void main() {
       'path': f.path,
       'old_string': 'int x = 1;',
       'new_string': 'int x = 42;',
-    }))
-        .content;
+    })).content;
     expect(result, contains('Applied edit'));
     expect(f.readAsStringSync(), 'int x = 42;\nint y = 2;\n');
   });
@@ -42,11 +41,12 @@ void main() {
       'path': f.path,
       'old_string': 'void foo() {\n  print("hello");\n}',
       'new_string': 'void foo() {\n  print("world");\n  return;\n}',
-    }))
-        .content;
+    })).content;
     expect(result, contains('Applied edit'));
-    expect(f.readAsStringSync(),
-        'void foo() {\n  print("world");\n  return;\n}\n');
+    expect(
+      f.readAsStringSync(),
+      'void foo() {\n  print("world");\n  return;\n}\n',
+    );
   });
 
   test('errors when old_string not found', () async {
@@ -55,8 +55,7 @@ void main() {
       'path': f.path,
       'old_string': 'int y = 2;',
       'new_string': 'int y = 3;',
-    }))
-        .content;
+    })).content;
     expect(result, contains('not found'));
   });
 
@@ -66,8 +65,7 @@ void main() {
       'path': f.path,
       'old_string': 'foo();',
       'new_string': 'baz();',
-    }))
-        .content;
+    })).content;
     expect(result, contains('multiple'));
   });
 
@@ -77,8 +75,7 @@ void main() {
       'path': path,
       'old_string': '',
       'new_string': 'void main() {}\n',
-    }))
-        .content;
+    })).content;
     expect(result, contains('Created'));
     expect(File(path).readAsStringSync(), 'void main() {}\n');
   });
@@ -89,8 +86,7 @@ void main() {
       'path': f.path,
       'old_string': 'line2\n',
       'new_string': '',
-    }))
-        .content;
+    })).content;
     expect(result, contains('Applied edit'));
     expect(f.readAsStringSync(), 'line1\nline3\n');
   });
@@ -100,8 +96,7 @@ void main() {
       'path': '${tmpDir.path}/nope.dart',
       'old_string': 'hello',
       'new_string': 'world',
-    }))
-        .content;
+    })).content;
     expect(result, contains('not found'));
   });
 
@@ -109,8 +104,7 @@ void main() {
     final result = (await tool.execute({
       'old_string': 'a',
       'new_string': 'b',
-    }))
-        .content;
+    })).content;
     expect(result, contains('Error'));
   });
 
@@ -120,8 +114,7 @@ void main() {
       'path': f.path,
       'old_string': '',
       'new_string': '// header\n',
-    }))
-        .content;
+    })).content;
     expect(result, contains('Created'));
   });
 }

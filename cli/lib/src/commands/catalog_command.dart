@@ -102,17 +102,19 @@ class CatalogCommand extends Command<int> {
 }
 
 class CatalogRefreshCommand extends Command<int> {
-  CatalogRefreshCommand({RemoteCatalogFetcher? fetcher}) : _fetcher = fetcher {
+  CatalogRefreshCommand({this._fetcher}) {
     argParser
       ..addOption(
         'url',
-        help: 'Override the source URL for this run. Tried before the '
+        help:
+            'Override the source URL for this run. Tried before the '
             'configured `catalog.remote_url` and the built-in defaults.',
       )
       ..addFlag(
         'json',
         negatable: false,
-        help: 'Emit the refresh outcome as JSON instead of styled text. '
+        help:
+            'Emit the refresh outcome as JSON instead of styled text. '
             'Suppresses progress lines so output is a single document.',
       );
   }
@@ -147,7 +149,8 @@ class CatalogRefreshCommand extends Command<int> {
 
     if (!asJson) {
       stdout.writeln(
-          '$brandDot ${styledOrPlain('Refreshing catalog', (s) => s.bold)}');
+        '$brandDot ${styledOrPlain('Refreshing catalog', (s) => s.bold)}',
+      );
     }
 
     final outcome = await refreshCatalog(
@@ -157,7 +160,8 @@ class CatalogRefreshCommand extends Command<int> {
       onAttempt: asJson
           ? null
           : (uri) => stdout.writeln(
-              '  $markerInfo ${styledOrPlain(uri.toString(), (s) => s.gray)}'),
+              '  $markerInfo ${styledOrPlain(uri.toString(), (s) => s.gray)}',
+            ),
     );
 
     if (asJson) {
@@ -187,7 +191,8 @@ class CatalogRefreshCommand extends Command<int> {
         }
         stderr.writeln();
         stderr.writeln(
-            '  ${styledOrPlain('Failed to refresh catalog.', (s) => s.red)}');
+          '  ${styledOrPlain('Failed to refresh catalog.', (s) => s.red)}',
+        );
         return 1;
     }
   }
@@ -196,23 +201,23 @@ class CatalogRefreshCommand extends Command<int> {
 Map<String, dynamic> _refreshJson(RefreshOutcome outcome, String cachePath) {
   return switch (outcome) {
     RefreshWrote(:final uri, :final bytes) => {
-        'outcome': 'wrote',
-        'url': uri.toString(),
-        'cachePath': cachePath,
-        'bytes': bytes,
-      },
+      'outcome': 'wrote',
+      'url': uri.toString(),
+      'cachePath': cachePath,
+      'bytes': bytes,
+    },
     RefreshNotModified(:final uri) => {
-        'outcome': 'notModified',
-        'url': uri.toString(),
-        'cachePath': cachePath,
-      },
+      'outcome': 'notModified',
+      'url': uri.toString(),
+      'cachePath': cachePath,
+    },
     RefreshAllFailed(:final failures) => {
-        'outcome': 'failed',
-        'cachePath': cachePath,
-        'attempts': failures
-            .map((f) => {'url': f.uri.toString(), 'reason': f.reason})
-            .toList(),
-      },
+      'outcome': 'failed',
+      'cachePath': cachePath,
+      'attempts': failures
+          .map((f) => {'url': f.uri.toString(), 'reason': f.reason})
+          .toList(),
+    },
   };
 }
 
@@ -221,7 +226,8 @@ class CatalogShowCommand extends Command<int> {
     argParser.addFlag(
       'json',
       negatable: false,
-      help: 'Emit the catalog as JSON instead of styled text. Suppresses '
+      help:
+          'Emit the catalog as JSON instead of styled text. Suppresses '
           'all brand styling and headers so the output is pipe-safe.',
     );
   }
@@ -253,14 +259,17 @@ class CatalogShowCommand extends Command<int> {
     stdout.writeln();
 
     stdout.writeln(
-        '  ${styledOrPlain('default', (s) => s.gray)} ${defaults.model}');
+      '  ${styledOrPlain('default', (s) => s.gray)} ${defaults.model}',
+    );
     if (defaults.smallModel != null) {
       stdout.writeln(
-          '  ${styledOrPlain('small  ', (s) => s.gray)} ${defaults.smallModel}');
+        '  ${styledOrPlain('small  ', (s) => s.gray)} ${defaults.smallModel}',
+      );
     }
     if (defaults.localModel != null) {
       stdout.writeln(
-          '  ${styledOrPlain('local  ', (s) => s.gray)} ${defaults.localModel}');
+        '  ${styledOrPlain('local  ', (s) => s.gray)} ${defaults.localModel}',
+      );
     }
 
     final providers = catalog.providers.values.toList()
@@ -278,8 +287,9 @@ class CatalogShowCommand extends Command<int> {
         ..sort((a, b) => a.id.compareTo(b.id));
       // Per-provider column widths. Pad raw text before applying styling
       // so ANSI escape sequences don't skew the visible width.
-      final idWidth =
-          models.map((m) => m.id.length).fold<int>(0, (a, b) => a > b ? a : b);
+      final idWidth = models
+          .map((m) => m.id.length)
+          .fold<int>(0, (a, b) => a > b ? a : b);
       final nameWidth = models
           .map((m) => m.name.length)
           .fold<int>(0, (a, b) => a > b ? a : b);
@@ -293,8 +303,9 @@ class CatalogShowCommand extends Command<int> {
         ];
         // Only pad name when followed by flags — avoids trailing whitespace
         // on the last column for flag-less rows.
-        final paddedName =
-            flags.isEmpty ? model.name : model.name.padRight(nameWidth);
+        final paddedName = flags.isEmpty
+            ? model.name
+            : model.name.padRight(nameWidth);
         final suffix = flags.isEmpty ? '' : '  ${flags.join('  ')}';
         stdout.writeln(
           '  ${model.id.padRight(idWidth)}  ${styledOrPlain(paddedName, (s) => s.gray)}$suffix',
@@ -316,24 +327,30 @@ Map<String, dynamic> _catalogJson(ModelCatalog catalog) {
       if (catalog.defaults.localModel != null)
         'localModel': catalog.defaults.localModel,
     },
-    'providers': (catalog.providers.values.toList()
-          ..sort((a, b) => a.id.compareTo(b.id)))
-        .map((p) => {
-              'id': p.id,
-              'name': p.name,
-              'enabled': p.enabled,
-              'models': (p.models.values.toList()
-                    ..sort((a, b) => a.id.compareTo(b.id)))
-                  .map((m) => {
-                        'id': m.id,
-                        'name': m.name,
-                        'default': m.isDefault,
-                        'recommended': m.recommended,
-                        'enabled': m.enabled,
-                      })
-                  .toList(),
-            })
-        .toList(),
+    'providers':
+        (catalog.providers.values.toList()
+              ..sort((a, b) => a.id.compareTo(b.id)))
+            .map(
+              (p) => {
+                'id': p.id,
+                'name': p.name,
+                'enabled': p.enabled,
+                'models':
+                    (p.models.values.toList()
+                          ..sort((a, b) => a.id.compareTo(b.id)))
+                        .map(
+                          (m) => {
+                            'id': m.id,
+                            'name': m.name,
+                            'default': m.isDefault,
+                            'recommended': m.recommended,
+                            'enabled': m.enabled,
+                          },
+                        )
+                        .toList(),
+              },
+            )
+            .toList(),
   };
 }
 
@@ -362,12 +379,14 @@ class CatalogPathCommand extends Command<int> {
     final overridePresent = File(overridePath).existsSync();
 
     if (argResults!.flag('json')) {
-      stdout.writeln(_jsonEncoder.convert({
-        'bundled': 'compiled into binary',
-        'cachedRemote': {'path': cachePath, 'present': cachePresent},
-        'localOverride': {'path': overridePath, 'present': overridePresent},
-        'mergeOrder': ['bundled', 'cachedRemote', 'localOverride'],
-      }));
+      stdout.writeln(
+        _jsonEncoder.convert({
+          'bundled': 'compiled into binary',
+          'cachedRemote': {'path': cachePath, 'present': cachePresent},
+          'localOverride': {'path': overridePath, 'present': overridePresent},
+          'mergeOrder': ['bundled', 'cachedRemote', 'localOverride'],
+        }),
+      );
       return 0;
     }
 
@@ -375,8 +394,9 @@ class CatalogPathCommand extends Command<int> {
         ? '$markerOk ${styledOrPlain('present', (s) => s.green)}'
         : '$markerWarn ${styledOrPlain('missing', (s) => s.yellow)}';
 
-    stdout
-        .writeln('$brandDot ${styledOrPlain('Catalog paths', (s) => s.bold)}');
+    stdout.writeln(
+      '$brandDot ${styledOrPlain('Catalog paths', (s) => s.bold)}',
+    );
     stdout.writeln();
     stdout.writeln(
       '  ${styledOrPlain('bundled       ', (s) => s.bold)} '
@@ -403,7 +423,8 @@ class CatalogOpenCommand extends Command<int> {
     argParser.addFlag(
       'print',
       negatable: false,
-      help: 'Print the URL instead of launching a browser. Useful for '
+      help:
+          'Print the URL instead of launching a browser. Useful for '
           'piping into other tools or running in headless shells.',
     );
   }
@@ -433,7 +454,8 @@ class CatalogOpenCommand extends Command<int> {
     }
 
     stdout.writeln(
-        '$brandDot ${styledOrPlain('Opening catalog', (s) => s.bold)}');
+      '$brandDot ${styledOrPlain('Opening catalog', (s) => s.bold)}',
+    );
     stdout.writeln('  $markerInfo ${styledOrPlain(url, (s) => s.gray)}');
 
     final launched = await _openBrowser(url);
@@ -442,7 +464,8 @@ class CatalogOpenCommand extends Command<int> {
         '  $markerWarn ${styledOrPlain('no browser launcher available on this platform', (s) => s.yellow)}',
       );
       stderr.writeln(
-          '  ${styledOrPlain('Copy the URL above to open it manually.', (s) => s.gray)}');
+        '  ${styledOrPlain('Copy the URL above to open it manually.', (s) => s.gray)}',
+      );
       return 1;
     }
     return 0;
@@ -465,8 +488,9 @@ class CatalogEditCommand extends Command<int> {
     final cachePath = env.catalogCachePath;
 
     if (!File(cachePath).existsSync()) {
-      stderr
-          .writeln('$brandDot ${styledOrPlain('Edit catalog', (s) => s.bold)}');
+      stderr.writeln(
+        '$brandDot ${styledOrPlain('Edit catalog', (s) => s.bold)}',
+      );
       stderr.writeln(
         '  $markerWarn ${styledOrPlain('no cached catalog at', (s) => s.yellow)} '
         '${styledOrPlain(cachePath, (s) => s.gray)}',
@@ -482,8 +506,9 @@ class CatalogEditCommand extends Command<int> {
 
     final editor = Platform.environment['EDITOR']?.trim();
     if (editor == null || editor.isEmpty) {
-      stderr
-          .writeln('$brandDot ${styledOrPlain('Edit catalog', (s) => s.bold)}');
+      stderr.writeln(
+        '$brandDot ${styledOrPlain('Edit catalog', (s) => s.bold)}',
+      );
       stderr.writeln(
         '  $markerError ${styledOrPlain(r'$EDITOR is not set', (s) => s.red)}',
       );
@@ -494,7 +519,8 @@ class CatalogEditCommand extends Command<int> {
     }
 
     stdout.writeln(
-        '$brandDot ${styledOrPlain('Editing catalog', (s) => s.bold)}');
+      '$brandDot ${styledOrPlain('Editing catalog', (s) => s.bold)}',
+    );
     stdout.writeln(
       '  $markerInfo ${styledOrPlain(editor, (s) => s.gray)} ${styledOrPlain(cachePath, (s) => s.gray)}',
     );
@@ -520,11 +546,10 @@ Future<bool> _openBrowser(String url) async {
       return true;
     }
     if (Platform.isWindows) {
-      await Process.start(
-        'rundll32',
-        ['url.dll,FileProtocolHandler', url],
-        mode: ProcessStartMode.detached,
-      );
+      await Process.start('rundll32', [
+        'url.dll,FileProtocolHandler',
+        url,
+      ], mode: ProcessStartMode.detached);
       return true;
     }
   } catch (_) {

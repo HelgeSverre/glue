@@ -5,12 +5,14 @@ void main() {
   group('UsageStats', () {
     test('records a UsageInfo and increments turn count', () {
       final stats = UsageStats();
-      stats.record(UsageInfo(
-        inputTokens: 100,
-        outputTokens: 20,
-        cacheReadTokens: 800,
-        cacheCreationTokens: 50,
-      ));
+      stats.record(
+        UsageInfo(
+          inputTokens: 100,
+          outputTokens: 20,
+          cacheReadTokens: 800,
+          cacheCreationTokens: 50,
+        ),
+      );
 
       expect(stats.inputTokens, 100);
       expect(stats.outputTokens, 20);
@@ -37,12 +39,14 @@ void main() {
 
     test('merge folds another stats object into this one', () {
       final parent = UsageStats(inputTokens: 100, outputTokens: 50);
-      parent.merge(UsageStats(
-        inputTokens: 200,
-        outputTokens: 30,
-        cacheReadTokens: 500,
-        turnCount: 3,
-      ));
+      parent.merge(
+        UsageStats(
+          inputTokens: 200,
+          outputTokens: 30,
+          cacheReadTokens: 500,
+          turnCount: 3,
+        ),
+      );
       expect(parent.inputTokens, 300);
       expect(parent.outputTokens, 80);
       expect(parent.cacheReadTokens, 500);
@@ -57,8 +61,11 @@ void main() {
     });
 
     test('toJson omits zero cache fields, fromJson round-trips', () {
-      final lean =
-          UsageStats(inputTokens: 100, outputTokens: 50, turnCount: 1).toJson();
+      final lean = UsageStats(
+        inputTokens: 100,
+        outputTokens: 50,
+        turnCount: 1,
+      ).toJson();
       expect(lean.containsKey('cache_read_tokens'), isFalse);
       expect(lean.containsKey('cache_creation_tokens'), isFalse);
 

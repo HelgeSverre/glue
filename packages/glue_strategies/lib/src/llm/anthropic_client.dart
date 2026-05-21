@@ -36,8 +36,8 @@ class AnthropicClient implements LlmClient {
     String baseUrl = _defaultBaseUrl,
     http.Client Function()? requestClientFactory,
     this.promptCacheEnabled = true,
-  })  : _requestClientFactory = requestClientFactory ?? http.Client.new,
-        _baseUri = Uri.parse(baseUrl);
+  }) : _requestClientFactory = requestClientFactory ?? http.Client.new,
+       _baseUri = Uri.parse(baseUrl);
 
   @override
   Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
@@ -69,10 +69,7 @@ class AnthropicClient implements LlmClient {
         body['cache_control'] = {'type': 'ephemeral'};
       }
 
-      final request = http.Request(
-        'POST',
-        _baseUri.resolve('/v1/messages'),
-      );
+      final request = http.Request('POST', _baseUri.resolve('/v1/messages'));
       request.headers.addAll({
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
@@ -90,9 +87,9 @@ class AnthropicClient implements LlmClient {
       }
 
       yield* parseStreamEvents(
-        decodeSse(response.stream).map(
-          (e) => jsonDecode(e.data) as Map<String, dynamic>,
-        ),
+        decodeSse(
+          response.stream,
+        ).map((e) => jsonDecode(e.data) as Map<String, dynamic>),
       );
     } finally {
       requestClient.close();
@@ -173,11 +170,9 @@ class AnthropicClient implements LlmClient {
             } on FormatException {
               args = <String, dynamic>{'_raw': argsJson};
             }
-            yield ToolCallComplete(ToolCall(
-              id: buf.id,
-              name: buf.name,
-              arguments: args,
-            ));
+            yield ToolCallComplete(
+              ToolCall(id: buf.id, name: buf.name, arguments: args),
+            );
           }
 
         case 'message_delta':

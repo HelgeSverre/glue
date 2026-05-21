@@ -26,9 +26,8 @@ class GeminiProvider extends ProviderAdapter implements LlmClient {
     this.model = '',
     this.systemPrompt = '',
     String baseUrl = _defaultBaseUrl,
-    http.Client Function()? requestClientFactory,
-  })  : _baseUri = Uri.parse(baseUrl),
-        _requestClientFactory = requestClientFactory;
+    this._requestClientFactory,
+  }) : _baseUri = Uri.parse(baseUrl);
 
   /// Outer HTTP factory — preserved so `createClient()` can hand it to each
   /// per-request instance it spawns.
@@ -80,15 +79,13 @@ class GeminiProvider extends ProviderAdapter implements LlmClient {
 
       final body = <String, dynamic>{
         'contents': mapped.messages,
-        'generationConfig': {
-          'maxOutputTokens': 8192,
-        },
+        'generationConfig': {'maxOutputTokens': 8192},
       };
 
       if (mapped.systemPrompt.isNotEmpty) {
         body['systemInstruction'] = {
           'parts': [
-            {'text': mapped.systemPrompt}
+            {'text': mapped.systemPrompt},
           ],
         };
       }
@@ -113,15 +110,13 @@ class GeminiProvider extends ProviderAdapter implements LlmClient {
 
       if (response.statusCode != 200) {
         final errorBody = await response.stream.bytesToString();
-        throw Exception(
-          'Gemini API error ${response.statusCode}: $errorBody',
-        );
+        throw Exception('Gemini API error ${response.statusCode}: $errorBody');
       }
 
       yield* parseStreamEvents(
-        decodeSse(response.stream).map(
-          (e) => jsonDecode(e.data) as Map<String, dynamic>,
-        ),
+        decodeSse(
+          response.stream,
+        ).map((e) => jsonDecode(e.data) as Map<String, dynamic>),
       );
     } finally {
       requestClient.close();
@@ -163,8 +158,8 @@ class GeminiProvider extends ProviderAdapter implements LlmClient {
               final args = rawArgs is Map<String, dynamic>
                   ? rawArgs
                   : (rawArgs is Map
-                      ? Map<String, dynamic>.from(rawArgs)
-                      : <String, dynamic>{});
+                        ? Map<String, dynamic>.from(rawArgs)
+                        : <String, dynamic>{});
               // Capture the opaque thoughtSignature emitted by thinking-mode
               // Gemini models. The next request must echo it back on the
               // same functionCall part or the API rejects with HTTP 400.
@@ -176,12 +171,14 @@ class GeminiProvider extends ProviderAdapter implements LlmClient {
               callCounter++;
               final id = ToolCallId('gemini-call-$callCounter');
               yield ToolCallStart(id: id, name: name);
-              yield ToolCallComplete(ToolCall(
-                id: id,
-                name: name,
-                arguments: args,
-                thoughtSignature: thoughtSig,
-              ));
+              yield ToolCallComplete(
+                ToolCall(
+                  id: id,
+                  name: name,
+                  arguments: args,
+                  thoughtSignature: thoughtSig,
+                ),
+              );
             }
           }
         }

@@ -19,24 +19,25 @@ enum CompatibilityProfile {
   /// (`OllamaAdapter` / `OllamaClient`) and doesn't ride the OpenAI-compat
   /// path anymore. See `lib/src/providers/ollama_adapter.dart`.
   static CompatibilityProfile fromString(String? id) => switch (id) {
-        'groq' => groq,
-        'openrouter' => openrouter,
-        'vllm' => vllm,
-        'mistral' => mistral,
-        _ => openai,
-      };
+    'groq' => groq,
+    'openrouter' => openrouter,
+    'vllm' => vllm,
+    'mistral' => mistral,
+    _ => openai,
+  };
 
   /// Auth header to attach. Auth-less local gateways omit the header
   /// entirely — returning an empty map means "do not set".
-  Map<String, String> authHeaders(String apiKey) =>
-      {'Authorization': 'Bearer $apiKey'};
+  Map<String, String> authHeaders(String apiKey) => {
+    'Authorization': 'Bearer $apiKey',
+  };
 
   /// Whether this endpoint supports `stream_options.include_usage`. When
   /// false, the body field is stripped to avoid 400 responses.
   bool get supportsStreamOptionsUsage => switch (this) {
-        groq || vllm => false,
-        openai || openrouter || mistral => true,
-      };
+    groq || vllm => false,
+    openai || openrouter || mistral => true,
+  };
 
   /// Strip / adjust body fields that specific endpoints reject.
   void mutateBody(Map<String, dynamic> body) {

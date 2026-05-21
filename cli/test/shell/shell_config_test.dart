@@ -46,10 +46,7 @@ void main() {
     });
 
     test('buildArgs for bash login', () {
-      const config = ShellConfig(
-        executable: 'bash',
-        mode: ShellMode.login,
-      );
+      const config = ShellConfig(executable: 'bash', mode: ShellMode.login);
       expect(config.buildArgs('echo hi'), ['bash', '-l', '-c', 'echo hi']);
     });
 
@@ -63,10 +60,12 @@ void main() {
 
     test('buildArgs for pwsh nonInteractive', () {
       const config = ShellConfig(executable: 'pwsh');
-      expect(
-        config.buildArgs('echo hi'),
-        ['pwsh', '-NoProfile', '-Command', 'echo hi'],
-      );
+      expect(config.buildArgs('echo hi'), [
+        'pwsh',
+        '-NoProfile',
+        '-Command',
+        'echo hi',
+      ]);
     });
 
     test('buildArgs for pwsh interactive', () {

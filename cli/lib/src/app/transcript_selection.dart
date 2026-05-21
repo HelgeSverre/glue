@@ -72,10 +72,12 @@ class TranscriptSelection {
   /// is rewritten to use [to]. Used to migrate a selection across the
   /// streaming-buffer → real-entry handoff without losing the anchor.
   TranscriptSelection rebindBlockId(String from, String to) {
-    final newAnchor =
-        anchor.blockId == from ? anchor.copyWith(blockId: to) : anchor;
-    final newFocus =
-        focus.blockId == from ? focus.copyWith(blockId: to) : focus;
+    final newAnchor = anchor.blockId == from
+        ? anchor.copyWith(blockId: to)
+        : anchor;
+    final newFocus = focus.blockId == from
+        ? focus.copyWith(blockId: to)
+        : focus;
     if (identical(newAnchor, anchor) && identical(newFocus, focus)) {
       return this;
     }

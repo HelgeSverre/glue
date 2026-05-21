@@ -4,8 +4,5 @@ abstract class WebSearchProvider {
   String get name;
   bool get isConfigured;
 
-  Future<WebSearchResponse> search(
-    String query, {
-    int maxResults = 5,
-  });
+  Future<WebSearchResponse> search(String query, {int maxResults = 5});
 }

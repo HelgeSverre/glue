@@ -42,9 +42,10 @@ void main() {
 
     test('allows trusted tools', () {
       final call = ToolCall(
-          id: const core.ToolCallId('1'),
-          name: 'read_file',
-          arguments: const {'path': 'a.txt'});
+        id: const core.ToolCallId('1'),
+        name: 'read_file',
+        arguments: const {'path': 'a.txt'},
+      );
       expect(gate.resolve(call), PermissionDecision.allow);
     });
 
@@ -61,23 +62,28 @@ void main() {
         cwd: '/tmp/project',
       );
       final call = ToolCall(
-          id: const core.ToolCallId('1'),
-          name: 'read_file',
-          arguments: const {'path': 'a.txt'});
+        id: const core.ToolCallId('1'),
+        name: 'read_file',
+        arguments: const {'path': 'a.txt'},
+      );
       expect(safeGate.resolve(call), PermissionDecision.allow);
     });
 
     test('asks for untrusted mutating tools', () {
       final call = ToolCall(
-          id: const core.ToolCallId('2'),
-          name: 'bash',
-          arguments: const {'command': 'ls'});
+        id: const core.ToolCallId('2'),
+        name: 'bash',
+        arguments: const {'command': 'ls'},
+      );
       expect(gate.resolve(call), PermissionDecision.ask);
     });
 
     test('denies unknown tool', () {
       final call = ToolCall(
-          id: const core.ToolCallId('3'), name: 'missing', arguments: const {});
+        id: const core.ToolCallId('3'),
+        name: 'missing',
+        arguments: const {},
+      );
       expect(gate.resolve(call), PermissionDecision.deny);
     });
   });
@@ -92,15 +98,19 @@ void main() {
 
     test('allows everything', () {
       final call = ToolCall(
-          id: const core.ToolCallId('1'),
-          name: 'bash',
-          arguments: const {'command': 'rm -rf /'});
+        id: const core.ToolCallId('1'),
+        name: 'bash',
+        arguments: const {'command': 'rm -rf /'},
+      );
       expect(gate.resolve(call), PermissionDecision.allow);
     });
 
     test('still denies unknown tool', () {
       final call = ToolCall(
-          id: const core.ToolCallId('2'), name: 'missing', arguments: const {});
+        id: const core.ToolCallId('2'),
+        name: 'missing',
+        arguments: const {},
+      );
       expect(gate.resolve(call), PermissionDecision.deny);
     });
   });
@@ -204,26 +214,30 @@ void main() {
       expect(event.dangerLevel, equals(core.ToolKind.write));
     });
 
-    test('unknown tools default to ToolKind.exec danger level', () {
-      // Use an arbitrary tool name not in the registry.
-      final call = ToolCall(
-        id: const core.ToolCallId('tc-3'),
-        name: 'rogue',
-        arguments: const {},
-      );
-      // resolve() returns deny for unknown tools, so we can't assert the
-      // pre-condition here — but the event-building path is still
-      // exercised in non-asserting builds.
-      final event = gate.requestEventFor(
-        call,
-        turnId: const core.TurnId('t'),
-        requestId: const core.PermissionRequestId('r'),
-        sequence: 0,
-      );
-      expect(event.dangerLevel, equals(core.ToolKind.exec));
-    },
-        skip: 'requestEventFor asserts the ask-decision pre-condition; '
-            'classification of unknown tools is covered indirectly via '
-            'PermissionGate.needsEarlyConfirmation.');
+    test(
+      'unknown tools default to ToolKind.exec danger level',
+      () {
+        // Use an arbitrary tool name not in the registry.
+        final call = ToolCall(
+          id: const core.ToolCallId('tc-3'),
+          name: 'rogue',
+          arguments: const {},
+        );
+        // resolve() returns deny for unknown tools, so we can't assert the
+        // pre-condition here — but the event-building path is still
+        // exercised in non-asserting builds.
+        final event = gate.requestEventFor(
+          call,
+          turnId: const core.TurnId('t'),
+          requestId: const core.PermissionRequestId('r'),
+          sequence: 0,
+        );
+        expect(event.dangerLevel, equals(core.ToolKind.exec));
+      },
+      skip:
+          'requestEventFor asserts the ask-decision pre-condition; '
+          'classification of unknown tools is covered indirectly via '
+          'PermissionGate.needsEarlyConfirmation.',
+    );
   });
 }

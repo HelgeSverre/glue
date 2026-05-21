@@ -29,30 +29,29 @@ import 'package:glue/src/commands/slash_commands.dart';
 /// Adding a command means writing a new class and one line here.
 class BuiltinCommands {
   static SlashCommandRegistry create(SlashCommandContext ctx) {
-    return SlashCommandRegistry()
-      ..registerAll([
-        HelpCommand(ctx),
-        ClearCommand(ctx),
-        CopyCommand(ctx),
-        ExitCommand(ctx),
-        ToolsCommand(ctx),
-        UsageCommand(ctx),
-        DebugCommand(ctx),
-        ApproveCommand(ctx),
-        PathsCommand(ctx),
-        RecapCommand(ctx),
-        ShareCommand(ctx),
-        SkillsCommand(ctx),
-        ConfigCommand(ctx),
-        OpenCommand(ctx),
-        HistoryCommand(ctx),
-        ResumeCommand(ctx),
-        SessionCommand(ctx),
-        RenameCommand(ctx),
-        ModelCommand(ctx),
-        ProviderCommand(ctx),
-        RuntimeCommand(ctx),
-        McpSlashCommand(ctx),
-      ]);
+    return SlashCommandRegistry()..registerAll([
+      HelpCommand(ctx),
+      ClearCommand(ctx),
+      CopyCommand(ctx),
+      ExitCommand(ctx),
+      ToolsCommand(ctx),
+      UsageCommand(ctx),
+      DebugCommand(ctx),
+      ApproveCommand(ctx),
+      PathsCommand(ctx),
+      RecapCommand(ctx),
+      ShareCommand(ctx),
+      SkillsCommand(ctx),
+      ConfigCommand(ctx),
+      OpenCommand(ctx),
+      HistoryCommand(ctx),
+      ResumeCommand(ctx),
+      SessionCommand(ctx),
+      RenameCommand(ctx),
+      ModelCommand(ctx),
+      ProviderCommand(ctx),
+      RuntimeCommand(ctx),
+      McpSlashCommand(ctx),
+    ]);
   }
 }

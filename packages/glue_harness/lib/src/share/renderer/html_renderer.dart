@@ -23,14 +23,17 @@ class ShareHtmlRenderer {
   }) {
     final template = _assetsLoader.loadTemplate();
     final styles = _assetsLoader.loadStylesheet();
-    final pageTitle =
-        (meta.title ?? '').trim().isNotEmpty ? meta.title! : 'Glue';
-    final introText = 'Exported conversation transcript. '
+    final pageTitle = (meta.title ?? '').trim().isNotEmpty
+        ? meta.title!
+        : 'Glue';
+    final introText =
+        'Exported conversation transcript. '
         'Started ${escapeShareHtml(_formatUtcTimestamp(meta.startTime))} '
         '· Exported ${escapeShareHtml(_formatUtcTimestamp(exportedAt))}';
     final transcriptEntries = transcript.entries.map(_entry).join('\n');
-    final outlineEntries =
-        transcript.entries.map((e) => _outline(e, nested: false)).join('\n');
+    final outlineEntries = transcript.entries
+        .map((e) => _outline(e, nested: false))
+        .join('\n');
 
     return template
         .replaceAll('{{page_title}}', escapeShareHtml(pageTitle))
@@ -97,24 +100,24 @@ class ShareHtmlRenderer {
 </section>''';
 
   String _entryClass(ShareEntryKind kind) => switch (kind) {
-        ShareEntryKind.user => 'share-entry-user',
-        ShareEntryKind.assistant => 'share-entry-assistant',
-        ShareEntryKind.toolCall => 'share-entry-tool-call',
-        ShareEntryKind.toolResult => 'share-entry-tool-result',
-        ShareEntryKind.subagentGroup => 'share-entry-subagent-group',
-        ShareEntryKind.subagentMessage => 'share-entry-subagent-message',
-      };
+    ShareEntryKind.user => 'share-entry-user',
+    ShareEntryKind.assistant => 'share-entry-assistant',
+    ShareEntryKind.toolCall => 'share-entry-tool-call',
+    ShareEntryKind.toolResult => 'share-entry-tool-result',
+    ShareEntryKind.subagentGroup => 'share-entry-subagent-group',
+    ShareEntryKind.subagentMessage => 'share-entry-subagent-message',
+  };
 
   String _entryHead(ShareEntry entry) => switch (entry.kind) {
-        ShareEntryKind.user => '❯ You',
-        ShareEntryKind.assistant => '◆ Glue',
-        ShareEntryKind.toolCall =>
-          '▶ Tool: ${escapeShareHtml(shareToolDisplayName(entry))}',
-        ShareEntryKind.toolResult => '✓ Tool result',
-        ShareEntryKind.subagentGroup =>
-          '◈ Subagent: ${escapeShareHtml(entry.text)}',
-        ShareEntryKind.subagentMessage => '◈ ${escapeShareHtml(entry.text)}',
-      };
+    ShareEntryKind.user => '❯ You',
+    ShareEntryKind.assistant => '◆ Glue',
+    ShareEntryKind.toolCall =>
+      '▶ Tool: ${escapeShareHtml(shareToolDisplayName(entry))}',
+    ShareEntryKind.toolResult => '✓ Tool result',
+    ShareEntryKind.subagentGroup =>
+      '◈ Subagent: ${escapeShareHtml(entry.text)}',
+    ShareEntryKind.subagentMessage => '◈ ${escapeShareHtml(entry.text)}',
+  };
 
   String _entryBody(ShareEntry entry) {
     switch (entry.kind) {
@@ -135,7 +138,8 @@ class ShareHtmlRenderer {
 
   String _renderToolResultBody(String text) {
     final lineCount = '\n'.allMatches(text).length + 1;
-    final shouldCollapse = collapseToolOutputAfterLines > 0 &&
+    final shouldCollapse =
+        collapseToolOutputAfterLines > 0 &&
         lineCount > collapseToolOutputAfterLines;
     final pre =
         '<pre class="share-pre share-tool-result">${escapeShareHtml(text)}</pre>';

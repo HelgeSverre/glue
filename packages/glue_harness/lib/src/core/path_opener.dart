@@ -16,10 +16,8 @@ library;
 
 import 'dart:io';
 
-typedef ProcessRunner = Future<ProcessResult> Function(
-  String executable,
-  List<String> arguments,
-);
+typedef ProcessRunner =
+    Future<ProcessResult> Function(String executable, List<String> arguments);
 
 typedef DirectoryExistsCheck = bool Function(String path);
 

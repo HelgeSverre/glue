@@ -120,22 +120,21 @@ class DockManager {
     for (final panel in visiblePanels) {
       final rect = switch (panel.mode) {
         DockMode.pinned => _pinnedRect(
-            panel: panel,
-            viewport: viewport,
-            terminalColumns: terminalColumns,
-          ),
-        DockMode.floating => _floatingRect(
-            panel: panel,
-            viewport: viewport,
-          ),
+          panel: panel,
+          viewport: viewport,
+          terminalColumns: terminalColumns,
+        ),
+        DockMode.floating => _floatingRect(panel: panel, viewport: viewport),
       };
       if (rect == null || rect.width <= 0 || rect.height <= 0) continue;
 
-      plans.add(DockRenderPlan(
-        panel: panel,
-        rect: rect,
-        lines: panel.render(rect.width, rect.height),
-      ));
+      plans.add(
+        DockRenderPlan(
+          panel: panel,
+          rect: rect,
+          lines: panel.render(rect.width, rect.height),
+        ),
+      );
     }
     return plans;
   }
@@ -206,8 +205,10 @@ class DockManager {
           height: height,
         );
       case DockEdge.bottom:
-        final available =
-            max(0, viewport.overlayTop - viewport.outputBottom - 1);
+        final available = max(
+          0,
+          viewport.overlayTop - viewport.outputBottom - 1,
+        );
         final height = min(panel.extent, available);
         if (height <= 0) return null;
         return DockRect(
@@ -228,8 +229,9 @@ class DockManager {
     switch (panel.edge) {
       case DockEdge.left:
       case DockEdge.right:
-        final width =
-            panel.extent.clamp(1, max(1, viewport.outputWidth ~/ 2)).toInt();
+        final width = panel.extent
+            .clamp(1, max(1, viewport.outputWidth ~/ 2))
+            .toInt();
         final col = panel.edge == DockEdge.left
             ? viewport.outputLeft
             : viewport.outputRight - width + 1;
@@ -241,8 +243,10 @@ class DockManager {
         );
       case DockEdge.top:
       case DockEdge.bottom:
-        final maxHeight =
-            min(viewport.outputHeight, _maxHorizontalFloatingHeight);
+        final maxHeight = min(
+          viewport.outputHeight,
+          _maxHorizontalFloatingHeight,
+        );
         final height = panel.extent.clamp(1, max(1, maxHeight)).toInt();
         final row = panel.edge == DockEdge.top
             ? viewport.outputTop

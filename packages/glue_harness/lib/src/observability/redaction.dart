@@ -101,13 +101,16 @@ Map<String, String> redactHeaders(Map<String, String> headers) {
 String redactUrl(Uri uri) {
   final rawQuery = uri.query;
   if (rawQuery.isEmpty) return uri.toString();
-  final redactedPairs = rawQuery.split('&').map((pair) {
-    final eq = pair.indexOf('=');
-    if (eq < 0) return pair;
-    final keyEnc = pair.substring(0, eq);
-    final key = Uri.decodeQueryComponent(keyEnc).toLowerCase();
-    return _sensitiveQueryKeys.contains(key) ? '$keyEnc=****' : pair;
-  }).join('&');
+  final redactedPairs = rawQuery
+      .split('&')
+      .map((pair) {
+        final eq = pair.indexOf('=');
+        if (eq < 0) return pair;
+        final keyEnc = pair.substring(0, eq);
+        final key = Uri.decodeQueryComponent(keyEnc).toLowerCase();
+        return _sensitiveQueryKeys.contains(key) ? '$keyEnc=****' : pair;
+      })
+      .join('&');
   final buffer = StringBuffer();
   if (uri.hasScheme) buffer.write('${uri.scheme}://');
   buffer.write(uri.authority);
@@ -132,8 +135,10 @@ String redactBody(String body, {int maxBytes = 65536}) {
     redacted = redacted.replaceAllMapped(pattern, (match) {
       final raw = match.group(0)!;
       // Preserve the JSON key name for pattern 1 so the log is still readable.
-      final keyMatch =
-          RegExp(r'"([^"]+)"\s*:', caseSensitive: false).firstMatch(raw);
+      final keyMatch = RegExp(
+        r'"([^"]+)"\s*:',
+        caseSensitive: false,
+      ).firstMatch(raw);
       if (keyMatch != null) return '"${keyMatch.group(1)}":"****"';
       return '****';
     });

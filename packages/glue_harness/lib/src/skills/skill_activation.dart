@@ -51,11 +51,9 @@ Future<SkillActivationResult> activateSkillIntoConversation({
   // Inject synthetic tool_call + tool_result so the next model turn sees
   // activated skill content as normal tool result context.
   agent.addMessage(Message.assistant(toolCalls: [call]));
-  agent.addMessage(Message.toolResult(
-    callId: callId,
-    content: content,
-    toolName: 'skill',
-  ));
+  agent.addMessage(
+    Message.toolResult(callId: callId, content: content, toolName: 'skill'),
+  );
 
   return SkillActivationResult(
     callId: callId,

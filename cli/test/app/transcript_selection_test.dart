@@ -19,10 +19,16 @@ void main() {
     });
 
     test('every punctuation char in the explicit set is punctuation', () {
-      const set = r'/:,.-(){}[];"' "'" r'<>=+*&|!@#$%^~`\?';
+      const set =
+          r'/:,.-(){}[];"'
+          "'"
+          r'<>=+*&|!@#$%^~`\?';
       for (final cu in set.codeUnits) {
-        expect(classify(cu), CharClass.punctuation,
-            reason: 'expected punctuation for U+${cu.toRadixString(16)}');
+        expect(
+          classify(cu),
+          CharClass.punctuation,
+          reason: 'expected punctuation for U+${cu.toRadixString(16)}',
+        );
       }
     });
   });
@@ -80,7 +86,9 @@ void main() {
       expect(chain.register(10, 5, t), 1);
       expect(chain.register(10, 5, t.add(const Duration(milliseconds: 50))), 2);
       expect(
-          chain.register(10, 5, t.add(const Duration(milliseconds: 100))), 3);
+        chain.register(10, 5, t.add(const Duration(milliseconds: 100))),
+        3,
+      );
     });
 
     test('a fourth click in-window wraps back to 1', () {
@@ -90,7 +98,9 @@ void main() {
       chain.register(10, 5, t.add(const Duration(milliseconds: 50)));
       chain.register(10, 5, t.add(const Duration(milliseconds: 100)));
       expect(
-          chain.register(10, 5, t.add(const Duration(milliseconds: 150))), 1);
+        chain.register(10, 5, t.add(const Duration(milliseconds: 150))),
+        1,
+      );
     });
 
     test('a slow click outside the window resets the chain', () {
@@ -99,7 +109,9 @@ void main() {
       chain.register(10, 5, t);
       // 301 ms is just past the 300 ms window.
       expect(
-          chain.register(10, 5, t.add(const Duration(milliseconds: 301))), 1);
+        chain.register(10, 5, t.add(const Duration(milliseconds: 301))),
+        1,
+      );
     });
 
     test('a click at an adjacent cell resets the chain', () {
@@ -110,7 +122,9 @@ void main() {
       // report integer cells so true double-clicks land on the same cell.
       expect(chain.register(11, 5, t.add(const Duration(milliseconds: 50))), 1);
       expect(
-          chain.register(10, 6, t.add(const Duration(milliseconds: 100))), 1);
+        chain.register(10, 6, t.add(const Duration(milliseconds: 100))),
+        1,
+      );
     });
 
     test('reset() zeroes the count and timestamp', () {

@@ -33,9 +33,7 @@ export 'package:glue_strategies/glue_strategies.dart'
 McpConfig parseMcpConfig(Object? section, Map<String, String> env) {
   if (section == null) return const McpConfig();
   if (section is! Map) {
-    throw ConfigError(
-      '`mcp:` must be a mapping, got ${section.runtimeType}.',
-    );
+    throw ConfigError('`mcp:` must be a mapping, got ${section.runtimeType}.');
   }
   final root = section.cast<dynamic, dynamic>();
 
@@ -91,8 +89,12 @@ McpServerSpec _parseServer(
         final key = e.key.toString();
         final value = e.value?.toString();
         if (value == null) continue;
-        envBlock[key] =
-            _expandEnvVars(value, env, server: id, field: 'env.$key');
+        envBlock[key] = _expandEnvVars(
+          value,
+          env,
+          server: id,
+          field: 'env.$key',
+        );
       }
     }
     return McpStdioServerSpec(
@@ -203,8 +205,8 @@ McpSubprocessEnvMode _parseEnvMode(Object? raw) {
     'allowlist' => McpSubprocessEnvMode.allowlist,
     'full' => McpSubprocessEnvMode.full,
     _ => throw ConfigError(
-        '`mcp.subprocess_env` must be "allowlist" or "full" (got "$s").',
-      ),
+      '`mcp.subprocess_env` must be "allowlist" or "full" (got "$s").',
+    ),
   };
 }
 

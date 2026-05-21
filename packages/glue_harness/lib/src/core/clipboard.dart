@@ -17,10 +17,11 @@ class ClipboardProcess {
   final Future<int> exitCode;
 }
 
-typedef ClipboardRunner = Future<ClipboardProcess> Function(
-  String executable,
-  List<String> arguments,
-);
+typedef ClipboardRunner =
+    Future<ClipboardProcess> Function(
+      String executable,
+      List<String> arguments,
+    );
 
 /// Sink used to emit OSC52 escape sequences. Defaults to stdout; tests
 /// override this with a buffer so they can assert on the payload without
@@ -108,10 +109,7 @@ bool _tryOsc52(
   }
 }
 
-Future<bool> _tryHostCommands(
-  String text, {
-  ClipboardRunner? runner,
-}) async {
+Future<bool> _tryHostCommands(String text, {ClipboardRunner? runner}) async {
   final run = runner ?? _defaultRunner;
   for (final (exe, args) in _clipboardCommands()) {
     try {

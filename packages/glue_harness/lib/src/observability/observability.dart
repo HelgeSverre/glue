@@ -7,8 +7,9 @@ import 'package:meta/meta.dart';
 final _random = Random.secure();
 
 String _hexId(int bytes) => List.generate(
-        bytes, (_) => _random.nextInt(256).toRadixString(16).padLeft(2, '0'))
-    .join();
+  bytes,
+  (_) => _random.nextInt(256).toRadixString(16).padLeft(2, '0'),
+).join();
 
 class ObservabilityEvent {
   final String name;
@@ -19,14 +20,14 @@ class ObservabilityEvent {
     this.name, {
     DateTime? timestamp,
     Map<String, dynamic>? attributes,
-  })  : timestamp = timestamp ?? DateTime.now(),
-        attributes = attributes ?? {};
+  }) : timestamp = timestamp ?? DateTime.now(),
+       attributes = attributes ?? {};
 
   Map<String, dynamic> toMap() => {
-        'name': name,
-        'timestamp': timestamp.toIso8601String(),
-        if (attributes.isNotEmpty) 'attributes': attributes,
-      };
+    'name': name,
+    'timestamp': timestamp.toIso8601String(),
+    if (attributes.isNotEmpty) 'attributes': attributes,
+  };
 }
 
 /// A span representing a unit of work in the observability trace.
@@ -52,10 +53,10 @@ class ObservabilitySpan {
     String? traceId,
     this.parentSpanId,
     Map<String, dynamic>? attributes,
-  })  : traceId = traceId ?? _hexId(16),
-        spanId = _hexId(8),
-        attributes = attributes ?? {},
-        _start = DateTime.now();
+  }) : traceId = traceId ?? _hexId(16),
+       spanId = _hexId(8),
+       attributes = attributes ?? {},
+       _start = DateTime.now();
 
   DateTime get start => _start;
   DateTime? get endTime => _end;
@@ -87,19 +88,19 @@ class ObservabilitySpan {
   }
 
   Map<String, dynamic> toMap() => {
-        'trace_id': traceId,
-        'span_id': spanId,
-        if (parentSpanId != null) 'parent_span_id': parentSpanId,
-        'name': name,
-        'kind': kind,
-        'start_time': _start.toIso8601String(),
-        'end_time': _end?.toIso8601String(),
-        'duration_ms': duration.inMilliseconds,
-        'status_code': statusCode,
-        if (statusMessage != null) 'status_message': statusMessage,
-        if (events.isNotEmpty) 'events': events.map((e) => e.toMap()).toList(),
-        'attributes': attributes,
-      };
+    'trace_id': traceId,
+    'span_id': spanId,
+    if (parentSpanId != null) 'parent_span_id': parentSpanId,
+    'name': name,
+    'kind': kind,
+    'start_time': _start.toIso8601String(),
+    'end_time': _end?.toIso8601String(),
+    'duration_ms': duration.inMilliseconds,
+    'status_code': statusCode,
+    if (statusMessage != null) 'status_message': statusMessage,
+    if (events.isNotEmpty) 'events': events.map((e) => e.toMap()).toList(),
+    'attributes': attributes,
+  };
 }
 
 /// A sink that receives completed spans for export to an observability backend.
@@ -124,8 +125,7 @@ class Observability {
   // TODO: use Zone values for concurrent turn support instead of mutable field.
   ObservabilitySpan? activeSpan;
 
-  Observability({required DebugController debugController})
-      : _debugController = debugController;
+  Observability({required this._debugController});
 
   bool get debugEnabled => _debugController.enabled;
 

@@ -25,8 +25,7 @@ import 'package:glue_strategies/src/providers/resolved.dart';
 import 'package:http/http.dart' as http;
 
 class OllamaAdapter extends ProviderAdapter {
-  OllamaAdapter({http.Client Function()? requestClientFactory})
-      : _requestClientFactory = requestClientFactory;
+  OllamaAdapter({this._requestClientFactory});
 
   final http.Client Function()? _requestClientFactory;
 
@@ -52,9 +51,7 @@ class OllamaAdapter extends ProviderAdapter {
     return OllamaClient(
       model: model.apiId,
       systemPrompt: systemPrompt,
-      baseUrl: _stripV1Suffix(
-        provider.baseUrl ?? 'http://localhost:11434',
-      ),
+      baseUrl: _stripV1Suffix(provider.baseUrl ?? 'http://localhost:11434'),
       // Inject num_ctx when the catalog knows the model's context window.
       // Passthrough models (user-typed uncatalogued tags) get null here and
       // fall back to Ollama's default, which is the same behaviour as
@@ -76,9 +73,7 @@ class OllamaAdapter extends ProviderAdapter {
       ),
     );
     final installed = await discovery.listInstalled();
-    return [
-      for (final m in installed) DiscoveredModel(id: m.tag, name: m.tag),
-    ];
+    return [for (final m in installed) DiscoveredModel(id: m.tag, name: m.tag)];
   }
 
   /// The catalog historically stored Ollama's baseUrl with a `/v1` suffix

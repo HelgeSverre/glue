@@ -109,49 +109,50 @@ class SessionMeta {
   });
 
   Map<String, Object?> toJson() => {
-        'schema_version': schemaVersion,
-        'id': id.value,
-        'cwd': cwd,
-        if (projectPath != null) 'project_path': projectPath,
-        'model_ref': modelRef,
-        'start_time': startTime.toUtc().toIso8601String(),
-        if (endTime != null) 'end_time': endTime!.toUtc().toIso8601String(),
-        if (forkedFrom != null) 'forked_from': forkedFrom,
-        if (worktreePath != null) 'worktree_path': worktreePath,
-        if (branch != null) 'branch': branch,
-        if (baseBranch != null) 'base_branch': baseBranch,
-        if (repoRemote != null) 'repo_remote': repoRemote,
-        if (headSha != null) 'head_sha': headSha,
-        if (title != null) 'title': title,
-        if (titleSource != null) 'title_source': titleSource!.name,
-        if (titleState != null) 'title_state': titleState!.name,
-        if (titleGenerationCount > 0)
-          'title_generation_count': titleGenerationCount,
-        if (titleGeneratedAt != null)
-          'title_generated_at': titleGeneratedAt!.toUtc().toIso8601String(),
-        if (titleLastEvaluatedAt != null)
-          'title_last_evaluated_at':
-              titleLastEvaluatedAt!.toUtc().toIso8601String(),
-        if (titleRenamedAt != null)
-          'title_renamed_at': titleRenamedAt!.toUtc().toIso8601String(),
-        if (tags.isNotEmpty) 'tags': tags,
-        if (prUrl != null) 'pr_url': prUrl,
-        if (prStatus != null) 'pr_status': prStatus,
-        if (tokenCount != null) 'token_count': tokenCount,
-        if (cacheReadTokens != null) 'cache_read_tokens': cacheReadTokens,
-        if (cacheCreationTokens != null)
-          'cache_creation_tokens': cacheCreationTokens,
-        if (messageCount != null) 'message_count': messageCount,
-        if (summary != null) 'summary': summary,
-        if (runtimeId != null) 'runtime_id': runtimeId,
-        if (sandboxId != null) 'sandbox_id': sandboxId,
-        if (runtimeBootstrapSha != null)
-          'runtime_bootstrap_sha': runtimeBootstrapSha,
-        if (runtimeRemoteUrl != null) 'runtime_remote_url': runtimeRemoteUrl,
-        if (runtimePatchPath != null) 'runtime_patch_path': runtimePatchPath,
-        if (runtimeClosedAt != null)
-          'runtime_closed_at': runtimeClosedAt!.toUtc().toIso8601String(),
-      };
+    'schema_version': schemaVersion,
+    'id': id.value,
+    'cwd': cwd,
+    if (projectPath != null) 'project_path': projectPath,
+    'model_ref': modelRef,
+    'start_time': startTime.toUtc().toIso8601String(),
+    if (endTime != null) 'end_time': endTime!.toUtc().toIso8601String(),
+    if (forkedFrom != null) 'forked_from': forkedFrom,
+    if (worktreePath != null) 'worktree_path': worktreePath,
+    if (branch != null) 'branch': branch,
+    if (baseBranch != null) 'base_branch': baseBranch,
+    if (repoRemote != null) 'repo_remote': repoRemote,
+    if (headSha != null) 'head_sha': headSha,
+    if (title != null) 'title': title,
+    if (titleSource != null) 'title_source': titleSource!.name,
+    if (titleState != null) 'title_state': titleState!.name,
+    if (titleGenerationCount > 0)
+      'title_generation_count': titleGenerationCount,
+    if (titleGeneratedAt != null)
+      'title_generated_at': titleGeneratedAt!.toUtc().toIso8601String(),
+    if (titleLastEvaluatedAt != null)
+      'title_last_evaluated_at': titleLastEvaluatedAt!
+          .toUtc()
+          .toIso8601String(),
+    if (titleRenamedAt != null)
+      'title_renamed_at': titleRenamedAt!.toUtc().toIso8601String(),
+    if (tags.isNotEmpty) 'tags': tags,
+    if (prUrl != null) 'pr_url': prUrl,
+    if (prStatus != null) 'pr_status': prStatus,
+    if (tokenCount != null) 'token_count': tokenCount,
+    if (cacheReadTokens != null) 'cache_read_tokens': cacheReadTokens,
+    if (cacheCreationTokens != null)
+      'cache_creation_tokens': cacheCreationTokens,
+    if (messageCount != null) 'message_count': messageCount,
+    if (summary != null) 'summary': summary,
+    if (runtimeId != null) 'runtime_id': runtimeId,
+    if (sandboxId != null) 'sandbox_id': sandboxId,
+    if (runtimeBootstrapSha != null)
+      'runtime_bootstrap_sha': runtimeBootstrapSha,
+    if (runtimeRemoteUrl != null) 'runtime_remote_url': runtimeRemoteUrl,
+    if (runtimePatchPath != null) 'runtime_patch_path': runtimePatchPath,
+    if (runtimeClosedAt != null)
+      'runtime_closed_at': runtimeClosedAt!.toUtc().toIso8601String(),
+  };
 
   factory SessionMeta.fromJson(Map<String, dynamic> json) {
     final schema = json['schema_version'] as int? ?? 1;
@@ -203,7 +204,7 @@ class SessionMeta {
           : null,
       tags:
           (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList() ??
-              const [],
+          const [],
       prUrl: json['pr_url'] as String?,
       prStatus: json['pr_status'] as String?,
       tokenCount: json['token_count'] as int?,

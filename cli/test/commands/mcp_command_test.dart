@@ -17,19 +17,18 @@ Future<ProcessResult> _runGlue(
 }) async {
   final process = await Process.start(
     'dart',
-    ['run', 'bin/glue.dart', ...args],
+    ['run', '--verbosity=error', 'bin/glue.dart', ...args],
     workingDirectory: Directory.current.path,
     runInShell: true,
-    environment: {
-      ...Platform.environment,
-      'GLUE_HOME': glueHome,
-    },
+    environment: {...Platform.environment, 'GLUE_HOME': glueHome},
   );
   await process.stdin.close();
-  final out =
-      await process.stdout.transform(const SystemEncoding().decoder).join();
-  final err =
-      await process.stderr.transform(const SystemEncoding().decoder).join();
+  final out = await process.stdout
+      .transform(const SystemEncoding().decoder)
+      .join();
+  final err = await process.stderr
+      .transform(const SystemEncoding().decoder)
+      .join();
   final exitCode = await process.exitCode;
   return ProcessResult(process.pid, exitCode, out, err);
 }
@@ -46,14 +45,21 @@ void main() {
         addTearDown(() => dir.deleteSync(recursive: true));
 
         // 1. add
-        var r = await _runGlue(
-          ['mcp', 'add', 'demo', '--transport', 'stdio', '--', 'echo', 'hi'],
-          glueHome: dir.path,
-        );
+        var r = await _runGlue([
+          'mcp',
+          'add',
+          'demo',
+          '--transport',
+          'stdio',
+          '--',
+          'echo',
+          'hi',
+        ], glueHome: dir.path);
         expect(r.exitCode, 0, reason: 'add stderr: ${r.stderr}');
         expect(r.stdout.toString(), contains('Added stdio server "demo"'));
-        final configContent =
-            File('${dir.path}/config.yaml').readAsStringSync();
+        final configContent = File(
+          '${dir.path}/config.yaml',
+        ).readAsStringSync();
         expect(configContent, contains('demo:'));
         expect(configContent, contains('command: echo'));
 
@@ -89,10 +95,15 @@ void main() {
       final dir = _scratch();
       addTearDown(() => dir.deleteSync(recursive: true));
 
-      final r = await _runGlue(
-        ['mcp', 'add', 'Bad Id!', '--transport', 'stdio', '--', 'echo'],
-        glueHome: dir.path,
-      );
+      final r = await _runGlue([
+        'mcp',
+        'add',
+        'Bad Id!',
+        '--transport',
+        'stdio',
+        '--',
+        'echo',
+      ], glueHome: dir.path);
       expect(r.exitCode, 1);
       expect(r.stderr.toString(), contains('Invalid id'));
     });
@@ -101,10 +112,13 @@ void main() {
       final dir = _scratch();
       addTearDown(() => dir.deleteSync(recursive: true));
 
-      final r = await _runGlue(
-        ['mcp', 'add', 'foo', '--', 'echo'],
-        glueHome: dir.path,
-      );
+      final r = await _runGlue([
+        'mcp',
+        'add',
+        'foo',
+        '--',
+        'echo',
+      ], glueHome: dir.path);
       expect(r.exitCode, 1);
       expect(r.stderr.toString(), contains('--transport is required'));
     });
@@ -113,10 +127,13 @@ void main() {
       final dir = _scratch();
       addTearDown(() => dir.deleteSync(recursive: true));
 
-      final r = await _runGlue(
-        ['mcp', 'add', 'foo', '--transport', 'stdio'],
-        glueHome: dir.path,
-      );
+      final r = await _runGlue([
+        'mcp',
+        'add',
+        'foo',
+        '--transport',
+        'stdio',
+      ], glueHome: dir.path);
       expect(r.exitCode, 1);
       expect(r.stderr.toString(), contains('stdio transport needs a command'));
     });
@@ -126,31 +143,33 @@ void main() {
       addTearDown(() => dir.deleteSync(recursive: true));
 
       // Missing --url
-      var r = await _runGlue(
-        ['mcp', 'add', 'foo', '--transport', 'http'],
-        glueHome: dir.path,
-      );
+      var r = await _runGlue([
+        'mcp',
+        'add',
+        'foo',
+        '--transport',
+        'http',
+      ], glueHome: dir.path);
       expect(r.exitCode, 1);
       expect(r.stderr.toString(), contains('--url is required'));
 
       // --env with http
-      r = await _runGlue(
-        [
-          'mcp',
-          'add',
-          'foo',
-          '--transport',
-          'http',
-          '--url',
-          'https://example.com/mcp',
-          '-e',
-          'KEY=val',
-        ],
-        glueHome: dir.path,
-      );
+      r = await _runGlue([
+        'mcp',
+        'add',
+        'foo',
+        '--transport',
+        'http',
+        '--url',
+        'https://example.com/mcp',
+        '-e',
+        'KEY=val',
+      ], glueHome: dir.path);
       expect(r.exitCode, 1);
-      expect(r.stderr.toString(),
-          contains('--env and --cwd are only valid for --transport stdio'));
+      expect(
+        r.stderr.toString(),
+        contains('--env and --cwd are only valid for --transport stdio'),
+      );
     });
 
     test('remove of unknown id exits 1', () async {
@@ -158,20 +177,18 @@ void main() {
       addTearDown(() => dir.deleteSync(recursive: true));
       File('${dir.path}/config.yaml').createSync(recursive: true);
 
-      final r = await _runGlue(
-        ['mcp', 'remove', 'ghost'],
-        glueHome: dir.path,
-      );
+      final r = await _runGlue(['mcp', 'remove', 'ghost'], glueHome: dir.path);
       expect(r.exitCode, 1);
       expect(r.stderr.toString(), contains("ghost' is not in config.yaml"));
     });
 
-    test('tools warns and exits 1 when server is disabled', () async {
-      final dir = _scratch();
-      addTearDown(() => dir.deleteSync(recursive: true));
+    test(
+      'tools warns and exits 1 when server is disabled',
+      () async {
+        final dir = _scratch();
+        addTearDown(() => dir.deleteSync(recursive: true));
 
-      var r = await _runGlue(
-        [
+        var r = await _runGlue([
           'mcp',
           'add',
           'parked',
@@ -180,36 +197,45 @@ void main() {
           '--disabled',
           '--',
           'echo',
-          'hi'
-        ],
-        glueHome: dir.path,
-      );
-      expect(r.exitCode, 0, reason: r.stderr.toString());
+          'hi',
+        ], glueHome: dir.path);
+        expect(r.exitCode, 0, reason: r.stderr.toString());
 
-      r = await _runGlue(['mcp', 'tools', 'parked'], glueHome: dir.path)
-          .timeout(const Duration(seconds: 15));
-      expect(r.exitCode, 1);
-      expect(r.stderr.toString(), contains('disabled'));
-      expect(r.stderr.toString(), contains('glue mcp enable parked'));
-    }, timeout: const Timeout(Duration(seconds: 30)));
+        r = await _runGlue([
+          'mcp',
+          'tools',
+          'parked',
+        ], glueHome: dir.path).timeout(const Duration(seconds: 15));
+        expect(r.exitCode, 1);
+        expect(r.stderr.toString(), contains('disabled'));
+        expect(r.stderr.toString(), contains('glue mcp enable parked'));
+      },
+      timeout: const Timeout(Duration(seconds: 30)),
+    );
 
-    test('tools (no arg) with empty config prints friendly message', () async {
-      final dir = _scratch();
-      addTearDown(() => dir.deleteSync(recursive: true));
+    test(
+      'tools (no arg) with empty config prints friendly message',
+      () async {
+        final dir = _scratch();
+        addTearDown(() => dir.deleteSync(recursive: true));
 
-      final r = await _runGlue(['mcp', 'tools'], glueHome: dir.path)
-          .timeout(const Duration(seconds: 30));
-      expect(r.exitCode, 0, reason: r.stderr.toString());
-      expect(r.stdout.toString(), contains('No MCP servers configured'));
-    }, timeout: const Timeout(Duration(seconds: 60)));
+        final r = await _runGlue([
+          'mcp',
+          'tools',
+        ], glueHome: dir.path).timeout(const Duration(seconds: 30));
+        expect(r.exitCode, 0, reason: r.stderr.toString());
+        expect(r.stdout.toString(), contains('No MCP servers configured'));
+      },
+      timeout: const Timeout(Duration(seconds: 60)),
+    );
 
-    test('tools (no arg) with only disabled servers groups them as disabled',
-        () async {
-      final dir = _scratch();
-      addTearDown(() => dir.deleteSync(recursive: true));
+    test(
+      'tools (no arg) with only disabled servers groups them as disabled',
+      () async {
+        final dir = _scratch();
+        addTearDown(() => dir.deleteSync(recursive: true));
 
-      var r = await _runGlue(
-        [
+        var r = await _runGlue([
           'mcp',
           'add',
           'parked',
@@ -218,38 +244,37 @@ void main() {
           '--disabled',
           '--',
           'echo',
-          'hi'
-        ],
-        glueHome: dir.path,
-      );
-      expect(r.exitCode, 0, reason: r.stderr.toString());
+          'hi',
+        ], glueHome: dir.path);
+        expect(r.exitCode, 0, reason: r.stderr.toString());
 
-      r = await _runGlue(['mcp', 'tools'], glueHome: dir.path)
-          .timeout(const Duration(seconds: 30));
-      expect(r.exitCode, 0, reason: r.stderr.toString());
-      final out = r.stdout.toString();
-      expect(out, contains('parked'));
-      expect(out, contains('disabled'));
-    }, timeout: const Timeout(Duration(seconds: 60)));
+        r = await _runGlue([
+          'mcp',
+          'tools',
+        ], glueHome: dir.path).timeout(const Duration(seconds: 30));
+        expect(r.exitCode, 0, reason: r.stderr.toString());
+        final out = r.stdout.toString();
+        expect(out, contains('parked'));
+        expect(out, contains('disabled'));
+      },
+      timeout: const Timeout(Duration(seconds: 60)),
+    );
 
     test('add http with --auth bearer hints at follow-up auth set', () async {
       final dir = _scratch();
       addTearDown(() => dir.deleteSync(recursive: true));
 
-      final r = await _runGlue(
-        [
-          'mcp',
-          'add',
-          'api',
-          '--transport',
-          'http',
-          '--url',
-          'https://api.example.com/mcp',
-          '--auth',
-          'bearer',
-        ],
-        glueHome: dir.path,
-      );
+      final r = await _runGlue([
+        'mcp',
+        'add',
+        'api',
+        '--transport',
+        'http',
+        '--url',
+        'https://api.example.com/mcp',
+        '--auth',
+        'bearer',
+      ], glueHome: dir.path);
       expect(r.exitCode, 0, reason: r.stderr.toString());
       expect(r.stdout.toString(), contains('glue mcp auth set api --bearer'));
       final yaml = File('${dir.path}/config.yaml').readAsStringSync();

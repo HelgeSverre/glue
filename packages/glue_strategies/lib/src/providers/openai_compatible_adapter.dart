@@ -14,8 +14,7 @@ import 'package:glue_strategies/src/providers/resolved.dart';
 import 'package:http/http.dart' as http;
 
 class OpenAiCompatibleAdapter extends ProviderAdapter {
-  OpenAiCompatibleAdapter({http.Client Function()? requestClientFactory})
-      : _requestClientFactory = requestClientFactory;
+  OpenAiCompatibleAdapter({this._requestClientFactory});
 
   final http.Client Function()? _requestClientFactory;
 

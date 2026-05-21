@@ -67,12 +67,14 @@ List<String> _renderSimple(int width, int height, String title) {
   final innerWidth = width - 2;
   final titleStr = ' $title ';
   final fillCount = max(innerWidth - titleStr.length - 1, 0);
-  final top = '\x1b[2m┌─\x1b[0m'
+  final top =
+      '\x1b[2m┌─\x1b[0m'
       '\x1b[36m$titleStr\x1b[0m'
       '\x1b[2m${'─' * fillCount}┐\x1b[0m';
   lines.add(top);
 
-  final interior = '\x1b[2m│\x1b[0m'
+  final interior =
+      '\x1b[2m│\x1b[0m'
       '${' ' * innerWidth}'
       '\x1b[2m│\x1b[0m';
   for (var i = 1; i < height - 1; i++) {
@@ -92,7 +94,8 @@ List<String> _renderHeavy(int width, int height, String title) {
   final top = '\x1b[36m╔═$titleStr${'═' * fillCount}╗\x1b[0m';
   lines.add(top);
 
-  final interior = '\x1b[36m║\x1b[0m'
+  final interior =
+      '\x1b[36m║\x1b[0m'
       '${' ' * innerWidth}'
       '\x1b[36m║\x1b[0m';
   for (var i = 1; i < height - 1; i++) {
@@ -114,12 +117,14 @@ List<String> _renderTape(int width, int height, String title) {
   final suffixLen = max(width - titleStr.length - prefixLen, 0);
   final prefixTape = _repeatTape(tapePattern, prefixLen);
   final suffixTape = _repeatTape(tapePattern, suffixLen);
-  final top = '\x1b[36m$prefixTape\x1b[0m'
+  final top =
+      '\x1b[36m$prefixTape\x1b[0m'
       '\x1b[30;46m$titleStr\x1b[0m'
       '\x1b[36m$suffixTape\x1b[0m';
   lines.add(top);
 
-  final interior = '\x1b[36m│\x1b[0m'
+  final interior =
+      '\x1b[36m│\x1b[0m'
       '${' ' * innerWidth}'
       '\x1b[36m│\x1b[0m';
   for (var i = 1; i < height - 1; i++) {
@@ -146,9 +151,9 @@ List<String> applyBarrier(BarrierStyle style, List<String> lines) {
     BarrierStyle.dim =>
       lines.map((line) => '${stripAnsi(line).styled.dim}').toList(),
     BarrierStyle.obscure => lines.map((line) {
-        final len = visibleLength(line);
-        return ('░' * len).styled.gray.toString();
-      }).toList(),
+      final len = visibleLength(line);
+      return ('░' * len).styled.gray.toString();
+    }).toList(),
   };
 }
 
@@ -156,7 +161,10 @@ abstract class PanelOverlay {
   bool get isComplete;
   bool handleEvent(TerminalEvent event);
   List<String> render(
-      int termWidth, int termHeight, List<String> backgroundLines);
+    int termWidth,
+    int termHeight,
+    List<String> backgroundLines,
+  );
   void cancel();
 }
 
@@ -196,11 +204,11 @@ class PanelModal implements PanelOverlay {
     this.selectable = false,
     this.onOpenInEditor,
     int initialIndex = 0,
-  })  : linesBuilder = ((_) => lines),
-        _lastLines = lines,
-        _width = width ?? PanelFluid(0.7, 40),
-        _height = height ?? PanelFluid(0.7, 10),
-        _selectedIndex = initialIndex {
+  }) : linesBuilder = ((_) => lines),
+       _lastLines = lines,
+       _width = width ?? PanelFluid(0.7, 40),
+       _height = height ?? PanelFluid(0.7, 10),
+       _selectedIndex = initialIndex {
     if (_height case PanelFixed(:final size)) {
       _lastVisibleHeight = size - 2;
     }
@@ -218,10 +226,10 @@ class PanelModal implements PanelOverlay {
     this.selectable = false,
     this.onOpenInEditor,
     int initialIndex = 0,
-  })  : _lastLines = linesBuilder(80),
-        _width = width ?? PanelFluid(0.7, 40),
-        _height = height ?? PanelFluid(0.7, 10),
-        _selectedIndex = initialIndex {
+  }) : _lastLines = linesBuilder(80),
+       _width = width ?? PanelFluid(0.7, 40),
+       _height = height ?? PanelFluid(0.7, 10),
+       _selectedIndex = initialIndex {
     if (_height case PanelFixed(:final size)) {
       _lastVisibleHeight = size - 2;
     }
@@ -299,8 +307,10 @@ class PanelModal implements PanelOverlay {
         return true;
       case KeyEvent(key: Key.pageDown):
         if (selectable) {
-          _selectedIndex =
-              min<int>(_lastLines.length - 1, _selectedIndex + visibleH);
+          _selectedIndex = min<int>(
+            _lastLines.length - 1,
+            _selectedIndex + visibleH,
+          );
           _scrollOffset = min<int>(maxScroll, _scrollOffset + visibleH);
         } else {
           _scrollOffset = min<int>(maxScroll, _scrollOffset + visibleH);
@@ -318,7 +328,10 @@ class PanelModal implements PanelOverlay {
 
   @override
   List<String> render(
-      int termWidth, int termHeight, List<String> backgroundLines) {
+    int termWidth,
+    int termHeight,
+    List<String> backgroundLines,
+  ) {
     final panelW = _width.resolve(termWidth);
     final panelH = _height.resolve(termHeight);
     final visibleContentH = panelH - 2;
@@ -332,7 +345,9 @@ class PanelModal implements PanelOverlay {
 
     final dimmed = applyBarrier(barrier, backgroundLines);
     final grid = List<String>.generate(
-        termHeight, (i) => i < dimmed.length ? dimmed[i] : '');
+      termHeight,
+      (i) => i < dimmed.length ? dimmed[i] : '',
+    );
 
     final border = box.renderFrame(panelW, panelH, title, color: borderColor);
 
@@ -359,10 +374,13 @@ class PanelModal implements PanelOverlay {
           final borderStr = stripAnsi(border.last);
           final insertPos = borderStr.length - indicator.length - 2;
           if (insertPos > 0) {
-            final before =
-                border.last.substring(0, _ansiIndex(border.last, insertPos));
+            final before = border.last.substring(
+              0,
+              _ansiIndex(border.last, insertPos),
+            );
             final after = border.last.substring(
-                _ansiIndex(border.last, insertPos + indicator.length));
+              _ansiIndex(border.last, insertPos + indicator.length),
+            );
             panelLines.add('$before$indicator$after');
           } else {
             panelLines.add(border.last);
@@ -372,16 +390,18 @@ class PanelModal implements PanelOverlay {
         }
       } else {
         final contentIdx = r - 1;
-        final raw =
-            contentIdx < visibleLines.length ? visibleLines[contentIdx] : '';
+        final raw = contentIdx < visibleLines.length
+            ? visibleLines[contentIdx]
+            : '';
         final truncated = ansiTruncate(raw, contentW);
         final padLen = contentW - visibleLength(truncated);
         final padded = '$truncated${' ' * max(0, padLen)}';
 
         final isSelected =
             selectable && (contentIdx + _scrollOffset) == _selectedIndex;
-        final styledContent =
-            isSelected ? '${padded.styled.bg256(237)}' : padded;
+        final styledContent = isSelected
+            ? '${padded.styled.bg256(237)}'
+            : padded;
 
         final (leftBorder, rightBorder) = box.styledSides(color: borderColor);
 
@@ -392,8 +412,13 @@ class PanelModal implements PanelOverlay {
     for (var r = 0; r < panelH; r++) {
       final gridRow = topRow + r;
       if (gridRow < 0 || gridRow >= termHeight) continue;
-      grid[gridRow] =
-          _spliceRow(grid[gridRow], leftCol, panelW, panelLines[r], termWidth);
+      grid[gridRow] = _spliceRow(
+        grid[gridRow],
+        leftCol,
+        panelW,
+        panelLines[r],
+        termWidth,
+      );
     }
 
     return grid;
@@ -416,7 +441,12 @@ class PanelModal implements PanelOverlay {
   }
 
   String _spliceRow(
-      String bgLine, int leftCol, int panelW, String overlay, int termWidth) {
+    String bgLine,
+    int leftCol,
+    int panelW,
+    String overlay,
+    int termWidth,
+  ) {
     final bgVisible = visibleLength(bgLine);
     final paddedBg = bgVisible < termWidth
         ? '$bgLine${' ' * (termWidth - bgVisible)}'

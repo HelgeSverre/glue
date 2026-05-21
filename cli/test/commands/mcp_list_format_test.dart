@@ -14,13 +14,10 @@ void main() {
     });
 
     test('rows list id, transport, and enabled state in input order', () {
-      final result = formatMcpServerList(
-        const [
-          McpServerListRow(id: 'fs', kind: 'stdio', enabled: true),
-          McpServerListRow(id: 'parked', kind: 'http+sse', enabled: false),
-        ],
-        configPath: '/x.yaml',
-      );
+      final result = formatMcpServerList(const [
+        McpServerListRow(id: 'fs', kind: 'stdio', enabled: true),
+        McpServerListRow(id: 'parked', kind: 'http+sse', enabled: false),
+      ], configPath: '/x.yaml');
       expect(result, contains('fs'));
       expect(result, contains('parked'));
       expect(result, contains('stdio'));
@@ -32,10 +29,9 @@ void main() {
     });
 
     test('hint to use `/mcp` shows up at the end', () {
-      final result = formatMcpServerList(
-        const [McpServerListRow(id: 'fs', kind: 'stdio', enabled: true)],
-        configPath: '/x.yaml',
-      );
+      final result = formatMcpServerList(const [
+        McpServerListRow(id: 'fs', kind: 'stdio', enabled: true),
+      ], configPath: '/x.yaml');
       expect(result, contains('/mcp'));
     });
 
@@ -59,10 +55,12 @@ void main() {
           configPath: '/x.yaml',
           ansiEnabled: true,
         );
-        final onLine =
-            result.split('\n').firstWhere((line) => line.contains('on '));
-        final offLine =
-            result.split('\n').firstWhere((line) => line.contains('off'));
+        final onLine = result
+            .split('\n')
+            .firstWhere((line) => line.contains('on '));
+        final offLine = result
+            .split('\n')
+            .firstWhere((line) => line.contains('off'));
         expect(onLine, contains('✓'));
         expect(offLine, contains('·'));
       });

@@ -22,7 +22,7 @@ enum StreamingAction {
 /// Result of handling a terminal event during streaming mode.
 typedef StreamingInputResult = ({
   StreamingAction action,
-  String? commandOutput
+  String? commandOutput,
 });
 
 /// Handle a terminal event while in a non-idle mode (streaming, tool running,

@@ -10,16 +10,14 @@ void main() {
     });
 
     test('converts paragraphs', () {
-      expect(
-        HtmlToMarkdown.convert('<p>Hello world.</p>'),
-        'Hello world.\n',
-      );
+      expect(HtmlToMarkdown.convert('<p>Hello world.</p>'), 'Hello world.\n');
     });
 
     test('converts bold and italic', () {
       expect(
         HtmlToMarkdown.convert(
-            '<p><strong>bold</strong> and <em>italic</em></p>'),
+          '<p><strong>bold</strong> and <em>italic</em></p>',
+        ),
         '**bold** and *italic*\n',
       );
     });
@@ -77,10 +75,7 @@ void main() {
     });
 
     test('converts horizontal rules', () {
-      expect(
-        HtmlToMarkdown.convert('<hr>'),
-        contains('---'),
-      );
+      expect(HtmlToMarkdown.convert('<hr>'), contains('---'));
     });
 
     test('handles nested elements', () {

@@ -2,17 +2,10 @@ import 'dart:io';
 
 import 'package:glue_harness/glue_harness.dart';
 
-enum ConfigInitStatus {
-  created,
-  overwritten,
-  exists,
-}
+enum ConfigInitStatus { created, overwritten, exists }
 
 class ConfigInitResult {
-  const ConfigInitResult({
-    required this.status,
-    required this.path,
-  });
+  const ConfigInitResult({required this.status, required this.path});
 
   final ConfigInitStatus status;
   final String path;
@@ -22,17 +15,14 @@ class ConfigInitResult {
       status == ConfigInitStatus.overwritten;
 
   String get message => switch (status) {
-        ConfigInitStatus.created => 'Created config template: $path',
-        ConfigInitStatus.overwritten => 'Overwrote config template: $path',
-        ConfigInitStatus.exists =>
-          'Config already exists: $path\nUse --force to overwrite it.',
-      };
+    ConfigInitStatus.created => 'Created config template: $path',
+    ConfigInitStatus.overwritten => 'Overwrote config template: $path',
+    ConfigInitStatus.exists =>
+      'Config already exists: $path\nUse --force to overwrite it.',
+  };
 }
 
-ConfigInitResult initUserConfig(
-  Environment environment, {
-  bool force = false,
-}) {
+ConfigInitResult initUserConfig(Environment environment, {bool force = false}) {
   final path = environment.configYamlPath;
   final file = File(path);
   final existed = file.existsSync();
@@ -48,10 +38,7 @@ ConfigInitResult initUserConfig(
 }
 
 class ConfigValidationResult {
-  const ConfigValidationResult({
-    required this.ok,
-    required this.message,
-  });
+  const ConfigValidationResult({required this.ok, required this.message});
 
   final bool ok;
   final String message;

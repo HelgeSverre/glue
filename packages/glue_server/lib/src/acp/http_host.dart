@@ -63,16 +63,13 @@ class AcpHttpHost {
 
   /// Bind the HTTP server. Returns the bound port. Pass [port]=0 to
   /// let the OS pick.
-  Future<int> start({
-    InternetAddress? address,
-    int port = 3000,
-  }) async {
+  Future<int> start({InternetAddress? address, int port = 3000}) async {
     final server = await HttpServer.bind(
       address ?? InternetAddress.loopbackIPv4,
       port,
     );
     _server = server;
-    unawaited(_acceptLoop(server));
+    _acceptLoop(server);
     return server.port;
   }
 
@@ -102,7 +99,7 @@ class AcpHttpHost {
       }
       try {
         final socket = await WebSocketTransformer.upgrade(request);
-        unawaited(_runConnection(socket));
+        _runConnection(socket);
       } on Object catch (e) {
         // Upgrade failed (likely a malformed request) — log and move on.
         stderr.writeln('AcpHttpHost: WS upgrade failed: $e');

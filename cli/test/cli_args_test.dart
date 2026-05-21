@@ -33,8 +33,9 @@ void main() {
     });
 
     test('--resume=<id> is normalized to resume-id', () {
-      final result =
-          parser.parse(normalizeCliArgs(['--resume=1772331272529-72']));
+      final result = parser.parse(
+        normalizeCliArgs(['--resume=1772331272529-72']),
+      );
       expect(result.flag('resume'), isFalse);
       expect(result.option('resume-id'), '1772331272529-72');
     });
@@ -53,7 +54,8 @@ void main() {
 
     test('prompt token after --resume is consumed as resume value', () {
       final result = parser.parse(
-          normalizeCliArgs(['--resume', 'sess-123', 'continue', 'work']));
+        normalizeCliArgs(['--resume', 'sess-123', 'continue', 'work']),
+      );
       expect(result.option('resume-id'), 'sess-123');
       expect(result.rest, ['continue', 'work']);
     });
@@ -134,12 +136,9 @@ void main() {
     });
 
     test('--resume session-id -p with prompt', () {
-      final result = parser.parse(normalizeCliArgs([
-        '--resume',
-        'sess-123',
-        '-p',
-        'continue work',
-      ]));
+      final result = parser.parse(
+        normalizeCliArgs(['--resume', 'sess-123', '-p', 'continue work']),
+      );
       expect(result.option('resume-id'), 'sess-123');
       expect(result.flag('print'), isTrue);
       expect(result.rest, ['continue work']);
@@ -173,10 +172,7 @@ void main() {
     });
 
     test('empty prompt with stdin uses stdin only', () {
-      final result = App.buildPrintPrompt(
-        prompt: '',
-        stdinContent: 'data',
-      );
+      final result = App.buildPrintPrompt(prompt: '', stdinContent: 'data');
       expect(result, '<stdin>\ndata</stdin>');
     });
 

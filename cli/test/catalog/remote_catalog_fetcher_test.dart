@@ -15,8 +15,11 @@ class _FakeClient extends http.BaseClient {
       handler(request);
 }
 
-http.StreamedResponse _resp(int status, String body,
-    {Map<String, String>? headers}) {
+http.StreamedResponse _resp(
+  int status,
+  String body, {
+  Map<String, String>? headers,
+}) {
   return http.StreamedResponse(
     Stream<List<int>>.value(body.codeUnits),
     status,
@@ -40,8 +43,9 @@ providers:
       final fetcher = RemoteCatalogFetcher(
         client: _FakeClient((req) async => _resp(200, payload)),
       );
-      final result =
-          await fetcher.fetch(Uri.parse('https://example.com/c.yaml'));
+      final result = await fetcher.fetch(
+        Uri.parse('https://example.com/c.yaml'),
+      );
 
       expect(result, isA<FetchUpdated>());
       final updated = result as FetchUpdated;
@@ -52,8 +56,9 @@ providers:
       final fetcher = RemoteCatalogFetcher(
         client: _FakeClient((req) async => _resp(304, '')),
       );
-      final result =
-          await fetcher.fetch(Uri.parse('https://example.com/c.yaml'));
+      final result = await fetcher.fetch(
+        Uri.parse('https://example.com/c.yaml'),
+      );
       expect(result, isA<FetchNotModified>());
     });
 
@@ -61,8 +66,9 @@ providers:
       final fetcher = RemoteCatalogFetcher(
         client: _FakeClient((req) async => _resp(503, 'boom')),
       );
-      final result =
-          await fetcher.fetch(Uri.parse('https://example.com/c.yaml'));
+      final result = await fetcher.fetch(
+        Uri.parse('https://example.com/c.yaml'),
+      );
       expect(result, isA<FetchFailed>());
       expect((result as FetchFailed).reason, contains('503'));
     });
@@ -73,8 +79,9 @@ providers:
           throw const SocketException('host unreachable');
         }),
       );
-      final result =
-          await fetcher.fetch(Uri.parse('https://example.com/c.yaml'));
+      final result = await fetcher.fetch(
+        Uri.parse('https://example.com/c.yaml'),
+      );
       expect(result, isA<FetchFailed>());
     });
 

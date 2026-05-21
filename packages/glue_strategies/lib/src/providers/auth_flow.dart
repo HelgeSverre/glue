@@ -69,8 +69,9 @@ class DeviceCodeFlow extends AuthFlow {
     DateTime? timestamp,
   }) {
     final now = timestamp ?? DateTime.now();
-    final expiresIn =
-        expiresAt.isAfter(now) ? expiresAt.difference(now) : Duration.zero;
+    final expiresIn = expiresAt.isAfter(now)
+        ? expiresAt.difference(now)
+        : Duration.zero;
     return DeviceCodeRequestedEvent(
       turnId: turnId,
       timestamp: now,
@@ -142,18 +143,18 @@ extension AuthFlowProgressTypedEvent on AuthFlowProgress {
     return switch (progress) {
       AuthFlowPolling() => null,
       AuthFlowSucceeded() => DeviceCodeResolvedEvent(
-          turnId: turnId,
-          timestamp: timestamp ?? DateTime.now(),
-          sequence: sequence,
-          success: true,
-        ),
+        turnId: turnId,
+        timestamp: timestamp ?? DateTime.now(),
+        sequence: sequence,
+        success: true,
+      ),
       AuthFlowFailed(:final reason) => DeviceCodeResolvedEvent(
-          turnId: turnId,
-          timestamp: timestamp ?? DateTime.now(),
-          sequence: sequence,
-          success: false,
-          errorMessage: reason,
-        ),
+        turnId: turnId,
+        timestamp: timestamp ?? DateTime.now(),
+        sequence: sequence,
+        success: false,
+        errorMessage: reason,
+      ),
     };
   }
 }

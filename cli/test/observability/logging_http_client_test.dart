@@ -30,8 +30,11 @@ class _FakeClient extends http.BaseClient {
   void close() {}
 }
 
-http.StreamedResponse _ok(String body,
-    {int status = 200, Map<String, String>? headers}) {
+http.StreamedResponse _ok(
+  String body, {
+  int status = 200,
+  Map<String, String>? headers,
+}) {
   return http.StreamedResponse(
     Stream.value(utf8.encode(body)),
     status,
@@ -49,32 +52,34 @@ void main() {
     obs.addSink(sink);
   });
 
-  test('emits one span per request with method + redacted url + headers',
-      () async {
-    final client = LoggingHttpClient(
-      inner: _FakeClient((_) async => _ok('{"ok":true}')),
-      observability: obs,
-      spanKind: 'search.test',
-    );
+  test(
+    'emits one span per request with method + redacted url + headers',
+    () async {
+      final client = LoggingHttpClient(
+        inner: _FakeClient((_) async => _ok('{"ok":true}')),
+        observability: obs,
+        spanKind: 'search.test',
+      );
 
-    final response = await client.get(
-      Uri.parse('https://example.com/x?api_key=secret&q=cats'),
-      headers: {'x-api-key': 'sk-xxx', 'Accept': 'application/json'},
-    );
-    expect(response.statusCode, 200);
+      final response = await client.get(
+        Uri.parse('https://example.com/x?api_key=secret&q=cats'),
+        headers: {'x-api-key': 'sk-xxx', 'Accept': 'application/json'},
+      );
+      expect(response.statusCode, 200);
 
-    expect(sink.spans, hasLength(1));
-    final span = sink.spans.single;
-    expect(span.kind, 'http.search.test');
-    expect(span.attributes['http.method'], 'GET');
-    expect(span.attributes['http.url'], contains('api_key=****'));
-    expect(span.attributes['http.url'], contains('q=cats'));
-    final headers = span.attributes['http.request_headers'] as Map;
-    expect(headers['x-api-key'], '****');
-    expect(headers['Accept'], 'application/json');
-    expect(span.attributes['http.status_code'], 200);
-    expect(span.attributes['http.response_body'], '{"ok":true}');
-  });
+      expect(sink.spans, hasLength(1));
+      final span = sink.spans.single;
+      expect(span.kind, 'http.search.test');
+      expect(span.attributes['http.method'], 'GET');
+      expect(span.attributes['http.url'], contains('api_key=****'));
+      expect(span.attributes['http.url'], contains('q=cats'));
+      final headers = span.attributes['http.request_headers'] as Map;
+      expect(headers['x-api-key'], '****');
+      expect(headers['Accept'], 'application/json');
+      expect(span.attributes['http.status_code'], 200);
+      expect(span.attributes['http.response_body'], '{"ok":true}');
+    },
+  );
 
   test('masks request body secrets', () async {
     final client = LoggingHttpClient(
@@ -130,11 +135,13 @@ void main() {
 
   test('ends span when streaming response stream errors', () async {
     final client = LoggingHttpClient(
-      inner: _FakeClient((_) async => http.StreamedResponse(
-            Stream<List<int>>.error(Exception('stream fail')),
-            200,
-            headers: {},
-          )),
+      inner: _FakeClient(
+        (_) async => http.StreamedResponse(
+          Stream<List<int>>.error(Exception('stream fail')),
+          200,
+          headers: {},
+        ),
+      ),
       observability: obs,
       spanKind: 'llm.test',
     );
@@ -162,8 +169,9 @@ void main() {
 
     await client.get(Uri.parse('https://api.anthropic.com/v1/messages'));
 
-    final httpSpan =
-        sink.spans.firstWhere((s) => s.name == 'http.llm.anthropic');
+    final httpSpan = sink.spans.firstWhere(
+      (s) => s.name == 'http.llm.anthropic',
+    );
     expect(httpSpan.traceId, root.traceId);
     expect(httpSpan.parentSpanId, root.spanId);
   });

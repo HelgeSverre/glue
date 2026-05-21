@@ -99,10 +99,7 @@ void main() {
       final router = SearchRouter([
         _MockProvider(name: 'a', isConfigured: false),
       ]);
-      expect(
-        () => router.search('test'),
-        throwsA(isA<StateError>()),
-      );
+      expect(() => router.search('test'), throwsA(isA<StateError>()));
     });
 
     test('uses unconfigured free fallback provider when available', () async {

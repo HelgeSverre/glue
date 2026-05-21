@@ -12,7 +12,8 @@ void main() {
 
     test('classifies username-prompt as auth', () {
       final r = classifyCloneFailure(
-          'fatal: could not read Username for \'https://github.com\'');
+        'fatal: could not read Username for \'https://github.com\'',
+      );
       expect(r.kind, BootstrapErrorKind.auth);
     });
 
@@ -43,8 +44,9 @@ void main() {
     });
 
     test('falls back to unknown when no pattern matches', () {
-      final r =
-          classifyCloneFailure('some weird git internal error 0xdeadbeef');
+      final r = classifyCloneFailure(
+        'some weird git internal error 0xdeadbeef',
+      );
       expect(r.kind, BootstrapErrorKind.unknown);
       expect(r.hint, isNull);
     });

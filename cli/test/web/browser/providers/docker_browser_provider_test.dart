@@ -46,31 +46,19 @@ void main() {
     });
 
     test('parseHostPort handles IPv4 format', () {
-      expect(
-        DockerBrowserProvider.parseHostPort('0.0.0.0:49152'),
-        49152,
-      );
+      expect(DockerBrowserProvider.parseHostPort('0.0.0.0:49152'), 49152);
     });
 
     test('parseHostPort handles IPv6 format', () {
-      expect(
-        DockerBrowserProvider.parseHostPort('[::]:49152'),
-        49152,
-      );
+      expect(DockerBrowserProvider.parseHostPort('[::]:49152'), 49152);
     });
 
     test('parseHostPort handles localhost format', () {
-      expect(
-        DockerBrowserProvider.parseHostPort('127.0.0.1:3000'),
-        3000,
-      );
+      expect(DockerBrowserProvider.parseHostPort('127.0.0.1:3000'), 3000);
     });
 
     test('parseHostPort returns null for garbage input', () {
-      expect(
-        DockerBrowserProvider.parseHostPort('no-port-here'),
-        isNull,
-      );
+      expect(DockerBrowserProvider.parseHostPort('no-port-here'), isNull);
     });
   });
 }

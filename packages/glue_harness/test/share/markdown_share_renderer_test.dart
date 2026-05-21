@@ -33,13 +33,15 @@ void main() {
 
       final output = renderer.render(
         meta: meta,
-        transcript: const ShareTranscript(entries: [
-          ShareEntry(
-            index: 1,
-            kind: ShareEntryKind.assistant,
-            text: 'Here is **bold** and `code`.',
-          ),
-        ]),
+        transcript: const ShareTranscript(
+          entries: [
+            ShareEntry(
+              index: 1,
+              kind: ShareEntryKind.assistant,
+              text: 'Here is **bold** and `code`.',
+            ),
+          ],
+        ),
         exportedAt: DateTime.parse('2026-04-22T04:20:00Z'),
       );
 
@@ -52,15 +54,17 @@ void main() {
 
       final output = renderer.render(
         meta: meta,
-        transcript: const ShareTranscript(entries: [
-          ShareEntry(
-            index: 2,
-            kind: ShareEntryKind.toolCall,
-            text: 'read_file',
-            toolName: 'read_file',
-            toolArguments: {'path': 'README.md'},
-          ),
-        ]),
+        transcript: const ShareTranscript(
+          entries: [
+            ShareEntry(
+              index: 2,
+              kind: ShareEntryKind.toolCall,
+              text: 'read_file',
+              toolName: 'read_file',
+              toolArguments: {'path': 'README.md'},
+            ),
+          ],
+        ),
         exportedAt: DateTime.parse('2026-04-22T04:20:00Z'),
       );
 
@@ -75,35 +79,37 @@ void main() {
 
       final output = renderer.render(
         meta: meta,
-        transcript: const ShareTranscript(entries: [
-          ShareEntry(
-            index: 5,
-            kind: ShareEntryKind.subagentGroup,
-            text: 'docs-research',
-            children: [
-              ShareEntry(
-                index: 6,
-                kind: ShareEntryKind.subagentMessage,
-                text: 'checking template packages',
-                nestingLevel: 1,
-              ),
-              ShareEntry(
-                index: 7,
-                kind: ShareEntryKind.subagentGroup,
-                text: 'html-safety-review',
-                nestingLevel: 1,
-                children: [
-                  ShareEntry(
-                    index: 8,
-                    kind: ShareEntryKind.subagentMessage,
-                    text: 'review raw HTML policy',
-                    nestingLevel: 2,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ]),
+        transcript: const ShareTranscript(
+          entries: [
+            ShareEntry(
+              index: 5,
+              kind: ShareEntryKind.subagentGroup,
+              text: 'docs-research',
+              children: [
+                ShareEntry(
+                  index: 6,
+                  kind: ShareEntryKind.subagentMessage,
+                  text: 'checking template packages',
+                  nestingLevel: 1,
+                ),
+                ShareEntry(
+                  index: 7,
+                  kind: ShareEntryKind.subagentGroup,
+                  text: 'html-safety-review',
+                  nestingLevel: 1,
+                  children: [
+                    ShareEntry(
+                      index: 8,
+                      kind: ShareEntryKind.subagentMessage,
+                      text: 'review raw HTML policy',
+                      nestingLevel: 2,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
         exportedAt: DateTime.parse('2026-04-22T04:20:00Z'),
       );
 

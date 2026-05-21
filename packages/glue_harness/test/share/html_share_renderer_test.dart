@@ -35,13 +35,15 @@ void main() {
 
       final output = renderer.render(
         meta: meta,
-        transcript: const ShareTranscript(entries: [
-          ShareEntry(
-            index: 1,
-            kind: ShareEntryKind.assistant,
-            text: 'Here is **bold** and `code`.',
-          ),
-        ]),
+        transcript: const ShareTranscript(
+          entries: [
+            ShareEntry(
+              index: 1,
+              kind: ShareEntryKind.assistant,
+              text: 'Here is **bold** and `code`.',
+            ),
+          ],
+        ),
         exportedAt: DateTime.parse('2026-04-22T04:20:00Z'),
       );
 
@@ -56,13 +58,15 @@ void main() {
 
       final output = renderer.render(
         meta: meta,
-        transcript: const ShareTranscript(entries: [
-          ShareEntry(
-            index: 1,
-            kind: ShareEntryKind.assistant,
-            text: 'Before <script>alert(1)</script> **after**',
-          ),
-        ]),
+        transcript: const ShareTranscript(
+          entries: [
+            ShareEntry(
+              index: 1,
+              kind: ShareEntryKind.assistant,
+              text: 'Before <script>alert(1)</script> **after**',
+            ),
+          ],
+        ),
         exportedAt: DateTime.parse('2026-04-22T04:20:00Z'),
       );
 
@@ -76,20 +80,22 @@ void main() {
 
       final output = renderer.render(
         meta: meta,
-        transcript: const ShareTranscript(entries: [
-          ShareEntry(
-            index: 2,
-            kind: ShareEntryKind.toolCall,
-            text: 'read_file',
-            toolName: 'read_file',
-            toolArguments: {'path': 'README.md'},
-          ),
-          ShareEntry(
-            index: 3,
-            kind: ShareEntryKind.toolResult,
-            text: 'contents',
-          ),
-        ]),
+        transcript: const ShareTranscript(
+          entries: [
+            ShareEntry(
+              index: 2,
+              kind: ShareEntryKind.toolCall,
+              text: 'read_file',
+              toolName: 'read_file',
+              toolArguments: {'path': 'README.md'},
+            ),
+            ShareEntry(
+              index: 3,
+              kind: ShareEntryKind.toolResult,
+              text: 'contents',
+            ),
+          ],
+        ),
         exportedAt: DateTime.parse('2026-04-22T04:20:00Z'),
       );
 
@@ -105,13 +111,15 @@ void main() {
 
       final output = renderer.render(
         meta: meta,
-        transcript: const ShareTranscript(entries: [
-          ShareEntry(
-            index: 3,
-            kind: ShareEntryKind.toolResult,
-            text: '<div>contents</div>',
-          ),
-        ]),
+        transcript: const ShareTranscript(
+          entries: [
+            ShareEntry(
+              index: 3,
+              kind: ShareEntryKind.toolResult,
+              text: '<div>contents</div>',
+            ),
+          ],
+        ),
         exportedAt: DateTime.parse('2026-04-22T04:20:00Z'),
       );
 
@@ -131,35 +139,37 @@ void main() {
 
       final output = renderer.render(
         meta: meta,
-        transcript: const ShareTranscript(entries: [
-          ShareEntry(
-            index: 5,
-            kind: ShareEntryKind.subagentGroup,
-            text: 'docs-research',
-            children: [
-              ShareEntry(
-                index: 6,
-                kind: ShareEntryKind.subagentMessage,
-                text: 'checking template packages',
-                nestingLevel: 1,
-              ),
-              ShareEntry(
-                index: 7,
-                kind: ShareEntryKind.subagentGroup,
-                text: 'html-safety-review',
-                nestingLevel: 1,
-                children: [
-                  ShareEntry(
-                    index: 8,
-                    kind: ShareEntryKind.subagentMessage,
-                    text: 'review raw HTML policy',
-                    nestingLevel: 2,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ]),
+        transcript: const ShareTranscript(
+          entries: [
+            ShareEntry(
+              index: 5,
+              kind: ShareEntryKind.subagentGroup,
+              text: 'docs-research',
+              children: [
+                ShareEntry(
+                  index: 6,
+                  kind: ShareEntryKind.subagentMessage,
+                  text: 'checking template packages',
+                  nestingLevel: 1,
+                ),
+                ShareEntry(
+                  index: 7,
+                  kind: ShareEntryKind.subagentGroup,
+                  text: 'html-safety-review',
+                  nestingLevel: 1,
+                  children: [
+                    ShareEntry(
+                      index: 8,
+                      kind: ShareEntryKind.subagentMessage,
+                      text: 'review raw HTML policy',
+                      nestingLevel: 2,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
         exportedAt: DateTime.parse('2026-04-22T04:20:00Z'),
       );
 
@@ -177,13 +187,15 @@ void main() {
 
       final output = renderer.render(
         meta: meta,
-        transcript: ShareTranscript(entries: [
-          ShareEntry(
-            index: 1,
-            kind: ShareEntryKind.toolResult,
-            text: shortOutput,
-          ),
-        ]),
+        transcript: ShareTranscript(
+          entries: [
+            ShareEntry(
+              index: 1,
+              kind: ShareEntryKind.toolResult,
+              text: shortOutput,
+            ),
+          ],
+        ),
         exportedAt: DateTime.parse('2026-04-22T04:20:00Z'),
       );
 
@@ -198,13 +210,15 @@ void main() {
 
       final output = renderer.render(
         meta: meta,
-        transcript: ShareTranscript(entries: [
-          ShareEntry(
-            index: 1,
-            kind: ShareEntryKind.toolResult,
-            text: longOutput,
-          ),
-        ]),
+        transcript: ShareTranscript(
+          entries: [
+            ShareEntry(
+              index: 1,
+              kind: ShareEntryKind.toolResult,
+              text: longOutput,
+            ),
+          ],
+        ),
         exportedAt: DateTime.parse('2026-04-22T04:20:00Z'),
       );
 
@@ -215,24 +229,28 @@ void main() {
       expect(output, contains('line 39'));
     });
 
-    test('collapseToolOutputAfterLines=0 disables the collapse for any length',
-        () {
-      final renderer = ShareHtmlRenderer(collapseToolOutputAfterLines: 0);
-      final longOutput = List.generate(200, (i) => 'line $i').join('\n');
+    test(
+      'collapseToolOutputAfterLines=0 disables the collapse for any length',
+      () {
+        final renderer = ShareHtmlRenderer(collapseToolOutputAfterLines: 0);
+        final longOutput = List.generate(200, (i) => 'line $i').join('\n');
 
-      final output = renderer.render(
-        meta: meta,
-        transcript: ShareTranscript(entries: [
-          ShareEntry(
-            index: 1,
-            kind: ShareEntryKind.toolResult,
-            text: longOutput,
+        final output = renderer.render(
+          meta: meta,
+          transcript: ShareTranscript(
+            entries: [
+              ShareEntry(
+                index: 1,
+                kind: ShareEntryKind.toolResult,
+                text: longOutput,
+              ),
+            ],
           ),
-        ]),
-        exportedAt: DateTime.parse('2026-04-22T04:20:00Z'),
-      );
+          exportedAt: DateTime.parse('2026-04-22T04:20:00Z'),
+        );
 
-      expect(output, isNot(contains('<details')));
-    });
+        expect(output, isNot(contains('<details')));
+      },
+    );
   });
 }

@@ -55,7 +55,8 @@ class ServiceLocator {
     // container naming) at startup. The real session store is created
     // lazily by SessionManager either when resuming an existing session
     // or when the user sends their first message — see BUG-002.
-    final startupSessionId = '${DateTime.now().millisecondsSinceEpoch}-'
+    final startupSessionId =
+        '${DateTime.now().millisecondsSinceEpoch}-'
         '${DateTime.now().microsecond.toRadixString(36)}';
 
     obs.addSink(FileSink(logsDir: resolvedEnv.logsDir));
@@ -114,55 +115,56 @@ class ServiceLocator {
 
     SearchRouter? searchRouter;
     SearchRouter getSearchRouter() => searchRouter ??= SearchRouter([
-          BraveSearchProvider(
-            apiKey: config.webConfig.search.braveApiKey,
-            client: mkHttp('search.brave'),
-          ),
-          TavilySearchProvider(
-            apiKey: config.webConfig.search.tavilyApiKey,
-            client: mkHttp('search.tavily'),
-          ),
-          FirecrawlSearchProvider(
-            apiKey: config.webConfig.search.firecrawlApiKey,
-            baseUrl: config.webConfig.search.firecrawlBaseUrl ??
-                'https://api.firecrawl.dev',
-            client: mkHttp('search.firecrawl'),
-          ),
-          DuckDuckGoSearchProvider(client: mkHttp('search.duckduckgo')),
-        ]);
+      BraveSearchProvider(
+        apiKey: config.webConfig.search.braveApiKey,
+        client: mkHttp('search.brave'),
+      ),
+      TavilySearchProvider(
+        apiKey: config.webConfig.search.tavilyApiKey,
+        client: mkHttp('search.tavily'),
+      ),
+      FirecrawlSearchProvider(
+        apiKey: config.webConfig.search.firecrawlApiKey,
+        baseUrl:
+            config.webConfig.search.firecrawlBaseUrl ??
+            'https://api.firecrawl.dev',
+        client: mkHttp('search.firecrawl'),
+      ),
+      DuckDuckGoSearchProvider(client: mkHttp('search.duckduckgo')),
+    ]);
 
     BrowserManager? browserManager;
     BrowserManager getBrowserManager() => browserManager ??= BrowserManager(
-          provider: switch (config.webConfig.browser.backend) {
-            BrowserBackend.local => LocalProvider(config.webConfig.browser),
-            BrowserBackend.docker => DockerBrowserProvider(
-                image: config.webConfig.browser.dockerImage,
-                port: config.webConfig.browser.dockerPort,
-                sessionId: startupSessionId,
-              ),
-            BrowserBackend.steel => SteelProvider(
-                apiKey: config.webConfig.browser.steelApiKey,
-                client: mkHttp('browser.steel'),
-              ),
-            BrowserBackend.browserbase => BrowserbaseProvider(
-                apiKey: config.webConfig.browser.browserbaseApiKey,
-                projectId: config.webConfig.browser.browserbaseProjectId,
-                client: mkHttp('browser.browserbase'),
-              ),
-            BrowserBackend.browserless => BrowserlessProvider(
-                apiKey: config.webConfig.browser.browserlessApiKey,
-                baseUrl: config.webConfig.browser.browserlessBaseUrl ?? '',
-              ),
-            BrowserBackend.anchor => AnchorProvider(
-                apiKey: config.webConfig.browser.anchorApiKey,
-                client: mkHttp('browser.anchor'),
-              ),
-            BrowserBackend.hyperbrowser => HyperbrowserProvider(
-                apiKey: config.webConfig.browser.hyperbrowserApiKey,
-                client: mkHttp('browser.hyperbrowser'),
-              ),
-          },
-        );
+      provider: switch (config.webConfig.browser.backend) {
+        BrowserBackend.local => LocalProvider(config.webConfig.browser),
+        BrowserBackend.docker => DockerBrowserProvider(
+          image: config.webConfig.browser.dockerImage,
+          port: config.webConfig.browser.dockerPort,
+          sessionId: startupSessionId,
+        ),
+        BrowserBackend.steel => SteelProvider(
+          apiKey: config.webConfig.browser.steelApiKey,
+          client: mkHttp('browser.steel'),
+        ),
+        BrowserBackend.browserbase => BrowserbaseProvider(
+          apiKey: config.webConfig.browser.browserbaseApiKey,
+          projectId: config.webConfig.browser.browserbaseProjectId,
+          client: mkHttp('browser.browserbase'),
+        ),
+        BrowserBackend.browserless => BrowserlessProvider(
+          apiKey: config.webConfig.browser.browserlessApiKey,
+          baseUrl: config.webConfig.browser.browserlessBaseUrl ?? '',
+        ),
+        BrowserBackend.anchor => AnchorProvider(
+          apiKey: config.webConfig.browser.anchorApiKey,
+          client: mkHttp('browser.anchor'),
+        ),
+        BrowserBackend.hyperbrowser => HyperbrowserProvider(
+          apiKey: config.webConfig.browser.hyperbrowserApiKey,
+          client: mkHttp('browser.hyperbrowser'),
+        ),
+      },
+    );
 
     final tools = <String, Tool>{
       'read_file': ReadFileTool(workspace),
@@ -187,6 +189,29 @@ class ServiceLocator {
       modelId: config.activeModel.modelId,
       obs: obs,
     );
+
+    // Boot-time tool-capability preflight. Catalog is already loaded —
+    // a single Set lookup, no I/O. When the active model is catalogued
+    // and explicitly lacks the `tools` capability, start the agent in
+    // chat-only mode and queue a one-shot notice so the user knows.
+    // Uncatalogued models fall through to the runtime catch in
+    // AgentCore (ToolsNotSupportedException → same end state).
+    final activeModelDef = config
+        .catalogData
+        .providers[config.activeModel.providerId]
+        ?.models[config.activeModel.modelId];
+    if (activeModelDef != null &&
+        activeModelDef.capabilities.isNotEmpty &&
+        !activeModelDef.capabilities.contains('tools')) {
+      agent.toolFilter = (_) => false;
+      agent.setStartupNotice(
+        'Model "${config.activeModel}" does not support tool calling — '
+        'starting in chat-only mode for this session. '
+        'Use /model to switch to a tool-capable model.',
+        kind: 'warning',
+      );
+    }
+
     final manager = AgentManager(
       tools: tools,
       llmFactory: llmFactory,
@@ -217,14 +242,10 @@ class ServiceLocator {
             tools[tool.name] = tool;
           }
         case McpPoolServerDisconnectedEvent(:final serverId):
-          tools.removeWhere(
-            (_, t) => t is McpTool && t.serverId == serverId,
-          );
+          tools.removeWhere((_, t) => t is McpTool && t.serverId == serverId);
         case McpPoolToolListChangedEvent(:final serverId):
           final server = mcpPool.server(serverId);
-          tools.removeWhere(
-            (_, t) => t is McpTool && t.serverId == serverId,
-          );
+          tools.removeWhere((_, t) => t is McpTool && t.serverId == serverId);
           if (server != null) {
             for (final tool in server.tools) {
               tools[tool.name] = tool;

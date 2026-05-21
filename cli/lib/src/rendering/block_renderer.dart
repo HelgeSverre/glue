@@ -93,8 +93,10 @@ class BlockRenderer {
     final header = ' ${'▸ Thinking'.styled.dim.gray}';
     final md = MarkdownRenderer(_inner - 2);
     final body = md.render(text);
-    final indented =
-        body.split('\n').map((l) => '   ${l.styled.dim.italic}').join('\n');
+    final indented = body
+        .split('\n')
+        .map((l) => '   ${l.styled.dim.italic}')
+        .join('\n');
     return '$header\n$indented';
   }
 
@@ -102,12 +104,14 @@ class BlockRenderer {
   String renderToolCall(String name, Map<String, dynamic>? args) {
     final header = ' ${'▶ Tool: $name'.styled.bold.yellow}';
     if (args == null || args.isEmpty) return header;
-    final argsStr = args.entries.map((e) {
-      final val = '${e.value}';
-      final display = ansiTruncate(val, _inner - 6);
-      final rendered = _linkValue(e.key, val, display);
-      return '${e.key}: $rendered';
-    }).join(', ');
+    final argsStr = args.entries
+        .map((e) {
+          final val = '${e.value}';
+          final display = ansiTruncate(val, _inner - 6);
+          final rendered = _linkValue(e.key, val, display);
+          return '${e.key}: $rendered';
+        })
+        .join(', ');
     return '$header\n    ${argsStr.styled.gray}';
   }
 
@@ -134,11 +138,13 @@ class BlockRenderer {
     };
     final header = ' \x1b[1m\x1b[33m▶ Tool: ${state.name}\x1b[0m$suffix';
     if (state.args == null || state.args!.isEmpty) return header;
-    final argsStr = state.args!.entries.map((e) {
-      final raw = '${e.value}';
-      final display = ansiTruncate(raw, _inner - 6);
-      return '${e.key}: ${_linkValue(e.key, raw, display)}';
-    }).join(', ');
+    final argsStr = state.args!.entries
+        .map((e) {
+          final raw = '${e.value}';
+          final display = ansiTruncate(raw, _inner - 6);
+          return '${e.key}: ${_linkValue(e.key, raw, display)}';
+        })
+        .join(', ');
     return '$header\n    \x1b[90m$argsStr\x1b[0m';
   }
 
@@ -166,11 +172,17 @@ class BlockRenderer {
   /// Render an error block.
   String renderError(String message) {
     final header = ' ${'✗ Error'.styled.bold.red}';
-    final body = wrapIndented(linkifyUrls(message), _inner,
-        firstPrefix: '    ', nextPrefix: '    ');
+    final body = wrapIndented(
+      linkifyUrls(message),
+      _inner,
+      firstPrefix: '    ',
+      nextPrefix: '    ',
+    );
     // Apply red styling to each line
-    final colored =
-        body.split('\n').map((l) => l.styled.red.toString()).join('\n');
+    final colored = body
+        .split('\n')
+        .map((l) => l.styled.red.toString())
+        .join('\n');
     return '$header\n$colored';
   }
 

@@ -23,36 +23,33 @@ class WebSearchTool extends Tool {
 
   @override
   List<ToolParameter> get parameters => const [
-        ToolParameter(
-          name: 'query',
-          type: 'string',
-          description: 'The search query.',
-        ),
-        ToolParameter(
-          name: 'max_results',
-          type: 'integer',
-          description: 'Maximum number of results to return (default: 5).',
-          required: false,
-        ),
-        ToolParameter(
-          name: 'provider',
-          type: 'string',
-          description:
-              'Search provider to use: "brave", "tavily", "firecrawl", or '
-              '"duckduckgo". Defaults to auto-detect from configured providers '
-              'with DuckDuckGo as a free fallback.',
-          required: false,
-        ),
-      ];
+    ToolParameter(
+      name: 'query',
+      type: 'string',
+      description: 'The search query.',
+    ),
+    ToolParameter(
+      name: 'max_results',
+      type: 'integer',
+      description: 'Maximum number of results to return (default: 5).',
+      required: false,
+    ),
+    ToolParameter(
+      name: 'provider',
+      type: 'string',
+      description:
+          'Search provider to use: "brave", "tavily", "firecrawl", or '
+          '"duckduckgo". Defaults to auto-detect from configured providers '
+          'with DuckDuckGo as a free fallback.',
+      required: false,
+    ),
+  ];
 
   @override
   Future<ToolResult> execute(Map<String, dynamic> args) async {
     final query = args['query'];
     if (query is! String || query.isEmpty) {
-      return ToolResult(
-        success: false,
-        content: 'Error: no query provided',
-      );
+      return ToolResult(success: false, content: 'Error: no query provided');
     }
 
     final maxResults = (args['max_results'] as num?)?.toInt() ?? 5;
@@ -72,7 +69,7 @@ class WebSearchTool extends Tool {
         metadata: {
           'query': query,
           'max_results': maxResults,
-          if (providerName != null) 'provider': providerName,
+          'provider': ?providerName,
         },
       );
     } catch (e) {
@@ -92,12 +89,14 @@ class WebSearchTool extends Tool {
     final pending = _pendingRouter;
     if (pending != null) return pending;
 
-    final future = Future.sync(_routerProvider).then((value) {
-      _router = value;
-      return value;
-    }).whenComplete(() {
-      _pendingRouter = null;
-    });
+    final future = Future.sync(_routerProvider)
+        .then((value) {
+          _router = value;
+          return value;
+        })
+        .whenComplete(() {
+          _pendingRouter = null;
+        });
     _pendingRouter = future;
     return future;
   }

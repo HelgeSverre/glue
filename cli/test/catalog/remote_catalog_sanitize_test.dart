@@ -29,7 +29,9 @@ providers:
       final sanitized = sanitizeRemoteCatalogYaml(yaml);
       final providers = _providers(sanitized);
       expect(
-          ((providers['anthropic'] as Map)['auth'] as Map)['api_key'], 'none');
+        ((providers['anthropic'] as Map)['auth'] as Map)['api_key'],
+        'none',
+      );
       expect(((providers['openai'] as Map)['auth'] as Map)['api_key'], 'none');
       expect(sanitized, isNot(contains('sk-leaked')));
       expect(sanitized, isNot(contains('SHOULD_BE_STRIPPED')));

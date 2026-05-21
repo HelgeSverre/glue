@@ -19,13 +19,14 @@ void main() {
   group('JobStatus', () {
     test('enum values exist', () {
       expect(
-          JobStatus.values,
-          containsAll([
-            JobStatus.running,
-            JobStatus.exited,
-            JobStatus.failed,
-            JobStatus.killed,
-          ]));
+        JobStatus.values,
+        containsAll([
+          JobStatus.running,
+          JobStatus.exited,
+          JobStatus.failed,
+          JobStatus.killed,
+        ]),
+      );
     });
   });
 
@@ -57,10 +58,7 @@ void main() {
       sink = _RecordingSink();
       final obs = Observability(debugController: DebugController());
       obs.addSink(sink);
-      manager = ShellJobManager(
-        HostExecutor(const ShellConfig()),
-        obs: obs,
-      );
+      manager = ShellJobManager(HostExecutor(const ShellConfig()), obs: obs);
     });
 
     tearDown(() async {
@@ -123,8 +121,10 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 100));
       await manager.kill(job.id);
       await Future.delayed(const Duration(milliseconds: 500));
-      expect(job.status,
-          anyOf(JobStatus.killed, JobStatus.exited, JobStatus.failed));
+      expect(
+        job.status,
+        anyOf(JobStatus.killed, JobStatus.exited, JobStatus.failed),
+      );
       final span = sink.spans.lastWhere((span) => span.name == 'shell.job');
       expect(span.attributes['cancelled'], isTrue);
       expect(span.attributes['shell.job.status'], JobStatus.killed.name);

@@ -76,8 +76,9 @@ void main() {
       expect(persisted.last.containsKey('error'), isFalse);
 
       // All inner events carry the same subagent_id and a serialised inner.
-      final innerEvents =
-          persisted.where((e) => e['type'] == 'subagent_event').toList();
+      final innerEvents = persisted
+          .where((e) => e['type'] == 'subagent_event')
+          .toList();
       expect(innerEvents, isNotEmpty);
       for (final e in innerEvents) {
         expect(e['subagent_id'], subagentId);
@@ -98,12 +99,11 @@ void main() {
       expect(ids, hasLength(3));
     });
 
-    test(
-        'rolls subagent token usage into manager.subagentStats and persists '
+    test('rolls subagent token usage into manager.subagentStats and persists '
         'a subagent_usage event', () async {
       final persisted = <Map<String, dynamic>>[];
-      manager.onPersistEvent =
-          (type, data) => persisted.add({'type': type, ...data});
+      manager.onPersistEvent = (type, data) =>
+          persisted.add({'type': type, ...data});
       final liveCallbacks = <UsageStats>[];
       manager.onSubagentUsage = liveCallbacks.add;
 
@@ -115,8 +115,9 @@ void main() {
       expect(manager.subagentStats.turnCount, 1);
 
       // Persistence: a subagent_usage row carries the same totals.
-      final usageRow =
-          persisted.singleWhere((e) => e['type'] == 'subagent_usage');
+      final usageRow = persisted.singleWhere(
+        (e) => e['type'] == 'subagent_usage',
+      );
       expect(usageRow['input_tokens'], 5);
       expect(usageRow['output_tokens'], 5);
       expect(usageRow['turn_count'], 1);
@@ -133,36 +134,45 @@ void main() {
       expect(manager.subagentStats.outputTokens, 15);
     });
 
-    test('coalesces streaming text deltas into a single assistant_message row',
-        () async {
-      // Without buffering, every TextDelta would be persisted as its own
-      // `subagent_event` row, bloating the session log and the rendered
-      // share transcript by ~28× on real sessions. The fix coalesces a
-      // run of deltas into one row whose text is the concatenation.
-      final coalescingManager = AgentManager(
-        tools: {'read_file': ReadFileTool(testWorkspace())},
-        llmFactory: _MultiDeltaFactory(),
-        config: testConfig(env: {'ANTHROPIC_API_KEY': 'sk-test'}),
-        systemPrompt: 'You are a test agent.',
-      );
-      final persisted = <Map<String, dynamic>>[];
-      coalescingManager.onPersistEvent =
-          (type, data) => persisted.add({'type': type, ...data});
+    test(
+      'coalesces streaming text deltas into a single assistant_message row',
+      () async {
+        // Without buffering, every TextDelta would be persisted as its own
+        // `subagent_event` row, bloating the session log and the rendered
+        // share transcript by ~28× on real sessions. The fix coalesces a
+        // run of deltas into one row whose text is the concatenation.
+        final coalescingManager = AgentManager(
+          tools: {'read_file': ReadFileTool(testWorkspace())},
+          llmFactory: _MultiDeltaFactory(),
+          config: testConfig(env: {'ANTHROPIC_API_KEY': 'sk-test'}),
+          systemPrompt: 'You are a test agent.',
+        );
+        final persisted = <Map<String, dynamic>>[];
+        coalescingManager.onPersistEvent = (type, data) =>
+            persisted.add({'type': type, ...data});
 
-      await coalescingManager.spawnSubagent(task: 'streaming test');
+        await coalescingManager.spawnSubagent(task: 'streaming test');
 
-      final assistantRows = persisted
-          .where((e) =>
-              e['type'] == 'subagent_event' &&
-              (e['inner'] as Map)['type'] == 'assistant_message')
-          .toList();
+        final assistantRows = persisted
+            .where(
+              (e) =>
+                  e['type'] == 'subagent_event' &&
+                  (e['inner'] as Map)['type'] == 'assistant_message',
+            )
+            .toList();
 
-      expect(assistantRows, hasLength(1),
+        expect(
+          assistantRows,
+          hasLength(1),
           reason:
-              'three TextDelta chunks should coalesce into one persisted row');
-      expect((assistantRows.single['inner'] as Map)['text'],
-          'Hello streaming world.');
-    });
+              'three TextDelta chunks should coalesce into one persisted row',
+        );
+        expect(
+          (assistantRows.single['inner'] as Map)['text'],
+          'Hello streaming world.',
+        );
+      },
+    );
 
     test('always emits subagent_completed even when the LLM errors', () async {
       // AgentRunner internally captures provider errors and returns a string
@@ -175,8 +185,8 @@ void main() {
         systemPrompt: 'unused',
       );
       final persisted = <Map<String, dynamic>>[];
-      failingManager.onPersistEvent =
-          (type, data) => persisted.add({'type': type, ...data});
+      failingManager.onPersistEvent = (type, data) =>
+          persisted.add({'type': type, ...data});
 
       await failingManager.spawnSubagent(task: 'will fail');
 

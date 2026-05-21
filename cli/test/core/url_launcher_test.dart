@@ -33,7 +33,7 @@ void main() {
     test('returns false when the runner exits non-zero', () async {
       final ok = await openInBrowser(
         'https://example.com',
-        runner: (_, __) async => ProcessResult(0, 1, '', 'not found'),
+        runner: (_, _) async => ProcessResult(0, 1, '', 'not found'),
       );
       expect(ok, isFalse);
     });
@@ -41,7 +41,7 @@ void main() {
     test('returns false when the runner throws', () async {
       final ok = await openInBrowser(
         'https://example.com',
-        runner: (_, __) async => throw const ProcessException('x', []),
+        runner: (_, _) async => throw const ProcessException('x', []),
       );
       expect(ok, isFalse);
     });
@@ -72,7 +72,7 @@ void main() {
         var called = false;
         final ok = await openInBrowser(
           'file:///etc/passwd',
-          runner: (_, __) async {
+          runner: (_, _) async {
             called = true;
             return ProcessResult(0, 0, '', '');
           },
@@ -84,7 +84,7 @@ void main() {
       test('rejects javascript: URLs', () async {
         final ok = await openInBrowser(
           'javascript:alert(1)',
-          runner: (_, __) async => ProcessResult(0, 0, '', ''),
+          runner: (_, _) async => ProcessResult(0, 0, '', ''),
         );
         expect(ok, isFalse);
       });
@@ -100,7 +100,7 @@ void main() {
         ]) {
           final ok = await openInBrowser(
             url,
-            runner: (_, __) async => ProcessResult(0, 0, '', ''),
+            runner: (_, _) async => ProcessResult(0, 0, '', ''),
           );
           expect(ok, isFalse, reason: 'should reject: $url');
         }
@@ -110,7 +110,7 @@ void main() {
         for (final url in ['', 'not a url', 'ftp://example.com']) {
           final ok = await openInBrowser(
             url,
-            runner: (_, __) async => ProcessResult(0, 0, '', ''),
+            runner: (_, _) async => ProcessResult(0, 0, '', ''),
           );
           expect(ok, isFalse, reason: 'should reject: "$url"');
         }
@@ -120,7 +120,7 @@ void main() {
         var called = false;
         final ok = await openInBrowser(
           'https://github.com/login/device?user_code=ABCD-1234',
-          runner: (_, __) async {
+          runner: (_, _) async {
             called = true;
             return ProcessResult(0, 0, '', '');
           },
@@ -163,7 +163,7 @@ void main() {
       final ok = await openLocalFileInBrowser(
         '/tmp/missing-share.html',
         fileExists: (_) => false,
-        runner: (_, __) async => ProcessResult(0, 0, '', ''),
+        runner: (_, _) async => ProcessResult(0, 0, '', ''),
       );
       expect(ok, isFalse);
     });
@@ -172,7 +172,7 @@ void main() {
       final ok = await openLocalFileInBrowser(
         '/tmp/share.md',
         fileExists: (_) => true,
-        runner: (_, __) async => ProcessResult(0, 0, '', ''),
+        runner: (_, _) async => ProcessResult(0, 0, '', ''),
       );
       expect(ok, isFalse);
     });

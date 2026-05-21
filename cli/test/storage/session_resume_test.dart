@@ -35,8 +35,12 @@ void main() {
     });
 
     test('loads session title from meta.json', () {
-      final dir =
-          _createSession(tmpDir.path, 'sess-t', DateTime.now(), 'model');
+      final dir = _createSession(
+        tmpDir.path,
+        'sess-t',
+        DateTime.now(),
+        'model',
+      );
       final metaFile = File(p.join(dir, 'meta.json'));
       final meta =
           jsonDecode(metaFile.readAsStringSync()) as Map<String, dynamic>;
@@ -62,8 +66,12 @@ void main() {
 
   group('SessionStore.loadConversation', () {
     test('loads user and assistant events', () {
-      final sessDir =
-          _createSession(tmpDir.path, 'sess-1', DateTime.now(), 'model');
+      final sessDir = _createSession(
+        tmpDir.path,
+        'sess-1',
+        DateTime.now(),
+        'model',
+      );
       _appendEvent(sessDir, 'user_message', {'text': 'hello'});
       _appendEvent(sessDir, 'assistant_message', {'text': 'hi there'});
 

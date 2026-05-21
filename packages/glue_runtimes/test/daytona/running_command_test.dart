@@ -139,8 +139,11 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 20));
       await cmd.kill(force: true);
       expect(deleted.any((p) => p.endsWith('/process/session/bg-1')), isTrue);
-      expect(deleted.any((p) => p.endsWith('/sandbox/sb-1')), isTrue,
-          reason: 'force-kill must stop the sandbox to honour the contract');
+      expect(
+        deleted.any((p) => p.endsWith('/sandbox/sb-1')),
+        isTrue,
+        reason: 'force-kill must stop the sandbox to honour the contract',
+      );
     });
   });
 }

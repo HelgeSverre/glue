@@ -92,8 +92,8 @@ class McpPoolToolListChangedEvent extends McpPoolEvent {
 /// Builds an [McpClient] for a given spec. Injectable so tests can use
 /// in-memory transports without spawning real subprocesses or hitting
 /// the network.
-typedef McpClientFactory = Future<McpClient> Function(
-    McpServerSpec spec, CredentialStore credentials);
+typedef McpClientFactory =
+    Future<McpClient> Function(McpServerSpec spec, CredentialStore credentials);
 
 /// Default factory — spawns real transports for each spec type.
 Future<McpClient> defaultMcpClientFactory(
@@ -102,28 +102,28 @@ Future<McpClient> defaultMcpClientFactory(
 ) async {
   return switch (spec) {
     McpStdioServerSpec() => () async {
-        final transport = await McpStdioTransport.spawn(
-          command: spec.command,
-          args: spec.args,
-          extraEnv: spec.env,
-          workingDirectory: spec.workingDirectory,
-        );
-        return McpClient(transport: transport);
-      }(),
+      final transport = await McpStdioTransport.spawn(
+        command: spec.command,
+        args: spec.args,
+        extraEnv: spec.env,
+        workingDirectory: spec.workingDirectory,
+      );
+      return McpClient(transport: transport);
+    }(),
     McpHttpServerSpec(:final url, :final auth) => () async {
-        final transport = McpHttpTransport(
-          endpoint: url,
-          bearerToken: resolveMcpBearerToken(auth, credentials, spec.id),
-        );
-        return McpClient(transport: transport);
-      }(),
+      final transport = McpHttpTransport(
+        endpoint: url,
+        bearerToken: resolveMcpBearerToken(auth, credentials, spec.id),
+      );
+      return McpClient(transport: transport);
+    }(),
     McpWebSocketServerSpec(:final url, :final auth) => () async {
-        final transport = await connectMcpWebSocket(
-          url: url,
-          bearerToken: resolveMcpBearerToken(auth, credentials, spec.id),
-        );
-        return McpClient(transport: transport);
-      }(),
+      final transport = await connectMcpWebSocket(
+        url: url,
+        bearerToken: resolveMcpBearerToken(auth, credentials, spec.id),
+      );
+      return McpClient(transport: transport);
+    }(),
   };
 }
 
@@ -155,8 +155,8 @@ class McpClientPool {
     required this.credentials,
     Set<String>? reservedToolNames,
     McpClientFactory? clientFactory,
-  })  : _reservedToolNames = reservedToolNames ?? const {},
-        _clientFactory = clientFactory ?? defaultMcpClientFactory {
+  }) : _reservedToolNames = reservedToolNames ?? const {},
+       _clientFactory = clientFactory ?? defaultMcpClientFactory {
     for (final spec in config.servers) {
       _servers[spec.id] = McpServerSnapshot(
         spec: spec,
@@ -211,7 +211,7 @@ class McpClientPool {
   void connectAll() {
     for (final s in _servers.values) {
       if (!s.enabled) continue;
-      unawaited(_connect(s));
+      _connect(s);
     }
   }
 
@@ -286,37 +286,43 @@ class McpClientPool {
       );
       _attempts[s.id] = 0;
 
-      _events.add(McpPoolServerConnectedEvent(
-        serverId: s.id,
-        serverName: init.serverInfo.name,
-        serverVersion: init.serverInfo.version,
-        toolNames: tools.map((t) => t.name).toList(),
-      ));
+      _events.add(
+        McpPoolServerConnectedEvent(
+          serverId: s.id,
+          serverName: init.serverInfo.name,
+          serverVersion: init.serverInfo.version,
+          toolNames: tools.map((t) => t.name).toList(),
+        ),
+      );
 
       // Subscribe to server-side notifications.
-      unawaited(client.notifications.forEach((n) {
+      client.notifications.forEach((n) {
         if (n.method == McpMethod.toolsListChanged) {
-          unawaited(_refreshTools(s));
+          _refreshTools(s);
         }
-      }));
+      });
     } on McpCallFailure catch (e) {
       s.lastError = e.message ?? e.reason;
       // Clean up the half-started client if any.
       final client = _clients.remove(s.id);
       await client?.close();
-      _events.add(McpPoolServerErrorEvent(
-        serverId: s.id,
-        kind: _failureKind(e),
-        message: s.lastError!,
-      ));
+      _events.add(
+        McpPoolServerErrorEvent(
+          serverId: s.id,
+          kind: _failureKind(e),
+          message: s.lastError!,
+        ),
+      );
       _handleFailure(s, reason: e.reason, attempt: attempt);
     } catch (e) {
       s.lastError = e.toString();
-      _events.add(McpPoolServerErrorEvent(
-        serverId: s.id,
-        kind: McpServerErrorKind.spawnFailed,
-        message: s.lastError!,
-      ));
+      _events.add(
+        McpPoolServerErrorEvent(
+          serverId: s.id,
+          kind: McpServerErrorKind.spawnFailed,
+          message: s.lastError!,
+        ),
+      );
       _handleFailure(s, reason: 'spawn_failed', attempt: attempt);
     }
   }
@@ -348,12 +354,14 @@ class McpClientPool {
       nextAttemptIn: delay,
       lastError: s.lastError,
     );
-    _events.add(McpPoolServerDisconnectedEvent(
-      serverId: s.id,
-      reason: McpDisconnectReason.dropped,
-      reconnectAttempt: attempt,
-      nextAttemptIn: delay,
-    ));
+    _events.add(
+      McpPoolServerDisconnectedEvent(
+        serverId: s.id,
+        reason: McpDisconnectReason.dropped,
+        reconnectAttempt: attempt,
+        nextAttemptIn: delay,
+      ),
+    );
     _retryTimers[s.id]?.cancel();
     _retryTimers[s.id] = Timer(delay, () {
       _retryTimers.remove(s.id);
@@ -364,7 +372,7 @@ class McpClientPool {
       // a fresh connect attempt, the state will no longer be
       // McpReconnecting, and we should leave it alone.
       if (current.state is! McpReconnecting) return;
-      unawaited(_connect(current));
+      _connect(current);
     });
   }
 
@@ -389,11 +397,13 @@ class McpClientPool {
       final removed = oldNames.difference(newNames).toList();
       s.tools = newTools;
       if (added.isNotEmpty || removed.isNotEmpty) {
-        _events.add(McpPoolToolListChangedEvent(
-          serverId: s.id,
-          added: added,
-          removed: removed,
-        ));
+        _events.add(
+          McpPoolToolListChangedEvent(
+            serverId: s.id,
+            added: added,
+            removed: removed,
+          ),
+        );
       }
     } on McpCallFailure {
       // tools/list during a degraded connection — the next reconnect
@@ -406,10 +416,12 @@ class McpClientPool {
     final client = _clients.remove(s.id);
     if (client != null) {
       await client.close();
-      _events.add(McpPoolServerDisconnectedEvent(
-        serverId: s.id,
-        reason: McpDisconnectReason.shutdown,
-      ));
+      _events.add(
+        McpPoolServerDisconnectedEvent(
+          serverId: s.id,
+          reason: McpDisconnectReason.shutdown,
+        ),
+      );
     }
     s.tools = const [];
   }
@@ -428,54 +440,54 @@ class McpClientPool {
   /// Builds a copy of [spec] with `enabled = false`. Cheap dispatch on
   /// the sealed type so we don't need a generic copyWith.
   McpServerSpec _disable(McpServerSpec spec) => switch (spec) {
-        McpStdioServerSpec() => McpStdioServerSpec(
-            id: spec.id,
-            command: spec.command,
-            args: spec.args,
-            env: spec.env,
-            workingDirectory: spec.workingDirectory,
-            enabled: false,
-            callTimeoutSeconds: spec.callTimeoutSeconds,
-          ),
-        McpHttpServerSpec() => McpHttpServerSpec(
-            id: spec.id,
-            url: spec.url,
-            auth: spec.auth,
-            enabled: false,
-            callTimeoutSeconds: spec.callTimeoutSeconds,
-          ),
-        McpWebSocketServerSpec() => McpWebSocketServerSpec(
-            id: spec.id,
-            url: spec.url,
-            auth: spec.auth,
-            enabled: false,
-            callTimeoutSeconds: spec.callTimeoutSeconds,
-          ),
-      };
+    McpStdioServerSpec() => McpStdioServerSpec(
+      id: spec.id,
+      command: spec.command,
+      args: spec.args,
+      env: spec.env,
+      workingDirectory: spec.workingDirectory,
+      enabled: false,
+      callTimeoutSeconds: spec.callTimeoutSeconds,
+    ),
+    McpHttpServerSpec() => McpHttpServerSpec(
+      id: spec.id,
+      url: spec.url,
+      auth: spec.auth,
+      enabled: false,
+      callTimeoutSeconds: spec.callTimeoutSeconds,
+    ),
+    McpWebSocketServerSpec() => McpWebSocketServerSpec(
+      id: spec.id,
+      url: spec.url,
+      auth: spec.auth,
+      enabled: false,
+      callTimeoutSeconds: spec.callTimeoutSeconds,
+    ),
+  };
 
   McpServerSpec _enable(McpServerSpec spec) => switch (spec) {
-        McpStdioServerSpec() => McpStdioServerSpec(
-            id: spec.id,
-            command: spec.command,
-            args: spec.args,
-            env: spec.env,
-            workingDirectory: spec.workingDirectory,
-            enabled: true,
-            callTimeoutSeconds: spec.callTimeoutSeconds,
-          ),
-        McpHttpServerSpec() => McpHttpServerSpec(
-            id: spec.id,
-            url: spec.url,
-            auth: spec.auth,
-            enabled: true,
-            callTimeoutSeconds: spec.callTimeoutSeconds,
-          ),
-        McpWebSocketServerSpec() => McpWebSocketServerSpec(
-            id: spec.id,
-            url: spec.url,
-            auth: spec.auth,
-            enabled: true,
-            callTimeoutSeconds: spec.callTimeoutSeconds,
-          ),
-      };
+    McpStdioServerSpec() => McpStdioServerSpec(
+      id: spec.id,
+      command: spec.command,
+      args: spec.args,
+      env: spec.env,
+      workingDirectory: spec.workingDirectory,
+      enabled: true,
+      callTimeoutSeconds: spec.callTimeoutSeconds,
+    ),
+    McpHttpServerSpec() => McpHttpServerSpec(
+      id: spec.id,
+      url: spec.url,
+      auth: spec.auth,
+      enabled: true,
+      callTimeoutSeconds: spec.callTimeoutSeconds,
+    ),
+    McpWebSocketServerSpec() => McpWebSocketServerSpec(
+      id: spec.id,
+      url: spec.url,
+      auth: spec.auth,
+      enabled: true,
+      callTimeoutSeconds: spec.callTimeoutSeconds,
+    ),
+  };
 }

@@ -17,13 +17,15 @@ class HostExecutor implements CommandExecutor {
   @override
   Future<CaptureResult> runCapture(String command, {Duration? timeout}) async {
     final commandId = generateRuntimeCommandId();
-    eventSink?.call(RuntimeCommandStarted(
-      commandId: commandId,
-      runtimeId: 'host',
-      at: DateTime.now(),
-      command: command,
-      runtimeCwd: Directory.current.path,
-    ));
+    eventSink?.call(
+      RuntimeCommandStarted(
+        commandId: commandId,
+        runtimeId: 'host',
+        at: DateTime.now(),
+        command: command,
+        runtimeCwd: Directory.current.path,
+      ),
+    );
     final started = DateTime.now();
 
     final args = shellConfig.buildArgs(command);
@@ -34,51 +36,62 @@ class HostExecutor implements CommandExecutor {
     try {
       process = await Process.start(exe, rest);
     } catch (e) {
-      eventSink?.call(RuntimeCommandFailed(
-        commandId: commandId,
-        runtimeId: 'host',
-        at: DateTime.now(),
-        errorType: e.runtimeType.toString(),
-        message: e.toString(),
-      ));
+      eventSink?.call(
+        RuntimeCommandFailed(
+          commandId: commandId,
+          runtimeId: 'host',
+          at: DateTime.now(),
+          errorType: e.runtimeType.toString(),
+          message: e.toString(),
+        ),
+      );
       rethrow;
     }
-    final stdoutFuture =
-        process.stdout.transform(const SystemEncoding().decoder).join();
-    final stderrFuture =
-        process.stderr.transform(const SystemEncoding().decoder).join();
+    final stdoutFuture = process.stdout
+        .transform(const SystemEncoding().decoder)
+        .join();
+    final stderrFuture = process.stderr
+        .transform(const SystemEncoding().decoder)
+        .join();
 
     final int exitCode;
     var cancelled = false;
     if (timeout == null) {
       exitCode = await process.exitCode;
     } else {
-      exitCode = await process.exitCode.timeout(timeout, onTimeout: () {
-        process.kill();
-        cancelled = true;
-        return -1;
-      });
+      exitCode = await process.exitCode.timeout(
+        timeout,
+        onTimeout: () {
+          process.kill();
+          cancelled = true;
+          return -1;
+        },
+      );
     }
 
     final stdout = await stdoutFuture;
     final stderr = await stderrFuture;
     if (cancelled) {
-      eventSink?.call(RuntimeCommandCancelled(
-        commandId: commandId,
-        runtimeId: 'host',
-        at: DateTime.now(),
-        reason: 'timeout',
-      ));
+      eventSink?.call(
+        RuntimeCommandCancelled(
+          commandId: commandId,
+          runtimeId: 'host',
+          at: DateTime.now(),
+          reason: 'timeout',
+        ),
+      );
     } else {
-      eventSink?.call(RuntimeCommandCompleted(
-        commandId: commandId,
-        runtimeId: 'host',
-        at: DateTime.now(),
-        exitCode: exitCode,
-        duration: DateTime.now().difference(started),
-        stdoutBytes: stdout.length,
-        stderrBytes: stderr.length,
-      ));
+      eventSink?.call(
+        RuntimeCommandCompleted(
+          commandId: commandId,
+          runtimeId: 'host',
+          at: DateTime.now(),
+          exitCode: exitCode,
+          duration: DateTime.now().difference(started),
+          stdoutBytes: stdout.length,
+          stderrBytes: stderr.length,
+        ),
+      );
     }
 
     return CaptureResult(
@@ -92,13 +105,15 @@ class HostExecutor implements CommandExecutor {
   @override
   Future<RunningCommandHandle> startStreaming(String command) async {
     final commandId = generateRuntimeCommandId();
-    eventSink?.call(RuntimeCommandStarted(
-      commandId: commandId,
-      runtimeId: 'host',
-      at: DateTime.now(),
-      command: command,
-      runtimeCwd: Directory.current.path,
-    ));
+    eventSink?.call(
+      RuntimeCommandStarted(
+        commandId: commandId,
+        runtimeId: 'host',
+        at: DateTime.now(),
+        command: command,
+        runtimeCwd: Directory.current.path,
+      ),
+    );
     final args = shellConfig.buildArgs(command);
     final exe = args.first;
     final rest = args.sublist(1);
@@ -107,13 +122,15 @@ class HostExecutor implements CommandExecutor {
     final sink = eventSink;
     if (sink != null) {
       process.exitCode.then((code) {
-        sink(RuntimeCommandCompleted(
-          commandId: commandId,
-          runtimeId: 'host',
-          at: DateTime.now(),
-          exitCode: code,
-          duration: DateTime.now().difference(started),
-        ));
+        sink(
+          RuntimeCommandCompleted(
+            commandId: commandId,
+            runtimeId: 'host',
+            at: DateTime.now(),
+            exitCode: code,
+            duration: DateTime.now().difference(started),
+          ),
+        );
       });
     }
     return RunningCommand(process);

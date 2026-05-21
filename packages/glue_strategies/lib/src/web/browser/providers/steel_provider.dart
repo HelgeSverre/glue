@@ -11,10 +11,8 @@ class SteelProvider implements BrowserEndpointProvider {
   final http.Client _client;
   static const _baseUrl = 'https://api.steel.dev/v1';
 
-  SteelProvider({
-    required this.apiKey,
-    http.Client? client,
-  }) : _client = client ?? http.Client();
+  SteelProvider({required this.apiKey, http.Client? client})
+    : _client = client ?? http.Client();
 
   @override
   String get name => 'steel';

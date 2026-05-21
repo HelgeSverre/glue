@@ -38,40 +38,53 @@ class WebBrowserTool extends Tool {
 
   @override
   List<ToolParameter> get parameters => const [
-        ToolParameter(
-          name: 'action',
-          type: 'string',
-          description: 'Action to perform: navigate, screenshot, click, '
-              'type, extract_text, or evaluate.',
-        ),
-        ToolParameter(
-          name: 'url',
-          type: 'string',
-          description: 'URL to navigate to (required for "navigate" action).',
-          required: false,
-        ),
-        ToolParameter(
-          name: 'selector',
-          type: 'string',
-          description:
-              'CSS selector for the target element (required for "click" '
-              'and "type" actions, optional for "screenshot").',
-          required: false,
-        ),
-        ToolParameter(
-          name: 'text',
-          type: 'string',
-          description: 'Text to type (required for "type" action).',
-          required: false,
-        ),
-        ToolParameter(
-          name: 'javascript',
-          type: 'string',
-          description:
-              'JavaScript code to evaluate (required for "evaluate" action).',
-          required: false,
-        ),
-      ];
+    ToolParameter(
+      name: 'action',
+      type: 'string',
+      description:
+          'Action to perform: navigate, screenshot, click, '
+          'type, extract_text, or evaluate.',
+    ),
+    ToolParameter(
+      name: 'url',
+      type: 'string',
+      description: 'URL to navigate to (required for "navigate" action).',
+      required: false,
+    ),
+    ToolParameter(
+      name: 'selector',
+      type: 'string',
+      description:
+          'CSS selector for the target element (required for "click" '
+          'and "type" actions, optional for "screenshot").',
+      required: false,
+    ),
+    ToolParameter(
+      name: 'text',
+      type: 'string',
+      description: 'Text to type (required for "type" action).',
+      required: false,
+    ),
+    ToolParameter(
+      name: 'javascript',
+      type: 'string',
+      description:
+          'JavaScript code to evaluate (required for "evaluate" action).',
+      required: false,
+    ),
+    ToolParameter(
+      name: 'wait_until',
+      type: 'string',
+      description:
+          'Navigation wait condition (optional, "navigate" only). '
+          'One of: "load" (default — page load event fires), '
+          '"domcontentloaded" (DOM parsed, fastest), '
+          '"networkalmostidle" (≤2 in-flight requests for 500ms), '
+          '"networkidle" (0 in-flight requests for 500ms — strict; '
+          'often times out on ad/tracker-heavy sites).',
+      required: false,
+    ),
+  ];
 
   @override
   Future<void> dispose() async {
@@ -101,14 +114,16 @@ class WebBrowserTool extends Tool {
     if (action is! String || action.isEmpty) {
       return ToolResult(
         success: false,
-        content: 'Error: no action provided. '
+        content:
+            'Error: no action provided. '
             'Valid actions: ${_validActions.join(", ")}',
       );
     }
     if (!_validActions.contains(action)) {
       return ToolResult(
         success: false,
-        content: 'Error: invalid action "$action". '
+        content:
+            'Error: invalid action "$action". '
             'Valid actions: ${_validActions.join(", ")}',
         metadata: {'action': action},
       );
@@ -194,8 +209,27 @@ class WebBrowserTool extends Tool {
       return 'Error: "navigate" action requires a "url" parameter';
     }
 
+    final waitArg = args['wait_until'];
+    final pptr.Until wait;
+    if (waitArg == null) {
+      // Default matches Playwright + the de-facto MCP browser-server
+      // convention; `networkIdle` rarely resolves on ad/tracker-heavy
+      // sites and was the cause of spurious 30s timeouts.
+      wait = pptr.Until.load;
+    } else if (waitArg is String) {
+      final mapped = _parseWaitUntil(waitArg);
+      if (mapped == null) {
+        return 'Error: "wait_until" must be one of "load", '
+            '"domcontentloaded", "networkalmostidle", "networkidle" '
+            '(got "$waitArg").';
+      }
+      wait = mapped;
+    } else {
+      return 'Error: "wait_until" must be a string.';
+    }
+
     final page = await _ensurePage();
-    await page.goto(url, wait: pptr.Until.networkIdle);
+    await page.goto(url, wait: wait);
 
     final title = await page.title;
     final manager = await _getManager();
@@ -266,13 +300,38 @@ class WebBrowserTool extends Tool {
     final pending = _pendingManager;
     if (pending != null) return pending;
 
-    final future = Future.sync(_managerProvider).then((value) {
-      _manager = value;
-      return value;
-    }).whenComplete(() {
-      _pendingManager = null;
-    });
+    final future = Future.sync(_managerProvider)
+        .then((value) {
+          _manager = value;
+          return value;
+        })
+        .whenComplete(() {
+          _pendingManager = null;
+        });
     _pendingManager = future;
     return future;
+  }
+
+  /// Map the public `wait_until` string to Puppeteer's [pptr.Until]. Returns
+  /// `null` for unknown values so the caller can surface a helpful error.
+  ///
+  /// Names follow the Playwright/Puppeteer convention (lowercase, no
+  /// underscores) so they round-trip with the model's training data. We
+  /// don't accept `networkidle0` / `networkidle2` aliases — those are
+  /// JS-Puppeteer-specific shorthands and the Dart port uses
+  /// `networkIdle` / `networkAlmostIdle` instead.
+  static pptr.Until? _parseWaitUntil(String raw) {
+    switch (raw.toLowerCase()) {
+      case 'load':
+        return pptr.Until.load;
+      case 'domcontentloaded':
+        return pptr.Until.domContentLoaded;
+      case 'networkalmostidle':
+        return pptr.Until.networkAlmostIdle;
+      case 'networkidle':
+        return pptr.Until.networkIdle;
+      default:
+        return null;
+    }
   }
 }

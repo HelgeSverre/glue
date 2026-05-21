@@ -28,7 +28,7 @@ class ShellCompleter {
   static const _maxResults = 50;
 
   ShellCompleter({ShellType? shellType})
-      : shellType = shellType ?? _detectShell();
+    : shellType = shellType ?? _detectShell();
 
   /// Detect the user's shell from $SHELL.
   static ShellType _detectShell() {
@@ -90,19 +90,27 @@ class ShellCompleter {
   }
 
   Future<List<ShellCandidate>> _completeBash(
-      String token, bool isFirstWord) async {
+    String token,
+    bool isFirstWord,
+  ) async {
     if (isFirstWord) {
       // Command completion.
-      final lines = await _runShellCommand(
-          'bash', ['-c', 'compgen -c -- ${_shellEscape(token)}']);
+      final lines = await _runShellCommand('bash', [
+        '-c',
+        'compgen -c -- ${_shellEscape(token)}',
+      ]);
       return lines.map(ShellCandidate.new).toList();
     }
 
     // File completion — also get directory list to mark dirs.
-    final fileFuture = _runShellCommand(
-        'bash', ['-c', 'compgen -f -- ${_shellEscape(token)}']);
-    final dirFuture = _runShellCommand(
-        'bash', ['-c', 'compgen -d -- ${_shellEscape(token)}']);
+    final fileFuture = _runShellCommand('bash', [
+      '-c',
+      'compgen -f -- ${_shellEscape(token)}',
+    ]);
+    final dirFuture = _runShellCommand('bash', [
+      '-c',
+      'compgen -d -- ${_shellEscape(token)}',
+    ]);
 
     final files = await fileFuture;
     final dirs = (await dirFuture).toSet();
@@ -113,8 +121,10 @@ class ShellCompleter {
   }
 
   Future<List<ShellCandidate>> _completeFish(String buffer) async {
-    final lines = await _runShellCommand(
-        'fish', ['-c', 'complete -C ${_shellEscape(buffer)}']);
+    final lines = await _runShellCommand('fish', [
+      '-c',
+      'complete -C ${_shellEscape(buffer)}',
+    ]);
     return lines.map((line) {
       // fish output is tab-separated: "candidate\tdescription"
       final parts = line.split('\t');
@@ -126,13 +136,19 @@ class ShellCompleter {
 
   /// Run a shell command and return stdout lines, with timeout.
   Future<List<String>> _runShellCommand(
-      String executable, List<String> args) async {
+    String executable,
+    List<String> args,
+  ) async {
     try {
-      final result = await Process.run(executable, args,
-              environment: {'LC_ALL': 'C'}, runInShell: false)
-          .timeout(
-        const Duration(milliseconds: AppConstants.shellCompletionTimeoutMs),
-      );
+      final result =
+          await Process.run(
+            executable,
+            args,
+            environment: {'LC_ALL': 'C'},
+            runInShell: false,
+          ).timeout(
+            const Duration(milliseconds: AppConstants.shellCompletionTimeoutMs),
+          );
       if (result.exitCode != 0) return [];
       final output = (result.stdout as String).trim();
       if (output.isEmpty) return [];

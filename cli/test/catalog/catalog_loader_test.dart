@@ -71,8 +71,10 @@ providers:
 ''');
 
       final merged = loadCatalog(bundled: bundled, localOverrides: overrides);
-      expect(merged.providers.keys,
-          containsAll(['anthropic', 'openai', 'my-local']));
+      expect(
+        merged.providers.keys,
+        containsAll(['anthropic', 'openai', 'my-local']),
+      );
       expect(merged.providers['my-local']!.compatibility, 'vllm');
     });
 
@@ -166,7 +168,9 @@ providers: {}
 ''');
       final merged = loadCatalog(bundled: bundled, localOverrides: overrides);
       expect(
-          merged.capabilities.keys, containsAll(['chat', 'tools', 'vision']));
+        merged.capabilities.keys,
+        containsAll(['chat', 'tools', 'vision']),
+      );
     });
   });
 }

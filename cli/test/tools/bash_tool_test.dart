@@ -19,16 +19,12 @@ void main() {
       final result = (await tool.execute({
         'command': 'echo no-timeout',
         'timeout_seconds': 0,
-      }))
-          .content;
+      })).content;
       expect(result, contains('no-timeout'));
     });
 
     test('has timeout_seconds in parameters', () {
-      expect(
-        tool.parameters.any((p) => p.name == 'timeout_seconds'),
-        isTrue,
-      );
+      expect(tool.parameters.any((p) => p.name == 'timeout_seconds'), isTrue);
     });
   });
 }

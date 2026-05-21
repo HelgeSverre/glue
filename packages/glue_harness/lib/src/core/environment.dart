@@ -36,8 +36,9 @@ class Environment {
       home: detectedHome,
       vars: Map<String, String>.unmodifiable(Map<String, String>.from(env)),
       isWindows: isWindows ?? Platform.isWindows,
-      glueHomeOverride:
-          (override != null && override.isNotEmpty) ? override : null,
+      glueHomeOverride: (override != null && override.isNotEmpty)
+          ? override
+          : null,
     );
   }
 
@@ -55,8 +56,8 @@ class Environment {
       isWindows: isWindows,
       glueHomeOverride:
           (env['GLUE_HOME'] != null && env['GLUE_HOME']!.isNotEmpty)
-              ? env['GLUE_HOME']
-              : null,
+          ? env['GLUE_HOME']
+          : null,
     );
   }
 

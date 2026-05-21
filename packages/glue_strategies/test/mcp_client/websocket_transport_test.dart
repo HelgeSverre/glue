@@ -45,11 +45,13 @@ class _FakeWsMcpServer {
           } else if (method == 'tools/list') {
             result = {'tools': const []};
           }
-          socket.add(jsonEncode({
-            'jsonrpc': '2.0',
-            'id': id,
-            'result': result ?? const {},
-          }));
+          socket.add(
+            jsonEncode({
+              'jsonrpc': '2.0',
+              'id': id,
+              'result': result ?? const {},
+            }),
+          );
         });
       } else {
         req.response.statusCode = 404;

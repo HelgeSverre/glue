@@ -9,8 +9,10 @@ void main() {
         isNull,
       );
       expect(
-        normalizeSessionEvent(
-            {'type': 'title_reevaluated', 'title': 'ignored'}),
+        normalizeSessionEvent({
+          'type': 'title_reevaluated',
+          'title': 'ignored',
+        }),
         isNull,
       );
     });
@@ -105,10 +107,7 @@ void main() {
         normalizeSessionEvent({'type': 'subagent_spawned', 'task': 't'}),
         isNull,
       );
-      expect(
-        normalizeSessionEvent({'type': 'subagent_completed'}),
-        isNull,
-      );
+      expect(normalizeSessionEvent({'type': 'subagent_completed'}), isNull);
     });
 
     test('skips subagent_event with malformed inner payload', () {

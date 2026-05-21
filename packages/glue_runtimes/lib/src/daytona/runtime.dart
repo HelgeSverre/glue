@@ -33,13 +33,13 @@ class DaytonaRuntime implements RuntimeSession {
   final bool resumed;
 
   DaytonaRuntime._({
-    required DaytonaClient client,
+    required this._client,
     required this.sandbox,
     required this.executor,
     required this.workspace,
     required this.bootstrapSha,
     required this.resumed,
-  }) : _client = client;
+  });
 
   @override
   String get id => 'daytona';

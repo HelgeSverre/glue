@@ -20,9 +20,10 @@ import 'package:glue_server/src/acp/messages.dart';
 /// when the event has no `session/update` representation.
 SessionUpdate? sessionEventToAcpUpdate(SessionEvent event) {
   return switch (event) {
-    AssistantChunkEvent(:final delta, :final kind) => kind == ChunkKind.thinking
-        ? AgentThoughtChunkUpdate(delta)
-        : AgentMessageChunkUpdate(delta),
+    AssistantChunkEvent(:final delta, :final kind) =>
+      kind == ChunkKind.thinking
+          ? AgentThoughtChunkUpdate(delta)
+          : AgentMessageChunkUpdate(delta),
     AssistantMessageEvent() => null, // chunks already covered the text
     AssistantThinkingStartedEvent() => null,
     AssistantThinkingCompletedEvent() => null,
@@ -37,14 +38,14 @@ SessionUpdate? sessionEventToAcpUpdate(SessionEvent event) {
       ),
     ToolCallProgressEvent() => null, // not yet surfaced
     ToolCallCompletedEvent(:final id, :final result) => ToolCallStatusUpdate(
-        toolCallId: id.value,
-        status: switch (result) {
-          ToolOkSnapshot() => ToolCallStatus.completed,
-          ToolErrorSnapshot() => ToolCallStatus.failed,
-          ToolCancelledSnapshot() => ToolCallStatus.failed,
-        },
-        content: _resultContent(result),
-      ),
+      toolCallId: id.value,
+      status: switch (result) {
+        ToolOkSnapshot() => ToolCallStatus.completed,
+        ToolErrorSnapshot() => ToolCallStatus.failed,
+        ToolCancelledSnapshot() => ToolCallStatus.failed,
+      },
+      content: _resultContent(result),
+    ),
     PermissionRequestedEvent() => null, // drives session/request_permission
     PermissionResolvedEvent() => null,
     SubagentSpawnedEvent() => null, // surfaced as forwarded events
@@ -93,13 +94,13 @@ ToolCallKind _toolKindToAcp(ToolKind kind) {
 List<AcpToolCallContent> _resultContent(ToolResultSnapshot result) {
   return switch (result) {
     ToolOkSnapshot(:final contentSummary) => [
-        AcpToolCallContentValue(AcpTextBlock(contentSummary)),
-      ],
+      AcpToolCallContentValue(AcpTextBlock(contentSummary)),
+    ],
     ToolErrorSnapshot(:final message) => [
-        AcpToolCallContentValue(AcpTextBlock('Error: $message')),
-      ],
+      AcpToolCallContentValue(AcpTextBlock('Error: $message')),
+    ],
     ToolCancelledSnapshot() => const [
-        AcpToolCallContentValue(AcpTextBlock('[cancelled]')),
-      ],
+      AcpToolCallContentValue(AcpTextBlock('[cancelled]')),
+    ],
   };
 }

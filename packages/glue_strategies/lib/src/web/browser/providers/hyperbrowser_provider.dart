@@ -12,10 +12,8 @@ class HyperbrowserProvider implements BrowserEndpointProvider {
 
   static const _baseUrl = 'https://api.hyperbrowser.ai/api';
 
-  HyperbrowserProvider({
-    required this.apiKey,
-    http.Client? client,
-  }) : _client = client ?? http.Client();
+  HyperbrowserProvider({required this.apiKey, http.Client? client})
+    : _client = client ?? http.Client();
 
   @override
   String get name => 'hyperbrowser';
@@ -30,10 +28,7 @@ class HyperbrowserProvider implements BrowserEndpointProvider {
     final response = await _client
         .post(
           Uri.parse('$_baseUrl/session'),
-          headers: {
-            'x-api-key': apiKey!,
-            'Content-Type': 'application/json',
-          },
+          headers: {'x-api-key': apiKey!, 'Content-Type': 'application/json'},
           body: jsonEncode({}),
         )
         .timeout(const Duration(seconds: 30));

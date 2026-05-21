@@ -25,9 +25,9 @@ enum ShellMode {
       'interactive' => ShellMode.interactive,
       'login' => ShellMode.login,
       _ => () {
-          onInvalid?.call(s);
-          return ShellMode.nonInteractive;
-        }(),
+        onInvalid?.call(s);
+        return ShellMode.nonInteractive;
+      }(),
     };
   }
 }

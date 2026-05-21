@@ -79,10 +79,10 @@ class SpritesCli implements SpritesCliBase {
     // wrapper interleaves curl progress output with the JSON
     // response on stdout (no newline between them), so we have to
     // scan for a balanced JSON object instead of trimming.
-    final res = await Process.run(
-      config.spriteCliPath,
-      ['api', '/sprites/$name'],
-    );
+    final res = await Process.run(config.spriteCliPath, [
+      'api',
+      '/sprites/$name',
+    ]);
     final json = _extractFirstJsonObject(res.stdout as String);
     if (json is Map) {
       if (json.containsKey('name')) return true;
@@ -146,10 +146,10 @@ class SpritesCli implements SpritesCliBase {
     // The CLI's `create` subcommand handles capacity-wait + URL
     // settings consistently. We pin auth=sprite so glue isn't
     // accidentally exposing a public-by-default URL.
-    final res = await Process.run(
-      config.spriteCliPath,
-      ['create', name],
-    ).timeout(config.startTimeout);
+    final res = await Process.run(config.spriteCliPath, [
+      'create',
+      name,
+    ]).timeout(config.startTimeout);
     if (res.exitCode != 0) {
       throw RuntimeApiException(
         runtimeId: 'sprites',
@@ -167,10 +167,12 @@ class SpritesCli implements SpritesCliBase {
     // form sidesteps the `-s` sprite-context that the CLI would
     // otherwise prepend, and the wrapper still always exits 0 so we
     // inspect the body for the "not found" case (idempotent).
-    final res = await Process.run(
-      config.spriteCliPath,
-      ['api', '/v1/sprites/$name', '-X', 'DELETE'],
-    );
+    final res = await Process.run(config.spriteCliPath, [
+      'api',
+      '/v1/sprites/$name',
+      '-X',
+      'DELETE',
+    ]);
     final out = '${res.stdout}${res.stderr}'.toLowerCase();
     if (out.contains('not found') || out.contains('404')) return;
     // A successful DELETE returns 204 with empty body; the wrapper
@@ -193,15 +195,7 @@ class SpritesCli implements SpritesCliBase {
     String command, {
     Duration? timeout,
   }) async {
-    final args = [
-      'exec',
-      '-s',
-      spriteName,
-      '--',
-      'sh',
-      '-c',
-      command,
-    ];
+    final args = ['exec', '-s', spriteName, '--', 'sh', '-c', command];
     final res = await Process.run(config.spriteCliPath, args).timeout(
       timeout ?? config.execTimeout,
       onTimeout: () => ProcessResult(0, -1, '', 'glue: exec timed out'),
@@ -215,15 +209,7 @@ class SpritesCli implements SpritesCliBase {
 
   @override
   Future<Process> execStream(String spriteName, String command) {
-    final args = [
-      'exec',
-      '-s',
-      spriteName,
-      '--',
-      'sh',
-      '-c',
-      command,
-    ];
+    final args = ['exec', '-s', spriteName, '--', 'sh', '-c', command];
     return Process.start(config.spriteCliPath, args);
   }
 }
@@ -284,19 +270,13 @@ extension SpritesFs on SpritesCliBase {
 
   /// Returns true when [path] exists.
   Future<bool> pathExists(String spriteName, String path) async {
-    final res = await execCapture(
-      spriteName,
-      'test -e ${_shQuote(path)}',
-    );
+    final res = await execCapture(spriteName, 'test -e ${_shQuote(path)}');
     return res.exitCode == 0;
   }
 
   /// Returns true when [path] is a directory.
   Future<bool> isDirectory(String spriteName, String path) async {
-    final res = await execCapture(
-      spriteName,
-      'test -d ${_shQuote(path)}',
-    );
+    final res = await execCapture(spriteName, 'test -d ${_shQuote(path)}');
     return res.exitCode == 0;
   }
 
@@ -323,10 +303,7 @@ extension SpritesFs on SpritesCliBase {
     // `find … -mindepth 1 -maxdepth 1 -printf '%y %f\n'` would be
     // ideal but `-printf` is GNU-only. We use `ls -1Ap` instead —
     // a trailing `/` marks directories.
-    final res = await execCapture(
-      spriteName,
-      'ls -1Ap $p',
-    );
+    final res = await execCapture(spriteName, 'ls -1Ap $p');
     if (res.exitCode != 0) {
       throw RuntimeApiException(
         runtimeId: 'sprites',

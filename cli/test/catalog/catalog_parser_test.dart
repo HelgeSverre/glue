@@ -285,11 +285,9 @@ providers:
         'HTTP-Referer': 'https://getglue.dev',
         'X-Title': 'Glue',
       });
-      expect(
-        openrouter.models.keys,
-        ['anthropic/claude-sonnet-4.6'],
-        reason: 'model IDs may contain slashes',
-      );
+      expect(openrouter.models.keys, [
+        'anthropic/claude-sonnet-4.6',
+      ], reason: 'model IDs may contain slashes');
     });
   });
 }

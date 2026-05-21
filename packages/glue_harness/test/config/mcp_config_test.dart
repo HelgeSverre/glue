@@ -112,7 +112,8 @@ mcp:
 
   group('parseMcpConfig — env-var expansion', () {
     test('expands \${VAR} from env at parse time', () {
-      final cfg = parse('''
+      final cfg = parse(
+        '''
 mcp:
   servers:
     wiki:
@@ -120,7 +121,9 @@ mcp:
       auth:
         kind: bearer
         token: "\${WIKI_MCP_TOKEN}"
-''', env: {'WIKI_MCP_TOKEN': 'secret-from-env'});
+''',
+        env: {'WIKI_MCP_TOKEN': 'secret-from-env'},
+      );
       final auth =
           (cfg.servers.single as McpHttpServerSpec).auth as McpBearerAuth;
       expect(auth.token, 'secret-from-env');
@@ -137,26 +140,31 @@ mcp:
         kind: bearer
         token: "\${MISSING_VAR}"
 '''),
-        throwsA(isA<ConfigError>().having(
-          (e) => e.message,
-          'message',
-          allOf(
-            contains('wiki'),
-            contains('MISSING_VAR'),
-            contains('auth.token'),
+        throwsA(
+          isA<ConfigError>().having(
+            (e) => e.message,
+            'message',
+            allOf(
+              contains('wiki'),
+              contains('MISSING_VAR'),
+              contains('auth.token'),
+            ),
           ),
-        )),
+        ),
       );
     });
 
     test('empty env var is treated as missing', () {
       expect(
-        () => parse('''
+        () => parse(
+          '''
 mcp:
   servers:
     s:
       command: "\${MY_CMD}"
-''', env: {'MY_CMD': ''}),
+''',
+          env: {'MY_CMD': ''},
+        ),
         throwsA(isA<ConfigError>()),
       );
     });
@@ -259,11 +267,13 @@ mcp:
       command: foo
       url: "https://bar.com"
 '''),
-        throwsA(isA<ConfigError>().having(
-          (e) => e.message,
-          'message',
-          allOf(contains('weird'), contains('command'), contains('url')),
-        )),
+        throwsA(
+          isA<ConfigError>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('weird'), contains('command'), contains('url')),
+          ),
+        ),
       );
     });
 
@@ -289,11 +299,13 @@ mcp:
       auth:
         kind: super-secret
 '''),
-        throwsA(isA<ConfigError>().having(
-          (e) => e.message,
-          'message',
-          allOf(contains('bearer'), contains('oauth'), contains('none')),
-        )),
+        throwsA(
+          isA<ConfigError>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('bearer'), contains('oauth'), contains('none')),
+          ),
+        ),
       );
     });
   });

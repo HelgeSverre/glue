@@ -6,8 +6,10 @@ void main() {
   group('formatUsageReport', () {
     test('returns a friendly message when there are no rows', () {
       final report = buildUsageReport(usageEvents: const []);
-      expect(formatUsageReport(report),
-          'No LLM calls recorded yet for this session.');
+      expect(
+        formatUsageReport(report),
+        'No LLM calls recorded yet for this session.',
+      );
     });
 
     test('renders a table with header + rows + totals + cache hit rate', () {

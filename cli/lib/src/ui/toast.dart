@@ -87,8 +87,9 @@ class Toast {
     const dim = '\x1b[38;5;250m'; // dim grey text
     const reset = '\x1b[0m';
     final glyph = _kind == ToastKind.success ? '✓' : '!';
-    final glyphFg =
-        _kind == ToastKind.success ? '\x1b[38;5;220m' : '\x1b[38;5;196m';
+    final glyphFg = _kind == ToastKind.success
+        ? '\x1b[38;5;220m'
+        : '\x1b[38;5;196m';
     // Background stays continuous across the chip — the second fg switch
     // doesn't reset it.
     return '$bg$dim $glyphFg$glyph$dim $_message $reset';

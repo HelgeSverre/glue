@@ -59,8 +59,11 @@ void main() {
         mbox: (outcome as DiffSuccess).patch,
         baseSha: baseSha,
       );
-      expect(File('${applied.path}/new_test.dart').existsSync(), isTrue,
-          reason: 'untracked file must survive the round trip');
+      expect(
+        File('${applied.path}/new_test.dart').existsSync(),
+        isTrue,
+        reason: 'untracked file must survive the round trip',
+      );
     });
 
     test('captures binary file changes via --binary', () async {
@@ -91,8 +94,11 @@ void main() {
         baseSha: baseSha,
       );
       final roundTripped = File('${applied.path}/blob.bin').readAsBytesSync();
-      expect(roundTripped, List<int>.generate(64, (i) => 255 - i),
-          reason: 'binary blob must survive byte-for-byte');
+      expect(
+        roundTripped,
+        List<int>.generate(64, (i) => 255 - i),
+        reason: 'binary blob must survive byte-for-byte',
+      );
     });
 
     test('captures agent commits with preserved authorship', () async {
@@ -121,11 +127,11 @@ void main() {
         mbox: (outcome as DiffSuccess).patch,
         baseSha: baseSha,
       );
-      final log = await _run(
-        gitPath,
-        ['log', '--format=%s', '$baseSha..HEAD'],
-        cwd: applied,
-      );
+      final log = await _run(gitPath, [
+        'log',
+        '--format=%s',
+        '$baseSha..HEAD',
+      ], cwd: applied);
       final messages = (log.stdout as String).trim().split('\n');
       expect(messages, ['agent: second change', 'agent: first change']);
     });
@@ -161,21 +167,24 @@ Future<Directory> _applyToFreshClone({
   // Try `git am --3way` first (the recommended apply path). Fall back
   // to `git apply --3way` for working-tree-only patches (no mbox
   // header).
-  final am = await Process.run(
-    gitPath,
-    ['am', '--3way', mboxFile.path],
-    workingDirectory: clone.path,
-  );
+  final am = await Process.run(gitPath, [
+    'am',
+    '--3way',
+    mboxFile.path,
+  ], workingDirectory: clone.path);
   if (am.exitCode != 0) {
     await _run(gitPath, ['am', '--abort'], cwd: clone, ignoreExit: true);
-    final apply = await Process.run(
-      gitPath,
-      ['apply', '--3way', mboxFile.path],
-      workingDirectory: clone.path,
+    final apply = await Process.run(gitPath, [
+      'apply',
+      '--3way',
+      mboxFile.path,
+    ], workingDirectory: clone.path);
+    expect(
+      apply.exitCode,
+      0,
+      reason:
+          'git apply failed:\nstdout=${apply.stdout}\nstderr=${apply.stderr}',
     );
-    expect(apply.exitCode, 0,
-        reason:
-            'git apply failed:\nstdout=${apply.stdout}\nstderr=${apply.stderr}');
   }
   return clone;
 }
@@ -196,8 +205,10 @@ Future<ProcessResult> _run(
 }) async {
   final r = await Process.run(exe, args, workingDirectory: cwd?.path);
   if (!ignoreExit && r.exitCode != 0) {
-    fail('$exe ${args.join(' ')} exited ${r.exitCode}\n'
-        'stdout: ${r.stdout}\nstderr: ${r.stderr}');
+    fail(
+      '$exe ${args.join(' ')} exited ${r.exitCode}\n'
+      'stdout: ${r.stdout}\nstderr: ${r.stderr}',
+    );
   }
   return r;
 }

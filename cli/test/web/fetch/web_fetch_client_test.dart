@@ -64,10 +64,7 @@ void main() {
       // The actual size check test requires an HTTP mock, but we verify
       // the config is wired correctly.
       final client = WebFetchClient(
-        config: const WebFetchConfig(
-          maxBytes: 100,
-          allowJinaFallback: false,
-        ),
+        config: const WebFetchConfig(maxBytes: 100, allowJinaFallback: false),
       );
       expect(client.config.maxBytes, 100);
     });

@@ -21,14 +21,12 @@ class McpAuthStatusRow {
   final McpAuthState state;
 }
 
-String formatMcpAuthStatus(
-  List<McpAuthStatusRow> rows, {
-  bool? ansiEnabled,
-}) {
+String formatMcpAuthStatus(List<McpAuthStatusRow> rows, {bool? ansiEnabled}) {
   if (rows.isEmpty) return 'No MCP servers configured.';
   final ansi = ansiEnabled ?? stdoutSupportsAnsi();
-  final idWidth =
-      rows.map((r) => r.id.length).fold<int>(0, (a, b) => a > b ? a : b);
+  final idWidth = rows
+      .map((r) => r.id.length)
+      .fold<int>(0, (a, b) => a > b ? a : b);
   final dot = ansi ? '$brandDot ' : '';
   return [
     '$dot${styledOrPlain('MCP credentials', (s) => s.bold, ansiEnabled: ansi)}',
@@ -37,11 +35,17 @@ String formatMcpAuthStatus(
 }
 
 String _formatRow(McpAuthStatusRow r, int idWidth, {required bool ansi}) {
-  final id =
-      styledOrPlain(r.id.padRight(idWidth), (s) => s.bold, ansiEnabled: ansi);
+  final id = styledOrPlain(
+    r.id.padRight(idWidth),
+    (s) => s.bold,
+    ansiEnabled: ansi,
+  );
   final marker = ansi ? '${_markerFor(r.state)} ' : '';
-  final tag =
-      styledOrPlain(_tagFor(r), _tagStyleFor(r.state), ansiEnabled: ansi);
+  final tag = styledOrPlain(
+    _tagFor(r),
+    _tagStyleFor(r.state),
+    ansiEnabled: ansi,
+  );
   return '  $id  $marker$tag';
 }
 

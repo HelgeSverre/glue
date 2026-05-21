@@ -28,8 +28,8 @@ class ScreenBuffer {
   int _height;
 
   ScreenBuffer(this._terminal)
-      : _width = _terminal.columns,
-        _height = _terminal.rows {
+    : _width = _terminal.columns,
+      _height = _terminal.rows {
     _current = _makeGrid(_width, _height);
     _previous = _makeGrid(_width, _height);
   }
@@ -50,8 +50,10 @@ class ScreenBuffer {
     final chars = text.runes.toList();
     for (var i = 0; i < chars.length && col + i < _width; i++) {
       if (col + i < 0) continue;
-      _current[row][col + i] =
-          Cell(String.fromCharCode(chars[i]), style: style);
+      _current[row][col + i] = Cell(
+        String.fromCharCode(chars[i]),
+        style: style,
+      );
     }
   }
 

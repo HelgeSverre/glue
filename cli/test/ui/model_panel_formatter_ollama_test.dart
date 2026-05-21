@@ -4,28 +4,25 @@ import 'package:glue/src/ui/model_panel_formatter.dart';
 import 'package:test/test.dart';
 
 CatalogRow _ollamaRow(String id) => (
-      providerId: 'ollama',
-      providerName: 'Ollama',
-      model: ModelDef(id: id, name: id, capabilities: const {'chat', 'tools'}),
-      availability: ModelAvailability.unknown,
-    );
+  providerId: 'ollama',
+  providerName: 'Ollama',
+  model: ModelDef(id: id, name: id, capabilities: const {'chat', 'tools'}),
+  availability: ModelAvailability.unknown,
+);
 
 CatalogRow _anthropicRow() => (
-      providerId: 'anthropic',
-      providerName: 'Anthropic',
-      model: const ModelDef(
-        id: 'claude-sonnet-4-6',
-        name: 'Claude Sonnet 4.6',
-        capabilities: {'chat', 'tools'},
-      ),
-      availability: ModelAvailability.unknown,
-    );
+  providerId: 'anthropic',
+  providerName: 'Anthropic',
+  model: const ModelDef(
+    id: 'claude-sonnet-4-6',
+    name: 'Claude Sonnet 4.6',
+    capabilities: {'chat', 'tools'},
+  ),
+  availability: ModelAvailability.unknown,
+);
 
-OllamaInstalledModel _tag(String t) => OllamaInstalledModel(
-      tag: t,
-      sizeBytes: 0,
-      modifiedAt: null,
-    );
+OllamaInstalledModel _tag(String t) =>
+    OllamaInstalledModel(tag: t, sizeBytes: 0, modifiedAt: null);
 
 void main() {
   group('mergeOllamaDiscovery', () {
@@ -93,10 +90,10 @@ void main() {
         _ollamaRow('qwen3-coder:30b'), // installed
         _ollamaRow('gemma4:26b'), // notInstalled
       ];
-      final merged = mergeOllamaDiscovery(
-        rows,
-        [_tag('qwen3-coder:30b'), _tag('random:7b')],
-      );
+      final merged = mergeOllamaDiscovery(rows, [
+        _tag('qwen3-coder:30b'),
+        _tag('random:7b'),
+      ]);
 
       final buckets = {for (final r in merged) r.model.id: r.availability};
       expect(buckets['claude-sonnet-4-6'], ModelAvailability.unknown);

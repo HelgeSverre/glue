@@ -76,7 +76,10 @@ void main() {
         throwsA(
           isA<ConfigError>()
               .having(
-                  (e) => e.message, 'lists anthropic', contains('anthropic/'))
+                (e) => e.message,
+                'lists anthropic',
+                contains('anthropic/'),
+              )
               .having(
                 (e) => e.message,
                 'calls out ambiguity',
@@ -105,10 +108,7 @@ void main() {
       final home = _scratchHome();
       addTearDown(() => home.deleteSync(recursive: true));
       final config = GlueConfig.load(
-        environment: _env(
-          home,
-          vars: {'GLUE_MODEL': 'ollama/qwen3:30b'},
-        ),
+        environment: _env(home, vars: {'GLUE_MODEL': 'ollama/qwen3:30b'}),
       );
       expect(config.activeModel.providerId, 'ollama');
       expect(config.activeModel.modelId, 'qwen3:30b');

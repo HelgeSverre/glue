@@ -131,10 +131,13 @@ class ResumeCommand extends SlashCommand {
     }
 
     if (matches.length > 1) {
-      final preview = matches.take(5).map((s) {
-        final title = (s.title ?? '').trim();
-        return title.isEmpty ? '  - ${s.id}' : '  - ${s.id} ($title)';
-      }).join('\n');
+      final preview = matches
+          .take(5)
+          .map((s) {
+            final title = (s.title ?? '').trim();
+            return title.isEmpty ? '  - ${s.id}' : '  - ${s.id} ($title)';
+          })
+          .join('\n');
       return 'Multiple sessions match "$normalized":\n'
           '$preview\n'
           'Use a more specific session ID.';
@@ -153,7 +156,7 @@ class ResumeCommand extends SlashCommand {
       ..titleInitialRequested = meta.title != null
       ..titleReevaluationRequested =
           meta.titleState == SessionTitleState.stable ||
-              meta.titleGenerationCount >= 2
+          meta.titleGenerationCount >= 2
       ..titleManuallyOverridden = meta.titleSource == SessionTitleSource.user;
 
     ctx.conversation.notify(
@@ -171,8 +174,9 @@ class ResumeCommand extends SlashCommand {
     final usage = result.replay.totalUsage;
     if (usage.totalCalls > 0) {
       final summary = StringBuffer(
-          'Carry-over: ${formatCompactTokens(usage.totalTokens)} tokens '
-          'over ${usage.totalCalls} call${usage.totalCalls == 1 ? '' : 's'}');
+        'Carry-over: ${formatCompactTokens(usage.totalTokens)} tokens '
+        'over ${usage.totalCalls} call${usage.totalCalls == 1 ? '' : 's'}',
+      );
       final hit = usage.cacheHitRate;
       if (hit != null &&
           (usage.totalCacheRead > 0 || usage.totalCacheWrite > 0)) {

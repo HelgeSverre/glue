@@ -99,10 +99,12 @@ void main() {
       final server = AcpServer(transport: transport, delegate: delegate);
       final serverFuture = server.serve();
 
-      input.add(utf8.encode(
-        '{"jsonrpc":"2.0","id":1,"method":"initialize","params":'
-        '{"protocolVersion":1}}\n',
-      ));
+      input.add(
+        utf8.encode(
+          '{"jsonrpc":"2.0","id":1,"method":"initialize","params":'
+          '{"protocolVersion":1}}\n',
+        ),
+      );
       await Future<void>.delayed(const Duration(milliseconds: 10));
       await input.close();
       await serverFuture;
@@ -120,10 +122,12 @@ void main() {
       final server = AcpServer(transport: transport, delegate: delegate);
       final serverFuture = server.serve();
 
-      input.add(utf8.encode(
-        '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
-        '{"cwd":"/tmp/abc"}}\n',
-      ));
+      input.add(
+        utf8.encode(
+          '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
+          '{"cwd":"/tmp/abc"}}\n',
+        ),
+      );
       await Future<void>.delayed(const Duration(milliseconds: 10));
       await input.close();
       await serverFuture;
@@ -135,18 +139,22 @@ void main() {
     });
 
     test('session/prompt streams text deltas + returns end_turn', () async {
-      final delegate = _FakeDelegate(scripted: [
-        AgentTextDelta('hello '),
-        AgentTextDelta('world'),
-        AgentDone(),
-      ]);
+      final delegate = _FakeDelegate(
+        scripted: [
+          AgentTextDelta('hello '),
+          AgentTextDelta('world'),
+          AgentDone(),
+        ],
+      );
       final server = AcpServer(transport: transport, delegate: delegate);
       final serverFuture = server.serve();
 
-      input.add(utf8.encode(
-        '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
-        '{"cwd":"/tmp/p"}}\n',
-      ));
+      input.add(
+        utf8.encode(
+          '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
+          '{"cwd":"/tmp/p"}}\n',
+        ),
+      );
       await Future<void>.delayed(const Duration(milliseconds: 5));
       // Read the new sessionId.
       var sent = await readSent();
@@ -154,10 +162,12 @@ void main() {
       output.buffer.clear();
 
       const promptId = 7;
-      input.add(utf8.encode(
-        '{"jsonrpc":"2.0","id":$promptId,"method":"session/prompt","params":'
-        '{"sessionId":"$sessionId","prompt":[{"type":"text","text":"hi"}]}}\n',
-      ));
+      input.add(
+        utf8.encode(
+          '{"jsonrpc":"2.0","id":$promptId,"method":"session/prompt","params":'
+          '{"sessionId":"$sessionId","prompt":[{"type":"text","text":"hi"}]}}\n',
+        ),
+      );
       await Future<void>.delayed(const Duration(milliseconds: 30));
       await input.close();
       await serverFuture;
@@ -166,73 +176,81 @@ void main() {
       // Should contain 2 chunk notifications + 1 prompt response.
       final chunks = sent
           .where((m) => m['method'] == 'session/update')
-          .map((m) => ((m['params']! as Map)['update']! as Map)['content']
-              as Map<Object?, Object?>?)
+          .map(
+            (m) =>
+                ((m['params']! as Map)['update']! as Map)['content']
+                    as Map<Object?, Object?>?,
+          )
           .whereType<Map<Object?, Object?>>()
           .toList();
       expect(chunks.map((c) => c['text']).toList(), ['hello ', 'world']);
 
       final response = sent.firstWhere((m) => m['id'] == promptId);
-      expect(
-        (response['result']! as Map)['stopReason'],
-        'end_turn',
-      );
+      expect((response['result']! as Map)['stopReason'], 'end_turn');
       expect(delegate.lastUserMessage, 'hi');
       expect(delegate.lastSessionId, sessionId);
     });
 
-    test('session/prompt → unknown sessionId returns sessionNotFound',
-        () async {
-      final delegate = _FakeDelegate(scripted: const []);
-      final server = AcpServer(transport: transport, delegate: delegate);
-      final serverFuture = server.serve();
+    test(
+      'session/prompt → unknown sessionId returns sessionNotFound',
+      () async {
+        final delegate = _FakeDelegate(scripted: const []);
+        final server = AcpServer(transport: transport, delegate: delegate);
+        final serverFuture = server.serve();
 
-      input.add(utf8.encode(
-        '{"jsonrpc":"2.0","id":9,"method":"session/prompt","params":'
-        '{"sessionId":"nope","prompt":[{"type":"text","text":"x"}]}}\n',
-      ));
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-      await input.close();
-      await serverFuture;
+        input.add(
+          utf8.encode(
+            '{"jsonrpc":"2.0","id":9,"method":"session/prompt","params":'
+            '{"sessionId":"nope","prompt":[{"type":"text","text":"x"}]}}\n',
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        await input.close();
+        await serverFuture;
 
-      final sent = await readSent();
-      expect(sent.single['error']! as Map, contains('code'));
-      expect(((sent.single['error']! as Map)['code'] as num).toInt(), -32001);
-    });
+        final sent = await readSent();
+        expect(sent.single['error']! as Map, contains('code'));
+        expect(((sent.single['error']! as Map)['code'] as num).toInt(), -32001);
+      },
+    );
 
     test('session/usage_summary returns the delegate report as JSON', () async {
       final delegate = _FakeDelegate(scripted: const []);
       delegate.usageSummaryAnswer = (sessionId) => buildUsageReport(
-            sessionId: sessionId,
-            modelLabel: 'anthropic/claude-sonnet-4.6',
-            usageEvents: [
-              {
-                'type': 'usage',
-                'role': 'main',
-                'input_tokens': 1000,
-                'output_tokens': 500,
-                'cache_read_tokens': 8000,
-                'cache_creation_tokens': 1500,
-                'turn_count': 3,
-              },
-            ],
-          );
+        sessionId: sessionId,
+        modelLabel: 'anthropic/claude-sonnet-4.6',
+        usageEvents: [
+          {
+            'type': 'usage',
+            'role': 'main',
+            'input_tokens': 1000,
+            'output_tokens': 500,
+            'cache_read_tokens': 8000,
+            'cache_creation_tokens': 1500,
+            'turn_count': 3,
+          },
+        ],
+      );
       final server = AcpServer(transport: transport, delegate: delegate);
       final serverFuture = server.serve();
 
-      input.add(utf8.encode(
-        '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
-        '{"cwd":"/tmp/p"}}\n',
-      ));
+      input.add(
+        utf8.encode(
+          '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
+          '{"cwd":"/tmp/p"}}\n',
+        ),
+      );
       await Future<void>.delayed(const Duration(milliseconds: 5));
       var sent = await readSent();
       final sessionId = (sent.single['result']! as Map)['sessionId'] as String;
       output.buffer.clear();
 
-      input.add(utf8.encode(
-        '{"jsonrpc":"2.0","id":42,"method":"session/usage_summary","params":'
-        '{"sessionId":"$sessionId"}}\n',
-      ));
+      input.add(
+        utf8.encode(
+          '{"jsonrpc":"2.0","id":42,"method":"session/usage_summary","params":'
+          '{"sessionId":"$sessionId"}}\n',
+        ),
+      );
       await Future<void>.delayed(const Duration(milliseconds: 10));
       await input.close();
       await serverFuture;
@@ -256,43 +274,51 @@ void main() {
       expect((byRole.single as Map)['role'], 'main');
     });
 
-    test('session/usage_summary on unknown session returns sessionNotFound',
-        () async {
-      final delegate = _FakeDelegate(scripted: const []);
-      final server = AcpServer(transport: transport, delegate: delegate);
-      final serverFuture = server.serve();
+    test(
+      'session/usage_summary on unknown session returns sessionNotFound',
+      () async {
+        final delegate = _FakeDelegate(scripted: const []);
+        final server = AcpServer(transport: transport, delegate: delegate);
+        final serverFuture = server.serve();
 
-      input.add(utf8.encode(
-        '{"jsonrpc":"2.0","id":1,"method":"session/usage_summary","params":'
-        '{"sessionId":"never-created"}}\n',
-      ));
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-      await input.close();
-      await serverFuture;
+        input.add(
+          utf8.encode(
+            '{"jsonrpc":"2.0","id":1,"method":"session/usage_summary","params":'
+            '{"sessionId":"never-created"}}\n',
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        await input.close();
+        await serverFuture;
 
-      final sent = await readSent();
-      expect(sent.single['error'], isNotNull);
-      // sessionNotFound is -32001 in the existing JsonRpcErrorCode enum.
-      expect(((sent.single['error']! as Map)['code'] as num).toInt(), -32001);
-    });
+        final sent = await readSent();
+        expect(sent.single['error'], isNotNull);
+        // sessionNotFound is -32001 in the existing JsonRpcErrorCode enum.
+        expect(((sent.single['error']! as Map)['code'] as num).toInt(), -32001);
+      },
+    );
 
     test('session/cancel notification reaches the delegate', () async {
       final delegate = _FakeDelegate(scripted: const []);
       final server = AcpServer(transport: transport, delegate: delegate);
       final serverFuture = server.serve();
 
-      input.add(utf8.encode(
-        '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
-        '{"cwd":"/tmp/p"}}\n',
-      ));
+      input.add(
+        utf8.encode(
+          '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
+          '{"cwd":"/tmp/p"}}\n',
+        ),
+      );
       await Future<void>.delayed(const Duration(milliseconds: 5));
       final sent = await readSent();
       final sessionId = (sent.single['result']! as Map)['sessionId'] as String;
 
-      input.add(utf8.encode(
-        '{"jsonrpc":"2.0","method":"session/cancel","params":'
-        '{"sessionId":"$sessionId"}}\n',
-      ));
+      input.add(
+        utf8.encode(
+          '{"jsonrpc":"2.0","method":"session/cancel","params":'
+          '{"sessionId":"$sessionId"}}\n',
+        ),
+      );
       await Future<void>.delayed(const Duration(milliseconds: 10));
       await input.close();
       await serverFuture;
@@ -300,149 +326,174 @@ void main() {
       expect(delegate.cancelled, isTrue);
     });
 
-    test('session/prompt with image block forwards ImagePart to delegate',
-        () async {
-      final delegate = _FakeDelegate(scripted: [AgentDone()]);
-      final server = AcpServer(transport: transport, delegate: delegate);
-      final serverFuture = server.serve();
+    test(
+      'session/prompt with image block forwards ImagePart to delegate',
+      () async {
+        final delegate = _FakeDelegate(scripted: [AgentDone()]);
+        final server = AcpServer(transport: transport, delegate: delegate);
+        final serverFuture = server.serve();
 
-      input.add(utf8.encode(
-        '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
-        '{"cwd":"/tmp/p"}}\n',
-      ));
-      await Future<void>.delayed(const Duration(milliseconds: 5));
-      final newRespLines = await readSent();
-      final sessionId =
-          (newRespLines.single['result']! as Map)['sessionId'] as String;
-      output.buffer.clear();
+        input.add(
+          utf8.encode(
+            '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
+            '{"cwd":"/tmp/p"}}\n',
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        final newRespLines = await readSent();
+        final sessionId =
+            (newRespLines.single['result']! as Map)['sessionId'] as String;
+        output.buffer.clear();
 
-      // Tiny PNG-ish bytes encoded as base64 (just for the test).
-      final base64 = base64Encode([0x89, 0x50, 0x4e, 0x47, 0x0d]);
-      final promptJson = jsonEncode({
-        'jsonrpc': '2.0',
-        'id': 2,
-        'method': 'session/prompt',
-        'params': {
-          'sessionId': sessionId,
-          'prompt': [
-            {'type': 'text', 'text': 'what does this look like?'},
-            {'type': 'image', 'mimeType': 'image/png', 'data': base64},
-          ],
-        },
-      });
-      input.add(utf8.encode('$promptJson\n'));
-      await Future<void>.delayed(const Duration(milliseconds: 30));
-      await input.close();
-      await serverFuture;
-
-      expect(delegate.lastUserMessage, 'what does this look like?');
-      expect(delegate.lastUserContentParts, hasLength(1));
-      final part = delegate.lastUserContentParts.single;
-      expect(part, isA<ImagePart>());
-      expect((part as ImagePart).mimeType, 'image/png');
-      expect(part.bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d]);
-    });
-
-    test('tool result with diff metadata surfaces as diff content block',
-        () async {
-      final call = ToolCall(
-        id: const ToolCallId('tc-edit'),
-        name: 'write_file',
-        arguments: const {'path': '/tmp/x.txt', 'content': 'new'},
-      );
-      final delegate = _FakeDelegate(scripted: [
-        AgentToolCallPending(id: call.id, name: call.name),
-        AgentToolCall(call),
-        AgentToolResult(ToolResult(
-          callId: call.id,
-          content: 'Wrote 3 bytes to /tmp/x.txt',
-          summary: 'Wrote /tmp/x.txt',
-          metadata: const {
-            'path': '/tmp/x.txt',
-            'diff': {
-              'path': '/tmp/x.txt',
-              'old_text': 'old\n',
-              'new_text': 'new',
-            },
+        // Tiny PNG-ish bytes encoded as base64 (just for the test).
+        final base64 = base64Encode([0x89, 0x50, 0x4e, 0x47, 0x0d]);
+        final promptJson = jsonEncode({
+          'jsonrpc': '2.0',
+          'id': 2,
+          'method': 'session/prompt',
+          'params': {
+            'sessionId': sessionId,
+            'prompt': [
+              {'type': 'text', 'text': 'what does this look like?'},
+              {'type': 'image', 'mimeType': 'image/png', 'data': base64},
+            ],
           },
-        )),
-        AgentDone(),
-      ]);
-      final server = AcpServer(transport: transport, delegate: delegate);
-      final serverFuture = server.serve();
+        });
+        input.add(utf8.encode('$promptJson\n'));
+        await Future<void>.delayed(const Duration(milliseconds: 30));
+        await input.close();
+        await serverFuture;
 
-      input.add(utf8.encode(
-        '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
-        '{"cwd":"/tmp/p"}}\n',
-      ));
-      await Future<void>.delayed(const Duration(milliseconds: 5));
-      var sent = await readSent();
-      final sessionId = (sent.single['result']! as Map)['sessionId'] as String;
-      output.buffer.clear();
+        expect(delegate.lastUserMessage, 'what does this look like?');
+        expect(delegate.lastUserContentParts, hasLength(1));
+        final part = delegate.lastUserContentParts.single;
+        expect(part, isA<ImagePart>());
+        expect((part as ImagePart).mimeType, 'image/png');
+        expect(part.bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d]);
+      },
+    );
 
-      input.add(utf8.encode(
-        '{"jsonrpc":"2.0","id":2,"method":"session/prompt","params":'
-        '{"sessionId":"$sessionId","prompt":[{"type":"text","text":"go"}]}}\n',
-      ));
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      await input.close();
-      await serverFuture;
+    test(
+      'tool result with diff metadata surfaces as diff content block',
+      () async {
+        final call = ToolCall(
+          id: const ToolCallId('tc-edit'),
+          name: 'write_file',
+          arguments: const {'path': '/tmp/x.txt', 'content': 'new'},
+        );
+        final delegate = _FakeDelegate(
+          scripted: [
+            AgentToolCallPending(id: call.id, name: call.name),
+            AgentToolCall(call),
+            AgentToolResult(
+              ToolResult(
+                callId: call.id,
+                content: 'Wrote 3 bytes to /tmp/x.txt',
+                summary: 'Wrote /tmp/x.txt',
+                metadata: const {
+                  'path': '/tmp/x.txt',
+                  'diff': {
+                    'path': '/tmp/x.txt',
+                    'old_text': 'old\n',
+                    'new_text': 'new',
+                  },
+                },
+              ),
+            ),
+            AgentDone(),
+          ],
+        );
+        final server = AcpServer(transport: transport, delegate: delegate);
+        final serverFuture = server.serve();
 
-      sent = await readSent();
-      final completed = sent
-          .where((m) => m['method'] == 'session/update')
-          .map((m) => (m['params']! as Map)['update'] as Map)
-          .firstWhere(
-            (u) => u['status'] == 'completed',
-            orElse: () => fail('expected a completed tool_call_update'),
-          );
-      final content = completed['content']! as List;
-      // The diff block is emitted first; nothing else (no contentParts).
-      expect(content, hasLength(1));
-      final diff = content.first as Map;
-      expect(diff['type'], 'diff');
-      expect(diff['path'], '/tmp/x.txt');
-      expect(diff['oldText'], 'old\n');
-      expect(diff['newText'], 'new');
-    });
+        input.add(
+          utf8.encode(
+            '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
+            '{"cwd":"/tmp/p"}}\n',
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        var sent = await readSent();
+        final sessionId =
+            (sent.single['result']! as Map)['sessionId'] as String;
+        output.buffer.clear();
 
-    test('tool result with ImagePart surfaces as image content block',
-        () async {
+        input.add(
+          utf8.encode(
+            '{"jsonrpc":"2.0","id":2,"method":"session/prompt","params":'
+            '{"sessionId":"$sessionId","prompt":[{"type":"text","text":"go"}]}}\n',
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        await input.close();
+        await serverFuture;
+
+        sent = await readSent();
+        final completed = sent
+            .where((m) => m['method'] == 'session/update')
+            .map((m) => (m['params']! as Map)['update'] as Map)
+            .firstWhere(
+              (u) => u['status'] == 'completed',
+              orElse: () => fail('expected a completed tool_call_update'),
+            );
+        final content = completed['content']! as List;
+        // The diff block is emitted first; nothing else (no contentParts).
+        expect(content, hasLength(1));
+        final diff = content.first as Map;
+        expect(diff['type'], 'diff');
+        expect(diff['path'], '/tmp/x.txt');
+        expect(diff['oldText'], 'old\n');
+        expect(diff['newText'], 'new');
+      },
+    );
+
+    test('tool result with ImagePart surfaces as image content block', () async {
       final call = ToolCall(
         id: const ToolCallId('tc-img'),
         name: 'web_browser',
         arguments: const {'action': 'screenshot'},
       );
-      final delegate = _FakeDelegate(scripted: [
-        AgentToolCallPending(id: call.id, name: call.name),
-        AgentToolCall(call),
-        AgentToolResult(ToolResult(
-          callId: call.id,
-          content: 'Screenshot captured.',
-          summary: 'web_browser: screenshot of example.com',
-          contentParts: const [
-            TextPart('Screenshot of example.com'),
-            ImagePart(bytes: [0x89, 0x50, 0x4e, 0x47], mimeType: 'image/png'),
-          ],
-        )),
-        AgentDone(),
-      ]);
+      final delegate = _FakeDelegate(
+        scripted: [
+          AgentToolCallPending(id: call.id, name: call.name),
+          AgentToolCall(call),
+          AgentToolResult(
+            ToolResult(
+              callId: call.id,
+              content: 'Screenshot captured.',
+              summary: 'web_browser: screenshot of example.com',
+              contentParts: const [
+                TextPart('Screenshot of example.com'),
+                ImagePart(
+                  bytes: [0x89, 0x50, 0x4e, 0x47],
+                  mimeType: 'image/png',
+                ),
+              ],
+            ),
+          ),
+          AgentDone(),
+        ],
+      );
       final server = AcpServer(transport: transport, delegate: delegate);
       final serverFuture = server.serve();
 
-      input.add(utf8.encode(
-        '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
-        '{"cwd":"/tmp/p"}}\n',
-      ));
+      input.add(
+        utf8.encode(
+          '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
+          '{"cwd":"/tmp/p"}}\n',
+        ),
+      );
       await Future<void>.delayed(const Duration(milliseconds: 5));
       var sent = await readSent();
       final sessionId = (sent.single['result']! as Map)['sessionId'] as String;
       output.buffer.clear();
 
-      input.add(utf8.encode(
-        '{"jsonrpc":"2.0","id":2,"method":"session/prompt","params":'
-        '{"sessionId":"$sessionId","prompt":[{"type":"text","text":"go"}]}}\n',
-      ));
+      input.add(
+        utf8.encode(
+          '{"jsonrpc":"2.0","id":2,"method":"session/prompt","params":'
+          '{"sessionId":"$sessionId","prompt":[{"type":"text","text":"go"}]}}\n',
+        ),
+      );
       await Future<void>.delayed(const Duration(milliseconds: 50));
       await input.close();
       await serverFuture;
@@ -458,10 +509,12 @@ void main() {
       final content = completedUpdate['content']! as List;
       // Two entries: text + image.
       expect(content, hasLength(2));
-      final imageEntry = content.firstWhere(
-        (c) => ((c as Map)['content'] as Map?)?['type'] == 'image',
-        orElse: () => fail('expected an image content block'),
-      ) as Map;
+      final imageEntry =
+          content.firstWhere(
+                (c) => ((c as Map)['content'] as Map?)?['type'] == 'image',
+                orElse: () => fail('expected an image content block'),
+              )
+              as Map;
       final imageBlock = imageEntry['content']! as Map;
       expect(imageBlock['mimeType'], 'image/png');
       expect(imageBlock['data'], isA<String>()); // base64
@@ -474,25 +527,30 @@ void main() {
         arguments: const {'command': 'ls'},
         description: 'list files',
       );
-      final delegate = _FakeDelegate(scripted: [
-        AgentToolCallPending(id: call.id, name: call.name),
-        AgentToolCall(call),
-        AgentToolResult(ToolResult(
-          callId: call.id,
-          content: 'file1\nfile2\n',
-          summary: 'bash: ls (exit 0)',
-        )),
-        AgentDone(),
-      ])
-        ..permissionAnswer = (_) => true;
+      final delegate = _FakeDelegate(
+        scripted: [
+          AgentToolCallPending(id: call.id, name: call.name),
+          AgentToolCall(call),
+          AgentToolResult(
+            ToolResult(
+              callId: call.id,
+              content: 'file1\nfile2\n',
+              summary: 'bash: ls (exit 0)',
+            ),
+          ),
+          AgentDone(),
+        ],
+      )..permissionAnswer = (_) => true;
       final server = AcpServer(transport: transport, delegate: delegate);
       final serverFuture = server.serve();
 
       // Open session.
-      input.add(utf8.encode(
-        '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
-        '{"cwd":"/tmp/p"}}\n',
-      ));
+      input.add(
+        utf8.encode(
+          '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
+          '{"cwd":"/tmp/p"}}\n',
+        ),
+      );
       await Future<void>.delayed(const Duration(milliseconds: 5));
       final newRespLines = await readSent();
       final sessionId =
@@ -502,10 +560,12 @@ void main() {
       // Drive prompt; the server will issue session/request_permission
       // on the first tool call. We have to answer it to let the prompt
       // complete.
-      input.add(utf8.encode(
-        '{"jsonrpc":"2.0","id":2,"method":"session/prompt","params":'
-        '{"sessionId":"$sessionId","prompt":[{"type":"text","text":"go"}]}}\n',
-      ));
+      input.add(
+        utf8.encode(
+          '{"jsonrpc":"2.0","id":2,"method":"session/prompt","params":'
+          '{"sessionId":"$sessionId","prompt":[{"type":"text","text":"go"}]}}\n',
+        ),
+      );
 
       // Wait for request_permission to be sent, then reply.
       Map<String, Object?>? permReq;
@@ -513,19 +573,21 @@ void main() {
       while (permReq == null) {
         final pending = await readSent();
         permReq = pending.cast<Map<String, Object?>?>().firstWhere(
-              (m) => m?['method'] == 'session/request_permission',
-              orElse: () => null,
-            );
+          (m) => m?['method'] == 'session/request_permission',
+          orElse: () => null,
+        );
         if (DateTime.now().difference(start).inSeconds > 2) {
           fail('timed out waiting for request_permission');
         }
         await Future<void>.delayed(const Duration(milliseconds: 5));
       }
       final permId = permReq['id']!;
-      input.add(utf8.encode(
-        '{"jsonrpc":"2.0","id":$permId,"result":{"outcome":'
-        '{"outcome":"selected","optionId":"allow"}}}\n',
-      ));
+      input.add(
+        utf8.encode(
+          '{"jsonrpc":"2.0","id":$permId,"result":{"outcome":'
+          '{"outcome":"selected","optionId":"allow"}}}\n',
+        ),
+      );
 
       await Future<void>.delayed(const Duration(milliseconds: 50));
       await input.close();
@@ -539,9 +601,11 @@ void main() {
           .map((m) => (m['params']! as Map)['update'] as Map)
           .toList();
       final completeds = toolUpdates
-          .where((u) =>
-              u['sessionUpdate'] == 'tool_call_update' &&
-              u['status'] == 'completed')
+          .where(
+            (u) =>
+                u['sessionUpdate'] == 'tool_call_update' &&
+                u['status'] == 'completed',
+          )
           .toList();
       expect(completeds, isNotEmpty);
     });

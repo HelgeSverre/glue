@@ -82,16 +82,15 @@ class ShareCommand extends SlashCommand {
             : null;
         final message = switch (format) {
           'html' => 'Exported HTML transcript to ${result.htmlPath!}',
-          'md' ||
-          'markdown' =>
+          'md' || 'markdown' =>
             'Exported markdown transcript to ${result.markdownPath!}',
           _ => 'Exported HTML transcript to ${result.htmlPath!}',
         };
         final openNote = openedHtml == null
             ? ''
             : openedHtml
-                ? '\nOpened HTML transcript in browser.'
-                : '\nCould not open HTML transcript automatically.';
+            ? '\nOpened HTML transcript in browser.'
+            : '\nCould not open HTML transcript automatically.';
         ctx.conversation.notify('$message$openNote');
       } on StateError catch (e) {
         ctx.conversation.notify(e.message.toString());

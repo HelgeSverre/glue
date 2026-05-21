@@ -26,17 +26,13 @@ class _FakeAdapter extends ProviderAdapter {
     required ResolvedProvider provider,
     required ResolvedModel model,
     required String systemPrompt,
-  }) =>
-      _FakeClient();
+  }) => _FakeClient();
 }
 
 Directory _scratch() =>
     Directory.systemTemp.createTempSync('glue_auth_hooks_test_');
 
-ProviderDef _provider({
-  required AuthSpec auth,
-  String id = 'fake',
-}) =>
+ProviderDef _provider({required AuthSpec auth, String id = 'fake'}) =>
     ProviderDef(
       id: id,
       name: id,
@@ -50,10 +46,7 @@ void main() {
     test('AuthKind.none returns null', () async {
       final dir = _scratch();
       addTearDown(() => dir.deleteSync(recursive: true));
-      final store = CredentialStore(
-        path: '${dir.path}/c.json',
-        env: const {},
-      );
+      final store = CredentialStore(path: '${dir.path}/c.json', env: const {});
       final provider = _provider(auth: const AuthSpec(kind: AuthKind.none));
       final flow = await _FakeAdapter().beginInteractiveAuth(
         provider: provider,
@@ -62,57 +55,60 @@ void main() {
       expect(flow, isNull);
     });
 
-    test('AuthKind.apiKey returns an ApiKeyFlow with envPresent when set',
-        () async {
-      final dir = _scratch();
-      addTearDown(() => dir.deleteSync(recursive: true));
-      final store = CredentialStore(
-        path: '${dir.path}/c.json',
-        env: {'ANTHROPIC_API_KEY': 'sk-env'},
-      );
-      final provider = _provider(
-        auth: const AuthSpec(
-          kind: AuthKind.apiKey,
-          envVar: 'ANTHROPIC_API_KEY',
-          helpUrl: 'https://console.example.com',
-        ),
-      );
-      final flow = await _FakeAdapter().beginInteractiveAuth(
-        provider: provider,
-        store: store,
-      );
-      expect(flow, isA<ApiKeyFlow>());
-      final apiKey = flow! as ApiKeyFlow;
-      expect(apiKey.envVar, 'ANTHROPIC_API_KEY');
-      expect(apiKey.envPresent, 'sk-env');
-      expect(apiKey.helpUrl, contains('example.com'));
-    });
+    test(
+      'AuthKind.apiKey returns an ApiKeyFlow with envPresent when set',
+      () async {
+        final dir = _scratch();
+        addTearDown(() => dir.deleteSync(recursive: true));
+        final store = CredentialStore(
+          path: '${dir.path}/c.json',
+          env: {'ANTHROPIC_API_KEY': 'sk-env'},
+        );
+        final provider = _provider(
+          auth: const AuthSpec(
+            kind: AuthKind.apiKey,
+            envVar: 'ANTHROPIC_API_KEY',
+            helpUrl: 'https://console.example.com',
+          ),
+        );
+        final flow = await _FakeAdapter().beginInteractiveAuth(
+          provider: provider,
+          store: store,
+        );
+        expect(flow, isA<ApiKeyFlow>());
+        final apiKey = flow! as ApiKeyFlow;
+        expect(apiKey.envVar, 'ANTHROPIC_API_KEY');
+        expect(apiKey.envPresent, 'sk-env');
+        expect(apiKey.helpUrl, contains('example.com'));
+      },
+    );
 
-    test('AuthKind.apiKey returns ApiKeyFlow with envPresent null when unset',
-        () async {
-      final dir = _scratch();
-      addTearDown(() => dir.deleteSync(recursive: true));
-      final store = CredentialStore(
-        path: '${dir.path}/c.json',
-        env: const {},
-      );
-      final provider = _provider(
-        auth: const AuthSpec(kind: AuthKind.apiKey, envVar: 'MISSING'),
-      );
-      final flow = await _FakeAdapter().beginInteractiveAuth(
-        provider: provider,
-        store: store,
-      ) as ApiKeyFlow;
-      expect(flow.envPresent, isNull);
-    });
+    test(
+      'AuthKind.apiKey returns ApiKeyFlow with envPresent null when unset',
+      () async {
+        final dir = _scratch();
+        addTearDown(() => dir.deleteSync(recursive: true));
+        final store = CredentialStore(
+          path: '${dir.path}/c.json',
+          env: const {},
+        );
+        final provider = _provider(
+          auth: const AuthSpec(kind: AuthKind.apiKey, envVar: 'MISSING'),
+        );
+        final flow =
+            await _FakeAdapter().beginInteractiveAuth(
+                  provider: provider,
+                  store: store,
+                )
+                as ApiKeyFlow;
+        expect(flow.envPresent, isNull);
+      },
+    );
 
     test('AuthKind.oauth on default impl throws UnimplementedError', () async {
       final dir = _scratch();
       addTearDown(() => dir.deleteSync(recursive: true));
-      final store = CredentialStore(
-        path: '${dir.path}/c.json',
-        env: const {},
-      );
+      final store = CredentialStore(path: '${dir.path}/c.json', env: const {});
       final provider = _provider(auth: const AuthSpec(kind: AuthKind.oauth));
       expect(
         () async => _FakeAdapter().beginInteractiveAuth(
@@ -128,10 +124,7 @@ void main() {
     test('none is always connected', () {
       final dir = _scratch();
       addTearDown(() => dir.deleteSync(recursive: true));
-      final store = CredentialStore(
-        path: '${dir.path}/c.json',
-        env: const {},
-      );
+      final store = CredentialStore(path: '${dir.path}/c.json', env: const {});
       final p = _provider(auth: const AuthSpec(kind: AuthKind.none));
       expect(_FakeAdapter().isConnected(p, store), isTrue);
     });
@@ -144,8 +137,10 @@ void main() {
         env: {'ANTHROPIC_API_KEY': 'sk-env'},
       );
       final p = _provider(
-        auth:
-            const AuthSpec(kind: AuthKind.apiKey, envVar: 'ANTHROPIC_API_KEY'),
+        auth: const AuthSpec(
+          kind: AuthKind.apiKey,
+          envVar: 'ANTHROPIC_API_KEY',
+        ),
       );
       expect(_FakeAdapter().isConnected(p, store), isTrue);
     });
@@ -153,13 +148,12 @@ void main() {
     test('apiKey is not connected when neither env nor stored', () {
       final dir = _scratch();
       addTearDown(() => dir.deleteSync(recursive: true));
-      final store = CredentialStore(
-        path: '${dir.path}/c.json',
-        env: const {},
-      );
+      final store = CredentialStore(path: '${dir.path}/c.json', env: const {});
       final p = _provider(
-        auth:
-            const AuthSpec(kind: AuthKind.apiKey, envVar: 'ANTHROPIC_API_KEY'),
+        auth: const AuthSpec(
+          kind: AuthKind.apiKey,
+          envVar: 'ANTHROPIC_API_KEY',
+        ),
       );
       expect(_FakeAdapter().isConnected(p, store), isFalse);
     });
@@ -167,10 +161,7 @@ void main() {
     test('oauth is false on default impl (adapters must override)', () {
       final dir = _scratch();
       addTearDown(() => dir.deleteSync(recursive: true));
-      final store = CredentialStore(
-        path: '${dir.path}/c.json',
-        env: const {},
-      );
+      final store = CredentialStore(path: '${dir.path}/c.json', env: const {});
       final p = _provider(auth: const AuthSpec(kind: AuthKind.oauth));
       expect(_FakeAdapter().isConnected(p, store), isFalse);
     });

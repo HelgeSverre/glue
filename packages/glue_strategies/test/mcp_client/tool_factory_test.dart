@@ -12,18 +12,23 @@ McpClient _client(InMemoryMcpTransport transport) =>
 void main() {
   group('McpTool.execute', () {
     test('returns success with concatenated text payload', () async {
-      final transport = InMemoryMcpTransport(respond: (out) async {
-        if (out is JsonRpcRequest && out.method == McpMethod.toolsCall) {
-          return [
-            JsonRpcResponse(id: out.id, result: {
-              'content': [
-                {'type': 'text', 'text': 'echo: hi'},
-              ],
-            }),
-          ];
-        }
-        return [];
-      });
+      final transport = InMemoryMcpTransport(
+        respond: (out) async {
+          if (out is JsonRpcRequest && out.method == McpMethod.toolsCall) {
+            return [
+              JsonRpcResponse(
+                id: out.id,
+                result: {
+                  'content': [
+                    {'type': 'text', 'text': 'echo: hi'},
+                  ],
+                },
+              ),
+            ];
+          }
+          return [];
+        },
+      );
       final client = _client(transport);
       final tool = McpTool(
         client: client,
@@ -70,19 +75,24 @@ void main() {
     });
 
     test('server isError=true surfaces success=false', () async {
-      final transport = InMemoryMcpTransport(respond: (out) async {
-        if (out is JsonRpcRequest && out.method == McpMethod.toolsCall) {
-          return [
-            JsonRpcResponse(id: out.id, result: {
-              'isError': true,
-              'content': [
-                {'type': 'text', 'text': 'tool said no'},
-              ],
-            }),
-          ];
-        }
-        return [];
-      });
+      final transport = InMemoryMcpTransport(
+        respond: (out) async {
+          if (out is JsonRpcRequest && out.method == McpMethod.toolsCall) {
+            return [
+              JsonRpcResponse(
+                id: out.id,
+                result: {
+                  'isError': true,
+                  'content': [
+                    {'type': 'text', 'text': 'tool said no'},
+                  ],
+                },
+              ),
+            ];
+          }
+          return [];
+        },
+      );
       final client = _client(transport);
       final tool = McpTool(
         client: client,
@@ -135,9 +145,15 @@ void main() {
         serverId: 'fs',
         descriptors: const [
           McpToolDescriptor(
-              name: 'read_file', description: '', inputSchema: {}),
+            name: 'read_file',
+            description: '',
+            inputSchema: {},
+          ),
           McpToolDescriptor(
-              name: 'unique_tool', description: '', inputSchema: {}),
+            name: 'unique_tool',
+            description: '',
+            inputSchema: {},
+          ),
         ],
         reservedNames: {'read_file'},
       );

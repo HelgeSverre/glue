@@ -46,10 +46,9 @@ void main() {
     store.logEvent('assistant_message', {'text': 'hi there'});
     await store.close();
 
-    final lines = File(p.join(sessionDir, 'conversation.jsonl'))
-        .readAsLinesSync()
-        .where((l) => l.isNotEmpty)
-        .toList();
+    final lines = File(
+      p.join(sessionDir, 'conversation.jsonl'),
+    ).readAsLinesSync().where((l) => l.isNotEmpty).toList();
     expect(lines, hasLength(2));
 
     final first = jsonDecode(lines[0]) as Map<String, dynamic>;
@@ -75,9 +74,9 @@ void main() {
   test('title is omitted from meta.json when null', () {
     SessionStore(sessionDir: sessionDir, meta: meta);
 
-    final metaJson = jsonDecode(
-      File(p.join(sessionDir, 'meta.json')).readAsStringSync(),
-    ) as Map<String, dynamic>;
+    final metaJson =
+        jsonDecode(File(p.join(sessionDir, 'meta.json')).readAsStringSync())
+            as Map<String, dynamic>;
     expect(metaJson.containsKey('title'), isFalse);
   });
 

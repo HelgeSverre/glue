@@ -100,11 +100,13 @@ class SlashAutocomplete implements AutocompleteOverlay {
       }
       for (final alias in cmd.aliases) {
         if (alias.startsWith(prefix) && alias != cmd.name) {
-          candidates.add(_candidateForCommand(
-            cmd,
-            alias,
-            descriptionOverride: '${cmd.description} (→/${cmd.name})',
-          ));
+          candidates.add(
+            _candidateForCommand(
+              cmd,
+              alias,
+              descriptionOverride: '${cmd.description} (→/${cmd.name})',
+            ),
+          );
         }
       }
     }
@@ -162,12 +164,14 @@ class SlashAutocomplete implements AutocompleteOverlay {
     }
 
     _matches = results
-        .map((c) => _Candidate(
-              display: c.value,
-              description: c.description,
-              acceptValue: c.value,
-              acceptContinues: c.continues,
-            ))
+        .map(
+          (c) => _Candidate(
+            display: c.value,
+            description: c.description,
+            acceptValue: c.value,
+            acceptContinues: c.continues,
+          ),
+        )
         .toList();
     _active = true;
     _mode = _Mode.arg;
@@ -258,9 +262,11 @@ class SlashAutocomplete implements AutocompleteOverlay {
           : content;
       final padCount = width - visibleLength(truncated);
       final padded = '$truncated${' ' * (padCount > 0 ? padCount : 0)}';
-      lines.add(absoluteIndex == _selected
-          ? '${padded.styled.bg256(24).brightWhite}'
-          : '${padded.styled.bg256(236).white}');
+      lines.add(
+        absoluteIndex == _selected
+            ? '${padded.styled.bg256(24).brightWhite}'
+            : '${padded.styled.bg256(236).white}',
+      );
     }
 
     return lines;

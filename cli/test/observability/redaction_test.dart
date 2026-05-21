@@ -47,15 +47,17 @@ void main() {
     });
 
     test('masks sensitive query params', () {
-      final result =
-          redactUrl(Uri.parse('https://example.com/x?api_key=abc&q=cats'));
+      final result = redactUrl(
+        Uri.parse('https://example.com/x?api_key=abc&q=cats'),
+      );
       expect(result, contains('api_key=****'));
       expect(result, contains('q=cats'));
     });
 
     test('masks access_token and token params', () {
       final result = redactUrl(
-          Uri.parse('https://x.com/y?access_token=abc&token=def&other=ok'));
+        Uri.parse('https://x.com/y?access_token=abc&token=def&other=ok'),
+      );
       expect(result, contains('access_token=****'));
       expect(result, contains('token=****'));
       expect(result, contains('other=ok'));

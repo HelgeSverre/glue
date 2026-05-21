@@ -33,8 +33,10 @@ void main() {
         ],
       );
 
-      expect(
-          report.rows.map((UsageReportRow r) => r.role), ['main', 'subagent']);
+      expect(report.rows.map((UsageReportRow r) => r.role), [
+        'main',
+        'subagent',
+      ]);
       final main = report.rows.first;
       expect(main.calls, 2);
       expect(main.input, 160);
@@ -55,8 +57,13 @@ void main() {
           {'type': 'usage', 'role': 'aardvark', 'input_tokens': 1},
         ],
       );
-      expect(report.rows.map((UsageReportRow r) => r.role),
-          ['main', 'subagent', 'title', 'aardvark', 'audit']);
+      expect(report.rows.map((UsageReportRow r) => r.role), [
+        'main',
+        'subagent',
+        'title',
+        'aardvark',
+        'audit',
+      ]);
     });
 
     test('cacheHitRate is null when no LLM call recorded', () {

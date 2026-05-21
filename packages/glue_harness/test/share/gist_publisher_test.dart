@@ -50,14 +50,14 @@ void main() {
           'create',
           markdownPath,
           '--desc',
-          'Glue session: Example'
+          'Glue session: Example',
         ],
       ]);
     });
 
     test('fails with a clear message when gh is unavailable', () async {
       final publisher = SessionGistPublisher(
-        runner: (_, __) async {
+        runner: (_, _) async {
           throw const ProcessException('gh', []);
         },
       );
@@ -121,8 +121,10 @@ void main() {
           isA<GistPublishError>().having(
             (e) => e.message,
             'message',
-            allOf(contains('failed to create a gist'),
-                contains('creation failed')),
+            allOf(
+              contains('failed to create a gist'),
+              contains('creation failed'),
+            ),
           ),
         ),
       );

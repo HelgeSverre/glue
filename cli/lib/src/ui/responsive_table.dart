@@ -14,8 +14,8 @@ class ResponsiveTable<T> {
     this.gap = '  ',
     this.includeDivider = true,
     this.includeHeaderInWidth = false,
-  })  : _rows = rows.map(getValues).toList(growable: false),
-        _sources = List<T>.from(rows, growable: false);
+  }) : _rows = rows.map(getValues).toList(growable: false),
+       _sources = List<T>.from(rows, growable: false);
 
   final List<TableColumn> columns;
   final List<Map<String, String>> _rows;

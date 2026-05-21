@@ -40,10 +40,7 @@ class _Fixture {
       clearToolUi: () {},
       clearSubagentGroups: () => subagentGroups.clear(),
     );
-    approval = ApprovalState(
-      get: () => ApprovalMode.confirm,
-      set: (_) {},
-    );
+    approval = ApprovalState(get: () => ApprovalMode.confirm, set: (_) {});
     lifecycle = Lifecycle(onExit: () {});
     panels = ModalSurface(panelStack: panelStack, render: () {});
     dockManager = DockManager();
@@ -75,29 +72,29 @@ class _Fixture {
   LlmClientFactory? factory;
 
   SlashCommandContext get ctx => SlashCommandContext(
-        configGetter: () => config,
-        llmFactoryGetter: () => factory,
-        agentGetter: () => agent,
-        cwdGetter: () => environment.cwd,
-        modelIdGetter: () => 'test/model',
-        isIdleGetter: () => true,
-        environment: environment,
-        session: session,
-        skills: skills,
-        debug: null,
-        dockManager: dockManager,
-        editor: editor,
-        mcpPool: mcpPool,
-        autoApprovedTools: const <String>{},
-        ensureSession: () {},
-        backfillTitle: (_) {},
-        switchModel: (_) => '',
-        conversation: conversation,
-        approval: approval,
-        lifecycle: lifecycle,
-        panels: panels,
-        commandsGetter: () => const <SlashCommand>[],
-      );
+    configGetter: () => config,
+    llmFactoryGetter: () => factory,
+    agentGetter: () => agent,
+    cwdGetter: () => environment.cwd,
+    modelIdGetter: () => 'test/model',
+    isIdleGetter: () => true,
+    environment: environment,
+    session: session,
+    skills: skills,
+    debug: null,
+    dockManager: dockManager,
+    editor: editor,
+    mcpPool: mcpPool,
+    autoApprovedTools: const <String>{},
+    ensureSession: () {},
+    backfillTitle: (_) {},
+    switchModel: (_) => '',
+    conversation: conversation,
+    approval: approval,
+    lifecycle: lifecycle,
+    panels: panels,
+    commandsGetter: () => const <SlashCommand>[],
+  );
 }
 
 void main() {
@@ -112,7 +109,9 @@ void main() {
       final fx = _Fixture();
       final cmd = RecapCommand(fx.ctx);
       expect(
-          cmd.execute(const []), 'Not enough conversation yet to summarize.');
+        cmd.execute(const []),
+        'Not enough conversation yet to summarize.',
+      );
     });
 
     test('reports unavailability when no LLM factory is configured', () {
@@ -121,8 +120,10 @@ void main() {
       fx.agent.addMessage(Message.assistant(text: 'hi'));
       // No GlueConfig and no LlmClientFactory → llm resolution short-circuits.
       final cmd = RecapCommand(fx.ctx);
-      expect(cmd.execute(const []),
-          'Recap unavailable: no model configured for summarization.');
+      expect(
+        cmd.execute(const []),
+        'Recap unavailable: no model configured for summarization.',
+      );
     });
   });
 }

@@ -18,14 +18,14 @@ class SkillTool extends Tool {
 
   @override
   List<ToolParameter> get parameters => const [
-        ToolParameter(
-          name: 'name',
-          type: 'string',
-          description:
-              'The name of the skill to activate. Omit to list all available skills.',
-          required: false,
-        ),
-      ];
+    ToolParameter(
+      name: 'name',
+      type: 'string',
+      description:
+          'The name of the skill to activate. Omit to list all available skills.',
+      required: false,
+    ),
+  ];
 
   @override
   Future<ToolResult> execute(Map<String, dynamic> args) async {

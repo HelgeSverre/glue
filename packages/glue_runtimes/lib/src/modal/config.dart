@@ -58,14 +58,12 @@ class ModalConfig {
     String? image,
     int? sandboxTimeoutSeconds,
     bool? deleteOnClose,
-  }) =>
-      ModalConfig(
-        pythonPath: pythonPath ?? this.pythonPath,
-        modalCliPath: modalCliPath ?? this.modalCliPath,
-        appName: appName ?? this.appName,
-        image: image ?? this.image,
-        sandboxTimeoutSeconds:
-            sandboxTimeoutSeconds ?? this.sandboxTimeoutSeconds,
-        deleteOnClose: deleteOnClose ?? this.deleteOnClose,
-      );
+  }) => ModalConfig(
+    pythonPath: pythonPath ?? this.pythonPath,
+    modalCliPath: modalCliPath ?? this.modalCliPath,
+    appName: appName ?? this.appName,
+    image: image ?? this.image,
+    sandboxTimeoutSeconds: sandboxTimeoutSeconds ?? this.sandboxTimeoutSeconds,
+    deleteOnClose: deleteOnClose ?? this.deleteOnClose,
+  );
 }

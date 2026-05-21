@@ -18,8 +18,30 @@ abstract class LlmClient {
   /// Streams a response for the given [messages].
   ///
   /// If [tools] are provided the model may emit [ToolCallComplete] chunks.
-  Stream<LlmChunk> stream(
-    List<Message> messages, {
-    List<Tool>? tools,
-  });
+  Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools});
+}
+
+/// Thrown by an [LlmClient] when the underlying model rejects a request
+/// for trying to use tool calling on a model that doesn't support it.
+///
+/// Today Ollama is the only provider that exposes models lacking tool
+/// calling — its `/api/chat` endpoint returns
+/// `400 {"error":"<model> does not support tools"}` on the first turn
+/// that includes a `tools` array. `OllamaClient` recognises that exact
+/// shape and rethrows this typed exception. Other adapters may grow
+/// the same throw if they ever expose tool-less models.
+///
+/// `AgentCore` catches this, sets its [Tool] filter to reject everything,
+/// emits a one-time notice, and retries the turn in chat-only mode —
+/// the user keeps their session rather than crashing on turn one.
+class ToolsNotSupportedException implements Exception {
+  const ToolsNotSupportedException(this.modelId);
+
+  /// The API id of the model that rejected tools — e.g. `qwen2.5:7b`.
+  final String modelId;
+
+  @override
+  String toString() =>
+      'ToolsNotSupportedException: model "$modelId" does not support '
+      'tool calling';
 }

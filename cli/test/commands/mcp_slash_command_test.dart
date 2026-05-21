@@ -42,7 +42,8 @@ class _Fixture {
     lifecycle = Lifecycle(onExit: () {});
     panels = ModalSurface(panelStack: panelStack, render: () {});
     dockManager = DockManager();
-    mcpPool = pool ??
+    mcpPool =
+        pool ??
         McpClientPool(
           config: const McpConfig(),
           credentials: CredentialStore(
@@ -68,29 +69,29 @@ class _Fixture {
   late final McpClientPool mcpPool;
 
   SlashCommandContext get ctx => SlashCommandContext(
-        configGetter: () => null,
-        llmFactoryGetter: () => null,
-        agentGetter: () => agent,
-        cwdGetter: () => environment.cwd,
-        modelIdGetter: () => 'test/model',
-        isIdleGetter: () => true,
-        environment: environment,
-        session: session,
-        skills: skills,
-        debug: null,
-        dockManager: dockManager,
-        editor: editor,
-        mcpPool: mcpPool,
-        autoApprovedTools: const <String>{},
-        ensureSession: () {},
-        backfillTitle: (_) {},
-        switchModel: (_) => '',
-        conversation: conversation,
-        approval: approval,
-        lifecycle: lifecycle,
-        panels: panels,
-        commandsGetter: () => const <SlashCommand>[],
-      );
+    configGetter: () => null,
+    llmFactoryGetter: () => null,
+    agentGetter: () => agent,
+    cwdGetter: () => environment.cwd,
+    modelIdGetter: () => 'test/model',
+    isIdleGetter: () => true,
+    environment: environment,
+    session: session,
+    skills: skills,
+    debug: null,
+    dockManager: dockManager,
+    editor: editor,
+    mcpPool: mcpPool,
+    autoApprovedTools: const <String>{},
+    ensureSession: () {},
+    backfillTitle: (_) {},
+    switchModel: (_) => '',
+    conversation: conversation,
+    approval: approval,
+    lifecycle: lifecycle,
+    panels: panels,
+    commandsGetter: () => const <SlashCommand>[],
+  );
 }
 
 void main() {
@@ -107,10 +108,12 @@ void main() {
       final tmp = Directory.systemTemp.createTempSync('mcp_slash_test_');
       final env = Environment.test(home: tmp.path, cwd: tmp.path);
       final pool = McpClientPool(
-        config: const McpConfig(servers: [
-          McpStdioServerSpec(id: 'fs', command: 'fake'),
-          McpStdioServerSpec(id: 'db', command: 'fake', enabled: false),
-        ]),
+        config: const McpConfig(
+          servers: [
+            McpStdioServerSpec(id: 'fs', command: 'fake'),
+            McpStdioServerSpec(id: 'db', command: 'fake', enabled: false),
+          ],
+        ),
         credentials: CredentialStore(
           path: '${env.glueDir}/credentials.json',
           env: const {},
@@ -130,9 +133,9 @@ void main() {
       final tmp = Directory.systemTemp.createTempSync('mcp_slash_test_');
       final env = Environment.test(home: tmp.path, cwd: tmp.path);
       final pool = McpClientPool(
-        config: const McpConfig(servers: [
-          McpStdioServerSpec(id: 'fs', command: 'fake'),
-        ]),
+        config: const McpConfig(
+          servers: [McpStdioServerSpec(id: 'fs', command: 'fake')],
+        ),
         credentials: CredentialStore(
           path: '${env.glueDir}/credentials.json',
           env: const {},
@@ -142,8 +145,11 @@ void main() {
       final cmd = McpSlashCommand(fx.ctx);
 
       final result = cmd.execute(const []);
-      expect(result, isEmpty,
-          reason: 'panel mode returns empty; the panel is pushed instead');
+      expect(
+        result,
+        isEmpty,
+        reason: 'panel mode returns empty; the panel is pushed instead',
+      );
       expect(fx.panelStack, hasLength(1));
     });
 
@@ -151,10 +157,12 @@ void main() {
       final tmp = Directory.systemTemp.createTempSync('mcp_slash_test_');
       final env = Environment.test(home: tmp.path, cwd: tmp.path);
       final pool = McpClientPool(
-        config: const McpConfig(servers: [
-          McpStdioServerSpec(id: 'fs', command: 'fake'),
-          McpStdioServerSpec(id: 'parked', command: 'fake', enabled: false),
-        ]),
+        config: const McpConfig(
+          servers: [
+            McpStdioServerSpec(id: 'fs', command: 'fake'),
+            McpStdioServerSpec(id: 'parked', command: 'fake', enabled: false),
+          ],
+        ),
         credentials: CredentialStore(
           path: '${env.glueDir}/credentials.json',
           env: const {},

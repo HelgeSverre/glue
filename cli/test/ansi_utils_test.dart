@@ -28,16 +28,10 @@ void main() {
 
     test('treats wide glyphs as 2 cells and includes them whole', () {
       // 漢 is double-width; selecting cells 0..2 covers exactly that glyph.
-      expect(
-        applySelectionHighlight('漢字', 0, 2),
-        equals('\x1b[7m漢\x1b[27m字'),
-      );
+      expect(applySelectionHighlight('漢字', 0, 2), equals('\x1b[7m漢\x1b[27m字'));
       // Selecting cells 0..3 covers '漢' (2 cells) and starts inside '字';
       // the second glyph is included whole because we don't split glyphs.
-      expect(
-        applySelectionHighlight('漢字', 0, 3),
-        equals('\x1b[7m漢字\x1b[27m'),
-      );
+      expect(applySelectionHighlight('漢字', 0, 3), equals('\x1b[7m漢字\x1b[27m'));
     });
 
     test('preserves CSI styling sequences around the highlight', () {
@@ -65,9 +59,11 @@ void main() {
       final result = osc8Link('https://example.com');
       expect(
         result,
-        equals('\x1b]8;;https://example.com\x07'
-            'https://example.com'
-            '\x1b]8;;\x07'),
+        equals(
+          '\x1b]8;;https://example.com\x07'
+          'https://example.com'
+          '\x1b]8;;\x07',
+        ),
       );
     });
 
@@ -87,10 +83,7 @@ void main() {
     test('handles URL with special characters', () {
       const url = 'https://example.com/path?q=hello&x=1#frag';
       final result = osc8Link(url, 'link');
-      expect(
-        result,
-        equals('\x1b]8;;$url\x07link\x1b]8;;\x07'),
-      );
+      expect(result, equals('\x1b]8;;$url\x07link\x1b]8;;\x07'));
     });
   });
 
@@ -135,7 +128,8 @@ void main() {
 
     test('zalgo text — combining marks are zero-width', () {
       // "hello" with stacked combining marks
-      const zalgo = 'h\u0335\u0321\u0353e\u0344\u0359l\u0334\u0319'
+      const zalgo =
+          'h\u0335\u0321\u0353e\u0344\u0359l\u0334\u0319'
           'l\u0337\u0320o\u0336\u0326';
       expect(visibleLength(zalgo), 5);
     });
@@ -344,8 +338,10 @@ void main() {
     });
 
     test('wraps text with umlauts', () {
-      final result =
-          ansiWrap('Ärger über die Ölförderung führt zu Übermut', 20);
+      final result = ansiWrap(
+        'Ärger über die Ölförderung führt zu Übermut',
+        20,
+      );
       for (final line in result.split('\n')) {
         expect(visibleLength(line), lessThanOrEqualTo(20));
       }
@@ -366,7 +362,8 @@ void main() {
     });
 
     test('wraps text with combining marks (zalgo)', () {
-      const zalgo = 'h\u0335e\u0344l\u0334l\u0337o\u0336 '
+      const zalgo =
+          'h\u0335e\u0344l\u0334l\u0337o\u0336 '
           'w\u0321o\u0359r\u0319l\u0320d\u0326';
       final result = ansiWrap(zalgo, 6);
       for (final line in result.split('\n')) {
@@ -411,8 +408,12 @@ void main() {
 
   group('wrapIndented', () {
     test('applies firstPrefix and nextPrefix', () {
-      final result = wrapIndented('one two three four', 12,
-          firstPrefix: '• ', nextPrefix: '  ');
+      final result = wrapIndented(
+        'one two three four',
+        12,
+        firstPrefix: '• ',
+        nextPrefix: '  ',
+      );
       final lines = result.split('\n');
       expect(lines.first, startsWith('• '));
       for (final line in lines.skip(1)) {
@@ -422,16 +423,23 @@ void main() {
 
     test('all lines fit within width', () {
       final result = wrapIndented(
-          'The quick brown fox jumped over the lazy dog', 20,
-          firstPrefix: '• ', nextPrefix: '  ');
+        'The quick brown fox jumped over the lazy dog',
+        20,
+        firstPrefix: '• ',
+        nextPrefix: '  ',
+      );
       for (final line in result.split('\n')) {
         expect(visibleLength(line), lessThanOrEqualTo(20));
       }
     });
 
     test('uniform prefix (indentation)', () {
-      final result = wrapIndented('hello world foo bar baz', 15,
-          firstPrefix: '   ', nextPrefix: '   ');
+      final result = wrapIndented(
+        'hello world foo bar baz',
+        15,
+        firstPrefix: '   ',
+        nextPrefix: '   ',
+      );
       final lines = result.split('\n');
       for (final line in lines) {
         expect(line, startsWith('   '));
@@ -440,8 +448,12 @@ void main() {
     });
 
     test('blockquote prefix', () {
-      final result = wrapIndented('some long quoted text here please', 18,
-          firstPrefix: '│ ', nextPrefix: '│ ');
+      final result = wrapIndented(
+        'some long quoted text here please',
+        18,
+        firstPrefix: '│ ',
+        nextPrefix: '│ ',
+      );
       final lines = result.split('\n');
       for (final line in lines) {
         expect(line, startsWith('│ '));
@@ -450,8 +462,12 @@ void main() {
     });
 
     test('no-op when text fits on one line', () {
-      final result =
-          wrapIndented('short', 20, firstPrefix: '• ', nextPrefix: '  ');
+      final result = wrapIndented(
+        'short',
+        20,
+        firstPrefix: '• ',
+        nextPrefix: '  ',
+      );
       expect(result, '• short');
     });
 
@@ -462,8 +478,11 @@ void main() {
 
     test('handles ANSI prefixes (visible width computed correctly)', () {
       final result = wrapIndented(
-          'The quick brown fox jumped over the lazy dog', 25,
-          firstPrefix: '\x1b[90m│ \x1b[0m', nextPrefix: '\x1b[90m│ \x1b[0m');
+        'The quick brown fox jumped over the lazy dog',
+        25,
+        firstPrefix: '\x1b[90m│ \x1b[0m',
+        nextPrefix: '\x1b[90m│ \x1b[0m',
+      );
       final lines = result.split('\n');
       for (final line in lines) {
         expect(visibleLength(line), lessThanOrEqualTo(25));
@@ -472,8 +491,11 @@ void main() {
 
     test('wraps Norwegian text with bullet prefix', () {
       final result = wrapIndented(
-          'blåbærsyltetøy og rømme er veldig godt på vafler', 25,
-          firstPrefix: '• ', nextPrefix: '  ');
+        'blåbærsyltetøy og rømme er veldig godt på vafler',
+        25,
+        firstPrefix: '• ',
+        nextPrefix: '  ',
+      );
       final lines = result.split('\n');
       expect(lines.first, startsWith('• '));
       for (final line in lines) {
@@ -482,31 +504,50 @@ void main() {
     });
 
     test('wraps emoji text with indentation', () {
-      final result = wrapIndented('🎉 party 🚀 rocket 🌍 earth 🎊 tada', 14,
-          firstPrefix: '  ', nextPrefix: '  ');
+      final result = wrapIndented(
+        '🎉 party 🚀 rocket 🌍 earth 🎊 tada',
+        14,
+        firstPrefix: '  ',
+        nextPrefix: '  ',
+      );
       for (final line in result.split('\n')) {
         expect(visibleLength(line), lessThanOrEqualTo(14));
       }
     });
 
     test('handles very narrow width gracefully', () {
-      final result =
-          wrapIndented('hello world', 3, firstPrefix: '', nextPrefix: '');
+      final result = wrapIndented(
+        'hello world',
+        3,
+        firstPrefix: '',
+        nextPrefix: '',
+      );
       expect(result, contains('hello'));
     });
 
     test('contentWidth <= 0 returns prefix + text as-is', () {
-      final result =
-          wrapIndented('hello', 2, firstPrefix: '>>> ', nextPrefix: '>>> ');
+      final result = wrapIndented(
+        'hello',
+        2,
+        firstPrefix: '>>> ',
+        nextPrefix: '>>> ',
+      );
       expect(result, '>>> hello');
     });
 
     test('wider firstPrefix does not overflow width', () {
-      final result = wrapIndented('one two three four five', 15,
-          firstPrefix: '>>>>> ', nextPrefix: '  ');
+      final result = wrapIndented(
+        'one two three four five',
+        15,
+        firstPrefix: '>>>>> ',
+        nextPrefix: '  ',
+      );
       for (final line in result.split('\n')) {
-        expect(visibleLength(line), lessThanOrEqualTo(15),
-            reason: 'Line overflows: "$line" (${visibleLength(line)} cols)');
+        expect(
+          visibleLength(line),
+          lessThanOrEqualTo(15),
+          reason: 'Line overflows: "$line" (${visibleLength(line)} cols)',
+        );
       }
     });
   });
@@ -517,10 +558,14 @@ void main() {
     test('paragraphs wrap to width', () {
       final r = MarkdownRenderer(30);
       final result = r.render(
-          'The quick brown fox jumped over the lazy dog and kept running');
+        'The quick brown fox jumped over the lazy dog and kept running',
+      );
       for (final line in result.split('\n')) {
-        expect(visibleLength(line), lessThanOrEqualTo(30),
-            reason: 'Line too wide: "$line"');
+        expect(
+          visibleLength(line),
+          lessThanOrEqualTo(30),
+          reason: 'Line too wide: "$line"',
+        );
       }
     });
 
@@ -528,8 +573,11 @@ void main() {
       final r = MarkdownRenderer(20);
       final result = r.render('# This is a very long heading that should wrap');
       for (final line in result.split('\n')) {
-        expect(visibleLength(line), lessThanOrEqualTo(20),
-            reason: 'Heading line too wide: "$line"');
+        expect(
+          visibleLength(line),
+          lessThanOrEqualTo(20),
+          reason: 'Heading line too wide: "$line"',
+        );
       }
     });
 
@@ -537,41 +585,64 @@ void main() {
       final r = MarkdownRenderer(15);
       final result = r.render('# Short heading that wraps');
       final lines = result.split('\n');
-      expect(lines.length, greaterThan(1),
-          reason: 'Heading should wrap at width 15');
+      expect(
+        lines.length,
+        greaterThan(1),
+        reason: 'Heading should wrap at width 15',
+      );
       for (final line in lines) {
-        expect(line, contains('\x1b[1m'),
-            reason: 'Missing bold on line: "$line"');
-        expect(line, contains('\x1b[33m'),
-            reason: 'Missing yellow on line: "$line"');
-        expect(line, anyOf(endsWith('\x1b[0m'), endsWith('\x1b[39m\x1b[22m')),
-            reason: 'Missing reset on line: "$line"');
+        expect(
+          line,
+          contains('\x1b[1m'),
+          reason: 'Missing bold on line: "$line"',
+        );
+        expect(
+          line,
+          contains('\x1b[33m'),
+          reason: 'Missing yellow on line: "$line"',
+        );
+        expect(
+          line,
+          anyOf(endsWith('\x1b[0m'), endsWith('\x1b[39m\x1b[22m')),
+          reason: 'Missing reset on line: "$line"',
+        );
       }
     });
 
     test('blockquotes wrap within prefix', () {
       final r = MarkdownRenderer(25);
-      final result =
-          r.render('> This is a long blockquote that should wrap nicely');
+      final result = r.render(
+        '> This is a long blockquote that should wrap nicely',
+      );
       final lines = result.split('\n');
       for (final line in lines) {
-        expect(visibleLength(line), lessThanOrEqualTo(25),
-            reason: 'Blockquote line too wide: "$line"');
-        expect(stripAnsi(line), contains('│'),
-            reason: 'Blockquote line missing │ prefix');
+        expect(
+          visibleLength(line),
+          lessThanOrEqualTo(25),
+          reason: 'Blockquote line too wide: "$line"',
+        );
+        expect(
+          stripAnsi(line),
+          contains('│'),
+          reason: 'Blockquote line missing │ prefix',
+        );
       }
     });
 
     test('unordered list items wrap with aligned continuation', () {
       final r = MarkdownRenderer(25);
-      final result =
-          r.render('- This is a long list item that should wrap and align');
+      final result = r.render(
+        '- This is a long list item that should wrap and align',
+      );
       final lines = result.split('\n');
       final stripped = lines.map(stripAnsi).toList();
       expect(stripped.first, startsWith('• '));
       for (var i = 1; i < stripped.length; i++) {
-        expect(stripped[i], startsWith('  '),
-            reason: 'Continuation not aligned: "${stripped[i]}"');
+        expect(
+          stripped[i],
+          startsWith('  '),
+          reason: 'Continuation not aligned: "${stripped[i]}"',
+        );
       }
       for (final line in lines) {
         expect(visibleLength(line), lessThanOrEqualTo(25));
@@ -580,14 +651,18 @@ void main() {
 
     test('ordered list items wrap with aligned continuation', () {
       final r = MarkdownRenderer(25);
-      final result =
-          r.render('1. This is a long ordered list item that should wrap');
+      final result = r.render(
+        '1. This is a long ordered list item that should wrap',
+      );
       final lines = result.split('\n');
       final stripped = lines.map(stripAnsi).toList();
       expect(stripped.first, startsWith('1. '));
       for (var i = 1; i < stripped.length; i++) {
-        expect(stripped[i], startsWith('   '),
-            reason: 'Continuation not aligned: "${stripped[i]}"');
+        expect(
+          stripped[i],
+          startsWith('   '),
+          reason: 'Continuation not aligned: "${stripped[i]}"',
+        );
       }
       for (final line in lines) {
         expect(visibleLength(line), lessThanOrEqualTo(25));
@@ -596,19 +671,24 @@ void main() {
 
     test('code blocks are NOT wrapped (truncated instead)', () {
       final r = MarkdownRenderer(20);
-      final result =
-          r.render('```\nthis_is_a_long_line_of_code_no_spaces\n```');
+      final result = r.render(
+        '```\nthis_is_a_long_line_of_code_no_spaces\n```',
+      );
       expect(stripAnsi(result), contains('╭'));
       expect(stripAnsi(result), contains('╰'));
     });
 
     test('paragraph with Norwegian characters wraps', () {
       final r = MarkdownRenderer(25);
-      final result =
-          r.render('Blåbærsyltetøy og rømme er veldig godt på vafler med is');
+      final result = r.render(
+        'Blåbærsyltetøy og rømme er veldig godt på vafler med is',
+      );
       for (final line in result.split('\n')) {
-        expect(visibleLength(line), lessThanOrEqualTo(25),
-            reason: 'Line too wide: "$line"');
+        expect(
+          visibleLength(line),
+          lessThanOrEqualTo(25),
+          reason: 'Line too wide: "$line"',
+        );
       }
     });
 
@@ -616,8 +696,11 @@ void main() {
       final r = MarkdownRenderer(15);
       final result = r.render('Hello 🎉 this is 🚀 a test 🌍 of emoji');
       for (final line in result.split('\n')) {
-        expect(visibleLength(line), lessThanOrEqualTo(15),
-            reason: 'Line too wide: "$line"');
+        expect(
+          visibleLength(line),
+          lessThanOrEqualTo(15),
+          reason: 'Line too wide: "$line"',
+        );
       }
     });
 
@@ -625,8 +708,11 @@ void main() {
       final r = MarkdownRenderer(12);
       final result = r.render('漢字 テスト 日本語 カタカナ');
       for (final line in result.split('\n')) {
-        expect(visibleLength(line), lessThanOrEqualTo(12),
-            reason: 'Line too wide: "$line"');
+        expect(
+          visibleLength(line),
+          lessThanOrEqualTo(12),
+          reason: 'Line too wide: "$line"',
+        );
       }
     });
 
@@ -644,8 +730,11 @@ Some long paragraph text that definitely needs wrapping.
 
       final result = r.render(md);
       for (final line in result.split('\n')) {
-        expect(visibleLength(line), lessThanOrEqualTo(25),
-            reason: 'Line too wide: "$line"');
+        expect(
+          visibleLength(line),
+          lessThanOrEqualTo(25),
+          reason: 'Line too wide: "$line"',
+        );
       }
     });
   });
@@ -656,30 +745,42 @@ Some long paragraph text that definitely needs wrapping.
     test('renderUser wraps long text and all lines fit', () {
       final r = BlockRenderer(40);
       final result = r.renderUser(
-          'The quick brown fox jumped over the lazy dog repeatedly');
+        'The quick brown fox jumped over the lazy dog repeatedly',
+      );
       for (final line in result.split('\n')) {
-        expect(visibleLength(line), lessThanOrEqualTo(40),
-            reason: 'User line too wide: "$line"');
+        expect(
+          visibleLength(line),
+          lessThanOrEqualTo(40),
+          reason: 'User line too wide: "$line"',
+        );
       }
     });
 
     test('renderAssistant wraps long paragraphs', () {
       final r = BlockRenderer(40);
       final result = r.renderAssistant(
-          'This is a very long assistant response that should be wrapped properly within the terminal width');
+        'This is a very long assistant response that should be wrapped properly within the terminal width',
+      );
       for (final line in result.split('\n')) {
-        expect(visibleLength(line), lessThanOrEqualTo(40),
-            reason: 'Assistant line too wide: "$line"');
+        expect(
+          visibleLength(line),
+          lessThanOrEqualTo(40),
+          reason: 'Assistant line too wide: "$line"',
+        );
       }
     });
 
     test('renderError wraps long error messages', () {
       final r = BlockRenderer(40);
       final result = r.renderError(
-          'A very long error message that exceeds the terminal width and must wrap');
+        'A very long error message that exceeds the terminal width and must wrap',
+      );
       for (final line in result.split('\n')) {
-        expect(visibleLength(line), lessThanOrEqualTo(40),
-            reason: 'Error line too wide: "$line"');
+        expect(
+          visibleLength(line),
+          lessThanOrEqualTo(40),
+          reason: 'Error line too wide: "$line"',
+        );
       }
     });
 
@@ -687,19 +788,26 @@ Some long paragraph text that definitely needs wrapping.
       final r = BlockRenderer(30);
       final result = r.renderUser('🎉 party 🚀 rocket 🌍 earth 🎊 tada 🦊 fox');
       for (final line in result.split('\n')) {
-        expect(visibleLength(line), lessThanOrEqualTo(30),
-            reason: 'Line too wide: "$line"');
+        expect(
+          visibleLength(line),
+          lessThanOrEqualTo(30),
+          reason: 'Line too wide: "$line"',
+        );
       }
     });
 
     test('renderAssistant markdown list wraps within width', () {
       final r = BlockRenderer(35);
       final result = r.renderAssistant(
-          '- This is a long list item that should wrap nicely\n'
-          '- Another item that is also quite long');
+        '- This is a long list item that should wrap nicely\n'
+        '- Another item that is also quite long',
+      );
       for (final line in result.split('\n')) {
-        expect(visibleLength(line), lessThanOrEqualTo(35),
-            reason: 'List line too wide: "$line"');
+        expect(
+          visibleLength(line),
+          lessThanOrEqualTo(35),
+          reason: 'List line too wide: "$line"',
+        );
       }
     });
   });

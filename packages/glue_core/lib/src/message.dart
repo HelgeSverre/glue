@@ -58,13 +58,13 @@ class Message {
     required String content,
     String? toolName,
     List<ContentPart>? contentParts,
-  }) =>
-      Message._(
-          role: Role.toolResult,
-          text: content,
-          toolCallId: callId.value,
-          toolName: toolName,
-          contentParts: contentParts);
+  }) => Message._(
+    role: Role.toolResult,
+    text: content,
+    toolCallId: callId.value,
+    toolName: toolName,
+    contentParts: contentParts,
+  );
 }
 
 // ---------------------------------------------------------------------------

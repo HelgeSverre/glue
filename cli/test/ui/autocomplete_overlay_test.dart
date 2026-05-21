@@ -39,11 +39,13 @@ void main() {
 
     test('SlashAutocomplete is an AutocompleteOverlay', () {
       final registry = SlashCommandRegistry();
-      registry.register(SlashCommand.inline(
-        name: 'help',
-        description: 'show help',
-        execute: (_) => '',
-      ));
+      registry.register(
+        SlashCommand.inline(
+          name: 'help',
+          description: 'show help',
+          execute: (_) => '',
+        ),
+      );
       final AutocompleteOverlay o = SlashAutocomplete(registry);
       expect(o.active, isFalse);
       (o as SlashAutocomplete).update('/h', 2);
@@ -88,9 +90,11 @@ void main() {
     test('moveUp/moveDown/dismiss work through the interface', () {
       final registry = SlashCommandRegistry();
       registry.register(
-          SlashCommand.inline(name: 'a', description: '', execute: (_) => ''));
+        SlashCommand.inline(name: 'a', description: '', execute: (_) => ''),
+      );
       registry.register(
-          SlashCommand.inline(name: 'ab', description: '', execute: (_) => ''));
+        SlashCommand.inline(name: 'ab', description: '', execute: (_) => ''),
+      );
       final AutocompleteOverlay o = SlashAutocomplete(registry)
         ..update('/a', 2);
       expect(o.active, isTrue);

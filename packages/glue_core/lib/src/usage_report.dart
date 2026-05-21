@@ -27,13 +27,13 @@ class UsageReportRow {
   int get totalTokens => input + output + cacheRead + cacheWrite;
 
   Map<String, dynamic> toJson() => {
-        'role': role,
-        'calls': calls,
-        'input_tokens': input,
-        'output_tokens': output,
-        if (cacheRead > 0) 'cache_read_tokens': cacheRead,
-        if (cacheWrite > 0) 'cache_creation_tokens': cacheWrite,
-      };
+    'role': role,
+    'calls': calls,
+    'input_tokens': input,
+    'output_tokens': output,
+    if (cacheRead > 0) 'cache_read_tokens': cacheRead,
+    if (cacheWrite > 0) 'cache_creation_tokens': cacheWrite,
+  };
 }
 
 /// Aggregated breakdown of a session's token usage.
@@ -42,11 +42,7 @@ class UsageReport {
   final String? sessionId;
   final List<UsageReportRow> rows;
 
-  const UsageReport({
-    this.modelLabel,
-    this.sessionId,
-    required this.rows,
-  });
+  const UsageReport({this.modelLabel, this.sessionId, required this.rows});
 
   int get totalCalls => rows.fold(0, (sum, r) => sum + r.calls);
   int get totalInput => rows.fold(0, (sum, r) => sum + r.input);
@@ -65,19 +61,19 @@ class UsageReport {
   }
 
   Map<String, dynamic> toJson() => {
-        if (modelLabel != null) 'model': modelLabel,
-        if (sessionId != null) 'session_id': sessionId,
-        'totals': {
-          'calls': totalCalls,
-          'input_tokens': totalInput,
-          'output_tokens': totalOutput,
-          if (totalCacheRead > 0) 'cache_read_tokens': totalCacheRead,
-          if (totalCacheWrite > 0) 'cache_creation_tokens': totalCacheWrite,
-          'total_tokens': totalTokens,
-          if (cacheHitRate != null) 'cache_hit_rate': cacheHitRate,
-        },
-        'by_role': [for (final r in rows) r.toJson()],
-      };
+    if (modelLabel != null) 'model': modelLabel,
+    if (sessionId != null) 'session_id': sessionId,
+    'totals': {
+      'calls': totalCalls,
+      'input_tokens': totalInput,
+      'output_tokens': totalOutput,
+      if (totalCacheRead > 0) 'cache_read_tokens': totalCacheRead,
+      if (totalCacheWrite > 0) 'cache_creation_tokens': totalCacheWrite,
+      'total_tokens': totalTokens,
+      if (cacheHitRate != null) 'cache_hit_rate': cacheHitRate,
+    },
+    'by_role': [for (final r in rows) r.toJson()],
+  };
 }
 
 /// Builds a [UsageReport] from persisted `usage` rows in

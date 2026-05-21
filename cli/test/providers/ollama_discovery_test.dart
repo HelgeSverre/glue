@@ -122,14 +122,16 @@ void main() {
     });
 
     test('skips malformed entries, keeps valid ones', () async {
-      final client = _FakeHttp((req) async => _jsonResponse(200, {
-            'models': [
-              {'name': 'good:1b', 'size': 100},
-              {'no_name': true},
-              'not-a-map',
-              {'name': 'also-good:2b', 'size': 200},
-            ],
-          }));
+      final client = _FakeHttp(
+        (req) async => _jsonResponse(200, {
+          'models': [
+            {'name': 'good:1b', 'size': 100},
+            {'no_name': true},
+            'not-a-map',
+            {'name': 'also-good:2b', 'size': 200},
+          ],
+        }),
+      );
       final discovery = OllamaDiscovery(
         baseUrl: Uri.parse('http://localhost:11434'),
         clientFactory: () => client,
@@ -205,7 +207,9 @@ class FakeSocketException implements Exception {
 }
 
 http.StreamedResponse _ndjsonStream(
-    int status, List<Map<String, Object?>> frames) {
+  int status,
+  List<Map<String, Object?>> frames,
+) {
   final bytes = utf8.encode(frames.map(jsonEncode).join('\n'));
   return http.StreamedResponse(
     Stream<List<int>>.value(bytes),

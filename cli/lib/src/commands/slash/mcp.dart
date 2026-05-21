@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:glue_harness/glue_harness.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 
@@ -33,32 +31,32 @@ class McpSlashCommand extends SlashCommand {
 
   @override
   SlashArgCompleter? get argCompleter => (prior, partial) {
-        // /mcp <TAB>
-        if (prior.isEmpty) {
-          return arg_completers.mcpSubcommandCandidates(partial);
-        }
-        final servers = ctx.mcpPool.servers;
-        // /mcp tools|reconnect|toggle <TAB>
-        if (prior.length == 1 &&
-            const {'tools', 'reconnect', 'toggle'}.contains(prior.first)) {
-          return arg_completers.mcpServerIdCandidates(servers, partial);
-        }
-        // /mcp auth <TAB>
-        if (prior.length == 1 && prior.first == 'auth') {
-          return arg_completers.mcpAuthSubcommandCandidates(partial);
-        }
-        // /mcp auth login|logout <TAB> — HTTP/WS servers only.
-        if (prior.length == 2 &&
-            prior.first == 'auth' &&
-            const {'login', 'logout'}.contains(prior[1])) {
-          return arg_completers.mcpServerIdCandidates(
-            servers,
-            partial,
-            requireRemote: true,
-          );
-        }
-        return const [];
-      };
+    // /mcp <TAB>
+    if (prior.isEmpty) {
+      return arg_completers.mcpSubcommandCandidates(partial);
+    }
+    final servers = ctx.mcpPool.servers;
+    // /mcp tools|reconnect|toggle <TAB>
+    if (prior.length == 1 &&
+        const {'tools', 'reconnect', 'toggle'}.contains(prior.first)) {
+      return arg_completers.mcpServerIdCandidates(servers, partial);
+    }
+    // /mcp auth <TAB>
+    if (prior.length == 1 && prior.first == 'auth') {
+      return arg_completers.mcpAuthSubcommandCandidates(partial);
+    }
+    // /mcp auth login|logout <TAB> — HTTP/WS servers only.
+    if (prior.length == 2 &&
+        prior.first == 'auth' &&
+        const {'login', 'logout'}.contains(prior[1])) {
+      return arg_completers.mcpServerIdCandidates(
+        servers,
+        partial,
+        requireRemote: true,
+      );
+    }
+    return const [];
+  };
 
   @override
   String execute(List<String> args) {
@@ -88,15 +86,15 @@ class McpSlashCommand extends SlashCommand {
   }
 
   String _help() => [
-        '/mcp                            Open the status panel.',
-        '/mcp list                       Print a text table inline.',
-        '/mcp tools [<server>]           List tools (grouped by server if no arg).',
-        '/mcp reconnect <server>         Retry a dead/reconnecting server.',
-        '/mcp toggle <server>            Session-scoped enable/disable.',
-        '/mcp auth login <server>        Run the OAuth flow (HTTP/WS only).',
-        '/mcp auth logout <server>       Forget stored credentials.',
-        '/mcp auth status                Show credential state per server.',
-      ].join('\n');
+    '/mcp                            Open the status panel.',
+    '/mcp list                       Print a text table inline.',
+    '/mcp tools [<server>]           List tools (grouped by server if no arg).',
+    '/mcp reconnect <server>         Retry a dead/reconnecting server.',
+    '/mcp toggle <server>            Session-scoped enable/disable.',
+    '/mcp auth login <server>        Run the OAuth flow (HTTP/WS only).',
+    '/mcp auth logout <server>       Forget stored credentials.',
+    '/mcp auth status                Show credential state per server.',
+  ].join('\n');
 
   // ── tools / reconnect / toggle ─────────────────────────────────────────
 
@@ -116,7 +114,7 @@ class McpSlashCommand extends SlashCommand {
     if (args.length != 1) return 'Usage: /mcp reconnect <server>';
     final s = ctx.mcpPool.server(args.single);
     if (s == null) return 'Server "${args.single}" is not in your config.';
-    unawaited(ctx.mcpPool.reconnect(s.id));
+    ctx.mcpPool.reconnect(s.id);
     return 'Reconnecting "${s.id}"…';
   }
 
@@ -125,7 +123,7 @@ class McpSlashCommand extends SlashCommand {
     final s = ctx.mcpPool.server(args.single);
     if (s == null) return 'Server "${args.single}" is not in your config.';
     final wasEnabled = s.enabled;
-    unawaited(ctx.mcpPool.toggle(s.id));
+    ctx.mcpPool.toggle(s.id);
     return wasEnabled
         ? 'Disabling "${s.id}" for this session…'
         : 'Enabling "${s.id}" and connecting…';
@@ -171,8 +169,8 @@ class McpSlashCommand extends SlashCommand {
     final authKind = spec is McpHttpServerSpec
         ? spec.auth
         : spec is McpWebSocketServerSpec
-            ? spec.auth
-            : const McpNoAuth();
+        ? spec.auth
+        : const McpNoAuth();
     return switch (authKind) {
       McpBearerAuth() => hasBearer ? 'bearer (stored)' : 'bearer (missing)',
       McpOAuthAuth() =>
@@ -270,10 +268,7 @@ class McpSlashCommand extends SlashCommand {
     final serverId = args.single;
     final config = ctx.config;
     if (config == null) return 'Config not loaded.';
-    clearMcpOAuthTokens(
-      serverId: serverId,
-      credentials: config.credentials,
-    );
+    clearMcpOAuthTokens(serverId: serverId, credentials: config.credentials);
     final providerId = 'mcp:$serverId';
     final existing = config.credentials.getFields(providerId);
     final cleaned = <String, String>{
@@ -374,11 +369,11 @@ class McpSlashCommand extends SlashCommand {
       final action = actions[idx];
       switch (action) {
         case _McpAction.reconnect:
-          unawaited(ctx.mcpPool.reconnect(server.id));
+          ctx.mcpPool.reconnect(server.id);
           ctx.conversation.notify('Reconnecting "${server.id}"…');
         case _McpAction.toggle:
           final wasEnabled = server.enabled;
-          unawaited(ctx.mcpPool.toggle(server.id));
+          ctx.mcpPool.toggle(server.id);
           ctx.conversation.notify(
             wasEnabled
                 ? 'Disabling "${server.id}" for this session…'
@@ -458,9 +453,11 @@ class McpSlashCommand extends SlashCommand {
     }
     final lines = <String>['MCP servers:'];
     for (final s in servers) {
-      lines.add('  ${s.id.padRight(20)} '
-          '${_stateLabel(s.state)}  '
-          '(${s.toolCount} tool${s.toolCount == 1 ? '' : 's'})');
+      lines.add(
+        '  ${s.id.padRight(20)} '
+        '${_stateLabel(s.state)}  '
+        '(${s.toolCount} tool${s.toolCount == 1 ? '' : 's'})',
+      );
       if (s.lastError != null) {
         lines.add('    last error: ${s.lastError}');
       }
@@ -471,24 +468,24 @@ class McpSlashCommand extends SlashCommand {
   // ── helpers ────────────────────────────────────────────────────────────
 
   String _kindLabel(McpServerSpec spec) => switch (spec) {
-        McpStdioServerSpec() => 'stdio',
-        McpHttpServerSpec() => 'http+sse',
-        McpWebSocketServerSpec() => 'websocket',
-      };
+    McpStdioServerSpec() => 'stdio',
+    McpHttpServerSpec() => 'http+sse',
+    McpWebSocketServerSpec() => 'websocket',
+  };
 
   String _stateLabel(McpConnectionState state) => switch (state) {
-        McpDisconnected() => 'disconnected',
-        McpConnecting() => 'connecting',
-        McpConnected(:final serverName) => 'connected ($serverName)',
-        McpReconnecting(:final attempt) => 'reconnecting (#$attempt)',
-        McpDead(:final reason) => 'dead — $reason',
-      };
+    McpDisconnected() => 'disconnected',
+    McpConnecting() => 'connecting',
+    McpConnected(:final serverName) => 'connected ($serverName)',
+    McpReconnecting(:final attempt) => 'reconnecting (#$attempt)',
+    McpDead(:final reason) => 'dead — $reason',
+  };
 
   String _detailFor(McpServerSpec spec) => switch (spec) {
-        McpStdioServerSpec(:final command) => command,
-        McpHttpServerSpec(:final url) => url.toString(),
-        McpWebSocketServerSpec(:final url) => url.toString(),
-      };
+    McpStdioServerSpec(:final command) => command,
+    McpHttpServerSpec(:final url) => url.toString(),
+    McpWebSocketServerSpec(:final url) => url.toString(),
+  };
 }
 
 enum _McpAction {
@@ -499,11 +496,11 @@ enum _McpAction {
   showError;
 
   String label(McpServerSnapshot s) => switch (this) {
-        _McpAction.reconnect => 'Reconnect',
-        _McpAction.toggle =>
-          s.enabled ? 'Disable for this session' : 'Enable and connect',
-        _McpAction.viewTools => 'View tools (${s.tools.length})',
-        _McpAction.copyId => 'Copy server ID',
-        _McpAction.showError => 'Show last error',
-      };
+    _McpAction.reconnect => 'Reconnect',
+    _McpAction.toggle =>
+      s.enabled ? 'Disable for this session' : 'Enable and connect',
+    _McpAction.viewTools => 'View tools (${s.tools.length})',
+    _McpAction.copyId => 'Copy server ID',
+    _McpAction.showError => 'Show last error',
+  };
 }

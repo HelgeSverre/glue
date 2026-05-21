@@ -10,24 +10,16 @@ import 'package:glue/src/conversation/entry.dart';
 /// without reaching into App.
 class ConversationView {
   ConversationView({
-    required List<ConversationEntry> blocks,
-    required Map<String, SubagentGroup> subagentGroups,
-    required String Function() streamingTextGetter,
-    required void Function() render,
-    required void Function() resetStreamingText,
-    required void Function() clearScreen,
-    required void Function() resetScrollOffset,
-    required void Function() clearToolUi,
-    required void Function() clearSubagentGroups,
-  })  : _blocks = blocks,
-        _subagentGroups = subagentGroups,
-        _streamingTextGetter = streamingTextGetter,
-        _render = render,
-        _resetStreamingText = resetStreamingText,
-        _clearScreen = clearScreen,
-        _resetScrollOffset = resetScrollOffset,
-        _clearToolUi = clearToolUi,
-        _clearSubagentGroups = clearSubagentGroups;
+    required this._blocks,
+    required this._subagentGroups,
+    required this._streamingTextGetter,
+    required this._render,
+    required this._resetStreamingText,
+    required this._clearScreen,
+    required this._resetScrollOffset,
+    required this._clearToolUi,
+    required this._clearSubagentGroups,
+  });
 
   final List<ConversationEntry> _blocks;
   final Map<String, SubagentGroup> _subagentGroups;
@@ -118,10 +110,12 @@ class ConversationView {
         case SessionReplayKind.assistant:
           _blocks.add(ConversationEntry.assistant(entry.text));
         case SessionReplayKind.toolCall:
-          _blocks.add(ConversationEntry.toolCall(
-            entry.toolName ?? entry.text,
-            entry.toolArguments ?? const <String, dynamic>{},
-          ));
+          _blocks.add(
+            ConversationEntry.toolCall(
+              entry.toolName ?? entry.text,
+              entry.toolArguments ?? const <String, dynamic>{},
+            ),
+          );
         case SessionReplayKind.toolResult:
           _blocks.add(ConversationEntry.toolResult(entry.text));
 
@@ -148,29 +142,32 @@ class ConversationView {
           switch (inner.kind) {
             case SessionReplayKind.toolCall:
               final argsPreview =
-                  (inner.toolArguments ?? const <String, dynamic>{})
-                      .entries
+                  (inner.toolArguments ?? const <String, dynamic>{}).entries
                       .take(2)
                       .map((e) => '${e.key}: ${e.value}')
                       .join(', ');
-              group.entries.add(SubagentEntry(
-                '$prefix ▶ ${inner.toolName ?? inner.text}  $argsPreview',
-              ));
+              group.entries.add(
+                SubagentEntry(
+                  '$prefix ▶ ${inner.toolName ?? inner.text}  $argsPreview',
+                ),
+              );
             case SessionReplayKind.toolResult:
               final display = inner.text.length > 80
                   ? '${inner.text.substring(0, 80)}…'
                   : inner.text;
-              group.entries.add(SubagentEntry(
-                '$prefix ✓ ${display.replaceAll('\n', ' ')}',
-                rawContent: inner.text.length > 80 ? inner.text : null,
-              ));
+              group.entries.add(
+                SubagentEntry(
+                  '$prefix ✓ ${display.replaceAll('\n', ' ')}',
+                  rawContent: inner.text.length > 80 ? inner.text : null,
+                ),
+              );
             default:
               final display = inner.text.length > 80
                   ? '${inner.text.substring(0, 80)}…'
                   : inner.text;
-              group.entries.add(SubagentEntry(
-                '$prefix · ${display.replaceAll('\n', ' ')}',
-              ));
+              group.entries.add(
+                SubagentEntry('$prefix · ${display.replaceAll('\n', ' ')}'),
+              );
           }
 
         case SessionReplayKind.subagentCompleted:
@@ -182,8 +179,9 @@ class ConversationView {
             final prefix = group.index != null
                 ? '↳ [${group.index! + 1}/${group.total}]'
                 : '↳';
-            group.entries
-                .add(SubagentEntry('$prefix ✗ Error: ${entry.subagentError}'));
+            group.entries.add(
+              SubagentEntry('$prefix ✗ Error: ${entry.subagentError}'),
+            );
           }
       }
     }

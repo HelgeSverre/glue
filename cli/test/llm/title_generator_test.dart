@@ -6,16 +6,10 @@ class _FakeLlmClient implements LlmClient {
   final Object? error;
   List<Message>? lastMessages;
 
-  _FakeLlmClient({
-    this.chunks = const [],
-    this.error,
-  });
+  _FakeLlmClient({this.chunks = const [], this.error});
 
   @override
-  Stream<LlmChunk> stream(
-    List<Message> messages, {
-    List<Tool>? tools,
-  }) async* {
+  Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
     lastMessages = messages;
     if (error != null) {
       throw error!;
@@ -29,11 +23,9 @@ class _FakeLlmClient implements LlmClient {
 void main() {
   group('TitleGenerator.generate', () {
     test('returns title from streamed text chunks', () async {
-      final llm = _FakeLlmClient(chunks: [
-        TextDelta('Fix'),
-        TextDelta(' auth'),
-        TextDelta(' bug'),
-      ]);
+      final llm = _FakeLlmClient(
+        chunks: [TextDelta('Fix'), TextDelta(' auth'), TextDelta(' bug')],
+      );
       final generator = TitleGenerator(llmClient: llm);
 
       final title = await generator.generate('The login is broken');
@@ -62,19 +54,21 @@ void main() {
 
   group('TitleGenerator.generateFromContext', () {
     test('returns title from compact context payload', () async {
-      final llm = _FakeLlmClient(chunks: [
-        TextDelta('Docker resume flakiness'),
-      ]);
+      final llm = _FakeLlmClient(
+        chunks: [TextDelta('Docker resume flakiness')],
+      );
       final generator = TitleGenerator(llmClient: llm);
 
-      final title = await generator.generateFromContext(const TitleContext(
-        firstUserMessage: 'help debug this',
-        latestUserMessage: 'it fails in docker only',
-        firstAssistantMessage: 'I found a flaky resume test.',
-        latestAssistantMessage: 'The failing area is Docker resume handling.',
-        toolNames: ['read_file', 'run_shell_command'],
-        cwdBasename: 'glue',
-      ));
+      final title = await generator.generateFromContext(
+        const TitleContext(
+          firstUserMessage: 'help debug this',
+          latestUserMessage: 'it fails in docker only',
+          firstAssistantMessage: 'I found a flaky resume test.',
+          latestAssistantMessage: 'The failing area is Docker resume handling.',
+          toolNames: ['read_file', 'run_shell_command'],
+          cwdBasename: 'glue',
+        ),
+      );
 
       expect(title, 'Docker resume flakiness');
       expect(llm.lastMessages, isNotNull);
@@ -93,10 +87,7 @@ void main() {
     });
 
     test('strips zalgo combining marks', () {
-      expect(
-        TitleGenerator.sanitize('F\u0300\u0301ix auth'),
-        'Fix auth',
-      );
+      expect(TitleGenerator.sanitize('F\u0300\u0301ix auth'), 'Fix auth');
     });
 
     test('collapses whitespace', () {

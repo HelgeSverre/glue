@@ -26,5 +26,6 @@ void main() {
     ..writeln("''';");
   File('lib/src/modal/sidecar_source.g.dart').writeAsStringSync(out.toString());
   stdout.writeln(
-      'wrote lib/src/modal/sidecar_source.g.dart (${src.length} chars)');
+    'wrote lib/src/modal/sidecar_source.g.dart (${src.length} chars)',
+  );
 }

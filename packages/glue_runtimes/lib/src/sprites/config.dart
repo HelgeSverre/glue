@@ -49,12 +49,11 @@ class SpritesConfig {
     bool? deleteOnClose,
     Duration? startTimeout,
     Duration? execTimeout,
-  }) =>
-      SpritesConfig(
-        spriteCliPath: spriteCliPath ?? this.spriteCliPath,
-        spriteName: spriteName ?? this.spriteName,
-        deleteOnClose: deleteOnClose ?? this.deleteOnClose,
-        startTimeout: startTimeout ?? this.startTimeout,
-        execTimeout: execTimeout ?? this.execTimeout,
-      );
+  }) => SpritesConfig(
+    spriteCliPath: spriteCliPath ?? this.spriteCliPath,
+    spriteName: spriteName ?? this.spriteName,
+    deleteOnClose: deleteOnClose ?? this.deleteOnClose,
+    startTimeout: startTimeout ?? this.startTimeout,
+    execTimeout: execTimeout ?? this.execTimeout,
+  );
 }

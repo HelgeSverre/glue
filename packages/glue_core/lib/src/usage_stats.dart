@@ -69,29 +69,28 @@ class UsageStats {
   /// Returns an immutable copy of the current totals. Use this when
   /// handing values to a sink that must not see later mutations.
   UsageStats snapshot() => UsageStats(
-        inputTokens: inputTokens,
-        outputTokens: outputTokens,
-        cacheReadTokens: cacheReadTokens,
-        cacheCreationTokens: cacheCreationTokens,
-        turnCount: turnCount,
-      );
+    inputTokens: inputTokens,
+    outputTokens: outputTokens,
+    cacheReadTokens: cacheReadTokens,
+    cacheCreationTokens: cacheCreationTokens,
+    turnCount: turnCount,
+  );
 
   Map<String, dynamic> toJson() => {
-        'input_tokens': inputTokens,
-        'output_tokens': outputTokens,
-        if (cacheReadTokens > 0) 'cache_read_tokens': cacheReadTokens,
-        if (cacheCreationTokens > 0)
-          'cache_creation_tokens': cacheCreationTokens,
-        'turn_count': turnCount,
-      };
+    'input_tokens': inputTokens,
+    'output_tokens': outputTokens,
+    if (cacheReadTokens > 0) 'cache_read_tokens': cacheReadTokens,
+    if (cacheCreationTokens > 0) 'cache_creation_tokens': cacheCreationTokens,
+    'turn_count': turnCount,
+  };
 
   static UsageStats fromJson(Map<String, dynamic> json) => UsageStats(
-        inputTokens: (json['input_tokens'] as int?) ?? 0,
-        outputTokens: (json['output_tokens'] as int?) ?? 0,
-        cacheReadTokens: (json['cache_read_tokens'] as int?) ?? 0,
-        cacheCreationTokens: (json['cache_creation_tokens'] as int?) ?? 0,
-        turnCount: (json['turn_count'] as int?) ?? 0,
-      );
+    inputTokens: (json['input_tokens'] as int?) ?? 0,
+    outputTokens: (json['output_tokens'] as int?) ?? 0,
+    cacheReadTokens: (json['cache_read_tokens'] as int?) ?? 0,
+    cacheCreationTokens: (json['cache_creation_tokens'] as int?) ?? 0,
+    turnCount: (json['turn_count'] as int?) ?? 0,
+  );
 
   @override
   String toString() =>

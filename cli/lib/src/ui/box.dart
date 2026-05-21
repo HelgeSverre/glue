@@ -82,7 +82,8 @@ class Box {
     );
 
     // Interior (empty rows with side borders)
-    final interior = '$color$left$rst'
+    final interior =
+        '$color$left$rst'
         '${' ' * innerWidth}'
         '$color$right$rst';
     for (var i = 1; i < height - 1; i++) {

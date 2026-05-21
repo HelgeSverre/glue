@@ -37,10 +37,9 @@ class ModalRunningCommand implements RunningCommandHandle {
 
   ModalRunningCommand({
     required this.streamId,
-    required Future<void> Function() killer,
-    required Future<void> Function() forceShutdown,
-  })  : _killer = killer,
-        _forceShutdown = forceShutdown;
+    required this._killer,
+    required this._forceShutdown,
+  });
 
   @override
   Stream<List<int>> get stdout => _stdoutCtrl.stream;

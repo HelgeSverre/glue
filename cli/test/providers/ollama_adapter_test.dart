@@ -85,13 +85,17 @@ void main() {
           capturedBody =
               jsonDecode((req as http.Request).body) as Map<String, Object?>;
           return http.StreamedResponse(
-            Stream<List<int>>.value(utf8.encode(jsonEncode({
-              'model': 'whatever',
-              'message': {'role': 'assistant', 'content': ''},
-              'done': true,
-              'prompt_eval_count': 0,
-              'eval_count': 0,
-            }))),
+            Stream<List<int>>.value(
+              utf8.encode(
+                jsonEncode({
+                  'model': 'whatever',
+                  'message': {'role': 'assistant', 'content': ''},
+                  'done': true,
+                  'prompt_eval_count': 0,
+                  'eval_count': 0,
+                }),
+              ),
+            ),
             200,
             headers: {'content-type': 'application/x-ndjson'},
           );
@@ -114,10 +118,14 @@ void main() {
           capturedBody =
               jsonDecode((req as http.Request).body) as Map<String, Object?>;
           return http.StreamedResponse(
-            Stream<List<int>>.value(utf8.encode(jsonEncode({
-              'message': {'role': 'assistant', 'content': ''},
-              'done': true,
-            }))),
+            Stream<List<int>>.value(
+              utf8.encode(
+                jsonEncode({
+                  'message': {'role': 'assistant', 'content': ''},
+                  'done': true,
+                }),
+              ),
+            ),
             200,
             headers: {'content-type': 'application/x-ndjson'},
           );
@@ -133,11 +141,12 @@ void main() {
       expect(options, isA<Map<String, Object?>>());
       // 256K gets clamped to the 128K ceiling.
       expect(
-          (options! as Map<String, Object?>)['num_ctx'], ollamaNumCtxCeiling);
+        (options! as Map<String, Object?>)['num_ctx'],
+        ollamaNumCtxCeiling,
+      );
     });
 
-    test(
-        'passes num_ctx through unclamped when ModelDef.contextWindow is '
+    test('passes num_ctx through unclamped when ModelDef.contextWindow is '
         'below the ceiling', () async {
       Map<String, Object?>? capturedBody;
       final adapter = OllamaAdapter(
@@ -145,10 +154,14 @@ void main() {
           capturedBody =
               jsonDecode((req as http.Request).body) as Map<String, Object?>;
           return http.StreamedResponse(
-            Stream<List<int>>.value(utf8.encode(jsonEncode({
-              'message': {'role': 'assistant', 'content': ''},
-              'done': true,
-            }))),
+            Stream<List<int>>.value(
+              utf8.encode(
+                jsonEncode({
+                  'message': {'role': 'assistant', 'content': ''},
+                  'done': true,
+                }),
+              ),
+            ),
             200,
             headers: {'content-type': 'application/x-ndjson'},
           );
@@ -164,8 +177,7 @@ void main() {
       expect(options?['num_ctx'], 8192);
     });
 
-    test(
-        'omits options entirely when ModelDef.contextWindow is null '
+    test('omits options entirely when ModelDef.contextWindow is null '
         '(uncatalogued passthrough)', () async {
       Map<String, Object?>? capturedBody;
       final adapter = OllamaAdapter(
@@ -173,10 +185,14 @@ void main() {
           capturedBody =
               jsonDecode((req as http.Request).body) as Map<String, Object?>;
           return http.StreamedResponse(
-            Stream<List<int>>.value(utf8.encode(jsonEncode({
-              'message': {'role': 'assistant', 'content': ''},
-              'done': true,
-            }))),
+            Stream<List<int>>.value(
+              utf8.encode(
+                jsonEncode({
+                  'message': {'role': 'assistant', 'content': ''},
+                  'done': true,
+                }),
+              ),
+            ),
             200,
             headers: {'content-type': 'application/x-ndjson'},
           );
@@ -191,30 +207,36 @@ void main() {
       expect(capturedBody?.containsKey('options'), isFalse);
     });
 
-    test('strips legacy /v1 suffix from baseUrl so /api/chat resolves',
-        () async {
-      Uri? capturedUrl;
-      final adapter = OllamaAdapter(
-        requestClientFactory: () => _FakeHttp((req) async {
-          capturedUrl = req.url;
-          return http.StreamedResponse(
-            Stream<List<int>>.value(utf8.encode(jsonEncode({
-              'message': {'role': 'assistant', 'content': ''},
-              'done': true,
-            }))),
-            200,
-            headers: {'content-type': 'application/x-ndjson'},
-          );
-        }),
-      );
-      final client = adapter.createClient(
-        provider: _provider(baseUrl: 'http://localhost:11434/v1'),
-        model: _model(),
-        systemPrompt: '',
-      );
-      await client.stream([]).toList();
-      expect(capturedUrl.toString(), 'http://localhost:11434/api/chat');
-    });
+    test(
+      'strips legacy /v1 suffix from baseUrl so /api/chat resolves',
+      () async {
+        Uri? capturedUrl;
+        final adapter = OllamaAdapter(
+          requestClientFactory: () => _FakeHttp((req) async {
+            capturedUrl = req.url;
+            return http.StreamedResponse(
+              Stream<List<int>>.value(
+                utf8.encode(
+                  jsonEncode({
+                    'message': {'role': 'assistant', 'content': ''},
+                    'done': true,
+                  }),
+                ),
+              ),
+              200,
+              headers: {'content-type': 'application/x-ndjson'},
+            );
+          }),
+        );
+        final client = adapter.createClient(
+          provider: _provider(baseUrl: 'http://localhost:11434/v1'),
+          model: _model(),
+          systemPrompt: '',
+        );
+        await client.stream([]).toList();
+        expect(capturedUrl.toString(), 'http://localhost:11434/api/chat');
+      },
+    );
   });
 
   group('OllamaAdapter health', () {
@@ -238,12 +260,16 @@ void main() {
       final adapter = OllamaAdapter(
         requestClientFactory: () => _FakeHttp((req) async {
           return http.StreamedResponse(
-            Stream<List<int>>.value(utf8.encode(jsonEncode({
-              'models': [
-                {'name': 'qwen3-coder:30b', 'size': 20000000000},
-                {'name': 'gemma4:latest', 'size': 9600000000},
-              ],
-            }))),
+            Stream<List<int>>.value(
+              utf8.encode(
+                jsonEncode({
+                  'models': [
+                    {'name': 'qwen3-coder:30b', 'size': 20000000000},
+                    {'name': 'gemma4:latest', 'size': 9600000000},
+                  ],
+                }),
+              ),
+            ),
             200,
             headers: {'content-type': 'application/json'},
           );

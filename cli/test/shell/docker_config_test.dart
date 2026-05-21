@@ -102,14 +102,8 @@ void main() {
     });
 
     test('keeps same host mounted to different container paths', () {
-      final a = MountEntry(
-        hostPath: '/data',
-        containerPath: '/mnt/a',
-      );
-      final b = MountEntry(
-        hostPath: '/data',
-        containerPath: '/mnt/b',
-      );
+      final a = MountEntry(hostPath: '/data', containerPath: '/mnt/a');
+      final b = MountEntry(hostPath: '/data', containerPath: '/mnt/b');
       final result = MountEntry.dedup([a, b]);
       expect(result, hasLength(2));
     });

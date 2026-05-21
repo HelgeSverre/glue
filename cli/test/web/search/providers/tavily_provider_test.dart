@@ -21,7 +21,8 @@ void main() {
     });
 
     test('parseResponse handles valid JSON', () {
-      final json = jsonDecode('''{
+      final json =
+          jsonDecode('''{
         "query": "test",
         "results": [
           {
@@ -31,7 +32,8 @@ void main() {
           }
         ],
         "answer": "AI-generated summary."
-      }''') as Map<String, dynamic>;
+      }''')
+              as Map<String, dynamic>;
 
       final results = TavilySearchProvider.parseResponse(json);
       expect(results.results, hasLength(1));
@@ -41,10 +43,7 @@ void main() {
     });
 
     test('parseResponse handles missing answer', () {
-      final json = <String, dynamic>{
-        'query': 'test',
-        'results': <dynamic>[],
-      };
+      final json = <String, dynamic>{'query': 'test', 'results': <dynamic>[]};
       final results = TavilySearchProvider.parseResponse(json);
       expect(results.aiSummary, isNull);
     });

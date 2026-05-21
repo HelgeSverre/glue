@@ -20,14 +20,16 @@ class SpritesExecutor implements CommandExecutor {
   @override
   Future<CaptureResult> runCapture(String command, {Duration? timeout}) async {
     final commandId = generateRuntimeCommandId();
-    eventSink?.call(RuntimeCommandStarted(
-      commandId: commandId,
-      runtimeId: runtimeId,
-      at: DateTime.now(),
-      command: command,
-      runtimeCwd: '/workspace',
-      sandboxId: spriteName,
-    ));
+    eventSink?.call(
+      RuntimeCommandStarted(
+        commandId: commandId,
+        runtimeId: runtimeId,
+        at: DateTime.now(),
+        command: command,
+        runtimeCwd: '/workspace',
+        sandboxId: spriteName,
+      ),
+    );
     final started = DateTime.now();
     try {
       final result = await cli.execCapture(
@@ -35,15 +37,17 @@ class SpritesExecutor implements CommandExecutor {
         command,
         timeout: timeout,
       );
-      eventSink?.call(RuntimeCommandCompleted(
-        commandId: commandId,
-        runtimeId: runtimeId,
-        at: DateTime.now(),
-        exitCode: result.exitCode,
-        duration: DateTime.now().difference(started),
-        stdoutBytes: result.stdout.length,
-        stderrBytes: result.stderr.length,
-      ));
+      eventSink?.call(
+        RuntimeCommandCompleted(
+          commandId: commandId,
+          runtimeId: runtimeId,
+          at: DateTime.now(),
+          exitCode: result.exitCode,
+          duration: DateTime.now().difference(started),
+          stdoutBytes: result.stdout.length,
+          stderrBytes: result.stderr.length,
+        ),
+      );
       return CaptureResult(
         exitCode: result.exitCode,
         stdout: result.stdout,
@@ -52,13 +56,15 @@ class SpritesExecutor implements CommandExecutor {
         sessionId: spriteName,
       );
     } catch (e) {
-      eventSink?.call(RuntimeCommandFailed(
-        commandId: commandId,
-        runtimeId: runtimeId,
-        at: DateTime.now(),
-        errorType: e.runtimeType.toString(),
-        message: e.toString(),
-      ));
+      eventSink?.call(
+        RuntimeCommandFailed(
+          commandId: commandId,
+          runtimeId: runtimeId,
+          at: DateTime.now(),
+          errorType: e.runtimeType.toString(),
+          message: e.toString(),
+        ),
+      );
       rethrow;
     }
   }
@@ -66,26 +72,30 @@ class SpritesExecutor implements CommandExecutor {
   @override
   Future<RunningCommandHandle> startStreaming(String command) async {
     final commandId = generateRuntimeCommandId();
-    eventSink?.call(RuntimeCommandStarted(
-      commandId: commandId,
-      runtimeId: runtimeId,
-      at: DateTime.now(),
-      command: command,
-      runtimeCwd: '/workspace',
-      sandboxId: spriteName,
-    ));
+    eventSink?.call(
+      RuntimeCommandStarted(
+        commandId: commandId,
+        runtimeId: runtimeId,
+        at: DateTime.now(),
+        command: command,
+        runtimeCwd: '/workspace',
+        sandboxId: spriteName,
+      ),
+    );
     final started = DateTime.now();
     final process = await cli.execStream(spriteName, command);
     final sink = eventSink;
     if (sink != null) {
       process.exitCode.then((code) {
-        sink(RuntimeCommandCompleted(
-          commandId: commandId,
-          runtimeId: runtimeId,
-          at: DateTime.now(),
-          exitCode: code,
-          duration: DateTime.now().difference(started),
-        ));
+        sink(
+          RuntimeCommandCompleted(
+            commandId: commandId,
+            runtimeId: runtimeId,
+            at: DateTime.now(),
+            exitCode: code,
+            duration: DateTime.now().difference(started),
+          ),
+        );
       });
     }
     return RunningCommand(process);

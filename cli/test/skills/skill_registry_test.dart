@@ -27,8 +27,10 @@ void main() {
     test('discovers project-local skills', () {
       final skillsDir = p.join(tempDir.path, '.glue', 'skills');
       createSkill(skillsDir, 'my-skill');
-      final registry =
-          SkillRegistry.discover(cwd: tempDir.path, home: tempDir.path);
+      final registry = SkillRegistry.discover(
+        cwd: tempDir.path,
+        home: tempDir.path,
+      );
       expect(registry.length, 1);
       expect(registry.list().first.name, 'my-skill');
       expect(registry.list().first.source, SkillSource.project);
@@ -101,8 +103,10 @@ void main() {
       final skillsDir = p.join(tempDir.path, '.glue', 'skills');
       createSkill(skillsDir, 'alpha');
       createSkill(skillsDir, 'beta');
-      final registry =
-          SkillRegistry.discover(cwd: tempDir.path, home: tempDir.path);
+      final registry = SkillRegistry.discover(
+        cwd: tempDir.path,
+        home: tempDir.path,
+      );
       expect(registry.findByName('alpha')?.name, 'alpha');
       expect(registry.findByName('beta')?.name, 'beta');
       expect(registry.findByName('gamma'), isNull);
@@ -111,15 +115,19 @@ void main() {
     test('loadBody returns skill body', () {
       final skillsDir = p.join(tempDir.path, '.glue', 'skills');
       createSkill(skillsDir, 'reader');
-      final registry =
-          SkillRegistry.discover(cwd: tempDir.path, home: tempDir.path);
+      final registry = SkillRegistry.discover(
+        cwd: tempDir.path,
+        home: tempDir.path,
+      );
       final body = registry.loadBody('reader');
       expect(body, contains('Body of reader.'));
     });
 
     test('loadBody throws for unknown skill', () {
-      final registry =
-          SkillRegistry.discover(cwd: tempDir.path, home: tempDir.path);
+      final registry = SkillRegistry.discover(
+        cwd: tempDir.path,
+        home: tempDir.path,
+      );
       expect(() => registry.loadBody('nope'), throwsA(isA<SkillParseError>()));
     });
 
@@ -129,15 +137,19 @@ void main() {
       dir.createSync(recursive: true);
       File(p.join(dir.path, 'SKILL.md')).writeAsStringSync('no frontmatter');
       createSkill(skillsDir, 'good-skill');
-      final registry =
-          SkillRegistry.discover(cwd: tempDir.path, home: tempDir.path);
+      final registry = SkillRegistry.discover(
+        cwd: tempDir.path,
+        home: tempDir.path,
+      );
       expect(registry.length, 1);
       expect(registry.list().first.name, 'good-skill');
     });
 
     test('empty when no skills dirs exist', () {
-      final registry =
-          SkillRegistry.discover(cwd: tempDir.path, home: tempDir.path);
+      final registry = SkillRegistry.discover(
+        cwd: tempDir.path,
+        home: tempDir.path,
+      );
       expect(registry.isEmpty, true);
     });
 
@@ -148,8 +160,10 @@ void main() {
       File(p.join(dir.path, 'skill.md')).writeAsStringSync(
         '---\nname: lower\ndescription: Lowercase.\n---\nLower body.\n',
       );
-      final registry =
-          SkillRegistry.discover(cwd: tempDir.path, home: tempDir.path);
+      final registry = SkillRegistry.discover(
+        cwd: tempDir.path,
+        home: tempDir.path,
+      );
       expect(registry.length, 1);
       expect(registry.list().first.description, 'Lowercase.');
     });
@@ -176,8 +190,10 @@ void main() {
         '---\nname: system-skill\ndescription: hidden\n---\nbody',
       );
       createSkill(skillsDir, 'visible-skill');
-      final registry =
-          SkillRegistry.discover(cwd: tempDir.path, home: tempDir.path);
+      final registry = SkillRegistry.discover(
+        cwd: tempDir.path,
+        home: tempDir.path,
+      );
       expect(registry.length, 1);
       expect(registry.list().first.name, 'visible-skill');
     });

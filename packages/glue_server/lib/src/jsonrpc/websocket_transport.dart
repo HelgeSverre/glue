@@ -42,11 +42,13 @@ class WebSocketTransport implements JsonRpcTransport {
           try {
             payload = utf8.decode(frame);
           } on FormatException catch (e) {
-            controller.add(JsonRpcError(
-              id: null,
-              code: JsonRpcErrorCode.parseError,
-              message: 'binary frame is not valid UTF-8: ${e.message}',
-            ));
+            controller.add(
+              JsonRpcError(
+                id: null,
+                code: JsonRpcErrorCode.parseError,
+                message: 'binary frame is not valid UTF-8: ${e.message}',
+              ),
+            );
             return;
           }
         } else {

@@ -11,8 +11,8 @@ class BrowserEndpoint {
     required this.backendName,
     this.headed = false,
     this.viewUrl,
-    Future<void> Function()? onClose,
-  }) : _onClose = onClose;
+    this._onClose,
+  });
 
   /// Release the browser endpoint (stop container, close session, etc.).
   Future<void> close() async {

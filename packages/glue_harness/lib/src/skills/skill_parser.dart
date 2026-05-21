@@ -8,10 +8,10 @@ enum SkillSource { project, global, custom }
 
 extension SkillSourceLabel on SkillSource {
   String get label => switch (this) {
-        SkillSource.project => 'project',
-        SkillSource.global => 'global',
-        SkillSource.custom => 'custom',
-      };
+    SkillSource.project => 'project',
+    SkillSource.global => 'global',
+    SkillSource.custom => 'custom',
+  };
 }
 
 /// An error thrown when a SKILL.md file cannot be parsed.
@@ -97,11 +97,13 @@ SkillMeta parseSkillFrontmatter(
   final namePattern = name.length == 1 ? _namePatternSingle : _namePatternMulti;
   if (!namePattern.hasMatch(name)) {
     throw SkillParseError(
-        'Invalid name "$name": must be lowercase alphanumeric with hyphens');
+      'Invalid name "$name": must be lowercase alphanumeric with hyphens',
+    );
   }
   if (name.contains('--')) {
     throw SkillParseError(
-        'Invalid name "$name": consecutive hyphens not allowed');
+      'Invalid name "$name": consecutive hyphens not allowed',
+    );
   }
 
   final dirName = p.basename(skillDir);

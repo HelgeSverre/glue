@@ -13,12 +13,12 @@ class HttpTraceSink extends ObservabilitySink {
   final IOSink _sink;
 
   HttpTraceSink({required String logsDir})
-      : _sink = (File(p.join(
+    : _sink = (File(
+        p.join(
           logsDir,
           'http-${DateTime.now().toIso8601String().substring(0, 10)}.jsonl',
-        ))
-              ..parent.createSync(recursive: true))
-            .openWrite(mode: FileMode.append);
+        ),
+      )..parent.createSync(recursive: true)).openWrite(mode: FileMode.append);
 
   @override
   void onSpan(ObservabilitySpan span) {

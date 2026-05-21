@@ -26,8 +26,7 @@ class WebFetchResult {
   factory WebFetchResult.withError({
     required String url,
     required String error,
-  }) =>
-      WebFetchResult(url: url, error: error);
+  }) => WebFetchResult(url: url, error: error);
 
   bool get isSuccess => markdown != null && error == null;
 }
@@ -40,10 +39,12 @@ class WebFetchClient {
   late final PdfTextExtractor _pdfExtractor;
   late final OcrClient? _ocrClient;
 
-  WebFetchClient(
-      {required this.config, PdfConfig? pdfConfig, http.Client? client})
-      : pdfConfig = pdfConfig ?? const PdfConfig(),
-        _client = client ?? http.Client() {
+  WebFetchClient({
+    required this.config,
+    PdfConfig? pdfConfig,
+    http.Client? client,
+  }) : pdfConfig = pdfConfig ?? const PdfConfig(),
+       _client = client ?? http.Client() {
     _jinaClient = config.allowJinaFallback
         ? JinaReaderClient(
             baseUrl: config.jinaBaseUrl,
@@ -57,8 +58,8 @@ class WebFetchClient {
     );
     _ocrClient =
         this.pdfConfig.enableOcrFallback && this.pdfConfig.hasOcrCredentials
-            ? OcrClient.fromConfig(this.pdfConfig, client: client)
-            : null;
+        ? OcrClient.fromConfig(this.pdfConfig, client: client)
+        : null;
   }
 
   Future<WebFetchResult> fetch(String url, {int? maxTokens}) async {
@@ -85,11 +86,17 @@ class WebFetchClient {
 
     // Single GET — route by content-type / magic bytes.
     try {
-      final response = await _client.get(uri, headers: {
-        'Accept': 'text/markdown, text/plain;q=0.9, '
-            'text/html;q=0.8, application/pdf;q=0.7, */*;q=0.1',
-        'User-Agent': 'Glue/0.1 (coding-agent)',
-      }).timeout(Duration(seconds: config.timeoutSeconds));
+      final response = await _client
+          .get(
+            uri,
+            headers: {
+              'Accept':
+                  'text/markdown, text/plain;q=0.9, '
+                  'text/html;q=0.8, application/pdf;q=0.7, */*;q=0.1',
+              'User-Agent': 'Glue/0.1 (coding-agent)',
+            },
+          )
+          .timeout(Duration(seconds: config.timeoutSeconds));
 
       if (response.statusCode != 200) {
         // Fall through to Jina.
@@ -101,12 +108,15 @@ class WebFetchClient {
           if (response.bodyBytes.length > config.maxBytes) {
             return WebFetchResult.withError(
               url: url,
-              error: 'Response too large: ${response.bodyBytes.length} bytes '
+              error:
+                  'Response too large: ${response.bodyBytes.length} bytes '
                   '(max ${config.maxBytes})',
             );
           }
-          final truncated =
-              TokenTruncation.truncate(response.body, maxTokens: budget);
+          final truncated = TokenTruncation.truncate(
+            response.body,
+            maxTokens: budget,
+          );
           return WebFetchResult(
             url: url,
             markdown: truncated,
@@ -134,8 +144,10 @@ class WebFetchClient {
       try {
         final jinaResult = await _jinaClient.fetch(url);
         if (jinaResult != null && jinaResult.trim().isNotEmpty) {
-          final truncated =
-              TokenTruncation.truncate(jinaResult, maxTokens: budget);
+          final truncated = TokenTruncation.truncate(
+            jinaResult,
+            maxTokens: budget,
+          );
           return WebFetchResult(
             url: url,
             markdown: truncated,
@@ -159,7 +171,8 @@ class WebFetchClient {
     if (response.bodyBytes.length > config.maxBytes) {
       return WebFetchResult.withError(
         url: uri.toString(),
-        error: 'Response too large: ${response.bodyBytes.length} bytes '
+        error:
+            'Response too large: ${response.bodyBytes.length} bytes '
             '(max ${config.maxBytes})',
       );
     }
@@ -169,9 +182,10 @@ class WebFetchClient {
 
     if (markdown.trim().isEmpty) return null;
 
-    final titleMatch =
-        RegExp(r'<title[^>]*>(.*?)</title>', caseSensitive: false)
-            .firstMatch(response.body);
+    final titleMatch = RegExp(
+      r'<title[^>]*>(.*?)</title>',
+      caseSensitive: false,
+    ).firstMatch(response.body);
     final title = titleMatch?.group(1)?.trim();
 
     final truncated = TokenTruncation.truncate(markdown, maxTokens: maxTokens);
@@ -192,7 +206,8 @@ class WebFetchClient {
     if (response.bodyBytes.length > pdfConfig.maxBytes) {
       return WebFetchResult.withError(
         url: uri.toString(),
-        error: 'PDF too large: ${response.bodyBytes.length} bytes '
+        error:
+            'PDF too large: ${response.bodyBytes.length} bytes '
             '(max ${pdfConfig.maxBytes})',
       );
     }
@@ -202,8 +217,10 @@ class WebFetchClient {
     if (pdftotextAvailable) {
       final result = await _pdfExtractor.extract(response.bodyBytes);
       if (result.isSuccess) {
-        final truncated =
-            TokenTruncation.truncate(result.text!, maxTokens: maxTokens);
+        final truncated = TokenTruncation.truncate(
+          result.text!,
+          maxTokens: maxTokens,
+        );
         return WebFetchResult(
           url: uri.toString(),
           markdown: truncated,
@@ -217,8 +234,10 @@ class WebFetchClient {
     if (_ocrClient != null) {
       final ocrText = await _ocrClient.extractText(response.bodyBytes);
       if (ocrText != null && ocrText.trim().isNotEmpty) {
-        final truncated =
-            TokenTruncation.truncate(ocrText, maxTokens: maxTokens);
+        final truncated = TokenTruncation.truncate(
+          ocrText,
+          maxTokens: maxTokens,
+        );
         return WebFetchResult(
           url: uri.toString(),
           markdown: truncated,
@@ -231,7 +250,8 @@ class WebFetchClient {
     if (!pdftotextAvailable) {
       return WebFetchResult.withError(
         url: uri.toString(),
-        error: 'PDF detected but pdftotext is not installed. '
+        error:
+            'PDF detected but pdftotext is not installed. '
             'Install poppler-utils (apt install poppler-utils / '
             'brew install poppler) or configure OCR API keys.',
       );
@@ -239,7 +259,8 @@ class WebFetchClient {
 
     return WebFetchResult.withError(
       url: uri.toString(),
-      error: 'PDF text extraction returned empty content. '
+      error:
+          'PDF text extraction returned empty content. '
           'This may be a scanned PDF — configure MISTRAL_API_KEY '
           'or OPENAI_API_KEY for OCR fallback.',
     );

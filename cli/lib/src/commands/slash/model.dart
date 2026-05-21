@@ -25,14 +25,14 @@ class ModelCommand extends SlashCommand {
 
   @override
   SlashArgCompleter? get argCompleter => (prior, partial) {
-        if (prior.isNotEmpty) return const [];
-        final config = ctx.config;
-        if (config == null) return const [];
-        return arg_completers.modelRefCandidates(
-          config.catalogData.providers,
-          partial,
-        );
-      };
+    if (prior.isNotEmpty) return const [];
+    final config = ctx.config;
+    if (config == null) return const [];
+    return arg_completers.modelRefCandidates(
+      config.catalogData.providers,
+      partial,
+    );
+  };
 
   @override
   String execute(List<String> args) {
@@ -68,9 +68,7 @@ class ModelCommand extends SlashCommand {
     final ollamaProvider = config.catalogData.providers['ollama'];
     if (ollamaProvider != null && ollamaProvider.enabled) {
       final discovery = OllamaDiscovery(
-        baseUrl: Uri.parse(
-          ollamaProvider.baseUrl ?? 'http://localhost:11434',
-        ),
+        baseUrl: Uri.parse(ollamaProvider.baseUrl ?? 'http://localhost:11434'),
       );
       final installed = await discovery.listInstalled();
       entries = mergeOllamaDiscovery(entries, installed);

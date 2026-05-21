@@ -4,11 +4,7 @@ import 'package:glue_harness/glue_harness.dart';
 /// (the `_approvalMode` field); this service exposes it through a typed
 /// surface so commands and other consumers do not reach into App.
 class ApprovalState {
-  ApprovalState({
-    required ApprovalMode Function() get,
-    required void Function(ApprovalMode) set,
-  })  : _get = get,
-        _set = set;
+  ApprovalState({required this._get, required this._set});
 
   final ApprovalMode Function() _get;
   final void Function(ApprovalMode) _set;

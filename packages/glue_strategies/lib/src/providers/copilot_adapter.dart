@@ -29,10 +29,9 @@ class CopilotAdapter extends ProviderAdapter {
   CopilotAdapter({
     http.Client? client,
     CredentialStore? credentialStore,
-    http.Client Function()? requestClientFactory,
-  })  : _http = client ?? http.Client(),
-        _store = credentialStore,
-        _requestClientFactory = requestClientFactory;
+    this._requestClientFactory,
+  }) : _http = client ?? http.Client(),
+       _store = credentialStore;
 
   final http.Client _http;
   final CredentialStore? _store;
@@ -87,13 +86,11 @@ class CopilotAdapter extends ProviderAdapter {
 
     // ignore: close_sinks -- closed inside _runPollingLoop's finally block.
     final progress = StreamController<AuthFlowProgress>();
-    unawaited(
-      _runPollingLoop(
-        device: device,
-        httpClient: _http,
-        store: store,
-        progress: progress,
-      ),
+    _runPollingLoop(
+      device: device,
+      httpClient: _http,
+      store: store,
+      progress: progress,
     );
 
     return DeviceCodeFlow(
@@ -146,9 +143,7 @@ class CopilotAdapter extends ProviderAdapter {
     try {
       while (true) {
         if (DateTime.now().toUtc().isAfter(deadline)) {
-          progress.add(
-            const AuthFlowFailed(reason: 'device code expired'),
-          );
+          progress.add(const AuthFlowFailed(reason: 'device code expired'));
           return;
         }
         if (interval > Duration.zero) {
@@ -162,15 +157,14 @@ class CopilotAdapter extends ProviderAdapter {
             'accept': 'application/json',
             'content-type': 'application/x-www-form-urlencoded',
           },
-          body: 'client_id=$copilotClientId'
+          body:
+              'client_id=$copilotClientId'
               '&device_code=${device.deviceCode}'
               '&grant_type=$_deviceGrantType',
         );
         final body = jsonDecode(pollResponse.body);
         if (body is! Map) {
-          progress.add(
-            const AuthFlowFailed(reason: 'malformed poll response'),
-          );
+          progress.add(const AuthFlowFailed(reason: 'malformed poll response'));
           return;
         }
         final accessToken = body['access_token'] as String?;
@@ -201,19 +195,13 @@ class CopilotAdapter extends ProviderAdapter {
             interval += const Duration(seconds: 5);
             continue;
           case 'access_denied':
-            progress.add(
-              const AuthFlowFailed(reason: 'access denied'),
-            );
+            progress.add(const AuthFlowFailed(reason: 'access denied'));
             return;
           case 'expired_token':
-            progress.add(
-              const AuthFlowFailed(reason: 'device code expired'),
-            );
+            progress.add(const AuthFlowFailed(reason: 'device code expired'));
             return;
           default:
-            progress.add(
-              AuthFlowFailed(reason: error ?? 'unknown error'),
-            );
+            progress.add(AuthFlowFailed(reason: error ?? 'unknown error'));
             return;
         }
       }
@@ -248,9 +236,8 @@ class _CopilotClient implements LlmClient {
     required this.systemPrompt,
     required this.baseUrl,
     http.Client? httpClient,
-    http.Client Function()? requestClientFactory,
-  })  : _http = httpClient,
-        _requestClientFactory = requestClientFactory;
+    this._requestClientFactory,
+  }) : _http = httpClient;
 
   final CredentialStore store;
   final String model;

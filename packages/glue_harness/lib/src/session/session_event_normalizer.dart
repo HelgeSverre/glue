@@ -42,7 +42,9 @@ class NormalizedSessionEvent {
   });
 
   factory NormalizedSessionEvent.user(String text) => NormalizedSessionEvent._(
-      kind: NormalizedSessionEventKind.user, text: text);
+    kind: NormalizedSessionEventKind.user,
+    text: text,
+  );
 
   factory NormalizedSessionEvent.assistant(String text) =>
       NormalizedSessionEvent._(
@@ -54,26 +56,24 @@ class NormalizedSessionEvent {
     String? id,
     required String name,
     required Map<String, dynamic> arguments,
-  }) =>
-      NormalizedSessionEvent._(
-        kind: NormalizedSessionEventKind.toolCall,
-        text: name,
-        toolCallId: id,
-        toolName: name,
-        toolArguments: arguments,
-      );
+  }) => NormalizedSessionEvent._(
+    kind: NormalizedSessionEventKind.toolCall,
+    text: name,
+    toolCallId: id,
+    toolName: name,
+    toolArguments: arguments,
+  );
 
   factory NormalizedSessionEvent.toolResult({
     String? callId,
     required String content,
     String? summary,
-  }) =>
-      NormalizedSessionEvent._(
-        kind: NormalizedSessionEventKind.toolResult,
-        text: content,
-        toolCallId: callId,
-        toolResultSummary: summary,
-      );
+  }) => NormalizedSessionEvent._(
+    kind: NormalizedSessionEventKind.toolResult,
+    text: content,
+    toolCallId: callId,
+    toolResultSummary: summary,
+  );
 
   factory NormalizedSessionEvent.subagentSpawned({
     required String subagentId,
@@ -82,38 +82,35 @@ class NormalizedSessionEvent {
     int? index,
     int? total,
     int? depth,
-  }) =>
-      NormalizedSessionEvent._(
-        kind: NormalizedSessionEventKind.subagentSpawned,
-        text: task,
-        subagentId: subagentId,
-        parentSubagentId: parentSubagentId,
-        subagentIndex: index,
-        subagentTotal: total,
-        subagentDepth: depth,
-      );
+  }) => NormalizedSessionEvent._(
+    kind: NormalizedSessionEventKind.subagentSpawned,
+    text: task,
+    subagentId: subagentId,
+    parentSubagentId: parentSubagentId,
+    subagentIndex: index,
+    subagentTotal: total,
+    subagentDepth: depth,
+  );
 
   factory NormalizedSessionEvent.subagentEvent({
     required String subagentId,
     required NormalizedSessionEvent inner,
-  }) =>
-      NormalizedSessionEvent._(
-        kind: NormalizedSessionEventKind.subagentEvent,
-        text: inner.visibleText,
-        subagentId: subagentId,
-        subagentInner: inner,
-      );
+  }) => NormalizedSessionEvent._(
+    kind: NormalizedSessionEventKind.subagentEvent,
+    text: inner.visibleText,
+    subagentId: subagentId,
+    subagentInner: inner,
+  );
 
   factory NormalizedSessionEvent.subagentCompleted({
     required String subagentId,
     String? error,
-  }) =>
-      NormalizedSessionEvent._(
-        kind: NormalizedSessionEventKind.subagentCompleted,
-        text: error ?? '',
-        subagentId: subagentId,
-        subagentError: error,
-      );
+  }) => NormalizedSessionEvent._(
+    kind: NormalizedSessionEventKind.subagentCompleted,
+    text: error ?? '',
+    subagentId: subagentId,
+    subagentError: error,
+  );
 
   String get visibleText {
     if (kind != NormalizedSessionEventKind.toolResult) {

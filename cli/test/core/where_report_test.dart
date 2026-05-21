@@ -53,10 +53,12 @@ void main() {
         existsCheck: (path, {required isDir}) => path == env.configYamlPath,
       );
 
-      final configLine =
-          report.split('\n').firstWhere((line) => line.contains('config.yaml'));
-      final sessionsLine =
-          report.split('\n').firstWhere((line) => line.contains('sessions/'));
+      final configLine = report
+          .split('\n')
+          .firstWhere((line) => line.contains('config.yaml'));
+      final sessionsLine = report
+          .split('\n')
+          .firstWhere((line) => line.contains('sessions/'));
       expect(configLine, contains('present'));
       expect(sessionsLine, contains('missing'));
     });

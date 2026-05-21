@@ -10,7 +10,7 @@ class SkillRegistry {
   final Map<String, SkillMeta> _byName;
 
   SkillRegistry._(this._skills)
-      : _byName = {for (final s in _skills) s.name: s};
+    : _byName = {for (final s in _skills) s.name: s};
 
   factory SkillRegistry.discover({
     required String cwd,
@@ -19,7 +19,8 @@ class SkillRegistry {
     String? home,
     Environment? environment,
   }) {
-    final env = environment ??
+    final env =
+        environment ??
         (home != null
             ? Environment.test(home: home, cwd: cwd)
             : Environment.detect(cwd: cwd));
@@ -32,11 +33,9 @@ class SkillRegistry {
       final dir = Directory(dirPath);
       if (!dir.existsSync()) return;
       try {
-        final entries = dir
-            .listSync()
-            .whereType<Directory>()
-            .toList(growable: false)
-          ..sort((a, b) => p.basename(a.path).compareTo(p.basename(b.path)));
+        final entries = dir.listSync().whereType<Directory>().toList(
+          growable: false,
+        )..sort((a, b) => p.basename(a.path).compareTo(p.basename(b.path)));
         for (final entry in entries) {
           final name = p.basename(entry.path);
           if (name.startsWith('.')) continue;

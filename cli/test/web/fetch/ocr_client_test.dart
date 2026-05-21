@@ -26,17 +26,21 @@ void main() {
         apiKey: 'test-key',
         model: 'gpt-4.1-mini',
       );
-      final body = client.buildOpenAIRequestBody(
-        Uint8List.fromList([1, 2, 3]),
-      );
+      final body = client.buildOpenAIRequestBody(Uint8List.fromList([1, 2, 3]));
       final json = jsonDecode(body) as Map<String, dynamic>;
       expect(json['model'], 'gpt-4.1-mini');
 
       // Must use Responses API 'input' field, not 'messages'.
-      expect(json.containsKey('input'), isTrue,
-          reason: 'Should use Responses API input field');
-      expect(json.containsKey('messages'), isFalse,
-          reason: 'Should not use Chat Completions messages field');
+      expect(
+        json.containsKey('input'),
+        isTrue,
+        reason: 'Should use Responses API input field',
+      );
+      expect(
+        json.containsKey('messages'),
+        isFalse,
+        reason: 'Should not use Chat Completions messages field',
+      );
 
       final input = json['input'] as List;
       final userMsg = input[0] as Map<String, dynamic>;
@@ -44,8 +48,11 @@ void main() {
 
       // Must use input_file type (not image_url or file).
       final fileContent = content[1] as Map<String, dynamic>;
-      expect(fileContent['type'], 'input_file',
-          reason: 'OpenAI Responses API uses input_file for PDFs');
+      expect(
+        fileContent['type'],
+        'input_file',
+        reason: 'OpenAI Responses API uses input_file for PDFs',
+      );
     });
 
     test('OpenAI endpoint uses Responses API URL', () {

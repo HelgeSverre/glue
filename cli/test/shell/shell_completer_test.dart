@@ -7,9 +7,14 @@ void main() {
   group('ShellType', () {
     test('enum values exist', () {
       expect(
-          ShellType.values,
-          containsAll(
-              [ShellType.bash, ShellType.fish, ShellType.zsh, ShellType.sh]));
+        ShellType.values,
+        containsAll([
+          ShellType.bash,
+          ShellType.fish,
+          ShellType.zsh,
+          ShellType.sh,
+        ]),
+      );
     });
   });
 
@@ -22,8 +27,11 @@ void main() {
     });
 
     test('holds optional description and isDirectory', () {
-      final c =
-          ShellCandidate('src', description: 'Source dir', isDirectory: true);
+      final c = ShellCandidate(
+        'src',
+        description: 'Source dir',
+        isDirectory: true,
+      );
       expect(c.text, 'src');
       expect(c.description, 'Source dir');
       expect(c.isDirectory, isTrue);
@@ -125,8 +133,9 @@ void main() {
       final dir = Directory.systemTemp.createTempSync('shell_completer_test_');
       try {
         for (var i = 0; i < 60; i++) {
-          File('${dir.path}/file_${i.toString().padLeft(3, '0')}.txt')
-              .createSync();
+          File(
+            '${dir.path}/file_${i.toString().padLeft(3, '0')}.txt',
+          ).createSync();
         }
 
         final results = await completer.complete('ls ${dir.path}/file_');
@@ -152,12 +161,14 @@ void main() {
       expect(results2, isNotEmpty);
     });
 
-    test('unknown command prefix returns empty or results gracefully',
-        () async {
-      final results = await completer.complete('xyznonexistent_cmd_12345');
-      // May return empty or some results — just should not throw.
-      expect(results, isA<List<ShellCandidate>>());
-    });
+    test(
+      'unknown command prefix returns empty or results gracefully',
+      () async {
+        final results = await completer.complete('xyznonexistent_cmd_12345');
+        // May return empty or some results — just should not throw.
+        expect(results, isA<List<ShellCandidate>>());
+      },
+    );
   });
 
   group('ShellCompleter with fish', () {

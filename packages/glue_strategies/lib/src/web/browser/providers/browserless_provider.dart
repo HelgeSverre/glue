@@ -32,9 +32,6 @@ class BrowserlessProvider implements BrowserEndpointProvider {
       throw StateError('Browserless API key not configured');
     }
 
-    return BrowserEndpoint(
-      cdpWsUrl: buildWsUrl(),
-      backendName: name,
-    );
+    return BrowserEndpoint(cdpWsUrl: buildWsUrl(), backendName: name);
   }
 }

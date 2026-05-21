@@ -30,11 +30,13 @@ class ModalFsTransport implements RuntimeFsTransport {
   Future<List<FsTransportEntry>> list(String path) async {
     final entries = await sidecar.listDir(path);
     return entries
-        .map((e) => FsTransportEntry(
-              name: e.name,
-              isDirectory: e.isDirectory,
-              size: e.size,
-            ))
+        .map(
+          (e) => FsTransportEntry(
+            name: e.name,
+            isDirectory: e.isDirectory,
+            size: e.size,
+          ),
+        )
         .toList();
   }
 

@@ -14,7 +14,7 @@ extension ApprovalModeExt on ApprovalMode {
 
   /// Toggle between confirm and auto.
   ApprovalMode get toggle => switch (this) {
-        ApprovalMode.confirm => ApprovalMode.auto,
-        ApprovalMode.auto => ApprovalMode.confirm,
-      };
+    ApprovalMode.confirm => ApprovalMode.auto,
+    ApprovalMode.auto => ApprovalMode.confirm,
+  };
 }

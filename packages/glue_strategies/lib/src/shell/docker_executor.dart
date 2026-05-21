@@ -58,12 +58,7 @@ class DockerExecutor implements CommandExecutor {
       args.addAll(['-v', mount.toDockerArg()]);
     }
 
-    args.addAll([
-      config.image,
-      config.shell,
-      '-c',
-      command,
-    ]);
+    args.addAll([config.image, config.shell, '-c', command]);
 
     return args;
   }
@@ -71,56 +66,67 @@ class DockerExecutor implements CommandExecutor {
   @override
   Future<CaptureResult> runCapture(String command, {Duration? timeout}) async {
     final commandId = generateRuntimeCommandId();
-    eventSink?.call(RuntimeCommandStarted(
-      commandId: commandId,
-      runtimeId: 'docker',
-      at: DateTime.now(),
-      command: command,
-      runtimeCwd: '/workspace',
-    ));
+    eventSink?.call(
+      RuntimeCommandStarted(
+        commandId: commandId,
+        runtimeId: 'docker',
+        at: DateTime.now(),
+        command: command,
+        runtimeCwd: '/workspace',
+      ),
+    );
     final started = DateTime.now();
     final cidfile = _tempCidfile();
     try {
       final args = buildDockerArgs(command, cidfile.path);
       final process = await Process.start('docker', args);
 
-      final stdoutFuture =
-          process.stdout.transform(const SystemEncoding().decoder).join();
-      final stderrFuture =
-          process.stderr.transform(const SystemEncoding().decoder).join();
+      final stdoutFuture = process.stdout
+          .transform(const SystemEncoding().decoder)
+          .join();
+      final stderrFuture = process.stderr
+          .transform(const SystemEncoding().decoder)
+          .join();
 
       final int exitCode;
       var cancelled = false;
       if (timeout == null) {
         exitCode = await process.exitCode;
       } else {
-        exitCode = await process.exitCode.timeout(timeout, onTimeout: () async {
-          await _killContainer(cidfile);
-          process.kill();
-          cancelled = true;
-          return -1;
-        });
+        exitCode = await process.exitCode.timeout(
+          timeout,
+          onTimeout: () async {
+            await _killContainer(cidfile);
+            process.kill();
+            cancelled = true;
+            return -1;
+          },
+        );
       }
 
       final stdout = await stdoutFuture;
       final stderr = await stderrFuture;
       if (cancelled) {
-        eventSink?.call(RuntimeCommandCancelled(
-          commandId: commandId,
-          runtimeId: 'docker',
-          at: DateTime.now(),
-          reason: 'timeout',
-        ));
+        eventSink?.call(
+          RuntimeCommandCancelled(
+            commandId: commandId,
+            runtimeId: 'docker',
+            at: DateTime.now(),
+            reason: 'timeout',
+          ),
+        );
       } else {
-        eventSink?.call(RuntimeCommandCompleted(
-          commandId: commandId,
-          runtimeId: 'docker',
-          at: DateTime.now(),
-          exitCode: exitCode,
-          duration: DateTime.now().difference(started),
-          stdoutBytes: stdout.length,
-          stderrBytes: stderr.length,
-        ));
+        eventSink?.call(
+          RuntimeCommandCompleted(
+            commandId: commandId,
+            runtimeId: 'docker',
+            at: DateTime.now(),
+            exitCode: exitCode,
+            duration: DateTime.now().difference(started),
+            stdoutBytes: stdout.length,
+            stderrBytes: stderr.length,
+          ),
+        );
       }
 
       return CaptureResult(
@@ -130,13 +136,15 @@ class DockerExecutor implements CommandExecutor {
         runtimeId: 'docker',
       );
     } catch (e) {
-      eventSink?.call(RuntimeCommandFailed(
-        commandId: commandId,
-        runtimeId: 'docker',
-        at: DateTime.now(),
-        errorType: e.runtimeType.toString(),
-        message: e.toString(),
-      ));
+      eventSink?.call(
+        RuntimeCommandFailed(
+          commandId: commandId,
+          runtimeId: 'docker',
+          at: DateTime.now(),
+          errorType: e.runtimeType.toString(),
+          message: e.toString(),
+        ),
+      );
       rethrow;
     } finally {
       _cleanupCidfile(cidfile);
@@ -146,13 +154,15 @@ class DockerExecutor implements CommandExecutor {
   @override
   Future<RunningCommandHandle> startStreaming(String command) async {
     final commandId = generateRuntimeCommandId();
-    eventSink?.call(RuntimeCommandStarted(
-      commandId: commandId,
-      runtimeId: 'docker',
-      at: DateTime.now(),
-      command: command,
-      runtimeCwd: '/workspace',
-    ));
+    eventSink?.call(
+      RuntimeCommandStarted(
+        commandId: commandId,
+        runtimeId: 'docker',
+        at: DateTime.now(),
+        command: command,
+        runtimeCwd: '/workspace',
+      ),
+    );
     final started = DateTime.now();
     final cidfile = _tempCidfile();
     final args = buildDockerArgs(command, cidfile.path);
@@ -160,13 +170,15 @@ class DockerExecutor implements CommandExecutor {
     final sink = eventSink;
     if (sink != null) {
       process.exitCode.then((code) {
-        sink(RuntimeCommandCompleted(
-          commandId: commandId,
-          runtimeId: 'docker',
-          at: DateTime.now(),
-          exitCode: code,
-          duration: DateTime.now().difference(started),
-        ));
+        sink(
+          RuntimeCommandCompleted(
+            commandId: commandId,
+            runtimeId: 'docker',
+            at: DateTime.now(),
+            exitCode: code,
+            duration: DateTime.now().difference(started),
+          ),
+        );
       });
     }
     return DockerRunningCommand(process, cidfile);
@@ -232,8 +244,9 @@ class DockerRunningCommand extends RunningCommand {
       if (cid != null && cid.isNotEmpty) {
         // `docker stop` sends SIGTERM then SIGKILL after the timeout.
         // With force=true we drop the grace period for a faster kill.
-        final args =
-            force ? ['stop', '-t', '0', cid] : ['stop', '-t', '5', cid];
+        final args = force
+            ? ['stop', '-t', '0', cid]
+            : ['stop', '-t', '5', cid];
         await Process.run('docker', args);
       }
     } catch (_) {}

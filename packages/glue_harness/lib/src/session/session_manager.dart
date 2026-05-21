@@ -52,13 +52,12 @@ class SessionReplayEntry {
   factory SessionReplayEntry.toolCall(
     String name,
     Map<String, dynamic> arguments,
-  ) =>
-      SessionReplayEntry._(
-        kind: SessionReplayKind.toolCall,
-        text: name,
-        toolName: name,
-        toolArguments: arguments,
-      );
+  ) => SessionReplayEntry._(
+    kind: SessionReplayKind.toolCall,
+    text: name,
+    toolName: name,
+    toolArguments: arguments,
+  );
 
   factory SessionReplayEntry.toolResult(String text) =>
       SessionReplayEntry._(kind: SessionReplayKind.toolResult, text: text);
@@ -68,38 +67,35 @@ class SessionReplayEntry {
     required String task,
     int? index,
     int? total,
-  }) =>
-      SessionReplayEntry._(
-        kind: SessionReplayKind.subagentSpawned,
-        text: task,
-        subagentId: subagentId,
-        subagentIndex: index,
-        subagentTotal: total,
-      );
+  }) => SessionReplayEntry._(
+    kind: SessionReplayKind.subagentSpawned,
+    text: task,
+    subagentId: subagentId,
+    subagentIndex: index,
+    subagentTotal: total,
+  );
 
   factory SessionReplayEntry.subagentEvent({
     required String subagentId,
     required SessionReplayEntry inner,
-  }) =>
-      SessionReplayEntry._(
-        kind: SessionReplayKind.subagentEvent,
-        text: inner.text,
-        subagentId: subagentId,
-        toolName: inner.toolName,
-        toolArguments: inner.toolArguments,
-        subagentInner: inner,
-      );
+  }) => SessionReplayEntry._(
+    kind: SessionReplayKind.subagentEvent,
+    text: inner.text,
+    subagentId: subagentId,
+    toolName: inner.toolName,
+    toolArguments: inner.toolArguments,
+    subagentInner: inner,
+  );
 
   factory SessionReplayEntry.subagentCompleted({
     required String subagentId,
     String? error,
-  }) =>
-      SessionReplayEntry._(
-        kind: SessionReplayKind.subagentCompleted,
-        text: error ?? '',
-        subagentId: subagentId,
-        subagentError: error,
-      );
+  }) => SessionReplayEntry._(
+    kind: SessionReplayKind.subagentCompleted,
+    text: error ?? '',
+    subagentId: subagentId,
+    subagentError: error,
+  );
 }
 
 class SessionReplay {
@@ -193,8 +189,8 @@ class SessionManager {
     required this.environment,
     SessionStore? sessionStore,
     Observability? observability,
-  })  : _obs = observability,
-        _store = sessionStore;
+  }) : _obs = observability,
+       _store = sessionStore;
 
   SessionStore? get currentStore => _store;
   SessionId? get currentSessionId => _store?.meta.id;
@@ -218,10 +214,10 @@ class SessionManager {
     final existing = _store;
     if (existing != null) return existing;
 
-    final span = _startSpan('session.create', attributes: {
-      'session.cwd': cwd,
-      'llm.model_name': modelRef,
-    });
+    final span = _startSpan(
+      'session.create',
+      attributes: {'session.cwd': cwd, 'llm.model_name': modelRef},
+    );
     try {
       final id = _newSessionId();
       final store = SessionStore(
@@ -237,12 +233,15 @@ class SessionManager {
       _endSpan(span, extra: {'session.id': store.meta.id});
       return store;
     } catch (e, st) {
-      _endSpan(span, extra: {
-        'error': true,
-        'error.type': e.runtimeType.toString(),
-        'error.message': e.toString(),
-        'error.stack': st.toString(),
-      });
+      _endSpan(
+        span,
+        extra: {
+          'error': true,
+          'error.type': e.runtimeType.toString(),
+          'error.message': e.toString(),
+          'error.stack': st.toString(),
+        },
+      );
       rethrow;
     }
   }
@@ -251,7 +250,7 @@ class SessionManager {
     final oldStore = _store;
     if (oldStore?.meta.id == meta.id) return;
     if (oldStore != null) {
-      unawaited(oldStore.close());
+      oldStore.close();
     }
     _store = SessionStore(
       sessionDir: environment.sessionDir(meta.id),
@@ -290,7 +289,8 @@ class SessionManager {
     if (store == null || stats.turnCount == 0) return;
 
     final meta = store.meta;
-    meta.tokenCount = (meta.tokenCount ?? 0) +
+    meta.tokenCount =
+        (meta.tokenCount ?? 0) +
         stats.inputTokens +
         stats.outputTokens +
         stats.cacheReadTokens +
@@ -311,19 +311,23 @@ class SessionManager {
   Future<void> closeCurrent() async {
     final store = _store;
     if (store == null) return;
-    final span = _startSpan('session.close', attributes: {
-      'session.id': store.meta.id,
-    });
+    final span = _startSpan(
+      'session.close',
+      attributes: {'session.id': store.meta.id},
+    );
     try {
       await store.close();
       _endSpan(span, extra: {'session.closed': true});
     } catch (e, st) {
-      _endSpan(span, extra: {
-        'error': true,
-        'error.type': e.runtimeType.toString(),
-        'error.message': e.toString(),
-        'error.stack': st.toString(),
-      });
+      _endSpan(
+        span,
+        extra: {
+          'error': true,
+          'error.type': e.runtimeType.toString(),
+          'error.message': e.toString(),
+          'error.stack': st.toString(),
+        },
+      );
       rethrow;
     }
   }
@@ -336,11 +340,14 @@ class SessionManager {
     if (store == null) return;
     final meta = store.meta;
     if (meta.titleSource == SessionTitleSource.user) return;
-    final span = _startSpan('session.title.generate', attributes: {
-      'session.id': meta.id,
-      'title.input_length': userMessage.length,
-      'input.value': redactBody(userMessage, maxBytes: 8192),
-    });
+    final span = _startSpan(
+      'session.title.generate',
+      attributes: {
+        'session.id': meta.id,
+        'title.input_length': userMessage.length,
+        'input.value': redactBody(userMessage, maxBytes: 8192),
+      },
+    );
     try {
       final title = await generate(userMessage);
       if (title != null) {
@@ -356,18 +363,24 @@ class SessionManager {
         );
         store.logEvent('title_generated', {'title': title});
       }
-      _endSpan(span, extra: {
-        'title.generated': title != null,
-        if (title != null) 'output.value': title,
-        if (title != null) 'title.output_length': title.length,
-      });
+      _endSpan(
+        span,
+        extra: {
+          'title.generated': title != null,
+          'output.value': ?title,
+          if (title != null) 'title.output_length': title.length,
+        },
+      );
     } catch (e, st) {
-      _endSpan(span, extra: {
-        'error': true,
-        'error.type': e.runtimeType.toString(),
-        'error.message': e.toString(),
-        'error.stack': st.toString(),
-      });
+      _endSpan(
+        span,
+        extra: {
+          'error': true,
+          'error.type': e.runtimeType.toString(),
+          'error.message': e.toString(),
+          'error.stack': st.toString(),
+        },
+      );
       rethrow;
     }
   }
@@ -375,11 +388,14 @@ class SessionManager {
   Future<void> renameTitle(String title) async {
     final store = _store;
     if (store == null) return;
-    final span = _startSpan('session.title.rename', attributes: {
-      'session.id': store.meta.id,
-      'title.output_length': title.length,
-      'output.value': title,
-    });
+    final span = _startSpan(
+      'session.title.rename',
+      attributes: {
+        'session.id': store.meta.id,
+        'title.output_length': title.length,
+        'output.value': title,
+      },
+    );
     try {
       final now = DateTime.now().toUtc();
       store.setTitle(
@@ -392,12 +408,15 @@ class SessionManager {
       );
       _endSpan(span, extra: {'title.renamed': true});
     } catch (e, st) {
-      _endSpan(span, extra: {
-        'error': true,
-        'error.type': e.runtimeType.toString(),
-        'error.message': e.toString(),
-        'error.stack': st.toString(),
-      });
+      _endSpan(
+        span,
+        extra: {
+          'error': true,
+          'error.type': e.runtimeType.toString(),
+          'error.message': e.toString(),
+          'error.stack': st.toString(),
+        },
+      );
       rethrow;
     }
   }
@@ -415,14 +434,18 @@ class SessionManager {
       return;
     }
 
-    final span = _startSpan('session.title.reevaluate', attributes: {
-      'session.id': meta.id,
-      'title.tool_count': context.toolNames.length,
-      if (context.firstUserMessage != null)
-        'title.first_user_length': context.firstUserMessage!.length,
-      if (context.latestAssistantMessage != null)
-        'title.latest_assistant_length': context.latestAssistantMessage!.length,
-    });
+    final span = _startSpan(
+      'session.title.reevaluate',
+      attributes: {
+        'session.id': meta.id,
+        'title.tool_count': context.toolNames.length,
+        if (context.firstUserMessage != null)
+          'title.first_user_length': context.firstUserMessage!.length,
+        if (context.latestAssistantMessage != null)
+          'title.latest_assistant_length':
+              context.latestAssistantMessage!.length,
+      },
+    );
     try {
       final now = DateTime.now().toUtc();
       final currentTitle = meta.title;
@@ -460,19 +483,25 @@ class SessionManager {
       if (shouldReplace && proposed != null) {
         store.logEvent('title_reevaluated', {'title': proposed});
       }
-      _endSpan(span, extra: {
-        'title.generated': proposed != null,
-        'title.replaced': shouldReplace,
-        if (proposed != null) 'output.value': proposed,
-        if (proposed != null) 'title.output_length': proposed.length,
-      });
+      _endSpan(
+        span,
+        extra: {
+          'title.generated': proposed != null,
+          'title.replaced': shouldReplace,
+          'output.value': ?proposed,
+          if (proposed != null) 'title.output_length': proposed.length,
+        },
+      );
     } catch (e, st) {
-      _endSpan(span, extra: {
-        'error': true,
-        'error.type': e.runtimeType.toString(),
-        'error.message': e.toString(),
-        'error.stack': st.toString(),
-      });
+      _endSpan(
+        span,
+        extra: {
+          'error': true,
+          'error.type': e.runtimeType.toString(),
+          'error.message': e.toString(),
+          'error.stack': st.toString(),
+        },
+      );
       rethrow;
     }
   }
@@ -481,12 +510,14 @@ class SessionManager {
     required SessionMeta session,
     required AgentCore agent,
   }) {
-    final span = _startSpan('session.resume', attributes: {
-      'session.id': session.id,
-    });
+    final span = _startSpan(
+      'session.resume',
+      attributes: {'session.id': session.id},
+    );
     try {
-      final events =
-          SessionStore.loadConversation(environment.sessionDir(session.id));
+      final events = SessionStore.loadConversation(
+        environment.sessionDir(session.id),
+      );
       switchToSessionStore(session);
       agent.clearConversation();
 
@@ -501,10 +532,10 @@ class SessionManager {
             totalUsage: buildUsageReport(usageEvents: const []),
           ),
         );
-        _endSpan(span, extra: {
-          'session.event_count': 0,
-          'session.has_conversation': false,
-        });
+        _endSpan(
+          span,
+          extra: {'session.event_count': 0, 'session.has_conversation': false},
+        );
         return result;
       }
 
@@ -523,21 +554,27 @@ class SessionManager {
         hasConversation: true,
         replay: replay,
       );
-      _endSpan(span, extra: {
-        'session.event_count': events.length,
-        'session.has_conversation': true,
-        'session.replay.entry_count': replay.entries.length,
-        'session.user_count': replay.userCount,
-        'session.assistant_count': replay.assistantCount,
-      });
+      _endSpan(
+        span,
+        extra: {
+          'session.event_count': events.length,
+          'session.has_conversation': true,
+          'session.replay.entry_count': replay.entries.length,
+          'session.user_count': replay.userCount,
+          'session.assistant_count': replay.assistantCount,
+        },
+      );
       return result;
     } catch (e, st) {
-      _endSpan(span, extra: {
-        'error': true,
-        'error.type': e.runtimeType.toString(),
-        'error.message': e.toString(),
-        'error.stack': st.toString(),
-      });
+      _endSpan(
+        span,
+        extra: {
+          'error': true,
+          'error.type': e.runtimeType.toString(),
+          'error.message': e.toString(),
+          'error.stack': st.toString(),
+        },
+      );
       rethrow;
     }
   }
@@ -549,12 +586,15 @@ class SessionManager {
   }) {
     final oldStore = _store;
     if (oldStore == null) return null;
-    final span = _startSpan('session.fork', attributes: {
-      'session.id': oldStore.meta.id,
-      'session.fork.user_message_index': userMessageIndex,
-      'session.fork.draft_length': messageText.length,
-      'input.value': redactBody(messageText, maxBytes: 8192),
-    });
+    final span = _startSpan(
+      'session.fork',
+      attributes: {
+        'session.id': oldStore.meta.id,
+        'session.fork.user_message_index': userMessageIndex,
+        'session.fork.draft_length': messageText.length,
+        'input.value': redactBody(messageText, maxBytes: 8192),
+      },
+    );
 
     try {
       final oldSessionId = oldStore.meta.id;
@@ -569,7 +609,7 @@ class SessionManager {
         }
       }
 
-      unawaited(oldStore.close());
+      oldStore.close();
 
       final newId = _newSessionId();
       final newStore = SessionStore(
@@ -601,20 +641,26 @@ class SessionManager {
         draftText: messageText,
         replay: replay,
       );
-      _endSpan(span, extra: {
-        'session.id': newStore.meta.id,
-        'session.fork.source_session_id': oldSessionId,
-        'session.fork.event_count': truncatedEvents.length,
-        'session.replay.entry_count': replay.entries.length,
-      });
+      _endSpan(
+        span,
+        extra: {
+          'session.id': newStore.meta.id,
+          'session.fork.source_session_id': oldSessionId,
+          'session.fork.event_count': truncatedEvents.length,
+          'session.replay.entry_count': replay.entries.length,
+        },
+      );
       return result;
     } catch (e, st) {
-      _endSpan(span, extra: {
-        'error': true,
-        'error.type': e.runtimeType.toString(),
-        'error.message': e.toString(),
-        'error.stack': st.toString(),
-      });
+      _endSpan(
+        span,
+        extra: {
+          'error': true,
+          'error.type': e.runtimeType.toString(),
+          'error.message': e.toString(),
+          'error.stack': st.toString(),
+        },
+      );
       rethrow;
     }
   }
@@ -638,10 +684,12 @@ class SessionManager {
 
     void flushPending() {
       if (pendingAssistantText != null) {
-        agent.addMessage(Message.assistant(
-          text: pendingAssistantText,
-          toolCalls: pendingToolCalls,
-        ));
+        agent.addMessage(
+          Message.assistant(
+            text: pendingAssistantText,
+            toolCalls: pendingToolCalls,
+          ),
+        );
         entries.add(SessionReplayEntry.assistant(pendingAssistantText!));
         assistantCount++;
         for (final tr in pendingToolResults) {
@@ -696,36 +744,42 @@ class SessionManager {
           // parent's conversation history. Surface it as a replay entry so
           // the CLI can rebuild its `_SubagentGroup` blocks.
           flushPending();
-          entries.add(SessionReplayEntry.subagentSpawned(
-            subagentId: event.subagentId!,
-            task: event.text,
-            index: event.subagentIndex,
-            total: event.subagentTotal,
-          ));
+          entries.add(
+            SessionReplayEntry.subagentSpawned(
+              subagentId: event.subagentId!,
+              task: event.text,
+              index: event.subagentIndex,
+              total: event.subagentTotal,
+            ),
+          );
 
         case NormalizedSessionEventKind.subagentEvent:
           final inner = event.subagentInner!;
           final innerEntry = switch (inner.kind) {
             NormalizedSessionEventKind.toolCall => SessionReplayEntry.toolCall(
-                inner.toolName ?? inner.text,
-                inner.toolArguments ?? const <String, dynamic>{},
-              ),
+              inner.toolName ?? inner.text,
+              inner.toolArguments ?? const <String, dynamic>{},
+            ),
             NormalizedSessionEventKind.toolResult =>
               SessionReplayEntry.toolResult(inner.visibleText),
             NormalizedSessionEventKind.assistant =>
               SessionReplayEntry.assistant(inner.visibleText),
             _ => SessionReplayEntry.assistant(inner.visibleText),
           };
-          entries.add(SessionReplayEntry.subagentEvent(
-            subagentId: event.subagentId!,
-            inner: innerEntry,
-          ));
+          entries.add(
+            SessionReplayEntry.subagentEvent(
+              subagentId: event.subagentId!,
+              inner: innerEntry,
+            ),
+          );
 
         case NormalizedSessionEventKind.subagentCompleted:
-          entries.add(SessionReplayEntry.subagentCompleted(
-            subagentId: event.subagentId!,
-            error: event.subagentError,
-          ));
+          entries.add(
+            SessionReplayEntry.subagentCompleted(
+              subagentId: event.subagentId!,
+              error: event.subagentError,
+            ),
+          );
       }
     }
     flushPending();
@@ -795,10 +849,7 @@ class SessionManager {
     return obs.startSpan(name, kind: 'session', attributes: attributes);
   }
 
-  void _endSpan(
-    ObservabilitySpan? span, {
-    Map<String, dynamic>? extra,
-  }) {
+  void _endSpan(ObservabilitySpan? span, {Map<String, dynamic>? extra}) {
     final obs = _obs;
     if (span == null || obs == null) return;
     obs.endSpan(span, extra: extra);

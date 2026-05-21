@@ -13,10 +13,7 @@ class MockLlmClient extends LlmClient {
   final List<List<LlmChunk>> responses = [];
 
   @override
-  Stream<LlmChunk> stream(
-    List<Message> messages, {
-    List<Tool>? tools,
-  }) async* {
+  Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
     if (responses.isEmpty) return;
     final chunks = responses.removeAt(0);
     for (final chunk in chunks) {
@@ -70,17 +67,11 @@ void main() {
   setUp(() {
     mockLlm = MockLlmClient();
     final mockTool = MockTool();
-    agent = AgentCore(
-      llm: mockLlm,
-      tools: {mockTool.name: mockTool},
-    );
+    agent = AgentCore(llm: mockLlm, tools: {mockTool.name: mockTool});
   });
 
   test('simple text response emits AgentTextDelta events', () async {
-    mockLlm.responses.add([
-      TextDelta('Hello'),
-      TextDelta(' world'),
-    ]);
+    mockLlm.responses.add([TextDelta('Hello'), TextDelta(' world')]);
 
     final events = await agent.run('Hi').toList();
 
@@ -102,8 +93,7 @@ void main() {
     expect(agent.conversation[1].text, 'Hi there');
   });
 
-  test(
-      'forwards ThinkingDelta as AgentThinkingDelta and never appends '
+  test('forwards ThinkingDelta as AgentThinkingDelta and never appends '
       'thinking to assistantText', () async {
     mockLlm.responses.add([
       ThinkingDelta('reasoning step '),
@@ -116,10 +106,9 @@ void main() {
       events.whereType<AgentThinkingDelta>().map((e) => e.delta).toList(),
       ['reasoning step ', 'two'],
     );
-    expect(
-      events.whereType<AgentTextDelta>().map((e) => e.delta).toList(),
-      ['the answer'],
-    );
+    expect(events.whereType<AgentTextDelta>().map((e) => e.delta).toList(), [
+      'the answer',
+    ]);
     // Thinking content must NOT leak into the assistant message that
     // gets sent back to the model on the next turn.
     final assistant = agent.conversation.last;
@@ -137,66 +126,75 @@ void main() {
     expect(agent.stats.totalTokens, 15);
   });
 
-  test('multiple UsageInfo chunks accumulate including cache buckets',
-      () async {
-    mockLlm.responses.add([
-      UsageInfo(inputTokens: 3, outputTokens: 2, cacheReadTokens: 100),
-    ]);
+  test(
+    'multiple UsageInfo chunks accumulate including cache buckets',
+    () async {
+      mockLlm.responses.add([
+        UsageInfo(inputTokens: 3, outputTokens: 2, cacheReadTokens: 100),
+      ]);
 
-    await agent.run('a').toList();
+      await agent.run('a').toList();
 
-    mockLlm.responses.add([
-      UsageInfo(inputTokens: 7, outputTokens: 8, cacheCreationTokens: 50),
-    ]);
+      mockLlm.responses.add([
+        UsageInfo(inputTokens: 7, outputTokens: 8, cacheCreationTokens: 50),
+      ]);
 
-    await agent.run('b').toList();
+      await agent.run('b').toList();
 
-    // 3 + 2 + 100 + 7 + 8 + 50
-    expect(agent.stats.totalTokens, 170);
-    // Sanity: input + output only is 20, distinct from totalTokens.
-    expect(agent.stats.inputTokens + agent.stats.outputTokens, 20);
-  });
+      // 3 + 2 + 100 + 7 + 8 + 50
+      expect(agent.stats.totalTokens, 170);
+      // Sanity: input + output only is 20, distinct from totalTokens.
+      expect(agent.stats.inputTokens + agent.stats.outputTokens, 20);
+    },
+  );
 
-  test('tool call flow: ToolCallComplete → completeToolCall → re-calls LLM',
-      () async {
-    final toolCall = ToolCall(
-      id: const ToolCallId('call_1'),
+  test(
+    'tool call flow: ToolCallComplete → completeToolCall → re-calls LLM',
+    () async {
+      final toolCall = ToolCall(
+        id: const ToolCallId('call_1'),
+        name: 'test_tool',
+        arguments: {},
+      );
+
+      // First LLM call: returns a tool call
+      mockLlm.responses.add([ToolCallComplete(toolCall)]);
+      // Second LLM call (after tool result): returns text
+      mockLlm.responses.add([TextDelta('Done')]);
+
+      final events = <AgentEvent>[];
+      final stream = agent.run('do something');
+
+      await for (final event in stream) {
+        events.add(event);
+        if (event is AgentToolCall) {
+          // Schedule completion asynchronously so the agent loop can set up
+          // its completer before we complete it.
+          unawaited(
+            Future(() async {
+              final result = await agent.executeTool(event.call);
+              agent.completeToolCall(result);
+            }),
+          );
+        }
+      }
+
+      expect(events[0], isA<AgentToolCall>());
+      expect((events[0] as AgentToolCall).call.id, 'call_1');
+      expect(events[1], isA<AgentToolResult>());
+      expect((events[1] as AgentToolResult).result.content, 'mock result');
+      expect((events[1] as AgentToolResult).result.success, isTrue);
+      expect(events[2], isA<AgentTextDelta>());
+      expect((events[2] as AgentTextDelta).delta, 'Done');
+    },
+  );
+
+  test('executeTool with known tool returns successful result', () async {
+    final call = ToolCall(
+      id: const ToolCallId('c1'),
       name: 'test_tool',
       arguments: {},
     );
-
-    // First LLM call: returns a tool call
-    mockLlm.responses.add([ToolCallComplete(toolCall)]);
-    // Second LLM call (after tool result): returns text
-    mockLlm.responses.add([TextDelta('Done')]);
-
-    final events = <AgentEvent>[];
-    final stream = agent.run('do something');
-
-    await for (final event in stream) {
-      events.add(event);
-      if (event is AgentToolCall) {
-        // Schedule completion asynchronously so the agent loop can set up
-        // its completer before we complete it.
-        unawaited(Future(() async {
-          final result = await agent.executeTool(event.call);
-          agent.completeToolCall(result);
-        }));
-      }
-    }
-
-    expect(events[0], isA<AgentToolCall>());
-    expect((events[0] as AgentToolCall).call.id, 'call_1');
-    expect(events[1], isA<AgentToolResult>());
-    expect((events[1] as AgentToolResult).result.content, 'mock result');
-    expect((events[1] as AgentToolResult).result.success, isTrue);
-    expect(events[2], isA<AgentTextDelta>());
-    expect((events[2] as AgentTextDelta).delta, 'Done');
-  });
-
-  test('executeTool with known tool returns successful result', () async {
-    final call =
-        ToolCall(id: const ToolCallId('c1'), name: 'test_tool', arguments: {});
 
     final result = await agent.executeTool(call);
 
@@ -207,7 +205,10 @@ void main() {
 
   test('executeTool with unknown tool returns error result', () async {
     final call = ToolCall(
-        id: const ToolCallId('c2'), name: 'no_such_tool', arguments: {});
+      id: const ToolCallId('c2'),
+      name: 'no_such_tool',
+      arguments: {},
+    );
 
     final result = await agent.executeTool(call);
 
@@ -224,7 +225,10 @@ void main() {
     );
 
     final call = ToolCall(
-        id: const ToolCallId('c3'), name: 'throwing_tool', arguments: {});
+      id: const ToolCallId('c3'),
+      name: 'throwing_tool',
+      arguments: {},
+    );
     final result = await agentWithThrowing.executeTool(call);
 
     expect(result.callId, 'c3');
@@ -277,19 +281,18 @@ void main() {
     await for (final event in stream) {
       events.add(event);
       if (event is AgentToolCall) {
-        unawaited(Future(() {
-          agent.completeToolCall(ToolResult.denied(event.call.id));
-        }));
+        unawaited(
+          Future(() {
+            agent.completeToolCall(ToolResult.denied(event.call.id));
+          }),
+        );
       }
     }
 
     expect(events[0], isA<AgentToolCall>());
     expect(events[1], isA<AgentToolResult>());
     expect((events[1] as AgentToolResult).result.success, isFalse);
-    expect(
-      (events[1] as AgentToolResult).result.content,
-      contains('denied'),
-    );
+    expect((events[1] as AgentToolResult).result.content, contains('denied'));
     // LLM was called again and produced text
     expect(events[2], isA<AgentTextDelta>());
     expect((events[2] as AgentTextDelta).delta, 'Understood');
@@ -321,10 +324,12 @@ void main() {
     await for (final event in agent.run('test')) {
       events.add(event);
       if (event is AgentToolCall) {
-        unawaited(Future(() async {
-          final result = await agent.executeTool(event.call);
-          agent.completeToolCall(result);
-        }));
+        unawaited(
+          Future(() async {
+            final result = await agent.executeTool(event.call);
+            agent.completeToolCall(result);
+          }),
+        );
       }
     }
 
@@ -340,4 +345,66 @@ void main() {
     // All tool calls emitted before first result
     expect(toolCallIndices.last, lessThan(toolResultIndices.first));
   });
+
+  // ── Soft fallback: ToolsNotSupportedException ─────────────────────────
+
+  test('ToolsNotSupportedException on first call yields AgentNotice, '
+      'disables tools, and retries the turn in chat-only mode', () async {
+    // First call throws — second call must succeed without tools.
+    final llm = _SoftFallbackLlm(
+      'qwen2.5:7b',
+      retryChunks: [
+        TextDelta('Hello without tools.'),
+        UsageInfo(inputTokens: 1, outputTokens: 1),
+      ],
+    );
+    final softAgent = AgentCore(llm: llm, tools: {'test_tool': MockTool()});
+
+    final events = await softAgent.run('hi').toList();
+
+    // Exactly one AgentNotice fired, before AgentDone.
+    final notices = events.whereType<AgentNotice>().toList();
+    expect(notices, hasLength(1));
+    expect(notices.first.kind, 'warning');
+    expect(notices.first.message, contains('qwen2.5:7b'));
+    expect(notices.first.message, contains('does not support tool calling'));
+
+    // The retry produced normal text + AgentDone.
+    final text = events.whereType<AgentTextDelta>().map((e) => e.delta).join();
+    expect(text, 'Hello without tools.');
+    expect(events.last, isA<AgentDone>());
+
+    // No AgentError surfaced — soft fallback, not a crash.
+    expect(events.whereType<AgentError>(), isEmpty);
+
+    // Tools are now disabled for the rest of the session.
+    expect(softAgent.toolFilter, isNotNull);
+    expect(softAgent.allowedTools, isEmpty);
+
+    // The second call received tools: null/empty — the retry was tool-less.
+    expect(llm.lastCallToolsCount, 0);
+  });
+}
+
+/// Mock LLM that throws ToolsNotSupportedException on the first call
+/// and emits [retryChunks] on the second.
+class _SoftFallbackLlm extends LlmClient {
+  _SoftFallbackLlm(this.modelId, {required this.retryChunks});
+
+  final String modelId;
+  final List<LlmChunk> retryChunks;
+  int _callCount = 0;
+  int lastCallToolsCount = -1;
+
+  @override
+  Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
+    _callCount++;
+    lastCallToolsCount = tools?.length ?? 0;
+    if (_callCount == 1) {
+      throw ToolsNotSupportedException(modelId);
+    }
+    for (final chunk in retryChunks) {
+      yield chunk;
+    }
+  }
 }

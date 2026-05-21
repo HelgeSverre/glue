@@ -94,10 +94,12 @@ class TransportWorkspace implements Workspace {
     final entries = await fs.list(path);
     final base = path.endsWith('/') ? path : '$path/';
     return entries
-        .map((e) => WorkspaceEntry(
-              path: '$base${e.name}',
-              isDirectory: e.isDirectory,
-            ))
+        .map(
+          (e) => WorkspaceEntry(
+            path: '$base${e.name}',
+            isDirectory: e.isDirectory,
+          ),
+        )
         .toList();
   }
 

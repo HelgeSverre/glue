@@ -33,9 +33,9 @@ class McpServerInfo {
   final String version;
 
   factory McpServerInfo.fromJson(Map<String, dynamic> json) => McpServerInfo(
-        name: json['name'] as String? ?? '',
-        version: json['version'] as String? ?? '',
-      );
+    name: json['name'] as String? ?? '',
+    version: json['version'] as String? ?? '',
+  );
 }
 
 class McpClientCapabilities {
@@ -45,8 +45,8 @@ class McpClientCapabilities {
   final McpRootsCapability? roots;
 
   Map<String, dynamic> toJson() => {
-        if (roots != null) 'roots': roots!.toJson(),
-      };
+    if (roots != null) 'roots': roots!.toJson(),
+  };
 }
 
 class McpRootsCapability {
@@ -140,7 +140,8 @@ class McpToolDescriptor {
     return McpToolDescriptor(
       name: json['name'] as String,
       description: json['description'] as String? ?? '',
-      inputSchema: (json['inputSchema'] as Map?)?.cast<String, dynamic>() ??
+      inputSchema:
+          (json['inputSchema'] as Map?)?.cast<String, dynamic>() ??
           const <String, dynamic>{'type': 'object'},
     );
   }
@@ -182,9 +183,9 @@ class McpToolCallResult {
     final rawContent = json['content'];
     final items = rawContent is List
         ? rawContent
-            .whereType<Map<String, dynamic>>()
-            .map(McpContent.fromJson)
-            .toList()
+              .whereType<Map<String, dynamic>>()
+              .map(McpContent.fromJson)
+              .toList()
         : <McpContent>[];
     return McpToolCallResult(
       content: items,

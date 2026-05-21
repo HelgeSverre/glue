@@ -55,9 +55,11 @@ void main() {
 
   group('decodeJsonRpc round-trips', () {
     test('request', () {
-      final back = decodeJsonRpc(encodeJsonRpc(
-        const JsonRpcRequest(id: 7, method: 'm', params: {'k': 'v'}),
-      ));
+      final back = decodeJsonRpc(
+        encodeJsonRpc(
+          const JsonRpcRequest(id: 7, method: 'm', params: {'k': 'v'}),
+        ),
+      );
       expect(back, isA<JsonRpcRequest>());
       back as JsonRpcRequest;
       expect(back.id, 7);
@@ -66,25 +68,27 @@ void main() {
     });
 
     test('notification', () {
-      final back = decodeJsonRpc(encodeJsonRpc(
-        const JsonRpcNotification(method: 'n'),
-      ));
+      final back = decodeJsonRpc(
+        encodeJsonRpc(const JsonRpcNotification(method: 'n')),
+      );
       expect(back, isA<JsonRpcNotification>());
     });
 
     test('response', () {
-      final back = decodeJsonRpc(encodeJsonRpc(
-        const JsonRpcResponse(id: 1, result: 42),
-      ));
+      final back = decodeJsonRpc(
+        encodeJsonRpc(const JsonRpcResponse(id: 1, result: 42)),
+      );
       expect(back, isA<JsonRpcResponse>());
       back as JsonRpcResponse;
       expect(back.result, 42);
     });
 
     test('error', () {
-      final back = decodeJsonRpc(encodeJsonRpc(
-        const JsonRpcError(id: 1, code: -32601, message: 'no such method'),
-      ));
+      final back = decodeJsonRpc(
+        encodeJsonRpc(
+          const JsonRpcError(id: 1, code: -32601, message: 'no such method'),
+        ),
+      );
       expect(back, isA<JsonRpcError>());
       back as JsonRpcError;
       expect(back.code, -32601);

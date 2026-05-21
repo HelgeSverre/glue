@@ -28,7 +28,8 @@ class DaytonaBootstrap {
     final ws = WorkspaceBootstrap(
       exec: _DaytonaBootstrapTransport(client: client, sandbox: sandbox),
       sessionId: sessionId,
-      prepCommand: 'sudo mkdir -p $runtimeCwd && '
+      prepCommand:
+          'sudo mkdir -p $runtimeCwd && '
           'sudo chown "\$(id -u):\$(id -g)" $runtimeCwd',
     );
     try {

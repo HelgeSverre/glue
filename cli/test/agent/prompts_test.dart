@@ -83,8 +83,10 @@ void main() {
     expect(prompt, contains('<available_skills>'));
     expect(prompt, contains('<name>code-review</name>'));
     expect(prompt, contains('<description>Review code changes</description>'));
-    expect(prompt,
-        contains('<location>/tmp/skills/code-review/SKILL.md</location>'));
+    expect(
+      prompt,
+      contains('<location>/tmp/skills/code-review/SKILL.md</location>'),
+    );
   });
 
   test('build escapes XML in skill metadata fields', () {

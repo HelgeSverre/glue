@@ -75,21 +75,22 @@ ResolvedProvider _resolved({
   String? apiKey,
   Map<String, String> headers = const {},
   AuthKind authKind = AuthKind.apiKey,
-}) =>
-    ResolvedProvider(
-      def: ProviderDef(
-        id: id,
-        name: id,
-        adapter: adapter,
-        compatibility: compatibility,
-        baseUrl: baseUrl,
-        auth: AuthSpec(
-            kind: authKind, envVar: authKind == AuthKind.apiKey ? 'X' : null),
-        requestHeaders: headers,
-        models: const {},
-      ),
-      apiKey: apiKey,
-    );
+}) => ResolvedProvider(
+  def: ProviderDef(
+    id: id,
+    name: id,
+    adapter: adapter,
+    compatibility: compatibility,
+    baseUrl: baseUrl,
+    auth: AuthSpec(
+      kind: authKind,
+      envVar: authKind == AuthKind.apiKey ? 'X' : null,
+    ),
+    requestHeaders: headers,
+    models: const {},
+  ),
+  apiKey: apiKey,
+);
 
 const _placeholderProvider = ProviderDef(
   id: 'p',
@@ -100,9 +101,9 @@ const _placeholderProvider = ProviderDef(
 );
 
 ResolvedModel _model(String id, {ProviderDef? provider}) => ResolvedModel(
-      def: ModelDef(id: id, name: id),
-      provider: provider ?? _placeholderProvider,
-    );
+  def: ModelDef(id: id, name: id),
+  provider: provider ?? _placeholderProvider,
+);
 
 void main() {
   group('OpenAiCompatibleAdapter.adapterId', () {
@@ -112,28 +113,32 @@ void main() {
   });
 
   group('OpenAiCompatibleAdapter.createClient', () {
-    test('vanilla openai: uses api.openai.com/v1 + Bearer + stream_options',
-        () async {
-      final adapter = OpenAiCompatibleAdapter();
-      final client = adapter.createClient(
-        provider: _resolved(
-          id: 'openai',
-          baseUrl: 'https://api.openai.com/v1',
-          apiKey: 'sk-oa',
-        ),
-        model: _model('gpt-5.4'),
-        systemPrompt: '',
-      ) as OpenAiClient;
-      expect(client.profile, CompatibilityProfile.openai);
+    test(
+      'vanilla openai: uses api.openai.com/v1 + Bearer + stream_options',
+      () async {
+        final adapter = OpenAiCompatibleAdapter();
+        final client =
+            adapter.createClient(
+                  provider: _resolved(
+                    id: 'openai',
+                    baseUrl: 'https://api.openai.com/v1',
+                    apiKey: 'sk-oa',
+                  ),
+                  model: _model('gpt-5.4'),
+                  systemPrompt: '',
+                )
+                as OpenAiClient;
+        expect(client.profile, CompatibilityProfile.openai);
 
-      final captured = await _capture(client);
-      final req = captured.request!;
-      expect(req.url.host, 'api.openai.com');
-      expect(req.url.path, '/v1/chat/completions');
-      expect(req.headers['Authorization'], 'Bearer sk-oa');
-      final body = jsonDecode(captured.body!) as Map<String, dynamic>;
-      expect(body['stream_options'], isNotNull);
-    });
+        final captured = await _capture(client);
+        final req = captured.request!;
+        expect(req.url.host, 'api.openai.com');
+        expect(req.url.path, '/v1/chat/completions');
+        expect(req.headers['Authorization'], 'Bearer sk-oa');
+        final body = jsonDecode(captured.body!) as Map<String, dynamic>;
+        expect(body['stream_options'], isNotNull);
+      },
+    );
 
     test('throws when provider is missing base_url', () {
       final adapter = OpenAiCompatibleAdapter();
@@ -147,29 +152,33 @@ void main() {
       );
     });
 
-    test('groq profile: uses custom base URL and strips stream_options',
-        () async {
-      final adapter = OpenAiCompatibleAdapter();
-      final client = adapter.createClient(
-        provider: _resolved(
-          id: 'groq',
-          compatibility: 'groq',
-          baseUrl: 'https://api.groq.com/openai/v1',
-          apiKey: 'sk-groq',
-        ),
-        model: _model('gpt-oss-120b'),
-        systemPrompt: '',
-      ) as OpenAiClient;
-      expect(client.profile, CompatibilityProfile.groq);
+    test(
+      'groq profile: uses custom base URL and strips stream_options',
+      () async {
+        final adapter = OpenAiCompatibleAdapter();
+        final client =
+            adapter.createClient(
+                  provider: _resolved(
+                    id: 'groq',
+                    compatibility: 'groq',
+                    baseUrl: 'https://api.groq.com/openai/v1',
+                    apiKey: 'sk-groq',
+                  ),
+                  model: _model('gpt-oss-120b'),
+                  systemPrompt: '',
+                )
+                as OpenAiClient;
+        expect(client.profile, CompatibilityProfile.groq);
 
-      final captured = await _capture(client);
-      final req = captured.request!;
-      expect(req.url.host, 'api.groq.com');
-      expect(req.url.path, '/openai/v1/chat/completions');
-      expect(req.headers['Authorization'], 'Bearer sk-groq');
-      final body = jsonDecode(captured.body!) as Map<String, dynamic>;
-      expect(body.containsKey('stream_options'), isFalse);
-    });
+        final captured = await _capture(client);
+        final req = captured.request!;
+        expect(req.url.host, 'api.groq.com');
+        expect(req.url.path, '/openai/v1/chat/completions');
+        expect(req.headers['Authorization'], 'Bearer sk-groq');
+        final body = jsonDecode(captured.body!) as Map<String, dynamic>;
+        expect(body.containsKey('stream_options'), isFalse);
+      },
+    );
 
     // Ollama used to ride the OpenAI-compat adapter with
     // `compatibility: 'ollama'`. It no longer does — see `OllamaAdapter`
@@ -177,46 +186,51 @@ void main() {
     // for Ollama here. Behaviour for the native path lives in
     // `ollama_adapter_test.dart` and `ollama_client_test.dart`.
 
-    test('openrouter profile: injects HTTP-Referer and X-Title headers',
-        () async {
-      final adapter = OpenAiCompatibleAdapter();
-      final client = adapter.createClient(
-        provider: _resolved(
-          id: 'openrouter',
-          compatibility: 'openrouter',
-          baseUrl: 'https://openrouter.ai/api/v1',
-          apiKey: 'sk-or',
-          headers: {
-            'HTTP-Referer': 'https://getglue.dev',
-            'X-Title': 'Glue',
-          },
-        ),
-        model: _model('anthropic/claude-sonnet-4.6'),
-        systemPrompt: '',
-      ) as OpenAiClient;
+    test(
+      'openrouter profile: injects HTTP-Referer and X-Title headers',
+      () async {
+        final adapter = OpenAiCompatibleAdapter();
+        final client =
+            adapter.createClient(
+                  provider: _resolved(
+                    id: 'openrouter',
+                    compatibility: 'openrouter',
+                    baseUrl: 'https://openrouter.ai/api/v1',
+                    apiKey: 'sk-or',
+                    headers: {
+                      'HTTP-Referer': 'https://getglue.dev',
+                      'X-Title': 'Glue',
+                    },
+                  ),
+                  model: _model('anthropic/claude-sonnet-4.6'),
+                  systemPrompt: '',
+                )
+                as OpenAiClient;
 
-      final captured = await _capture(client);
-      final req = captured.request!;
-      expect(req.headers['HTTP-Referer'], 'https://getglue.dev');
-      expect(req.headers['X-Title'], 'Glue');
-    });
+        final captured = await _capture(client);
+        final req = captured.request!;
+        expect(req.headers['HTTP-Referer'], 'https://getglue.dev');
+        expect(req.headers['X-Title'], 'Glue');
+      },
+    );
 
     test(
-        'validate: ok for AuthKind.none, missing when env-backed and no apiKey',
-        () {
-      final adapter = OpenAiCompatibleAdapter();
-      expect(
-        adapter.validate(_resolved(id: 'ollama', authKind: AuthKind.none)),
-        ProviderHealth.ok,
-      );
-      expect(
-        adapter.validate(_resolved(id: 'openai')),
-        ProviderHealth.missingCredential,
-      );
-      expect(
-        adapter.validate(_resolved(id: 'openai', apiKey: 'sk-x')),
-        ProviderHealth.ok,
-      );
-    });
+      'validate: ok for AuthKind.none, missing when env-backed and no apiKey',
+      () {
+        final adapter = OpenAiCompatibleAdapter();
+        expect(
+          adapter.validate(_resolved(id: 'ollama', authKind: AuthKind.none)),
+          ProviderHealth.ok,
+        );
+        expect(
+          adapter.validate(_resolved(id: 'openai')),
+          ProviderHealth.missingCredential,
+        );
+        expect(
+          adapter.validate(_resolved(id: 'openai', apiKey: 'sk-x')),
+          ProviderHealth.ok,
+        );
+      },
+    );
   });
 }

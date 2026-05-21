@@ -14,8 +14,10 @@ void main() {
         runtimeId: 'daytona',
       );
       expect(result, isA<DiffUnavailable>());
-      expect((result as DiffUnavailable).reason,
-          DiffUnavailableReason.noBootstrapSha);
+      expect(
+        (result as DiffUnavailable).reason,
+        DiffUnavailableReason.noBootstrapSha,
+      );
     });
 
     test('reports noBootstrapSha when bootstrapSha is empty', () async {
@@ -26,8 +28,10 @@ void main() {
         runtimeId: 'daytona',
       );
       expect(result, isA<DiffUnavailable>());
-      expect((result as DiffUnavailable).reason,
-          DiffUnavailableReason.noBootstrapSha);
+      expect(
+        (result as DiffUnavailable).reason,
+        DiffUnavailableReason.noBootstrapSha,
+      );
     });
 
     test('reports gitFailed when format-patch exits non-zero', () async {
@@ -46,7 +50,9 @@ void main() {
       );
       expect(result, isA<DiffUnavailable>());
       expect(
-          (result as DiffUnavailable).reason, DiffUnavailableReason.gitFailed);
+        (result as DiffUnavailable).reason,
+        DiffUnavailableReason.gitFailed,
+      );
       expect(result.hint, contains('fatal: bad sha'));
     });
 
@@ -58,35 +64,39 @@ void main() {
         runtimeId: 'modal',
       );
       expect(result, isA<DiffUnavailable>());
-      expect((result as DiffUnavailable).reason,
-          DiffUnavailableReason.executorDead);
+      expect(
+        (result as DiffUnavailable).reason,
+        DiffUnavailableReason.executorDead,
+      );
     });
 
-    test('returns DiffSuccess concatenating format-patch + worktree diff',
-        () async {
-      const mbox = 'From abc Mon Sep 17 ...\nSubject: agent commit\n';
-      const wt = 'diff --git a/foo b/foo\n@@\n-x\n+y\n';
-      final exec = _ScriptedExecutor([
-        _Step(stdout: ''), // add -N
-        _Step(stdout: mbox), // format-patch
-        _Step(stdout: wt), // diff
-      ]);
-      final result = await captureWorkspaceDiff(
-        executor: exec,
-        runtimeCwd: '/workspace',
-        bootstrapSha: 'abc123',
-        runtimeId: 'daytona',
-        sandboxId: 'sb-1',
-      );
-      expect(result, isA<DiffSuccess>());
-      final success = result as DiffSuccess;
-      expect(success.patch, '$mbox$wt');
-      expect(success.meta.runtimeId, 'daytona');
-      expect(success.meta.sandboxId, 'sb-1');
-      expect(success.meta.bootstrapSha, 'abc123');
-      expect(success.meta.format, 'format-patch');
-      expect(success.meta.sizeBytes, success.patch.length);
-    });
+    test(
+      'returns DiffSuccess concatenating format-patch + worktree diff',
+      () async {
+        const mbox = 'From abc Mon Sep 17 ...\nSubject: agent commit\n';
+        const wt = 'diff --git a/foo b/foo\n@@\n-x\n+y\n';
+        final exec = _ScriptedExecutor([
+          _Step(stdout: ''), // add -N
+          _Step(stdout: mbox), // format-patch
+          _Step(stdout: wt), // diff
+        ]);
+        final result = await captureWorkspaceDiff(
+          executor: exec,
+          runtimeCwd: '/workspace',
+          bootstrapSha: 'abc123',
+          runtimeId: 'daytona',
+          sandboxId: 'sb-1',
+        );
+        expect(result, isA<DiffSuccess>());
+        final success = result as DiffSuccess;
+        expect(success.patch, '$mbox$wt');
+        expect(success.meta.runtimeId, 'daytona');
+        expect(success.meta.sandboxId, 'sb-1');
+        expect(success.meta.bootstrapSha, 'abc123');
+        expect(success.meta.format, 'format-patch');
+        expect(success.meta.sizeBytes, success.patch.length);
+      },
+    );
 
     test('returns DiffEmpty when both steps produce nothing', () async {
       final exec = _ScriptedExecutor([
@@ -103,42 +113,47 @@ void main() {
       expect(result, isA<DiffEmpty>());
     });
 
-    test('intent-to-add runs before format-patch so untracked files appear',
-        () async {
-      final exec = _ScriptedExecutor([
-        _Step(stdout: ''),
-        _Step(stdout: ''),
-        _Step(stdout: ''),
-      ]);
-      await captureWorkspaceDiff(
-        executor: exec,
-        runtimeCwd: '/workspace',
-        bootstrapSha: 'abc',
-        runtimeId: 'daytona',
-      );
-      expect(exec.commands[0], contains('add -N'));
-      expect(exec.commands[1], contains('format-patch'));
-      expect(exec.commands[2], contains('diff --binary'));
-    });
+    test(
+      'intent-to-add runs before format-patch so untracked files appear',
+      () async {
+        final exec = _ScriptedExecutor([
+          _Step(stdout: ''),
+          _Step(stdout: ''),
+          _Step(stdout: ''),
+        ]);
+        await captureWorkspaceDiff(
+          executor: exec,
+          runtimeCwd: '/workspace',
+          bootstrapSha: 'abc',
+          runtimeId: 'daytona',
+        );
+        expect(exec.commands[0], contains('add -N'));
+        expect(exec.commands[1], contains('format-patch'));
+        expect(exec.commands[2], contains('diff --binary'));
+      },
+    );
 
     test(
-        'format-patch range is bootstrapSha..HEAD with binary + rename detection',
-        () async {
-      final exec = _ScriptedExecutor([
-        _Step(stdout: ''),
-        _Step(stdout: ''),
-        _Step(stdout: ''),
-      ]);
-      await captureWorkspaceDiff(
-        executor: exec,
-        runtimeCwd: '/workspace',
-        bootstrapSha: 'abc123',
-        runtimeId: 'daytona',
-      );
-      expect(exec.commands[1],
-          contains("format-patch --binary -M -C --stdout 'abc123'..HEAD"));
-      expect(exec.commands[2], contains('diff --binary -M -C HEAD'));
-    });
+      'format-patch range is bootstrapSha..HEAD with binary + rename detection',
+      () async {
+        final exec = _ScriptedExecutor([
+          _Step(stdout: ''),
+          _Step(stdout: ''),
+          _Step(stdout: ''),
+        ]);
+        await captureWorkspaceDiff(
+          executor: exec,
+          runtimeCwd: '/workspace',
+          bootstrapSha: 'abc123',
+          runtimeId: 'daytona',
+        );
+        expect(
+          exec.commands[1],
+          contains("format-patch --binary -M -C --stdout 'abc123'..HEAD"),
+        );
+        expect(exec.commands[2], contains('diff --binary -M -C HEAD'));
+      },
+    );
 
     test('quotes paths with single quotes safely', () async {
       final exec = _ScriptedExecutor([

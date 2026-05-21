@@ -38,13 +38,11 @@ class DaytonaRunningCommand implements RunningCommandHandle {
   bool _stopped = false;
 
   DaytonaRunningCommand({
-    required DaytonaClient client,
-    required DaytonaSandbox sandbox,
-    required DaytonaSessionCommand command,
+    required this._client,
+    required this._sandbox,
+    required this._command,
     this.pollInterval = const Duration(milliseconds: 250),
-  })  : _client = client,
-        _sandbox = sandbox,
-        _command = command {
+  }) {
     _pump();
   }
 

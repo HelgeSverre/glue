@@ -30,11 +30,7 @@ void main() {
   group('modalConfigFromOptions', () {
     test('prefers explicit options over env', () {
       final c = modalConfigFromOptions(
-        {
-          'python_path': '/opt/py',
-          'app_name': 'opt-app',
-          'image': 'opt-image',
-        },
+        {'python_path': '/opt/py', 'app_name': 'opt-app', 'image': 'opt-image'},
         env: {
           'MODAL_PYTHON': '/env/py',
           'MODAL_APP': 'env-app',
@@ -56,10 +52,9 @@ void main() {
     });
 
     test('parses sandbox_timeout_seconds from options + env', () {
-      final c = modalConfigFromOptions(
-        {'sandbox_timeout_seconds': 120},
-        env: const {},
-      );
+      final c = modalConfigFromOptions({
+        'sandbox_timeout_seconds': 120,
+      }, env: const {});
       expect(c.sandboxTimeoutSeconds, 120);
 
       final c2 = modalConfigFromOptions(
@@ -70,10 +65,9 @@ void main() {
     });
 
     test('delete_on_close honours bool option + env flag', () {
-      final c = modalConfigFromOptions(
-        const {'delete_on_close': false},
-        env: const {},
-      );
+      final c = modalConfigFromOptions(const {
+        'delete_on_close': false,
+      }, env: const {});
       expect(c.deleteOnClose, isFalse);
       final c2 = modalConfigFromOptions(
         const {},

@@ -34,7 +34,7 @@ class FetchFailed extends FetchResult {
 
 class RemoteCatalogFetcher {
   RemoteCatalogFetcher({http.Client? client})
-      : _client = client ?? http.Client();
+    : _client = client ?? http.Client();
 
   final http.Client _client;
 

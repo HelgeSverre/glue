@@ -22,10 +22,7 @@ List<String> splitPathList(String value, {bool? isWindows}) {
 
 /// Configuration for how Glue sources the bundled/remote model catalog.
 class CatalogSourceConfig {
-  const CatalogSourceConfig({
-    this.refresh = 'manual',
-    this.remoteUrl,
-  });
+  const CatalogSourceConfig({this.refresh = 'manual', this.remoteUrl});
 
   /// `never | manual | daily | startup`. See `docs/reference/models.yaml`.
   final String refresh;
@@ -71,10 +68,10 @@ class GlueConfig {
     this.mcp = const McpConfig(),
     this.runtime,
     Map<String, Object?>? runtimeOptions,
-  })  : shellConfig = shellConfig ?? const ShellConfig(),
-        dockerConfig = dockerConfig ?? const DockerConfig(),
-        webConfig = webConfig ?? const WebConfig(),
-        runtimeOptions = runtimeOptions ?? const {};
+  }) : shellConfig = shellConfig ?? const ShellConfig(),
+       dockerConfig = dockerConfig ?? const DockerConfig(),
+       webConfig = webConfig ?? const WebConfig(),
+       runtimeOptions = runtimeOptions ?? const {};
 
   /// Primary model used for agent conversations.
   final ModelRef activeModel;
@@ -187,7 +184,8 @@ class GlueConfig {
     if (provider == null) {
       throw ConfigError('unknown provider "${ref.providerId}"');
     }
-    final def = provider.models[ref.modelId] ??
+    final def =
+        provider.models[ref.modelId] ??
         ModelDef(id: ref.modelId, name: ref.modelId);
     return ResolvedModel(def: def, provider: provider);
   }
@@ -283,7 +281,8 @@ class GlueConfig {
     if (fileConfig != null) _rejectLegacyConfig(fileConfig, configYamlPath);
 
     // Catalog: bundled → optional cached remote → optional local overrides.
-    final catalog = catalogOverride ??
+    final catalog =
+        catalogOverride ??
         loadCatalog(
           bundled: bundledCatalog,
           cachedRemote: _loadOptionalYaml(
@@ -296,14 +295,16 @@ class GlueConfig {
           ),
         );
 
-    final credentials = credentialsOverride ??
+    final credentials =
+        credentialsOverride ??
         CredentialStore(
           path:
               '${environment?.glueDir ?? p.join(home, '.glue')}/credentials.json',
           env: Map<String, String>.from(env),
         );
 
-    final adapters = adaptersOverride ??
+    final adapters =
+        adaptersOverride ??
         AdapterRegistry([
           AnthropicAdapter(),
           OpenAiCompatibleAdapter(),
@@ -313,7 +314,8 @@ class GlueConfig {
         ]);
 
     // Resolve active model: CLI flag → GLUE_MODEL → config file → catalog default.
-    final rawActive = cliModel ??
+    final rawActive =
+        cliModel ??
         env['GLUE_MODEL'] ??
         fileConfig?['active_model'] as String? ??
         catalog.defaults.model;
@@ -321,8 +323,9 @@ class GlueConfig {
 
     final rawSmall =
         fileConfig?['small_model'] as String? ?? catalog.defaults.smallModel;
-    final smallModel =
-        rawSmall != null ? _resolveModelRef(rawSmall, catalog) : null;
+    final smallModel = rawSmall != null
+        ? _resolveModelRef(rawSmall, catalog)
+        : null;
 
     // Catalog source section.
     final catalogSection = fileConfig?['catalog'] as Map?;
@@ -346,7 +349,8 @@ class GlueConfig {
 
     // --- non-model-related config (kept intact) ---
 
-    final bashMaxLines = (fileConfig?['bash'] as Map?)?['max_lines'] as int? ??
+    final bashMaxLines =
+        (fileConfig?['bash'] as Map?)?['max_lines'] as int? ??
         AppConstants.bashMaxLinesDefault;
 
     // Shell config.
@@ -373,9 +377,11 @@ class GlueConfig {
 
     // Docker config.
     final dockerSection = fileConfig?['docker'] as Map?;
-    final dockerEnabled = env['GLUE_DOCKER_ENABLED'] == '1' ||
+    final dockerEnabled =
+        env['GLUE_DOCKER_ENABLED'] == '1' ||
         (dockerSection?['enabled'] as bool? ?? false);
-    final dockerImage = env['GLUE_DOCKER_IMAGE'] ??
+    final dockerImage =
+        env['GLUE_DOCKER_IMAGE'] ??
         dockerSection?['image'] as String? ??
         'ubuntu:24.04';
     final dockerShell =
@@ -417,7 +423,8 @@ class GlueConfig {
         env['BRAVE_API_KEY'] ?? searchSection?['brave_api_key'] as String?;
     final tavilyApiKey =
         env['TAVILY_API_KEY'] ?? searchSection?['tavily_api_key'] as String?;
-    final firecrawlApiKey = env['FIRECRAWL_API_KEY'] ??
+    final firecrawlApiKey =
+        env['FIRECRAWL_API_KEY'] ??
         searchSection?['firecrawl_api_key'] as String?;
 
     final searchProviderStr =
@@ -432,11 +439,13 @@ class GlueConfig {
     final webFetchConfig = WebFetchConfig(
       jinaApiKey: jinaApiKey,
       allowJinaFallback: fetchSection?['allow_jina_fallback'] as bool? ?? true,
-      timeoutSeconds: fetchSection?['timeout_seconds'] as int? ??
+      timeoutSeconds:
+          fetchSection?['timeout_seconds'] as int? ??
           AppConstants.webFetchTimeoutSeconds,
       maxBytes:
           fetchSection?['max_bytes'] as int? ?? AppConstants.webFetchMaxBytes,
-      defaultMaxTokens: fetchSection?['max_tokens'] as int? ??
+      defaultMaxTokens:
+          fetchSection?['max_tokens'] as int? ??
           AppConstants.webFetchDefaultMaxTokens,
     );
 
@@ -446,9 +455,11 @@ class GlueConfig {
       tavilyApiKey: tavilyApiKey,
       firecrawlApiKey: firecrawlApiKey,
       firecrawlBaseUrl: searchSection?['firecrawl_base_url'] as String?,
-      timeoutSeconds: searchSection?['timeout_seconds'] as int? ??
+      timeoutSeconds:
+          searchSection?['timeout_seconds'] as int? ??
           AppConstants.webSearchTimeoutSeconds,
-      defaultMaxResults: searchSection?['max_results'] as int? ??
+      defaultMaxResults:
+          searchSection?['max_results'] as int? ??
           AppConstants.webSearchDefaultMaxResults,
     );
 
@@ -456,11 +467,13 @@ class GlueConfig {
     final pdfSection = webSection?['pdf'] as Map?;
     final mistralProvider = catalog.providers['mistral'];
     final openaiProvider = catalog.providers['openai'];
-    final pdfMistralApiKey = pdfSection?['mistral_api_key'] as String? ??
+    final pdfMistralApiKey =
+        pdfSection?['mistral_api_key'] as String? ??
         (mistralProvider != null
             ? credentials.resolveForProvider(mistralProvider)
             : null);
-    final pdfOpenaiApiKey = pdfSection?['openai_api_key'] as String? ??
+    final pdfOpenaiApiKey =
+        pdfSection?['openai_api_key'] as String? ??
         (openaiProvider != null
             ? credentials.resolveForProvider(openaiProvider)
             : null);
@@ -475,7 +488,8 @@ class GlueConfig {
 
     final pdfConfig = PdfConfig(
       maxBytes: pdfSection?['max_bytes'] as int? ?? AppConstants.pdfMaxBytes,
-      timeoutSeconds: pdfSection?['timeout_seconds'] as int? ??
+      timeoutSeconds:
+          pdfSection?['timeout_seconds'] as int? ??
           AppConstants.pdfTimeoutSeconds,
       enableOcrFallback: pdfSection?['enable_ocr_fallback'] as bool? ?? true,
       ocrProvider: ocrProvider,
@@ -504,22 +518,29 @@ class GlueConfig {
     final browserConfig = BrowserConfig(
       backend: browserBackend,
       headed: browserSection?['headed'] as bool? ?? false,
-      dockerImage: dockerBrowserSection?['image'] as String? ??
+      dockerImage:
+          dockerBrowserSection?['image'] as String? ??
           AppConstants.browserDockerImage,
-      dockerPort: dockerBrowserSection?['port'] as int? ??
+      dockerPort:
+          dockerBrowserSection?['port'] as int? ??
           AppConstants.browserDockerPort,
       steelApiKey: env['STEEL_API_KEY'] ?? steelSection?['api_key'] as String?,
-      browserbaseApiKey: env['BROWSERBASE_API_KEY'] ??
+      browserbaseApiKey:
+          env['BROWSERBASE_API_KEY'] ??
           browserbaseSection?['api_key'] as String?,
-      browserbaseProjectId: env['BROWSERBASE_PROJECT_ID'] ??
+      browserbaseProjectId:
+          env['BROWSERBASE_PROJECT_ID'] ??
           browserbaseSection?['project_id'] as String?,
       browserlessBaseUrl: browserlessSection?['base_url'] as String?,
-      browserlessApiKey: env['BROWSERLESS_API_KEY'] ??
+      browserlessApiKey:
+          env['BROWSERLESS_API_KEY'] ??
           browserlessSection?['api_key'] as String?,
-      anchorApiKey: env['ANCHOR_API_KEY'] ??
+      anchorApiKey:
+          env['ANCHOR_API_KEY'] ??
           anchorSection?['api_key'] as String? ??
           browserSection?['anchor_api_key'] as String?,
-      hyperbrowserApiKey: env['HYPERBROWSER_API_KEY'] ??
+      hyperbrowserApiKey:
+          env['HYPERBROWSER_API_KEY'] ??
           hyperbrowserSection?['api_key'] as String? ??
           browserSection?['hyperbrowser_api_key'] as String?,
     );
@@ -534,7 +555,8 @@ class GlueConfig {
     // Observability.
     final observabilitySection =
         fileConfig?['observability'] as Map<dynamic, dynamic>?;
-    final debug = env['GLUE_DEBUG'] == '1' ||
+    final debug =
+        env['GLUE_DEBUG'] == '1' ||
         (observabilitySection?['debug'] as bool? ??
             fileConfig?['debug'] as bool? ??
             false);
@@ -542,13 +564,16 @@ class GlueConfig {
         (observabilitySection?['max_body_bytes'] as int?) ?? 65536;
     final redact = (observabilitySection?['redact'] as bool?) ?? true;
     final otelSection = observabilitySection?['otel'] as Map?;
-    final otelEndpoint = otelSection?['endpoint'] as String? ??
+    final otelEndpoint =
+        otelSection?['endpoint'] as String? ??
         env['OTEL_EXPORTER_OTLP_TRACES_ENDPOINT'] ??
         env['OTEL_EXPORTER_OTLP_ENDPOINT'] ??
         env['PHOENIX_COLLECTOR_ENDPOINT'];
     final otelHeaders = _resolveOtelHeaders(otelSection, env);
-    final otelResourceAttributes =
-        _resolveOtelResourceAttributes(otelSection, env);
+    final otelResourceAttributes = _resolveOtelResourceAttributes(
+      otelSection,
+      env,
+    );
     final phoenixProject = env['PHOENIX_PROJECT_NAME'];
     if (phoenixProject != null && phoenixProject.isNotEmpty) {
       otelResourceAttributes.putIfAbsent(
@@ -561,13 +586,15 @@ class GlueConfig {
       () => 'glue',
     );
     final otelConfig = OtelConfig(
-      enabled: otelSection?['enabled'] as bool? ??
+      enabled:
+          otelSection?['enabled'] as bool? ??
           _envBool(env['OTEL_SDK_DISABLED']) != true &&
               otelEndpoint != null &&
               otelEndpoint.isNotEmpty,
       endpoint: otelEndpoint,
       headers: otelHeaders,
-      serviceName: otelSection?['service_name'] as String? ??
+      serviceName:
+          otelSection?['service_name'] as String? ??
           env['OTEL_SERVICE_NAME'] ??
           'glue',
       resourceAttributes: otelResourceAttributes,
@@ -692,8 +719,9 @@ ModelRef _resolveModelRef(String raw, ModelCatalog catalog) {
       }
       return outcome.ref;
     case AmbiguousBareInput():
-      final options =
-          outcome.candidates.map((c) => c.ref.toString()).join(', ');
+      final options = outcome.candidates
+          .map((c) => c.ref.toString())
+          .join(', ');
       throw ConfigError(
         'model "$raw" is ambiguous — matches $options. '
         'Use `<provider>/<id>` to pick one.',
@@ -721,7 +749,8 @@ Map<String, String> _resolveOtelHeaders(
   Map<String, String> env,
 ) {
   final headers = <String, String>{};
-  final envHeaders = env['OTEL_EXPORTER_OTLP_TRACES_HEADERS'] ??
+  final envHeaders =
+      env['OTEL_EXPORTER_OTLP_TRACES_HEADERS'] ??
       env['OTEL_EXPORTER_OTLP_HEADERS'];
   if (envHeaders != null && envHeaders.isNotEmpty) {
     headers.addAll(_parseOtelKeyValueList(envHeaders));
@@ -786,8 +815,8 @@ void _rejectLegacyConfig(Map<String, dynamic> fileConfig, String path) {
   final hasTopLevelProvider = fileConfig.containsKey('provider');
   final hasPerProviderKey =
       (fileConfig['anthropic'] as Map?)?.containsKey('api_key') == true ||
-          (fileConfig['openai'] as Map?)?.containsKey('api_key') == true ||
-          (fileConfig['mistral'] as Map?)?.containsKey('api_key') == true;
+      (fileConfig['openai'] as Map?)?.containsKey('api_key') == true ||
+      (fileConfig['mistral'] as Map?)?.containsKey('api_key') == true;
   if (!hasTopLevelProvider && !hasPerProviderKey) return;
 
   throw ConfigError(

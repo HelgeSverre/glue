@@ -19,17 +19,19 @@ void main() {
 
       expect(table.headerLines, hasLength(2));
       expect(table.rowLines, hasLength(2));
-      expect(visibleLength(table.headerLines.first),
-          visibleLength(table.rowLines.first));
-      expect(visibleLength(table.rowLines.first),
-          visibleLength(table.rowLines.last));
+      expect(
+        visibleLength(table.headerLines.first),
+        visibleLength(table.rowLines.first),
+      );
+      expect(
+        visibleLength(table.rowLines.first),
+        visibleLength(table.rowLines.last),
+      );
     });
 
     test('honors max width with truncation', () {
       final table = TableFormatter.format(
-        columns: const [
-          TableColumn(key: 'name', header: 'NAME', maxWidth: 6),
-        ],
+        columns: const [TableColumn(key: 'name', header: 'NAME', maxWidth: 6)],
         rows: const [
           {'name': 'a-very-very-long-name'},
         ],

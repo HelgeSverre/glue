@@ -12,12 +12,9 @@ class SelectOption<T> {
   final String Function(int contentWidth) renderLabel;
   final String searchText;
 
-  SelectOption({
-    required this.value,
-    required String label,
-    String? searchText,
-  })  : renderLabel = ((_) => label),
-        searchText = searchText ?? label;
+  SelectOption({required this.value, required String label, String? searchText})
+    : renderLabel = ((_) => label),
+      searchText = searchText ?? label;
 
   SelectOption.responsive({
     required this.value,
@@ -69,14 +66,15 @@ class SelectPanel<T> implements PanelOverlay {
     PanelSize? height,
     this.dismissable = true,
     int initialIndex = 0,
-  })  : assert(
-          headerBuilder == null || headerLines.isEmpty,
-          'Provide either headerLines or headerBuilder, not both.',
-        ),
-        _width = width ?? PanelFluid(0.7, 40),
-        _height = height ?? PanelFluid(0.6, 10) {
-    _selectedIndex =
-        options.isEmpty ? 0 : initialIndex.clamp(0, options.length - 1);
+  }) : assert(
+         headerBuilder == null || headerLines.isEmpty,
+         'Provide either headerLines or headerBuilder, not both.',
+       ),
+       _width = width ?? PanelFluid(0.7, 40),
+       _height = height ?? PanelFluid(0.6, 10) {
+    _selectedIndex = options.isEmpty
+        ? 0
+        : initialIndex.clamp(0, options.length - 1);
   }
 
   @override
@@ -173,7 +171,10 @@ class SelectPanel<T> implements PanelOverlay {
 
   @override
   List<String> render(
-      int termWidth, int termHeight, List<String> backgroundLines) {
+    int termWidth,
+    int termHeight,
+    List<String> backgroundLines,
+  ) {
     final panelW = _width.resolve(termWidth);
     final panelH = _height.resolve(termHeight);
     final contentHeight = max(1, panelH - 2);
@@ -195,8 +196,9 @@ class SelectPanel<T> implements PanelOverlay {
     _normalizeSelection();
 
     final hasOverflow = filtered.length > listHeight;
-    final totalPages =
-        listHeight > 0 ? (filtered.length + listHeight - 1) ~/ listHeight : 1;
+    final totalPages = listHeight > 0
+        ? (filtered.length + listHeight - 1) ~/ listHeight
+        : 1;
     final currentPage = (_scrollOffset ~/ max(1, listHeight)) + 1;
 
     final dimmed = applyBarrier(barrier, backgroundLines);
@@ -226,10 +228,13 @@ class SelectPanel<T> implements PanelOverlay {
         final borderStr = stripAnsi(border.last);
         final insertPos = borderStr.length - indicator.length - 2;
         if (insertPos > 0) {
-          final before =
-              border.last.substring(0, _ansiIndex(border.last, insertPos));
-          final after = border.last
-              .substring(_ansiIndex(border.last, insertPos + indicator.length));
+          final before = border.last.substring(
+            0,
+            _ansiIndex(border.last, insertPos),
+          );
+          final after = border.last.substring(
+            _ansiIndex(border.last, insertPos + indicator.length),
+          );
           panelLines.add('$before$indicator$after');
         } else {
           panelLines.add(border.last);
@@ -256,8 +261,13 @@ class SelectPanel<T> implements PanelOverlay {
     for (var r = 0; r < panelH; r++) {
       final gridRow = topRow + r;
       if (gridRow < 0 || gridRow >= termHeight) continue;
-      grid[gridRow] =
-          _spliceRow(grid[gridRow], leftCol, panelW, panelLines[r], termWidth);
+      grid[gridRow] = _spliceRow(
+        grid[gridRow],
+        leftCol,
+        panelW,
+        panelLines[r],
+        termWidth,
+      );
     }
 
     return grid;
@@ -321,13 +331,15 @@ class SelectPanel<T> implements PanelOverlay {
         .split(RegExp(r'\s+'))
         .where((part) => part.isNotEmpty)
         .toList(growable: false);
-    return List<int>.generate(options.length, (i) => i).where((i) {
-      final haystack = stripAnsi(options[i].searchText).toLowerCase();
-      for (final term in terms) {
-        if (!haystack.contains(term)) return false;
-      }
-      return true;
-    }).toList(growable: false);
+    return List<int>.generate(options.length, (i) => i)
+        .where((i) {
+          final haystack = stripAnsi(options[i].searchText).toLowerCase();
+          for (final term in terms) {
+            if (!haystack.contains(term)) return false;
+          }
+          return true;
+        })
+        .toList(growable: false);
   }
 
   void _normalizeSelection() {
@@ -388,7 +400,12 @@ class SelectPanel<T> implements PanelOverlay {
   }
 
   String _spliceRow(
-      String bgLine, int leftCol, int panelW, String overlay, int termWidth) {
+    String bgLine,
+    int leftCol,
+    int panelW,
+    String overlay,
+    int termWidth,
+  ) {
     final bgVisible = visibleLength(bgLine);
     final paddedBg = bgVisible < termWidth
         ? '$bgLine${' ' * (termWidth - bgVisible)}'

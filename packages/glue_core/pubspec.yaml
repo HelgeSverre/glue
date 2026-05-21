@@ -4,7 +4,9 @@ version: 0.0.1
 publish_to: none
 
 environment:
-  sdk: '>=3.4.0 <4.0.0'
+  sdk: '>=3.12.0 <4.0.0'
+
+resolution: workspace
 
 # glue_core is deliberately dependency-free. Anything that needs HTTP,
 # IO, or a runtime service belongs in a higher layer (see

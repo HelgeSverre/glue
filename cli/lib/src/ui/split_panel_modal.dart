@@ -10,7 +10,7 @@ class SplitPanelModal implements PanelOverlay {
   final String title;
   final List<String> leftItems;
   final List<String> Function(int selectedIndex, int rightWidth)
-      buildRightLines;
+  buildRightLines;
   final PanelStyle style;
   final BarrierStyle barrier;
   final PanelSize _width;
@@ -32,8 +32,8 @@ class SplitPanelModal implements PanelOverlay {
     PanelSize? width,
     PanelSize? height,
     this.dismissable = true,
-  })  : _width = width ?? PanelFluid(0.85, 60),
-        _height = height ?? PanelFluid(0.7, 12) {
+  }) : _width = width ?? PanelFluid(0.85, 60),
+       _height = height ?? PanelFluid(0.7, 12) {
     if (_height case PanelFixed(:final size)) {
       _lastVisibleHeight = size - 2;
     }
@@ -88,8 +88,10 @@ class SplitPanelModal implements PanelOverlay {
         return true;
       case KeyEvent(key: Key.pageDown):
         final maxScroll = max<int>(0, leftItems.length - visibleH);
-        _selectedIndex =
-            min<int>(leftItems.length - 1, _selectedIndex + visibleH);
+        _selectedIndex = min<int>(
+          leftItems.length - 1,
+          _selectedIndex + visibleH,
+        );
         _scrollOffset = min<int>(maxScroll, _scrollOffset + visibleH);
         return true;
       default:
@@ -99,7 +101,10 @@ class SplitPanelModal implements PanelOverlay {
 
   @override
   List<String> render(
-      int termWidth, int termHeight, List<String> backgroundLines) {
+    int termWidth,
+    int termHeight,
+    List<String> backgroundLines,
+  ) {
     final panelW = _width.resolve(termWidth);
     final panelH = _height.resolve(termHeight);
     final contentH = panelH - 2;
@@ -119,7 +124,9 @@ class SplitPanelModal implements PanelOverlay {
 
     final dimmed = applyBarrier(barrier, backgroundLines);
     final grid = List<String>.generate(
-        termHeight, (i) => i < dimmed.length ? dimmed[i] : '');
+      termHeight,
+      (i) => i < dimmed.length ? dimmed[i] : '',
+    );
 
     final border = renderBorder(style, panelW, panelH, title);
 
@@ -148,10 +155,13 @@ class SplitPanelModal implements PanelOverlay {
           final borderStr = stripAnsi(border.last);
           final insertPos = borderStr.length - indicator.length - 2;
           if (insertPos > 0) {
-            final before =
-                border.last.substring(0, _ansiIndex(border.last, insertPos));
+            final before = border.last.substring(
+              0,
+              _ansiIndex(border.last, insertPos),
+            );
             final after = border.last.substring(
-                _ansiIndex(border.last, insertPos + indicator.length));
+              _ansiIndex(border.last, insertPos + indicator.length),
+            );
             panelLines.add('$before$indicator$after');
           } else {
             panelLines.add(border.last);
@@ -187,16 +197,22 @@ class SplitPanelModal implements PanelOverlay {
           rightContent = ' ' * rightW;
         }
 
-        panelLines
-            .add('$leftBorder $leftContent$divider$rightContent $rightBorder');
+        panelLines.add(
+          '$leftBorder $leftContent$divider$rightContent $rightBorder',
+        );
       }
     }
 
     for (var r = 0; r < panelH; r++) {
       final gridRow = topRow + r;
       if (gridRow < 0 || gridRow >= termHeight) continue;
-      grid[gridRow] =
-          _spliceRow(grid[gridRow], leftCol, panelW, panelLines[r], termWidth);
+      grid[gridRow] = _spliceRow(
+        grid[gridRow],
+        leftCol,
+        panelW,
+        panelLines[r],
+        termWidth,
+      );
     }
 
     return grid;
@@ -219,7 +235,12 @@ class SplitPanelModal implements PanelOverlay {
   }
 
   String _spliceRow(
-      String bgLine, int leftCol, int panelW, String overlay, int termWidth) {
+    String bgLine,
+    int leftCol,
+    int panelW,
+    String overlay,
+    int termWidth,
+  ) {
     final bgVisible = visibleLength(bgLine);
     final paddedBg = bgVisible < termWidth
         ? '$bgLine${' ' * (termWidth - bgVisible)}'

@@ -18,13 +18,14 @@ class _FakeHttpClient extends http.BaseClient {
   _FakeHttpClient(this._handler);
 
   final FutureOr<http.Response> Function(http.BaseRequest request, String body)
-      _handler;
+  _handler;
   final requests = <_CapturedRequest>[];
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
-    final body =
-        request is http.Request ? await request.finalize().bytesToString() : '';
+    final body = request is http.Request
+        ? await request.finalize().bytesToString()
+        : '';
     requests.add(
       _CapturedRequest(request.method, request.url, request.headers, body),
     );
@@ -58,10 +59,7 @@ void main() {
 
   group('BrowserbaseProvider', () {
     test('has correct name', () {
-      final provider = BrowserbaseProvider(
-        apiKey: 'key',
-        projectId: 'proj',
-      );
+      final provider = BrowserbaseProvider(apiKey: 'key', projectId: 'proj');
       expect(provider.name, 'browserbase');
     });
 
@@ -123,8 +121,10 @@ void main() {
     test('provisions CDP endpoint and closes session', () async {
       final client = _FakeHttpClient((request, body) {
         if (request.method == 'POST') {
-          expect(request.url.toString(),
-              'https://api.anchorbrowser.io/v1/sessions');
+          expect(
+            request.url.toString(),
+            'https://api.anchorbrowser.io/v1/sessions',
+          );
           expect(request.headers['anchor-api-key'], 'test-key');
           expect(request.headers['Content-Type'], 'application/json');
           expect(body, '{}');
@@ -141,8 +141,10 @@ void main() {
         }
 
         expect(request.method, 'DELETE');
-        expect(request.url.toString(),
-            'https://api.anchorbrowser.io/v1/sessions/session-123');
+        expect(
+          request.url.toString(),
+          'https://api.anchorbrowser.io/v1/sessions/session-123',
+        );
         expect(request.headers['anchor-api-key'], 'test-key');
         return http.Response(
           jsonEncode({
@@ -180,8 +182,10 @@ void main() {
     test('provisions CDP endpoint and closes session', () async {
       final client = _FakeHttpClient((request, body) {
         if (request.method == 'POST') {
-          expect(request.url.toString(),
-              'https://api.hyperbrowser.ai/api/session');
+          expect(
+            request.url.toString(),
+            'https://api.hyperbrowser.ai/api/session',
+          );
           expect(request.headers['x-api-key'], 'test-key');
           expect(request.headers['Content-Type'], 'application/json');
           expect(body, '{}');
@@ -196,8 +200,10 @@ void main() {
         }
 
         expect(request.method, 'PUT');
-        expect(request.url.toString(),
-            'https://api.hyperbrowser.ai/api/session/session-abc/stop');
+        expect(
+          request.url.toString(),
+          'https://api.hyperbrowser.ai/api/session/session-abc/stop',
+        );
         expect(request.headers['x-api-key'], 'test-key');
         return http.Response('{}', 200);
       });
