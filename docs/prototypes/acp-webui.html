@@ -1,0 +1,1483 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Glue ACP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <style>
+        :root {
+            --surface: #0a0a0b;
+            --surface-muted: rgba(255, 255, 255, 0.03);
+            --surface-soft: rgba(255, 255, 255, 0.05);
+            --divider: #222326;
+            --divider-soft: rgba(255, 255, 255, 0.08);
+            --text: #e6e6e6;
+            --secondary: #a2a2a2;
+            --muted: #737373;
+            --accent: #facc15;
+            --accent-soft: rgba(250, 204, 21, 0.12);
+            --success: #22c55e;
+            --warning: #eab308;
+            --error: #ef4444;
+            --info: #3b82f6;
+            --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+            --sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+            --radius: 6px;
+        }
+
+        * { box-sizing: border-box; }
+        html, body { height: 100%; }
+        html { color-scheme: dark; }
+        body {
+            margin: 0;
+            background: var(--surface);
+            color: var(--text);
+            font: 13px/1.55 var(--mono);
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+            overflow: hidden;
+        }
+
+        /* ────────────────────────────────────────────────────────
+           Top status strip
+           ──────────────────────────────────────────────────────── */
+        .topbar {
+            height: 38px;
+            display: grid;
+            grid-template-columns: auto auto auto 1fr auto;
+            gap: 16px;
+            align-items: center;
+            padding: 0 14px;
+            border-bottom: 1px solid var(--divider);
+            background: var(--surface);
+            font-size: 12px;
+        }
+
+        .brand {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-family: var(--sans); font-weight: 600; font-size: 13px;
+        }
+        .brand-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 8px rgba(250,204,21,0.6);
+        }
+
+        .session-pill {
+            display: inline-flex; align-items: center; gap: 6px;
+            height: 22px; padding: 0 8px;
+            border: 1px solid var(--divider);
+            border-radius: var(--radius);
+            color: var(--secondary);
+            font-size: 11px;
+        }
+        .session-pill .id { color: var(--muted); }
+
+        .mode-pill {
+            display: inline-flex; align-items: center; gap: 6px;
+            height: 22px; padding: 0 8px;
+            border: 1px solid var(--divider);
+            border-radius: var(--radius);
+            background: var(--surface-muted);
+            font-size: 11px;
+            text-transform: lowercase;
+        }
+        .mode-pill::before {
+            content: ""; width: 6px; height: 6px; border-radius: 50%;
+            background: var(--accent);
+        }
+        .mode-pill[data-mode="plan"]::before { background: var(--info); }
+        .mode-pill[data-mode="yolo"]::before { background: var(--error); box-shadow: 0 0 6px rgba(239,68,68,0.5); }
+
+        .now-doing {
+            display: flex; align-items: center; gap: 10px;
+            min-width: 0;
+            color: var(--muted);
+            font-size: 11px;
+        }
+        .now-doing.idle { color: var(--success); }
+        .now-doing .spin {
+            width: 10px; height: 10px;
+            border: 1.5px solid var(--divider);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+        .now-doing .label {
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            color: var(--text);
+            font-family: var(--mono);
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .top-controls { display: flex; gap: 6px; }
+        .ctrl {
+            height: 24px; padding: 0 10px;
+            border: 1px solid var(--divider);
+            background: var(--surface);
+            color: var(--secondary);
+            font: inherit; font-size: 11px;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: background 0.12s, color 0.12s, border-color 0.12s;
+        }
+        .ctrl:hover { color: var(--text); background: var(--surface-soft); }
+        .ctrl[disabled] { opacity: 0.35; cursor: not-allowed; }
+        .ctrl.danger { color: var(--error); border-color: rgba(239,68,68,0.3); }
+        .ctrl.danger:hover { background: rgba(239,68,68,0.08); }
+
+        /* ────────────────────────────────────────────────────────
+           Main 3-column workspace
+           ──────────────────────────────────────────────────────── */
+        .workspace {
+            height: calc(100vh - 38px);
+            display: grid;
+            grid-template-columns: 180px minmax(0, 1fr) 280px;
+            min-height: 0;
+        }
+
+        /* Sessions rail */
+        .rail {
+            border-right: 1px solid var(--divider);
+            background: var(--surface);
+            overflow-y: auto;
+            min-height: 0;
+        }
+        .rail-section {
+            padding: 12px 12px 4px;
+            color: var(--muted);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 500;
+        }
+        .rail-item {
+            display: grid;
+            grid-template-columns: 8px 1fr auto;
+            gap: 8px;
+            align-items: baseline;
+            padding: 5px 12px;
+            color: var(--secondary);
+            font-size: 11px;
+            cursor: pointer;
+            border-left: 2px solid transparent;
+        }
+        .rail-item:hover { background: var(--surface-soft); }
+        .rail-item.active {
+            color: var(--text);
+            background: var(--accent-soft);
+            border-left-color: var(--accent);
+        }
+        .rail-item .dot {
+            color: var(--muted);
+            font-size: 8px;
+            line-height: 1;
+        }
+        .rail-item.active .dot { color: var(--accent); }
+        .rail-item .title {
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            font-family: var(--mono);
+        }
+        .rail-item .age {
+            color: var(--muted);
+            font-size: 10px;
+        }
+
+        /* Console (center) */
+        .console {
+            display: flex; flex-direction: column;
+            min-height: 0;
+            position: relative;
+        }
+        .console-scroll {
+            flex: 1; overflow-y: auto;
+            padding: 16px 20px 24px;
+            scroll-behavior: smooth;
+        }
+        .console-scroll::-webkit-scrollbar { width: 10px; }
+        .console-scroll::-webkit-scrollbar-track { background: var(--surface); }
+        .console-scroll::-webkit-scrollbar-thumb { background: var(--divider); border-radius: 5px; }
+        .console-scroll::-webkit-scrollbar-thumb:hover { background: var(--divider-soft); }
+
+        /* ── line primitive (one event) ── */
+        .line {
+            display: grid;
+            grid-template-columns: 22px 1fr;
+            gap: 8px;
+            padding: 2px 0;
+            min-height: 22px;
+        }
+        .line + .line { margin-top: 0; }
+        .line.gap { margin-top: 10px; }
+
+        .gutter {
+            color: var(--muted);
+            font-family: var(--mono);
+            font-size: 12px;
+            text-align: center;
+            line-height: 22px;
+            user-select: none;
+        }
+        .gutter.user      { color: var(--text); }
+        .gutter.assistant { color: var(--accent); }
+        .gutter.thought   { color: var(--info); }
+        .gutter.system    { color: var(--muted); }
+        .gutter.error     { color: var(--error); }
+        .gutter.pending     { color: var(--muted); }
+        .gutter.in_progress { color: var(--warning); animation: pulse 1.2s ease-in-out infinite; }
+        .gutter.completed   { color: var(--success); }
+        .gutter.failed      { color: var(--error); }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+        .body { min-width: 0; }
+        .body.prose {
+            font-family: var(--sans);
+            color: var(--text);
+            font-size: 13px;
+            line-height: 1.55;
+        }
+        .body.prose p { margin: 0 0 6px; }
+        .body.prose p:last-child { margin-bottom: 0; }
+        .body.thought {
+            font-family: var(--sans);
+            color: var(--secondary);
+            font-style: italic;
+            font-size: 13px;
+            line-height: 1.55;
+        }
+        .body.system {
+            color: var(--muted);
+            font-size: 11px;
+        }
+        .body.system .k { color: var(--secondary); }
+
+        /* Inline blinking cursor */
+        .caret {
+            display: inline-block;
+            width: 7px; height: 13px;
+            background: var(--accent);
+            vertical-align: -2px;
+            margin-left: 2px;
+            animation: blink 1s steps(1) infinite;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* ── tool call line ── */
+        .tool-line {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 12px;
+        }
+        .tool-kind {
+            display: inline-grid; place-items: center;
+            width: 18px; height: 18px;
+            font-size: 11px; font-weight: 600;
+            border: 1px solid var(--divider);
+            border-radius: 4px;
+            background: var(--surface-soft);
+            color: var(--secondary);
+        }
+        .tool-kind[data-k="read"]    { color: var(--info); border-color: rgba(59,130,246,0.3); }
+        .tool-kind[data-k="edit"]    { color: var(--accent); border-color: rgba(250,204,21,0.3); }
+        .tool-kind[data-k="delete"]  { color: var(--error); border-color: rgba(239,68,68,0.3); }
+        .tool-kind[data-k="search"]  { color: var(--info); border-color: rgba(59,130,246,0.3); }
+        .tool-kind[data-k="execute"] { color: var(--success); border-color: rgba(34,197,94,0.3); }
+        .tool-kind[data-k="think"]   { color: var(--secondary); }
+        .tool-kind[data-k="fetch"]   { color: var(--info); border-color: rgba(59,130,246,0.3); }
+        .tool-title { color: var(--text); }
+        .tool-target {
+            color: var(--muted);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            min-width: 0;
+        }
+        .tool-elapsed {
+            margin-left: auto;
+            color: var(--muted);
+            font-size: 10px;
+            font-variant-numeric: tabular-nums;
+        }
+        .tool-status-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--muted);
+        }
+        .tool-status-dot.in_progress { background: var(--warning); animation: pulse 1.2s ease-in-out infinite; }
+        .tool-status-dot.completed { background: var(--success); }
+        .tool-status-dot.failed { background: var(--error); }
+
+        .tool-children {
+            margin: 6px 0 8px 4px;
+            padding: 0 0 0 14px;
+            border-left: 1px solid var(--divider);
+            display: grid;
+            gap: 6px;
+        }
+
+        /* Locations chip row */
+        .locs {
+            display: flex; flex-wrap: wrap; gap: 4px;
+            font-size: 11px;
+        }
+        .loc {
+            padding: 1px 6px;
+            border-radius: 3px;
+            background: var(--surface-muted);
+            color: var(--secondary);
+            border: 1px solid var(--divider-soft);
+        }
+        .loc .ln { color: var(--muted); }
+
+        /* Code / output block */
+        .out {
+            font-family: var(--mono);
+            font-size: 12px;
+            background: #000;
+            border: 1px solid var(--divider);
+            border-radius: 4px;
+            padding: 8px 10px;
+            color: var(--text);
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-x: auto;
+        }
+
+        /* Diff */
+        .diff {
+            font-family: var(--mono);
+            font-size: 12px;
+            background: #000;
+            border: 1px solid var(--divider);
+            border-radius: 4px;
+            overflow: clip;
+        }
+        .diff-head {
+            padding: 4px 8px;
+            border-bottom: 1px solid var(--divider);
+            color: var(--muted);
+            font-size: 10px;
+            display: flex; justify-content: space-between;
+        }
+        .diff-line {
+            display: grid;
+            grid-template-columns: 14px 1fr;
+            gap: 6px;
+            padding: 0 8px;
+        }
+        .diff-line.add { color: var(--success); background: rgba(34,197,94,0.05); }
+        .diff-line.del { color: var(--error); background: rgba(239,68,68,0.05); }
+        .diff-line .m { color: var(--muted); text-align: center; }
+
+        /* Terminal */
+        .term {
+            font-family: var(--mono);
+            font-size: 12px;
+            background: #000;
+            border: 1px solid var(--divider);
+            border-radius: 4px;
+            overflow: clip;
+        }
+        .term-head {
+            padding: 4px 8px;
+            border-bottom: 1px solid var(--divider);
+            background: rgba(255,255,255,0.02);
+            color: var(--muted);
+            font-size: 10px;
+            display: flex; justify-content: space-between;
+        }
+        .term-head .cmd { color: var(--text); }
+        .term-body { padding: 8px 10px; white-space: pre-wrap; color: var(--text); min-height: 1em; }
+        .term-exit {
+            padding: 3px 10px;
+            border-top: 1px solid var(--divider);
+            color: var(--muted);
+            font-size: 10px;
+            background: rgba(255,255,255,0.015);
+        }
+        .term-exit.fail { color: var(--error); }
+
+        /* Resource / image / audio chips */
+        .chip {
+            display: inline-flex; gap: 6px; align-items: center;
+            padding: 2px 8px;
+            font-size: 11px;
+            border: 1px solid var(--divider-soft);
+            border-radius: 3px;
+            background: var(--surface-muted);
+            color: var(--text);
+            margin: 0 4px 4px 0;
+        }
+        .chip.link::before { content: "↗"; color: var(--muted); }
+        .chip.image::before { content: "▢"; color: var(--info); }
+        .chip.audio::before { content: "♪"; color: var(--accent); }
+
+        details.resource {
+            border: 1px solid var(--divider);
+            border-radius: 4px;
+            background: var(--surface-muted);
+            font-size: 12px;
+        }
+        details.resource summary {
+            padding: 4px 8px;
+            color: var(--secondary);
+            font-size: 11px;
+            cursor: pointer;
+            user-select: none;
+        }
+        details.resource[open] summary { border-bottom: 1px solid var(--divider); }
+        details.resource > div { padding: 8px; }
+
+        /* ────────────────────────────────────────────────────────
+           Right inspector
+           ──────────────────────────────────────────────────────── */
+        .inspector {
+            border-left: 1px solid var(--divider);
+            background: var(--surface);
+            overflow-y: auto;
+            min-height: 0;
+            padding: 14px;
+            display: flex; flex-direction: column;
+            gap: 18px;
+        }
+        .insp-section h3 {
+            margin: 0 0 8px;
+            font-size: 10px;
+            font-weight: 500;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            display: flex; justify-content: space-between; align-items: baseline;
+        }
+        .insp-section h3 .meta { color: var(--muted); font-size: 10px; font-family: var(--mono); }
+
+        /* Plan inline */
+        .plan-progress {
+            height: 3px;
+            background: var(--divider);
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 0 0 10px;
+        }
+        .plan-progress > div {
+            height: 100%; background: var(--accent);
+            transition: width 0.4s ease;
+        }
+        .plan-progress.done > div { background: var(--success); }
+        .plan-list {
+            display: grid; gap: 4px;
+            font-size: 12px;
+        }
+        .plan-item {
+            display: grid;
+            grid-template-columns: 14px 1fr auto;
+            gap: 8px;
+            align-items: start;
+            line-height: 1.4;
+        }
+        .plan-glyph {
+            color: var(--muted);
+            font-family: var(--mono);
+            font-size: 11px;
+            line-height: 1.5;
+            text-align: center;
+        }
+        .plan-item[data-status="completed"] .plan-glyph { color: var(--success); }
+        .plan-item[data-status="completed"] .plan-text { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--divider); }
+        .plan-item[data-status="in_progress"] .plan-glyph { color: var(--accent); animation: pulse 1.2s ease-in-out infinite; }
+        .plan-item[data-status="failed"] .plan-glyph { color: var(--error); }
+        .plan-text {
+            color: var(--text);
+            font-size: 12px;
+        }
+        .pri {
+            font-size: 9px;
+            font-family: var(--mono);
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            line-height: 1.7;
+        }
+        .pri[data-p="high"] { color: var(--error); }
+        .pri[data-p="medium"] { color: var(--warning); }
+
+        /* Context meter */
+        .meter-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            font-size: 11px;
+            color: var(--secondary);
+            margin: 0 0 4px;
+        }
+        .meter-row .lbl { color: var(--muted); }
+        .meter-bar {
+            height: 3px; background: var(--divider); border-radius: 2px; overflow: hidden;
+        }
+        .meter-bar > div { height: 100%; background: var(--accent); transition: width 0.4s ease; }
+        .meter-bar.warn > div { background: var(--warning); }
+        .meter-bar.crit > div { background: var(--error); }
+        .stats {
+            margin-top: 10px;
+            display: grid; gap: 3px;
+            font-size: 11px;
+        }
+        .stat {
+            display: grid; grid-template-columns: 1fr auto;
+            color: var(--secondary);
+        }
+        .stat .k { color: var(--muted); }
+
+        /* Commands */
+        .cmd-list { display: grid; gap: 4px; font-size: 12px; }
+        .cmd-row {
+            display: grid; grid-template-columns: auto 1fr; gap: 10px;
+            align-items: baseline;
+        }
+        .cmd-name { color: var(--accent); }
+        .cmd-desc { color: var(--secondary); font-size: 11px; }
+
+        /* ────────────────────────────────────────────────────────
+           Composer + permission sheet
+           ──────────────────────────────────────────────────────── */
+        .composer-area {
+            border-top: 1px solid var(--divider);
+            background: var(--surface);
+            position: relative;
+        }
+        .composer {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+            padding: 10px 14px 8px;
+            align-items: end;
+        }
+        .composer textarea {
+            min-height: 32px; max-height: 160px;
+            padding: 8px 10px;
+            background: var(--surface-muted);
+            color: var(--text);
+            border: 1px solid var(--divider);
+            border-radius: var(--radius);
+            font: inherit; font-family: var(--mono); font-size: 12px;
+            resize: none;
+            outline: none;
+        }
+        .composer textarea:focus { border-color: var(--muted); background: var(--surface-soft); }
+        .composer .send {
+            height: 32px; padding: 0 14px;
+            background: var(--accent); color: #000;
+            border: 1px solid var(--accent);
+            border-radius: var(--radius);
+            font: inherit; font-family: var(--sans); font-weight: 600; font-size: 12px;
+            cursor: pointer;
+        }
+        .composer-foot {
+            display: flex; gap: 14px; align-items: center;
+            padding: 0 14px 8px;
+            font-size: 10px;
+            color: var(--muted);
+        }
+        .composer-foot .dot { color: var(--divider-soft); }
+        .composer-foot .stop[data-reason="end_turn"] { color: var(--success); }
+        .composer-foot .stop[data-reason="cancelled"] { color: var(--warning); }
+        .composer-foot .stop[data-reason="refusal"] { color: var(--error); }
+        .composer-foot .stop[data-reason="max_tokens"] { color: var(--warning); }
+        .composer-foot .ticker {
+            color: var(--text); font-variant-numeric: tabular-nums;
+        }
+
+        /* Permission sheet (rises from above composer) */
+        .perm-sheet {
+            border-top: 1px solid var(--warning);
+            background: rgba(234,179,8,0.06);
+            padding: 14px;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 14px;
+            align-items: center;
+            animation: rise 0.18s ease-out;
+        }
+        @keyframes rise {
+            from { transform: translateY(8px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .perm-icon {
+            font-family: var(--mono); font-size: 16px; color: var(--warning);
+            line-height: 1;
+        }
+        .perm-body { font-size: 12px; }
+        .perm-body .title { color: var(--text); font-weight: 500; font-family: var(--sans); }
+        .perm-body .sub { color: var(--secondary); font-size: 11px; margin-top: 2px; }
+        .perm-body .target {
+            display: inline-block; margin-top: 4px;
+            padding: 1px 6px;
+            background: var(--surface);
+            border: 1px solid var(--divider);
+            border-radius: 3px;
+            color: var(--text);
+            font-size: 11px;
+        }
+        .perm-actions { display: flex; gap: 6px; }
+        .perm-actions button {
+            height: 28px; padding: 0 10px;
+            background: var(--surface);
+            border: 1px solid var(--divider);
+            border-radius: var(--radius);
+            color: var(--text);
+            font: inherit; font-size: 11px;
+            cursor: pointer;
+        }
+        .perm-actions button.allow { color: var(--accent); border-color: rgba(250,204,21,0.4); }
+        .perm-actions button.always { color: var(--success); border-color: rgba(34,197,94,0.4); }
+        .perm-actions button.reject { color: var(--error); border-color: rgba(239,68,68,0.4); }
+        .perm-actions button:hover { background: var(--surface-soft); }
+
+        @media (max-width: 900px) {
+            .workspace { grid-template-columns: 1fr; }
+            .rail, .inspector { display: none; }
+        }
+    </style>
+</head>
+<body x-data="acpClient" x-init="init()">
+    <!-- ──────── Top strip ──────── -->
+    <header class="topbar">
+        <div class="brand">
+            <span class="brand-dot"></span>
+            <span>Glue</span>
+            <span style="color: var(--muted); font-weight: 400; font-family: var(--mono); font-size: 11px;">acp</span>
+        </div>
+        <div class="session-pill">
+            <span class="id">id</span>
+            <span x-text="session.id.slice(0, 18) + '…'"></span>
+        </div>
+        <div class="mode-pill" :data-mode="session.mode" x-text="session.mode"></div>
+
+        <div class="now-doing" :class="{ idle: done }">
+            <template x-if="!done && !paused">
+                <div class="spin"></div>
+            </template>
+            <template x-if="done">
+                <div style="color: var(--success); font-size: 11px;">●</div>
+            </template>
+            <template x-if="paused">
+                <div style="color: var(--warning); font-size: 11px;">⏸</div>
+            </template>
+            <span class="label" x-text="statusLabel()"></span>
+        </div>
+
+        <div class="top-controls">
+            <button class="ctrl" @click="step()" :disabled="!paused || done">step</button>
+            <button class="ctrl" @click="toggle()" :disabled="done" x-text="paused ? 'resume' : 'pause'"></button>
+            <button class="ctrl" @click="replay()">replay</button>
+            <button class="ctrl danger" @click="cancel()" :disabled="done">cancel</button>
+        </div>
+    </header>
+
+    <!-- ──────── Workspace ──────── -->
+    <div class="workspace">
+        <!-- Sessions rail -->
+        <aside class="rail">
+            <div class="rail-section">sessions</div>
+            <div class="rail-item active">
+                <span class="dot">●</span>
+                <span class="title">refactor/parseConfig</span>
+                <span class="age">now</span>
+            </div>
+            <div class="rail-item">
+                <span class="dot">·</span>
+                <span class="title">activation-steering</span>
+                <span class="age">2h</span>
+            </div>
+            <div class="rail-item">
+                <span class="dot">·</span>
+                <span class="title">browserbase-adapter</span>
+                <span class="age">yest</span>
+            </div>
+            <div class="rail-item">
+                <span class="dot">·</span>
+                <span class="title">sema/vm-bench</span>
+                <span class="age">2d</span>
+            </div>
+            <div class="rail-item">
+                <span class="dot">·</span>
+                <span class="title">kassal/saft-export</span>
+                <span class="age">3d</span>
+            </div>
+
+            <div class="rail-section" style="margin-top: 12px;">agent</div>
+            <div style="padding: 4px 12px; font-size: 11px; color: var(--secondary);">
+                glue<span style="color: var(--muted);">@0.4.2</span>
+            </div>
+            <div style="padding: 2px 12px 12px; font-size: 10px; color: var(--muted);">
+                proto v1 · stdio
+            </div>
+        </aside>
+
+        <!-- Console center -->
+        <main class="console">
+            <div class="console-scroll" x-ref="scroll">
+                <template x-for="e in entries" :key="e.id">
+                    <div class="line" :class="{ gap: e.gap }">
+                        <div class="gutter" :class="gutterClass(e)" x-html="gutterGlyph(e)"></div>
+                        <div class="body" :class="bodyClass(e)" x-html="renderEntry(e)"></div>
+                    </div>
+                </template>
+
+                <template x-if="done">
+                    <div class="line gap">
+                        <div class="gutter system">·</div>
+                        <div class="body system">
+                            <span class="k">end</span> · stopReason: <span x-text="lastStopReason" :style="stopColor(lastStopReason)"></span>
+                            · <span x-text="entries.length"></span> events
+                            · $<span x-text="usage.cost.toFixed(4)"></span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </main>
+
+        <!-- Inspector right -->
+        <aside class="inspector">
+            <!-- Plan -->
+            <section class="insp-section" x-show="plan.length">
+                <h3>
+                    plan
+                    <span class="meta" x-text="planDone() + '/' + plan.length"></span>
+                </h3>
+                <div class="plan-progress" :class="{ done: planDone() === plan.length }">
+                    <div :style="'width:' + (plan.length ? (planDone() / plan.length * 100) : 0) + '%'"></div>
+                </div>
+                <div class="plan-list">
+                    <template x-for="(p, pi) in plan" :key="pi">
+                        <div class="plan-item" :data-status="p.status">
+                            <span class="plan-glyph" x-text="planGlyph(p.status)"></span>
+                            <span class="plan-text" x-text="p.content"></span>
+                            <span class="pri" :data-p="p.priority" x-text="p.priority === 'low' ? '' : p.priority"></span>
+                        </div>
+                    </template>
+                </div>
+            </section>
+
+            <!-- Context / usage -->
+            <section class="insp-section">
+                <h3>
+                    context
+                    <span class="meta">
+                        <span x-text="fmt(usage.used)"></span>/<span x-text="fmt(usage.size)"></span>
+                    </span>
+                </h3>
+                <div class="meter-row">
+                    <span class="lbl" x-text="usagePct() + '% used'"></span>
+                    <span x-text="fmt(usage.size - usage.used) + ' free'"></span>
+                </div>
+                <div class="meter-bar" :class="usagePct() > 80 ? 'crit' : (usagePct() > 60 ? 'warn' : '')">
+                    <div :style="'width:' + Math.min(100, usagePct()) + '%'"></div>
+                </div>
+                <div class="stats">
+                    <div class="stat"><span class="k">thought</span><span x-text="fmt(usage.thought)"></span></div>
+                    <div class="stat"><span class="k">cached</span><span x-text="fmt(usage.cached)"></span></div>
+                    <div class="stat"><span class="k">cost</span><span>$<span x-text="usage.cost.toFixed(4)"></span></span></div>
+                    <div class="stat"><span class="k">latency</span><span x-text="latency + 'ms'"></span></div>
+                </div>
+            </section>
+
+            <!-- Commands -->
+            <section class="insp-section">
+                <h3>commands <span class="meta" x-text="commands.length"></span></h3>
+                <div class="cmd-list">
+                    <template x-for="c in commands" :key="c.name">
+                        <div class="cmd-row">
+                            <span class="cmd-name" x-text="'/' + c.name"></span>
+                            <span class="cmd-desc" x-text="c.description"></span>
+                        </div>
+                    </template>
+                </div>
+            </section>
+
+            <!-- Capabilities -->
+            <section class="insp-section">
+                <h3>capabilities</h3>
+                <div class="cmd-list">
+                    <div class="cmd-row"><span class="cmd-name">fs</span><span class="cmd-desc">read · write</span></div>
+                    <div class="cmd-row"><span class="cmd-name">terminal</span><span class="cmd-desc">create · output</span></div>
+                    <div class="cmd-row"><span class="cmd-name">prompt</span><span class="cmd-desc">image · resource</span></div>
+                    <div class="cmd-row"><span class="cmd-name">mcp</span><span class="cmd-desc">2 servers</span></div>
+                </div>
+            </section>
+        </aside>
+    </div>
+
+    <!-- ──────── Composer + permission sheet ──────── -->
+    <div class="composer-area">
+        <template x-if="pendingPermission">
+            <div class="perm-sheet">
+                <div class="perm-icon">⚠</div>
+                <div class="perm-body">
+                    <div class="title">
+                        Permission required — <span x-text="pendingPermission.toolName"></span>
+                    </div>
+                    <div class="sub" x-text="pendingPermission.reason"></div>
+                    <template x-if="pendingPermission.target">
+                        <span class="target" x-text="pendingPermission.target"></span>
+                    </template>
+                </div>
+                <div class="perm-actions">
+                    <template x-for="opt in pendingPermission.options" :key="opt.optionId">
+                        <button :class="permBtnClass(opt.kind)"
+                                @click="resolvePermission(opt)"
+                                x-text="opt.name"></button>
+                    </template>
+                </div>
+            </div>
+        </template>
+
+        <div class="composer">
+            <textarea placeholder="reply to glue… (/help for commands)" rows="1"></textarea>
+            <button class="send">send ⏎</button>
+        </div>
+        <div class="composer-foot">
+            <span x-text="entries.length + ' events'"></span>
+            <span class="dot">·</span>
+            <span class="ticker">$<span x-text="usage.cost.toFixed(4)"></span></span>
+            <span class="dot">·</span>
+            <span x-text="fmt(usage.used) + ' tok'"></span>
+            <span class="dot">·</span>
+            <span x-show="!done">
+                <span x-show="!paused && !pendingPermission" style="color: var(--accent);">⟳ streaming</span>
+                <span x-show="paused" style="color: var(--warning);">⏸ paused</span>
+                <span x-show="pendingPermission" style="color: var(--warning);">⛔ awaiting permission</span>
+            </span>
+            <span x-show="done" class="stop" :data-reason="lastStopReason">
+                ■ stopped (<span x-text="lastStopReason"></span>)
+            </span>
+        </div>
+    </div>
+
+    <script>
+        // ────────────────────────────────────────────────────────
+        // Dummy ACP event stream
+        // ────────────────────────────────────────────────────────
+        const EVENTS = [
+            { delay: 0, kind: "user_message_chunk", content: [
+                { type: "text", text: "Refactor `parseConfig` so it streams instead of buffering the whole file. Match the conventions in:" },
+                { type: "resource_link", uri: "file:///repo/glue/STYLE.md", name: "STYLE.md", description: "project style guide" },
+                { type: "image", mimeType: "image/png", data: "screenshot.png", _label: "current-trace.png · 114 KB" },
+            ]},
+            { delay: 250, kind: "plan", entries: [
+                { content: "Locate parseConfig and read current implementation", priority: "high", status: "in_progress" },
+                { content: "Search for callers and tests",                       priority: "medium", status: "pending" },
+                { content: "Sketch streaming variant with chunked YAML parser",  priority: "high", status: "pending" },
+                { content: "Apply edit and run test suite",                      priority: "high", status: "pending" },
+                { content: "Write changelog entry",                              priority: "low", status: "pending" },
+            ]},
+            { delay: 350, kind: "agent_thought_chunk", text: "User wants streaming parsing. " },
+            { delay: 220, kind: "agent_thought_chunk", text: "Need to check the current API surface before proposing changes — buffered version might be public. " },
+            { delay: 200, kind: "agent_thought_chunk", text: "Reading the file first." },
+            { delay: 300, kind: "agent_message_chunk", text: "Looking at the current implementation first." },
+
+            { delay: 200, kind: "tool_call", toolCallId: "tc_001",
+              title: "read",
+              target: "src/parse-config.ts",
+              kindV: "read",
+              status: "pending",
+              locations: [{ path: "src/parse-config.ts", line: 1 }],
+            },
+            { delay: 200, kind: "tool_call_update", toolCallId: "tc_001", status: "in_progress" },
+            { delay: 150, kind: "fs_read", path: "/repo/glue/src/parse-config.ts" },
+            { delay: 400, kind: "tool_call_update", toolCallId: "tc_001",
+              status: "completed",
+              content: [{ type: "content", content: { type: "text", text:
+"export async function parseConfig(path: string): Promise<Config> {\n  const raw = await fs.readFile(path, 'utf8'); // <-- buffers whole file\n  return YAML.parse(raw) as Config;\n}" } }],
+            },
+
+            { delay: 200, kind: "plan", entries: [
+                { content: "Locate parseConfig and read current implementation", priority: "high", status: "completed" },
+                { content: "Search for callers and tests",                       priority: "medium", status: "in_progress" },
+                { content: "Sketch streaming variant with chunked YAML parser",  priority: "high", status: "pending" },
+                { content: "Apply edit and run test suite",                      priority: "high", status: "pending" },
+                { content: "Write changelog entry",                              priority: "low", status: "pending" },
+            ]},
+
+            { delay: 150, kind: "tool_call", toolCallId: "tc_002",
+              title: "grep",
+              target: "parseConfig — 4 files",
+              kindV: "search",
+              status: "in_progress",
+            },
+            { delay: 600, kind: "tool_call_update", toolCallId: "tc_002",
+              status: "completed",
+              locations: [
+                { path: "src/parse-config.ts", line: 4 },
+                { path: "src/cli.ts", line: 42 },
+                { path: "src/server.ts", line: 88 },
+                { path: "test/parse-config.test.ts", line: 12 },
+              ],
+              content: [{ type: "content", content: { type: "text", text:
+"src/cli.ts:42        await parseConfig(args.config)\nsrc/server.ts:88     const cfg = await parseConfig(p)\ntest/parse-config.test.ts:12  describe('parseConfig', ...)" } }],
+            },
+
+            { delay: 200, kind: "tool_call", toolCallId: "tc_003",
+              title: "think",
+              target: "streaming refactor plan",
+              kindV: "think",
+              status: "in_progress",
+            },
+            { delay: 700, kind: "tool_call_update", toolCallId: "tc_003",
+              status: "completed",
+              content: [{ type: "content", content: { type: "text", text:
+"Switch return type to AsyncIterable<ConfigChunk>. Add a buffered shim parseConfigSync that wraps the iterable so cli.ts/server.ts stay source-compatible. Tests will need to await for-of." } }],
+            },
+
+            { delay: 200, kind: "agent_message_chunk", text: "\nSwitching to an async iterable with a sync shim for existing callers. " },
+            { delay: 200, kind: "agent_message_chunk", text: "Writing to `src/parse-config.ts` — needs permission." },
+
+            { delay: 200, kind: "permission",
+              toolCallId: "tc_004",
+              toolName: "fs.write",
+              kind: "edit",
+              target: "src/parse-config.ts",
+              reason: "Apply streaming-parser refactor to parseConfig.",
+              options: [
+                { optionId: "allow_once",   name: "allow once",     kind: "allow_once" },
+                { optionId: "allow_always", name: "always in src/", kind: "allow_always" },
+                { optionId: "reject_once",  name: "reject",         kind: "reject_once" },
+              ],
+            },
+
+            { delay: 150, kind: "agent_message_chunk", text: "\nApplying edit." },
+            { delay: 200, kind: "tool_call", toolCallId: "tc_004",
+              title: "edit",
+              target: "src/parse-config.ts",
+              kindV: "edit",
+              status: "in_progress",
+              locations: [{ path: "src/parse-config.ts", line: 1 }],
+            },
+            { delay: 150, kind: "fs_write", path: "/repo/glue/src/parse-config.ts" },
+            { delay: 500, kind: "tool_call_update", toolCallId: "tc_004",
+              status: "completed",
+              content: [{ type: "diff",
+                path: "src/parse-config.ts",
+                oldText: "export async function parseConfig(path: string): Promise<Config> {\n  const raw = await fs.readFile(path, 'utf8');\n  return YAML.parse(raw) as Config;\n}",
+                newText: "export async function* parseConfig(path: string): AsyncIterable<ConfigChunk> {\n  const stream = createReadStream(path, { encoding: 'utf8' });\n  for await (const chunk of streamingYaml(stream)) yield chunk;\n}\n\nexport async function parseConfigSync(path: string): Promise<Config> {\n  const out: ConfigChunk[] = [];\n  for await (const c of parseConfig(path)) out.push(c);\n  return mergeChunks(out);\n}",
+              }],
+            },
+
+            { delay: 200, kind: "plan", entries: [
+                { content: "Locate parseConfig and read current implementation", priority: "high", status: "completed" },
+                { content: "Search for callers and tests",                       priority: "medium", status: "completed" },
+                { content: "Sketch streaming variant with chunked YAML parser",  priority: "high", status: "completed" },
+                { content: "Apply edit and run test suite",                      priority: "high", status: "in_progress" },
+                { content: "Write changelog entry",                              priority: "low", status: "pending" },
+            ]},
+
+            { delay: 200, kind: "terminal_create", terminalId: "term_01", command: "bun test parse-config" },
+            { delay: 100, kind: "tool_call", toolCallId: "tc_005",
+              title: "exec",
+              target: "bun test parse-config",
+              kindV: "execute",
+              status: "in_progress",
+              terminalId: "term_01",
+              command: "bun test parse-config",
+              output: "",
+            },
+            { delay: 300, kind: "tool_call_update", toolCallId: "tc_005", appendOutput: "$ bun test parse-config\nbun test v1.1.34\n" },
+            { delay: 400, kind: "tool_call_update", toolCallId: "tc_005", appendOutput: "\ntest/parse-config.test.ts:\n" },
+            { delay: 250, kind: "tool_call_update", toolCallId: "tc_005", appendOutput: " ✓ parses single chunk [4ms]\n" },
+            { delay: 220, kind: "tool_call_update", toolCallId: "tc_005", appendOutput: " ✓ streams multi-document yaml [12ms]\n" },
+            { delay: 240, kind: "tool_call_update", toolCallId: "tc_005", appendOutput: " ✓ parseConfigSync shim returns equivalent result [7ms]\n" },
+            { delay: 200, kind: "tool_call_update", toolCallId: "tc_005", appendOutput: "\n 3 pass\n 0 fail\n", exitCode: 0, status: "completed" },
+
+            { delay: 200, kind: "tool_call", toolCallId: "tc_006",
+              title: "fetch",
+              target: "yaml.org/spec/1.2.2",
+              kindV: "fetch",
+              status: "in_progress",
+              locations: [{ path: "https://yaml.org/spec/1.2.2/spec.json" }],
+            },
+            { delay: 700, kind: "tool_call_update", toolCallId: "tc_006",
+              status: "failed",
+              content: [{ type: "content", content: { type: "text", text:
+"ETIMEDOUT fetch https://yaml.org/spec/1.2.2/spec.json after 5000ms. Falling back to bundled grammar." } }],
+            },
+
+            { delay: 250, kind: "current_mode_update", currentModeId: "yolo" },
+            { delay: 200, kind: "available_commands_update", commands: [
+                { name: "help",  description: "show available commands" },
+                { name: "clear", description: "clear the conversation" },
+                { name: "mode",  description: "switch mode (plan|default|yolo)" },
+                { name: "diff",  description: "show last applied diff" },
+                { name: "rerun", description: "re-run last shell command" },
+            ]},
+
+            { delay: 250, kind: "agent_message_chunk", text: "\nTests pass. Streaming variant is in with a sync shim — existing callers unchanged. Quick audio summary attached:" },
+            { delay: 200, kind: "agent_audio", mimeType: "audio/mpeg", data: "summary.mp3", _label: "summary.mp3 · 14s" },
+            { delay: 150, kind: "agent_resource",
+              uri: "memo://parse-config/follow-ups",
+              mimeType: "text/markdown",
+              text: "## Follow-ups\n\n- Add fuzz test for malformed multi-doc YAML\n- Benchmark vs current buffered path on 50 MB config\n- Deprecate parseConfigSync in v0.5",
+            },
+
+            { delay: 150, kind: "plan", entries: [
+                { content: "Locate parseConfig and read current implementation", priority: "high", status: "completed" },
+                { content: "Search for callers and tests",                       priority: "medium", status: "completed" },
+                { content: "Sketch streaming variant with chunked YAML parser",  priority: "high", status: "completed" },
+                { content: "Apply edit and run test suite",                      priority: "high", status: "completed" },
+                { content: "Write changelog entry",                              priority: "low", status: "completed" },
+            ]},
+
+            { delay: 200, kind: "usage_update", inputTokens: 18420, outputTokens: 1233, thoughtTokens: 612, cachedTokens: 14100, cost: 0.0623 },
+            { delay: 100, kind: "context_update", size: 200000, used: 19653 },
+            { delay: 200, kind: "prompt_response", stopReason: "end_turn" },
+        ];
+
+        // Kind glyph map (short label that appears in the gutter on tool-call lines)
+        const KIND_GLYPH = {
+            read:    "R",
+            edit:    "E",
+            delete:  "D",
+            move:    "M",
+            search:  "?",
+            execute: "$",
+            think:   "…",
+            fetch:   "⤓",
+            other:   "*",
+        };
+
+        // ────────────────────────────────────────────────────────
+        // Alpine
+        // ────────────────────────────────────────────────────────
+        document.addEventListener("alpine:init", () => {
+            Alpine.data("acpClient", () => ({
+                session: {
+                    id: "ses_01HXR4Q9V0KZ8WJ2YR8MNHTQZK",
+                    model: "claude-sonnet-4.6",
+                    mode: "default",
+                },
+                entries: [],
+                plan: [],
+                commands: [
+                    { name: "help",  description: "show available commands" },
+                    { name: "clear", description: "clear the conversation" },
+                    { name: "mode",  description: "switch mode" },
+                ],
+                usage: { used: 0, size: 200000, thought: 0, cached: 0, cost: 0 },
+                latency: 0,
+                paused: false,
+                done: false,
+                lastStopReason: "—",
+                pendingPermission: null,
+                _toolMap: {},
+                _cursor: 0,
+                _timer: null,
+                _latencyTimer: null,
+                _currentActivity: "starting",
+
+                init() { this.replay(); },
+
+                // ── derived ──
+                usagePct() {
+                    return this.usage.size ? Math.round((this.usage.used / this.usage.size) * 100) : 0;
+                },
+                planDone() {
+                    return this.plan.filter(p => p.status === "completed").length;
+                },
+                fmt(n) {
+                    if (n == null) return "—";
+                    if (n >= 10000) return (n / 1000).toFixed(1) + "k";
+                    if (n >= 1000)  return (n / 1000).toFixed(2) + "k";
+                    return String(n);
+                },
+                statusLabel() {
+                    if (this.done) return "idle · " + this.lastStopReason;
+                    if (this.paused) return "paused";
+                    if (this.pendingPermission) return "awaiting permission · " + this.pendingPermission.toolName;
+                    return this._currentActivity;
+                },
+                stopColor(r) {
+                    return {
+                        end_turn: "color: var(--success)",
+                        cancelled: "color: var(--warning)",
+                        refusal: "color: var(--error)",
+                        max_tokens: "color: var(--warning)",
+                    }[r] || "";
+                },
+                planGlyph(s) {
+                    return { completed: "✓", in_progress: "◐", failed: "✕", pending: "○" }[s] || "○";
+                },
+                gutterClass(e) {
+                    if (e.kind === "tool") return e.status || "pending";
+                    return e.role || "system";
+                },
+                gutterGlyph(e) {
+                    if (e.kind === "tool") {
+                        return KIND_GLYPH[e.kindV] || KIND_GLYPH.other;
+                    }
+                    return {
+                        user: "▸",
+                        assistant: "●",
+                        thought: "≀",
+                        system: "·",
+                        error: "!",
+                    }[e.role] || "·";
+                },
+                bodyClass(e) {
+                    if (e.kind === "tool") return "";
+                    if (e.role === "thought") return "thought";
+                    if (e.role === "system") return "system";
+                    return "prose";
+                },
+                permBtnClass(k) {
+                    if (k === "allow_once") return "allow";
+                    if (k === "allow_always") return "always";
+                    if (k.startsWith("reject")) return "reject";
+                    return "";
+                },
+
+                // ── replay control ──
+                replay() {
+                    clearTimeout(this._timer);
+                    clearInterval(this._latencyTimer);
+                    this.entries = [];
+                    this.plan = [];
+                    this.usage = { used: 0, size: 200000, thought: 0, cached: 0, cost: 0 };
+                    this.latency = 0;
+                    this.session.mode = "default";
+                    this.pendingPermission = null;
+                    this._toolMap = {};
+                    this._cursor = 0;
+                    this.paused = false;
+                    this.done = false;
+                    this.lastStopReason = "—";
+                    this._currentActivity = "starting";
+                    this._latencyTimer = setInterval(() => {
+                        if (!this.done && !this.paused) this.latency = 240 + Math.round(Math.sin(Date.now() / 800) * 60 + Math.random() * 30);
+                    }, 250);
+                    this._tick();
+                },
+                toggle() {
+                    this.paused = !this.paused;
+                    if (!this.paused) this._tick();
+                    else clearTimeout(this._timer);
+                },
+                step() { if (this.paused) this._processOne(); },
+                cancel() {
+                    clearTimeout(this._timer);
+                    clearInterval(this._latencyTimer);
+                    this.done = true;
+                    this.lastStopReason = "cancelled";
+                    this._cursor = EVENTS.length;
+                    this.pendingPermission = null;
+                    this._addMarker("turn cancelled by user");
+                },
+
+                _tick() {
+                    if (this.paused || this.done || this.pendingPermission) return;
+                    if (this._cursor >= EVENTS.length) { this.done = true; clearInterval(this._latencyTimer); return; }
+                    const evt = EVENTS[this._cursor];
+                    this._timer = setTimeout(() => this._processOne(), evt.delay);
+                },
+                _processOne() {
+                    if (this._cursor >= EVENTS.length) { this.done = true; return; }
+                    const evt = EVENTS[this._cursor++];
+                    const last = this.entries[this.entries.length - 1];
+                    if (last && last.streaming &&
+                        !["agent_message_chunk", "agent_thought_chunk"].includes(evt.kind)) {
+                        last.streaming = false;
+                    }
+                    this._apply(evt);
+                    this._scrollDown();
+                    this._tick();
+                },
+
+                _apply(evt) {
+                    switch (evt.kind) {
+                        case "user_message_chunk":
+                            this._currentActivity = "received prompt";
+                            this._appendOrCreate("user", evt.content);
+                            this.entries[this.entries.length - 1].gap = true;
+                            break;
+                        case "agent_message_chunk":
+                            this._currentActivity = "generating reply";
+                            this._streamText("assistant", evt.text);
+                            break;
+                        case "agent_thought_chunk":
+                            this._currentActivity = "thinking";
+                            this._streamText("thought", evt.text);
+                            break;
+                        case "agent_audio":
+                            this._streamAppend("assistant",
+                                { type: "audio", mimeType: evt.mimeType, data: evt.data, _label: evt._label });
+                            break;
+                        case "agent_resource":
+                            this._streamAppend("assistant",
+                                { type: "resource", resource: { uri: evt.uri, mimeType: evt.mimeType, text: evt.text } });
+                            break;
+                        case "plan":
+                            this.plan = evt.entries;
+                            break;
+                        case "tool_call": {
+                            this._currentActivity = (evt.kindV || "tool") + " · " + (evt.target || evt.title);
+                            const e = this._newEntry({
+                                kind: "tool",
+                                role: "tool",
+                                title: evt.title,
+                                target: evt.target,
+                                kindV: evt.kindV || "other",
+                                status: evt.status || "pending",
+                                locations: evt.locations || [],
+                                content: [],
+                                terminalId: evt.terminalId,
+                                command: evt.command,
+                                output: evt.output || "",
+                                exitCode: null,
+                                startedAt: Date.now(),
+                                elapsed: 0,
+                            });
+                            this._toolMap[evt.toolCallId] = e.id - 1;
+                            break;
+                        }
+                        case "tool_call_update": {
+                            const idx = this._toolMap[evt.toolCallId];
+                            if (idx == null) return;
+                            const e = this.entries[idx];
+                            if (evt.status) e.status = evt.status;
+                            if (evt.locations) e.locations = evt.locations;
+                            if (evt.content) e.content = (e.content || []).concat(evt.content);
+                            if (evt.appendOutput) e.output = (e.output || "") + evt.appendOutput;
+                            if (evt.exitCode != null) e.exitCode = evt.exitCode;
+                            if (e.status === "completed" || e.status === "failed") {
+                                e.elapsed = Date.now() - e.startedAt;
+                            }
+                            break;
+                        }
+                        case "permission":
+                            this._currentActivity = "awaiting permission";
+                            this.pendingPermission = evt;
+                            break;
+                        case "current_mode_update":
+                            this.session.mode = evt.currentModeId;
+                            this._addMarker("mode → " + evt.currentModeId);
+                            break;
+                        case "available_commands_update":
+                            this.commands = evt.commands;
+                            this._addMarker("commands updated (" + evt.commands.length + ")");
+                            break;
+                        case "usage_update":
+                            this.usage = {
+                                used:    (evt.inputTokens || 0) + (evt.outputTokens || 0),
+                                size:    this.usage.size || 200000,
+                                thought: evt.thoughtTokens || 0,
+                                cached:  evt.cachedTokens || 0,
+                                cost:    evt.cost || 0,
+                            };
+                            break;
+                        case "context_update":
+                            this.usage.size = evt.size;
+                            this.usage.used = evt.used;
+                            break;
+                        case "fs_read":
+                            this._addMarker("fs/read_text_file ← " + evt.path);
+                            break;
+                        case "fs_write":
+                            this._addMarker("fs/write_text_file ← " + evt.path);
+                            break;
+                        case "terminal_create":
+                            this._addMarker("terminal/create ← " + evt.terminalId + " · $ " + evt.command);
+                            break;
+                        case "prompt_response":
+                            this.done = true;
+                            this.lastStopReason = evt.stopReason;
+                            this._currentActivity = "done";
+                            clearInterval(this._latencyTimer);
+                            break;
+                    }
+                },
+
+                _newEntry(partial) {
+                    const id = this.entries.length + 1;
+                    const entry = Object.assign({
+                        id, content: [], streaming: false,
+                        locations: [], status: null,
+                    }, partial);
+                    this.entries.push(entry);
+                    return entry;
+                },
+                _addMarker(text) {
+                    this._newEntry({ role: "system", isMarker: true, markerText: text });
+                },
+                _appendOrCreate(role, blocks) {
+                    const last = this.entries[this.entries.length - 1];
+                    if (last && last.role === role && !last.kind && !last.isMarker) {
+                        last.content = (last.content || []).concat(blocks);
+                    } else {
+                        this._newEntry({ role, content: blocks });
+                    }
+                },
+                _streamText(role, text) {
+                    const last = this.entries[this.entries.length - 1];
+                    if (last && last.role === role && !last.kind && !last.isMarker) {
+                        const tail = last.content[last.content.length - 1];
+                        if (tail && tail.type === "text") tail.text += text;
+                        else last.content.push({ type: "text", text });
+                        last.streaming = true;
+                        return;
+                    }
+                    this._newEntry({
+                        role,
+                        content: [{ type: "text", text }],
+                        streaming: true,
+                        gap: role === "assistant",
+                    });
+                },
+                _streamAppend(role, block) {
+                    const last = this.entries[this.entries.length - 1];
+                    if (last && last.role === role && !last.kind && !last.isMarker) {
+                        last.content.push(block);
+                    } else {
+                        this._newEntry({ role, content: [block] });
+                    }
+                },
+                _scrollDown() {
+                    requestAnimationFrame(() => {
+                        const s = this.$refs.scroll;
+                        if (s) s.scrollTop = s.scrollHeight;
+                    });
+                },
+
+                resolvePermission(opt) {
+                    const p = this.pendingPermission;
+                    this.pendingPermission = null;
+                    this._addMarker("permission " + opt.kind + " · " + p.toolName + " on " + (p.target || "—"));
+                    if (opt.kind.startsWith("reject")) {
+                        const skipId = p.toolCallId;
+                        const toRemove = [];
+                        for (let i = this._cursor; i < EVENTS.length; i++) {
+                            const ev = EVENTS[i];
+                            if ((ev.kind === "tool_call" || ev.kind === "tool_call_update") && ev.toolCallId === skipId) {
+                                toRemove.push(i);
+                            } else if (ev.kind === "fs_write" || ev.kind === "fs_read") {
+                                toRemove.push(i);
+                                break;
+                            } else { break; }
+                        }
+                        toRemove.reverse().forEach(i => EVENTS.splice(i, 1));
+                        this.lastStopReason = "refusal";
+                    }
+                    this._tick();
+                },
+
+                // ── per-entry rendering ──
+                renderEntry(e) {
+                    if (e.kind === "tool") return this._renderTool(e);
+                    if (e.isMarker) {
+                        return `<span class="k">${esc(e.markerText)}</span>`;
+                    }
+                    return (e.content || []).map(b => this._renderBlock(b, e)).join("") +
+                           (e.streaming ? `<span class="caret"></span>` : "");
+                },
+
+                _renderTool(e) {
+                    const elapsed = e.elapsed ? `${e.elapsed}ms` : (e.status === "in_progress" ? "…" : "");
+                    let head = `
+                        <div class="tool-line">
+                          <span class="tool-kind" data-k="${esc(e.kindV)}">${KIND_GLYPH[e.kindV] || "*"}</span>
+                          <span class="tool-title">${esc(e.title)}</span>
+                          <span class="tool-target">${esc(e.target || "")}</span>
+                          <span class="tool-status-dot ${esc(e.status)}"></span>
+                          <span class="tool-elapsed">${elapsed}</span>
+                        </div>`;
+
+                    const kids = [];
+                    if (e.locations && e.locations.length && e.kindV !== "execute") {
+                        kids.push(`<div class="locs">${
+                            e.locations.map(l =>
+                                `<span class="loc">${esc(l.path)}${l.line ? `<span class="ln">:${l.line}</span>` : ""}</span>`
+                            ).join("")
+                        }</div>`);
+                    }
+                    if (e.content && e.content.length) {
+                        for (const b of e.content) {
+                            kids.push(this._renderBlock(b, e));
+                        }
+                    }
+                    if (e.terminalId) {
+                        kids.push(this._renderTerminal(e));
+                    }
+
+                    if (kids.length) head += `<div class="tool-children">${kids.join("")}</div>`;
+                    return head;
+                },
+
+                _renderBlock(b, entry) {
+                    if (!b) return "";
+                    switch (b.type) {
+                        case "text": {
+                            // Tool text content → mono code block; agent/user prose → prose paragraph
+                            if (entry && entry.kind === "tool") {
+                                return `<div class="out">${esc(b.text)}</div>`;
+                            }
+                            return `<p>${esc(b.text).replace(/\n/g, "<br>")}</p>`;
+                        }
+                        case "image":
+                            return `<span class="chip image">${esc(b._label || b.mimeType || "image")}</span>`;
+                        case "audio":
+                            return `<span class="chip audio">${esc(b._label || b.mimeType || "audio")}</span>`;
+                        case "resource_link":
+                            return `<a class="chip link" href="${esc(b.uri)}">${esc(b.name || b.uri)}${b.description ? " · " + esc(b.description) : ""}</a>`;
+                        case "resource": {
+                            const r = b.resource;
+                            const body = r.text
+                                ? `<div class="out">${esc(r.text)}</div>`
+                                : `<span class="chip link">${esc(r.uri)} (${esc(r.mimeType || "binary")})</span>`;
+                            return `<details class="resource" open><summary>${esc(r.uri)}</summary><div>${body}</div></details>`;
+                        }
+                        case "content":
+                            return this._renderBlock(b.content, entry);
+                        case "diff":
+                            return this._renderDiff(b);
+                        default:
+                            return "";
+                    }
+                },
+
+                _renderDiff(b) {
+                    const oldLines = (b.oldText || "").split("\n");
+                    const newLines = (b.newText || "").split("\n");
+                    let html = `<div class="diff">
+                        <div class="diff-head"><span>${esc(b.path)}</span><span>−${oldLines.length} / +${newLines.length}</span></div>`;
+                    for (const ln of oldLines) {
+                        html += `<div class="diff-line del"><span class="m">−</span><span>${esc(ln) || "&nbsp;"}</span></div>`;
+                    }
+                    for (const ln of newLines) {
+                        html += `<div class="diff-line add"><span class="m">+</span><span>${esc(ln) || "&nbsp;"}</span></div>`;
+                    }
+                    html += `</div>`;
+                    return html;
+                },
+
+                _renderTerminal(e) {
+                    const out = esc(e.output || "");
+                    const caret = e.status === "in_progress" ? `<span class="caret"></span>` : "";
+                    const exit = (e.exitCode != null)
+                        ? `<div class="term-exit ${e.exitCode === 0 ? "" : "fail"}">exit ${e.exitCode}</div>`
+                        : "";
+                    return `<div class="term">
+                        <div class="term-head">
+                          <span><span style="color: var(--muted);">$</span> <span class="cmd">${esc(e.command || "")}</span></span>
+                          <span>${esc(e.terminalId || "")}</span>
+                        </div>
+                        <div class="term-body">${out}${caret}</div>
+                        ${exit}
+                    </div>`;
+                },
+            }));
+        });
+
+        function esc(s) {
+            return String(s ?? "")
+                .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+    </script>
+</body>
+</html>
