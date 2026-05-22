@@ -555,10 +555,7 @@ Future<OAuthTokens> runOAuthAuthorizationCodeFlow({
         Uri.parse('http://127.0.0.1:${preboundServer.port}/callback');
     ownsServer = false;
   } else {
-    server = await HttpServer.bind(
-      InternetAddress.loopbackIPv4,
-      redirectPort,
-    );
+    server = await HttpServer.bind(InternetAddress.loopbackIPv4, redirectPort);
     redirectUri = Uri.parse('http://127.0.0.1:${server.port}/callback');
     ownsServer = true;
   }
