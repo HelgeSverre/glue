@@ -1,14 +1,15 @@
 # OpenTelemetry Semantic-Convention Compliance — Plan
 
 > Status: design. No code changes yet.
-> Targets: OTel GenAI semconv (agent spans + attribute registry) and OTel HTTP client semconv. Backward-compatible with the current OpenInference-flavored attributes Glue already emits.
+> Targets: OTel GenAI semconv (agent spans + attribute registry), OTel HTTP client semconv, and OTel MCP semconv. Backward-compatible with the current OpenInference-flavored attributes Glue already emits.
 
 ## Goal
 
-Make Glue's emitted spans conform to two upstream OpenTelemetry semantic conventions while keeping today's OpenInference attributes alongside them:
+Make Glue's emitted spans conform to three upstream OpenTelemetry semantic conventions while keeping today's OpenInference attributes alongside them:
 
 1. **GenAI agent spans + attribute registry** — `gen_ai.*` namespace, span names like `chat {model}`, `invoke_agent {name}`, `execute_tool {name}`, and the recommended attribute set (provider, model, conversation id, finish reasons, token usage, tool definitions).
 2. **HTTP client spans** — `http.request.method`, `url.full`, `server.address`, `server.port`, `http.response.status_code`, `error.type`, `http.request.resend_count`, header-per-attribute capture, and the `{METHOD} {target}` span-name format.
+3. **MCP client spans + metrics** — `mcp.method.name` (`tools/call`, `tools/list`, `initialize`, …), `mcp.session.id`, `mcp.protocol.version`, `jsonrpc.request.id`, `network.transport` (`pipe` for stdio, `tcp` for http/sse/ws), W3C trace-context propagation into `params._meta`, and crucially — the spec's "don't duplicate" rule: when an outer `execute_tool` span is already wrapping a `tools/call`, enrich it in place rather than starting a separate `mcp.client` span.
 
 Concretely, this plan delivers:
 
@@ -256,6 +257,18 @@ abstract final class SemConv {
   static const toolDescription = 'gen_ai.tool.description';
   static const toolCallArguments = 'gen_ai.tool.call.arguments';
   static const toolCallResult = 'gen_ai.tool.call.result';
+  static const promptName = 'gen_ai.prompt.name';
+
+  // --- MCP ---
+  static const mcpMethodName = 'mcp.method.name';
+  static const mcpSessionId = 'mcp.session.id';
+  static const mcpProtocolVersion = 'mcp.protocol.version';
+  static const mcpResourceUri = 'mcp.resource.uri';
+  static const jsonrpcProtocolVersion = 'jsonrpc.protocol.version';
+  static const jsonrpcRequestId = 'jsonrpc.request.id';
+  static const rpcResponseStatusCode = 'rpc.response.status_code';
+  static const networkProtocolName = 'network.protocol.name';
+  static const networkTransport = 'network.transport';
 
   // --- HTTP ---
   static const httpRequestMethod = 'http.request.method';
@@ -328,9 +341,114 @@ The TUI approval modal (`cli/lib/src/app.dart:1913`) is not a GenAI tool executi
 
 Background `&` shell jobs (`packages/glue_harness/lib/src/agent/shell_job_manager.dart:94`) are spawned by the `bash` tool but live on after the tool span ends — they have their own lifecycle. Keep `shell.job` as a Glue-specific INTERNAL span. Add `process.executable.name` (the leading word of the command, low-cardinality safe) and `process.pid` if `RunningCommandHandle` exposes it. Do not add `gen_ai.*` keys.
 
-### MCP tool calls → still `execute_tool`
+### MCP tool calls → enrich the `execute_tool` span (no duplicate)
 
-MCP tools route through the standard `Tool` interface (see `packages/glue_harness/lib/src/tools/mcp/`). They get the same `execute_tool {name}` span as built-in tools. Recommended extra attribute: `glue.tool.source = 'mcp'` and `glue.mcp.server = <server-id>` so dashboards can group them. Don't invent an `mcp.*` namespace — there is no upstream MCP semconv yet.
+There **is** an upstream MCP semconv (<https://opentelemetry.io/docs/specs/semconv/gen-ai/mcp/>), and the spec is explicit about not double-spanning:
+
+> "If the MCP instrumentation can reliably detect that outer GenAI instrumentation is already tracing the tool execution, it SHOULD NOT create a separate span. Instead, it SHOULD add MCP-specific attributes to the existing tool execution span."
+
+Glue is in exactly that position: every MCP `tools/call` is invoked from `McpTool.execute` (`packages/glue_strategies/lib/src/mcp_client/tool_factory.dart:57`), which is dispatched by `AgentCore.executeTool` (`packages/glue_harness/lib/src/agent/agent_core.dart:412`), which (post-Phase 4) owns the `execute_tool {name}` span. The MCP layer does not start its own span for tool calls — it adds attributes to the active span.
+
+Mechanism: `McpTool.execute` already populates `ToolResult.metadata` with `mcp.server_id`, `mcp.tool`, optional `mcp.error_code`, `mcp.failure_reason`. Phase 4's `AgentCore.executeTool` already stashes that metadata as a `tool.metadata` JSON attribute. Phase 9 (new) extends that: when `ToolResult.metadata` contains an `mcp.*` key, the canonical OTel MCP attributes are unpacked onto the span:
+
+| `ToolResult.metadata` key      | Span attribute added                   |
+|--------------------------------|----------------------------------------|
+| `mcp.server_id`                | `server.address` (the MCP server id)   |
+| `mcp.tool`                     | `gen_ai.tool.name` (already set)       |
+| (always for MCP)               | `mcp.method.name = 'tools/call'`       |
+| (always for MCP)               | `mcp.protocol.version` from `McpInitializeResult` |
+| (always for MCP)               | `mcp.session.id` from `McpClient` (new field — see below) |
+| (always for MCP)               | `jsonrpc.protocol.version = '2.0'`     |
+| transport-dependent            | `network.transport` (`pipe`/`tcp`)     |
+| `mcp.error_code`               | `error.type = '<code>'` and `rpc.response.status_code = '<code>'` |
+| `mcp.is_error = true`          | `error.type = 'tool_error'` (per spec for `CallToolResult.isError=true`) |
+| `mcp.failure_reason`           | `error.type` (transport-level failure, e.g. `'timeout'`) |
+| (always for MCP)               | `glue.tool.source = 'mcp'`             |
+
+This needs a tiny extension to `McpClient` and `McpTool` to surface what the span needs:
+
+1. `McpClient` exposes `String? get sessionId` (generated at `initialize()` time using `crypto.randomUUID`-style hex; persisted on the client instance).
+2. `McpClient` exposes `String? get protocolVersion` (set from the `initialize` response).
+3. `McpClient` exposes `String get networkTransport` derived from its transport instance: `StdioTransport → 'pipe'`, `WebsocketTransport → 'tcp'`, `HttpSseTransport → 'tcp'`.
+4. `McpTool.execute` includes those three values in `ToolResult.metadata` on every call.
+
+This keeps `glue_strategies` observability-free (no new dependency on the harness's `Observability` class) and avoids double-spanning entirely.
+
+### Non-tool MCP methods → their own `mcp.client` spans
+
+For `tools/list`, `initialize`, `ping`, `notifications/initialized`, and future `resources/*` / `prompts/*` methods, there is no outer GenAI span — these are pure MCP client operations. Glue should emit `mcp.client` spans for them. Since `McpClient._request` (`packages/glue_strategies/lib/src/mcp_client/client.dart:184`) is the single chokepoint for every JSON-RPC request, that's the right place to thread a callback.
+
+To avoid `glue_strategies` depending on `glue_harness/observability`, introduce a thin callback type in `glue_core`:
+
+```dart
+// packages/glue_core/lib/src/mcp_observer.dart (new)
+abstract class McpRequestObserver {
+  /// Called when an MCP request is about to be sent. Returns a token
+  /// that will be passed back to [onRequestComplete] / [onRequestError].
+  /// The implementation may start a span, record a timestamp, etc.
+  Object? onRequestStart({
+    required String method,
+    required int jsonRpcId,
+    required String? sessionId,
+    required String? protocolVersion,
+    required String networkTransport,
+    required String? serverAddress,
+  });
+
+  void onRequestComplete(Object? token, {required Object? result});
+
+  void onRequestError(
+    Object? token, {
+    required String errorType,
+    required String? message,
+    required int? code,
+  });
+}
+```
+
+`McpClient` accepts an optional `McpRequestObserver?` in its constructor. The harness implements it (`packages/glue_harness/lib/src/observability/mcp_observer_impl.dart` — new) and wires it into the MCP pool (`packages/glue_strategies/lib/src/mcp_client/pool.dart`). The harness implementation:
+
+- Starts a span named `{method} {target}` per the spec — `target` is `gen_ai.tool.name` for `tools/call`, `gen_ai.prompt.name` for `prompts/get`, otherwise omitted.
+- **For `tools/call` specifically**: detects `obs.activeSpan?.kind == 'executeTool'` and skips span creation (returns a sentinel token); on complete, enriches the active span with the MCP attributes instead. This is the "don't duplicate" implementation.
+- For everything else: starts a fresh `mcp.client` span with kind `CLIENT`, parented to `obs.activeSpan` if present.
+- Records `mcp.client.operation.duration` histogram if/when Glue adds metrics (out of scope for this plan — see Open Question #6).
+
+### MCP method name enum
+
+The spec's `mcp.method.name` enum is the full JSON-RPC method string. Glue's `McpMethod` constant block (`packages/glue_strategies/lib/src/mcp_client/protocol.dart:220-227`) currently covers `initialize`, `notifications/initialized`, `tools/list`, `tools/call`, `notifications/tools/list_changed`, `ping`. The spec enumerates 22 additional method names (`resources/*`, `prompts/*`, `sampling/*`, etc.) that Glue doesn't implement yet. The `mcp.method.name` attribute uses the raw method string, so no mapping table is needed — when Glue adds `resources/read`, the attribute value is just `"resources/read"`.
+
+### Transport mapping
+
+Per the spec's transport table:
+
+| Glue transport class                                              | `network.transport` | `network.protocol.name` | `network.protocol.version` |
+|-------------------------------------------------------------------|---------------------|-------------------------|----------------------------|
+| `StdioTransport` (`mcp_client/transport/stdio.dart`)              | `pipe`              | (none)                  | (none)                     |
+| `WebsocketTransport` (`mcp_client/transport/websocket.dart`)      | `tcp`               | `websocket`             | (none)                     |
+| `HttpSseTransport` (`mcp_client/transport/http_sse.dart`)         | `tcp`               | `http`                  | `1.1` (legacy SSE) or `2` (streamable HTTP — distinguished by `mcp.protocol.version >= 2025-06-18`) |
+
+Each transport class exposes a `String get networkTransport`, `String? get networkProtocolName`, `String? get networkProtocolVersion`. `McpClient` forwards them to the observer.
+
+### W3C trace-context propagation
+
+The spec recommends injecting `traceparent` / `tracestate` into `params._meta` so a remote MCP server can join the trace. This is a one-line addition in `McpClient._request`:
+
+```dart
+transport.send(JsonRpcRequest(
+  id: id,
+  method: method,
+  params: {
+    ...params,
+    if (observer != null) '_meta': {
+      'traceparent': observer.currentTraceparent(),
+      if (observer.currentTracestate() != null)
+        'tracestate': observer.currentTracestate(),
+    },
+  },
+));
+```
+
+The harness's `McpRequestObserver` implementation computes the W3C `traceparent` string from `obs.activeSpan` (format: `00-<traceId>-<spanId>-01`). For stdio transports, this still helps if the MCP server itself is instrumented (e.g. an instrumented Python MCP server).
 
 ### Tool result span vs tool call span
 
@@ -508,6 +626,60 @@ Tasks:
 4. **In `AgentCore.run`**, when `captureMessages=true`, attach `gen_ai.input.messages` (serialized conversation) and `gen_ai.system_instructions` (system prompt) at chat-span start; attach `gen_ai.output.messages` (single-element with assistant text + tool calls) at chat-span end. Commit.
 5. **Add `gen_ai.tool.definitions`** (also gated by `captureMessages`) on the chat span — serialize the `allowedTools` list, cap at 16 KB. Commit.
 
+### Phase 6.5 — MCP semconv (enrich `execute_tool` + new `mcp.client` spans for non-tool methods)
+
+Goal: every MCP JSON-RPC request carries `mcp.method.name`, `mcp.session.id`, `mcp.protocol.version`, `jsonrpc.request.id`, `network.transport` etc. `tools/call` enriches the existing `execute_tool` span (no duplicate). Other methods (`tools/list`, `initialize`, `ping`, future `resources/*` / `prompts/*`) get their own `mcp.client` CLIENT spans. W3C trace context is injected into `params._meta`.
+
+**Files:**
+- Create: `packages/glue_core/lib/src/mcp_observer.dart` (the `McpRequestObserver` abstract class)
+- Modify: `packages/glue_core/lib/glue_core.dart` (export `mcp_observer.dart`)
+- Modify: `packages/glue_strategies/lib/src/mcp_client/client.dart` (accept `McpRequestObserver?`, call its hooks in `_request`, expose `sessionId` / `protocolVersion`, inject `traceparent` into `params._meta`)
+- Modify: `packages/glue_strategies/lib/src/mcp_client/transport/stdio.dart` (expose `networkTransport='pipe'`)
+- Modify: `packages/glue_strategies/lib/src/mcp_client/transport/websocket.dart` (expose `networkTransport='tcp'`, `networkProtocolName='websocket'`)
+- Modify: `packages/glue_strategies/lib/src/mcp_client/transport/http_sse.dart` (expose `networkTransport='tcp'`, `networkProtocolName='http'`, version)
+- Modify: `packages/glue_strategies/lib/src/mcp_client/tool_factory.dart` (`McpTool.execute` includes `mcp.session_id`, `mcp.protocol_version`, `mcp.network_transport` in `ToolResult.metadata`)
+- Modify: `packages/glue_strategies/lib/src/mcp_client/pool.dart` (constructor accepts and forwards the observer)
+- Create: `packages/glue_harness/lib/src/observability/mcp_observer_impl.dart` (concrete `McpRequestObserver` that talks to `Observability`)
+- Modify: `packages/glue_harness/lib/src/agent/agent_core.dart` (in `executeTool` Phase 4 enrichment block, unpack the new `mcp.*` metadata onto the `execute_tool` span using `SemConv.mcp*`)
+- Modify: `packages/glue_harness/lib/src/core/service_locator.dart` (instantiate `McpObserverImpl` and pass it to the MCP pool)
+- Test: `packages/glue_strategies/test/mcp_client/client_observer_test.dart` (new)
+- Test: `packages/glue_harness/test/observability/mcp_observer_impl_test.dart` (new)
+- Test: `packages/glue_harness/test/agent/agent_core_mcp_otel_test.dart` (new — proves `tools/call` does NOT create a duplicate span)
+
+Tasks:
+
+1. **Failing test for `McpClient` observer dispatch.** Stub a transport, install an `McpRequestObserver` that records calls. Issue an `initialize()` request, assert `onRequestStart(method='initialize', jsonRpcId=1, sessionId=null, protocolVersion=null, networkTransport='pipe')` then `onRequestComplete(token, result=<map>)`. Run. Expected: FAIL.
+2. **Create `McpRequestObserver`** abstract class in `glue_core/lib/src/mcp_observer.dart` and export it. Commit.
+3. **Add optional `observer` parameter** to `McpClient` constructor; call its hooks at request start / complete / error in `_request`. Re-run test. Expected: PASS. Commit.
+4. **Failing test for session/protocol exposure.** Call `initialize()`; assert `client.sessionId != null` and `client.protocolVersion == '2025-06-18'` (or whatever the test fixture returns). Run. Expected: FAIL.
+5. **Implement `sessionId` and `protocolVersion` fields** on `McpClient`. `sessionId` is generated once (hex string) and cached; `protocolVersion` is set from `McpInitializeResult.protocolVersion`. Re-run test. Expected: PASS. Commit.
+6. **Failing test for transport network-attribute exposure.** Construct each transport and assert `networkTransport` and `networkProtocolName` match the mapping table. Run. Expected: FAIL.
+7. **Add `networkTransport` / `networkProtocolName` / `networkProtocolVersion` getters** to each transport class. Re-run test. Expected: PASS. Commit.
+8. **Failing test for trace-context injection.** Install an observer whose `currentTraceparent()` returns `'00-aabbcc..-112233..-01'`. Issue a `ping()`. Assert the transport saw the request with `params._meta.traceparent == '00-aabbcc..-112233..-01'`. Run. Expected: FAIL.
+9. **Inject `_meta` block** in `McpClient._request` when an observer is present. Re-run test. Expected: PASS. Commit.
+10. **Failing test for MCP `tools/call` enrichment without duplicate span.** Set up `Observability` + `AgentCore` with an `execute_tool` span already active. Run an `McpTool.execute()` through the pool. Assert exactly **one** span exists for the tool call, and it has `mcp.method.name='tools/call'`, `mcp.session.id=<id>`, `mcp.protocol.version=<v>`, `network.transport='pipe'`, `jsonrpc.protocol.version='2.0'`, `gen_ai.tool.name=<bare>`, `server.address=<server_id>`. Run. Expected: FAIL.
+11. **Implement `McpObserverImpl.onRequestStart`** with the "outer execute_tool detection":
+    ```dart
+    Object? onRequestStart({required String method, ...}) {
+      final active = _obs.activeSpan;
+      if (method == 'tools/call' && active?.kind == 'executeTool') {
+        // Enrich in place; no new span.
+        active!.attributes[SemConv.mcpMethodName] = method;
+        active.attributes[SemConv.mcpSessionId] = sessionId;
+        // ... rest of MCP attributes
+        return _EnrichedSentinel(active);
+      }
+      // Fresh mcp.client span.
+      return _obs.startSpan('$method ${_target(method)}', kind: 'mcpClient', attributes: {...});
+    }
+    ```
+    Re-run test. Expected: PASS. Commit.
+12. **Failing test for non-tool MCP method gets its own span.** With no `execute_tool` active, call `client.listTools()`. Assert a span exists named `tools/list` with kind `SPAN_KIND_CLIENT` and the full MCP attribute set. Run. Expected: FAIL.
+13. **Implement the fresh-span path** in `McpObserverImpl.onRequestStart` for non-tool methods and the no-outer-span case. Add `mcpClient` to the `semconvSpanKind` table (→ `SPAN_KIND_CLIENT`). Re-run test. Expected: PASS. Commit.
+14. **Failing test for error mapping.** Force a `McpCallFailure(reason: 'timeout', code: null)` on `tools/call`. Assert the active `execute_tool` span has `error.type='timeout'`. Force `McpCallFailure(code: -32602)`; assert `error.type='-32602'` and `rpc.response.status_code='-32602'`. Force `mcp.is_error=true` (a successful `tools/call` whose result has `isError=true`); assert `error.type='tool_error'`. Run. Expected: FAIL.
+15. **Implement the error-mapping branch** in `McpObserverImpl.onRequestError` and in the metadata-enrichment path. Re-run test. Expected: PASS. Commit.
+16. **Wire `McpObserverImpl` into the `ServiceLocator`** so the production MCP pool gets the observer. Commit.
+
 ### Phase 7 — Retry counter (smallest, most isolated)
 
 Goal: when LLM/search/browser clients retry, the canonical `http.request.resend_count` is on each retry's span.
@@ -597,6 +769,12 @@ Setting `service.namespace=glue` could collide with a user who's already setting
 - With `captureMessages=true`, every chat span carries `gen_ai.input.messages`, `gen_ai.output.messages`, `gen_ai.system_instructions`, `gen_ai.tool.definitions` (capped at 16 KB).
 - With `captureMessages=false` (default), none of those appear.
 
+### Phase 6.5 (MCP semconv)
+- Every MCP `tools/call` enriches the existing `execute_tool` span with `mcp.method.name`, `mcp.session.id`, `mcp.protocol.version`, `jsonrpc.protocol.version`, `network.transport`, `server.address`. No duplicate span is created.
+- Every non-`tools/call` MCP request (`tools/list`, `initialize`, `ping`, future `resources/*` / `prompts/*`) produces a discrete `{method} {target}` span with kind `SPAN_KIND_CLIENT`.
+- `params._meta.traceparent` is injected on every MCP request so remote (instrumented) MCP servers can join the trace.
+- Error mapping: transport timeout → `error.type='timeout'`; JSON-RPC error code → `error.type='<code>'` + `rpc.response.status_code='<code>'`; `CallToolResult.isError=true` → `error.type='tool_error'`.
+
 ### Phase 7 (retry counter)
 - Every retried HTTP request carries `http.request.resend_count`.
 
@@ -621,7 +799,8 @@ Setting `service.namespace=glue` could collide with a user who's already setting
 5. Phase 8 (doctor) — depends on Phases 1-3; small.
 6. Phase 4 (execute_tool spans) — biggest structural change, ship deliberately.
 7. Phase 5 (invoke_workflow) — depends on Phase 4.
-8. Phase 6 (opt-in messages) — final polish.
+8. Phase 6.5 (MCP semconv) — depends on Phase 4 (the `execute_tool` span has to exist for the "don't duplicate" enrichment to make sense).
+9. Phase 6 (opt-in messages) — final polish.
 
 Each phase produces a working, mergeable, individually-revertible change. No phase requires breaking the previous schema.
 
@@ -634,6 +813,9 @@ Each phase produces a working, mergeable, individually-revertible change. No pha
 3. **`gen_ai.usage.cache_creation.input_tokens` vs `gen_ai.usage.cache_creation_input_tokens`** — verify the exact spelling in the registry; the spec uses dot-separated namespacing but several backends accept either. Pin the spec-canonical form.
 4. **Ollama provider name** — not in the OTel well-known enum. Passthrough as `'ollama'` is documented as a Glue extension. If OTel adds it later (likely), we drop the passthrough.
 5. **Should `tool.approval` modal spans get `gen_ai.*` attributes?** Argument for: they're part of the GenAI workflow. Argument against: they're a Glue UX construct, not a GenAI operation. Recommend: no `gen_ai.*` keys; keep as Glue-specific INTERNAL span.
+6. **MCP metrics (`mcp.client.operation.duration`, `mcp.client.session.duration` histograms).** Out of scope for this plan because Glue's `Observability` layer is span-only — no metrics SDK, no histograms. Adding metric emission requires a separate plan that introduces an `ObservabilityMeter` alongside `ObservabilityHub`, with an OTLP metrics exporter. Defer until there's a concrete user asking for MCP latency dashboards.
+7. **Should the trace-context injection into `params._meta` be opt-out?** Some MCP servers may reject unknown `_meta` keys (the spec says they MUST ignore unknown keys, but real servers may be strict). Recommend: on by default; surface a `OTEL_GLUE_MCP_INJECT_TRACEPARENT=0` env var to disable if a specific server breaks.
+8. **MCP server-side spans (`span.mcp.server`).** Glue is purely an MCP *client* today. The `glue mcp serve` command (if/when it exists) would make Glue an MCP server; at that point, extract trace context from incoming `params._meta` and emit `SERVER`-kind spans per the spec. Not in this plan.
 
 ---
 
@@ -642,7 +824,7 @@ Each phase produces a working, mergeable, individually-revertible change. No pha
 This plan is grounded in:
 
 - The current observability code in `packages/glue_harness/lib/src/observability/` and `packages/glue_harness/lib/src/agent/agent_core.dart`.
-- The upstream OTel specs at <https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-agent-spans/>, <https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/>, and <https://opentelemetry.io/docs/specs/semconv/http/http-spans/>.
+- The upstream OTel specs at <https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-agent-spans/>, <https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/>, <https://opentelemetry.io/docs/specs/semconv/http/http-spans/>, and <https://opentelemetry.io/docs/specs/semconv/gen-ai/mcp/>.
 - The launcher registry in `~/code/observe-llm/src/registry/agents/` showing which sibling agents do (Gemini CLI) and don't (Claude Code, Codex, Goose) follow the GenAI semconv natively.
 - The market research in `~/code/research-llmobservability/reports/` confirming GenAI semconv adoption across Langfuse, Phoenix, OpenLIT, Laminar, SigNoz.
 
