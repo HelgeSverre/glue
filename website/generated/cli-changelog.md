@@ -6,6 +6,48 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Added
 
+- **MCP OAuth that actually works on real servers.** Glue now follows
+  the current MCP authorization spec end-to-end (RFC 9728 protected
+  resource metadata + RFC 8414 authorization server metadata + RFC 7591
+  DCR + PKCE), with the bits that make it usable in practice:
+  - **Auto-detect on 401.** A remote MCP server returning
+    `401 Unauthorized` with a `WWW-Authenticate: Bearer …` challenge
+    triggers OAuth automatically — you no longer need to set
+    `auth: {kind: oauth}` in `~/.glue/config.yaml` up front. The first
+    successful login writes that back for you.
+  - **Silent token refresh.** When the access token expires, Glue runs
+    the refresh-token grant transparently and retries the request. The
+    user only sees the OAuth flow when the refresh token itself has
+    expired or been revoked.
+  - **`McpAwaitingAuth` connection state.** Servers that fail with 401
+    are parked in a new dedicated state — distinct from `McpDead` —
+    that does **not** consume the reconnect budget or arm a retry
+    timer. Status bar reads `MCP:1🔑` when the only unhealthy servers
+    are waiting on auth, vs `MCP:1⚠` for mixed/dead.
+  - **Context-aware `/mcp` panel actions.** Selecting an HTTP/WS server
+    in the `/mcp` panel surfaces `Authenticate`, `Re-authenticate`, or
+    `Sign out` depending on credential state. stdio servers never get
+    auth actions.
+  - **Auto-reconnect after sign-in.** Once the loopback callback
+    captures the authorization code and tokens are stored, Glue
+    immediately reconnects the parked server without any extra command.
+  - **Cached discovery URLs.** After the first successful login the
+    server's `resource_metadata_url` and `authorization_server` are
+    written into `~/.glue/config.yaml` so subsequent sessions skip the
+    discovery probe.
+  - **Granular credential invalidation.** A new `invalidateMcpAuth`
+    helper drops just the part of the credential that failed (`tokens`,
+    `client`, or all), so a refresh-token failure doesn't force a
+    re-DCR.
+  - **`McpAuthFlowRunner`** shared across the CLI command, the slash
+    command, and the auto-triggered flow — one place that owns
+    discovery → DCR → loopback → token exchange → persist.
+  - **Bind-then-register order** so DCR registers the exact loopback
+    redirect URL with the bound port. Strict auth servers (SmartBear)
+    that require an exact `redirect_uri` match — RFC 8252 says they
+    shouldn't, many do — now work. With DCR available, Glue
+    re-registers on every login to keep the URI in sync; the cached
+    `client_id` path is reserved for pre-registered (no-DCR) servers.
 - **`AgentNotice` event** in `glue_core` — provider-neutral soft-
   degradation signal carrying a `message` + `kind` (`info` /
   `warning`). Rendered as a dim system line in the TUI, sent as a
