@@ -68,6 +68,71 @@ void main() {
     expect(prompt, contains('truncated'));
   });
 
+  test('walks up to .git root and loads ancestor AGENTS.md', () {
+    Directory('${tmpDir.path}/.git').createSync();
+    File('${tmpDir.path}/AGENTS.md').writeAsStringSync('root rules');
+    final pkg = Directory('${tmpDir.path}/packages/foo')
+      ..createSync(recursive: true);
+    File('${pkg.path}/AGENTS.md').writeAsStringSync('package rules');
+
+    final prompt = Prompts.build(cwd: pkg.path);
+
+    expect(prompt, contains('root rules'));
+    expect(prompt, contains('package rules'));
+    expect(prompt, contains('## Project Instructions (AGENTS.md)'));
+    expect(
+      prompt,
+      contains('## Project Instructions (packages/foo/AGENTS.md)'),
+    );
+    // Closer file wins by appearing later.
+    expect(
+      prompt.indexOf('root rules'),
+      lessThan(prompt.indexOf('package rules')),
+    );
+  });
+
+  test('stops at .git boundary — does not read outside the workspace', () {
+    final outside = Directory('${tmpDir.path}/outside')..createSync();
+    File('${outside.path}/AGENTS.md').writeAsStringSync('OUTSIDE');
+    final inside = Directory('${outside.path}/repo')..createSync();
+    Directory('${inside.path}/.git').createSync();
+    File('${inside.path}/AGENTS.md').writeAsStringSync('INSIDE');
+
+    final prompt = Prompts.build(cwd: inside.path);
+
+    expect(prompt, contains('INSIDE'));
+    expect(prompt, isNot(contains('OUTSIDE')));
+  });
+
+  test('stops at home directory boundary', () {
+    // Simulate cwd = $HOME/proj with no .git anywhere. Walk should not escape
+    // above the home boundary, but with no .git found, we collapse to cwd-only
+    // discovery, so an AGENTS.md above $HOME must not appear.
+    final home = Directory('${tmpDir.path}/home')..createSync();
+    File('${tmpDir.path}/AGENTS.md').writeAsStringSync('ABOVE HOME');
+    final proj = Directory('${home.path}/proj')..createSync();
+    File('${proj.path}/AGENTS.md').writeAsStringSync('IN PROJ');
+
+    final prompt = Prompts.build(cwd: proj.path, homeDir: home.path);
+
+    expect(prompt, contains('IN PROJ'));
+    expect(prompt, isNot(contains('ABOVE HOME')));
+  });
+
+  test('without .git anywhere, falls back to cwd-only discovery', () {
+    final parent = Directory('${tmpDir.path}/parent')..createSync();
+    File('${parent.path}/AGENTS.md').writeAsStringSync('PARENT');
+    final child = Directory('${parent.path}/child')..createSync();
+    File('${child.path}/AGENTS.md').writeAsStringSync('CHILD');
+
+    // Use homeDir to bound the walk so this test does not depend on the
+    // host filesystem layout above tmpDir.
+    final prompt = Prompts.build(cwd: child.path, homeDir: tmpDir.path);
+
+    expect(prompt, contains('CHILD'));
+    expect(prompt, isNot(contains('PARENT')));
+  });
+
   test('build renders available_skills XML when skills are provided', () {
     final prompt = Prompts.build(
       cwd: tmpDir.path,

@@ -1,6 +1,7 @@
 import 'dart:io';
-import 'package:path/path.dart' as p;
+
 import 'package:glue_harness/src/skills/skill_parser.dart';
+import 'package:path/path.dart' as p;
 
 String _escapeXml(String text) => text
     .replaceAll('&', '&amp;')
@@ -32,6 +33,7 @@ Guidelines:
   requested.
 ''';
 
+  // 50KB cap to prevent runaway context growth from large files
   static const _maxGuidanceBytes = 50 * 1024;
 
   static const _guidanceFiles = ['AGENTS.md', 'CLAUDE.md'];
@@ -40,20 +42,19 @@ Guidelines:
     String? cwd,
     String? projectContext,
     List<SkillMeta> skills = const [],
+    String? homeDir,
   }) {
     final buf = StringBuffer(system);
 
     if (cwd != null) {
-      for (final filename in _guidanceFiles) {
-        final file = File(p.join(cwd, filename));
-        if (file.existsSync()) {
-          var content = file.readAsStringSync();
-          if (content.length > _maxGuidanceBytes) {
-            content =
-                '${content.substring(0, _maxGuidanceBytes)}\n\n(truncated — file exceeded 50KB)';
-          }
-          buf.write('\n\n## Project Instructions ($filename)\n\n$content');
-        }
+      final guidance = _collectGuidance(
+        cwd,
+        homeDir: homeDir ?? _defaultHome(),
+      );
+      for (final entry in guidance) {
+        buf.write(
+          '\n\n## Project Instructions (${entry.label})\n\n${entry.content}',
+        );
       }
     }
 
@@ -87,4 +88,70 @@ Guidelines:
     }
     return buf.toString();
   }
+
+  static String? _defaultHome() {
+    final home =
+        Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+    if (home == null || home.isEmpty) return null;
+    return p.normalize(home);
+  }
+
+  /// Walks from [cwd] up to the workspace root and collects every `AGENTS.md`
+  /// and `CLAUDE.md` along the way. The workspace root is the first ancestor
+  /// containing `.git`; the walk also stops at [homeDir] to prevent personal
+  /// `~/AGENTS.md` files from leaking into project sessions. If no `.git` root
+  /// is reachable, only [cwd] itself is consulted (preserves prior behavior).
+  ///
+  /// Returns entries in **root → leaf** order so the closest file appears last
+  /// and wins on conflicts when the model resolves the prompt top-down.
+  static List<_GuidanceEntry> _collectGuidance(String cwd, {String? homeDir}) {
+    final start = p.normalize(p.absolute(cwd));
+    final normalizedHome = homeDir == null ? null : p.normalize(homeDir);
+
+    final dirs = <String>[start];
+    String? gitRoot;
+    var current = start;
+    if (Directory(p.join(current, '.git')).existsSync()) {
+      gitRoot = current;
+    }
+    while (gitRoot == null) {
+      if (normalizedHome != null && current == normalizedHome) break;
+      final parent = p.dirname(current);
+      if (parent == current) break;
+      current = parent;
+      dirs.add(current);
+      if (Directory(p.join(current, '.git')).existsSync()) {
+        gitRoot = current;
+        break;
+      }
+    }
+
+    // Without a git root, fall back to cwd-only discovery.
+    final walked = gitRoot == null ? [start] : dirs;
+    final workspaceRoot = walked.last;
+
+    final entries = <_GuidanceEntry>[];
+    for (final dir in walked.reversed) {
+      for (final filename in _guidanceFiles) {
+        final file = File(p.join(dir, filename));
+        if (!file.existsSync()) continue;
+        var content = file.readAsStringSync();
+        if (content.length > _maxGuidanceBytes) {
+          content =
+              '${content.substring(0, _maxGuidanceBytes)}\n\n(truncated — file exceeded 50KB)';
+        }
+        final rel = p.relative(p.join(dir, filename), from: workspaceRoot);
+        final label = rel == filename ? filename : rel;
+        entries.add(_GuidanceEntry(label: label, content: content));
+      }
+    }
+    return entries;
+  }
+}
+
+class _GuidanceEntry {
+  _GuidanceEntry({required this.label, required this.content});
+
+  final String label;
+  final String content;
 }

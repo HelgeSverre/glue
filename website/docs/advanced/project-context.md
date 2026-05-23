@@ -9,7 +9,27 @@ Glue automatically loads project-specific context files into the agent's system 
 | `AGENTS.md` | Agent behavior guidelines — code style, conventions, what to avoid | 50 KB    |
 | `CLAUDE.md` | Custom project context — architecture notes, important patterns    | 50 KB    |
 
-Both files are looked up in the current working directory. If found, their contents are appended to the system prompt. Files larger than 50 KB are truncated with a note.
+## Discovery
+
+Glue follows the [agents.md](https://agents.md) discovery model. Starting from the current working directory, Glue walks up parent directories until it reaches the workspace root (the first ancestor containing a `.git` directory). At every level, both `AGENTS.md` and `CLAUDE.md` are collected.
+
+- Files are injected into the prompt **root-first**, so the closest file appears last and effectively overrides ancestors on conflict.
+- The walk also stops at `$HOME` to prevent a personal `~/AGENTS.md` from leaking into project sessions.
+- If no `.git` ancestor is reachable, only the current working directory is consulted (no walk).
+- Each file is truncated to 50 KB with a note if it exceeds that limit.
+
+### Monorepo example
+
+```
+my-repo/
+├── .git/
+├── AGENTS.md              # repo-wide rules
+└── packages/
+    └── api/
+        └── AGENTS.md      # package-specific rules
+```
+
+Running `glue` inside `packages/api/` loads both files. The repo-level `AGENTS.md` is rendered first as `## Project Instructions (AGENTS.md)`, then the nested one as `## Project Instructions (packages/api/AGENTS.md)`.
 
 ## .glue/ Directory
 
