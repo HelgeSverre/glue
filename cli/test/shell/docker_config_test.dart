@@ -61,12 +61,12 @@ void main() {
     });
 
     test('toDockerArg produces -v flag value', () {
-      final m = MountEntry(hostPath: '/host/dir', mode: MountMode.ro);
+      const m = MountEntry(hostPath: '/host/dir', mode: MountMode.ro);
       expect(m.toDockerArg(), '/host/dir:/host/dir:ro');
     });
 
     test('toDockerArg with containerPath', () {
-      final m = MountEntry(
+      const m = MountEntry(
         hostPath: '/host/project',
         mode: MountMode.rw,
         containerPath: '/workspace',
@@ -88,22 +88,22 @@ void main() {
 
   group('MountEntry.dedup', () {
     test('later entries override earlier for same host+target+mode', () {
-      final a = MountEntry(hostPath: '/foo', mode: MountMode.ro);
-      final b = MountEntry(hostPath: '/foo', mode: MountMode.ro);
+      const a = MountEntry(hostPath: '/foo', mode: MountMode.ro);
+      const b = MountEntry(hostPath: '/foo', mode: MountMode.ro);
       final result = MountEntry.dedup([a, b]);
       expect(result, hasLength(1));
     });
 
     test('keeps entries with different modes', () {
-      final a = MountEntry(hostPath: '/foo', mode: MountMode.ro);
-      final b = MountEntry(hostPath: '/foo', mode: MountMode.rw);
+      const a = MountEntry(hostPath: '/foo', mode: MountMode.ro);
+      const b = MountEntry(hostPath: '/foo', mode: MountMode.rw);
       final result = MountEntry.dedup([a, b]);
       expect(result, hasLength(2));
     });
 
     test('keeps same host mounted to different container paths', () {
-      final a = MountEntry(hostPath: '/data', containerPath: '/mnt/a');
-      final b = MountEntry(hostPath: '/data', containerPath: '/mnt/b');
+      const a = MountEntry(hostPath: '/data', containerPath: '/mnt/a');
+      const b = MountEntry(hostPath: '/data', containerPath: '/mnt/b');
       final result = MountEntry.dedup([a, b]);
       expect(result, hasLength(2));
     });
@@ -124,7 +124,7 @@ void main() {
     });
 
     test('round-trips containerPath', () {
-      final original = MountEntry(
+      const original = MountEntry(
         hostPath: '/host',
         containerPath: '/container',
         mode: MountMode.rw,

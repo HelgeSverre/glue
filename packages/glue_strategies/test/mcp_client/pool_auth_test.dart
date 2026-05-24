@@ -48,8 +48,9 @@ void main() {
         final pool = McpClientPool(
           config: McpConfig(
             servers: [
-              McpHttpServerSpec(
+              McpUrlServerSpec(
                 id: 'foo',
+                isWebSocket: false,
                 url: Uri.parse('https://foo.example/mcp'),
                 auth: const McpNoAuth(),
               ),
@@ -95,8 +96,9 @@ void main() {
       final pool = McpClientPool(
         config: McpConfig(
           servers: [
-            McpHttpServerSpec(
+            McpUrlServerSpec(
               id: 'foo',
+              isWebSocket: false,
               url: Uri.parse('https://foo.example/mcp'),
               auth: const McpOAuthAuth(),
               authorizationServer: Uri.parse('https://auth.foo.example'),
@@ -171,8 +173,9 @@ void main() {
       final pool = McpClientPool(
         config: McpConfig(
           servers: [
-            McpHttpServerSpec(
+            McpUrlServerSpec(
               id: 'foo',
+              isWebSocket: false,
               url: Uri.parse('https://foo.example/mcp'),
               auth: const McpOAuthAuth(),
               authorizationServer: Uri.parse('https://auth.foo.example'),

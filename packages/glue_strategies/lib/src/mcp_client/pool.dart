@@ -129,20 +129,22 @@ Future<McpClient> defaultMcpClientFactory(
       );
       return McpClient(transport: transport);
     }(),
-    McpHttpServerSpec(:final url, :final auth) => () async {
-      final transport = McpHttpTransport(
-        endpoint: url,
-        bearerToken: resolveMcpBearerToken(auth, credentials, spec.id),
-      );
-      return McpClient(transport: transport);
-    }(),
-    McpWebSocketServerSpec(:final url, :final auth) => () async {
-      final transport = await connectMcpWebSocket(
-        url: url,
-        bearerToken: resolveMcpBearerToken(auth, credentials, spec.id),
-      );
-      return McpClient(transport: transport);
-    }(),
+    McpUrlServerSpec(:final url, :final auth, :final isWebSocket) =>
+      isWebSocket
+          ? () async {
+              final transport = await connectMcpWebSocket(
+                url: url,
+                bearerToken: resolveMcpBearerToken(auth, credentials, spec.id),
+              );
+              return McpClient(transport: transport);
+            }()
+          : () async {
+              final transport = McpHttpTransport(
+                endpoint: url,
+                bearerToken: resolveMcpBearerToken(auth, credentials, spec.id),
+              );
+              return McpClient(transport: transport);
+            }(),
   };
 }
 
@@ -471,9 +473,7 @@ class McpClientPool {
         serverId: s.id,
         reauthCommand: '/mcp auth login ${s.id}',
         resourceMetadataUrl: switch (spec) {
-          McpHttpServerSpec(:final resourceMetadataUrl) => resourceMetadataUrl,
-          McpWebSocketServerSpec(:final resourceMetadataUrl) =>
-            resourceMetadataUrl,
+          McpUrlServerSpec(:final resourceMetadataUrl) => resourceMetadataUrl,
           _ => null,
         },
         wwwAuthenticate: failure.wwwAuthenticate,
@@ -554,20 +554,25 @@ class McpClientPool {
       enabled: false,
       callTimeoutSeconds: spec.callTimeoutSeconds,
     ),
-    McpHttpServerSpec() => McpHttpServerSpec(
-      id: spec.id,
-      url: spec.url,
-      auth: spec.auth,
-      enabled: false,
-      callTimeoutSeconds: spec.callTimeoutSeconds,
-    ),
-    McpWebSocketServerSpec() => McpWebSocketServerSpec(
-      id: spec.id,
-      url: spec.url,
-      auth: spec.auth,
-      enabled: false,
-      callTimeoutSeconds: spec.callTimeoutSeconds,
-    ),
+    McpUrlServerSpec(
+      :final id,
+      :final url,
+      :final auth,
+      :final isWebSocket,
+      :final resourceMetadataUrl,
+      :final authorizationServer,
+      :final callTimeoutSeconds,
+    ) =>
+      McpUrlServerSpec(
+        id: id,
+        url: url,
+        auth: auth,
+        isWebSocket: isWebSocket,
+        resourceMetadataUrl: resourceMetadataUrl,
+        authorizationServer: authorizationServer,
+        enabled: false,
+        callTimeoutSeconds: callTimeoutSeconds,
+      ),
   };
 
   McpServerSpec _enable(McpServerSpec spec) => switch (spec) {
@@ -580,19 +585,24 @@ class McpClientPool {
       enabled: true,
       callTimeoutSeconds: spec.callTimeoutSeconds,
     ),
-    McpHttpServerSpec() => McpHttpServerSpec(
-      id: spec.id,
-      url: spec.url,
-      auth: spec.auth,
-      enabled: true,
-      callTimeoutSeconds: spec.callTimeoutSeconds,
-    ),
-    McpWebSocketServerSpec() => McpWebSocketServerSpec(
-      id: spec.id,
-      url: spec.url,
-      auth: spec.auth,
-      enabled: true,
-      callTimeoutSeconds: spec.callTimeoutSeconds,
-    ),
+    McpUrlServerSpec(
+      :final id,
+      :final url,
+      :final auth,
+      :final isWebSocket,
+      :final resourceMetadataUrl,
+      :final authorizationServer,
+      :final callTimeoutSeconds,
+    ) =>
+      McpUrlServerSpec(
+        id: id,
+        url: url,
+        auth: auth,
+        isWebSocket: isWebSocket,
+        resourceMetadataUrl: resourceMetadataUrl,
+        authorizationServer: authorizationServer,
+        enabled: true,
+        callTimeoutSeconds: callTimeoutSeconds,
+      ),
   };
 }

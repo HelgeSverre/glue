@@ -1,7 +1,11 @@
+import 'package:dart_mappable/dart_mappable.dart';
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_strategies/src/web/browser/browser_config.dart';
 
-class WebFetchConfig {
+part 'web_config.mapper.dart';
+
+@MappableClass()
+class WebFetchConfig with WebFetchConfigMappable {
   final int timeoutSeconds;
   final int maxBytes;
   final int defaultMaxTokens;
@@ -23,9 +27,11 @@ class WebFetchConfig {
 ///
 /// Uses `Type` suffix to avoid colliding with the runtime
 /// `WebSearchProvider` interface.
+@MappableEnum(mode: ValuesMode.named)
 enum WebSearchProviderType { brave, tavily, firecrawl, duckduckgo }
 
-class WebSearchConfig {
+@MappableClass()
+class WebSearchConfig with WebSearchConfigMappable {
   final WebSearchProviderType? provider;
   final int timeoutSeconds;
   final int defaultMaxResults;
@@ -62,10 +68,12 @@ class WebSearchConfig {
 }
 
 /// Supported OCR providers for scanned PDF fallback.
+@MappableEnum(mode: ValuesMode.named)
 enum OcrProviderType { mistral, openai }
 
 /// Configuration for PDF text extraction.
-class PdfConfig {
+@MappableClass()
+class PdfConfig with PdfConfigMappable {
   final int maxBytes;
   final int timeoutSeconds;
   final bool enableOcrFallback;
@@ -95,7 +103,8 @@ class PdfConfig {
   }
 }
 
-class WebConfig {
+@MappableClass()
+class WebConfig with WebConfigMappable {
   final WebFetchConfig fetch;
   final WebSearchConfig search;
   final PdfConfig pdf;

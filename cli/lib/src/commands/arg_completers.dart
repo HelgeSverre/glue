@@ -196,6 +196,6 @@ List<SlashArgCandidate> mcpServerIdCandidates(
 
 String _mcpKindLabel(McpServerSpec spec) => switch (spec) {
   McpStdioServerSpec() => 'stdio',
-  McpHttpServerSpec() => 'http+sse',
-  McpWebSocketServerSpec() => 'websocket',
+  McpUrlServerSpec(:final isWebSocket) =>
+    isWebSocket ? 'websocket' : 'http+sse',
 };

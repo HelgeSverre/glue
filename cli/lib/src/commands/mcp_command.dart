@@ -175,8 +175,8 @@ class McpAddCommand extends Command<int> {
 
     final shape = switch (spec) {
       McpStdioServerSpec() => 'stdio',
-      McpHttpServerSpec() => 'http',
-      McpWebSocketServerSpec() => 'websocket',
+      McpUrlServerSpec(:final isWebSocket) =>
+        isWebSocket ? 'websocket' : 'http',
     };
     final ansi = stdoutSupportsAnsi();
     final boldId = styledOrPlain('"$id"', (s) => s.bold, ansiEnabled: ansi);
@@ -186,7 +186,7 @@ class McpAddCommand extends Command<int> {
         ? '(disabled — enable with "glue mcp enable $id")'
         : 'Run "glue" to load it.';
     stdout.writeln(styledOrPlain(hint, (s) => s.gray, ansiEnabled: ansi));
-    if (spec is McpHttpServerSpec && spec.auth is McpBearerAuth) {
+    if (spec is McpUrlServerSpec && spec.auth is McpBearerAuth) {
       stdout.writeln(
         styledOrPlain(
           'Auth set to bearer. Store the token with '
@@ -195,7 +195,7 @@ class McpAddCommand extends Command<int> {
           ansiEnabled: ansi,
         ),
       );
-    } else if (spec is McpHttpServerSpec && spec.auth is McpOAuthAuth) {
+    } else if (spec is McpUrlServerSpec && spec.auth is McpOAuthAuth) {
       stdout.writeln(
         styledOrPlain(
           'Auth set to OAuth. Sign in with "glue mcp auth login $id".',
@@ -291,18 +291,10 @@ class McpAddCommand extends Command<int> {
           'oauth' => const McpOAuthAuth(),
           _ => const McpNoAuth(),
         };
-        if (isWs) {
-          return McpWebSocketServerSpec(
-            id: id,
-            url: url,
-            auth: auth,
-            enabled: enabled,
-            callTimeoutSeconds: timeout,
-          );
-        }
-        return McpHttpServerSpec(
+        return McpUrlServerSpec(
           id: id,
           url: url,
+          isWebSocket: isWs,
           auth: auth,
           enabled: enabled,
           callTimeoutSeconds: timeout,
@@ -544,8 +536,8 @@ class McpListCommand extends Command<int> {
             id: spec.id,
             kind: switch (spec) {
               McpStdioServerSpec() => 'stdio',
-              McpHttpServerSpec() => 'http+sse',
-              McpWebSocketServerSpec() => 'websocket',
+              McpUrlServerSpec(:final isWebSocket) =>
+                isWebSocket ? 'websocket' : 'http+sse',
             },
             enabled: spec.enabled,
           ),
@@ -597,11 +589,7 @@ class McpAuthStatusCommand extends Command<int> {
       );
       final hasBearer = fields.containsKey(McpCredentialKeys.bearer);
       final hasOAuth = fields.containsKey(McpOAuthFields.accessToken);
-      final authKind = spec is McpHttpServerSpec
-          ? spec.auth
-          : spec is McpWebSocketServerSpec
-          ? spec.auth
-          : const McpNoAuth();
+      final authKind = spec is McpUrlServerSpec ? spec.auth : const McpNoAuth();
       final (kind, state) = switch (authKind) {
         McpBearerAuth() => (
           'bearer',
@@ -714,18 +702,14 @@ class McpAuthLoginCommand extends Command<int> {
       (s) => s.id == serverId,
       orElse: () => throw StateError(''),
     );
-    if (spec is! McpHttpServerSpec && spec is! McpWebSocketServerSpec) {
+    if (spec is! McpUrlServerSpec) {
       stderr.writeln(
         'OAuth is only supported for HTTP/WS servers. "$serverId" is stdio.',
       );
       return 1;
     }
-    final baseUrl = spec is McpHttpServerSpec
-        ? spec.url
-        : (spec as McpWebSocketServerSpec).url;
-    final cachedMeta = spec is McpHttpServerSpec
-        ? spec.resourceMetadataUrl
-        : (spec as McpWebSocketServerSpec).resourceMetadataUrl;
+    final baseUrl = spec.url;
+    final cachedMeta = spec.resourceMetadataUrl;
 
     final runner = McpAuthFlowRunner(
       serverId: serverId,

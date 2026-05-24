@@ -143,9 +143,7 @@ class OllamaDiscovery {
     }
   }
 
-  Uri _pullUri() => baseUrl.replace(
-    path: '${_stripV1(baseUrl.path)}api/pull',
-  );
+  Uri _pullUri() => baseUrl.replace(path: '${_stripV1(baseUrl.path)}api/pull');
 
   /// For tests: wipe all cached entries regardless of base URL.
   static void resetCacheForTesting() => _cache.clear();
@@ -180,9 +178,7 @@ class OllamaDiscovery {
     }
   }
 
-  Uri _tagsUri() => baseUrl.replace(
-    path: '${_stripV1(baseUrl.path)}api/tags',
-  );
+  Uri _tagsUri() => baseUrl.replace(path: '${_stripV1(baseUrl.path)}api/tags');
 
   String _cacheKey() => baseUrl.toString();
 
@@ -215,8 +211,8 @@ String _stripV1(String path) {
   final stripped = path.endsWith('/v1')
       ? path.substring(0, path.length - 3)
       : path.endsWith('/v1/')
-          ? path.substring(0, path.length - 4)
-          : path;
+      ? path.substring(0, path.length - 4)
+      : path;
   return stripped.endsWith('/') ? stripped : '$stripped/';
 }
 

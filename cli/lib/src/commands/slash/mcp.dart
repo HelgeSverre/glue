@@ -169,11 +169,7 @@ class McpSlashCommand extends SlashCommand {
   String _credentialTag(McpServerSpec spec, Map<String, String> fields) {
     final hasBearer = fields.containsKey('bearer');
     final hasOAuth = fields.containsKey(McpOAuthFields.accessToken);
-    final authKind = spec is McpHttpServerSpec
-        ? spec.auth
-        : spec is McpWebSocketServerSpec
-        ? spec.auth
-        : const McpNoAuth();
+    final authKind = spec is McpUrlServerSpec ? spec.auth : const McpNoAuth();
     return switch (authKind) {
       McpBearerAuth() => hasBearer ? 'bearer (stored)' : 'bearer (missing)',
       McpOAuthAuth() =>
@@ -190,12 +186,10 @@ class McpSlashCommand extends SlashCommand {
       return 'Server "$serverId" is not in your config.';
     }
     final spec = snapshot.spec;
-    if (spec is! McpHttpServerSpec && spec is! McpWebSocketServerSpec) {
+    if (spec is! McpUrlServerSpec) {
       return 'OAuth is only supported for HTTP/WS servers. "$serverId" is stdio.';
     }
-    final baseUrl = spec is McpHttpServerSpec
-        ? spec.url
-        : (spec as McpWebSocketServerSpec).url;
+    final baseUrl = spec.url;
 
     final config = ctx.config;
     if (config == null) return 'Config not loaded.';
@@ -213,8 +207,7 @@ class McpSlashCommand extends SlashCommand {
     final snapshot = ctx.mcpPool.server(serverId);
     final spec = snapshot?.spec;
     final cachedMeta = switch (spec) {
-      McpHttpServerSpec(:final resourceMetadataUrl) => resourceMetadataUrl,
-      McpWebSocketServerSpec(:final resourceMetadataUrl) => resourceMetadataUrl,
+      McpUrlServerSpec(:final resourceMetadataUrl) => resourceMetadataUrl,
       _ => null,
     };
 
@@ -458,8 +451,7 @@ class McpSlashCommand extends SlashCommand {
   }
 
   List<_McpAction> _actionsFor(McpServerSnapshot s) {
-    final isRemote =
-        s.spec is McpHttpServerSpec || s.spec is McpWebSocketServerSpec;
+    final isRemote = s.spec is McpUrlServerSpec;
     final hasAccessToken =
         isRemote &&
         ctx.config != null &&
@@ -508,8 +500,8 @@ class McpSlashCommand extends SlashCommand {
 
   String _kindLabel(McpServerSpec spec) => switch (spec) {
     McpStdioServerSpec() => 'stdio',
-    McpHttpServerSpec() => 'http+sse',
-    McpWebSocketServerSpec() => 'websocket',
+    McpUrlServerSpec(:final isWebSocket) =>
+      isWebSocket ? 'websocket' : 'http+sse',
   };
 
   String _stateLabel(McpConnectionState state) => switch (state) {
@@ -523,7 +515,7 @@ class McpSlashCommand extends SlashCommand {
 
   String _authTag(McpServerSnapshot s) {
     final spec = s.spec;
-    if (spec is! McpHttpServerSpec && spec is! McpWebSocketServerSpec) {
+    if (spec is! McpUrlServerSpec) {
       return '';
     }
     final hasToken =
@@ -532,9 +524,7 @@ class McpSlashCommand extends SlashCommand {
           McpOAuthFields.accessToken,
         ) !=
         null;
-    final authKind = spec is McpHttpServerSpec
-        ? spec.auth
-        : (spec as McpWebSocketServerSpec).auth;
+    final authKind = spec.auth;
     return switch (authKind) {
       McpOAuthAuth() when hasToken => '  · oauth (signed in)',
       McpOAuthAuth() => '  · oauth (not signed in)',
@@ -544,8 +534,7 @@ class McpSlashCommand extends SlashCommand {
 
   String _detailFor(McpServerSpec spec) => switch (spec) {
     McpStdioServerSpec(:final command) => command,
-    McpHttpServerSpec(:final url) => url.toString(),
-    McpWebSocketServerSpec(:final url) => url.toString(),
+    McpUrlServerSpec(:final url) => url.toString(),
   };
 }
 
@@ -562,7 +551,7 @@ List<String> resolveMcpAuthActions({
   required McpConnectionState state,
   required bool hasAccessToken,
 }) {
-  final isRemote = spec is McpHttpServerSpec || spec is McpWebSocketServerSpec;
+  final isRemote = spec is McpUrlServerSpec;
   if (!isRemote) return const [];
   if (state is McpAwaitingAuth || !hasAccessToken) {
     return const ['Authenticate'];

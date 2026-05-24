@@ -7,6 +7,22 @@ default:
 deps:
     dart pub get
 
+# Regenerate committed dart_mappable outputs (.mapper.dart)
+gen: deps
+    dart run build_runner build
+
+# Check that committed dart_mappable outputs are up to date.
+gen-check: deps
+    #!/usr/bin/env bash
+    set -euo pipefail
+    dart run build_runner build >/dev/null
+    status="$(git status --short --untracked-files=all -- lib | grep '\.mapper\.dart$' || true)"
+    if [ -n "$status" ]; then
+      echo 'ERROR: .mapper.dart files are out of date — run `just gen` and commit the results.'
+      echo "$status"
+      exit 1
+    fi
+
 # Static analysis
 analyze: deps
     dart analyze --fatal-infos
@@ -20,8 +36,8 @@ format:
 test *args:
     @if [ -d test ]; then dart test {{args}}; else echo "glue_strategies: no test/ directory, skipping."; fi
 
-# Quality gate: analyze + test
-check: deps analyze test
+# Quality gate: gen-check + analyze + test
+check: gen-check analyze test
 
 # Cleanup
 clean:

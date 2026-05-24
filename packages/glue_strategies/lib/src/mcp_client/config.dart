@@ -6,10 +6,19 @@
 /// import from harness.
 ///
 /// See `docs/plans/2026-04-29-mcp-client.md` for the wire-config shape.
+@MappableLib()
 library;
 
+import 'package:dart_mappable/dart_mappable.dart';
+import 'package:glue_strategies/src/custom_mappers.dart';
+
+part 'config.mapper.dart';
+
+// ─── Server spec ─────────────────────────────────────────────────────────────
+
 /// Where the server lives and how to talk to it.
-sealed class McpServerSpec {
+@MappableClass(discriminatorKey: 'type')
+sealed class McpServerSpec with McpServerSpecMappable {
   const McpServerSpec({
     required this.id,
     this.enabled = true,
@@ -27,7 +36,8 @@ sealed class McpServerSpec {
   final int? callTimeoutSeconds;
 }
 
-class McpStdioServerSpec extends McpServerSpec {
+@MappableClass(discriminatorValue: 'stdio')
+class McpStdioServerSpec extends McpServerSpec with McpStdioServerSpecMappable {
   const McpStdioServerSpec({
     required super.id,
     required this.command,
@@ -48,10 +58,12 @@ class McpStdioServerSpec extends McpServerSpec {
   final String? workingDirectory;
 }
 
-class McpHttpServerSpec extends McpServerSpec {
-  const McpHttpServerSpec({
+@MappableClass(discriminatorValue: 'url', includeCustomMappers: [UriMapper()])
+class McpUrlServerSpec extends McpServerSpec with McpUrlServerSpecMappable {
+  const McpUrlServerSpec({
     required super.id,
     required this.url,
+    required this.isWebSocket,
     this.auth = const McpNoAuth(),
     this.resourceMetadataUrl,
     this.authorizationServer,
@@ -60,29 +72,7 @@ class McpHttpServerSpec extends McpServerSpec {
   });
 
   final Uri url;
-  final McpAuthSpec auth;
-
-  /// Cached RFC 9728 resource-metadata URL discovered on a prior
-  /// session. Skips one HTTP round-trip at startup. Self-healing —
-  /// stale value just falls back to fresh discovery.
-  final Uri? resourceMetadataUrl;
-
-  /// Cached authorization server URL discovered on a prior session.
-  final Uri? authorizationServer;
-}
-
-class McpWebSocketServerSpec extends McpServerSpec {
-  const McpWebSocketServerSpec({
-    required super.id,
-    required this.url,
-    this.auth = const McpNoAuth(),
-    this.resourceMetadataUrl,
-    this.authorizationServer,
-    super.enabled,
-    super.callTimeoutSeconds,
-  });
-
-  final Uri url;
+  final bool isWebSocket;
   final McpAuthSpec auth;
 
   /// Cached RFC 9728 resource-metadata URL discovered on a prior
@@ -96,32 +86,37 @@ class McpWebSocketServerSpec extends McpServerSpec {
 
 // ─── Auth ──────────────────────────────────────────────────────────────────
 
-sealed class McpAuthSpec {
+@MappableClass(discriminatorKey: 'kind')
+sealed class McpAuthSpec with McpAuthSpecMappable {
   const McpAuthSpec();
 }
 
 /// No auth header. Stdio servers default to this; HTTP servers can opt in.
-class McpNoAuth extends McpAuthSpec {
+@MappableClass(discriminatorValue: 'none')
+class McpNoAuth extends McpAuthSpec with McpNoAuthMappable {
   const McpNoAuth();
 }
 
 /// Bearer token. [token] is `null` when the value comes from the
 /// credential store at session start (`mcp:<id>:bearer`). When non-null
 /// it's the literal token (post env-var expansion).
-class McpBearerAuth extends McpAuthSpec {
+@MappableClass(discriminatorValue: 'bearer')
+class McpBearerAuth extends McpAuthSpec with McpBearerAuthMappable {
   const McpBearerAuth({this.token});
   final String? token;
 }
 
 /// OAuth 2.1 with PKCE + DCR. Credentials live in the credential store
 /// under `mcp:<id>:oauth.*` — config carries no secrets.
-class McpOAuthAuth extends McpAuthSpec {
+@MappableClass(discriminatorValue: 'oauth')
+class McpOAuthAuth extends McpAuthSpec with McpOAuthAuthMappable {
   const McpOAuthAuth();
 }
 
 // ─── Tool policy ───────────────────────────────────────────────────────────
 
-class McpToolPolicy {
+@MappableClass()
+class McpToolPolicy with McpToolPolicyMappable {
   const McpToolPolicy({this.autoApprove = const [], this.deny = const []});
 
   /// Namespaced names or glob patterns (`*.read_file`).
@@ -141,7 +136,8 @@ class McpToolPolicy {
 
 // ─── Reconnect policy ──────────────────────────────────────────────────────
 
-class McpReconnectPolicy {
+@MappableClass()
+class McpReconnectPolicy with McpReconnectPolicyMappable {
   const McpReconnectPolicy({
     this.enabled = true,
     this.initialDelayMs = 500,
@@ -157,7 +153,8 @@ class McpReconnectPolicy {
 
 // ─── Top-level config ──────────────────────────────────────────────────────
 
-class McpConfig {
+@MappableClass()
+class McpConfig with McpConfigMappable {
   const McpConfig({
     this.servers = const [],
     this.toolPolicy = const McpToolPolicy(),
@@ -182,6 +179,7 @@ class McpConfig {
   bool get hasAnyServer => servers.isNotEmpty;
 }
 
+@MappableEnum(mode: ValuesMode.named)
 enum McpSubprocessEnvMode { allowlist, full }
 
 // ─── glob matcher ──────────────────────────────────────────────────────────

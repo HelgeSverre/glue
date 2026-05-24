@@ -7,8 +7,28 @@ default:
 deps:
     dart pub get
 
+# Regenerate the local build metadata file required from a clean checkout.
+local-gen: deps
+    cd ../../cli && dart tool/gen_build_info.dart
+
+# Regenerate committed dart_mappable outputs (.mapper.dart)
+gen: local-gen
+    dart run build_runner build
+
+# Check that committed dart_mappable outputs are up to date.
+gen-check: local-gen
+    #!/usr/bin/env bash
+    set -euo pipefail
+    dart run build_runner build >/dev/null
+    status="$(git status --short --untracked-files=all -- lib | grep '\.mapper\.dart$' || true)"
+    if [ -n "$status" ]; then
+      echo 'ERROR: .mapper.dart files are out of date — run `just gen` and commit the results.'
+      echo "$status"
+      exit 1
+    fi
+
 # Static analysis
-analyze: deps
+analyze: local-gen
     dart analyze --fatal-infos
 
 # Format all Dart files
@@ -16,11 +36,11 @@ format:
     dart format .
 
 # Run unit tests
-test *args:
+test *args: local-gen
     dart test {{args}}
 
-# Quality gate: analyze + test
-check: deps analyze test
+# Quality gate: gen-check + analyze + test
+check: gen-check analyze test
 
 # Cleanup generated artefacts
 clean:

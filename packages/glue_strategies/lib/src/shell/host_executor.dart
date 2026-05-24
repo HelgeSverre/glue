@@ -68,7 +68,11 @@ class HostExecutor implements CommandExecutor {
     );
   }
 
-  Future<Process> _startProcess(String exe, List<String> rest, String commandId) async {
+  Future<Process> _startProcess(
+    String exe,
+    List<String> rest,
+    String commandId,
+  ) async {
     try {
       return await Process.start(exe, rest);
     } catch (e) {

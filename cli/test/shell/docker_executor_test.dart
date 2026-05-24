@@ -10,8 +10,8 @@ void main() {
         config: const DockerConfig(image: 'alpine:latest', shell: 'sh'),
         cwd: '/home/user/project',
         mounts: [
-          MountEntry(hostPath: '/home/user/libs', mode: MountMode.rw),
-          MountEntry(hostPath: '/home/user/data', mode: MountMode.ro),
+          const MountEntry(hostPath: '/home/user/libs', mode: MountMode.rw),
+          const MountEntry(hostPath: '/home/user/data', mode: MountMode.ro),
         ],
       );
 
@@ -62,8 +62,8 @@ void main() {
         config: const DockerConfig(image: 'alpine:latest', shell: 'sh'),
         cwd: '/project',
         mounts: [
-          MountEntry(hostPath: '/shared', mode: MountMode.rw),
-          MountEntry(hostPath: '/shared', mode: MountMode.rw),
+          const MountEntry(hostPath: '/shared', mode: MountMode.rw),
+          const MountEntry(hostPath: '/shared', mode: MountMode.rw),
         ],
       );
 

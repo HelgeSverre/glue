@@ -33,23 +33,26 @@ e2e:
 integration *args:
     dart test --run-skipped -t integration {{args}}
 
+# Generate the local build metadata file needed from a clean checkout.
+local-gen: deps
+    dart run tool/gen_build_info.dart
+
 # Static analysis
-analyze: deps
+analyze: local-gen
     dart analyze --fatal-infos
 
 # Format all Dart files
 format:
     dart format .
 
-# Regenerate bundled catalog + version constant from their source files
-gen: deps
+# Regenerate committed source snapshots from their source files.
+gen: local-gen
     dart run tool/gen_models.dart
     dart run tool/gen_version.dart
-    dart run tool/gen_build_info.dart
     dart run tool/gen_share_assets.dart
 
-# Fail if any generated file is out of date
-gen-check:
+# Fail if any committed generated file is out of date.
+gen-check: local-gen
     dart run tool/gen_models.dart --check
     dart run tool/gen_version.dart --check
     dart run tool/gen_share_assets.dart --check

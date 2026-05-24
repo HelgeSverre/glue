@@ -84,8 +84,9 @@ mcp:
       File(configPath).writeAsStringSync(original);
 
       McpConfigWriter(configPath).addServer(
-        McpHttpServerSpec(
+        McpUrlServerSpec(
           id: 'github',
+          isWebSocket: false,
           url: Uri.parse('https://example.com/mcp'),
           auth: const McpBearerAuth(),
         ),
@@ -165,8 +166,9 @@ mcp:
       final configPath = '${dir.path}/config.yaml';
 
       McpConfigWriter(configPath).addServer(
-        McpHttpServerSpec(
+        McpUrlServerSpec(
           id: 'api',
+          isWebSocket: false,
           url: Uri.parse('https://api.example.com/mcp'),
           auth: const McpBearerAuth(),
         ),

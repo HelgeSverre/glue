@@ -375,5 +375,59 @@ void main() {
 
       await pool.close();
     });
+
+    test(
+      'toggle preserves cached OAuth discovery metadata for remote servers',
+      () async {
+        final spec = McpUrlServerSpec(
+          id: 'remote',
+          url: Uri.parse('https://remote.example/mcp'),
+          isWebSocket: false,
+          auth: const McpOAuthAuth(),
+          resourceMetadataUrl: Uri.parse(
+            'https://remote.example/.well-known/oauth-protected-resource',
+          ),
+          authorizationServer: Uri.parse('https://auth.remote.example'),
+        );
+        final pool = McpClientPool(
+          config: McpConfig(servers: [spec]),
+          credentials: _emptyCreds(),
+          clientFactory: _fakeFactory(toolsByServer: const {}),
+        );
+
+        pool.connectAll();
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+
+        await pool.toggle('remote');
+        final disabled = pool.server('remote')!.spec as McpUrlServerSpec;
+        expect(disabled.enabled, isFalse);
+        expect(
+          disabled.resourceMetadataUrl,
+          Uri.parse(
+            'https://remote.example/.well-known/oauth-protected-resource',
+          ),
+        );
+        expect(
+          disabled.authorizationServer,
+          Uri.parse('https://auth.remote.example'),
+        );
+
+        await pool.toggle('remote');
+        final reenabled = pool.server('remote')!.spec as McpUrlServerSpec;
+        expect(reenabled.enabled, isTrue);
+        expect(
+          reenabled.resourceMetadataUrl,
+          Uri.parse(
+            'https://remote.example/.well-known/oauth-protected-resource',
+          ),
+        );
+        expect(
+          reenabled.authorizationServer,
+          Uri.parse('https://auth.remote.example'),
+        );
+
+        await pool.close();
+      },
+    );
   });
 }

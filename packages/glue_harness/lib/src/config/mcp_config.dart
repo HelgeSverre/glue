@@ -15,15 +15,14 @@ export 'package:glue_strategies/glue_strategies.dart'
         McpAuthSpec,
         McpBearerAuth,
         McpConfig,
-        McpHttpServerSpec,
         McpNoAuth,
         McpOAuthAuth,
         McpReconnectPolicy,
         McpServerSpec,
         McpStdioServerSpec,
-        McpSubprocessEnvMode,
         McpToolPolicy,
-        McpWebSocketServerSpec;
+        McpUrlServerSpec,
+        McpSubprocessEnvMode;
 
 /// Parses the `mcp:` section of a YAML config map. Returns the default
 /// (empty) [McpConfig] when [section] is null.
@@ -120,20 +119,10 @@ McpServerSpec _parseServer(
       );
     }
     final isWebSocket = parsed.scheme == 'ws' || parsed.scheme == 'wss';
-    if (isWebSocket) {
-      return McpWebSocketServerSpec(
-        id: id,
-        url: parsed,
-        auth: auth,
-        enabled: enabled,
-        callTimeoutSeconds: callTimeout,
-        resourceMetadataUrl: _optionalUri(raw['resource_metadata_url']),
-        authorizationServer: _optionalUri(raw['authorization_server']),
-      );
-    }
-    return McpHttpServerSpec(
+    return McpUrlServerSpec(
       id: id,
       url: parsed,
+      isWebSocket: isWebSocket,
       auth: auth,
       enabled: enabled,
       callTimeoutSeconds: callTimeout,

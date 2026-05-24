@@ -25,7 +25,9 @@ void main() {
 
     test('addMount persists to state.json', () {
       final state = SessionState.load(tmpDir.path);
-      state.addMount(MountEntry(hostPath: '/test/dir', mode: MountMode.rw));
+      state.addMount(
+        const MountEntry(hostPath: '/test/dir', mode: MountMode.rw),
+      );
 
       final file = File(p.join(tmpDir.path, 'state.json'));
       expect(file.existsSync(), true);
@@ -38,15 +40,15 @@ void main() {
 
     test('removeMount removes by path', () {
       final state = SessionState.load(tmpDir.path);
-      state.addMount(MountEntry(hostPath: '/a'));
-      state.addMount(MountEntry(hostPath: '/b'));
+      state.addMount(const MountEntry(hostPath: '/a'));
+      state.addMount(const MountEntry(hostPath: '/b'));
       state.removeMount('/a');
       expect(state.dockerMounts.map((m) => m.hostPath), ['/b']);
     });
 
     test('load restores persisted mounts', () {
       final state1 = SessionState.load(tmpDir.path);
-      state1.addMount(MountEntry(hostPath: '/persist'));
+      state1.addMount(const MountEntry(hostPath: '/persist'));
 
       final state2 = SessionState.load(tmpDir.path);
       expect(state2.dockerMounts.map((m) => m.hostPath), ['/persist']);
@@ -54,15 +56,15 @@ void main() {
 
     test('addMount deduplicates by path', () {
       final state = SessionState.load(tmpDir.path);
-      state.addMount(MountEntry(hostPath: '/dup', mode: MountMode.ro));
-      state.addMount(MountEntry(hostPath: '/dup', mode: MountMode.rw));
+      state.addMount(const MountEntry(hostPath: '/dup', mode: MountMode.ro));
+      state.addMount(const MountEntry(hostPath: '/dup', mode: MountMode.rw));
       expect(state.dockerMounts, hasLength(1));
       expect(state.dockerMounts.first.mode, MountMode.rw);
     });
 
     test('atomic persist does not leave temporary files behind', () {
       final state = SessionState.load(tmpDir.path);
-      state.addMount(MountEntry(hostPath: '/persist'));
+      state.addMount(const MountEntry(hostPath: '/persist'));
 
       expect(File(p.join(tmpDir.path, 'state.json')).existsSync(), isTrue);
       expect(File(p.join(tmpDir.path, 'state.json.tmp')).existsSync(), isFalse);

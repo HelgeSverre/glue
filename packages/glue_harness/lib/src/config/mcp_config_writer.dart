@@ -156,27 +156,7 @@ class McpConfigWriter {
             '${inner}working_directory: ${_scalar(workingDirectory)}',
           );
         }
-      case McpHttpServerSpec(
-        :final url,
-        :final auth,
-        :final resourceMetadataUrl,
-        :final authorizationServer,
-      ):
-        lines.writeln('${inner}url: ${_scalar(url.toString())}');
-        _writeAuth(lines, auth, indent: inner);
-        if (resourceMetadataUrl != null) {
-          lines.writeln(
-            '${inner}resource_metadata_url: '
-            '${_scalar(resourceMetadataUrl.toString())}',
-          );
-        }
-        if (authorizationServer != null) {
-          lines.writeln(
-            '${inner}authorization_server: '
-            '${_scalar(authorizationServer.toString())}',
-          );
-        }
-      case McpWebSocketServerSpec(
+      case McpUrlServerSpec(
         :final url,
         :final auth,
         :final resourceMetadataUrl,
@@ -410,22 +390,7 @@ class McpConfigWriter {
         if (workingDirectory != null) {
           out['working_directory'] = workingDirectory;
         }
-      case McpHttpServerSpec(
-        :final url,
-        :final auth,
-        :final resourceMetadataUrl,
-        :final authorizationServer,
-      ):
-        out['url'] = url.toString();
-        final authMap = _authToYaml(auth);
-        if (authMap != null) out['auth'] = authMap;
-        if (resourceMetadataUrl != null) {
-          out['resource_metadata_url'] = resourceMetadataUrl.toString();
-        }
-        if (authorizationServer != null) {
-          out['authorization_server'] = authorizationServer.toString();
-        }
-      case McpWebSocketServerSpec(
+      case McpUrlServerSpec(
         :final url,
         :final auth,
         :final resourceMetadataUrl,

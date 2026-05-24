@@ -86,9 +86,13 @@ class DockerExecutor implements CommandExecutor {
           .transform(const SystemEncoding().decoder)
           .join();
 
-      final exitCode = await waitForExit(process, timeout, onCancel: () {
-        _killContainer(cidfile);
-      });
+      final exitCode = await waitForExit(
+        process,
+        timeout,
+        onCancel: () {
+          _killContainer(cidfile);
+        },
+      );
       final stdout = await stdoutFuture;
       final stderr = await stderrFuture;
 

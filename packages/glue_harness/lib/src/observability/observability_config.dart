@@ -1,5 +1,10 @@
+import 'package:dart_mappable/dart_mappable.dart';
+
+part 'observability_config.mapper.dart';
+
 /// Standard OTLP tracing export configuration.
-class OtelConfig {
+@MappableClass()
+class OtelConfig with OtelConfigMappable {
   final bool enabled;
   final String? endpoint;
   final Map<String, String> headers;
@@ -21,7 +26,8 @@ class OtelConfig {
 }
 
 /// Observability configuration.
-class ObservabilityConfig {
+@MappableClass()
+class ObservabilityConfig with ObservabilityConfigMappable {
   final bool debug;
 
   /// Maximum bytes captured per HTTP request/response body, tool input, or

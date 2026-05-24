@@ -2782,8 +2782,7 @@ class App {
     final snapshot = _mcpPool.server(serverId);
     final spec = snapshot?.spec;
     final baseUrl = switch (spec) {
-      McpHttpServerSpec(:final url) => url,
-      McpWebSocketServerSpec(:final url) => url,
+      McpUrlServerSpec(:final url) => url,
       _ => null,
     };
     if (baseUrl == null) {
@@ -2796,9 +2795,7 @@ class App {
     final cachedMeta =
         resourceMetadataUrl ??
         switch (spec) {
-          McpHttpServerSpec(:final resourceMetadataUrl) => resourceMetadataUrl,
-          McpWebSocketServerSpec(:final resourceMetadataUrl) =>
-            resourceMetadataUrl,
+          McpUrlServerSpec(:final resourceMetadataUrl) => resourceMetadataUrl,
           _ => null,
         };
 

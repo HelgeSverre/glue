@@ -1,9 +1,13 @@
+import 'package:dart_mappable/dart_mappable.dart';
 import 'package:glue_core/glue_core.dart';
+
+part 'browser_config.mapper.dart';
 
 /// Supported browser execution backends.
 ///
 /// We use "backend" here to describe the runtime environment where the browser
 /// session is provisioned (local process, docker container, or cloud service).
+@MappableEnum(mode: ValuesMode.named)
 enum BrowserBackend {
   local,
   docker,
@@ -15,7 +19,8 @@ enum BrowserBackend {
 }
 
 /// Configuration for the web_browser tool.
-class BrowserConfig {
+@MappableClass()
+class BrowserConfig with BrowserConfigMappable {
   final BrowserBackend backend;
   final bool headed;
   final int navigationTimeoutSeconds;

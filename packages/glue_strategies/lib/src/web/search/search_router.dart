@@ -52,7 +52,9 @@ class SearchRouter {
     final available = [
       defaultP,
       ...providers.where(
-        (p) => p != defaultP && (p.isConfigured || _freeFallbackProviders.contains(p.name)),
+        (p) =>
+            p != defaultP &&
+            (p.isConfigured || _freeFallbackProviders.contains(p.name)),
       ),
     ];
 

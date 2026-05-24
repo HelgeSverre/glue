@@ -4,9 +4,10 @@ import 'package:test/test.dart';
 
 void main() {
   group('resolveMcpAuthActions', () {
-    final remoteSpec = McpHttpServerSpec(
+    final remoteSpec = McpUrlServerSpec(
       id: 'foo',
       url: Uri.parse('https://foo.example/mcp'),
+      isWebSocket: false,
       auth: const McpOAuthAuth(),
     );
     const stdioSpec = McpStdioServerSpec(id: 'bar', command: 'echo');

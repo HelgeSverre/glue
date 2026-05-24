@@ -36,7 +36,7 @@ class SessionState {
         if (mounts != null) {
           for (final m in mounts) {
             state._dockerMounts.add(
-              MountEntry.fromJson(m as Map<String, dynamic>),
+              MountEntryMapper.fromMap(m as Map<String, dynamic>),
             );
           }
         }

@@ -8,6 +8,8 @@ import 'package:glue_core/glue_core.dart';
 import 'package:glue_harness/src/catalog/model_resolver.dart';
 import 'package:glue_harness/src/catalog/models_generated.dart';
 import 'package:glue_harness/src/config/approval_mode.dart';
+import 'package:glue_harness/src/config/config_file.dart';
+import 'package:glue_harness/src/config/config_resolvers.dart';
 import 'package:glue_harness/src/config/mcp_config.dart';
 import 'package:glue_harness/src/core/environment.dart';
 import 'package:glue_strategies/glue_strategies.dart';
@@ -268,17 +270,22 @@ class GlueConfig {
     final configYamlPath =
         configPath ?? environment?.configYamlPath ?? '$home/.glue/config.yaml';
     final configFile = File(configYamlPath);
-    Map<String, dynamic>? fileConfig;
-    if (configFile.existsSync()) {
-      final content = configFile.readAsStringSync();
-      final yaml = loadYaml(content);
-      if (yaml is YamlMap) {
-        fileConfig = Map<String, dynamic>.from(yaml);
-      }
-    }
+    final rawYaml = configFile.existsSync()
+        ? () {
+            final content = configFile.readAsStringSync();
+            final yaml = loadYaml(content);
+            if (yaml is YamlMap) return _yamlMapToJsonMap(yaml);
+            return <String, dynamic>{};
+          }()
+        : <String, dynamic>{};
 
     // Reject legacy v1 shape with a migration message.
-    if (fileConfig != null) _rejectLegacyConfig(fileConfig, configYamlPath);
+    if (rawYaml.isNotEmpty) _rejectLegacyConfig(rawYaml, configYamlPath);
+
+    // Deserialize raw YAML into typed ConfigFile (nullable, snake_case).
+    final cfg = rawYaml.isNotEmpty
+        ? ConfigFileMapper.fromMap(rawYaml)
+        : const ConfigFile();
 
     // Catalog: bundled → optional cached remote → optional local overrides.
     final catalog =
@@ -317,293 +324,51 @@ class GlueConfig {
     final rawActive =
         cliModel ??
         env['GLUE_MODEL'] ??
-        fileConfig?['active_model'] as String? ??
+        cfg.activeModel ??
         catalog.defaults.model;
     final activeModel = _resolveModelRef(rawActive, catalog);
 
-    final rawSmall =
-        fileConfig?['small_model'] as String? ?? catalog.defaults.smallModel;
+    final rawSmall = cfg.smallModel ?? catalog.defaults.smallModel;
     final smallModel = rawSmall != null
         ? _resolveModelRef(rawSmall, catalog)
         : null;
 
     // Catalog source section.
-    final catalogSection = fileConfig?['catalog'] as Map?;
     final catalogConfig = CatalogSourceConfig(
-      refresh: catalogSection?['refresh'] as String? ?? 'manual',
-      remoteUrl: (catalogSection?['remote_url'] as String?) != null
-          ? Uri.parse(catalogSection!['remote_url'] as String)
+      refresh: cfg.catalog?.refresh ?? 'manual',
+      remoteUrl: cfg.catalog?.remoteUrl != null
+          ? Uri.tryParse(cfg.catalog!.remoteUrl!)
           : null,
     );
 
     // Profiles: Map<String, ModelRef>.
     final profiles = <String, ModelRef>{};
-    final profilesYaml = fileConfig?['profiles'] as Map?;
+    final profilesYaml = cfg.profiles;
     if (profilesYaml != null) {
       for (final entry in profilesYaml.entries) {
-        final name = entry.key.toString();
-        final raw = entry.value.toString();
-        profiles[name] = _resolveModelRef(raw, catalog);
+        profiles[entry.key] = _resolveModelRef(entry.value, catalog);
       }
     }
 
-    // --- non-model-related config (kept intact) ---
+    // ─── Resolve typed configs from ConfigFile + env overrides ───────────
 
-    final bashMaxLines =
-        (fileConfig?['bash'] as Map?)?['max_lines'] as int? ??
-        AppConstants.bashMaxLinesDefault;
+    final bashMaxLines = cfg.bash?.maxLines ?? AppConstants.bashMaxLinesDefault;
 
-    // Shell config.
-    final shellSection = fileConfig?['shell'] as Map?;
-    final shellExe =
-        env['GLUE_SHELL'] ?? shellSection?['executable'] as String?;
-    final shellModeStr =
-        env['GLUE_SHELL_MODE'] ?? shellSection?['mode'] as String?;
-    final shellMode = shellModeStr != null
-        ? ShellMode.fromString(shellModeStr)
-        : ShellMode.nonInteractive;
-    final shellConfig = ShellConfig.detect(
-      explicit: shellExe,
-      shellEnv: env['SHELL'],
-      mode: shellMode,
-    );
-
-    // Docker config.
-    final dockerSection = fileConfig?['docker'] as Map?;
-    final dockerEnabled =
-        env['GLUE_DOCKER_ENABLED'] == '1' ||
-        (dockerSection?['enabled'] as bool? ?? false);
-    final dockerImage =
-        env['GLUE_DOCKER_IMAGE'] ??
-        dockerSection?['image'] as String? ??
-        'ubuntu:24.04';
-    final dockerShell =
-        env['GLUE_DOCKER_SHELL'] ?? dockerSection?['shell'] as String? ?? 'sh';
-    final dockerFallback = dockerSection?['fallback_to_host'] as bool? ?? true;
-
-    final dockerMounts = <MountEntry>[];
-    final envMounts = env['GLUE_DOCKER_MOUNTS'];
-    if (envMounts != null && envMounts.isNotEmpty) {
-      for (final spec in envMounts.split(';')) {
-        if (spec.trim().isNotEmpty) {
-          dockerMounts.add(MountEntry.parse(spec.trim()));
-        }
-      }
-    }
-    final fileMounts = dockerSection?['mounts'] as List?;
-    if (fileMounts != null) {
-      for (final m in fileMounts) {
-        dockerMounts.add(MountEntry.parse(m as String));
-      }
-    }
-
-    final dockerConfig = DockerConfig(
-      enabled: dockerEnabled,
-      image: dockerImage,
-      shell: dockerShell,
-      fallbackToHost: dockerFallback,
-      mounts: dockerMounts,
-    );
-
-    // Web config.
-    final webSection = fileConfig?['web'] as Map?;
-    final fetchSection = webSection?['fetch'] as Map?;
-    final searchSection = webSection?['search'] as Map?;
-
-    final jinaApiKey =
-        env['JINA_API_KEY'] ?? fetchSection?['jina_api_key'] as String?;
-    final braveApiKey =
-        env['BRAVE_API_KEY'] ?? searchSection?['brave_api_key'] as String?;
-    final tavilyApiKey =
-        env['TAVILY_API_KEY'] ?? searchSection?['tavily_api_key'] as String?;
-    final firecrawlApiKey =
-        env['FIRECRAWL_API_KEY'] ??
-        searchSection?['firecrawl_api_key'] as String?;
-
-    final searchProviderStr =
-        env['GLUE_SEARCH_PROVIDER'] ?? searchSection?['provider'] as String?;
-    final searchProvider = searchProviderStr != null
-        ? WebSearchProviderType.values.firstWhere(
-            (p) => p.name == searchProviderStr,
-            orElse: () => WebSearchProviderType.brave,
-          )
-        : null;
-
-    final webFetchConfig = WebFetchConfig(
-      jinaApiKey: jinaApiKey,
-      allowJinaFallback: fetchSection?['allow_jina_fallback'] as bool? ?? true,
-      timeoutSeconds:
-          fetchSection?['timeout_seconds'] as int? ??
-          AppConstants.webFetchTimeoutSeconds,
-      maxBytes:
-          fetchSection?['max_bytes'] as int? ?? AppConstants.webFetchMaxBytes,
-      defaultMaxTokens:
-          fetchSection?['max_tokens'] as int? ??
-          AppConstants.webFetchDefaultMaxTokens,
-    );
-
-    final webSearchConfig = WebSearchConfig(
-      provider: searchProvider,
-      braveApiKey: braveApiKey,
-      tavilyApiKey: tavilyApiKey,
-      firecrawlApiKey: firecrawlApiKey,
-      firecrawlBaseUrl: searchSection?['firecrawl_base_url'] as String?,
-      timeoutSeconds:
-          searchSection?['timeout_seconds'] as int? ??
-          AppConstants.webSearchTimeoutSeconds,
-      defaultMaxResults:
-          searchSection?['max_results'] as int? ??
-          AppConstants.webSearchDefaultMaxResults,
-    );
-
-    // PDF uses the OpenAI/Mistral adapter's credentials when available.
-    final pdfSection = webSection?['pdf'] as Map?;
-    final mistralProvider = catalog.providers['mistral'];
-    final openaiProvider = catalog.providers['openai'];
-    final pdfMistralApiKey =
-        pdfSection?['mistral_api_key'] as String? ??
-        (mistralProvider != null
-            ? credentials.resolveForProvider(mistralProvider)
-            : null);
-    final pdfOpenaiApiKey =
-        pdfSection?['openai_api_key'] as String? ??
-        (openaiProvider != null
-            ? credentials.resolveForProvider(openaiProvider)
-            : null);
-    final ocrProviderStr =
-        env['GLUE_OCR_PROVIDER'] ?? pdfSection?['ocr_provider'] as String?;
-    final ocrProvider = ocrProviderStr != null
-        ? OcrProviderType.values.firstWhere(
-            (p) => p.name == ocrProviderStr,
-            orElse: () => OcrProviderType.mistral,
-          )
-        : OcrProviderType.mistral;
-
-    final pdfConfig = PdfConfig(
-      maxBytes: pdfSection?['max_bytes'] as int? ?? AppConstants.pdfMaxBytes,
-      timeoutSeconds:
-          pdfSection?['timeout_seconds'] as int? ??
-          AppConstants.pdfTimeoutSeconds,
-      enableOcrFallback: pdfSection?['enable_ocr_fallback'] as bool? ?? true,
-      ocrProvider: ocrProvider,
-      mistralApiKey: pdfMistralApiKey,
-      openaiApiKey: pdfOpenaiApiKey,
-    );
-
-    // Browser config (unchanged).
-    final browserSection = webSection?['browser'] as Map?;
-    final dockerBrowserSection = browserSection?['docker'] as Map?;
-    final steelSection = browserSection?['steel'] as Map?;
-    final browserbaseSection = browserSection?['browserbase'] as Map?;
-    final browserlessSection = browserSection?['browserless'] as Map?;
-    final anchorSection = browserSection?['anchor'] as Map?;
-    final hyperbrowserSection = browserSection?['hyperbrowser'] as Map?;
-
-    final browserBackendStr =
-        env['GLUE_BROWSER_BACKEND'] ?? browserSection?['backend'] as String?;
-    final browserBackend = browserBackendStr != null
-        ? BrowserBackend.values.firstWhere(
-            (b) => b.name == browserBackendStr,
-            orElse: () => BrowserBackend.local,
-          )
-        : BrowserBackend.local;
-
-    final browserConfig = BrowserConfig(
-      backend: browserBackend,
-      headed: browserSection?['headed'] as bool? ?? false,
-      dockerImage:
-          dockerBrowserSection?['image'] as String? ??
-          AppConstants.browserDockerImage,
-      dockerPort:
-          dockerBrowserSection?['port'] as int? ??
-          AppConstants.browserDockerPort,
-      steelApiKey: env['STEEL_API_KEY'] ?? steelSection?['api_key'] as String?,
-      browserbaseApiKey:
-          env['BROWSERBASE_API_KEY'] ??
-          browserbaseSection?['api_key'] as String?,
-      browserbaseProjectId:
-          env['BROWSERBASE_PROJECT_ID'] ??
-          browserbaseSection?['project_id'] as String?,
-      browserlessBaseUrl: browserlessSection?['base_url'] as String?,
-      browserlessApiKey:
-          env['BROWSERLESS_API_KEY'] ??
-          browserlessSection?['api_key'] as String?,
-      anchorApiKey:
-          env['ANCHOR_API_KEY'] ??
-          anchorSection?['api_key'] as String? ??
-          browserSection?['anchor_api_key'] as String?,
-      hyperbrowserApiKey:
-          env['HYPERBROWSER_API_KEY'] ??
-          hyperbrowserSection?['api_key'] as String? ??
-          browserSection?['hyperbrowser_api_key'] as String?,
-    );
-
-    final webConfig = WebConfig(
-      fetch: webFetchConfig,
-      search: webSearchConfig,
-      pdf: pdfConfig,
-      browser: browserConfig,
-    );
-
-    // Observability.
-    final observabilitySection =
-        fileConfig?['observability'] as Map<dynamic, dynamic>?;
-    final debug =
-        env['GLUE_DEBUG'] == '1' ||
-        (observabilitySection?['debug'] as bool? ??
-            fileConfig?['debug'] as bool? ??
-            false);
-    final maxBodyBytes =
-        (observabilitySection?['max_body_bytes'] as int?) ?? 65536;
-    final redact = (observabilitySection?['redact'] as bool?) ?? true;
-    final otelSection = observabilitySection?['otel'] as Map?;
-    final otelEndpoint =
-        otelSection?['endpoint'] as String? ??
-        env['OTEL_EXPORTER_OTLP_TRACES_ENDPOINT'] ??
-        env['OTEL_EXPORTER_OTLP_ENDPOINT'] ??
-        env['PHOENIX_COLLECTOR_ENDPOINT'];
-    final otelHeaders = _resolveOtelHeaders(otelSection, env);
-    final otelResourceAttributes = _resolveOtelResourceAttributes(
-      otelSection,
+    final shellConfig = resolveShellConfig(cfg.shell, env);
+    final dockerConfig = resolveDockerConfig(cfg.docker, env);
+    final webConfig = resolveWebConfig(cfg.web, env, catalog, credentials);
+    final observabilityConfig = resolveObservabilityConfig(
+      cfg.observability,
       env,
     );
-    final phoenixProject = env['PHOENIX_PROJECT_NAME'];
-    if (phoenixProject != null && phoenixProject.isNotEmpty) {
-      otelResourceAttributes.putIfAbsent(
-        'openinference.project.name',
-        () => phoenixProject,
-      );
-    }
-    otelResourceAttributes.putIfAbsent(
-      'openinference.project.name',
-      () => 'glue',
-    );
-    final otelConfig = OtelConfig(
-      enabled:
-          otelSection?['enabled'] as bool? ??
-          _envBool(env['OTEL_SDK_DISABLED']) != true &&
-              otelEndpoint != null &&
-              otelEndpoint.isNotEmpty,
-      endpoint: otelEndpoint,
-      headers: otelHeaders,
-      serviceName:
-          otelSection?['service_name'] as String? ??
-          env['OTEL_SERVICE_NAME'] ??
-          'glue',
-      resourceAttributes: otelResourceAttributes,
-      timeoutMilliseconds:
-          otelSection?['timeout_milliseconds'] as int? ?? 10000,
-    );
-    final observabilityConfig = ObservabilityConfig(
-      debug: debug,
-      maxBodyBytes: maxBodyBytes,
-      redact: redact,
-      otel: otelConfig,
+    final skillPaths = resolveSkillPaths(
+      cfg.skills,
+      env,
+      environment?.isWindows ?? false,
     );
 
     // Approval mode.
-    final approvalStr =
-        env['GLUE_APPROVAL_MODE'] ?? fileConfig?['approval_mode'] as String?;
+    final approvalStr = env['GLUE_APPROVAL_MODE'] ?? cfg.approvalMode;
     final approvalMode = approvalStr != null
         ? ApprovalMode.values.firstWhere(
             (m) => m.name == approvalStr || m.label == approvalStr,
@@ -613,59 +378,29 @@ class GlueConfig {
 
     // Title generation toggle. Env wins over YAML; default enabled.
     final titleEnabledEnv = env['GLUE_TITLE_GENERATION_ENABLED'];
-    final titleEnabledYaml = fileConfig?['title_generation_enabled'] as bool?;
     final titleGenerationEnabled = titleEnabledEnv != null
         ? (titleEnabledEnv.toLowerCase() == 'true' || titleEnabledEnv == '1')
-        : (titleEnabledYaml ?? true);
+        : (cfg.titleGenerationEnabled ?? true);
 
-    // Anthropic prompt caching. Env wins over YAML; default enabled. Set
-    // to `false` to suppress the top-level cache_control directive — useful
-    // for proxies that reject the field, or for measurement comparisons.
+    // Anthropic prompt caching. Env wins over YAML; default enabled.
     final cacheEnabledEnv = env['GLUE_ANTHROPIC_PROMPT_CACHE'];
-    final cacheEnabledYaml = fileConfig?['anthropic_prompt_cache'] as bool?;
     final anthropicPromptCache = cacheEnabledEnv != null
         ? (cacheEnabledEnv.toLowerCase() == 'true' || cacheEnabledEnv == '1')
-        : (cacheEnabledYaml ?? true);
+        : (cfg.anthropicPromptCache ?? true);
 
-    // MCP servers. Env-var expansion happens at parse time so missing
-    // ${VAR}s fail loudly with the server name + field, not at session
-    // start.
-    final mcp = parseMcpConfig(fileConfig?['mcp'], env);
+    // MCP servers (still hand-parsed — needs env-var expansion + validation).
+    final mcp = parseMcpConfig(rawYaml.isNotEmpty ? rawYaml['mcp'] : null, env);
 
-    // Runtime adapter selector. `GLUE_RUNTIME` overrides the YAML
-    // `runtime:` key, which overrides the legacy `docker.enabled`
-    // fallback. Cloud-runtime-specific options are pulled from the
-    // matching top-level YAML section (e.g. `daytona:`). Env-var
-    // overrides land as Object? values, so adapters can pull them out
-    // without the harness having to know cloud-specific keys.
-    final runtimeName =
-        env['GLUE_RUNTIME'] ?? fileConfig?['runtime'] as String?;
+    // Runtime adapter selector.
+    final runtimeName = env['GLUE_RUNTIME'] ?? cfg.runtime;
     final runtimeOptions = <String, Object?>{};
     if (runtimeName != null && runtimeName.isNotEmpty) {
-      final section = fileConfig?[runtimeName] as Map?;
+      final section = rawYaml[runtimeName] as Map?;
       if (section != null) {
         for (final entry in section.entries) {
           runtimeOptions[entry.key.toString()] = entry.value;
         }
       }
-      // Cloud adapters can read shared env vars too (e.g.
-      // DAYTONA_API_KEY). Adapters call DaytonaConfig.fromMap with
-      // both [runtimeOptions] and the process env, so we don't try to
-      // enumerate cloud-specific env vars here.
-    }
-
-    // Skill paths.
-    final skillPaths = <String>[];
-    final envSkillPaths = env['GLUE_SKILLS_PATHS'];
-    if (envSkillPaths != null && envSkillPaths.isNotEmpty) {
-      skillPaths.addAll(
-        splitPathList(envSkillPaths, isWindows: environment?.isWindows),
-      );
-    }
-    final skillsSection = fileConfig?['skills'] as Map?;
-    final fileSkillPaths = skillsSection?['paths'] as List?;
-    if (fileSkillPaths != null) {
-      skillPaths.addAll(fileSkillPaths.cast<String>());
     }
 
     return GlueConfig(
@@ -737,71 +472,17 @@ ModelCatalog? _loadOptionalYaml(String path) {
   }
 }
 
-Map<String, String> _resolveOtelHeaders(
-  Map<dynamic, dynamic>? otelSection,
-  Map<String, String> env,
-) {
-  final headers = <String, String>{};
-  final envHeaders =
-      env['OTEL_EXPORTER_OTLP_TRACES_HEADERS'] ??
-      env['OTEL_EXPORTER_OTLP_HEADERS'];
-  if (envHeaders != null && envHeaders.isNotEmpty) {
-    headers.addAll(_parseOtelKeyValueList(envHeaders));
-  }
+Map<String, dynamic> _yamlMapToJsonMap(YamlMap yaml) =>
+    Map<String, dynamic>.fromEntries(
+      yaml.entries.map(
+        (e) => MapEntry(e.key as String, _normalizeYamlValue(e.value)),
+      ),
+    );
 
-  final yamlHeaders = otelSection?['headers'];
-  if (yamlHeaders is Map) {
-    for (final entry in yamlHeaders.entries) {
-      headers[entry.key.toString()] = entry.value.toString();
-    }
-  }
-
-  final phoenixKey = env['PHOENIX_API_KEY'];
-  if (phoenixKey != null && phoenixKey.isNotEmpty) {
-    headers.putIfAbsent('Authorization', () => 'Bearer $phoenixKey');
-  }
-  return headers;
-}
-
-Map<String, String> _resolveOtelResourceAttributes(
-  Map<dynamic, dynamic>? otelSection,
-  Map<String, String> env,
-) {
-  final attrs = <String, String>{};
-  final envAttrs = env['OTEL_RESOURCE_ATTRIBUTES'];
-  if (envAttrs != null && envAttrs.isNotEmpty) {
-    attrs.addAll(_parseOtelKeyValueList(envAttrs));
-  }
-
-  final yamlAttrs = otelSection?['resource_attributes'];
-  if (yamlAttrs is Map) {
-    for (final entry in yamlAttrs.entries) {
-      attrs[entry.key.toString()] = entry.value.toString();
-    }
-  }
-  return attrs;
-}
-
-Map<String, String> _parseOtelKeyValueList(String raw) {
-  final parsed = <String, String>{};
-  for (final part in raw.split(',')) {
-    final trimmed = part.trim();
-    if (trimmed.isEmpty) continue;
-    final idx = trimmed.indexOf('=');
-    if (idx <= 0) continue;
-    final key = Uri.decodeComponent(trimmed.substring(0, idx).trim());
-    final value = Uri.decodeComponent(trimmed.substring(idx + 1).trim());
-    parsed[key] = value;
-  }
-  return parsed;
-}
-
-bool? _envBool(String? value) {
-  if (value == null) return null;
-  final normalized = value.toLowerCase();
-  if (normalized == '1' || normalized == 'true') return true;
-  if (normalized == '0' || normalized == 'false') return false;
-  return null;
+Object? _normalizeYamlValue(Object? value) {
+  if (value is YamlMap) return _yamlMapToJsonMap(value);
+  if (value is YamlList) return value.map(_normalizeYamlValue).toList();
+  return value;
 }
 
 void _rejectLegacyConfig(Map<String, dynamic> fileConfig, String path) {

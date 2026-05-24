@@ -55,12 +55,12 @@ void main() {
     test('merges config and session mounts', () async {
       final executor = await ExecutorFactory.create(
         shellConfig: const ShellConfig(),
-        dockerConfig: DockerConfig(
+        dockerConfig: const DockerConfig(
           enabled: true,
           mounts: [MountEntry(hostPath: '/config/mount')],
         ),
         cwd: '/test/cwd',
-        sessionMounts: [MountEntry(hostPath: '/session/mount')],
+        sessionMounts: const [MountEntry(hostPath: '/session/mount')],
         dockerAvailable: true,
       );
       final docker = executor as DockerExecutor;

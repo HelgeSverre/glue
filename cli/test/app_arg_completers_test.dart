@@ -16,7 +16,7 @@ McpServerSnapshot _stdioServer(String id) => McpServerSnapshot(
 
 McpServerSnapshot _httpServer(String id, {String url = 'https://x/y'}) =>
     McpServerSnapshot(
-      spec: McpHttpServerSpec(id: id, url: Uri.parse(url)),
+      spec: McpUrlServerSpec(id: id, url: Uri.parse(url), isWebSocket: false),
       state: const McpDisconnected(),
     );
 

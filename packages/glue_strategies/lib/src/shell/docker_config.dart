@@ -1,7 +1,12 @@
+import 'package:dart_mappable/dart_mappable.dart';
 import 'package:path/path.dart' as p;
 
+part 'docker_config.mapper.dart';
+
+@MappableEnum(mode: ValuesMode.named)
 enum MountMode { ro, rw }
 
+@MappableClass(caseStyle: CaseStyle.snakeCase)
 class MountEntry {
   final String hostPath;
   final MountMode mode;
@@ -14,7 +19,7 @@ class MountEntry {
 
   final DateTime? addedAt;
 
-  MountEntry({
+  const MountEntry({
     required this.hostPath,
     this.mode = MountMode.rw,
     this.containerPath,
@@ -72,6 +77,35 @@ class MountEntry {
     );
   }
 
+  static MountEntry fromMap(Map<String, dynamic> map) =>
+      MountEntryMapper.fromMap(map);
+
+  factory MountEntry.fromJson(Map<String, dynamic> json) =>
+      MountEntryMapper.fromMap(json);
+
+  Map<String, dynamic> toJson() =>
+      MountEntryMapper.ensureInitialized().encodeMap<MountEntry>(this);
+
+  Map<String, dynamic> toMap() => toJson();
+
+  MountEntryCopyWith<MountEntry, MountEntry, MountEntry> get copyWith =>
+      _MountEntryCopyWithImpl<MountEntry, MountEntry>(
+        this,
+        $identity,
+        $identity,
+      );
+
+  @override
+  String toString() =>
+      MountEntryMapper.ensureInitialized().stringifyValue(this);
+
+  @override
+  bool operator ==(Object other) =>
+      MountEntryMapper.ensureInitialized().equalsValue(this, other);
+
+  @override
+  int get hashCode => MountEntryMapper.ensureInitialized().hashValue(this);
+
   static bool _isAbsoluteHostPath(String path) {
     if (p.isAbsolute(path)) return true;
     if (RegExp(r'^[a-zA-Z]:[\\/]').hasMatch(path)) return true;
@@ -103,25 +137,10 @@ class MountEntry {
     }
     return map.values.toList();
   }
-
-  Map<String, dynamic> toJson() => {
-    'host_path': hostPath,
-    'mode': mode.name,
-    if (containerPath != null) 'container_path': containerPath,
-    if (addedAt != null) 'added_at': addedAt!.toIso8601String(),
-  };
-
-  factory MountEntry.fromJson(Map<String, dynamic> json) => MountEntry(
-    hostPath: json['host_path'] as String,
-    mode: json['mode'] == 'ro' ? MountMode.ro : MountMode.rw,
-    containerPath: json['container_path'] as String?,
-    addedAt: json['added_at'] != null
-        ? DateTime.parse(json['added_at'] as String)
-        : null,
-  );
 }
 
-class DockerConfig {
+@MappableClass()
+class DockerConfig with DockerConfigMappable {
   final bool enabled;
   final String image;
   final String shell;

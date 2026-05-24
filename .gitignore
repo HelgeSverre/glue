@@ -11,7 +11,7 @@ dist/
 build/
 cli/doc/api/
 
-# Generated source files (rebuilt by `just gen` in each package).
+# Local generated source files.
 packages/glue_harness/lib/src/config/build_info_generated.dart
 
 # ── IDE / editors ──────────────────────────────────────────────────────────

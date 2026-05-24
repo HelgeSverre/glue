@@ -1,3 +1,8 @@
+import 'package:dart_mappable/dart_mappable.dart';
+
+part 'shell_config.mapper.dart';
+
+@MappableEnum(mode: ValuesMode.named)
 enum ShellMode {
   /// Default. No extra flags — fastest startup, no rc/profile sourcing.
   nonInteractive,
@@ -31,7 +36,8 @@ enum ShellMode {
 /// instead of `-l`, and PowerShell uses `-Command` instead of `-c`. This
 /// class normalizes those differences so the rest of the codebase doesn't
 /// need to care which shell is in use.
-class ShellConfig {
+@MappableClass()
+class ShellConfig with ShellConfigMappable {
   final String executable;
   final ShellMode mode;
 

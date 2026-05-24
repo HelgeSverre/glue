@@ -12,7 +12,6 @@ void main() {
     test('fromString returns nonInteractive for unknown', () {
       expect(ShellMode.fromString('bogus'), ShellMode.nonInteractive);
     });
-
   });
 
   group('ShellConfig', () {

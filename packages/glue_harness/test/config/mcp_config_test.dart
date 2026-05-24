@@ -80,7 +80,7 @@ mcp:
         kind: bearer
         token: "literal-token-abc"
 ''');
-      final wiki = cfg.servers.single as McpHttpServerSpec;
+      final wiki = cfg.servers.single as McpUrlServerSpec;
       expect(wiki.url.toString(), 'https://mcp.example.com/wiki');
       final auth = wiki.auth as McpBearerAuth;
       expect(auth.token, 'literal-token-abc');
@@ -95,7 +95,7 @@ mcp:
       auth:
         kind: oauth
 ''');
-      final notion = cfg.servers.single as McpHttpServerSpec;
+      final notion = cfg.servers.single as McpUrlServerSpec;
       expect(notion.auth, isA<McpOAuthAuth>());
     });
 
@@ -106,7 +106,7 @@ mcp:
     ws-server:
       url: "wss://mcp.example.com/socket"
 ''');
-      expect(cfg.servers.single, isA<McpWebSocketServerSpec>());
+      expect(cfg.servers.single, isA<McpUrlServerSpec>());
     });
 
     test('parses cached resource_metadata_url + authorization_server', () {
@@ -120,7 +120,7 @@ mcp:
       resource_metadata_url: "https://foo.example/.well-known/oauth-protected-resource"
       authorization_server: "https://auth.foo.example"
 ''');
-      final spec = cfg.servers.single as McpHttpServerSpec;
+      final spec = cfg.servers.single as McpUrlServerSpec;
       expect(
         spec.resourceMetadataUrl,
         Uri.parse('https://foo.example/.well-known/oauth-protected-resource'),
@@ -144,7 +144,7 @@ mcp:
         env: {'WIKI_MCP_TOKEN': 'secret-from-env'},
       );
       final auth =
-          (cfg.servers.single as McpHttpServerSpec).auth as McpBearerAuth;
+          (cfg.servers.single as McpUrlServerSpec).auth as McpBearerAuth;
       expect(auth.token, 'secret-from-env');
     });
 
