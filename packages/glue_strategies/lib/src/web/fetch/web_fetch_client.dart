@@ -85,8 +85,9 @@ class WebFetchClient {
     }
 
     // Single GET — route by content-type / magic bytes.
+    http.Response? response;
     try {
-      final response = await _client
+      final r = await _client
           .get(
             uri,
             headers: {
@@ -97,47 +98,48 @@ class WebFetchClient {
             },
           )
           .timeout(Duration(seconds: config.timeoutSeconds));
+      response = r.statusCode == 200 ? r : null;
+    } catch (_) {
+      response = null;
+    }
 
-      if (response.statusCode != 200) {
-        // Fall through to Jina.
-      } else {
-        final contentType = response.headers['content-type'] ?? '';
+    if (response != null) {
+      final contentType = response.headers['content-type'] ?? '';
 
-        // Route 1: Markdown response.
-        if (contentType.contains('text/markdown')) {
-          if (response.bodyBytes.length > config.maxBytes) {
-            return WebFetchResult.withError(
-              url: url,
-              error:
-                  'Response too large: ${response.bodyBytes.length} bytes '
-                  '(max ${config.maxBytes})',
-            );
-          }
-          final truncated = TokenTruncation.truncate(
-            response.body,
-            maxTokens: budget,
-          );
-          return WebFetchResult(
+      // Route 1: Markdown response.
+      if (contentType.contains('text/markdown')) {
+        if (response.bodyBytes.length > config.maxBytes) {
+          return WebFetchResult.withError(
             url: url,
-            markdown: truncated,
-            estimatedTokens: TokenTruncation.estimateTokens(truncated),
+            error:
+                'Response too large: ${response.bodyBytes.length} bytes '
+                '(max ${config.maxBytes})',
           );
         }
-
-        // Route 2: PDF (by content-type or magic bytes).
-        if (PdfTextExtractor.isPdfContentType(contentType) ||
-            PdfTextExtractor.isPdfContent(response.bodyBytes)) {
-          final pdfResult = await _handlePdfResponse(uri, response, budget);
-          if (pdfResult != null) return pdfResult;
-        }
-
-        // Route 3: HTML / text.
-        if (contentType.contains('text/') || contentType.contains('html')) {
-          final htmlResult = _convertHtmlResponse(uri, response, budget);
-          if (htmlResult != null && htmlResult.isSuccess) return htmlResult;
-        }
+        final truncated = TokenTruncation.truncate(
+          response.body,
+          maxTokens: budget,
+        );
+        return WebFetchResult(
+          url: url,
+          markdown: truncated,
+          estimatedTokens: TokenTruncation.estimateTokens(truncated),
+        );
       }
-    } catch (_) {}
+
+      // Route 2: PDF (by content-type or magic bytes).
+      if (PdfTextExtractor.isPdfContentType(contentType) ||
+          PdfTextExtractor.isPdfContent(response.bodyBytes)) {
+        final pdfResult = await _handlePdfResponse(uri, response, budget);
+        if (pdfResult != null) return pdfResult;
+      }
+
+      // Route 3: HTML / text.
+      if (contentType.contains('text/') || contentType.contains('html')) {
+        final htmlResult = _convertHtmlResponse(uri, response, budget);
+        if (htmlResult != null && htmlResult.isSuccess) return htmlResult;
+      }
+    }
 
     // Fallback: Jina Reader.
     if (_jinaClient != null) {

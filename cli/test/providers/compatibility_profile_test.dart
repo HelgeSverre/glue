@@ -46,20 +46,6 @@ void main() {
     });
   });
 
-  group('authHeaders', () {
-    test('openai/groq/openrouter/vllm/mistral use Bearer token', () {
-      for (final p in [
-        CompatibilityProfile.openai,
-        CompatibilityProfile.groq,
-        CompatibilityProfile.openrouter,
-        CompatibilityProfile.vllm,
-        CompatibilityProfile.mistral,
-      ]) {
-        expect(p.authHeaders('sk-x'), {'Authorization': 'Bearer sk-x'});
-      }
-    });
-  });
-
   group('mutateBody', () {
     test('openai preserves stream_options.include_usage', () {
       final body = <String, dynamic>{

@@ -360,14 +360,7 @@ class GlueConfig {
     final shellModeStr =
         env['GLUE_SHELL_MODE'] ?? shellSection?['mode'] as String?;
     final shellMode = shellModeStr != null
-        ? ShellMode.fromString(
-            shellModeStr,
-            onInvalid: (invalid) {
-              stderr.writeln(
-                'Warning: unknown shell mode "$invalid"; using "non_interactive".',
-              );
-            },
-          )
+        ? ShellMode.fromString(shellModeStr)
         : ShellMode.nonInteractive;
     final shellConfig = ShellConfig.detect(
       explicit: shellExe,

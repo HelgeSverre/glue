@@ -26,12 +26,6 @@ enum CompatibilityProfile {
     _ => openai,
   };
 
-  /// Auth header to attach. Auth-less local gateways omit the header
-  /// entirely — returning an empty map means "do not set".
-  Map<String, String> authHeaders(String apiKey) => {
-    'Authorization': 'Bearer $apiKey',
-  };
-
   /// Whether this endpoint supports `stream_options.include_usage`. When
   /// false, the body field is stripped to avoid 400 responses.
   bool get supportsStreamOptionsUsage => switch (this) {

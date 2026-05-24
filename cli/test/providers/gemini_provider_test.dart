@@ -28,8 +28,8 @@ void main() {
         model: const ResolvedModel(def: model, provider: provider),
         systemPrompt: 'you are a helpful assistant',
       );
-      expect(client, isA<GeminiProvider>());
-      expect((client as GeminiProvider).apiKey, 'sk-test');
+      expect(client, isA<GeminiClient>());
+      expect((client as GeminiClient).apiKey, 'sk-test');
       expect(client.model, 'gemini-3-flash-preview');
       expect(client.systemPrompt, 'you are a helpful assistant');
     });
@@ -85,7 +85,7 @@ void main() {
     });
   });
 
-  group('GeminiProvider.parseStreamEvents (client role)', () {
+  group('GeminiClient.parseStreamEvents (client role)', () {
     test('emits TextDeltas for text parts and a final UsageInfo', () async {
       final events = [
         {
@@ -120,7 +120,7 @@ void main() {
           },
         },
       ];
-      final chunks = await GeminiProvider.parseStreamEvents(
+      final chunks = await GeminiClient.parseStreamEvents(
         Stream.fromIterable(events),
       ).toList();
 
@@ -160,7 +160,7 @@ void main() {
             },
           },
         ];
-        final chunks = await GeminiProvider.parseStreamEvents(
+        final chunks = await GeminiClient.parseStreamEvents(
           Stream.fromIterable(events),
         ).toList();
 
@@ -203,7 +203,7 @@ void main() {
             ],
           },
         ];
-        final chunks = await GeminiProvider.parseStreamEvents(
+        final chunks = await GeminiClient.parseStreamEvents(
           Stream.fromIterable(events),
         ).toList();
         final completes = chunks.whereType<ToolCallComplete>().toList();
@@ -239,7 +239,7 @@ void main() {
             ],
           },
         ];
-        final chunks = await GeminiProvider.parseStreamEvents(
+        final chunks = await GeminiClient.parseStreamEvents(
           Stream.fromIterable(events),
         ).toList();
         final completes = chunks.whereType<ToolCallComplete>().toList();
@@ -268,7 +268,7 @@ void main() {
           ],
         },
       ];
-      final chunks = await GeminiProvider.parseStreamEvents(
+      final chunks = await GeminiClient.parseStreamEvents(
         Stream.fromIterable(events),
       ).toList();
       expect(
@@ -294,7 +294,7 @@ void main() {
             ],
           },
         ];
-        final chunks = await GeminiProvider.parseStreamEvents(
+        final chunks = await GeminiClient.parseStreamEvents(
           Stream.fromIterable(events),
         ).toList();
 

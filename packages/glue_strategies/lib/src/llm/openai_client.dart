@@ -67,7 +67,7 @@ class OpenAiClient implements LlmClient {
       );
       request.headers.addAll({
         'Content-Type': 'application/json',
-        ...profile.authHeaders(apiKey),
+        'Authorization': 'Bearer $apiKey',
         ...extraHeaders,
       });
       request.body = jsonEncode(body);

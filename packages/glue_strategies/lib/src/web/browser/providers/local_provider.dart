@@ -18,7 +18,6 @@ class LocalProvider implements BrowserEndpointProvider {
   bool get isConfigured => true;
 
   @override
-  @override
   Future<BrowserEndpoint> provision() async {
     final browser = await pptr.puppeteer.launch(
       headless: !config.headed,

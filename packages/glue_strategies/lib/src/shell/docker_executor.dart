@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:glue_core/glue_core.dart';
 import 'package:path/path.dart' as p;
 
+import 'package:glue_strategies/src/shell/command_events.dart';
 import 'package:glue_strategies/src/shell/command_executor.dart';
 import 'package:glue_strategies/src/shell/docker_config.dart';
 
@@ -66,14 +67,11 @@ class DockerExecutor implements CommandExecutor {
   @override
   Future<CaptureResult> runCapture(String command, {Duration? timeout}) async {
     final commandId = generateRuntimeCommandId();
-    eventSink?.call(
-      RuntimeCommandStarted(
-        commandId: commandId,
-        runtimeId: 'docker',
-        at: DateTime.now(),
-        command: command,
-        runtimeCwd: '/workspace',
-      ),
+    eventSink.emitStarted(
+      commandId: commandId,
+      runtimeId: 'docker',
+      command: command,
+      runtimeCwd: '/workspace',
     );
     final started = DateTime.now();
     final cidfile = _tempCidfile();
@@ -88,44 +86,26 @@ class DockerExecutor implements CommandExecutor {
           .transform(const SystemEncoding().decoder)
           .join();
 
-      final int exitCode;
-      var cancelled = false;
-      if (timeout == null) {
-        exitCode = await process.exitCode;
-      } else {
-        exitCode = await process.exitCode.timeout(
-          timeout,
-          onTimeout: () async {
-            await _killContainer(cidfile);
-            process.kill();
-            cancelled = true;
-            return -1;
-          },
-        );
-      }
-
+      final exitCode = await waitForExit(process, timeout, onCancel: () {
+        _killContainer(cidfile);
+      });
       final stdout = await stdoutFuture;
       final stderr = await stderrFuture;
-      if (cancelled) {
-        eventSink?.call(
-          RuntimeCommandCancelled(
-            commandId: commandId,
-            runtimeId: 'docker',
-            at: DateTime.now(),
-            reason: 'timeout',
-          ),
+
+      if (exitCode == -1) {
+        eventSink.emitCancelled(
+          commandId: commandId,
+          runtimeId: 'docker',
+          reason: 'timeout',
         );
       } else {
-        eventSink?.call(
-          RuntimeCommandCompleted(
-            commandId: commandId,
-            runtimeId: 'docker',
-            at: DateTime.now(),
-            exitCode: exitCode,
-            duration: DateTime.now().difference(started),
-            stdoutBytes: stdout.length,
-            stderrBytes: stderr.length,
-          ),
+        eventSink.emitCompleted(
+          commandId: commandId,
+          runtimeId: 'docker',
+          exitCode: exitCode,
+          duration: DateTime.now().difference(started),
+          stdoutBytes: stdout.length,
+          stderrBytes: stderr.length,
         );
       }
 
@@ -136,14 +116,11 @@ class DockerExecutor implements CommandExecutor {
         runtimeId: 'docker',
       );
     } catch (e) {
-      eventSink?.call(
-        RuntimeCommandFailed(
-          commandId: commandId,
-          runtimeId: 'docker',
-          at: DateTime.now(),
-          errorType: e.runtimeType.toString(),
-          message: e.toString(),
-        ),
+      eventSink.emitFailed(
+        commandId: commandId,
+        runtimeId: 'docker',
+        errorType: e.runtimeType.toString(),
+        message: e.toString(),
       );
       rethrow;
     } finally {
@@ -154,33 +131,22 @@ class DockerExecutor implements CommandExecutor {
   @override
   Future<RunningCommandHandle> startStreaming(String command) async {
     final commandId = generateRuntimeCommandId();
-    eventSink?.call(
-      RuntimeCommandStarted(
-        commandId: commandId,
-        runtimeId: 'docker',
-        at: DateTime.now(),
-        command: command,
-        runtimeCwd: '/workspace',
-      ),
+    eventSink.emitStarted(
+      commandId: commandId,
+      runtimeId: 'docker',
+      command: command,
+      runtimeCwd: '/workspace',
     );
     final started = DateTime.now();
     final cidfile = _tempCidfile();
     final args = buildDockerArgs(command, cidfile.path);
     final process = await Process.start('docker', args);
-    final sink = eventSink;
-    if (sink != null) {
-      process.exitCode.then((code) {
-        sink(
-          RuntimeCommandCompleted(
-            commandId: commandId,
-            runtimeId: 'docker',
-            at: DateTime.now(),
-            exitCode: code,
-            duration: DateTime.now().difference(started),
-          ),
-        );
-      });
-    }
+    eventSink.monitorStreamExit(
+      process: process,
+      commandId: commandId,
+      runtimeId: 'docker',
+      started: started,
+    );
     return DockerRunningCommand(process, cidfile);
   }
 
@@ -242,8 +208,6 @@ class DockerRunningCommand extends RunningCommand {
     try {
       final cid = await _readCidWithRetry(_cidfile);
       if (cid != null && cid.isNotEmpty) {
-        // `docker stop` sends SIGTERM then SIGKILL after the timeout.
-        // With force=true we drop the grace period for a faster kill.
         final args = force
             ? ['stop', '-t', '0', cid]
             : ['stop', '-t', '5', cid];

@@ -51,8 +51,7 @@ class ExecutorFactory {
       return result.exitCode == 0;
     } on ProcessException {
       return false;
-    } catch (e) {
-      stderr.writeln('Unexpected error checking Docker availability: $e');
+    } catch (_) {
       return false;
     }
   }

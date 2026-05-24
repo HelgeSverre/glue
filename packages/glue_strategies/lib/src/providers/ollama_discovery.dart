@@ -143,17 +143,9 @@ class OllamaDiscovery {
     }
   }
 
-  Uri _pullUri() {
-    final path = baseUrl.path;
-    final stripped = path.endsWith('/v1')
-        ? path.substring(0, path.length - 3)
-        : path.endsWith('/v1/')
-        ? path.substring(0, path.length - 4)
-        : path;
-    return baseUrl.replace(
-      path: '${stripped.endsWith('/') ? stripped : "$stripped/"}api/pull',
-    );
-  }
+  Uri _pullUri() => baseUrl.replace(
+    path: '${_stripV1(baseUrl.path)}api/pull',
+  );
 
   /// For tests: wipe all cached entries regardless of base URL.
   static void resetCacheForTesting() => _cache.clear();
@@ -164,7 +156,7 @@ class OllamaDiscovery {
       final response = await client.get(_tagsUri()).timeout(timeout);
       if (response.statusCode != 200) return const [];
       final decoded = jsonDecode(response.body);
-      if (decoded is! Map<String, dynamic>) return const [];
+      if (decoded is! Map) return const [];
       final models = decoded['models'];
       if (models is! List) return const [];
       final out = <OllamaInstalledModel>[];
@@ -188,20 +180,9 @@ class OllamaDiscovery {
     }
   }
 
-  Uri _tagsUri() {
-    // Strip a trailing `/v1` (the OpenAI-compat path) so we always hit the
-    // native `/api/tags` endpoint. `resolve` alone would keep the `/v1`
-    // prefix in the final URL.
-    final path = baseUrl.path;
-    final stripped = path.endsWith('/v1')
-        ? path.substring(0, path.length - 3)
-        : path.endsWith('/v1/')
-        ? path.substring(0, path.length - 4)
-        : path;
-    return baseUrl.replace(
-      path: '${stripped.endsWith('/') ? stripped : "$stripped/"}api/tags',
-    );
-  }
+  Uri _tagsUri() => baseUrl.replace(
+    path: '${_stripV1(baseUrl.path)}api/tags',
+  );
 
   String _cacheKey() => baseUrl.toString();
 
@@ -213,6 +194,30 @@ class OllamaDiscovery {
       return null;
     }
   }
+}
+
+/// Strips a trailing `/v1` or `/v1/` from an Ollama URL path so we always
+/// hit the native `/api/*` endpoints rather than the OpenAI-compat path.
+///
+/// Shared between [OllamaDiscovery] and [OllamaAdapter] so the normalisation
+/// logic lives in one place.
+String stripV1Suffix(String raw) {
+  final trimmed = raw.endsWith('/') ? raw.substring(0, raw.length - 1) : raw;
+  if (trimmed.endsWith('/v1')) {
+    return trimmed.substring(0, trimmed.length - 3);
+  }
+  return trimmed;
+}
+
+/// Strips a trailing `/v1` or `/v1/` from a URL path and ensures it ends
+/// with `/`. Internal helper for building `_tagsUri()` and `_pullUri()`.
+String _stripV1(String path) {
+  final stripped = path.endsWith('/v1')
+      ? path.substring(0, path.length - 3)
+      : path.endsWith('/v1/')
+          ? path.substring(0, path.length - 4)
+          : path;
+  return stripped.endsWith('/') ? stripped : '$stripped/';
 }
 
 class _CacheEntry {

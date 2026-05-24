@@ -51,7 +51,7 @@ class OllamaAdapter extends ProviderAdapter {
     return OllamaClient(
       model: model.apiId,
       systemPrompt: systemPrompt,
-      baseUrl: _stripV1Suffix(provider.baseUrl ?? 'http://localhost:11434'),
+      baseUrl: stripV1Suffix(provider.baseUrl ?? 'http://localhost:11434'),
       // Inject num_ctx when the catalog knows the model's context window.
       // Passthrough models (user-typed uncatalogued tags) get null here and
       // fall back to Ollama's default, which is the same behaviour as
@@ -69,21 +69,10 @@ class OllamaAdapter extends ProviderAdapter {
   ) async {
     final discovery = OllamaDiscovery(
       baseUrl: Uri.parse(
-        _stripV1Suffix(provider.baseUrl ?? 'http://localhost:11434'),
+        stripV1Suffix(provider.baseUrl ?? 'http://localhost:11434'),
       ),
     );
     final installed = await discovery.listInstalled();
     return [for (final m in installed) DiscoveredModel(id: m.tag, name: m.tag)];
-  }
-
-  /// The catalog historically stored Ollama's baseUrl with a `/v1` suffix
-  /// (the OpenAI-compat path). Strip it so the native client hits
-  /// `/api/chat` / `/api/tags` at the root. Accepts trailing slash too.
-  static String _stripV1Suffix(String raw) {
-    final trimmed = raw.endsWith('/') ? raw.substring(0, raw.length - 1) : raw;
-    if (trimmed.endsWith('/v1')) {
-      return trimmed.substring(0, trimmed.length - 3);
-    }
-    return trimmed;
   }
 }

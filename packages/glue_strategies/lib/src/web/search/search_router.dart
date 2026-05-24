@@ -36,19 +36,25 @@ class SearchRouter {
       return provider.search(query, maxResults: maxResults);
     }
 
-    final configured = providers.where((p) => p.isConfigured).toList();
-    final fallbackProviders = providers
-        .where(
-          (p) => !p.isConfigured && _freeFallbackProviders.contains(p.name),
-        )
-        .toList();
-    final available = [...configured, ...fallbackProviders];
-    if (available.isEmpty) {
+    final defaultP = defaultProvider;
+    if (defaultP == null) {
       throw StateError(
         'No search provider configured. Set one of: '
         'BRAVE_API_KEY, TAVILY_API_KEY, or FIRECRAWL_API_KEY',
       );
     }
+
+    if (!fallback) {
+      return defaultP.search(query, maxResults: maxResults);
+    }
+
+    // Try configured providers first, then free fallbacks, with fallback.
+    final available = [
+      defaultP,
+      ...providers.where(
+        (p) => p != defaultP && (p.isConfigured || _freeFallbackProviders.contains(p.name)),
+      ),
+    ];
 
     Exception? lastError;
     for (final provider in available) {
@@ -56,7 +62,6 @@ class SearchRouter {
         return await provider.search(query, maxResults: maxResults);
       } catch (e) {
         lastError = e is Exception ? e : Exception('$e');
-        if (!fallback) rethrow;
       }
     }
 

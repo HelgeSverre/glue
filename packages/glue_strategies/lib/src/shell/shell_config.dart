@@ -13,21 +13,14 @@ enum ShellMode {
 
   /// Parses a mode string from config.
   ///
-  /// Returns [nonInteractive] for unrecognized values and optionally reports
-  /// the invalid input through [onInvalid].
-  static ShellMode fromString(
-    String s, {
-    void Function(String invalidValue)? onInvalid,
-  }) {
+  /// Returns [nonInteractive] for unrecognized values.
+  static ShellMode fromString(String s) {
     final value = s.trim().toLowerCase();
     return switch (value) {
       'non_interactive' => ShellMode.nonInteractive,
       'interactive' => ShellMode.interactive,
       'login' => ShellMode.login,
-      _ => () {
-        onInvalid?.call(s);
-        return ShellMode.nonInteractive;
-      }(),
+      _ => ShellMode.nonInteractive,
     };
   }
 }

@@ -29,7 +29,6 @@ class BrowserbaseProvider implements BrowserEndpointProvider {
       projectId!.isNotEmpty;
 
   @override
-  @override
   Future<BrowserEndpoint> provision() async {
     if (!isConfigured) {
       throw StateError('Browserbase API key or project ID not configured');
