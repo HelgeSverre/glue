@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:glue_harness/glue_harness.dart';
 import 'package:glue_strategies/glue_strategies.dart';
@@ -224,7 +223,7 @@ class McpSlashCommand extends SlashCommand {
       serverUrl: baseUrl,
       credentials: credentials,
       cachedResourceMetadataUrl: cachedMeta,
-      openBrowser: _openBrowserSlash,
+      openBrowser: openInBrowser,
     );
 
     runner.states.listen((state) {
@@ -278,23 +277,6 @@ class McpSlashCommand extends SlashCommand {
         'Tokens stored, but could not update config.yaml '
         '(auth state may not persist between sessions).',
       );
-    }
-  }
-
-  Future<void> _openBrowserSlash(String url) async {
-    try {
-      if (Platform.isMacOS) {
-        await Process.start('open', [url], mode: ProcessStartMode.detached);
-      } else if (Platform.isLinux) {
-        await Process.start('xdg-open', [url], mode: ProcessStartMode.detached);
-      } else if (Platform.isWindows) {
-        await Process.start('rundll32', [
-          'url.dll,FileProtocolHandler',
-          url,
-        ], mode: ProcessStartMode.detached);
-      }
-    } catch (_) {
-      // User can copy-paste — the URL was printed.
     }
   }
 

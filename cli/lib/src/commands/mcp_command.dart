@@ -14,6 +14,7 @@ import 'package:args/command_runner.dart';
 import 'package:glue_harness/glue_harness.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 
+import 'package:glue/src/commands/command_helpers.dart';
 import 'package:glue/src/commands/config_command.dart' show userConfigPath;
 import 'package:glue/src/commands/mcp_auth_status_format.dart';
 import 'package:glue/src/commands/mcp_list_format.dart';
@@ -454,7 +455,7 @@ class McpToolsCommand extends Command<int> {
       return 1;
     }
 
-    final config = _safeLoadConfig();
+    final config = safeLoadConfig();
     if (config == null) return 1;
 
     final selected = argResults.rest.isEmpty
@@ -534,7 +535,7 @@ class McpListCommand extends Command<int> {
 
   @override
   Future<int> run() async {
-    final config = _safeLoadConfig();
+    final config = safeLoadConfig();
     if (config == null) return 1;
 
     final rows = config.mcp.servers
@@ -587,7 +588,7 @@ class McpAuthStatusCommand extends Command<int> {
 
   @override
   Future<int> run() async {
-    final config = _safeLoadConfig();
+    final config = safeLoadConfig();
     if (config == null) return 1;
 
     final rows = config.mcp.servers.map((spec) {
@@ -658,7 +659,7 @@ class McpAuthSetCommand extends Command<int> {
     }
     final serverId = argResults.rest.single;
 
-    final config = _safeLoadConfig();
+    final config = safeLoadConfig();
     if (config == null) return 1;
 
     final knownIds = config.mcp.servers.map((s) => s.id).toSet();
@@ -706,7 +707,7 @@ class McpAuthLoginCommand extends Command<int> {
     }
     final serverId = argResults.rest.single;
 
-    final config = _safeLoadConfig();
+    final config = safeLoadConfig();
     if (config == null) return 1;
 
     final spec = config.mcp.servers.firstWhere(
@@ -731,7 +732,7 @@ class McpAuthLoginCommand extends Command<int> {
       serverUrl: baseUrl,
       credentials: config.credentials,
       cachedResourceMetadataUrl: cachedMeta,
-      openBrowser: _openBrowser,
+      openBrowser: openInBrowser,
     );
     runner.states.listen((state) {
       switch (state) {
@@ -800,7 +801,7 @@ class McpAuthLogoutCommand extends Command<int> {
     }
     final serverId = argResults.rest.single;
 
-    final config = _safeLoadConfig();
+    final config = safeLoadConfig();
     if (config == null) return 1;
 
     _clearMcpCredentials(serverId, config.credentials);
@@ -810,32 +811,6 @@ class McpAuthLogoutCommand extends Command<int> {
 }
 
 // ─── helpers ───────────────────────────────────────────────────────────────
-
-GlueConfig? _safeLoadConfig() {
-  try {
-    return GlueConfig.load(environment: Environment.detect());
-  } on ConfigError catch (e) {
-    stderr.writeln('Failed to load config: ${e.message}');
-    return null;
-  }
-}
-
-Future<void> _openBrowser(String url) async {
-  try {
-    if (Platform.isMacOS) {
-      await Process.start('open', [url], mode: ProcessStartMode.detached);
-    } else if (Platform.isLinux) {
-      await Process.start('xdg-open', [url], mode: ProcessStartMode.detached);
-    } else if (Platform.isWindows) {
-      await Process.start('rundll32', [
-        'url.dll,FileProtocolHandler',
-        url,
-      ], mode: ProcessStartMode.detached);
-    }
-  } catch (_) {
-    // User can copy-paste — we already printed the URL.
-  }
-}
 
 /// Reads a single line from stdin without echoing. Falls back to plain
 /// readLineSync on platforms where echoMode isn't available.

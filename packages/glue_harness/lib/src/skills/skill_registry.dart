@@ -19,11 +19,11 @@ class SkillRegistry {
     String? home,
     Environment? environment,
   }) {
-    final env =
-        environment ??
-        (home != null
-            ? Environment.test(home: home, cwd: cwd)
-            : Environment.detect(cwd: cwd));
+    final env = Environment.resolve(
+      cwd: cwd,
+      home: home,
+      environment: environment,
+    );
     final resolvedHome = home ?? env.home;
 
     final skills = <SkillMeta>[];
@@ -82,7 +82,7 @@ class SkillRegistry {
     }
 
     if (resolvedHome.isNotEmpty) {
-      scanDir(p.join(resolvedHome, '.glue', 'skills'), SkillSource.global);
+      scanDir(env.skillsDir, SkillSource.global);
     }
 
     for (final bundled in bundledPaths) {

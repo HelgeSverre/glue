@@ -225,6 +225,7 @@ export 'package:glue_harness/glue_harness.dart'
         bundledCatalog,
         buildConfigTemplate,
         loadCatalog,
+        openInBrowser,
         openInFileManager,
         parseCatalogYaml,
         CatalogParseException,

@@ -50,42 +50,10 @@ void main() {
   // ── copyToClipboard fallback ordering ───────────────────────────────
 
   group('copyToClipboard', () {
-    test('prefers OSC52 when running inside tmux', () async {
-      final emitted = <String>[];
-      var hostCalled = false;
-      final ok = await copyToClipboard(
-        'tmux-text',
-        environmentOverride: const {'TMUX': '/tmp/tmux'},
-        osc52Writer: emitted.add,
-        runner: (exe, args) async {
-          hostCalled = true;
-          throw StateError('host should not be invoked when TMUX is set');
-        },
-      );
-      expect(ok, isTrue);
-      expect(emitted, hasLength(1));
-      expect(hostCalled, isFalse);
-    });
-
-    test('prefers OSC52 when running over SSH', () async {
-      final emitted = <String>[];
-      final ok = await copyToClipboard(
-        'ssh-text',
-        environmentOverride: const {'SSH_CONNECTION': '… 22 …'},
-        osc52Writer: emitted.add,
-        runner: (exe, args) async {
-          throw StateError('host should not be invoked over SSH');
-        },
-      );
-      expect(ok, isTrue);
-      expect(emitted, hasLength(1));
-    });
-
     test('falls back to OSC52 if host commands all fail', () async {
       final emitted = <String>[];
       final ok = await copyToClipboard(
         'fallback',
-        environmentOverride: const {},
         osc52Writer: emitted.add,
         runner: (exe, args) async {
           // Simulate every host command failing with a non-zero exit.
@@ -105,7 +73,6 @@ void main() {
     test('returns false if every transport fails', () async {
       final ok = await copyToClipboard(
         'a' * (osc52MaxBytes + 1), // payload too large for OSC52
-        environmentOverride: const {'TMUX': '/tmp/tmux'},
         osc52Writer: (_) {},
         runner: (exe, args) async => ClipboardProcess(
           stdin: IOSink(_NoopSink()),

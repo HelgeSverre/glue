@@ -41,6 +41,7 @@ class ServiceLocator {
 
     final systemPrompt = Prompts.build(
       cwd: resolvedEnv.cwd,
+      homeDir: resolvedEnv.home,
       skills: skillRuntime.list(),
     );
 

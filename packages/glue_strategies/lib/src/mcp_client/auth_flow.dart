@@ -77,7 +77,7 @@ class McpAuthFlowRunner {
     this.cachedResourceMetadataUrl,
     this.cachedAuthorizationServer,
     http.Client? httpClient,
-    Future<void> Function(String url)? openBrowser,
+    Future<bool> Function(String url)? openBrowser,
     OAuthCodeFlow? codeFlow,
     // ignore: prefer_initializing_formals
   }) : _httpClient = httpClient,
@@ -91,7 +91,7 @@ class McpAuthFlowRunner {
   final Uri? cachedResourceMetadataUrl;
   final Uri? cachedAuthorizationServer;
   final http.Client? _httpClient;
-  final Future<void> Function(String url) _openBrowser;
+  final Future<bool> Function(String url) _openBrowser;
   final OAuthCodeFlow _codeFlow;
 
   final _states = StreamController<McpAuthFlowState>.broadcast();
@@ -217,7 +217,7 @@ class McpAuthFlowRunner {
   }
 }
 
-Future<void> _noopOpen(String url) async {}
+Future<bool> _noopOpen(String url) async => false;
 
 Future<OAuthTokens> _defaultCodeFlow({
   required OAuthEndpoints endpoints,

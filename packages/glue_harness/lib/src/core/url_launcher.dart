@@ -17,8 +17,8 @@ library;
 
 import 'dart:io';
 
-typedef ProcessRunner =
-    Future<ProcessResult> Function(String executable, List<String> arguments);
+import 'package:glue_harness/src/core/process_runner.dart';
+
 typedef FileExistsCheck = bool Function(String path);
 
 /// Open [url] in the default browser. Returns false (never throws) when:

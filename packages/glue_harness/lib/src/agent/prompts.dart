@@ -3,12 +3,12 @@ import 'dart:io';
 import 'package:glue_harness/src/skills/skill_parser.dart';
 import 'package:path/path.dart' as p;
 
-String _escapeXml(String text) => text
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;');
-
 class Prompts {
+  static String _escapeXml(String text) => text
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;');
+
   Prompts._();
 
   static const String system = '''
@@ -47,10 +47,7 @@ Guidelines:
     final buf = StringBuffer(system);
 
     if (cwd != null) {
-      final guidance = _collectGuidance(
-        cwd,
-        homeDir: homeDir ?? _defaultHome(),
-      );
+      final guidance = _collectGuidance(cwd, homeDir: homeDir);
       for (final entry in guidance) {
         buf.write(
           '\n\n## Project Instructions (${entry.label})\n\n${entry.content}',
@@ -89,13 +86,6 @@ Guidelines:
     return buf.toString();
   }
 
-  static String? _defaultHome() {
-    final home =
-        Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
-    if (home == null || home.isEmpty) return null;
-    return p.normalize(home);
-  }
-
   /// Walks from [cwd] up to the workspace root and collects every `AGENTS.md`
   /// and `CLAUDE.md` along the way. The workspace root is the first ancestor
   /// containing `.git`; the walk also stops at [homeDir] to prevent personal
@@ -108,30 +98,11 @@ Guidelines:
     final start = p.normalize(p.absolute(cwd));
     final normalizedHome = homeDir == null ? null : p.normalize(homeDir);
 
-    final dirs = <String>[start];
-    String? gitRoot;
-    var current = start;
-    if (Directory(p.join(current, '.git')).existsSync()) {
-      gitRoot = current;
-    }
-    while (gitRoot == null) {
-      if (normalizedHome != null && current == normalizedHome) break;
-      final parent = p.dirname(current);
-      if (parent == current) break;
-      current = parent;
-      dirs.add(current);
-      if (Directory(p.join(current, '.git')).existsSync()) {
-        gitRoot = current;
-        break;
-      }
-    }
-
-    // Without a git root, fall back to cwd-only discovery.
-    final walked = gitRoot == null ? [start] : dirs;
-    final workspaceRoot = walked.last;
+    final dirs = _discoverDirectories(start, normalizedHome);
+    final workspaceRoot = dirs.last;
 
     final entries = <_GuidanceEntry>[];
-    for (final dir in walked.reversed) {
+    for (final dir in dirs.reversed) {
       for (final filename in _guidanceFiles) {
         final file = File(p.join(dir, filename));
         if (!file.existsSync()) continue;
@@ -146,6 +117,31 @@ Guidelines:
       }
     }
     return entries;
+  }
+
+  /// Returns [start] alone when no `.git` ancestor is reachable within
+  /// [homeBoundary]. Otherwise returns the full chain from [start] up to
+  /// (and including) the `.git`-bearing root, so guidance files at every
+  /// level between cwd and repo root are discovered.
+  static List<String> _discoverDirectories(String start, String? homeBoundary) {
+    if (Directory(p.join(start, '.git')).existsSync()) {
+      return [start];
+    }
+
+    final dirs = <String>[start];
+    var current = start;
+    while (true) {
+      if (homeBoundary != null && current == homeBoundary) {
+        return [start];
+      }
+      final parent = p.dirname(current);
+      if (parent == current) return [start];
+      current = parent;
+      dirs.add(current);
+      if (Directory(p.join(current, '.git')).existsSync()) {
+        return dirs;
+      }
+    }
   }
 }
 

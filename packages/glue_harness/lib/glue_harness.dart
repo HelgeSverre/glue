@@ -34,10 +34,8 @@ export 'package:glue_harness/src/config/mcp_config.dart';
 export 'package:glue_harness/src/config/mcp_config_writer.dart';
 export 'package:glue_harness/src/core/clipboard.dart';
 export 'package:glue_harness/src/core/environment.dart';
-// Both path_opener and url_launcher define a private `ProcessRunner`
-// typedef for testing. Hide it from path_opener's export so the barrel's
-// public surface stays unambiguous.
-export 'package:glue_harness/src/core/path_opener.dart' hide ProcessRunner;
+export 'package:glue_harness/src/core/path_opener.dart';
+export 'package:glue_harness/src/core/process_runner.dart';
 export 'package:glue_harness/src/core/service_locator.dart';
 export 'package:glue_harness/src/core/url_launcher.dart';
 export 'package:glue_harness/src/extensions/list.dart';

@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:glue_core/glue_core.dart';
+import 'package:glue_harness/src/storage/file_utils.dart';
 import 'package:path/path.dart' as p;
 
 /// Metadata for a saved session, including model ref and timing.
@@ -255,7 +257,7 @@ class SessionStore {
   void _writeMeta() {
     const encoder = JsonEncoder.withIndent('  ');
     final file = File(p.join(sessionDir, 'meta.json'));
-    _atomicWrite(file, encoder.convert(meta.toJson()));
+    atomicWrite(file, encoder.convert(meta.toJson()));
   }
 
   void setTitle(
@@ -292,23 +294,13 @@ class SessionStore {
     final previous = _conversationFile.existsSync()
         ? _conversationFile.readAsStringSync()
         : '';
-    _atomicWrite(_conversationFile, '$previous${jsonEncode(record)}\n');
+    atomicWrite(_conversationFile, '$previous${jsonEncode(record)}\n');
   }
 
   /// Closes this session, recording the end time.
   Future<void> close() async {
     meta.endTime = DateTime.now().toUtc();
     _writeMeta();
-  }
-
-  static void _atomicWrite(File file, String content) {
-    file.parent.createSync(recursive: true);
-    final tmp = File('${file.path}.tmp');
-    tmp.writeAsStringSync(content);
-    if (Platform.isWindows && file.existsSync()) {
-      file.deleteSync();
-    }
-    tmp.renameSync(file.path);
   }
 
   /// Lists all saved sessions in [sessionsDir], sorted newest first.

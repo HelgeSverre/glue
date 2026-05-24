@@ -15,6 +15,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:glue/src/commands/command_helpers.dart';
 import 'package:glue/src/terminal/brand.dart';
 import 'package:glue/src/terminal/tty_style.dart';
 import 'package:glue_core/glue_core.dart';
@@ -134,7 +135,7 @@ class CatalogRefreshCommand extends Command<int> {
   @override
   Future<int> run() async {
     final env = Environment.detect();
-    final config = _safeLoadConfig();
+    final config = safeLoadConfig();
     if (config == null) return 1;
 
     final asJson = argResults!.flag('json');
@@ -241,7 +242,7 @@ class CatalogShowCommand extends Command<int> {
 
   @override
   Future<int> run() async {
-    final config = _safeLoadConfig();
+    final config = safeLoadConfig();
     if (config == null) return 1;
 
     final catalog = config.catalogData;
@@ -441,7 +442,7 @@ class CatalogOpenCommand extends Command<int> {
 
   @override
   Future<int> run() async {
-    final config = _safeLoadConfig();
+    final config = safeLoadConfig();
     if (config == null) return 1;
 
     final url =
@@ -458,7 +459,7 @@ class CatalogOpenCommand extends Command<int> {
     );
     stdout.writeln('  $markerInfo ${styledOrPlain(url, (s) => s.gray)}');
 
-    final launched = await _openBrowser(url);
+    final launched = await openInBrowser(url);
     if (!launched) {
       stderr.writeln(
         '  $markerWarn ${styledOrPlain('no browser launcher available on this platform', (s) => s.yellow)}',
@@ -532,37 +533,5 @@ class CatalogEditCommand extends Command<int> {
       runInShell: true,
     );
     return result.exitCode;
-  }
-}
-
-Future<bool> _openBrowser(String url) async {
-  try {
-    if (Platform.isMacOS) {
-      await Process.start('open', [url], mode: ProcessStartMode.detached);
-      return true;
-    }
-    if (Platform.isLinux) {
-      await Process.start('xdg-open', [url], mode: ProcessStartMode.detached);
-      return true;
-    }
-    if (Platform.isWindows) {
-      await Process.start('rundll32', [
-        'url.dll,FileProtocolHandler',
-        url,
-      ], mode: ProcessStartMode.detached);
-      return true;
-    }
-  } catch (_) {
-    return false;
-  }
-  return false;
-}
-
-GlueConfig? _safeLoadConfig() {
-  try {
-    return GlueConfig.load(environment: Environment.detect());
-  } on ConfigError catch (e) {
-    stderr.writeln('Failed to load config: ${e.message}');
-    return null;
   }
 }

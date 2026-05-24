@@ -36,4 +36,42 @@ void main() {
     expect(Directory(environment.logsDir).existsSync(), isTrue);
     expect(Directory(environment.cacheDir).existsSync(), isTrue);
   });
+
+  group('remote-or-multiplexed detection', () {
+    test('isTmux is true with TMUX env var', () {
+      final env = Environment.test(home: '/tmp', vars: {'TMUX': '/tmp/tmux'});
+      expect(env.isTmux, isTrue);
+    });
+
+    test('isTmux is false without TMUX', () {
+      final env = Environment.test(home: '/tmp', vars: {});
+      expect(env.isTmux, isFalse);
+    });
+
+    test('isRemoteOrMultiplexed detects TMUX', () {
+      final env = Environment.test(home: '/tmp', vars: {'TMUX': '/tmp/tmux'});
+      expect(env.isRemoteOrMultiplexed, isTrue);
+    });
+
+    test('isRemoteOrMultiplexed detects SSH_CONNECTION', () {
+      final env = Environment.test(
+        home: '/tmp',
+        vars: {'SSH_CONNECTION': 'client 22 server 1234'},
+      );
+      expect(env.isRemoteOrMultiplexed, isTrue);
+    });
+
+    test('isRemoteOrMultiplexed detects SSH_TTY', () {
+      final env = Environment.test(
+        home: '/tmp',
+        vars: {'SSH_TTY': '/dev/pts/0'},
+      );
+      expect(env.isRemoteOrMultiplexed, isTrue);
+    });
+
+    test('isRemoteOrMultiplexed is false in clean environment', () {
+      final env = Environment.test(home: '/tmp', vars: {});
+      expect(env.isRemoteOrMultiplexed, isFalse);
+    });
+  });
 }

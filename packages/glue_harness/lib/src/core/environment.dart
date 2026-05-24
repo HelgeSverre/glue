@@ -61,6 +61,19 @@ class Environment {
     );
   }
 
+  /// Resolves an [Environment] from the most specific override available.
+  ///
+  /// Precedence: explicit [environment] > [home] + [cwd] > [Environment.detect].
+  factory Environment.resolve({
+    required String cwd,
+    String? home,
+    Environment? environment,
+  }) {
+    if (environment != null) return environment;
+    if (home != null) return Environment.test(home: home, cwd: cwd);
+    return Environment.detect(cwd: cwd);
+  }
+
   String get glueDir => glueHomeOverride ?? p.join(home, '.glue');
   String get configPath => p.join(glueDir, 'preferences.json');
   String get configYamlPath => p.join(glueDir, 'config.yaml');
@@ -70,6 +83,13 @@ class Environment {
   String get logsDir => p.join(glueDir, 'logs');
   String get skillsDir => p.join(glueDir, 'skills');
   String get cacheDir => p.join(glueDir, 'cache');
+
+  bool get isTmux => vars['TMUX'] != null;
+
+  bool get isRemoteOrMultiplexed =>
+      vars['TMUX'] != null ||
+      vars['SSH_CONNECTION'] != null ||
+      vars['SSH_TTY'] != null;
 
   /// Path the refreshed remote catalog is written to and loaded from. Honours
   /// `$GLUE_CATALOG_CACHE` so tests and power users can redirect it without

@@ -16,46 +16,33 @@ library;
 
 import 'dart:io';
 
-typedef ProcessRunner =
-    Future<ProcessResult> Function(String executable, List<String> arguments);
+import 'package:glue_harness/src/core/process_runner.dart';
 
 typedef DirectoryExistsCheck = bool Function(String path);
 
-/// Open [dir] in the OS file manager. Returns `false` (never throws) when:
-///   - [dir] is empty, contains shell metacharacters, or control chars
-///   - [dir] does not exist as a directory
-///   - the launched command exits non-zero
-///   - the launcher itself throws (`ProcessException`, etc.)
 Future<bool> openInFileManager(
   String dir, {
   ProcessRunner? runner,
   DirectoryExistsCheck? directoryExists,
 }) async {
-  if (!_isSafePath(dir)) return false;
+  if (dir.isEmpty ||
+      dir.codeUnits.any(
+        (c) => c < 0x20 || '&|^<>"`\$'.contains(String.fromCharCode(c)),
+      )) {
+    return false;
+  }
   final exists = directoryExists ?? (p) => Directory(p).existsSync();
   if (!exists(dir)) return false;
   final run = runner ?? Process.run;
-  final (exe, args) = _commandFor(dir);
+  final exe = Platform.isMacOS
+      ? 'open'
+      : Platform.isWindows
+      ? 'explorer'
+      : 'xdg-open';
   try {
-    final result = await run(exe, args);
+    final result = await run(exe, [dir]);
     return result.exitCode == 0;
   } on ProcessException {
     return false;
   }
-}
-
-bool _isSafePath(String dir) {
-  if (dir.isEmpty) return false;
-  const blocked = {'&', '|', '^', '<', '>', '"', '`', r'$'};
-  for (final codeUnit in dir.codeUnits) {
-    if (codeUnit < 0x20) return false;
-    if (blocked.contains(String.fromCharCode(codeUnit))) return false;
-  }
-  return true;
-}
-
-(String, List<String>) _commandFor(String dir) {
-  if (Platform.isMacOS) return ('open', [dir]);
-  if (Platform.isWindows) return ('explorer', [dir]);
-  return ('xdg-open', [dir]);
 }

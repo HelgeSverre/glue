@@ -108,7 +108,6 @@ void main() {
       () async {
         final ok = await copyToClipboard(
           'X',
-          environmentOverride: const {},
           osc52Writer: (_) => throw StateError('osc52 disabled in this test'),
           runner: (_, _) async => throw const ProcessException('nope', []),
         );
@@ -121,7 +120,6 @@ void main() {
       () async {
         final ok = await copyToClipboard(
           'X',
-          environmentOverride: const {},
           osc52Writer: (_) => throw StateError('osc52 disabled in this test'),
           runner: (_, _) async => _proc(exit: 1),
         );

@@ -43,4 +43,7 @@ node_modules/
 # ── Misc tools ─────────────────────────────────────────────────────────────
 .junie*
 .aider*
+.agents/
+.claude/
+skills-lock.json
 mlflow.db

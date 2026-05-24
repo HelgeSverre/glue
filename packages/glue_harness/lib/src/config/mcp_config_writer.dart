@@ -12,6 +12,7 @@ import 'dart:io';
 
 import 'package:glue_harness/src/config/config_template.dart';
 import 'package:glue_harness/src/config/mcp_config.dart';
+import 'package:glue_harness/src/core/environment.dart';
 import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
@@ -26,10 +27,12 @@ class McpConfigWriteError implements Exception {
 }
 
 class McpConfigWriter {
-  McpConfigWriter(this.configPath);
+  McpConfigWriter(this.configPath, {Environment? environment})
+    : _env = environment;
 
   /// Absolute path to the user's `config.yaml`.
   final String configPath;
+  final Environment? _env;
 
   /// Returns true if `mcp.servers.<id>` exists in the on-disk YAML.
   bool hasServer(String id) {
@@ -272,7 +275,7 @@ class McpConfigWriter {
     try {
       final parsed = loadYaml(yamlSource);
       final mcpSection = parsed is YamlMap ? parsed['mcp'] : null;
-      parseMcpConfig(mcpSection, Platform.environment);
+      parseMcpConfig(mcpSection, _env?.vars ?? Platform.environment);
     } on Exception catch (e) {
       throw McpConfigWriteError(
         'Refusing to write: result would not parse ($e).',

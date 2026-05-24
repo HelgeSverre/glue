@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:path/path.dart' as p;
+
+import 'package:glue_harness/src/storage/file_utils.dart';
 import 'package:glue_strategies/glue_strategies.dart';
+import 'package:path/path.dart' as p;
 
 class SessionState {
   static const int _currentVersion = 1;
@@ -46,7 +48,9 @@ class SessionState {
             state._browserContainerIds.add(id as String);
           }
         }
-      } catch (_) {}
+      } catch (_) {
+        // Corrupted state.json is non-fatal — start fresh.
+      }
     }
     return state;
   }
@@ -77,7 +81,7 @@ class SessionState {
   void _persist() {
     final file = File(p.join(_dir, 'state.json'));
     const encoder = JsonEncoder.withIndent('  ');
-    _atomicWrite(
+    atomicWrite(
       file,
       encoder.convert({
         'version': _currentVersion,
@@ -85,16 +89,6 @@ class SessionState {
         'browser': {'container_ids': _browserContainerIds},
       }),
     );
-  }
-
-  static void _atomicWrite(File file, String content) {
-    file.parent.createSync(recursive: true);
-    final tmp = File('${file.path}.tmp');
-    tmp.writeAsStringSync(content);
-    if (Platform.isWindows && file.existsSync()) {
-      file.deleteSync();
-    }
-    tmp.renameSync(file.path);
   }
 
   static int? _parseVersion(Object? raw) {

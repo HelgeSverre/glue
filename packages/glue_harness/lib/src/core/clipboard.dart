@@ -13,6 +13,7 @@ import 'dart:io';
 
 class ClipboardProcess {
   const ClipboardProcess({required this.stdin, required this.exitCode});
+
   final IOSink stdin;
   final Future<int> exitCode;
 }
@@ -32,16 +33,6 @@ typedef Osc52Writer = void Function(String payload);
 /// most terminals use to receive OSC52 has a length limit (~100KB is the
 /// upper bound; 74KB stays well under it after base64 expansion).
 const int osc52MaxBytes = 74 * 1024;
-
-/// Whether the current process is running under a multiplexed or remote
-/// shell where host clipboard tools can't reach the user's real clipboard.
-/// In those environments the only path that works is OSC52.
-bool _remoteOrMultiplexedSession([Map<String, String>? envOverride]) {
-  final env = envOverride ?? Platform.environment;
-  return env['TMUX'] != null ||
-      env['SSH_CONNECTION'] != null ||
-      env['SSH_TTY'] != null;
-}
 
 /// Encode [text] as an OSC52 set-clipboard escape sequence. When inside
 /// tmux (detected by the `TMUX` env var), wrap the sequence in tmux's
@@ -77,29 +68,27 @@ Future<bool> copyToClipboard(
   String text, {
   ClipboardRunner? runner,
   Osc52Writer? osc52Writer,
-  Map<String, String>? environmentOverride,
 }) async {
-  final env = environmentOverride ?? Platform.environment;
-  final preferOsc52 = _remoteOrMultiplexedSession(env);
+  final env = Platform.environment;
+  final preferOsc52 =
+      env['TMUX'] != null ||
+      env['SSH_CONNECTION'] != null ||
+      env['SSH_TTY'] != null;
 
-  if (preferOsc52 && _tryOsc52(text, writer: osc52Writer, env: env)) {
+  if (preferOsc52 && _tryOsc52(text, writer: osc52Writer)) {
     return true;
   }
   if (await _tryHostCommands(text, runner: runner)) {
     return true;
   }
-  if (!preferOsc52 && _tryOsc52(text, writer: osc52Writer, env: env)) {
+  if (!preferOsc52 && _tryOsc52(text, writer: osc52Writer)) {
     return true;
   }
   return false;
 }
 
-bool _tryOsc52(
-  String text, {
-  Osc52Writer? writer,
-  required Map<String, String> env,
-}) {
-  final payload = encodeOsc52(text, env: env);
+bool _tryOsc52(String text, {Osc52Writer? writer}) {
+  final payload = encodeOsc52(text);
   if (payload == null) return false;
   try {
     (writer ?? stdout.write).call(payload);

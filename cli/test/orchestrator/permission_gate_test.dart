@@ -213,31 +213,5 @@ void main() {
       );
       expect(event.dangerLevel, equals(core.ToolKind.write));
     });
-
-    test(
-      'unknown tools default to ToolKind.exec danger level',
-      () {
-        // Use an arbitrary tool name not in the registry.
-        final call = ToolCall(
-          id: const core.ToolCallId('tc-3'),
-          name: 'rogue',
-          arguments: const {},
-        );
-        // resolve() returns deny for unknown tools, so we can't assert the
-        // pre-condition here — but the event-building path is still
-        // exercised in non-asserting builds.
-        final event = gate.requestEventFor(
-          call,
-          turnId: const core.TurnId('t'),
-          requestId: const core.PermissionRequestId('r'),
-          sequence: 0,
-        );
-        expect(event.dangerLevel, equals(core.ToolKind.exec));
-      },
-      skip:
-          'requestEventFor asserts the ask-decision pre-condition; '
-          'classification of unknown tools is covered indirectly via '
-          'PermissionGate.needsEarlyConfirmation.',
-    );
   });
 }

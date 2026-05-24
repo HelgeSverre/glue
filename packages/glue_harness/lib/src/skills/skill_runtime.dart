@@ -31,7 +31,7 @@ class SkillRuntime {
     SkillPathsProvider? bundledPathsProvider,
     String? home,
     Environment? environment,
-  }) : environment = _resolveEnvironment(
+  }) : environment = Environment.resolve(
          cwd: cwd,
          home: home,
          environment: environment,
@@ -45,16 +45,6 @@ class SkillRuntime {
       bundledPaths: this.bundledPathsProvider(),
       environment: this.environment,
     );
-  }
-
-  static Environment _resolveEnvironment({
-    required String cwd,
-    String? home,
-    Environment? environment,
-  }) {
-    if (environment != null) return environment;
-    if (home != null) return Environment.test(home: home, cwd: cwd);
-    return Environment.detect(cwd: cwd);
   }
 
   SkillRegistry get registry => _registry;

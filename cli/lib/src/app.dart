@@ -2810,7 +2810,7 @@ class App {
       credentials: config.credentials,
       wwwAuthenticate: wwwAuthenticate,
       cachedResourceMetadataUrl: cachedMeta,
-      openBrowser: _openMcpAuthBrowser,
+      openBrowser: openInBrowser,
     );
 
     runner.states.listen((state) {
@@ -2858,23 +2858,6 @@ class App {
       );
     } catch (_) {
       // Non-fatal — tokens are stored, just the config write-back didn't take.
-    }
-  }
-
-  Future<void> _openMcpAuthBrowser(String url) async {
-    try {
-      if (Platform.isMacOS) {
-        await Process.start('open', [url], mode: ProcessStartMode.detached);
-      } else if (Platform.isLinux) {
-        await Process.start('xdg-open', [url], mode: ProcessStartMode.detached);
-      } else if (Platform.isWindows) {
-        await Process.start('rundll32', [
-          'url.dll,FileProtocolHandler',
-          url,
-        ], mode: ProcessStartMode.detached);
-      }
-    } catch (_) {
-      // URL is already printed via system message.
     }
   }
 
