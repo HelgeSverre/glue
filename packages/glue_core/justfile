@@ -7,6 +7,22 @@ default:
 deps:
     dart pub get
 
+# Regenerate committed dart_mappable outputs (.mapper.dart)
+gen: deps
+    dart run build_runner build
+
+# Check that committed dart_mappable outputs are up to date.
+gen-check: deps
+    #!/usr/bin/env bash
+    set -euo pipefail
+    dart run build_runner build >/dev/null
+    status="$(git status --short --untracked-files=all -- lib/src/model_catalog.mapper.dart || true)"
+    if [ -n "$status" ]; then
+      echo 'ERROR: model_catalog.mapper.dart is out of date — run `just gen` and commit the result.'
+      echo "$status"
+      exit 1
+    fi
+
 # Static analysis
 analyze: deps
     dart analyze --fatal-infos
@@ -19,8 +35,8 @@ format:
 test *args:
     dart test {{args}}
 
-# Quality gate: analyze + test
-check: deps analyze test
+# Quality gate: gen-check + analyze + test
+check: gen-check analyze test
 
 # Cleanup generated artefacts
 clean:

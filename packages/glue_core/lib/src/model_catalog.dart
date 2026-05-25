@@ -8,7 +8,12 @@
 /// The catalog *parser* and the bundled `models_generated.dart` snapshot
 /// stay in `catalog/` because they pull in YAML/IO dependencies — only the
 /// pure data types move here.
+@MappableLib(caseStyle: CaseStyle.snakeCase)
 library;
+
+import 'package:dart_mappable/dart_mappable.dart';
+
+part 'model_catalog.mapper.dart';
 
 /// The canonical capability names used by the catalog.
 ///
@@ -45,7 +50,8 @@ class Capability {
 }
 
 /// Top-level catalog object.
-class ModelCatalog {
+@MappableClass()
+class ModelCatalog with ModelCatalogMappable {
   const ModelCatalog({
     required this.version,
     required this.updatedAt,
@@ -65,7 +71,8 @@ class ModelCatalog {
   final Map<String, ProviderDef> providers;
 }
 
-class DefaultsConfig {
+@MappableClass()
+class DefaultsConfig with DefaultsConfigMappable {
   const DefaultsConfig({required this.model, this.smallModel, this.localModel});
 
   final String model;
@@ -80,9 +87,11 @@ class DefaultsConfig {
 ///   drives the flow via [ProviderAdapter.beginInteractiveAuth] and decides
 ///   what fields to store.
 /// - [none] — no credential needed (Ollama, local-vllm).
+@MappableEnum(caseStyle: CaseStyle.snakeCase)
 enum AuthKind { apiKey, oauth, none }
 
-class AuthSpec {
+@MappableClass()
+class AuthSpec with AuthSpecMappable {
   const AuthSpec({required this.kind, this.envVar, this.helpUrl});
 
   final AuthKind kind;
@@ -95,7 +104,8 @@ class AuthSpec {
   final String? helpUrl;
 }
 
-class ProviderDef {
+@MappableClass()
+class ProviderDef with ProviderDefMappable {
   const ProviderDef({
     required this.id,
     required this.name,
@@ -129,7 +139,8 @@ class ProviderDef {
   final Map<String, ModelDef> models;
 }
 
-class ModelDef {
+@MappableClass()
+class ModelDef with ModelDefMappable {
   const ModelDef({
     required this.id,
     required this.name,
@@ -157,6 +168,8 @@ class ModelDef {
   final String apiId;
 
   final bool recommended;
+
+  @MappableField(key: 'default')
   final bool isDefault;
 
   /// When `false`, the model picker hides this entry but the catalog still

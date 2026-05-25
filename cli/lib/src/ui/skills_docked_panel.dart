@@ -268,10 +268,6 @@ class SkillsDockedPanel extends DockedPanel {
   }
 
   List<String> _buildLeftItems(List<int> filteredIndices) {
-    const cyan = '\x1b[36m';
-    const green = '\x1b[32m';
-    const rst = '\x1b[0m';
-
     if (filteredIndices.isEmpty) {
       return ['\x1b[2mNo matching skills\x1b[0m'];
     }
@@ -284,14 +280,10 @@ class SkillsDockedPanel extends DockedPanel {
     );
 
     return filteredSkills
-        .map((skill) {
-          final sourceTag = switch (skill.source) {
-            SkillSource.project => '${green}project$rst',
-            SkillSource.global => '${cyan}global$rst',
-            SkillSource.custom => '${cyan}custom$rst',
-          };
-          return '${skill.name.padRight(maxNameLen)}  $sourceTag';
-        })
+        .map(
+          (skill) =>
+              '${skill.name.padRight(maxNameLen)}  ${_sourceTag(skill.source)}',
+        )
         .toList(growable: false);
   }
 
@@ -318,12 +310,40 @@ class SkillsDockedPanel extends DockedPanel {
     if (skill.compatibility != null) {
       lines.add('${label}Requires$rst   $dim${skill.compatibility}$rst');
     }
+    if (skill.allowedTools.isNotEmpty) {
+      lines.add(
+        '${label}Tools$rst      $dim${skill.allowedTools.join(', ')}$rst',
+      );
+    }
+    if (skill.resources.isNotEmpty) {
+      lines.add(
+        '${label}Resources$rst  $dim${_resourceSummary(skill.resources.length)}$rst',
+      );
+    }
     for (final entry in skill.metadata.entries) {
       final key = entry.key[0].toUpperCase() + entry.key.substring(1);
       final pad = ' ' * max(1, 11 - key.length);
       lines.add('$label$key$rst$pad$dim${entry.value}$rst');
     }
     return lines;
+  }
+
+  String _sourceTag(SkillSource source) {
+    const cyan = '\x1b[36m';
+    const green = '\x1b[32m';
+    const rst = '\x1b[0m';
+
+    final color = switch (source) {
+      SkillSource.project ||
+      SkillSource.projectAgents ||
+      SkillSource.projectClaude => green,
+      _ => cyan,
+    };
+    return '$color${source.label}$rst';
+  }
+
+  String _resourceSummary(int count) {
+    return '$count resource file${count == 1 ? '' : 's'}';
   }
 
   String _buildFilterRow(int width, int filteredCount) {

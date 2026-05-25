@@ -7,10 +7,14 @@ SkillMeta _skill({
   required String name,
   required String description,
   required String path,
+  List<String> allowedTools = const [],
+  List<SkillResource> resources = const [],
 }) {
   return SkillMeta(
     name: name,
     description: description,
+    allowedTools: allowedTools,
+    resources: resources,
     skillDir: path.replaceAll('/SKILL.md', ''),
     skillMdPath: path,
     source: SkillSource.global,
@@ -141,6 +145,15 @@ void main() {
           name: 'code-review',
           description: 'Review code changes',
           path: '/tmp/skills/code-review/SKILL.md',
+          allowedTools: ['Read', 'Bash'],
+          resources: [
+            const SkillResource(
+              relativePath: 'references/style.md',
+              absolutePath: '/tmp/skills/code-review/references/style.md',
+              kind: SkillResourceKind.reference,
+              sizeBytes: 42,
+            ),
+          ],
         ),
       ],
     );
@@ -148,6 +161,8 @@ void main() {
     expect(prompt, contains('<available_skills>'));
     expect(prompt, contains('<name>code-review</name>'));
     expect(prompt, contains('<description>Review code changes</description>'));
+    expect(prompt, contains('<allowed_tools>Read, Bash</allowed_tools>'));
+    expect(prompt, contains('<resources count="1" />'));
     expect(
       prompt,
       contains('<location>/tmp/skills/code-review/SKILL.md</location>'),

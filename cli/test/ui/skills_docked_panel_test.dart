@@ -99,6 +99,37 @@ void main() {
       expect(lines.first, contains('SKILLS'));
     });
 
+    test(
+      'detail renders allowed tools, resources, and precise source label',
+      () {
+        final panel = SkillsDockedPanel(
+          skills: [
+            SkillMeta(
+              name: 'alpha',
+              description: 'alpha description',
+              allowedTools: ['Read'],
+              resources: [
+                const SkillResource(
+                  relativePath: 'references/a.md',
+                  absolutePath: '/tmp/alpha/references/a.md',
+                  kind: SkillResourceKind.reference,
+                ),
+              ],
+              skillDir: '/tmp/alpha',
+              skillMdPath: '/tmp/alpha/SKILL.md',
+              source: SkillSource.projectAgents,
+            ),
+          ],
+        );
+
+        final rendered = panel.render(80, 14).join('\n');
+
+        expect(rendered, contains('project-agents'));
+        expect(rendered, contains('Read'));
+        expect(rendered, contains('1 resource file'));
+      },
+    );
+
     test('empty skills enter dismisses with null selection', () async {
       final panel = SkillsDockedPanel(skills: []);
       panel.show();

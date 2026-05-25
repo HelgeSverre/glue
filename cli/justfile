@@ -47,12 +47,14 @@ format:
 
 # Regenerate committed source snapshots from their source files.
 gen: local-gen
+    cd ../packages/glue_core && just gen
     dart run tool/gen_models.dart
     dart run tool/gen_version.dart
     dart run tool/gen_share_assets.dart
 
 # Fail if any committed generated file is out of date.
 gen-check: local-gen
+    cd ../packages/glue_core && just gen-check
     dart run tool/gen_models.dart --check
     dart run tool/gen_version.dart --check
     dart run tool/gen_share_assets.dart --check

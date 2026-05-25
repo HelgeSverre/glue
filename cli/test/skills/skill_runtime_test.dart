@@ -72,7 +72,7 @@ void main() {
 
       final meta = runtime.findByName('builtin-skill');
       expect(meta, isNotNull);
-      expect(meta!.source.name, 'custom');
+      expect(meta!.source, SkillSource.bundled);
     });
   });
 }

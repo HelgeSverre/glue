@@ -1,16 +1,16 @@
 /// ACP agent server.
 ///
 /// Owns the JSON-RPC dispatch loop. Routes incoming `initialize`,
-/// `session/new`, `session/prompt`, and `session/cancel` to a pluggable
-/// [AcpServerDelegate]; emits `session/update` notifications and
-/// `session/request_permission` requests as the delegate runs.
+/// `session/new`, `session/close`, `session/prompt`, and `session/cancel`
+/// to a pluggable [AcpServerDelegate]; emits `session/update`
+/// notifications and `session/request_permission` requests as the
+/// delegate runs.
 ///
 /// The server itself has **no dependency on glue_harness** — the
 /// delegate is the wiring point. A test can stand up an [AcpServer]
 /// with a fake delegate and exercise the full protocol without the
-/// real agent loop. The cli's `glue acp --stdio` provides a
-/// production delegate that uses [`AgentCore`] + `SessionManager` from
-/// glue_harness.
+/// real agent loop. The CLI's `glue acp --stdio` provides a production
+/// delegate that uses [`AgentCore`] + `SessionManager` from glue_harness.
 library;
 
 import 'dart:async';
@@ -58,8 +58,9 @@ abstract class AcpServerDelegate {
   /// clients can consume directly. Tokens only — no cost / pricing.
   UsageReport usageSummary(String sessionId);
 
-  /// Close any resources held for [sessionId]. Called on connection
-  /// teardown.
+  /// Close any resources held for [sessionId]. Called on explicit
+  /// `session/close` requests and again on connection teardown if the
+  /// session is still open.
   Future<void> closeSession(String sessionId);
 }
 
@@ -69,11 +70,13 @@ class AcpServerConfig {
     this.protocolVersion = 1,
     this.agentInfo = const AgentInfo(name: 'glue', title: 'Glue'),
     this.agentCapabilities = const {},
+    this.authMethods = const [],
   });
 
   final int protocolVersion;
   final AgentInfo agentInfo;
   final Map<String, Object?> agentCapabilities;
+  final List<AuthMethod> authMethods;
 }
 
 /// The ACP agent server. Construct, then call [serve] to drive the
@@ -145,6 +148,7 @@ class AcpServer {
                 protocolVersion: config.protocolVersion,
                 agentInfo: config.agentInfo,
                 agentCapabilities: config.agentCapabilities,
+                authMethods: config.authMethods,
               ).toJson(),
             ),
           );
@@ -162,22 +166,24 @@ class AcpServer {
               result: SessionNewResult(sessionId: sessionId).toJson(),
             ),
           );
+        case AcpMethod.sessionClose:
+          if (params == null) {
+            _replyInvalidParams(id, 'session/close requires params');
+            return;
+          }
+          final closeParams = SessionCloseParams.fromJson(params);
+          if (!_ensureKnownSession(id, closeParams.sessionId)) return;
+          delegate.cancelPrompt(closeParams.sessionId);
+          await delegate.closeSession(closeParams.sessionId);
+          _knownSessions.remove(closeParams.sessionId);
+          transport.send(JsonRpcResponse(id: id, result: <String, Object?>{}));
         case AcpMethod.sessionPrompt:
           if (params == null) {
             _replyInvalidParams(id, 'session/prompt requires params');
             return;
           }
           final promptParams = SessionPromptParams.fromJson(params);
-          if (!_knownSessions.contains(promptParams.sessionId)) {
-            transport.send(
-              JsonRpcError(
-                id: id,
-                code: JsonRpcErrorCode.sessionNotFound,
-                message: 'unknown session: ${promptParams.sessionId}',
-              ),
-            );
-            return;
-          }
+          if (!_ensureKnownSession(id, promptParams.sessionId)) return;
           final stopReason = await _runPrompt(promptParams);
           transport.send(
             JsonRpcResponse(
@@ -191,16 +197,7 @@ class AcpServer {
             _replyInvalidParams(id, 'session/usage_summary requires sessionId');
             return;
           }
-          if (!_knownSessions.contains(sessionId)) {
-            transport.send(
-              JsonRpcError(
-                id: id,
-                code: JsonRpcErrorCode.sessionNotFound,
-                message: 'unknown session: $sessionId',
-              ),
-            );
-            return;
-          }
+          if (!_ensureKnownSession(id, sessionId)) return;
           transport.send(
             JsonRpcResponse(
               id: id,
@@ -278,6 +275,20 @@ class AcpServer {
         message: message,
       ),
     );
+  }
+
+  bool _ensureKnownSession(Object id, String sessionId) {
+    if (_knownSessions.contains(sessionId)) {
+      return true;
+    }
+    transport.send(
+      JsonRpcError(
+        id: id,
+        code: JsonRpcErrorCode.sessionNotFound,
+        message: 'unknown session: $sessionId',
+      ),
+    );
+    return false;
   }
 
   /// Runs a single prompt, streaming `session/update` notifications and

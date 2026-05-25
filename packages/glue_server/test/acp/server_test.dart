@@ -22,6 +22,7 @@ class _FakeDelegate extends AcpServerDelegate {
   String? lastSessionId;
   String? lastUserMessage;
   bool cancelled = false;
+  final List<String> closedSessions = [];
   bool Function(ToolCall call)? permissionAnswer;
 
   @override
@@ -65,7 +66,9 @@ class _FakeDelegate extends AcpServerDelegate {
       buildUsageReport(usageEvents: const [], sessionId: sessionId);
 
   @override
-  Future<void> closeSession(String sessionId) async {}
+  Future<void> closeSession(String sessionId) async {
+    closedSessions.add(sessionId);
+  }
 }
 
 void main() {
@@ -94,9 +97,33 @@ void main() {
       ];
     }
 
-    test('initialize → returns agentInfo + protocolVersion', () async {
+    test('initialize → returns truthful capabilities + auth methods', () async {
       final delegate = _FakeDelegate(scripted: const []);
-      final server = AcpServer(transport: transport, delegate: delegate);
+      final server = AcpServer(
+        transport: transport,
+        delegate: delegate,
+        config: const AcpServerConfig(
+          protocolVersion: 1,
+          agentInfo: AgentInfo(name: 'glue', title: 'Glue'),
+          agentCapabilities: {
+            'promptCapabilities': {
+              'image': true,
+              'audio': false,
+              'embeddedContext': false,
+            },
+            'sessionCapabilities': {'close': {}},
+          },
+          authMethods: [
+            AuthMethod(
+              id: 'glue-terminal-setup',
+              name: 'Run Glue setup',
+              description: 'Guide the user through Glue setup.',
+              type: 'terminal',
+              args: ['setup', '--check'],
+            ),
+          ],
+        ),
+      );
       final serverFuture = server.serve();
 
       input.add(
@@ -115,6 +142,26 @@ void main() {
       final result = sent.single['result']! as Map<String, Object?>;
       expect(result['protocolVersion'], 1);
       expect((result['agentInfo']! as Map)['name'], 'glue');
+      final capabilities = result['agentCapabilities']! as Map<String, Object?>;
+      expect(
+        capabilities,
+        containsPair('promptCapabilities', {
+          'image': true,
+          'audio': false,
+          'embeddedContext': false,
+        }),
+      );
+      final sessionCapabilities =
+          capabilities['sessionCapabilities']! as Map<String, Object?>;
+      expect(sessionCapabilities['close'], <String, Object?>{});
+      expect(sessionCapabilities.containsKey('list'), isFalse);
+      expect(capabilities.containsKey('mcpCapabilities'), isFalse);
+
+      final authMethods = result['authMethods']! as List<Object?>;
+      expect(authMethods, hasLength(1));
+      final method = authMethods.single! as Map<String, Object?>;
+      expect(method['type'], 'terminal');
+      expect(method['args'], ['setup', '--check']);
     });
 
     test('session/new → returns id from delegate', () async {
@@ -295,6 +342,57 @@ void main() {
         expect(sent.single['error'], isNotNull);
         // sessionNotFound is -32001 in the existing JsonRpcErrorCode enum.
         expect(((sent.single['error']! as Map)['code'] as num).toInt(), -32001);
+      },
+    );
+
+    test(
+      'session/close closes a known session and rejects later prompts',
+      () async {
+        final delegate = _FakeDelegate(scripted: const []);
+        final server = AcpServer(transport: transport, delegate: delegate);
+        final serverFuture = server.serve();
+
+        input.add(
+          utf8.encode(
+            '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
+            '{"cwd":"/tmp/p"}}\n',
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        var sent = await readSent();
+        final sessionId =
+            (sent.single['result']! as Map)['sessionId'] as String;
+        output.buffer.clear();
+
+        input.add(
+          utf8.encode(
+            '{"jsonrpc":"2.0","id":2,"method":"session/close","params":'
+            '{"sessionId":"$sessionId"}}\n',
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        sent = await readSent();
+        expect(
+          sent.singleWhere((m) => m['id'] == 2)['result']! as Map,
+          isEmpty,
+        );
+        expect(delegate.cancelled, isTrue);
+        expect(delegate.closedSessions, [sessionId]);
+        output.buffer.clear();
+
+        input.add(
+          utf8.encode(
+            '{"jsonrpc":"2.0","id":3,"method":"session/prompt","params":'
+            '{"sessionId":"$sessionId","prompt":[{"type":"text","text":"hi"}]}}\n',
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        await input.close();
+        await serverFuture;
+
+        sent = await readSent();
+        final err = sent.singleWhere((m) => m['id'] == 3)['error']! as Map;
+        expect(err['code'], -32001);
       },
     );
 

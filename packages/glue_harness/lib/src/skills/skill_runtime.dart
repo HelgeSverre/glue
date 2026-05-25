@@ -7,9 +7,13 @@ typedef SkillPathsProvider = List<String> Function();
 
 String skillDiscoveryHelpText() {
   return 'Glue discovers skills from:\n'
-      '  .glue/skills/<skill-name>/SKILL.md (project-local)\n'
-      '  ~/.glue/skills/<skill-name>/SKILL.md (global)\n'
+      '  .glue/skills/<skill-name>/SKILL.md (project native)\n'
+      '  .agents/skills/<skill-name>/SKILL.md (project portable)\n'
+      '  .claude/skills/<skill-name>/SKILL.md (project compatibility)\n'
       '  configured skill_paths (custom)\n'
+      '  ~/.glue/skills/<skill-name>/SKILL.md (user native)\n'
+      '  ~/.agents/skills/<skill-name>/SKILL.md (user portable)\n'
+      '  ~/.claude/skills/<skill-name>/SKILL.md (user compatibility)\n'
       '  bundled Glue skills';
 }
 

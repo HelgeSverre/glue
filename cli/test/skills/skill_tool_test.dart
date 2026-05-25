@@ -71,6 +71,8 @@ void main() {
 
     test('empty registry returns helpful message', () async {
       final emptyDir = Directory.systemTemp.createTempSync('skill_tool_empty_');
+      addTearDown(() => emptyDir.deleteSync(recursive: true));
+
       final emptyRuntime = SkillRuntime(
         cwd: emptyDir.path,
         home: emptyDir.path,
@@ -80,7 +82,6 @@ void main() {
       final result = (await emptyTool.execute({})).content;
       expect(result, contains('No skills available'));
       expect(result, contains('bundled Glue skills'));
-      emptyDir.deleteSync(recursive: true);
     });
 
     test('list reflects skills added after startup', () async {
@@ -98,7 +99,7 @@ void main() {
       expect(result2, contains('new-skill'));
     });
 
-    test('shows custom source tag for bundled skills', () async {
+    test('shows bundled source tag for bundled skills', () async {
       final bundledDir = Directory(p.join(tempDir.path, 'bundled'));
       final skillDir = Directory(p.join(bundledDir.path, 'builtin-skill'));
       skillDir.createSync(recursive: true);
@@ -115,7 +116,36 @@ void main() {
       final builtinsTool = SkillTool(builtinsRuntime);
 
       final result = (await builtinsTool.execute({})).content;
-      expect(result, contains('builtin-skill [custom]'));
+      expect(result, contains('builtin-skill [bundled]'));
+    });
+
+    test('activation lists allowed tools and resources', () async {
+      final skillDir = Directory(
+        p.join(tempDir.path, '.glue', 'skills', 'resource-skill'),
+      )..createSync(recursive: true);
+      File(p.join(skillDir.path, 'SKILL.md')).writeAsStringSync(
+        '---\nname: resource-skill\ndescription: Has resources.\nallowed-tools:\n  - Read\n  - Bash\n---\nBody.\n',
+      );
+      final scriptsDir = Directory(p.join(skillDir.path, 'scripts'))
+        ..createSync();
+      File(p.join(scriptsDir.path, 'run.sh')).writeAsStringSync('echo hi');
+
+      final result = (await tool.execute({'name': 'resource-skill'})).content;
+      expect(result, contains('Allowed tools: Read, Bash'));
+      expect(result, contains('Resources:'));
+      expect(result, contains(p.join('scripts', 'run.sh')));
+      expect(result, contains('Relative paths resolve from:'));
+    });
+
+    test('list includes discovery diagnostics', () async {
+      final badDir = Directory(
+        p.join(tempDir.path, '.glue', 'skills', 'bad-skill'),
+      )..createSync(recursive: true);
+      File(p.join(badDir.path, 'SKILL.md')).writeAsStringSync('bad');
+
+      final result = (await tool.execute({})).content;
+      expect(result, contains('Diagnostics:'));
+      expect(result, contains('invalid-skill'));
     });
   });
 }

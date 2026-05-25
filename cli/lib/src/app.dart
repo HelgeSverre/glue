@@ -124,14 +124,8 @@ class _ToolCallUiState {
   );
 }
 
-class _TitleTarget {
-  final ModelRef ref;
-
-  const _TitleTarget({required this.ref});
-}
-
-_TitleTarget _resolveTitleTarget(GlueConfig config) {
-  return _TitleTarget(ref: config.smallModel ?? config.activeModel);
+ModelRef _resolveTitleTarget(GlueConfig config) {
+  return config.smallModel ?? config.activeModel;
 }
 
 // ---------------------------------------------------------------------------
@@ -2496,7 +2490,7 @@ class App {
     final target = _resolveTitleTarget(config);
     try {
       return factory.createFor(
-        target.ref,
+        target,
         systemPrompt: TitleGenerator.systemPrompt,
       );
     } on ConfigError {

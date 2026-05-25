@@ -83,6 +83,11 @@ class _NoopLlm implements LlmClient {
 
 Environment _isolatedEnv() {
   final dir = Directory.systemTemp.createTempSync('cmdfx_');
+  addTearDown(() {
+    if (dir.existsSync()) {
+      dir.deleteSync(recursive: true);
+    }
+  });
   return Environment.test(home: dir.path, cwd: dir.path);
 }
 
@@ -92,13 +97,26 @@ class _CommandTestFixture {
     SessionManager? session,
     SkillRuntime? skills,
     AgentCore? agent,
-  }) : environment = environment ?? _isolatedEnv(),
-       session =
-           session ??
-           SessionManager(environment: environment ?? _isolatedEnv()),
+  }) : this._resolved(
+         environment: environment ?? _isolatedEnv(),
+         session: session,
+         skills: skills,
+         agent: agent,
+       );
+
+  _CommandTestFixture._resolved({
+    required this.environment,
+    SessionManager? session,
+    SkillRuntime? skills,
+    AgentCore? agent,
+  }) : session = session ?? SessionManager(environment: environment),
        skills =
            skills ??
-           SkillRuntime(cwd: '/tmp', extraPathsProvider: () => const []),
+           SkillRuntime(
+             cwd: environment.cwd,
+             home: environment.home,
+             extraPathsProvider: () => const [],
+           ),
        agent = agent ?? AgentCore(llm: _NoopLlm(), tools: const {}) {
     blocks = <ConversationEntry>[];
     panelStack = <PanelOverlay>[];
@@ -125,7 +143,7 @@ class _CommandTestFixture {
     mcpPool = McpClientPool(
       config: const McpConfig(),
       credentials: CredentialStore(
-        path: '${this.environment.glueDir}/credentials.json',
+        path: '${environment.glueDir}/credentials.json',
         env: const {},
       ),
     );
@@ -375,6 +393,29 @@ void main() {
         expect(result, '');
       },
     );
+
+    test('/skills surfaces discovery diagnostics to interactive users', () {
+      final env = _isolatedEnv();
+      final badDir = Directory('${env.cwd}/.glue/skills/bad-skill')
+        ..createSync(recursive: true);
+      File('${badDir.path}/SKILL.md').writeAsStringSync('bad');
+      final fx = _CommandTestFixture(
+        environment: env,
+        skills: SkillRuntime(
+          cwd: env.cwd,
+          home: env.home,
+          extraPathsProvider: () => const [],
+        ),
+      );
+      final registry = createRegistry(fixture: fx);
+
+      final result = registry.execute('/skills');
+
+      expect(result, '');
+      final transcript = fx.blocks.map((entry) => entry.text).join('\n');
+      expect(transcript, contains('Skill discovery diagnostics'));
+      expect(transcript, contains('invalid-skill'));
+    });
 
     test('/skills <name> returns the activating banner inline', () {
       final fx = _CommandTestFixture();

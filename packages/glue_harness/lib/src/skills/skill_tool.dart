@@ -65,6 +65,23 @@ class SkillTool extends Tool {
       final tag = s.source.label;
       buf.writeln('  ${s.name} [$tag]');
       buf.writeln('    ${s.description}');
+      if (s.allowedTools.isNotEmpty) {
+        buf.writeln('    allowed-tools: ${s.allowedTools.join(', ')}');
+      }
+      if (s.resources.isNotEmpty) {
+        buf.writeln('    resources: ${_resourceSummary(s.resources.length)}');
+      }
+      buf.writeln('');
+    }
+    final diagnostics = registry.diagnostics();
+    if (diagnostics.isNotEmpty) {
+      buf.writeln('Diagnostics:');
+      for (final diagnostic in diagnostics.take(10)) {
+        buf.writeln('  ${_formatDiagnostic(diagnostic)}');
+      }
+      if (diagnostics.length > 10) {
+        buf.writeln('  ... ${diagnostics.length - 10} more');
+      }
       buf.writeln('');
     }
     buf.write('Use skill(name: "skill-name") to activate a skill.');
@@ -88,11 +105,39 @@ class SkillTool extends Tool {
         buf.writeln('Compatibility: ${meta.compatibility}');
       }
       buf.writeln('Source: ${meta.skillDir}');
+      if (meta.allowedTools.isNotEmpty) {
+        buf.writeln('Allowed tools: ${meta.allowedTools.join(', ')}');
+      }
+      if (meta.resources.isNotEmpty) {
+        buf.writeln('Resources:');
+        for (final resource in meta.resources.take(50)) {
+          final size = resource.sizeBytes == null
+              ? ''
+              : ', ${resource.sizeBytes} bytes';
+          buf.writeln(
+            '- ${resource.relativePath} (${resource.kind.name}$size)',
+          );
+        }
+        if (meta.resources.length > 50) {
+          buf.writeln('- ... ${meta.resources.length - 50} more resources');
+        }
+      }
+      buf.writeln('Relative paths resolve from: ${meta.skillDir}');
       buf.writeln('');
       buf.writeln(body);
       return buf.toString();
     } on SkillParseError catch (e) {
       return 'Error loading skill "$skillName": $e';
     }
+  }
+
+  String _resourceSummary(int count) {
+    return '$count resource file${count == 1 ? '' : 's'}';
+  }
+
+  String _formatDiagnostic(SkillDiagnostic diagnostic) {
+    return '[${diagnostic.severity.name}] ${diagnostic.code}: '
+        '${diagnostic.message}'
+        '${diagnostic.path == null ? '' : ' (${diagnostic.path})'}';
   }
 }

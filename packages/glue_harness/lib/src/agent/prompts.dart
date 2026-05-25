@@ -74,6 +74,14 @@ Guidelines:
         buf.write(
           '    <description>${_escapeXml(s.description)}</description>\n',
         );
+        if (s.allowedTools.isNotEmpty) {
+          buf.write(
+            '    <allowed_tools>${_escapeXml(s.allowedTools.join(', '))}</allowed_tools>\n',
+          );
+        }
+        if (s.resources.isNotEmpty) {
+          buf.write('    <resources count="${s.resources.length}" />\n');
+        }
         buf.write('    <location>${_escapeXml(s.skillMdPath)}</location>\n');
         buf.write('  </skill>\n');
       }

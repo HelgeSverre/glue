@@ -2,7 +2,12 @@
 
 **Date:** 2026-05-21
 **Owner:** Helge
-**Status:** Proposed
+**Status:** ✅ landed 2026-05-25
+
+> Note: the landed implementation follows the repo's current committed
+> `.mapper.dart` + `gen-check` conventions. Where this plan says
+> `--delete-conflicting-outputs`, the current implementation uses plain
+> `dart run build_runner build` because that flag is now removed/ignored.
 
 ## Context
 

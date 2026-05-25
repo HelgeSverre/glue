@@ -38,6 +38,7 @@ class SkillsCommand extends SlashCommand {
 
   void _openPicker() {
     final registry = ctx.skills.refresh();
+    _notifyDiagnostics(registry);
     if (registry.isEmpty) {
       ctx.conversation.notify(
         'No skills found.\n\n${skillDiscoveryHelpText()}',
@@ -54,6 +55,24 @@ class SkillsCommand extends SlashCommand {
     panel.selection.then((skillName) async {
       if (skillName != null) await _activate(skillName);
     });
+  }
+
+  void _notifyDiagnostics(SkillRegistry registry) {
+    final diagnostics = registry.diagnostics();
+    if (diagnostics.isEmpty) return;
+    final lines = diagnostics.take(5).map(_formatDiagnostic);
+    final more = diagnostics.length > 5
+        ? '\n... ${diagnostics.length - 5} more skill diagnostics'
+        : '';
+    ctx.conversation.notify(
+      'Skill discovery diagnostics (${diagnostics.length}):\n${lines.join('\n')}$more',
+    );
+  }
+
+  String _formatDiagnostic(SkillDiagnostic diagnostic) {
+    return '- [${diagnostic.severity.name}] ${diagnostic.code}: '
+        '${diagnostic.message}'
+        '${diagnostic.path == null ? '' : ' (${diagnostic.path})'}';
   }
 
   SkillsDockedPanel _findOrCreatePanel() {

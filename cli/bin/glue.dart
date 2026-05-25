@@ -11,6 +11,7 @@ import 'package:glue/src/acp/cli_acp_delegate.dart';
 import 'package:glue/src/commands/catalog_command.dart';
 import 'package:glue/src/commands/mcp_command.dart';
 import 'package:glue/src/commands/session_command.dart';
+import 'package:glue/src/commands/setup_command.dart';
 import 'package:glue/src/terminal/brand.dart';
 import 'package:glue/src/terminal/tty_style.dart';
 import 'package:glue/src/terminal/where_report.dart';
@@ -130,6 +131,7 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
     addCommand(McpCommand());
     addCommand(AcpCommand());
     addCommand(SessionCommand());
+    addCommand(SetupCommand());
   }
 
   @override
@@ -363,8 +365,8 @@ class DoctorCommand extends Command<int> {
 
 /// `glue acp` — expose Glue's harness over an external protocol.
 ///
-/// Today: ACP over stdio (`--stdio`, the default). Planned: MCP, HTTP +
-/// SSE, WebSocket. See:
+/// Today: ACP over stdio (`--stdio`, the default) and WebSocket (`--port`).
+/// Planned: other ACP transports and MCP-facing integration work. See:
 ///   docs/plans/2026-02-27-acp-webui.md
 ///   docs/plans/2026-04-29-mcp-client.md
 ///
@@ -562,6 +564,24 @@ class AcpCommand extends Command<int> {
       title: 'Glue',
       version: AppConstants.version,
     ),
+    agentCapabilities: {
+      'promptCapabilities': {
+        'image': true,
+        'audio': false,
+        'embeddedContext': false,
+      },
+      'sessionCapabilities': {'close': {}},
+    },
+    authMethods: [
+      AuthMethod(
+        id: 'glue-terminal-setup',
+        name: 'Run Glue setup',
+        description:
+            'Open a terminal setup flow for Glue configuration and provider credentials.',
+        type: 'terminal',
+        args: ['setup', '--check'],
+      ),
+    ],
   );
 }
 

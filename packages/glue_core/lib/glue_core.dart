@@ -1,9 +1,11 @@
 /// Pure-data type vocabulary shared across Glue's harness, strategies,
 /// and surfaces.
 ///
-/// This package is deliberately dependency-free. Anything that needs
+/// This package stays intentionally low-dependency. Anything that needs
 /// HTTP, file I/O, or a runtime service belongs in a higher layer (see
-/// `docs/plans/2026-04-29-harness-layers.md`).
+/// `docs/plans/2026-04-29-harness-layers.md`). The catalog data types are
+/// the current exception: they use `dart_mappable` so the bundled model
+/// snapshot and the runtime types share one serialization shape.
 ///
 /// Re-exports:
 ///

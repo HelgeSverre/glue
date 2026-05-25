@@ -5,10 +5,15 @@ import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 void main() {
-  final bundledDir = p.join(Directory.current.path, 'skills');
+  final bundledSkillsDir = Directory(p.join(Directory.current.path, 'skills'));
+
+  Iterable<File> bundledSkillFiles() => bundledSkillsDir
+      .listSync(recursive: true)
+      .whereType<File>()
+      .where((file) => p.basename(file.path).toLowerCase() == 'skill.md');
 
   test('bundled skills directory contains parseable builtins', () {
-    expect(Directory(bundledDir).existsSync(), isTrue);
+    expect(bundledSkillsDir.existsSync(), isTrue);
 
     final tempHome = Directory.systemTemp.createTempSync(
       'bundled_skills_home_',
@@ -18,24 +23,20 @@ void main() {
     final registry = SkillRegistry.discover(
       cwd: Directory.current.path,
       home: tempHome.path,
-      bundledPaths: [bundledDir],
+      bundledPaths: [bundledSkillsDir.path],
     );
 
     expect(registry.length, greaterThanOrEqualTo(3));
     expect(
       registry.list().map((s) => s.source).toSet(),
-      contains(SkillSource.custom),
+      contains(SkillSource.bundled),
     );
     expect(registry.findByName('code-review'), isNotNull);
     expect(registry.findByName('agentic-research'), isNotNull);
   });
 
   test('bundled skills have unique names and non-empty bodies', () {
-    final skillFiles = Directory(bundledDir)
-        .listSync(recursive: true)
-        .whereType<File>()
-        .where((file) => p.basename(file.path).toLowerCase() == 'skill.md')
-        .toList(growable: false);
+    final skillFiles = bundledSkillFiles().toList(growable: false);
     expect(skillFiles, isNotEmpty);
 
     final seenNames = <String>{};
@@ -45,7 +46,7 @@ void main() {
         content,
         p.dirname(skillFile.path),
         skillFile.path,
-        SkillSource.custom,
+        SkillSource.bundled,
       );
       final body = loadSkillBody(skillFile.path).trim();
       expect(
@@ -62,14 +63,9 @@ void main() {
   });
 
   test('bundled skills have no broken relative markdown links', () {
-    final skillFiles = Directory(bundledDir)
-        .listSync(recursive: true)
-        .whereType<File>()
-        .where((file) => p.basename(file.path).toLowerCase() == 'skill.md');
-
     final linkPattern = RegExp(r'\[[^\]]+\]\(([^)]+)\)');
 
-    for (final skillFile in skillFiles) {
+    for (final skillFile in bundledSkillFiles()) {
       final content = skillFile.readAsStringSync();
       for (final match in linkPattern.allMatches(content)) {
         final link = match.group(1);

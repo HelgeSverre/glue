@@ -9,10 +9,11 @@
 /// CI runs `--check` via `just gen-check` so a drifted commit fails fast.
 library;
 
+import 'dart:convert';
 import 'dart:io';
 
-import 'package:glue_harness/glue_harness.dart';
 import 'package:glue_core/glue_core.dart';
+import 'package:glue_harness/glue_harness.dart';
 
 const _sourcePath = '../docs/reference/models.yaml';
 const _outPath =
@@ -62,107 +63,22 @@ String _dartFormat(String source) {
   }
 }
 
-String _render(ModelCatalog c) {
-  final b = StringBuffer()
-    ..writeln('// GENERATED — DO NOT EDIT.')
-    ..writeln('// Source: docs/reference/models.yaml')
-    ..writeln('// Regenerate with: dart run tool/gen_models.dart')
-    ..writeln('// ignore_for_file: lines_longer_than_80_chars')
-    ..writeln()
-    ..writeln("import 'package:glue_core/glue_core.dart';")
-    ..writeln()
-    ..writeln('const ModelCatalog bundledCatalog = ModelCatalog(')
-    ..writeln('  version: ${c.version},')
-    ..writeln('  updatedAt: ${_str(c.updatedAt)},')
-    ..writeln('  defaults: DefaultsConfig(')
-    ..writeln('    model: ${_str(c.defaults.model)},')
-    ..writeln('    smallModel: ${_strOrNull(c.defaults.smallModel)},')
-    ..writeln('    localModel: ${_strOrNull(c.defaults.localModel)},')
-    ..writeln('  ),')
-    ..writeln('  capabilities: ${_renderStringMap(c.capabilities, indent: 2)},')
-    ..writeln('  providers: {');
+String _render(ModelCatalog catalog) {
+  final json = const JsonEncoder.withIndent('  ').convert(catalog.toMap());
+  assert(!json.contains("'''"), 'JSON contains triple-quote sequence');
+  return """
+// GENERATED — DO NOT EDIT.
+// Source: docs/reference/models.yaml
+// Regenerate with: dart run tool/gen_models.dart
+// ignore_for_file: lines_longer_than_80_chars
 
-  for (final id in c.providers.keys) {
-    final p = c.providers[id]!;
-    b
-      ..writeln('    ${_str(id)}: ProviderDef(')
-      ..writeln('      id: ${_str(p.id)},')
-      ..writeln('      name: ${_str(p.name)},')
-      ..writeln('      adapter: ${_str(p.adapter)},')
-      ..writeln('      compatibility: ${_strOrNull(p.compatibility)},')
-      ..writeln('      enabled: ${p.enabled},')
-      ..writeln('      baseUrl: ${_strOrNull(p.baseUrl)},')
-      ..writeln('      docsUrl: ${_strOrNull(p.docsUrl)},')
-      ..writeln('      auth: ${_renderAuth(p.auth)},')
-      ..writeln(
-        '      requestHeaders: ${_renderStringMap(p.requestHeaders, indent: 6)},',
-      )
-      ..writeln('      models: {');
+import 'package:glue_core/glue_core.dart';
 
-    for (final mid in p.models.keys) {
-      final m = p.models[mid]!;
-      b
-        ..writeln('        ${_str(mid)}: ModelDef(')
-        ..writeln('          id: ${_str(m.id)},')
-        ..writeln('          name: ${_str(m.name)},')
-        ..writeln('          apiId: ${_str(m.apiId)},')
-        ..writeln('          recommended: ${m.recommended},')
-        ..writeln('          isDefault: ${m.isDefault},')
-        ..writeln('          enabled: ${m.enabled},')
-        ..writeln(
-          '          capabilities: ${_renderStringSet(m.capabilities)},',
-        )
-        ..writeln('          contextWindow: ${m.contextWindow},')
-        ..writeln('          maxOutputTokens: ${m.maxOutputTokens},')
-        ..writeln('          speed: ${_strOrNull(m.speed)},')
-        ..writeln('          cost: ${_strOrNull(m.cost)},')
-        ..writeln('          notes: ${_strOrNull(m.notes)},')
-        ..writeln('        ),');
-    }
-    b
-      ..writeln('      },')
-      ..writeln('    ),');
-  }
+const String _bundledCatalogJson = r'''
+$json
+''';
 
-  b
-    ..writeln('  },')
-    ..writeln(');')
-    ..writeln();
-  return b.toString();
+final ModelCatalog bundledCatalog =
+    ModelCatalogMapper.fromJson(_bundledCatalogJson);
+""";
 }
-
-String _renderAuth(AuthSpec a) {
-  final envVar = _strOrNull(a.envVar);
-  final helpUrl = _strOrNull(a.helpUrl);
-  return 'AuthSpec(kind: AuthKind.${a.kind.name}, envVar: $envVar, '
-      'helpUrl: $helpUrl)';
-}
-
-String _renderStringMap(Map<String, String> m, {required int indent}) {
-  if (m.isEmpty) return '{}';
-  final pad = ' ' * indent;
-  final inner = ' ' * (indent + 2);
-  final buf = StringBuffer('{\n');
-  final keys = m.keys.toList()..sort();
-  for (final k in keys) {
-    buf.writeln('$inner${_str(k)}: ${_str(m[k]!)},');
-  }
-  buf.write('$pad}');
-  return buf.toString();
-}
-
-String _renderStringSet(Set<String> s) {
-  if (s.isEmpty) return '<String>{}';
-  final keys = s.toList()..sort();
-  return '{${keys.map(_str).join(', ')}}';
-}
-
-String _str(String s) {
-  final escaped = s
-      .replaceAll(r'\', r'\\')
-      .replaceAll(r'$', r'\$')
-      .replaceAll("'", r"\'");
-  return "'$escaped'";
-}
-
-String _strOrNull(String? s) => s == null ? 'null' : _str(s);

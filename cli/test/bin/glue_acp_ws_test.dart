@@ -70,12 +70,12 @@ void main() {
       addTearDown(wsSub.cancel);
 
       Future<Map<String, Object?>> waitForId(int id) {
-        final existing = received
-            .where((m) => m['id'] == id)
-            .cast<Map<String, Object?>?>();
-        if (existing.isNotEmpty) return Future.value(existing.first);
-        final c = pending[id] = Completer<Map<String, Object?>>();
-        return c.future.timeout(const Duration(seconds: 30));
+        final existing = received.where((message) => message['id'] == id);
+        if (existing.isNotEmpty) {
+          return Future.value(existing.first);
+        }
+        final completer = pending[id] = Completer<Map<String, Object?>>();
+        return completer.future.timeout(const Duration(seconds: 30));
       }
 
       ws.add(
@@ -87,9 +87,16 @@ void main() {
         }),
       );
       final initResp = await waitForId(1);
-      final agent =
-          (initResp['result']! as Map)['agentInfo'] as Map<Object?, Object?>;
+      final initResult = initResp['result']! as Map<Object?, Object?>;
+      final agent = initResult['agentInfo']! as Map<Object?, Object?>;
       expect(agent['name'], 'glue');
+      final capabilities =
+          initResult['agentCapabilities']! as Map<Object?, Object?>;
+      final sessionCapabilities =
+          capabilities['sessionCapabilities']! as Map<Object?, Object?>;
+      expect(sessionCapabilities['close'], <String, Object?>{});
+      final authMethods = initResult['authMethods']! as List<Object?>;
+      expect(authMethods, isNotEmpty);
 
       ws.add(
         jsonEncode({
@@ -100,7 +107,35 @@ void main() {
         }),
       );
       final newResp = await waitForId(2);
-      expect((newResp['result']! as Map)['sessionId'], startsWith('glue-'));
+      final sessionId = (newResp['result']! as Map)['sessionId']! as String;
+      expect(sessionId, startsWith('glue-'));
+
+      ws.add(
+        jsonEncode({
+          'jsonrpc': '2.0',
+          'id': 3,
+          'method': 'session/close',
+          'params': {'sessionId': sessionId},
+        }),
+      );
+      final closeResp = await waitForId(3);
+      expect(closeResp['result'], <String, Object?>{});
+
+      ws.add(
+        jsonEncode({
+          'jsonrpc': '2.0',
+          'id': 4,
+          'method': 'session/prompt',
+          'params': {
+            'sessionId': sessionId,
+            'prompt': [
+              {'type': 'text', 'text': 'hi'},
+            ],
+          },
+        }),
+      );
+      final errResp = await waitForId(4);
+      expect((errResp['error']! as Map)['code'], -32001);
 
       await ws.close();
       process.kill(ProcessSignal.sigint);

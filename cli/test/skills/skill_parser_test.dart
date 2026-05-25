@@ -9,6 +9,7 @@ void main() {
         description: 'A test skill.',
         license: 'MIT',
         compatibility: 'any',
+        allowedTools: ['Read', 'Bash'],
         metadata: {'author': 'me'},
         skillDir: '/s/test',
         skillMdPath: '/s/test/SKILL.md',
@@ -18,6 +19,7 @@ void main() {
       expect(meta.description, 'A test skill.');
       expect(meta.license, 'MIT');
       expect(meta.compatibility, 'any');
+      expect(meta.allowedTools, ['Read', 'Bash']);
       expect(meta.metadata, {'author': 'me'});
       expect(meta.skillDir, '/s/test');
       expect(meta.skillMdPath, '/s/test/SKILL.md');
@@ -54,6 +56,7 @@ void main() {
       expect(meta.description, 'Process PDFs.');
       expect(meta.license, 'MIT');
       expect(meta.compatibility, 'Requires poppler');
+      expect(meta.allowedTools, ['Bash', 'Read']);
       expect(meta.metadata, {'author': 'test-org', 'version': '1.0'});
       expect(meta.source, SkillSource.project);
     });
@@ -178,6 +181,28 @@ void main() {
         ),
         throwsA(isA<SkillParseError>()),
       );
+    });
+
+    test('parses allowed-tools list', () {
+      final meta = parseSkillFrontmatter(
+        '---\nname: x\ndescription: foo\nallowed-tools:\n  - Read\n  - Bash\n---\nbody',
+        '/s/x',
+        '/s/x/SKILL.md',
+        SkillSource.global,
+      );
+      expect(meta.allowedTools, ['Read', 'Bash']);
+    });
+
+    test('loads body after the closing delimiter only', () {
+      const content =
+          '---\nname: x\ndescription: foo\n---\nbody\n---\nnot frontmatter';
+      final meta = parseSkillFrontmatter(
+        content,
+        '/s/x',
+        '/s/x/SKILL.md',
+        SkillSource.global,
+      );
+      expect(meta.name, 'x');
     });
 
     test('throws on unknown frontmatter fields', () {

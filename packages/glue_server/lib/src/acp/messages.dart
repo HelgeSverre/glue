@@ -1,10 +1,10 @@
 /// Typed Dart shapes for the subset of the Agent Client Protocol (ACP)
 /// that Glue's server implements.
 ///
-/// Only the v1 message vocabulary needed to drive a `glue serve` session:
-/// `initialize`, `session/new`, `session/prompt`, `session/cancel`,
-/// `session/update`, `session/request_permission`, plus their parameter
-/// and response shapes.
+/// Only the v1 message vocabulary Glue currently serves over `glue acp`:
+/// `initialize`, `session/new`, `session/close`, `session/prompt`,
+/// `session/cancel`, `session/update`, `session/request_permission`, and
+/// `session/usage_summary`, plus their parameter and response shapes.
 ///
 /// See `docs/plans/2026-02-27-acp-webui.md` and the upstream spec at
 /// https://agentclientprotocol.com/.
@@ -19,6 +19,7 @@ import 'package:glue_server/src/acp/content.dart';
 abstract final class AcpMethod {
   static const initialize = 'initialize';
   static const sessionNew = 'session/new';
+  static const sessionClose = 'session/close';
   static const sessionPrompt = 'session/prompt';
   static const sessionCancel = 'session/cancel';
   static const sessionUpdate = 'session/update';
@@ -72,16 +73,46 @@ class InitializeResult {
     required this.protocolVersion,
     required this.agentInfo,
     this.agentCapabilities = const {},
+    this.authMethods = const [],
   });
 
   final int protocolVersion;
   final AgentInfo agentInfo;
   final Map<String, Object?> agentCapabilities;
+  final List<AuthMethod> authMethods;
 
   Map<String, Object?> toJson() => {
     'protocolVersion': protocolVersion,
     'agentInfo': agentInfo.toJson(),
     'agentCapabilities': agentCapabilities,
+    'authMethods': [for (final method in authMethods) method.toJson()],
+  };
+}
+
+class AuthMethod {
+  const AuthMethod({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.type,
+    this.args = const [],
+    this.env = const {},
+  });
+
+  final String id;
+  final String name;
+  final String description;
+  final String type;
+  final List<String> args;
+  final Map<String, String> env;
+
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'name': name,
+    'description': description,
+    'type': type,
+    if (args.isNotEmpty) 'args': args,
+    if (env.isNotEmpty) 'env': env,
   };
 }
 
@@ -125,6 +156,18 @@ class SessionNewResult {
 }
 
 // ---------------------------------------------------------------------------
+// `session/close`
+// ---------------------------------------------------------------------------
+
+class SessionCloseParams {
+  const SessionCloseParams({required this.sessionId});
+  final String sessionId;
+
+  factory SessionCloseParams.fromJson(Map<String, Object?> json) =>
+      SessionCloseParams(sessionId: json['sessionId'] as String);
+}
+
+// ---------------------------------------------------------------------------
 // `session/prompt`
 // ---------------------------------------------------------------------------
 
@@ -146,13 +189,8 @@ class SessionPromptParams {
   /// Convenience: returns the concatenated text of all [AcpTextBlock]s
   /// in the prompt. Image/audio/resource blocks are ignored — see
   /// [imageBlocks] for those.
-  String get text {
-    final buf = StringBuffer();
-    for (final block in prompt) {
-      if (block is AcpTextBlock) buf.write(block.text);
-    }
-    return buf.toString();
-  }
+  String get text =>
+      prompt.whereType<AcpTextBlock>().map((block) => block.text).join();
 
   /// Image blocks the client attached to the prompt. Empty when text-only.
   List<AcpImageBlock> get imageBlocks =>

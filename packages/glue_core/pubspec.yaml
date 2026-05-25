@@ -8,9 +8,14 @@ environment:
 
 resolution: workspace
 
-# glue_core is deliberately dependency-free. Anything that needs HTTP,
-# IO, or a runtime service belongs in a higher layer (see
-# docs/plans/2026-04-29-harness-layers.md).
+# glue_core stays intentionally low-dependency. Most IO/runtime concerns still
+# belong in higher layers; the catalog types are the current exception so the
+# bundled model snapshot can use shared serialization/codegen in one place.
+dependencies:
+  dart_mappable: ^4.8.0
+
 dev_dependencies:
+  build_runner: ^2.4.0
+  dart_mappable_builder: ^4.8.0
   test: ^1.30.0
   lints: ^6.1.0

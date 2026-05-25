@@ -18,25 +18,7 @@ void main() {
       final yaml = File('../docs/reference/models.yaml').readAsStringSync();
       final fromYaml = parseCatalogYaml(yaml);
 
-      expect(bundledCatalog.version, fromYaml.version);
-      expect(bundledCatalog.defaults.model, fromYaml.defaults.model);
-      expect(bundledCatalog.defaults.smallModel, fromYaml.defaults.smallModel);
-      expect(bundledCatalog.providers.keys, fromYaml.providers.keys);
-
-      for (final providerId in fromYaml.providers.keys) {
-        final generated = bundledCatalog.providers[providerId]!;
-        final expected = fromYaml.providers[providerId]!;
-        expect(generated.adapter, expected.adapter, reason: providerId);
-        expect(
-          generated.compatibility,
-          expected.compatibility,
-          reason: providerId,
-        );
-        expect(generated.baseUrl, expected.baseUrl, reason: providerId);
-        expect(generated.auth.kind, expected.auth.kind, reason: providerId);
-        expect(generated.auth.envVar, expected.auth.envVar, reason: providerId);
-        expect(generated.models.keys, expected.models.keys, reason: providerId);
-      }
+      expect(bundledCatalog, equals(fromYaml));
     });
 
     test(
