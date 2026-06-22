@@ -160,6 +160,11 @@ Future<Directory> _applyToFreshClone({
   // matching the bootstrap commit.
   await _run(gitPath, ['clone', '-q', repo.path, clone.path]);
   await _run(gitPath, ['checkout', '-q', baseSha], cwd: clone);
+  // `git am` needs a committer identity; the clone inherits none, and CI
+  // runners have no global git config. Set it locally so the round trip
+  // doesn't silently fall back to `git apply` (which creates no commits).
+  await _run(gitPath, ['config', 'user.email', 'glue@test'], cwd: clone);
+  await _run(gitPath, ['config', 'user.name', 'glue test'], cwd: clone);
 
   final mboxFile = File('${repo.parent.path}/session.mbox')
     ..writeAsStringSync(mbox);
