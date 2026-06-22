@@ -71,6 +71,12 @@ jobs:
       - name: Install site dependencies
         run: npm ci --prefix website
 
+      - name: Generate build metadata
+        # build_info_generated.dart is gitignored; the layer-hygiene check and
+        # tests below import it transitively, so generate it before they run.
+        working-directory: cli
+        run: dart run tool/gen_build_info.dart
+
       - name: Check formatting (all Dart packages)
         run: |
           dart format --output=none --set-exit-if-changed cli

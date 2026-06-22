@@ -50,6 +50,12 @@ jobs:
         working-directory: cli
         run: dart pub get
 
+      - name: Generate build metadata
+        # build_info_generated.dart is gitignored; tests in glue_harness/cli
+        # import it transitively, so it must exist before any `dart test`.
+        working-directory: cli
+        run: dart run tool/gen_build_info.dart
+
       - name: Run glue_core tests
         working-directory: packages/glue_core
         run: dart test
