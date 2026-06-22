@@ -90,10 +90,7 @@ String spansToChromeTrace(
   return jsonEncode({
     'traceEvents': traceEvents,
     'displayTimeUnit': 'ms',
-    'otherData': {
-      'glue.sessionId': sessionId,
-      'glue.version': ?version,
-    },
+    'otherData': {'glue.sessionId': sessionId, 'glue.version': ?version},
   });
 }
 
