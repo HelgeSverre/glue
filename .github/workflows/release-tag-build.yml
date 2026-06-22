@@ -38,7 +38,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Dart
         uses: dart-lang/setup-dart@v1
@@ -188,14 +188,14 @@ jobs:
 
     steps:
       - name: Checkout glue (for formula template)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: glue
           sparse-checkout: |
             cli/tool/homebrew
 
       - name: Checkout homebrew-tap
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: HelgeSverre/homebrew-tap
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
