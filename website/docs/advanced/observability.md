@@ -86,6 +86,30 @@ Phoenix project.
 A richer per-session event schema (messages, tool calls, runtime events) is
 being introduced separately — see the session JSONL schema plan.
 
+## Firefox Profiler export
+
+For ad-hoc local inspection without an OTLP backend, convert recorded spans
+into a Chrome Trace Event JSON file that
+[Firefox Profiler](https://profiler.firefox.com) imports natively:
+
+```sh
+glue trace export <sessionId>            # writes <sessionDir>/trace.json
+glue trace export --latest               # most recent session
+glue trace export <id> -o trace.json     # custom output path
+glue trace export <id> --open            # also opens profiler.firefox.com
+```
+
+The command reads `~/.glue/logs/spans-YYYY-MM-DD.jsonl`, filters spans whose
+`start_time` falls in the session's `meta.json` window, and writes a
+`{ "traceEvents": [...], "displayTimeUnit": "ms", "otherData": {...} }`
+envelope. Drag the resulting file into <https://profiler.firefox.com> to load
+it.
+
+Each Glue span becomes a Complete (`X`) event. Spans sharing a `trace_id` get
+the same thread id, so agent turns and the LLM/tool calls underneath them
+appear as visually nested intervals. `glue` is `pid=1`; each trace is its own
+thread named after its root span (e.g. `agent.turn`, `session.create`).
+
 ## See also
 
 - [ObservabilityConfig](/api/observability/observability-config)

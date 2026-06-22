@@ -42,6 +42,7 @@ export 'package:glue_harness/src/core/service_locator.dart';
 export 'package:glue_harness/src/core/url_launcher.dart';
 export 'package:glue_harness/src/extensions/list.dart';
 export 'package:glue_harness/src/extensions/units.dart';
+export 'package:glue_harness/src/observability/chrome_trace.dart';
 export 'package:glue_harness/src/observability/debug_controller.dart';
 export 'package:glue_harness/src/observability/file_sink.dart';
 export 'package:glue_harness/src/observability/http_trace_sink.dart';

@@ -473,6 +473,18 @@ void _checkObservability(
     ),
   );
 
+  if (latestSpanLog != null) {
+    findings.add(
+      const DoctorFinding(
+        severity: DoctorSeverity.info,
+        section: section,
+        message:
+            'Export a session as a Firefox Profiler trace: '
+            '`glue trace export <sessionId>` (or `--latest`).',
+      ),
+    );
+  }
+
   if (observability.debug) {
     final latestHttpLog = _latestLogFile(logsDir, 'http-', '.jsonl');
     findings.add(
