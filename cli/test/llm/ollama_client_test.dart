@@ -278,4 +278,91 @@ void main() {
       expect(caught.toString(), contains('503'));
     });
   });
+
+  group('OllamaClient.stream — num_ctx resolution', () {
+    // /api/show -> showJson (or 404 when null); /api/chat -> one done frame
+    // with usage, capturing the chat request body into [chatBody].
+    ({List<Map<String, dynamic>?> chatBody, _FakeHttp http}) harness({
+      String? showJson,
+    }) {
+      final holder = <Map<String, dynamic>?>[null];
+      final fake = _FakeHttp((req) async {
+        if (req.url.path.endsWith('/api/show')) {
+          return _rawResponse(showJson == null ? 404 : 200, showJson ?? 'no');
+        }
+        holder[0] =
+            jsonDecode((req as http.Request).body) as Map<String, dynamic>;
+        return _rawResponse(
+          200,
+          '${jsonEncode({
+            'message': {'role': 'assistant', 'content': 'ok'},
+            'done': true,
+            'prompt_eval_count': 5,
+            'eval_count': 2,
+          })}\n',
+        );
+      });
+      return (chatBody: holder, http: fake);
+    }
+
+    test(
+      'exact catalog window is injected as num_ctx (no daemon call)',
+      () async {
+        final h = harness();
+        final ollama = OllamaClient(
+          model: 'gemma4:26b',
+          systemPrompt: '',
+          contextWindow: 256000,
+          requestClientFactory: () => h.http,
+        );
+        await ollama.stream([Message.user('hi')]).toList();
+        expect((h.chatBody[0]!['options'] as Map)['num_ctx'], 131072);
+        expect(ollama.contextWindow, 256000);
+      },
+    );
+
+    test('uncatalogued tag resolves via daemon /api/show', () async {
+      final h = harness(
+        showJson: jsonEncode({
+          'model_info': {'gemma3.context_length': 32768},
+        }),
+      );
+      final ollama = OllamaClient(
+        model: 'gemma4:latest',
+        systemPrompt: '',
+        requestClientFactory: () => h.http,
+      );
+      await ollama.stream([Message.user('hi')]).toList();
+      expect((h.chatBody[0]!['options'] as Map)['num_ctx'], 32768);
+      expect(ollama.contextWindow, 32768);
+    });
+
+    test('falls back to base-name hint when daemon has nothing', () async {
+      final h = harness(); // /api/show -> 404
+      final ollama = OllamaClient(
+        model: 'gemma4:latest',
+        systemPrompt: '',
+        contextWindowFallback: 256000,
+        requestClientFactory: () => h.http,
+      );
+      await ollama.stream([Message.user('hi')]).toList();
+      expect((h.chatBody[0]!['options'] as Map)['num_ctx'], 131072);
+      expect(ollama.contextWindow, 256000);
+    });
+
+    test('default num_ctx when nothing resolves; getter stays null', () async {
+      final h = harness(); // /api/show -> 404, no fallback
+      final ollama = OllamaClient(
+        model: 'mystery:latest',
+        systemPrompt: '',
+        requestClientFactory: () => h.http,
+      );
+      await ollama.stream([Message.user('hi')]).toList();
+      expect(
+        (h.chatBody[0]!['options'] as Map)['num_ctx'],
+        ollamaDefaultNumCtx,
+      );
+      expect(ollama.contextWindow, isNull);
+    });
+  });
 }

@@ -6,6 +6,7 @@ import 'package:glue_strategies/src/llm/message_mapper.dart';
 import 'package:glue_strategies/src/llm/ndjson.dart';
 import 'package:glue_strategies/src/llm/stream_request.dart';
 import 'package:glue_strategies/src/llm/tool_schema.dart';
+import 'package:glue_strategies/src/providers/ollama_discovery.dart';
 
 /// Hard ceiling on the `num_ctx` override Glue will send.
 ///
@@ -16,6 +17,11 @@ import 'package:glue_strategies/src/llm/tool_schema.dart';
 /// on. Exposed publicly so tests can assert it without magic-number copies.
 const int ollamaNumCtxCeiling = 131072;
 
+/// Default `num_ctx` for Ollama models whose real context window cannot be
+/// resolved from the catalog or the daemon. Anything but Ollama's silent
+/// 2048 default; deliberately conservative so mid-range GPUs stay safe.
+const int ollamaDefaultNumCtx = 8192;
+
 /// LLM client for Ollama local API with streaming.
 ///
 /// Ollama uses NDJSON streaming (not SSE) and its own message format.
@@ -23,35 +29,80 @@ const int ollamaNumCtxCeiling = 131072;
 /// arguments as parsed objects (not JSON strings).
 ///
 /// **`num_ctx` injection.** Ollama silently defaults to `num_ctx: 2048` for
-/// every request regardless of what the model was trained with — a
-/// notorious footgun that silently truncates agent loops. When [contextWindow]
-/// is set, we inject `options.num_ctx = min(contextWindow, ollamaNumCtxCeiling)`
-/// so catalogued models get the full context their metadata promises.
+/// every request regardless of what the model was trained with — a notorious
+/// footgun that silently truncates agent loops. We resolve the model's real
+/// window once (exact catalog → daemon `/api/show` → catalog base-name) and
+/// **always** inject `options.num_ctx = min(resolved, ollamaNumCtxCeiling)`,
+/// falling back to [ollamaDefaultNumCtx] (not 2048) when nothing resolves.
+/// The resolved real window is exposed via [contextWindow] for the
+/// context-occupancy gauge (null when only the default applied).
 ///
 /// {@category LLM Providers}
-class OllamaClient implements LlmClient {
+class OllamaClient implements LlmClient, ContextWindowAware {
   final http.Client Function() _requestClientFactory;
   final String model;
   final String systemPrompt;
 
-  /// When non-null, injected as `options.num_ctx` on every request. Comes
-  /// from `ModelDef.contextWindow` at adapter construction time. See class
-  /// doc for why this matters.
-  final int? contextWindow;
+  /// Exact catalog context window, when the model id is catalogued. Null for
+  /// passthrough tags (e.g. `gemma4:latest`).
+  final int? _exactContextWindow;
+
+  /// Base-name catalog hint from the adapter (`gemma4:latest` -> `gemma4:26b`).
+  /// Used only when the daemon reports nothing.
+  final int? _fallbackContextWindow;
 
   final Uri _baseUri;
+
+  // Resolved once on the first stream(); see [_ensureResolved].
+  bool _resolved = false;
+  int? _resolvedRealWindow; // catalog/daemon/fallback — never the default
+  int _numCtx = ollamaDefaultNumCtx;
 
   OllamaClient({
     required this.model,
     required this.systemPrompt,
     String baseUrl = 'http://localhost:11434',
-    this.contextWindow,
+    int? contextWindow,
+    int? contextWindowFallback,
     http.Client Function()? requestClientFactory,
-  }) : _requestClientFactory = requestClientFactory ?? http.Client.new,
+  }) : _exactContextWindow = contextWindow,
+       _fallbackContextWindow = contextWindowFallback,
+       _requestClientFactory = requestClientFactory ?? http.Client.new,
        _baseUri = Uri.parse(baseUrl);
 
+  /// The real resolved window (catalog/daemon/fallback), or `null` when only
+  /// the [ollamaDefaultNumCtx] guess applied — so the gauge never shows a
+  /// made-up denominator. Populated after the first [stream] call.
   @override
-  Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) {
+  int? get contextWindow => _resolvedRealWindow;
+
+  /// Resolve the real context window once: exact catalog -> daemon
+  /// `/api/show` -> base-name fallback. Sizes [_numCtx] (capped at the
+  /// ceiling), defaulting to [ollamaDefaultNumCtx] when nothing resolves so
+  /// we never fall through to Ollama's silent 2048.
+  Future<void> _ensureResolved() async {
+    if (_resolved) return;
+    _resolved = true;
+    var real = _exactContextWindow;
+    if (real == null || real <= 0) {
+      final daemon = await OllamaDiscovery(
+        baseUrl: _baseUri,
+        clientFactory: _requestClientFactory,
+      ).showContextLength(model);
+      real = daemon ?? _fallbackContextWindow;
+    }
+    _resolvedRealWindow = (real != null && real > 0) ? real : null;
+    final effective = _resolvedRealWindow ?? ollamaDefaultNumCtx;
+    _numCtx = effective < ollamaNumCtxCeiling ? effective : ollamaNumCtxCeiling;
+  }
+
+  @override
+  Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
+    // Resolve the window before the first request so num_ctx is always set
+    // (never Ollama's silent 2048). createClient is synchronous, so this is
+    // the earliest point we can await the daemon.
+    await _ensureResolved();
+
     const mapper = OllamaMessageMapper();
     final mapped = mapper.mapMessages(messages, systemPrompt: systemPrompt);
 
@@ -59,22 +110,16 @@ class OllamaClient implements LlmClient {
       'model': model,
       'messages': mapped.messages,
       'stream': true,
+      // Always injected (capped at the ceiling). _numCtx is the resolved
+      // real window or the conservative default.
+      'options': <String, dynamic>{'num_ctx': _numCtx},
     };
-
-    if (contextWindow != null && contextWindow! > 0) {
-      // Cap to a reasonable ceiling regardless of catalog claims so we
-      // don't OOM mid-range GPUs with 1M-context settings.
-      final numCtx = contextWindow! < ollamaNumCtxCeiling
-          ? contextWindow!
-          : ollamaNumCtxCeiling;
-      body['options'] = <String, dynamic>{'num_ctx': numCtx};
-    }
 
     if (tools != null && tools.isNotEmpty) {
       body['tools'] = const OpenAiToolEncoder().encodeAll(tools);
     }
 
-    return sendAndStream(
+    yield* sendAndStream(
       requestClientFactory: _requestClientFactory,
       uri: _baseUri.resolve('/api/chat'),
       headers: const {'Content-Type': 'application/json'},
