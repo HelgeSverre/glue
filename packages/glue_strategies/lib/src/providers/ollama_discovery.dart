@@ -96,6 +96,41 @@ class OllamaDiscovery {
     _cache.remove(_cacheKey());
   }
 
+  /// `POST /api/show`. Returns the model's trained context length from
+  /// `model_info.<arch>.context_length`, or `null` on any failure or when
+  /// the daemon does not report it. Never throws.
+  Future<int?> showContextLength(String tag) async {
+    final client = _clientFactory();
+    try {
+      final response = await client
+          .post(
+            _showUri(),
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({'name': tag}),
+          )
+          .timeout(timeout);
+      if (response.statusCode != 200) return null;
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map) return null;
+      final info = decoded['model_info'];
+      if (info is! Map) return null;
+      for (final entry in info.entries) {
+        final key = entry.key;
+        if (key is String && key.endsWith('.context_length')) {
+          final value = entry.value;
+          if (value is num) return value.toInt();
+        }
+      }
+      return null;
+    } catch (_) {
+      return null;
+    } finally {
+      client.close();
+    }
+  }
+
+  Uri _showUri() => baseUrl.replace(path: '${_stripV1(baseUrl.path)}api/show');
+
   /// Stream NDJSON progress from `POST /api/pull`. The stream completes
   /// when Ollama finishes (a `{"status":"success"}` frame) or errors out.
   /// On error the final frame carries [OllamaPullProgress.error] so callers

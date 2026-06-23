@@ -39,6 +39,48 @@ void main() {
   setUp(OllamaDiscovery.resetCacheForTesting);
   _extraTests();
 
+  group('OllamaDiscovery.showContextLength', () {
+    test('reads model_info.<arch>.context_length', () async {
+      final client = _FakeHttp((req) async {
+        expect(req.url.path, endsWith('/api/show'));
+        return _jsonResponse(200, {
+          'model_info': {
+            'general.architecture': 'gemma3',
+            'gemma3.context_length': 131072,
+            'gemma3.embedding_length': 3584,
+          },
+        });
+      });
+      final discovery = OllamaDiscovery(
+        baseUrl: Uri.parse('http://localhost:11434'),
+        clientFactory: () => client,
+      );
+      expect(await discovery.showContextLength('gemma4:latest'), 131072);
+    });
+
+    test('returns null when no *.context_length key exists', () async {
+      final client = _FakeHttp(
+        (_) async => _jsonResponse(200, {
+          'model_info': {'a.b': 1},
+        }),
+      );
+      final discovery = OllamaDiscovery(
+        baseUrl: Uri.parse('http://localhost:11434'),
+        clientFactory: () => client,
+      );
+      expect(await discovery.showContextLength('x'), isNull);
+    });
+
+    test('fail-soft to null on non-200', () async {
+      final client = _FakeHttp((_) async => _rawResponse(404, 'nope'));
+      final discovery = OllamaDiscovery(
+        baseUrl: Uri.parse('http://localhost:11434'),
+        clientFactory: () => client,
+      );
+      expect(await discovery.showContextLength('x'), isNull);
+    });
+  });
+
   group('OllamaDiscovery.listInstalled', () {
     test('parses /api/tags into OllamaInstalledModel list', () async {
       Uri? captured;
