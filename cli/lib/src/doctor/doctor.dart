@@ -46,6 +46,27 @@ class DoctorReport {
   bool get hasErrors => errorCount > 0;
 }
 
+/// Single finding-sink: every section routes its findings through this
+/// so the `DoctorFinding(...)` constructor isn't hand-rolled at ~50 call
+/// sites. Keeps the (section, severity, message, path) tuple shape — the
+/// thing tests assert on — in one place.
+void _add(
+  List<DoctorFinding> findings,
+  String section,
+  DoctorSeverity severity,
+  String message, {
+  String? path,
+}) {
+  findings.add(
+    DoctorFinding(
+      section: section,
+      severity: severity,
+      message: message,
+      path: path,
+    ),
+  );
+}
+
 DoctorReport runDoctor(Environment environment) {
   final findings = <DoctorFinding>[];
 
@@ -54,16 +75,7 @@ DoctorReport runDoctor(Environment environment) {
     DoctorSeverity severity,
     String message, {
     String? path,
-  }) {
-    findings.add(
-      DoctorFinding(
-        section: section,
-        severity: severity,
-        message: message,
-        path: path,
-      ),
-    );
-  }
+  }) => _add(findings, section, severity, message, path: path);
 
   add('Environment', DoctorSeverity.ok, 'GLUE_HOME: ${environment.glueDir}');
   add('Environment', DoctorSeverity.ok, 'cwd: ${environment.cwd}');
@@ -178,13 +190,12 @@ void _checkPath(
   bool isDir = false,
 }) {
   final exists = isDir ? Directory(path).existsSync() : File(path).existsSync();
-  findings.add(
-    DoctorFinding(
-      severity: exists ? DoctorSeverity.ok : DoctorSeverity.warning,
-      section: section,
-      message: exists ? '$label exists' : '$label missing',
-      path: path,
-    ),
+  _add(
+    findings,
+    section,
+    exists ? DoctorSeverity.ok : DoctorSeverity.warning,
+    exists ? '$label exists' : '$label missing',
+    path: path,
   );
 }
 
@@ -194,33 +205,68 @@ void _checkConfigYaml(List<DoctorFinding> findings, String path) {
   try {
     final yaml = loadYaml(file.readAsStringSync());
     if (yaml != null && yaml is! YamlMap) {
-      findings.add(
-        DoctorFinding(
-          severity: DoctorSeverity.error,
-          section: 'Config file',
-          message: 'config.yaml root must be a mapping',
-          path: path,
-        ),
+      _add(
+        findings,
+        'Config file',
+        DoctorSeverity.error,
+        'config.yaml root must be a mapping',
+        path: path,
       );
       return;
     }
-    findings.add(
-      DoctorFinding(
-        severity: DoctorSeverity.ok,
-        section: 'Config file',
-        message: 'config.yaml parsed',
-        path: path,
-      ),
+    _add(
+      findings,
+      'Config file',
+      DoctorSeverity.ok,
+      'config.yaml parsed',
+      path: path,
     );
   } on Object catch (e) {
-    findings.add(
-      DoctorFinding(
-        severity: DoctorSeverity.error,
-        section: 'Config file',
-        message: 'config.yaml parse failed: $e',
-        path: path,
-      ),
+    _add(
+      findings,
+      'Config file',
+      DoctorSeverity.error,
+      'config.yaml parse failed: $e',
+      path: path,
     );
+  }
+}
+
+/// Reads [path], decodes it as JSON, and asserts the root is an object.
+///
+/// Returns the decoded [Map] on success. On a parse error or a
+/// non-object root it adds the appropriate `error` finding under
+/// [section] (using `<basename> root must be an object` /
+/// `<basename> parse failed: …`) and returns `null`. Callers that have
+/// already established the file exists pass it straight through; the
+/// shared messages keep the three JSON-object validators in lockstep.
+Map<dynamic, dynamic>? _parseJsonObject(
+  List<DoctorFinding> findings,
+  String section,
+  String path,
+) {
+  try {
+    final decoded = jsonDecode(File(path).readAsStringSync());
+    if (decoded is! Map) {
+      _add(
+        findings,
+        section,
+        DoctorSeverity.error,
+        '${p.basename(path)} root must be an object',
+        path: path,
+      );
+      return null;
+    }
+    return decoded;
+  } on Object catch (e) {
+    _add(
+      findings,
+      section,
+      DoctorSeverity.error,
+      '${p.basename(path)} parse failed: $e',
+      path: path,
+    );
+    return null;
   }
 }
 
@@ -229,87 +275,39 @@ void _checkJsonObject(
   String section,
   String path,
 ) {
-  final file = File(path);
-  if (!file.existsSync()) return;
-  try {
-    final decoded = jsonDecode(file.readAsStringSync());
-    if (decoded is! Map) {
-      findings.add(
-        DoctorFinding(
-          severity: DoctorSeverity.error,
-          section: section,
-          message: '${p.basename(path)} root must be an object',
-          path: path,
-        ),
-      );
-      return;
-    }
-    findings.add(
-      DoctorFinding(
-        severity: DoctorSeverity.ok,
-        section: section,
-        message: '${p.basename(path)} parsed',
-        path: path,
-      ),
-    );
-  } on Object catch (e) {
-    findings.add(
-      DoctorFinding(
-        severity: DoctorSeverity.error,
-        section: section,
-        message: '${p.basename(path)} parse failed: $e',
-        path: path,
-      ),
-    );
-  }
+  if (!File(path).existsSync()) return;
+  if (_parseJsonObject(findings, section, path) == null) return;
+  _add(
+    findings,
+    section,
+    DoctorSeverity.ok,
+    '${p.basename(path)} parsed',
+    path: path,
+  );
 }
 
 void _checkCredentialsJson(List<DoctorFinding> findings, String path) {
-  final file = File(path);
-  if (!file.existsSync()) return;
-  try {
-    final decoded = jsonDecode(file.readAsStringSync());
-    if (decoded is! Map) {
-      findings.add(
-        DoctorFinding(
-          severity: DoctorSeverity.error,
-          section: 'Credentials',
-          message: 'credentials.json root must be an object',
-          path: path,
-        ),
-      );
-      return;
-    }
-    final providers = decoded['providers'];
-    if (providers != null && providers is! Map) {
-      findings.add(
-        DoctorFinding(
-          severity: DoctorSeverity.error,
-          section: 'Credentials',
-          message: 'credentials.json providers must be an object',
-          path: path,
-        ),
-      );
-      return;
-    }
-    findings.add(
-      DoctorFinding(
-        severity: DoctorSeverity.ok,
-        section: 'Credentials',
-        message: 'credentials.json parsed',
-        path: path,
-      ),
+  if (!File(path).existsSync()) return;
+  final decoded = _parseJsonObject(findings, 'Credentials', path);
+  if (decoded == null) return;
+  final providers = decoded['providers'];
+  if (providers != null && providers is! Map) {
+    _add(
+      findings,
+      'Credentials',
+      DoctorSeverity.error,
+      'credentials.json providers must be an object',
+      path: path,
     );
-  } on Object catch (e) {
-    findings.add(
-      DoctorFinding(
-        severity: DoctorSeverity.error,
-        section: 'Credentials',
-        message: 'credentials.json parse failed: $e',
-        path: path,
-      ),
-    );
+    return;
   }
+  _add(
+    findings,
+    'Credentials',
+    DoctorSeverity.ok,
+    'credentials.json parsed',
+    path: path,
+  );
 }
 
 void _checkCatalog(List<DoctorFinding> findings, String section, String path) {
@@ -317,31 +315,28 @@ void _checkCatalog(List<DoctorFinding> findings, String section, String path) {
   if (!file.existsSync()) return;
   try {
     parseCatalogYaml(file.readAsStringSync());
-    findings.add(
-      DoctorFinding(
-        severity: DoctorSeverity.ok,
-        section: section,
-        message: '${p.basename(path)} parsed',
-        path: path,
-      ),
+    _add(
+      findings,
+      section,
+      DoctorSeverity.ok,
+      '${p.basename(path)} parsed',
+      path: path,
     );
   } on CatalogParseException catch (e) {
-    findings.add(
-      DoctorFinding(
-        severity: DoctorSeverity.error,
-        section: section,
-        message: '${p.basename(path)} parse failed: ${e.message}',
-        path: path,
-      ),
+    _add(
+      findings,
+      section,
+      DoctorSeverity.error,
+      '${p.basename(path)} parse failed: ${e.message}',
+      path: path,
     );
   } on Object catch (e) {
-    findings.add(
-      DoctorFinding(
-        severity: DoctorSeverity.error,
-        section: section,
-        message: '${p.basename(path)} parse failed: $e',
-        path: path,
-      ),
+    _add(
+      findings,
+      section,
+      DoctorSeverity.error,
+      '${p.basename(path)} parse failed: $e',
+      path: path,
     );
   }
 }
@@ -351,13 +346,12 @@ void _checkConfigValidation(
   Environment environment,
 ) {
   final result = validateUserConfig(environment);
-  findings.add(
-    DoctorFinding(
-      severity: result.ok ? DoctorSeverity.ok : DoctorSeverity.error,
-      section: 'Config validation',
-      message: result.message,
-      path: environment.configYamlPath,
-    ),
+  _add(
+    findings,
+    'Config validation',
+    result.ok ? DoctorSeverity.ok : DoctorSeverity.error,
+    result.message,
+    path: environment.configYamlPath,
   );
 }
 
@@ -387,15 +381,13 @@ void _checkAgentModelTools(
   final def = config.catalogData.providers[ref.providerId]?.models[ref.modelId];
   if (def == null || def.capabilities.isEmpty) return;
   if (def.capabilities.contains('tools')) return;
-  findings.add(
-    DoctorFinding(
-      severity: DoctorSeverity.info,
-      section: 'Agent model',
-      message:
-          '$ref does not declare the "tools" capability — '
-          'sessions will run in chat-only mode. '
-          'Use /model to switch to a tool-capable model.',
-    ),
+  _add(
+    findings,
+    'Agent model',
+    DoctorSeverity.info,
+    '$ref does not declare the "tools" capability — '
+        'sessions will run in chat-only mode. '
+        'Use /model to switch to a tool-capable model.',
   );
 }
 
@@ -416,365 +408,170 @@ void _checkObservability(
 
   const section = 'Observability';
   final logsDir = environment.logsDir;
+  void add(DoctorSeverity severity, String message, {String? path}) =>
+      _add(findings, section, severity, message, path: path);
 
-  findings.add(
-    DoctorFinding(
-      severity: DoctorSeverity.info,
-      section: section,
-      message: 'debug: ${observability.debug ? 'on' : 'off'}',
-    ),
-  );
-
-  findings.add(
-    DoctorFinding(
-      severity: DoctorSeverity.info,
-      section: section,
-      message: 'Log directory: $logsDir',
-      path: logsDir,
-    ),
-  );
+  add(DoctorSeverity.info, 'debug: ${observability.debug ? 'on' : 'off'}');
+  add(DoctorSeverity.info, 'Log directory: $logsDir', path: logsDir);
 
   final otel = observability.otel;
-  findings.add(
-    DoctorFinding(
-      severity: otel.isConfigured ? DoctorSeverity.ok : DoctorSeverity.info,
-      section: section,
-      message: otel.isConfigured
-          ? 'OTEL export: on (${normalizeOtlpTracesEndpoint(otel.endpoint!)})'
-          : 'OTEL export: off',
-    ),
+  add(
+    otel.isConfigured ? DoctorSeverity.ok : DoctorSeverity.info,
+    otel.isConfigured
+        ? 'OTEL export: on (${normalizeOtlpTracesEndpoint(otel.endpoint!)})'
+        : 'OTEL export: off',
   );
   if (otel.isConfigured) {
-    findings.add(
-      DoctorFinding(
-        severity: DoctorSeverity.info,
-        section: section,
-        message: 'OTEL service: ${otel.serviceName}',
-      ),
-    );
-    findings.add(
-      DoctorFinding(
-        severity: DoctorSeverity.info,
-        section: section,
-        message: 'OTEL headers: ${redactOtelHeadersForDisplay(otel.headers)}',
-      ),
+    add(DoctorSeverity.info, 'OTEL service: ${otel.serviceName}');
+    add(
+      DoctorSeverity.info,
+      'OTEL headers: ${redactOtelHeadersForDisplay(otel.headers)}',
     );
   }
 
   final latestSpanLog = _latestLogFile(logsDir, 'spans-', '.jsonl');
-  findings.add(
-    DoctorFinding(
-      severity: DoctorSeverity.info,
-      section: section,
-      message: latestSpanLog == null
-          ? 'no recent span logs'
-          : 'Recent span log: ${p.basename(latestSpanLog)}',
-      path: latestSpanLog,
-    ),
+  add(
+    DoctorSeverity.info,
+    latestSpanLog == null
+        ? 'no recent span logs'
+        : 'Recent span log: ${p.basename(latestSpanLog)}',
+    path: latestSpanLog,
   );
 
   if (latestSpanLog != null) {
-    findings.add(
-      const DoctorFinding(
-        severity: DoctorSeverity.info,
-        section: section,
-        message:
-            'Export a session as a Firefox Profiler trace: '
-            '`glue trace export <sessionId>` (or `--latest`).',
-      ),
+    add(
+      DoctorSeverity.info,
+      'Export a session as a Firefox Profiler trace: '
+      '`glue trace export <sessionId>` (or `--latest`).',
     );
   }
 
   if (observability.debug) {
     final latestHttpLog = _latestLogFile(logsDir, 'http-', '.jsonl');
-    findings.add(
-      DoctorFinding(
-        severity: DoctorSeverity.info,
-        section: section,
-        message: latestHttpLog == null
-            ? 'no recent http logs'
-            : 'Recent http log: ${p.basename(latestHttpLog)}',
-        path: latestHttpLog,
-      ),
+    add(
+      DoctorSeverity.info,
+      latestHttpLog == null
+          ? 'no recent http logs'
+          : 'Recent http log: ${p.basename(latestHttpLog)}',
+      path: latestHttpLog,
     );
   }
 
-  findings.add(
-    DoctorFinding(
-      severity: DoctorSeverity.info,
-      section: section,
-      message: 'Body cap: ${observability.maxBodyBytes} bytes',
-    ),
-  );
+  add(DoctorSeverity.info, 'Body cap: ${observability.maxBodyBytes} bytes');
 
-  findings.add(
-    DoctorFinding(
-      severity: observability.redact
-          ? DoctorSeverity.info
-          : DoctorSeverity.warning,
-      section: section,
-      message: observability.redact
-          ? 'Redaction: enabled'
-          : 'Redaction: disabled — debug logs may contain secrets',
-    ),
+  add(
+    observability.redact ? DoctorSeverity.info : DoctorSeverity.warning,
+    observability.redact
+        ? 'Redaction: enabled'
+        : 'Redaction: disabled — debug logs may contain secrets',
   );
+}
+
+/// Maps a runtime adapter's [RuntimeDiagnosticLevel] onto the doctor's
+/// own severity scale. The adapter owns the probing logic; doctor only
+/// renders.
+DoctorSeverity _runtimeDiagnosticSeverity(RuntimeDiagnosticLevel level) {
+  return switch (level) {
+    RuntimeDiagnosticLevel.ok => DoctorSeverity.ok,
+    RuntimeDiagnosticLevel.info => DoctorSeverity.info,
+    RuntimeDiagnosticLevel.warn => DoctorSeverity.warning,
+    RuntimeDiagnosticLevel.error => DoctorSeverity.error,
+  };
 }
 
 void _checkRuntime(List<DoctorFinding> findings, Environment environment) {
   const section = 'Runtime';
+  void add(DoctorSeverity severity, String message) =>
+      _add(findings, section, severity, message);
 
-  GlueConfig? config;
+  GlueConfig config;
   try {
     config = GlueConfig.load(environment: environment);
   } on Object catch (e) {
-    findings.add(
-      DoctorFinding(
-        severity: DoctorSeverity.warning,
-        section: section,
-        message: 'Could not load config to determine runtime: $e',
-      ),
+    add(
+      DoctorSeverity.warning,
+      'Could not load config to determine runtime: $e',
     );
     return;
   }
 
   final selected = config.effectiveRuntime;
-  findings.add(
-    DoctorFinding(
-      severity: DoctorSeverity.ok,
-      section: section,
-      message: 'Active runtime: $selected',
-    ),
-  );
+  add(DoctorSeverity.ok, 'Active runtime: $selected');
 
   final registered = RuntimeFactory.registeredAdapters().toList();
   if (registered.isNotEmpty) {
-    findings.add(
-      DoctorFinding(
-        severity: DoctorSeverity.info,
-        section: section,
-        message: 'Registered cloud adapters: ${registered.join(', ')}',
-      ),
+    add(
+      DoctorSeverity.info,
+      'Registered cloud adapters: ${registered.join(', ')}',
     );
   }
 
-  // Phase 4: host-side git is required by bundle bootstrap
-  // (used for every cloud runtime). Warn early if it's missing so
-  // the user doesn't discover this at first cloud session start.
-  if (selected != 'host' && selected != 'docker') {
-    try {
-      final gitProbe = Process.runSync('git', ['--version']);
-      if (gitProbe.exitCode == 0) {
-        findings.add(
-          DoctorFinding(
-            severity: DoctorSeverity.ok,
-            section: section,
-            message:
-                'Host git: ${(gitProbe.stdout as String).trim()} '
-                '(bundle bootstrap available)',
-          ),
-        );
-      } else {
-        findings.add(
-          const DoctorFinding(
-            severity: DoctorSeverity.warning,
-            section: section,
-            message:
-                'Host git not runnable — bundle bootstrap is unavailable, '
-                'cloud sessions will fall back to clone-from-remote '
-                '(requires reachable origin + pushed HEAD)',
-          ),
-        );
-      }
-    } on ProcessException {
-      findings.add(
-        const DoctorFinding(
-          severity: DoctorSeverity.warning,
-          section: section,
-          message:
-              'git not on host PATH — bundle bootstrap is unavailable, '
-              'cloud sessions will fall back to clone-from-remote',
-        ),
-      );
-    }
-  }
-
+  // host/docker stay in the surface — they read GlueConfig/Environment
+  // directly and have no cloud probe to delegate. Every other runtime
+  // delegates readiness probing to its adapter via the factory.
   switch (selected) {
     case 'host':
-      findings.add(
-        const DoctorFinding(
-          severity: DoctorSeverity.info,
-          section: section,
-          message: 'Commands run on the host shell (no isolation).',
-        ),
+      add(
+        DoctorSeverity.info,
+        'Commands run on the host shell (no isolation).',
       );
+      return;
     case 'docker':
-      findings.add(
-        DoctorFinding(
-          severity: DoctorSeverity.info,
-          section: section,
-          message:
-              'Docker image: ${config.dockerConfig.image} (shell: ${config.dockerConfig.shell})',
-        ),
+      add(
+        DoctorSeverity.info,
+        'Docker image: ${config.dockerConfig.image} '
+        '(shell: ${config.dockerConfig.shell})',
       );
-    case 'daytona':
-      final hasKey =
-          (environment.vars['DAYTONA_API_KEY']?.isNotEmpty ?? false) ||
-          (config.runtimeOptions['api_key'] as String?)?.isNotEmpty == true;
-      findings.add(
-        DoctorFinding(
-          severity: hasKey ? DoctorSeverity.ok : DoctorSeverity.error,
-          section: section,
-          message: hasKey
-              ? 'DAYTONA_API_KEY: present'
-              : 'DAYTONA_API_KEY missing — set the env var or daytona.api_key in config',
-        ),
+      return;
+  }
+
+  _checkHostGitForCloud(add);
+
+  if (!registered.contains(selected)) {
+    add(
+      DoctorSeverity.error,
+      'Runtime "$selected" is not host/docker and no '
+      'registered cloud adapter matches.',
+    );
+    return;
+  }
+
+  final ctx = RuntimeDiagnosticContext(
+    options: config.runtimeOptions,
+    env: (key) => environment.vars[key],
+  );
+  for (final d in RuntimeFactory.diagnose(selected, ctx)) {
+    add(_runtimeDiagnosticSeverity(d.level), d.message);
+  }
+}
+
+/// Phase 4: host-side git is required by bundle bootstrap (used for
+/// every cloud runtime). Warn early if it's missing so the user doesn't
+/// discover this at first cloud session start. CLI-appropriate (probes
+/// the host, not the sandbox), so it stays in the surface.
+void _checkHostGitForCloud(void Function(DoctorSeverity, String) add) {
+  try {
+    final gitProbe = Process.runSync('git', ['--version']);
+    if (gitProbe.exitCode == 0) {
+      add(
+        DoctorSeverity.ok,
+        'Host git: ${(gitProbe.stdout as String).trim()} '
+        '(bundle bootstrap available)',
       );
-      final snapshot =
-          (config.runtimeOptions['snapshot'] as String?) ??
-          environment.vars['DAYTONA_SNAPSHOT'];
-      findings.add(
-        DoctorFinding(
-          severity: DoctorSeverity.info,
-          section: section,
-          message: snapshot == null
-              ? 'Daytona: default sandbox shape (2 vCPU / 4 GiB / 8 GiB)'
-              : 'Daytona snapshot: $snapshot',
-        ),
+    } else {
+      add(
+        DoctorSeverity.warning,
+        'Host git not runnable — bundle bootstrap is unavailable, '
+        'cloud sessions will fall back to clone-from-remote '
+        '(requires reachable origin + pushed HEAD)',
       );
-    case 'modal':
-      // Modal exposes sandboxes only via its Python SDK; glue ships
-      // a Python sidecar that drives it. The readiness check is
-      // "the configured python interpreter can import modal".
-      final cliPath =
-          (config.runtimeOptions['modal_cli'] as String?) ??
-          environment.vars['MODAL_CLI'] ??
-          'modal';
-      String? python;
-      String? failureReason;
-      try {
-        final which = Process.runSync('which', [cliPath]);
-        if (which.exitCode != 0) {
-          failureReason =
-              '`$cliPath` not found on PATH — '
-              '`uv tool install modal` (or `pipx install modal`)';
-        } else {
-          final modalPath = (which.stdout as String).trim();
-          // Follow the shebang to find the venv python.
-          final firstLine = File(
-            modalPath,
-          ).readAsStringSync().split('\n').first;
-          if (firstLine.startsWith('#!')) {
-            python = firstLine.substring(2).trim().split(' ').first;
-          }
-          python ??=
-              (config.runtimeOptions['python_path'] as String?) ??
-              environment.vars['MODAL_PYTHON'] ??
-              'python3';
-          final import = Process.runSync(python, [
-            '-c',
-            'import modal; print(modal.__version__)',
-          ]);
-          if (import.exitCode != 0) {
-            failureReason =
-                'python at $python cannot import modal — install the package '
-                'into that interpreter, or set MODAL_PYTHON / modal.python_path';
-          }
-        }
-      } on ProcessException {
-        failureReason = 'failed to probe modal — check $cliPath is executable';
-      }
-      findings.add(
-        DoctorFinding(
-          severity: failureReason == null
-              ? DoctorSeverity.ok
-              : DoctorSeverity.error,
-          section: section,
-          message: failureReason == null
-              ? 'modal CLI + python ($python) ready'
-              : 'modal: $failureReason',
-        ),
-      );
-      // Auth check: `modal profile current` exits 0 when logged in.
-      try {
-        final auth = Process.runSync(cliPath, ['profile', 'current']);
-        findings.add(
-          DoctorFinding(
-            severity: auth.exitCode == 0
-                ? DoctorSeverity.ok
-                : DoctorSeverity.error,
-            section: section,
-            message: auth.exitCode == 0
-                ? 'modal profile: ${(auth.stdout as String).trim()}'
-                : 'modal not authenticated — run `modal token set`',
-          ),
-        );
-      } on ProcessException {
-        /* already covered */
-      }
-      final appName =
-          (config.runtimeOptions['app_name'] as String?) ??
-          environment.vars['MODAL_APP'] ??
-          'glue';
-      findings.add(
-        DoctorFinding(
-          severity: DoctorSeverity.info,
-          section: section,
-          message: 'modal app: $appName',
-        ),
-      );
-    case 'sprites':
-      // Glue wraps the official `sprite` CLI (the API's wire protocol
-      // is in RC flux and there's no stable /filesystem REST endpoint
-      // today), so the readiness check is "binary on PATH, user is
-      // logged in".
-      final cliPath =
-          (config.runtimeOptions['sprite_cli'] as String?) ??
-          environment.vars['SPRITES_CLI'] ??
-          'sprite';
-      String? failureReason;
-      try {
-        final res = Process.runSync(cliPath, ['list']);
-        if (res.exitCode != 0) {
-          failureReason = 'not authenticated — run `sprite login`';
-        }
-      } on ProcessException {
-        failureReason = 'not found on PATH';
-      }
-      findings.add(
-        DoctorFinding(
-          severity: failureReason == null
-              ? DoctorSeverity.ok
-              : DoctorSeverity.error,
-          section: section,
-          message: failureReason == null
-              ? '`$cliPath` CLI installed and authenticated'
-              : '`$cliPath` CLI: $failureReason',
-        ),
-      );
-      final spriteName =
-          (config.runtimeOptions['sprite_name'] as String?) ??
-          environment.vars['SPRITES_NAME'];
-      findings.add(
-        DoctorFinding(
-          severity: DoctorSeverity.info,
-          section: section,
-          message: spriteName == null
-              ? 'Sprite name: auto (a fresh sprite per session)'
-              : 'Sprite name: $spriteName (resumes on each session)',
-        ),
-      );
-    default:
-      if (!registered.contains(selected)) {
-        findings.add(
-          DoctorFinding(
-            severity: DoctorSeverity.error,
-            section: section,
-            message:
-                'Runtime "$selected" is not host/docker and no '
-                'registered cloud adapter matches.',
-          ),
-        );
-      }
+    }
+  } on ProcessException {
+    add(
+      DoctorSeverity.warning,
+      'git not on host PATH — bundle bootstrap is unavailable, '
+      'cloud sessions will fall back to clone-from-remote',
+    );
   }
 }
 
@@ -804,13 +601,12 @@ void _checkSessions(List<DoctorFinding> findings, String sessionsDir) {
   if (!dir.existsSync()) return;
 
   final sessionDirs = dir.listSync().whereType<Directory>().toList();
-  findings.add(
-    DoctorFinding(
-      severity: DoctorSeverity.ok,
-      section: 'Sessions',
-      message: 'scanned ${sessionDirs.length} session directories',
-      path: sessionsDir,
-    ),
+  _add(
+    findings,
+    'Sessions',
+    DoctorSeverity.ok,
+    'scanned ${sessionDirs.length} session directories',
+    path: sessionsDir,
   );
 
   for (final sessionDir in sessionDirs) {
@@ -822,66 +618,41 @@ void _checkSessions(List<DoctorFinding> findings, String sessionsDir) {
 }
 
 void _checkSessionMeta(List<DoctorFinding> findings, String path) {
-  final file = File(path);
-  if (!file.existsSync()) {
-    findings.add(
-      DoctorFinding(
-        severity: DoctorSeverity.error,
-        section: 'Sessions',
-        message: 'meta.json missing',
-        path: path,
-      ),
+  if (!File(path).existsSync()) {
+    _add(
+      findings,
+      'Sessions',
+      DoctorSeverity.error,
+      'meta.json missing',
+      path: path,
     );
     return;
   }
-  try {
-    final decoded = jsonDecode(file.readAsStringSync());
-    if (decoded is! Map) {
-      findings.add(
-        DoctorFinding(
-          severity: DoctorSeverity.error,
-          section: 'Sessions',
-          message: 'meta.json root must be an object',
-          path: path,
-        ),
+  final decoded = _parseJsonObject(findings, 'Sessions', path);
+  if (decoded == null) return;
+  for (final key in ['id', 'cwd', 'start_time']) {
+    if (!decoded.containsKey(key)) {
+      _add(
+        findings,
+        'Sessions',
+        DoctorSeverity.error,
+        'meta.json missing required key "$key"',
+        path: path,
       );
       return;
     }
-    for (final key in ['id', 'cwd', 'start_time']) {
-      if (!decoded.containsKey(key)) {
-        findings.add(
-          DoctorFinding(
-            severity: DoctorSeverity.error,
-            section: 'Sessions',
-            message: 'meta.json missing required key "$key"',
-            path: path,
-          ),
-        );
-        return;
-      }
-    }
-  } on Object catch (e) {
-    findings.add(
-      DoctorFinding(
-        severity: DoctorSeverity.error,
-        section: 'Sessions',
-        message: 'meta.json parse failed: $e',
-        path: path,
-      ),
-    );
   }
 }
 
 void _checkConversationJsonl(List<DoctorFinding> findings, String path) {
   final file = File(path);
   if (!file.existsSync()) {
-    findings.add(
-      DoctorFinding(
-        severity: DoctorSeverity.info,
-        section: 'Sessions',
-        message: 'conversation.jsonl missing',
-        path: path,
-      ),
+    _add(
+      findings,
+      'Sessions',
+      DoctorSeverity.info,
+      'conversation.jsonl missing',
+      path: path,
     );
     return;
   }
@@ -892,35 +663,32 @@ void _checkConversationJsonl(List<DoctorFinding> findings, String path) {
     try {
       final decoded = jsonDecode(line);
       if (decoded is! Map) {
-        findings.add(
-          DoctorFinding(
-            severity: DoctorSeverity.error,
-            section: 'Sessions',
-            message: 'conversation.jsonl line ${i + 1} is not an object',
-            path: path,
-          ),
+        _add(
+          findings,
+          'Sessions',
+          DoctorSeverity.error,
+          'conversation.jsonl line ${i + 1} is not an object',
+          path: path,
         );
         return;
       }
       if (!decoded.containsKey('type')) {
-        findings.add(
-          DoctorFinding(
-            severity: DoctorSeverity.error,
-            section: 'Sessions',
-            message: 'conversation.jsonl line ${i + 1} missing type',
-            path: path,
-          ),
+        _add(
+          findings,
+          'Sessions',
+          DoctorSeverity.error,
+          'conversation.jsonl line ${i + 1} missing type',
+          path: path,
         );
         return;
       }
     } on Object catch (e) {
-      findings.add(
-        DoctorFinding(
-          severity: DoctorSeverity.error,
-          section: 'Sessions',
-          message: 'conversation.jsonl line ${i + 1} parse failed: $e',
-          path: path,
-        ),
+      _add(
+        findings,
+        'Sessions',
+        DoctorSeverity.error,
+        'conversation.jsonl line ${i + 1} parse failed: $e',
+        path: path,
       );
       return;
     }
@@ -932,13 +700,12 @@ void _checkTmpFiles(List<DoctorFinding> findings, String glueDir) {
   if (!dir.existsSync()) return;
   for (final entry in dir.listSync(recursive: true)) {
     if (!entry.path.endsWith('.tmp')) continue;
-    findings.add(
-      DoctorFinding(
-        severity: DoctorSeverity.warning,
-        section: 'Filesystem',
-        message: 'orphaned tmp file',
-        path: entry.path,
-      ),
+    _add(
+      findings,
+      'Filesystem',
+      DoctorSeverity.warning,
+      'orphaned tmp file',
+      path: entry.path,
     );
   }
 }

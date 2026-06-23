@@ -42,6 +42,7 @@ export 'package:glue_strategies/src/providers/ollama_discovery.dart';
 export 'package:glue_strategies/src/providers/openai_compatible_adapter.dart';
 export 'package:glue_strategies/src/providers/provider_adapter.dart';
 export 'package:glue_strategies/src/providers/resolved.dart';
+export 'package:glue_strategies/src/runtime/runtime_diagnostic.dart';
 export 'package:glue_strategies/src/runtime/runtime_diff.dart';
 export 'package:glue_strategies/src/runtime/runtime_factory.dart';
 export 'package:glue_strategies/src/shell/command_executor.dart';

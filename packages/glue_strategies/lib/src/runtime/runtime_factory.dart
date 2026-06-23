@@ -2,6 +2,7 @@ import 'package:glue_core/glue_core.dart';
 
 import 'package:glue_strategies/src/fs/local_workspace.dart';
 import 'package:glue_strategies/src/fs/workspace.dart';
+import 'package:glue_strategies/src/runtime/runtime_diagnostic.dart';
 import 'package:glue_strategies/src/runtime/runtime_diff.dart';
 import 'package:glue_strategies/src/shell/command_executor.dart';
 import 'package:glue_strategies/src/shell/docker_config.dart';
@@ -89,10 +90,32 @@ class RuntimeFactory {
 
   static final Map<String, RuntimeAdapter> _adapters = {};
 
+  static final Map<String, RuntimeDiagnoser> _diagnosers = {};
+
   /// Registers a cloud adapter under [name]. The surface (cli) calls
   /// this once at startup before [create] is invoked.
   static void register(String name, RuntimeAdapter adapter) {
     _adapters[name] = adapter;
+  }
+
+  /// Registers the readiness-probe function for runtime [name]. Each
+  /// `register*Runtime()` helper calls this alongside [register] so the
+  /// adapter — not the surface — owns its per-cloud probing logic.
+  /// Optional: a runtime with no diagnoser simply produces no findings.
+  static void registerDiagnostics(String name, RuntimeDiagnoser diagnoser) {
+    _diagnosers[name] = diagnoser;
+  }
+
+  /// Runs the registered readiness probe for [runtime] against [ctx],
+  /// or returns no findings when the runtime has none registered
+  /// (e.g. `host`/`docker`, which are diagnosed by the surface).
+  static Iterable<RuntimeDiagnostic> diagnose(
+    String runtime,
+    RuntimeDiagnosticContext ctx,
+  ) {
+    final diagnoser = _diagnosers[runtime];
+    if (diagnoser == null) return const [];
+    return diagnoser(ctx);
   }
 
   /// Returns the set of registered cloud-adapter names. Useful for

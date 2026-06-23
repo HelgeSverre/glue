@@ -59,4 +59,27 @@ void registerDaytonaRuntime() {
       eventSink: eventSink,
     );
   });
+  RuntimeFactory.registerDiagnostics('daytona', daytonaDiagnostics);
+}
+
+/// Daytona readiness probe: API key presence and the resolved sandbox
+/// shape. Owned by the adapter so the surface (`glue doctor`) stays
+/// free of Daytona-specific knowledge.
+Iterable<RuntimeDiagnostic> daytonaDiagnostics(RuntimeDiagnosticContext ctx) {
+  final hasKey =
+      (ctx.options['api_key'] as String?)?.isNotEmpty == true ||
+      (ctx.env('DAYTONA_API_KEY')?.isNotEmpty ?? false);
+  final snapshot = ctx.optionOrEnv('snapshot', 'DAYTONA_SNAPSHOT');
+  return [
+    hasKey
+        ? const RuntimeDiagnostic.ok('DAYTONA_API_KEY: present')
+        : const RuntimeDiagnostic.error(
+            'DAYTONA_API_KEY missing — set the env var or daytona.api_key in config',
+          ),
+    RuntimeDiagnostic.info(
+      snapshot == null
+          ? 'Daytona: default sandbox shape (2 vCPU / 4 GiB / 8 GiB)'
+          : 'Daytona snapshot: $snapshot',
+    ),
+  ];
 }

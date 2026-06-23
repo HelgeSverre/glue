@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:args/command_runner.dart';
+import 'package:glue/src/terminal/brand.dart';
+import 'package:glue/src/terminal/tty_style.dart';
 import 'package:glue_harness/glue_harness.dart';
 import 'package:path/path.dart' as p;
 
@@ -228,4 +231,259 @@ Future<SessionApplyResult> applySessionPatch({
     branch: branch,
     rejectedFiles: rejected,
   );
+}
+
+class SessionCommand extends Command<int> {
+  SessionCommand() {
+    addSubcommand(SessionListCommand());
+    addSubcommand(SessionShowCommand());
+    addSubcommand(SessionDiffCommand());
+    addSubcommand(SessionApplyCommand());
+    addSubcommand(SessionExportCommand());
+  }
+
+  @override
+  String get name => 'session';
+
+  @override
+  String get description =>
+      'List, inspect, and apply the workspace patches captured by cloud sessions.';
+}
+
+class SessionListCommand extends Command<int> {
+  @override
+  String get name => 'list';
+
+  @override
+  String get description => 'List sessions with runtime + patch availability.';
+
+  @override
+  Future<int> run() async {
+    final env = Environment.detect();
+    final sessions = listSessions(env);
+    if (sessions.isEmpty) {
+      stdout.writeln('No sessions found in ${env.sessionsDir}.');
+      return 0;
+    }
+    stdout.writeln('$brandDot ${styledOrPlain('Sessions', (s) => s.bold)}');
+    final idWidth = sessions
+        .map((s) => s.meta.id.value.length)
+        .fold<int>(0, (a, b) => a > b ? a : b);
+    final runtimeWidth = sessions
+        .map((s) => (s.meta.runtimeId ?? 'host').length)
+        .fold<int>(0, (a, b) => a > b ? a : b);
+    for (final s in sessions) {
+      final patch = s.patchPath == null
+          ? '-'
+          : '${s.patchSizeBytes ?? 0} bytes';
+      final runtime = s.meta.runtimeId ?? 'host';
+      final title = s.meta.title ?? '(untitled)';
+      stdout.writeln(
+        '  ${styledOrPlain(s.meta.id.value.padRight(idWidth), (x) => x.bold)}  '
+        '${styledOrPlain(runtime.padRight(runtimeWidth), (x) => x.gray)}  '
+        '${styledOrPlain('patch=$patch', (x) => x.gray)}  '
+        '$title',
+      );
+    }
+    return 0;
+  }
+}
+
+class SessionShowCommand extends Command<int> {
+  @override
+  String get name => 'show';
+  @override
+  String get description =>
+      'Print metadata + the first screen of the patch for a session.';
+
+  @override
+  Future<int> run() async {
+    final args = argResults!.rest;
+    if (args.isEmpty) {
+      stderr.writeln('Usage: glue session show <id>');
+      return 64;
+    }
+    final env = Environment.detect();
+    final session = listSessions(env).firstWhere(
+      (s) => s.meta.id.value == args.first,
+      orElse: () => throw StateError('session not found: ${args.first}'),
+    );
+    final m = session.meta;
+    stdout.writeln(
+      '$brandDot ${styledOrPlain('Session ${m.id.value}', (x) => x.bold)}',
+    );
+    void row(String key, String value) {
+      stdout.writeln(
+        '  ${styledOrPlain(key.padRight(11), (x) => x.gray)} $value',
+      );
+    }
+
+    row('started:', m.startTime.toIso8601String());
+    row('model:', m.modelRef);
+    if (m.title != null) row('title:', m.title!);
+    if (m.runtimeId != null) row('runtime:', m.runtimeId!);
+    if (m.sandboxId != null) row('sandbox:', m.sandboxId!);
+    if (m.runtimeBootstrapSha != null) {
+      row('bootstrap:', m.runtimeBootstrapSha!);
+    }
+    if (m.runtimePatchPath != null) {
+      row('patch:', m.runtimePatchPath!);
+    } else if (session.patchPath != null) {
+      row('patch:', '${session.patchPath} (found by scan)');
+    }
+    if (m.runtimeClosedAt != null) {
+      row('closed:', m.runtimeClosedAt!.toIso8601String());
+    }
+    final patch = session.patchPath;
+    if (patch != null) {
+      final body = File(patch).readAsStringSync();
+      final lines = body.split('\n').take(40).join('\n');
+      stdout.writeln();
+      stdout.writeln(
+        styledOrPlain('--- patch (first 40 lines) ---', (x) => x.gray),
+      );
+      stdout.writeln(lines);
+    }
+    return 0;
+  }
+}
+
+class SessionDiffCommand extends Command<int> {
+  @override
+  String get name => 'diff';
+  @override
+  String get description => 'Print a session\'s full runtime patch to stdout.';
+
+  @override
+  Future<int> run() async {
+    final args = argResults!.rest;
+    if (args.isEmpty) {
+      stderr.writeln('Usage: glue session diff <id>');
+      return 64;
+    }
+    final env = Environment.detect();
+    final session = listSessions(env).firstWhere(
+      (s) => s.meta.id.value == args.first,
+      orElse: () => throw StateError('session not found: ${args.first}'),
+    );
+    final patch = session.patchPath;
+    if (patch == null) {
+      stderr.writeln('No patch found for session ${args.first}');
+      return 1;
+    }
+    stdout.write(File(patch).readAsStringSync());
+    return 0;
+  }
+}
+
+class SessionApplyCommand extends Command<int> {
+  SessionApplyCommand() {
+    argParser
+      ..addOption(
+        'target',
+        help: 'Directory to apply the patch to. Defaults to cwd.',
+      )
+      ..addOption(
+        'branch',
+        help:
+            'Branch name to create from current HEAD before applying. '
+            'Default: glue/<session-id>.',
+      )
+      ..addFlag(
+        'in-place',
+        negatable: false,
+        help:
+            'Apply directly to current HEAD instead of creating a branch '
+            '(overrides Q6 default).',
+      );
+  }
+
+  @override
+  String get name => 'apply';
+  @override
+  String get description =>
+      'Apply a session\'s runtime patch via `git am --3way` '
+      '(falls back to `git apply --3way`).';
+
+  @override
+  Future<int> run() async {
+    final args = argResults!.rest;
+    if (args.isEmpty) {
+      stderr.writeln(
+        'Usage: glue session apply <id> [--target <dir>] '
+        '[--branch <name>] [--in-place]',
+      );
+      return 64;
+    }
+    final env = Environment.detect();
+    final session = listSessions(env).firstWhere(
+      (s) => s.meta.id.value == args.first,
+      orElse: () => throw StateError('session not found: ${args.first}'),
+    );
+    final target = argResults!.option('target') ?? Directory.current.path;
+    final result = await applySessionPatch(
+      session: session,
+      targetDir: target,
+      branch: argResults!.option('branch'),
+      inPlace: argResults!.flag('in-place'),
+    );
+    if (result.ok) {
+      stdout.writeln('$markerOk ${result.message}');
+      if (result.branch != null) {
+        stdout.writeln(
+          '  ${styledOrPlain('on branch:', (x) => x.gray)} ${result.branch}',
+        );
+      }
+      return 0;
+    }
+    stderr.writeln(result.message);
+    for (final rej in result.rejectedFiles) {
+      stderr.writeln('  rejection: $rej');
+    }
+    return 1;
+  }
+}
+
+class SessionExportCommand extends Command<int> {
+  SessionExportCommand() {
+    argParser.addOption(
+      'to',
+      help: 'Destination path for the patch + meta sidecar.',
+      mandatory: true,
+    );
+  }
+
+  @override
+  String get name => 'export';
+  @override
+  String get description =>
+      'Copy a session\'s patch + meta sidecar to a destination path.';
+
+  @override
+  Future<int> run() async {
+    final args = argResults!.rest;
+    if (args.isEmpty) {
+      stderr.writeln('Usage: glue session export <id> --to <path>');
+      return 64;
+    }
+    final env = Environment.detect();
+    final session = listSessions(env).firstWhere(
+      (s) => s.meta.id.value == args.first,
+      orElse: () => throw StateError('session not found: ${args.first}'),
+    );
+    final patch = session.patchPath;
+    if (patch == null) {
+      stderr.writeln('No patch found for session ${args.first}');
+      return 1;
+    }
+    final to = argResults!.option('to')!;
+    File(patch).copySync(to);
+    // Copy the .meta.json sidecar alongside.
+    final metaSrc = File('$patch.meta.json');
+    if (metaSrc.existsSync()) {
+      metaSrc.copySync('$to.meta.json');
+    }
+    stdout.writeln('$markerOk Copied to ${styledOrPlain(to, (x) => x.bold)}');
+    return 0;
+  }
 }
