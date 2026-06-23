@@ -79,27 +79,28 @@ void main() {
       expect(vArgs, contains('/shared:/shared:rw'));
     });
 
-    // Integration test — only runs where Docker can actually run a Linux
-    // container. `docker info` exits 0 on a daemon in Windows-container mode
-    // (so the alpine run would silently produce empty output), and the binary
-    // may be absent entirely on macOS/Windows CI runners (Process.run throws).
-    // Probing `OSType` covers both: skip unless it reports `linux`.
+    // Real-container integration check. Only Linux CI runs Docker with Linux
+    // containers reliably: macOS runners lack the daemon, and Windows runners
+    // default to Windows-container mode where pulling/running `alpine` hangs
+    // (the probe itself can block, tripping the test timeout). Restrict to
+    // Linux and still guard on the daemon being up / the binary existing.
     test(
       'runCapture executes in container',
       () async {
-        String osType;
-        try {
-          final probe = await Process.run('docker', [
-            'info',
-            '-f',
-            '{{.OSType}}',
-          ]);
-          osType = probe.exitCode == 0 ? (probe.stdout as String).trim() : '';
-        } on ProcessException {
-          osType = '';
+        if (!Platform.isLinux) {
+          markTestSkipped(
+            'Docker Linux-container integration runs on Linux only',
+          );
+          return;
         }
-        if (osType != 'linux') {
-          markTestSkipped('Docker (Linux containers) not available');
+        try {
+          final probe = await Process.run('docker', ['info']);
+          if (probe.exitCode != 0) {
+            markTestSkipped('Docker daemon not available');
+            return;
+          }
+        } on ProcessException {
+          markTestSkipped('Docker not installed');
           return;
         }
 
