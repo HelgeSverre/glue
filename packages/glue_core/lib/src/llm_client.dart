@@ -21,6 +21,18 @@ abstract class LlmClient {
   Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools});
 }
 
+/// Optional capability for an [LlmClient] that knows its model's effective
+/// context window. Kept separate from [LlmClient] (rather than a member with
+/// a default) because clients use `implements LlmClient`, which would force
+/// every client to redeclare the member. Only clients that can resolve a
+/// window — today just Ollama — opt in; the context-occupancy gauge
+/// type-checks for this and uses the catalog window otherwise.
+abstract interface class ContextWindowAware {
+  /// The model's effective context window in tokens, or `null` when not yet
+  /// resolved / unknown.
+  int? get contextWindow;
+}
+
 /// Thrown by an [LlmClient] when the underlying model rejects a request
 /// for trying to use tool calling on a model that doesn't support it.
 ///
