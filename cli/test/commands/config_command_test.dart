@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:glue/glue.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 void main() {
@@ -122,7 +123,7 @@ void main() {
         vars: {'GLUE_HOME': '/tmp/custom-glue'},
       );
 
-      expect(userConfigPath(env), '/tmp/custom-glue/config.yaml');
+      expect(userConfigPath(env), p.join('/tmp/custom-glue', 'config.yaml'));
     });
 
     test('validateUserConfig returns ok for configured local model', () {

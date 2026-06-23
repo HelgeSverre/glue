@@ -79,17 +79,27 @@ void main() {
       expect(vArgs, contains('/shared:/shared:rw'));
     });
 
-    // Integration test — only runs if the Docker daemon is actually up.
-    // `docker --version` just checks the CLI binary and exits 0 even when
-    // the daemon is down, so the test would then fail trying to run a
-    // container. `docker info` is the minimum probe that touches the
-    // daemon.
+    // Integration test — only runs where Docker can actually run a Linux
+    // container. `docker info` exits 0 on a daemon in Windows-container mode
+    // (so the alpine run would silently produce empty output), and the binary
+    // may be absent entirely on macOS/Windows CI runners (Process.run throws).
+    // Probing `OSType` covers both: skip unless it reports `linux`.
     test(
       'runCapture executes in container',
       () async {
-        final result = await Process.run('docker', ['info']);
-        if (result.exitCode != 0) {
-          markTestSkipped('Docker daemon not available');
+        String osType;
+        try {
+          final probe = await Process.run('docker', [
+            'info',
+            '-f',
+            '{{.OSType}}',
+          ]);
+          osType = probe.exitCode == 0 ? (probe.stdout as String).trim() : '';
+        } on ProcessException {
+          osType = '';
+        }
+        if (osType != 'linux') {
+          markTestSkipped('Docker (Linux containers) not available');
           return;
         }
 

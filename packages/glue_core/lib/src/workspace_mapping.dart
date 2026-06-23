@@ -43,10 +43,18 @@ class WorkspaceMapping {
   /// through unchanged.
   String? toRuntimePath(String hostPath) {
     if (isIdentity) return hostPath;
-    final hostPrefix = _withTrailingSlash(hostCwd);
-    if (hostPath == hostCwd) return runtimeCwd;
-    if (hostPath.startsWith(hostPrefix)) {
-      final rel = hostPath.substring(hostPrefix.length);
+    // Host paths captured on Windows (e.g. from `Directory.listSync`) use
+    // `\`, while runtime paths are POSIX. Normalize separators for the prefix
+    // match and carry the relative remainder over with `/`, so the runtime
+    // sees `/workspace/foo` rather than `/workspace\foo`. Backslashes are
+    // vanishingly rare in POSIX filenames, so treating them as separators is
+    // safe in practice.
+    final host = _normalizeSeparators(hostPath);
+    final base = _normalizeSeparators(hostCwd);
+    if (host == base) return runtimeCwd;
+    final basePrefix = _withTrailingSlash(base);
+    if (host.startsWith(basePrefix)) {
+      final rel = host.substring(basePrefix.length);
       return '${_withTrailingSlash(runtimeCwd)}$rel';
     }
     return null;
@@ -70,6 +78,8 @@ class WorkspaceMapping {
   }
 
   static String _withTrailingSlash(String s) => s.endsWith('/') ? s : '$s/';
+
+  static String _normalizeSeparators(String path) => path.replaceAll(r'\', '/');
 
   @override
   String toString() =>
