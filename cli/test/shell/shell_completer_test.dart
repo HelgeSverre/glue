@@ -83,30 +83,44 @@ void main() {
       expect(results, isEmpty);
     });
 
-    test('command completion returns results for known prefix', () async {
-      // 'ech' should match at least 'echo' on any system with bash.
-      final results = await completer.complete('ech');
-      expect(results, isNotEmpty);
-      expect(results.any((c) => c.text == 'echo'), isTrue);
-    });
-
-    test('file completion in temp directory', () async {
-      final dir = Directory.systemTemp.createTempSync('shell_completer_test_');
-      try {
-        File('${dir.path}/hello.txt').createSync();
-        File('${dir.path}/hello_world.txt').createSync();
-        Directory('${dir.path}/hello_dir').createSync();
-
-        final results = await completer.complete('ls ${dir.path}/hello');
+    test(
+      'command completion returns results for known prefix',
+      () async {
+        // 'ech' should match at least 'echo' on any system with bash.
+        final results = await completer.complete('ech');
         expect(results, isNotEmpty);
-        final texts = results.map((c) => c.text).toList();
-        expect(texts, contains('${dir.path}/hello.txt'));
-        expect(texts, contains('${dir.path}/hello_world.txt'));
-        expect(texts, contains('${dir.path}/hello_dir'));
-      } finally {
-        dir.deleteSync(recursive: true);
-      }
-    });
+        expect(results.any((c) => c.text == 'echo'), isTrue);
+      },
+      skip: Platform.isWindows
+          ? 'compgen-based completion is POSIX-only'
+          : null,
+    );
+
+    test(
+      'file completion in temp directory',
+      () async {
+        final dir = Directory.systemTemp.createTempSync(
+          'shell_completer_test_',
+        );
+        try {
+          File('${dir.path}/hello.txt').createSync();
+          File('${dir.path}/hello_world.txt').createSync();
+          Directory('${dir.path}/hello_dir').createSync();
+
+          final results = await completer.complete('ls ${dir.path}/hello');
+          expect(results, isNotEmpty);
+          final texts = results.map((c) => c.text).toList();
+          expect(texts, contains('${dir.path}/hello.txt'));
+          expect(texts, contains('${dir.path}/hello_world.txt'));
+          expect(texts, contains('${dir.path}/hello_dir'));
+        } finally {
+          dir.deleteSync(recursive: true);
+        }
+      },
+      skip: Platform.isWindows
+          ? 'compgen-based completion is POSIX-only'
+          : null,
+    );
 
     test('marks directories with isDirectory flag', () async {
       final dir = Directory.systemTemp.createTempSync('shell_completer_test_');
@@ -154,12 +168,18 @@ void main() {
       }
     });
 
-    test('different input invalidates cache', () async {
-      await completer.complete('ech');
-      final results2 = await completer.complete('ls');
-      // Should get different results (ls-related commands).
-      expect(results2, isNotEmpty);
-    });
+    test(
+      'different input invalidates cache',
+      () async {
+        await completer.complete('ech');
+        final results2 = await completer.complete('ls');
+        // Should get different results (ls-related commands).
+        expect(results2, isNotEmpty);
+      },
+      skip: Platform.isWindows
+          ? 'compgen-based completion is POSIX-only'
+          : null,
+    );
 
     test(
       'unknown command prefix returns empty or results gracefully',
