@@ -12,7 +12,9 @@ void main() {
       );
 
       expect(report, contains('Glue paths'));
-      expect(report, contains('/tmp/home/.glue'));
+      // env.glueDir is what the report prints; comparing against it keeps the
+      // assertion correct on Windows where the separator is `\`.
+      expect(report, contains(env.glueDir));
       expect(report, contains('config.yaml'));
       expect(report, contains('preferences.json'));
       expect(report, contains('credentials.json'));

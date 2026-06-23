@@ -119,7 +119,11 @@ Guidelines:
           content =
               '${content.substring(0, _maxGuidanceBytes)}\n\n(truncated — file exceeded 50KB)';
         }
-        final rel = p.relative(p.join(dir, filename), from: workspaceRoot);
+        // Display labels use `/` on every platform so the header reads
+        // `packages/foo/AGENTS.md`, not `packages\foo\AGENTS.md`, on Windows.
+        final rel = p
+            .relative(p.join(dir, filename), from: workspaceRoot)
+            .replaceAll(r'\', '/');
         final label = rel == filename ? filename : rel;
         entries.add(_GuidanceEntry(label: label, content: content));
       }

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_harness/glue_harness.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 void main() {
@@ -20,11 +21,17 @@ void main() {
 
     expect(environment.home, tempDir.path);
     expect(environment.cwd, '/work/cwd');
-    expect(environment.configPath, endsWith('.glue/preferences.json'));
-    expect(environment.configYamlPath, endsWith('.glue/config.yaml'));
+    expect(
+      environment.configPath,
+      endsWith(p.join('.glue', 'preferences.json')),
+    );
+    expect(
+      environment.configYamlPath,
+      endsWith(p.join('.glue', 'config.yaml')),
+    );
     expect(
       environment.sessionDir(const SessionId('abc123')),
-      endsWith('.glue/sessions/abc123'),
+      endsWith(p.join('.glue', 'sessions', 'abc123')),
     );
   });
 

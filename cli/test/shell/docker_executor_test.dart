@@ -79,17 +79,28 @@ void main() {
       expect(vArgs, contains('/shared:/shared:rw'));
     });
 
-    // Integration test — only runs if the Docker daemon is actually up.
-    // `docker --version` just checks the CLI binary and exits 0 even when
-    // the daemon is down, so the test would then fail trying to run a
-    // container. `docker info` is the minimum probe that touches the
-    // daemon.
+    // Real-container integration check. Only Linux CI runs Docker with Linux
+    // containers reliably: macOS runners lack the daemon, and Windows runners
+    // default to Windows-container mode where pulling/running `alpine` hangs
+    // (the probe itself can block, tripping the test timeout). Restrict to
+    // Linux and still guard on the daemon being up / the binary existing.
     test(
       'runCapture executes in container',
       () async {
-        final result = await Process.run('docker', ['info']);
-        if (result.exitCode != 0) {
-          markTestSkipped('Docker daemon not available');
+        if (!Platform.isLinux) {
+          markTestSkipped(
+            'Docker Linux-container integration runs on Linux only',
+          );
+          return;
+        }
+        try {
+          final probe = await Process.run('docker', ['info']);
+          if (probe.exitCode != 0) {
+            markTestSkipped('Docker daemon not available');
+            return;
+          }
+        } on ProcessException {
+          markTestSkipped('Docker not installed');
           return;
         }
 

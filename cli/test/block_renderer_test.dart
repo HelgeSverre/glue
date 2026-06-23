@@ -235,7 +235,10 @@ void main() {
       final result = renderer.renderToolCall('read_file', {
         'path': '/src/main.dart',
       });
-      expect(result, contains('\x1b]8;;file:///src/main.dart\x07'));
+      // Compute the expected link via the same helper: on Windows
+      // `/src/main.dart` is not absolute, so the file URI differs from a
+      // hardcoded POSIX one.
+      expect(result, contains(osc8FileLink('/src/main.dart')));
       expect(result, contains('/src/main.dart'));
       expect(result, contains('\x1b]8;;\x07'));
     });

@@ -1,0 +1,6 @@
+# Normalize line endings to LF on checkout across all platforms. Without
+# this, Windows runners with core.autocrlf check out generated/committed
+# files as CRLF, so byte-exact gates (`gen_models.dart --check`, `dart
+# format --set-exit-if-changed`) see a phantom diff and fail. Git auto-
+# detects binary files and leaves them untouched.
+* text=auto eol=lf

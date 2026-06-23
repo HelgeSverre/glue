@@ -16,7 +16,14 @@ void main() {
     'acp --port 0 binds, accepts WS upgrade, handshakes',
     () async {
       final tmp = Directory.systemTemp.createTempSync('glue_serve_ws_');
-      addTearDown(() => tmp.deleteSync(recursive: true));
+      addTearDown(() {
+        try {
+          tmp.deleteSync(recursive: true);
+        } catch (_) {
+          // Windows can briefly hold a handle on the spawned server's
+          // GLUE_HOME after kill; the OS reclaims the temp dir later.
+        }
+      });
 
       final process = await Process.start(
         'dart',
