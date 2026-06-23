@@ -25,6 +25,19 @@ void main() {
       expect(found, contains(p.normalize(bundled.path)));
     });
 
+    test('expands a leading ~ in GLUE_BUNDLED_SKILLS_DIR', () {
+      Directory(p.join(tempDir.path, 'bundled')).createSync();
+      final found = discoverBundledSkillPaths(
+        // HOME drives the ~ expansion; point it at the temp dir.
+        environment: {
+          'HOME': tempDir.path,
+          'GLUE_BUNDLED_SKILLS_DIR': '~/bundled',
+        },
+        scriptPath: '',
+      );
+      expect(found, contains(p.normalize(p.join(tempDir.path, 'bundled'))));
+    });
+
     test('derives cli/skills from script path', () {
       final repoRoot = Directory(p.join(tempDir.path, 'repo'))..createSync();
       final cliSkills = Directory(p.join(repoRoot.path, 'cli', 'skills'))

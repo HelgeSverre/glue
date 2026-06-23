@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:glue_core/glue_core.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:path/path.dart' as p;
 
 /// Runtime environment abstraction for paths and environment variables.
@@ -74,7 +75,12 @@ class Environment {
     return Environment.detect(cwd: cwd);
   }
 
-  String get glueDir => glueHomeOverride ?? p.join(home, '.glue');
+  // `GLUE_HOME` may be given as `~/foo`; expand it so every derived path
+  // (config, credentials, sessions, …) resolves against a real directory
+  // instead of a literal `~` segment when handed to `dart:io`.
+  String get glueDir => glueHomeOverride != null
+      ? expandUserPath(glueHomeOverride!, home: home)
+      : p.join(home, '.glue');
   String get configPath => p.join(glueDir, 'preferences.json');
   String get configYamlPath => p.join(glueDir, 'config.yaml');
   String get credentialsPath => p.join(glueDir, 'credentials.json');
@@ -97,7 +103,9 @@ class Environment {
   /// doctor's catalog cache check, and the config loader's layered merge.
   String get catalogCachePath {
     final override = vars['GLUE_CATALOG_CACHE'];
-    if (override != null && override.isNotEmpty) return override;
+    if (override != null && override.isNotEmpty) {
+      return expandUserPath(override, home: home);
+    }
     return p.join(cacheDir, 'models.yaml');
   }
 
@@ -107,7 +115,12 @@ class Environment {
   /// Replace a leading [home] with `~` for compact display. Returns [path]
   /// unchanged when [home] is empty or [path] doesn't sit beneath it.
   String shortenPath(String path) {
-    if (home.isNotEmpty && path.startsWith(home)) {
+    if (home.isEmpty) return path;
+    if (path == home) return '~';
+    // Match only at a directory boundary so `/Users/helge-backup` isn't
+    // mangled into `~-backup` when home is `/Users/helge`.
+    final sep = isWindows ? r'\' : '/';
+    if (path.startsWith('$home$sep')) {
       return '~${path.substring(home.length)}';
     }
     return path;

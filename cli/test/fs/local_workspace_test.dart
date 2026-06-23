@@ -53,6 +53,34 @@ void main() {
       expect(await ws.isDirectory('${tmp.path}/missing'), isFalse);
     });
 
+    test('isDirectory expands a leading ~ to the home directory', () async {
+      final home =
+          Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+      expect(home, isNotNull, reason: 'HOME/USERPROFILE must be set');
+      final inHome = Directory(home!).createTempSync('glue_tilde_');
+      addTearDown(() => inHome.deleteSync(recursive: true));
+      final name = inHome.path
+          .split(Platform.pathSeparator)
+          .where((s) => s.isNotEmpty)
+          .last;
+      expect(await ws.isDirectory('~/$name'), isTrue);
+      expect(await ws.isDirectory('~/$name/missing'), isFalse);
+    });
+
+    test('list expands a leading ~ to the home directory', () async {
+      final home =
+          Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+      final inHome = Directory(home!).createTempSync('glue_tilde_');
+      addTearDown(() => inHome.deleteSync(recursive: true));
+      File('${inHome.path}/marker.txt').writeAsStringSync('x');
+      final name = inHome.path
+          .split(Platform.pathSeparator)
+          .where((s) => s.isNotEmpty)
+          .last;
+      final entries = await ws.list('~/$name');
+      expect(entries.single.path.endsWith('marker.txt'), isTrue);
+    });
+
     test('list yields immediate children with isDirectory flag', () async {
       Directory('${tmp.path}/sub').createSync();
       File('${tmp.path}/a.txt').writeAsStringSync('x');

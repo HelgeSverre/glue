@@ -271,7 +271,7 @@ class GrepTool extends Tool {
     // search. Quoting via single quotes protects against shell injection
     // in [pattern] and [dir] — both are user-controlled.
     final p = _shQuote(pattern);
-    final d = _shQuote(dir);
+    final d = _shQuotePath(dir);
     final shellCmd =
         'if command -v rg >/dev/null 2>&1; then '
         'rg --line-number --no-heading $p $d; '
@@ -314,6 +314,25 @@ class GrepTool extends Tool {
   /// Wraps [s] in single quotes for safe inclusion in a shell command,
   /// escaping any embedded single quotes via the standard `'\''` trick.
   static String _shQuote(String s) => "'${s.replaceAll("'", r"'\''")}'";
+
+  /// Quotes a directory argument for the shell while leaving a leading
+  /// `~` / `~/` tilde-prefix UNQUOTED so the runtime's own shell expands it.
+  ///
+  /// Single-quoting the whole path (as [_shQuote] does) suppresses tilde
+  /// expansion, so `~/foo` would be searched as a literal path and fail — the
+  /// same bug fixed for the Workspace-backed tools. Letting the shell expand
+  /// `~` keeps grep correct across runtimes (host shell → host home, container
+  /// shell → container home), which a Dart-side expansion to the orchestrator's
+  /// home would get wrong under Docker/cloud. The remainder after the prefix is
+  /// still single-quoted against injection.
+  static String _shQuotePath(String path) {
+    if (path == '~') return '~';
+    if (path.startsWith('~/')) {
+      final rest = path.substring(2);
+      return rest.isEmpty ? '~/' : '~/${_shQuote(rest)}';
+    }
+    return _shQuote(path);
+  }
 }
 
 /// A tool that edits files by replacing exact string matches.

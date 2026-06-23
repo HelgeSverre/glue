@@ -1,6 +1,8 @@
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:path/path.dart' as p;
 
+import 'package:glue_strategies/src/fs/path_utils.dart';
+
 part 'docker_config.mapper.dart';
 
 @MappableEnum(mode: ValuesMode.named)
@@ -107,6 +109,11 @@ class MountEntry {
   int get hashCode => MountEntryMapper.ensureInitialized().hashValue(this);
 
   static bool _isAbsoluteHostPath(String path) {
+    // A leading `~` is shell-absolute; it's expanded to the real home at the
+    // `docker -v` boundary (see [toDockerArg]).
+    if (path == '~' || path.startsWith('~/') || path.startsWith(r'~\')) {
+      return true;
+    }
     if (p.isAbsolute(path)) return true;
     if (RegExp(r'^[a-zA-Z]:[\\/]').hasMatch(path)) return true;
     if (path.startsWith(r'\\')) return true;
@@ -120,8 +127,11 @@ class MountEntry {
   /// // => '/src:/src:ro'
   /// ```
   String toDockerArg() {
-    final target = containerPath ?? hostPath;
-    return '$hostPath:$target:${mode.name}';
+    // Docker does not expand `~`; expand the host side here so a configured
+    // `~/data` mount points at the real directory.
+    final host = expandUserPath(hostPath);
+    final target = containerPath ?? host;
+    return '$host:$target:${mode.name}';
   }
 
   /// Removes duplicate mounts, keeping the last entry for each unique path/mode combo.

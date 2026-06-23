@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:glue_core/glue_core.dart';
+import 'package:glue_strategies/src/fs/path_utils.dart';
 import 'package:glue_strategies/src/fs/workspace.dart';
 
 /// A [Workspace] backed by the host filesystem via `dart:io`.
@@ -19,7 +20,10 @@ class LocalWorkspace implements Workspace {
   LocalWorkspace(this.mapping);
 
   String _resolve(String path) {
-    if (mapping.isIdentity) return path;
+    // Only the host runtime (identity mapping) expands `~`: `dart:io` does not
+    // do shell-style tilde expansion, and `~` has no meaning in a translated
+    // runtime vocabulary (Docker/cloud). See [expandUserPath].
+    if (mapping.isIdentity) return expandUserPath(path);
     return mapping.toHostPath(path);
   }
 

@@ -81,4 +81,39 @@ void main() {
       expect(env.isRemoteOrMultiplexed, isFalse);
     });
   });
+
+  group('tilde expansion of overrides', () {
+    test('glueDir expands a leading ~ in GLUE_HOME', () {
+      final env = Environment.test(
+        home: '/Users/me',
+        vars: {'GLUE_HOME': '~/glue'},
+      );
+      expect(env.glueDir, '/Users/me/glue');
+      expect(env.configPath, '/Users/me/glue/preferences.json');
+    });
+
+    test('catalogCachePath expands a leading ~ in GLUE_CATALOG_CACHE', () {
+      final env = Environment.test(
+        home: '/Users/me',
+        vars: {'GLUE_CATALOG_CACHE': '~/c/models.yaml'},
+      );
+      expect(env.catalogCachePath, '/Users/me/c/models.yaml');
+    });
+  });
+
+  group('shortenPath', () {
+    final env = Environment.test(home: '/Users/helge', cwd: '/work');
+
+    test('replaces an exact home match with ~', () {
+      expect(env.shortenPath('/Users/helge'), '~');
+    });
+
+    test('replaces home + separator with ~/', () {
+      expect(env.shortenPath('/Users/helge/code/x'), '~/code/x');
+    });
+
+    test('does not match a sibling sharing the home prefix', () {
+      expect(env.shortenPath('/Users/helge-backup/x'), '/Users/helge-backup/x');
+    });
+  });
 }

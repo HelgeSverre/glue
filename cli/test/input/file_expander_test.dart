@@ -67,6 +67,21 @@ void main() {
       expect(result, contains('void main() {}'));
     });
 
+    test('expands a leading ~ in the ref to the home directory', () {
+      final home =
+          Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+      if (home == null || home.isEmpty) return; // no home → nothing to assert
+      // Create a temp dir *inside* home so ~/<name>/f.dart resolves.
+      final inHome = Directory(home).createTempSync('glue_fx_');
+      addTearDown(() => inHome.deleteSync(recursive: true));
+      final name = p.basename(inHome.path);
+      File(p.join(inHome.path, 'f.dart')).writeAsStringSync('TILDE_OK');
+
+      final result = expandFileRefs('@~/$name/f.dart');
+      expect(result, contains('TILDE_OK'));
+      expect(result, isNot(contains('[not found]')));
+    });
+
     test('multiple file expansion', () {
       File(p.join(tmpDir.path, 'a.dart')).writeAsStringSync('aaa');
       File(p.join(tmpDir.path, 'b.json')).writeAsStringSync('bbb');

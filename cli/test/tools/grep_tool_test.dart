@@ -78,6 +78,21 @@ void main() {
       expect(cmd, contains(r"'it'\''s'"));
     });
 
+    test(
+      'leaves a leading ~/ unquoted so the runtime shell expands it',
+      () async {
+        final exec = _RecordingExecutor(
+          (_) => CaptureResult(exitCode: 0, stdout: '', stderr: ''),
+        );
+        final tool = GrepTool(exec);
+        await tool.execute({'pattern': 'foo', 'path': '~/code/3d'});
+        final cmd = exec.commands.single;
+        // Tilde-prefix stays unquoted (so ~ expands); the rest is single-quoted.
+        expect(cmd, contains(r"~/'code/3d'"));
+        expect(cmd, isNot(contains("'~/code/3d'")));
+      },
+    );
+
     test('works end-to-end against a real HostExecutor', () async {
       // Smoke test using whichever of rg or grep is present on the test
       // host. We grep this file itself for a unique sentinel string.

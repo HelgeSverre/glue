@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:glue_core/glue_core.dart';
 import 'package:path/path.dart' as p;
 
+import 'package:glue_strategies/src/fs/path_utils.dart';
 import 'package:glue_strategies/src/shell/command_events.dart';
 import 'package:glue_strategies/src/shell/command_executor.dart';
 import 'package:glue_strategies/src/shell/docker_config.dart';
@@ -52,7 +53,9 @@ class DockerExecutor implements CommandExecutor {
       '-w',
       '/workspace',
       '-v',
-      '$cwd:/workspace:rw',
+      // Docker (unlike a shell) does not expand `~`; expand it on the host
+      // side so `-v ~/proj:/workspace` mounts the real directory.
+      '${expandUserPath(cwd)}:/workspace:rw',
     ];
 
     for (final mount in MountEntry.dedup(mounts)) {

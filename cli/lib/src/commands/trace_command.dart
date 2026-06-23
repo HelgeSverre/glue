@@ -4,6 +4,7 @@ import 'package:args/command_runner.dart';
 import 'package:glue/src/commands/trace_export_format.dart';
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_harness/glue_harness.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:path/path.dart' as p;
 
 /// Outcome of `glue trace export`. Returned by [exportSessionTrace] so the
@@ -76,7 +77,9 @@ TraceExportResult exportSessionTrace({
     version: AppConstants.version,
   );
 
-  final dest = outputPath ?? p.join(env.sessionDir(meta.id), 'trace.json');
+  final dest = outputPath != null
+      ? expandUserPath(outputPath)
+      : p.join(env.sessionDir(meta.id), 'trace.json');
   final destFile = File(dest);
   destFile.parent.createSync(recursive: true);
   destFile.writeAsStringSync(json);

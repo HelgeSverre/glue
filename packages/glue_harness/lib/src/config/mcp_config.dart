@@ -103,7 +103,17 @@ McpServerSpec _parseServer(
           .map((a) => _expandEnvVars(a, env, server: id, field: 'args'))
           .toList(),
       env: envBlock,
-      workingDirectory: raw['working_directory'] as String?,
+      workingDirectory: raw['working_directory'] != null
+          ? expandUserPath(
+              _expandEnvVars(
+                raw['working_directory'] as String,
+                env,
+                server: id,
+                field: 'working_directory',
+              ),
+              home: env['HOME'] ?? env['USERPROFILE'],
+            )
+          : null,
       enabled: enabled,
       callTimeoutSeconds: callTimeout,
     );

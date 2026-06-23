@@ -1,7 +1,30 @@
+import 'dart:io';
+
 import 'package:glue_strategies/glue_strategies.dart';
 import 'package:test/test.dart';
 
 void main() {
+  final home =
+      Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'] ?? '';
+
+  group('MountEntry tilde paths', () {
+    test('parse accepts a ~ host path instead of rejecting it', () {
+      // Previously threw ArgumentError ("must be absolute").
+      final m = MountEntry.parse('~/data:ro');
+      expect(m.hostPath, '~/data');
+      expect(m.mode, MountMode.ro);
+    });
+
+    test(
+      'toDockerArg expands ~ on the host side',
+      () {
+        const m = MountEntry(hostPath: '~/data', mode: MountMode.rw);
+        expect(m.toDockerArg(), '$home/data:$home/data:rw');
+      },
+      skip: home.isEmpty ? 'no HOME in environment' : false,
+    );
+  });
+
   group('MountEntry.parse', () {
     test('parses host path only', () {
       final m = MountEntry.parse('/some/path');

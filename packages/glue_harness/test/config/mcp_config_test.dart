@@ -56,6 +56,21 @@ mcp:
       expect(fs.enabled, isTrue);
     });
 
+    test('expands ~ and \$VAR in working_directory', () {
+      final cfg = parse(
+        '''
+mcp:
+  servers:
+    fs:
+      command: npx
+      working_directory: ~/\${SUB}/work
+''',
+        env: {'HOME': '/Users/me', 'SUB': 'projects'},
+      );
+      final fs = cfg.servers.single as McpStdioServerSpec;
+      expect(fs.workingDirectory, '/Users/me/projects/work');
+    });
+
     test('disabled: false parks the server without removing it', () {
       final cfg = parse('''
 mcp:

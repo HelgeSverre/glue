@@ -11,6 +11,7 @@ library;
 export 'package:glue_strategies/src/credentials/credential_ref.dart';
 export 'package:glue_strategies/src/credentials/credential_store.dart';
 export 'package:glue_strategies/src/fs/local_workspace.dart';
+export 'package:glue_strategies/src/fs/path_utils.dart';
 export 'package:glue_strategies/src/fs/workspace.dart';
 export 'package:glue_strategies/src/llm/anthropic_client.dart';
 export 'package:glue_strategies/src/llm/gemini_client.dart';

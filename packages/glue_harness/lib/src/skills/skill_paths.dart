@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:path/path.dart' as p;
 
 /// Discover bundled skill directories that ship with the Glue CLI checkout.
@@ -14,10 +15,12 @@ List<String> discoverBundledSkillPaths({
   final env = environment ?? Platform.environment;
   final found = <String>{};
 
+  final home = env['HOME'] ?? env['USERPROFILE'];
   void addIfDir(String? path) {
     if (path == null || path.isEmpty) return;
-    if (Directory(path).existsSync()) {
-      found.add(p.normalize(path));
+    final expanded = expandUserPath(path, home: home);
+    if (Directory(expanded).existsSync()) {
+      found.add(p.normalize(expanded));
     }
   }
 

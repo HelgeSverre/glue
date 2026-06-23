@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:glue_core/glue_core.dart';
 
+import 'package:glue_strategies/src/fs/path_utils.dart';
+
 /// The type of shell detected on the system.
 enum ShellType { bash, fish, zsh, sh }
 
@@ -103,20 +105,38 @@ class ShellCompleter {
     }
 
     // File completion — also get directory list to mark dirs.
+    //
+    // Single-quoting suppresses tilde expansion, so a `~/…` token would match
+    // nothing. Expand it for the shell query, then re-collapse the home prefix
+    // in the results so the inserted completion keeps the `~/…` the user typed.
+    final tildeHome = (token == '~' || token.startsWith('~/'))
+        ? (Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'])
+        : null;
+    final query = expandUserPath(token);
+
     final fileFuture = _runShellCommand('bash', [
       '-c',
-      'compgen -f -- ${_shellEscape(token)}',
+      'compgen -f -- ${_shellEscape(query)}',
     ]);
     final dirFuture = _runShellCommand('bash', [
       '-c',
-      'compgen -d -- ${_shellEscape(token)}',
+      'compgen -d -- ${_shellEscape(query)}',
     ]);
 
     final files = await fileFuture;
     final dirs = (await dirFuture).toSet();
 
+    String recollapse(String path) =>
+        (tildeHome != null &&
+            tildeHome.isNotEmpty &&
+            path.startsWith(tildeHome))
+        ? '~${path.substring(tildeHome.length)}'
+        : path;
+
     return files
-        .map((f) => ShellCandidate(f, isDirectory: dirs.contains(f)))
+        .map(
+          (f) => ShellCandidate(recollapse(f), isDirectory: dirs.contains(f)),
+        )
         .toList();
   }
 

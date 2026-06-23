@@ -17,6 +17,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:glue_server/glue_server.dart';
+import 'package:glue_strategies/src/fs/path_utils.dart';
 
 /// Subset of the parent env that's always forwarded to stdio servers.
 /// Other keys must be opted in via the server config's `env:` block.
@@ -69,7 +70,11 @@ class McpStdioTransport implements JsonRpcTransport {
         command,
         args,
         environment: env,
-        workingDirectory: workingDirectory,
+        // `Process.start` does not expand `~`; do it here so a server's
+        // `working_directory: ~/foo` (config or `mcp add --cwd`) resolves.
+        workingDirectory: workingDirectory == null
+            ? null
+            : expandUserPath(workingDirectory),
         // includeParentEnvironment must be false when we pass a scrubbed
         // map — otherwise Dart will merge the parent env back in.
         includeParentEnvironment: inheritFullEnv,

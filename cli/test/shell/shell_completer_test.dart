@@ -122,6 +122,27 @@ void main() {
           : null,
     );
 
+    test(
+      'expands a leading ~/ and re-collapses it in candidates',
+      () async {
+        final home =
+            Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+        if (home == null || home.isEmpty) return;
+        final inHome = Directory(home).createTempSync('glue_sc_');
+        addTearDown(() => inHome.deleteSync(recursive: true));
+        final name = inHome.path.split(Platform.pathSeparator).last;
+        File('${inHome.path}/marker.txt').createSync();
+
+        final results = await completer.complete('ls ~/$name/');
+        expect(results, isNotEmpty);
+        // Inserted text keeps the ~/ form rather than an absolute path.
+        expect(results.any((c) => c.text == '~/$name/marker.txt'), isTrue);
+      },
+      skip: Platform.isWindows
+          ? 'compgen-based completion is POSIX-only'
+          : null,
+    );
+
     test('marks directories with isDirectory flag', () async {
       final dir = Directory.systemTemp.createTempSync('shell_completer_test_');
       try {

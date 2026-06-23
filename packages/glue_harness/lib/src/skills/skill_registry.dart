@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:glue_harness/src/core/environment.dart';
@@ -193,11 +194,8 @@ class SkillRegistry {
   int get length => _skills.length;
 }
 
-String _resolvePath(String path, String home) {
-  if (path == '~') return home;
-  if (path.startsWith('~/')) return p.join(home, path.substring(2));
-  return path;
-}
+String _resolvePath(String path, String home) =>
+    expandUserPath(path, home: home);
 
 _SkillResourceDiscovery _discoverResources(String skillDir) {
   final rootPath = _canonicalPath(skillDir);

@@ -1,10 +1,11 @@
 import 'dart:io';
 import 'package:glue_core/glue_core.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 
 import 'package:path/path.dart' as p;
 
 final _refPattern = RegExp(
-  r'''(?:^|(?<=\s))@(?:"([^"]+)"|'([^']+)'|([\w./\-]+))''',
+  r'''(?:^|(?<=\s))@(?:"([^"]+)"|'([^']+)'|([\w./\-~]+))''',
 );
 
 const _langTags = <String, String>{
@@ -34,7 +35,8 @@ String expandFileRefs(String input, {String? cwd}) {
   return input.replaceAllMapped(_refPattern, (m) {
     final fullMatch = m.group(0)!;
     final filePath = m.group(1) ?? m.group(2) ?? m.group(3)!;
-    final resolved = cwd != null ? p.join(cwd, filePath) : filePath;
+    final expanded = expandUserPath(filePath);
+    final resolved = cwd != null ? p.join(cwd, expanded) : expanded;
     final file = File(resolved);
 
     if (!file.existsSync()) {

@@ -36,6 +36,20 @@ void main() {
       expect(vArgs, contains('/home/user/data:/home/user/data:ro'));
     });
 
+    test('buildDockerArgs expands a ~ cwd for the workspace mount', () {
+      final home =
+          Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+      if (home == null || home.isEmpty) return; // no home → nothing to assert
+      final executor = DockerExecutor(
+        config: const DockerConfig(image: 'alpine:latest', shell: 'sh'),
+        cwd: '~/project',
+        mounts: [],
+      );
+      final args = executor.buildDockerArgs('echo hi', '/tmp/cid');
+      expect(args, contains('$home/project:/workspace:rw'));
+      expect(args, isNot(contains('~/project:/workspace:rw')));
+    });
+
     test('buildDockerArgs with no extra mounts', () {
       final executor = DockerExecutor(
         config: const DockerConfig(image: 'ubuntu:24.04', shell: 'bash'),

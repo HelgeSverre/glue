@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import 'package:glue_core/glue_core.dart';
+import 'package:glue_strategies/glue_strategies.dart';
 import 'package:glue/src/rendering/ansi_utils.dart';
 import 'package:glue/src/terminal/styled.dart';
 import 'package:glue/src/ui/autocomplete_overlay.dart';
@@ -93,7 +94,9 @@ class AtFileHint implements AutocompleteOverlay {
   }
 
   void _buildDirCandidates(String dirPart, String prefix) {
-    final resolvedDir = p.join(cwd, dirPart);
+    // Expand `~` only for the on-disk lookup; the inserted completion keeps the
+    // literal `~/…` form (file_expander expands it when the ref is read).
+    final resolvedDir = p.join(cwd, expandUserPath(dirPart));
     final dir = Directory(resolvedDir);
     if (!dir.existsSync()) {
       dismiss();
