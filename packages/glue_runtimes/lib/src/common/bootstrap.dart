@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import 'package:glue_runtimes/src/common/host_bundle.dart';
+import 'package:glue_runtimes/src/common/runtime_exception.dart';
 import 'package:glue_runtimes/src/common/shell_quote.dart';
 
 /// Result of a successful workspace bootstrap.
@@ -17,6 +18,49 @@ class BootstrapResult {
   final bool resumed;
 
   const BootstrapResult({required this.resumed, this.bootstrapSha});
+}
+
+/// Runs [WorkspaceBootstrap] for an adapter and remaps any
+/// [BootstrapException] into a runtime-typed [RuntimeApiException] so
+/// callers don't have to know about `BootstrapException` specifically.
+///
+/// Every cloud adapter funnels through here, supplying its own
+/// transport ([exec]) and [runtimeId]. [prepCommand] is forwarded to
+/// [WorkspaceBootstrap] (Daytona's `sudo mkdir`/`chown`); `null` skips
+/// it.
+///
+/// When [foldOutputIntoMessage] is true the exception's `output` is
+/// appended to the message and `statusCode`/`body` are left at their
+/// defaults — Modal's sidecar surfaces failures this way (no exit code
+/// / response body to carry). Otherwise the exit code and output are
+/// carried as `statusCode` / `body` (Daytona REST + Sprites CLI).
+Future<BootstrapResult> runWorkspaceBootstrap({
+  required BootstrapBundleTransport exec,
+  required String runtimeId,
+  required String sessionId,
+  required String hostCwd,
+  required String runtimeCwd,
+  String? prepCommand,
+  bool foldOutputIntoMessage = false,
+}) async {
+  final ws = WorkspaceBootstrap(
+    exec: exec,
+    sessionId: sessionId,
+    prepCommand: prepCommand,
+  );
+  try {
+    return await ws.bootstrap(hostCwd: hostCwd, runtimeCwd: runtimeCwd);
+  } on BootstrapException catch (e) {
+    throw RuntimeApiException(
+      runtimeId: runtimeId,
+      endpoint: 'bootstrap_${e.stage}',
+      message: foldOutputIntoMessage
+          ? '${e.message}: ${e.output ?? "no output"}'
+          : e.message,
+      statusCode: foldOutputIntoMessage ? 0 : (e.exitCode ?? 0),
+      body: foldOutputIntoMessage ? null : e.output,
+    );
+  }
 }
 
 /// Narrow contract over a runtime's exec channel that the bootstrap

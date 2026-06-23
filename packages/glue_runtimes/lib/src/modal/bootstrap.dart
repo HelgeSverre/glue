@@ -1,5 +1,4 @@
 import 'package:glue_runtimes/src/common/bootstrap.dart';
-import 'package:glue_runtimes/src/common/runtime_exception.dart';
 import 'package:glue_runtimes/src/modal/sidecar.dart';
 
 export 'package:glue_runtimes/src/common/bootstrap.dart' show BootstrapResult;
@@ -18,20 +17,17 @@ class ModalBootstrap {
   Future<BootstrapResult> bootstrap({
     required String hostCwd,
     required String runtimeCwd,
-  }) async {
-    final ws = WorkspaceBootstrap(
+  }) {
+    return runWorkspaceBootstrap(
       exec: _ModalBootstrapTransport(sidecar: sidecar),
+      runtimeId: 'modal',
       sessionId: sessionId,
+      hostCwd: hostCwd,
+      runtimeCwd: runtimeCwd,
+      // Modal's sidecar surfaces failures with no exit code / response
+      // body, so fold the output into the message.
+      foldOutputIntoMessage: true,
     );
-    try {
-      return await ws.bootstrap(hostCwd: hostCwd, runtimeCwd: runtimeCwd);
-    } on BootstrapException catch (e) {
-      throw RuntimeApiException(
-        runtimeId: 'modal',
-        endpoint: 'bootstrap_${e.stage}',
-        message: '${e.message}: ${e.output ?? "no output"}',
-      );
-    }
   }
 }
 

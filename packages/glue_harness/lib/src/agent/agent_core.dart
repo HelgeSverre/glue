@@ -419,32 +419,46 @@ class AgentCore {
       );
     }
 
-    ObservabilitySpan? span;
-    if (_obs != null) {
-      final encodedArgs = jsonEncode(call.arguments);
-      span = _obs.startSpan(
-        'tool.${call.name}',
-        kind: 'tool',
-        parent: _traceParent,
-        attributes: {
-          'openinference.span.kind': 'TOOL',
-          'tool_call.id': call.id,
-          'tool.name': call.name,
-          'tool.input_size': encodedArgs.length,
-          'tool.input': redactBody(encodedArgs, maxBytes: 65536),
-          'input.value': redactBody(encodedArgs, maxBytes: 65536),
-        },
-      );
+    final obs = _obs;
+    if (obs == null) {
+      try {
+        final result = await tool.execute(call.arguments);
+        return result.withCallId(call.id);
+      } catch (e) {
+        return ToolResult(
+          callId: call.id,
+          content: 'Tool error: $e',
+          success: false,
+        );
+      }
     }
-    final stopwatch = Stopwatch()..start();
 
-    try {
-      final result = await tool.execute(call.arguments);
-      stopwatch.stop();
-      if (span != null) {
-        _obs!.endSpan(
-          span,
-          extra: {
+    final encodedArgs = jsonEncode(call.arguments);
+    final stopwatch = Stopwatch()..start();
+    // Span end-attributes computed inside `body` so the returned ToolResult
+    // stays free of span-only metadata. `body` never throws (it converts a
+    // tool failure into an error ToolResult) so the span always ends via the
+    // success path; `onSuccess` reads the captured extras.
+    var spanExtra = const <String, dynamic>{};
+    return obs.withSpan(
+      'tool.${call.name}',
+      kind: 'tool',
+      parent: _traceParent,
+      attributes: {
+        'openinference.span.kind': 'TOOL',
+        'tool_call.id': call.id,
+        'tool.name': call.name,
+        'tool.input_size': encodedArgs.length,
+        'tool.input': redactBody(encodedArgs, maxBytes: 65536),
+        'input.value': redactBody(encodedArgs, maxBytes: 65536),
+      },
+      body: (_) async {
+        try {
+          final result = (await tool.execute(
+            call.arguments,
+          )).withCallId(call.id);
+          stopwatch.stop();
+          spanExtra = {
             'tool.duration_ms': stopwatch.elapsedMilliseconds,
             'tool.success': true,
             'tool.output': redactBody(result.content, maxBytes: 65536),
@@ -452,31 +466,27 @@ class AgentCore {
             if (result.summary != null) 'tool.summary': result.summary,
             if (result.metadata.isNotEmpty)
               'tool.metadata': jsonEncode(result.metadata),
-          },
-        );
-      }
-      return result.withCallId(call.id);
-    } catch (e, st) {
-      stopwatch.stop();
-      if (span != null) {
-        _obs!.endSpan(
-          span,
-          extra: {
+          };
+          return result;
+        } catch (e, st) {
+          stopwatch.stop();
+          spanExtra = {
             'tool.duration_ms': stopwatch.elapsedMilliseconds,
             'tool.success': false,
             'error': true,
             'error.type': e.runtimeType.toString(),
             'error.message': e.toString(),
             'error.stack': st.toString(),
-          },
-        );
-      }
-      return ToolResult(
-        callId: call.id,
-        content: 'Tool error: $e',
-        success: false,
-      );
-    }
+          };
+          return ToolResult(
+            callId: call.id,
+            content: 'Tool error: $e',
+            success: false,
+          );
+        }
+      },
+      onSuccess: (_) => spanExtra,
+    );
   }
 }
 

@@ -51,12 +51,12 @@ void main() {
         bootstrapSha: baseSha,
         runtimeId: 'test',
       );
-      expect(outcome, isA<DiffSuccess>());
+      expect(outcome, isA<RuntimeDiffOutcomeSuccess>());
 
       final applied = await _applyToFreshClone(
         repo: repo,
         gitPath: gitPath,
-        mbox: (outcome as DiffSuccess).patch,
+        mbox: (outcome as RuntimeDiffOutcomeSuccess).patch,
         baseSha: baseSha,
       );
       expect(
@@ -85,12 +85,12 @@ void main() {
         bootstrapSha: baseSha,
         runtimeId: 'test',
       );
-      expect(outcome, isA<DiffSuccess>());
+      expect(outcome, isA<RuntimeDiffOutcomeSuccess>());
 
       final applied = await _applyToFreshClone(
         repo: repo,
         gitPath: gitPath,
-        mbox: (outcome as DiffSuccess).patch,
+        mbox: (outcome as RuntimeDiffOutcomeSuccess).patch,
         baseSha: baseSha,
       );
       final roundTripped = File('${applied.path}/blob.bin').readAsBytesSync();
@@ -119,12 +119,12 @@ void main() {
         bootstrapSha: baseSha,
         runtimeId: 'test',
       );
-      expect(outcome, isA<DiffSuccess>());
+      expect(outcome, isA<RuntimeDiffOutcomeSuccess>());
 
       final applied = await _applyToFreshClone(
         repo: repo,
         gitPath: gitPath,
-        mbox: (outcome as DiffSuccess).patch,
+        mbox: (outcome as RuntimeDiffOutcomeSuccess).patch,
         baseSha: baseSha,
       );
       final log = await _run(gitPath, [

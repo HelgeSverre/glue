@@ -1,67 +1,43 @@
-import 'dart:async';
-import 'dart:convert';
-
-import 'package:http/http.dart' as http;
-
 import 'package:glue_strategies/src/web/search/models.dart';
-import 'package:glue_strategies/src/web/search/provider.dart';
+import 'package:glue_strategies/src/web/search/providers/http_search_provider.dart';
 
-class _ApiException implements Exception {
-  _ApiException(this.message);
-  final String message;
-  @override
-  String toString() => 'ApiException: $message';
-}
-
-class BraveSearchProvider implements WebSearchProvider {
-  final String? apiKey;
-  final int timeoutSeconds;
-  final http.Client _client;
-  static const _baseUrl = 'https://api.search.brave.com/res/v1/web/search';
-
+class BraveSearchProvider extends HttpSearchProvider {
   BraveSearchProvider({
-    required this.apiKey,
-    this.timeoutSeconds = 15,
-    http.Client? client,
-  }) : _client = client ?? http.Client();
+    required super.apiKey,
+    super.timeoutSeconds,
+    super.client,
+  });
+
+  static const _baseUrl = 'https://api.search.brave.com/res/v1/web/search';
 
   @override
   String get name => 'brave';
 
   @override
-  bool get isConfigured => apiKey != null && apiKey!.isNotEmpty;
+  String get apiLabel => 'Brave Search API';
 
   @override
-  Future<WebSearchResponse> search(String query, {int maxResults = 5}) async {
-    if (!isConfigured) {
-      throw StateError('Brave Search API key not configured');
-    }
+  String get notConfiguredMessage => 'Brave Search API key not configured';
 
-    final uri = Uri.parse(
-      _baseUrl,
-    ).replace(queryParameters: {'q': query, 'count': maxResults.toString()});
-
-    final response = await _client
-        .get(
-          uri,
-          headers: {
-            'Accept': 'application/json',
-            'Accept-Encoding': 'gzip',
-            'X-Subscription-Token': apiKey!,
-          },
-        )
-        .timeout(Duration(seconds: timeoutSeconds));
-
-    if (response.statusCode != 200) {
-      throw _ApiException(
-        'Brave Search API returned ${response.statusCode}: '
-        '${response.body.length > 200 ? response.body.substring(0, 200) : response.body}',
-      );
-    }
-
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    return parseResponse(json, query);
+  @override
+  HttpSearchRequest buildRequest(String query, int maxResults) {
+    return HttpSearchRequest(
+      uri: Uri.parse(
+        _baseUrl,
+      ).replace(queryParameters: {'q': query, 'count': maxResults.toString()}),
+      headers: {
+        'Accept': 'application/json',
+        'Accept-Encoding': 'gzip',
+        'X-Subscription-Token': apiKey!,
+      },
+    );
   }
+
+  @override
+  WebSearchResponse parseResponseBody(
+    Map<String, dynamic> json,
+    String query,
+  ) => parseResponse(json, query);
 
   static WebSearchResponse parseResponse(
     Map<String, dynamic> json,

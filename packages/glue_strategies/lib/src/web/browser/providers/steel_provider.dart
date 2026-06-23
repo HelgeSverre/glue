@@ -1,63 +1,44 @@
-import 'dart:async';
-import 'dart:convert';
-
-import 'package:http/http.dart' as http;
-
-import 'package:glue_strategies/src/web/browser/browser_endpoint.dart';
+import 'package:glue_strategies/src/web/browser/providers/http_session_browser_provider.dart';
 
 /// Steel.dev cloud browser provider.
-class SteelProvider implements BrowserEndpointProvider {
-  final String? apiKey;
-  final http.Client _client;
-  static const _baseUrl = 'https://api.steel.dev/v1';
+class SteelProvider extends HttpSessionBrowserProvider {
+  SteelProvider({required super.apiKey, super.client});
 
-  SteelProvider({required this.apiKey, http.Client? client})
-    : _client = client ?? http.Client();
+  static const _baseUrl = 'https://api.steel.dev/v1';
 
   @override
   String get name => 'steel';
 
   @override
-  bool get isConfigured => apiKey != null && apiKey!.isNotEmpty;
+  String get label => 'Steel';
 
   @override
-  Future<BrowserEndpoint> provision() async {
-    if (!isConfigured) throw StateError('Steel API key not configured');
+  HttpSessionRequest createRequest() {
+    return HttpSessionRequest(
+      method: 'POST',
+      url: Uri.parse('$_baseUrl/sessions'),
+      headers: {
+        'Authorization': 'Bearer $apiKey',
+        'Content-Type': 'application/json',
+      },
+      body: const {'projectId': 'default'},
+    );
+  }
 
-    final response = await _client
-        .post(
-          Uri.parse('$_baseUrl/sessions'),
-          headers: {
-            'Authorization': 'Bearer $apiKey',
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode({'projectId': 'default'}),
-        )
-        .timeout(const Duration(seconds: 30));
-
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw StateError(
-        'Steel API error ${response.statusCode}: ${response.body}',
-      );
-    }
-
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
+  @override
+  HttpSessionResult mapResponse(Map<String, dynamic> json) {
     final sessionId = json['id'] as String;
     final wsUrl = json['websocketUrl'] as String;
     final viewUrl = json['viewerUrl'] as String?;
 
-    return BrowserEndpoint(
+    return HttpSessionResult(
       cdpWsUrl: wsUrl,
-      backendName: name,
       viewUrl: viewUrl ?? 'https://app.steel.dev/sessions/$sessionId',
-      onClose: () async {
-        try {
-          await _client.delete(
-            Uri.parse('$_baseUrl/sessions/$sessionId'),
-            headers: {'Authorization': 'Bearer $apiKey'},
-          );
-        } catch (_) {}
-      },
+      closeRequest: HttpSessionRequest(
+        method: 'DELETE',
+        url: Uri.parse('$_baseUrl/sessions/$sessionId'),
+        headers: {'Authorization': 'Bearer $apiKey'},
+      ),
     );
   }
 }

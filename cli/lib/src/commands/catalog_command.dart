@@ -23,6 +23,11 @@ import 'package:glue_harness/glue_harness.dart';
 
 const _jsonEncoder = JsonEncoder.withIndent('  ');
 
+/// Returns [map]'s values sorted by their id, ascending. Both `show` and
+/// `--json` render providers and their models in this stable order.
+List<T> _sortedById<T>(Map<String, T> map, String Function(T) id) =>
+    map.values.toList()..sort((a, b) => id(a).compareTo(id(b)));
+
 /// Default sources tried by `glue catalog refresh` when the user has not set
 /// `catalog.remote_url`. Points at the canonical copy in the GitHub repo;
 /// the marketing site does not publish a `models.yaml` artifact.
@@ -273,8 +278,7 @@ class CatalogShowCommand extends Command<int> {
       );
     }
 
-    final providers = catalog.providers.values.toList()
-      ..sort((a, b) => a.id.compareTo(b.id));
+    final providers = _sortedById(catalog.providers, (p) => p.id);
     for (final provider in providers) {
       stdout.writeln();
       final disabledTag = provider.enabled
@@ -284,8 +288,7 @@ class CatalogShowCommand extends Command<int> {
         '${styledOrPlain(provider.id, (s) => s.bold)}  '
         '${styledOrPlain(provider.name, (s) => s.gray)}$disabledTag',
       );
-      final models = provider.models.values.toList()
-        ..sort((a, b) => a.id.compareTo(b.id));
+      final models = _sortedById(provider.models, (m) => m.id);
       // Per-provider column widths. Pad raw text before applying styling
       // so ANSI escape sequences don't skew the visible width.
       final idWidth = models
@@ -328,30 +331,26 @@ Map<String, dynamic> _catalogJson(ModelCatalog catalog) {
       if (catalog.defaults.localModel != null)
         'localModel': catalog.defaults.localModel,
     },
-    'providers':
-        (catalog.providers.values.toList()
-              ..sort((a, b) => a.id.compareTo(b.id)))
-            .map(
-              (p) => {
-                'id': p.id,
-                'name': p.name,
-                'enabled': p.enabled,
-                'models':
-                    (p.models.values.toList()
-                          ..sort((a, b) => a.id.compareTo(b.id)))
-                        .map(
-                          (m) => {
-                            'id': m.id,
-                            'name': m.name,
-                            'default': m.isDefault,
-                            'recommended': m.recommended,
-                            'enabled': m.enabled,
-                          },
-                        )
-                        .toList(),
-              },
-            )
-            .toList(),
+    'providers': _sortedById(catalog.providers, (p) => p.id)
+        .map(
+          (p) => {
+            'id': p.id,
+            'name': p.name,
+            'enabled': p.enabled,
+            'models': _sortedById(p.models, (m) => m.id)
+                .map(
+                  (m) => {
+                    'id': m.id,
+                    'name': m.name,
+                    'default': m.isDefault,
+                    'recommended': m.recommended,
+                    'enabled': m.enabled,
+                  },
+                )
+                .toList(),
+          },
+        )
+        .toList(),
   };
 }
 

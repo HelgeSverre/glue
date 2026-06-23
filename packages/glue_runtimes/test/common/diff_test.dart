@@ -13,10 +13,10 @@ void main() {
         bootstrapSha: null,
         runtimeId: 'daytona',
       );
-      expect(result, isA<DiffUnavailable>());
+      expect(result, isA<RuntimeDiffOutcomeUnavailable>());
       expect(
-        (result as DiffUnavailable).reason,
-        DiffUnavailableReason.noBootstrapSha,
+        (result as RuntimeDiffOutcomeUnavailable).reason,
+        RuntimeDiffUnavailableReason.noBootstrapSha,
       );
     });
 
@@ -27,10 +27,10 @@ void main() {
         bootstrapSha: '',
         runtimeId: 'daytona',
       );
-      expect(result, isA<DiffUnavailable>());
+      expect(result, isA<RuntimeDiffOutcomeUnavailable>());
       expect(
-        (result as DiffUnavailable).reason,
-        DiffUnavailableReason.noBootstrapSha,
+        (result as RuntimeDiffOutcomeUnavailable).reason,
+        RuntimeDiffUnavailableReason.noBootstrapSha,
       );
     });
 
@@ -48,10 +48,10 @@ void main() {
         bootstrapSha: 'deadbeef',
         runtimeId: 'daytona',
       );
-      expect(result, isA<DiffUnavailable>());
+      expect(result, isA<RuntimeDiffOutcomeUnavailable>());
       expect(
-        (result as DiffUnavailable).reason,
-        DiffUnavailableReason.gitFailed,
+        (result as RuntimeDiffOutcomeUnavailable).reason,
+        RuntimeDiffUnavailableReason.gitFailed,
       );
       expect(result.hint, contains('fatal: bad sha'));
     });
@@ -63,10 +63,10 @@ void main() {
         bootstrapSha: 'abc123',
         runtimeId: 'modal',
       );
-      expect(result, isA<DiffUnavailable>());
+      expect(result, isA<RuntimeDiffOutcomeUnavailable>());
       expect(
-        (result as DiffUnavailable).reason,
-        DiffUnavailableReason.executorDead,
+        (result as RuntimeDiffOutcomeUnavailable).reason,
+        RuntimeDiffUnavailableReason.executorDead,
       );
     });
 
@@ -87,8 +87,8 @@ void main() {
           runtimeId: 'daytona',
           sandboxId: 'sb-1',
         );
-        expect(result, isA<DiffSuccess>());
-        final success = result as DiffSuccess;
+        expect(result, isA<RuntimeDiffOutcomeSuccess>());
+        final success = result as RuntimeDiffOutcomeSuccess;
         expect(success.patch, '$mbox$wt');
         expect(success.meta.runtimeId, 'daytona');
         expect(success.meta.sandboxId, 'sb-1');
@@ -110,7 +110,7 @@ void main() {
         bootstrapSha: 'abc',
         runtimeId: 'daytona',
       );
-      expect(result, isA<DiffEmpty>());
+      expect(result, isA<RuntimeDiffOutcomeEmpty>());
     });
 
     test(

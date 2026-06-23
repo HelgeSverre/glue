@@ -300,6 +300,22 @@ int _findMatchingBrace(String source, int start) {
   return source.length - 1;
 }
 
+/// Returns the index just past the `)` that matches the `(` at [parenStart].
+///
+/// Naive paren-depth scan (ignores strings/comments), which is sufficient for
+/// the signature spans this generator slices. Falls back to the end of
+/// [source] if the parens are unbalanced.
+int _matchParen(String source, int parenStart) {
+  var depth = 1;
+  var end = parenStart + 1;
+  while (end < source.length && depth > 0) {
+    if (source[end] == '(') depth++;
+    if (source[end] == ')') depth--;
+    end++;
+  }
+  return end;
+}
+
 /// Extract members from a class body.
 List<DartMember> _extractMembers(String classBody, String className) {
   final members = <DartMember>[];
@@ -319,13 +335,7 @@ List<DartMember> _extractMembers(String classBody, String className) {
     // Find the end of the constructor signature.
     final parenStart = classBody.indexOf('(', m.start);
     if (parenStart == -1) continue;
-    var depth = 1;
-    var end = parenStart + 1;
-    while (end < classBody.length && depth > 0) {
-      if (classBody[end] == '(') depth++;
-      if (classBody[end] == ')') depth--;
-      end++;
-    }
+    final end = _matchParen(classBody, parenStart);
     final sig = classBody.substring(m.start, end).trim();
 
     // Skip private named constructors (e.g. `ClassName._(...)`).
@@ -353,13 +363,7 @@ List<DartMember> _extractMembers(String classBody, String className) {
     final lineStart = classBody.lastIndexOf('\n', m.start) + 1;
     final parenStart = classBody.indexOf('(', m.start);
     if (parenStart == -1) continue;
-    var depth = 1;
-    var end = parenStart + 1;
-    while (end < classBody.length && depth > 0) {
-      if (classBody[end] == '(') depth++;
-      if (classBody[end] == ')') depth--;
-      end++;
-    }
+    final end = _matchParen(classBody, parenStart);
     final rawSig = classBody.substring(lineStart, end).trim();
     // Clean up override annotations.
     final sig = rawSig.replaceAll(RegExp(r'@override\s*'), '');
@@ -729,15 +733,17 @@ List<Map<String, dynamic>> _generateSidebar(
     // Sort files alphabetically.
     files.sortBy((f) => f.stem);
 
-    final items = <Map<String, dynamic>>[];
-    for (final f in files) {
-      items.add({'text': f.primaryName, 'link': '/api/${f.module}/${f.kebab}'});
-    }
-
     sidebar.add({
       'text': _moduleDisplayName(mod),
       'collapsed': false,
-      'items': items,
+      'items': files
+          .map(
+            (f) => {
+              'text': f.primaryName,
+              'link': '/api/${f.module}/${f.kebab}',
+            },
+          )
+          .toList(),
     });
   }
 

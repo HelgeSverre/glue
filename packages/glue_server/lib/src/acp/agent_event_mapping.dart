@@ -13,6 +13,7 @@
 library;
 
 import 'package:glue_core/glue_core.dart';
+import 'package:glue_server/src/acp/content.dart';
 import 'package:glue_server/src/acp/messages.dart';
 
 /// Maps a single [AgentEvent] to a [SessionUpdate], or returns `null`
@@ -37,6 +38,53 @@ SessionUpdate? agentEventToAcpUpdate(AgentEvent event) {
       // and --print-mode surfaces.
       AgentMessageChunkUpdate('${kind == 'warning' ? '!' : '·'} $message\n'),
   };
+}
+
+/// Builds the `content[]` array for a `tool_call_update` notification
+/// from an [AgentEvent]-era [ToolResult].
+///
+/// Priority order:
+///   1. `result.metadata['diff']` (path/old_text/new_text) — emit a
+///      `diff` content block so editors render a real diff view.
+///   2. `result.contentParts` — multimodal output (text, images,
+///      resource links) flows through unchanged.
+///   3. Fallback: a single `text` block derived from
+///      [ToolResult.summary] or [ToolResult.content].
+///
+/// (1) and (2) compose: a write_file result whose contentParts include
+/// e.g. a confirmation TextPart still gets the diff block first, then
+/// the text parts after.
+List<AcpToolCallContent> toolResultContent(ToolResult result) {
+  final out = <AcpToolCallContent>[];
+
+  // Diff metadata (write_file / edit_file).
+  final diffRaw = result.metadata['diff'];
+  if (diffRaw is Map) {
+    final diff = diffRaw.cast<String, Object?>();
+    final path = diff['path'];
+    final oldText = diff['old_text'];
+    final newText = diff['new_text'];
+    if (path is String && oldText is String && newText is String) {
+      out.add(AcpToolCallDiff(path: path, oldText: oldText, newText: newText));
+    }
+  }
+
+  // Multimodal content parts.
+  final parts = result.contentParts;
+  if (parts != null && parts.isNotEmpty) {
+    for (final part in parts) {
+      out.add(AcpToolCallContentValue(AcpContentBlock.fromContentPart(part)));
+    }
+    return out;
+  }
+
+  if (out.isEmpty) {
+    // No diff, no parts — fall back to a single text block.
+    out.add(
+      AcpToolCallContentValue(AcpTextBlock(result.summary ?? result.content)),
+    );
+  }
+  return out;
 }
 
 /// Maps Glue's [Tool] kind heuristic (by tool name) onto ACP's

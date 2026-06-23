@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:glue_runtimes/src/common/runtime_exception.dart';
+import 'package:glue_runtimes/src/common/shell_quote.dart';
 import 'package:glue_runtimes/src/sprites/config.dart';
 
 /// Result of a synchronous exec via the sprite CLI.
@@ -226,7 +227,7 @@ extension SpritesFs on SpritesCliBase {
   Future<List<int>> readFileBytes(String spriteName, String path) async {
     final res = await execCapture(
       spriteName,
-      'base64 -w 0 ${_shQuote(path)} 2>/dev/null || base64 ${_shQuote(path)}',
+      'base64 -w 0 ${shQuote(path)} 2>/dev/null || base64 ${shQuote(path)}',
     );
     if (res.exitCode != 0) {
       throw RuntimeApiException(
@@ -252,7 +253,7 @@ extension SpritesFs on SpritesCliBase {
     List<int> bytes,
   ) async {
     final encoded = base64Encode(bytes);
-    final p = _shQuote(path);
+    final p = shQuote(path);
     final res = await execCapture(
       spriteName,
       "mkdir -p \"\$(dirname $p)\" && printf '%s' '$encoded' | base64 -d > $p",
@@ -270,19 +271,19 @@ extension SpritesFs on SpritesCliBase {
 
   /// Returns true when [path] exists.
   Future<bool> pathExists(String spriteName, String path) async {
-    final res = await execCapture(spriteName, 'test -e ${_shQuote(path)}');
+    final res = await execCapture(spriteName, 'test -e ${shQuote(path)}');
     return res.exitCode == 0;
   }
 
   /// Returns true when [path] is a directory.
   Future<bool> isDirectory(String spriteName, String path) async {
-    final res = await execCapture(spriteName, 'test -d ${_shQuote(path)}');
+    final res = await execCapture(spriteName, 'test -d ${shQuote(path)}');
     return res.exitCode == 0;
   }
 
   /// Returns the byte size of [path], or `null` when missing.
   Future<int?> sizeOf(String spriteName, String path) async {
-    final p = _shQuote(path);
+    final p = shQuote(path);
     // GNU and BSD `stat` take different flags; the wc -c fallback
     // works everywhere but reads the full file.
     final res = await execCapture(
@@ -299,7 +300,7 @@ extension SpritesFs on SpritesCliBase {
     String spriteName,
     String path,
   ) async {
-    final p = _shQuote(path);
+    final p = shQuote(path);
     // `find … -mindepth 1 -maxdepth 1 -printf '%y %f\n'` would be
     // ideal but `-printf` is GNU-only. We use `ls -1Ap` instead —
     // a trailing `/` marks directories.
@@ -320,7 +321,3 @@ extension SpritesFs on SpritesCliBase {
     }).toList();
   }
 }
-
-/// Single-quote wrapping for safe inclusion in a `sh -c` command —
-/// escapes any embedded single quotes via the standard `'\''` trick.
-String _shQuote(String s) => "'${s.replaceAll("'", r"'\''")}'";

@@ -1,48 +1,29 @@
-import 'dart:async';
-import 'dart:convert';
-
-import 'package:http/http.dart' as http;
-
-import 'package:glue_strategies/src/web/browser/browser_endpoint.dart';
+import 'package:glue_strategies/src/web/browser/providers/http_session_browser_provider.dart';
 
 /// Anchor Browser cloud browser provider.
-class AnchorProvider implements BrowserEndpointProvider {
-  final String? apiKey;
-  final http.Client _client;
+class AnchorProvider extends HttpSessionBrowserProvider {
+  AnchorProvider({required super.apiKey, super.client});
 
   static const _baseUrl = 'https://api.anchorbrowser.io/v1';
-
-  AnchorProvider({required this.apiKey, http.Client? client})
-    : _client = client ?? http.Client();
 
   @override
   String get name => 'anchor';
 
   @override
-  bool get isConfigured => apiKey != null && apiKey!.isNotEmpty;
+  String get label => 'Anchor';
 
   @override
-  Future<BrowserEndpoint> provision() async {
-    if (!isConfigured) throw StateError('Anchor API key not configured');
+  HttpSessionRequest createRequest() {
+    return HttpSessionRequest(
+      method: 'POST',
+      url: Uri.parse('$_baseUrl/sessions'),
+      headers: {'anchor-api-key': apiKey!, 'Content-Type': 'application/json'},
+      body: const {},
+    );
+  }
 
-    final response = await _client
-        .post(
-          Uri.parse('$_baseUrl/sessions'),
-          headers: {
-            'anchor-api-key': apiKey!,
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode({}),
-        )
-        .timeout(const Duration(seconds: 30));
-
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw StateError(
-        'Anchor API error ${response.statusCode}: ${response.body}',
-      );
-    }
-
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
+  @override
+  HttpSessionResult mapResponse(Map<String, dynamic> json) {
     final data = json['data'] as Map<String, dynamic>? ?? const {};
     final sessionId = data['id'] as String?;
     final cdpUrl = data['cdp_url'] as String?;
@@ -55,18 +36,14 @@ class AnchorProvider implements BrowserEndpointProvider {
       throw StateError('Anchor API response missing data.cdp_url');
     }
 
-    return BrowserEndpoint(
+    return HttpSessionResult(
       cdpWsUrl: cdpUrl,
-      backendName: name,
       viewUrl: liveViewUrl,
-      onClose: () async {
-        try {
-          await _client.delete(
-            Uri.parse('$_baseUrl/sessions/$sessionId'),
-            headers: {'anchor-api-key': apiKey!},
-          );
-        } catch (_) {}
-      },
+      closeRequest: HttpSessionRequest(
+        method: 'DELETE',
+        url: Uri.parse('$_baseUrl/sessions/$sessionId'),
+        headers: {'anchor-api-key': apiKey!},
+      ),
     );
   }
 }

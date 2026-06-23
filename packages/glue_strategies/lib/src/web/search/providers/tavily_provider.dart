@@ -1,60 +1,47 @@
-import 'dart:async';
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
-
 import 'package:glue_strategies/src/web/search/models.dart';
-import 'package:glue_strategies/src/web/search/provider.dart';
+import 'package:glue_strategies/src/web/search/providers/http_search_provider.dart';
 
-class TavilySearchProvider implements WebSearchProvider {
-  final String? apiKey;
-  final int timeoutSeconds;
-  final http.Client _client;
-  static const _baseUrl = 'https://api.tavily.com/search';
-
+class TavilySearchProvider extends HttpSearchProvider {
   TavilySearchProvider({
-    required this.apiKey,
-    this.timeoutSeconds = 15,
-    http.Client? client,
-  }) : _client = client ?? http.Client();
+    required super.apiKey,
+    super.timeoutSeconds,
+    super.client,
+  });
+
+  static const _baseUrl = 'https://api.tavily.com/search';
 
   @override
   String get name => 'tavily';
 
   @override
-  bool get isConfigured => apiKey != null && apiKey!.isNotEmpty;
+  String get apiLabel => 'Tavily API';
 
   @override
-  Future<WebSearchResponse> search(String query, {int maxResults = 5}) async {
-    if (!isConfigured) {
-      throw StateError('Tavily API key not configured');
-    }
+  String get notConfiguredMessage => 'Tavily API key not configured';
 
-    final response = await _client
-        .post(
-          Uri.parse(_baseUrl),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $apiKey',
-          },
-          body: jsonEncode({
-            'query': query,
-            'max_results': maxResults,
-            'include_answer': true,
-          }),
-        )
-        .timeout(Duration(seconds: timeoutSeconds));
-
-    if (response.statusCode != 200) {
-      throw Exception(
-        'Tavily API returned ${response.statusCode}: '
-        '${response.body.length > 200 ? response.body.substring(0, 200) : response.body}',
-      );
-    }
-
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    return parseResponse(json);
+  @override
+  HttpSearchRequest buildRequest(String query, int maxResults) {
+    return HttpSearchRequest(
+      uri: Uri.parse(_baseUrl),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $apiKey',
+      },
+      body: jsonEncode({
+        'query': query,
+        'max_results': maxResults,
+        'include_answer': true,
+      }),
+    );
   }
+
+  @override
+  WebSearchResponse parseResponseBody(
+    Map<String, dynamic> json,
+    String query,
+  ) => parseResponse(json);
 
   static WebSearchResponse parseResponse(Map<String, dynamic> json) {
     final rawResults = (json['results'] as List<dynamic>?) ?? [];

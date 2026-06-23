@@ -1,7 +1,10 @@
-/// Surface-facing mirror of `DiffOutcome` from `glue_runtimes/common/diff.dart`.
+/// Surface-facing outcome of a runtime workspace diff.
 ///
-/// Lives here so `glue_strategies` consumers can pattern-match without
-/// importing the runtime adapter package.
+/// Canonical home for this type family: `glue_runtimes`'
+/// `captureWorkspaceDiff` builds these directly and cloud
+/// `RuntimeSession.diffSinceBootstrap` returns them, so
+/// `glue_strategies` consumers can pattern-match without importing the
+/// runtime adapter package.
 library;
 
 /// Outcome of attempting to diff the runtime workspace against its

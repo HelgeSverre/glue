@@ -56,6 +56,21 @@ class ThrowingTool extends Tool {
       throw Exception('boom');
 }
 
+/// Collects every completed span so tests can assert on `executeTool`'s
+/// observability output (routed through `Observability.withSpan`).
+class _CollectingSink extends ObservabilitySink {
+  final List<ObservabilitySpan> spans = [];
+
+  @override
+  void onSpan(ObservabilitySpan span) => spans.add(span);
+
+  @override
+  Future<void> flush() async {}
+
+  @override
+  Future<void> close() async {}
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -235,6 +250,67 @@ void main() {
     expect(result.content, contains('Tool error'));
     expect(result.content, contains('boom'));
     expect(result.success, isFalse);
+  });
+
+  test('executeTool emits a successful tool span via withSpan', () async {
+    final sink = _CollectingSink();
+    final obs = Observability(debugController: DebugController())
+      ..addSink(sink);
+    final tool = MockTool();
+    final agentWithObs = AgentCore(
+      llm: mockLlm,
+      tools: {tool.name: tool},
+      obs: obs,
+    );
+
+    final call = ToolCall(
+      id: const ToolCallId('s1'),
+      name: 'test_tool',
+      arguments: {'a': 1},
+    );
+    final result = await agentWithObs.executeTool(call);
+
+    // Returned result is unchanged by the span wrapping.
+    expect(result.callId, 's1');
+    expect(result.success, isTrue);
+
+    expect(sink.spans, hasLength(1));
+    final span = sink.spans.single;
+    expect(span.name, 'tool.test_tool');
+    expect(span.attributes['tool.success'], isTrue);
+    expect(span.attributes['tool.name'], 'test_tool');
+    expect(span.attributes.containsKey('tool.duration_ms'), isTrue);
+  });
+
+  test('executeTool emits a failed tool span via withSpan', () async {
+    final sink = _CollectingSink();
+    final obs = Observability(debugController: DebugController())
+      ..addSink(sink);
+    final tool = ThrowingTool();
+    final agentWithObs = AgentCore(
+      llm: mockLlm,
+      tools: {tool.name: tool},
+      obs: obs,
+    );
+
+    final call = ToolCall(
+      id: const ToolCallId('s2'),
+      name: 'throwing_tool',
+      arguments: {},
+    );
+    final result = await agentWithObs.executeTool(call);
+
+    // Error path still returns a ToolResult (no rethrow) with empty metadata.
+    expect(result.success, isFalse);
+    expect(result.content, contains('Tool error'));
+    expect(result.metadata, isEmpty);
+
+    expect(sink.spans, hasLength(1));
+    final span = sink.spans.single;
+    expect(span.name, 'tool.throwing_tool');
+    expect(span.attributes['tool.success'], isFalse);
+    expect(span.attributes['error'], isTrue);
+    expect(span.statusCode, 'error');
   });
 
   test('conversation history contains user + assistant messages', () async {

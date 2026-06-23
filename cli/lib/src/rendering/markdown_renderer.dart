@@ -23,17 +23,6 @@ class MarkdownRenderer {
 
   static final _tableRowPattern = RegExp(r'^\s*\|.*\|\s*$');
   static final _tableSepPattern = RegExp(r'^\s*\|[\s:?\-|]+\|\s*$');
-  // ')' is excluded to avoid capturing trailing parens in prose like "(see https://...)".
-  // URLs containing literal parens (e.g. Wikipedia links) will be truncated at the
-  // first ')'. This is the standard trade-off for bare URL heuristics.
-  // The lookbehinds prevent re-matching URLs already inside OSC 8 sequences:
-  //   - (?<!\x1b\]8;;) skips URLs in the href position
-  //   - (?<!\x07) skips URLs in the display text position
-  static final _bareUrlPattern = RegExp(
-    r'(?<!\x1b\]8;;)(?<!\x07)https?://[^\s<>\[\])`\x07\x1b'
-    "'"
-    r'"]+',
-  );
 
   MarkdownRenderer(this.width);
 
@@ -80,30 +69,17 @@ class MarkdownRenderer {
       _flushTable(tableLines, output);
 
       // Headings — wrap raw text first, then style each line so
-      // continuation lines retain bold+yellow.
-      if (line.startsWith('#### ')) {
-        final wrapped = ansiWrap(line.substring(5), width);
-        output.addAll(
-          wrapped.split('\n').map((l) => l.styled.bold.yellow.toString()),
-        );
-        continue;
-      }
-      if (line.startsWith('### ')) {
-        final wrapped = ansiWrap(line.substring(4), width);
-        output.addAll(
-          wrapped.split('\n').map((l) => l.styled.bold.yellow.toString()),
-        );
-        continue;
-      }
-      if (line.startsWith('## ')) {
-        final wrapped = ansiWrap(line.substring(3), width);
-        output.addAll(
-          wrapped.split('\n').map((l) => l.styled.bold.yellow.toString()),
-        );
-        continue;
-      }
-      if (line.startsWith('# ')) {
-        final wrapped = ansiWrap(line.substring(2), width);
+      // continuation lines retain bold+yellow. Levels are tried longest-prefix
+      // first so `## ` doesn't shadow `#### `.
+      final headingPrefix = [
+        '#### ',
+        '### ',
+        '## ',
+        '# ',
+      ].where(line.startsWith);
+      if (headingPrefix.isNotEmpty) {
+        final prefix = headingPrefix.first;
+        final wrapped = ansiWrap(line.substring(prefix.length), width);
         output.addAll(
           wrapped.split('\n').map((l) => l.styled.bold.yellow.toString()),
         );
@@ -212,19 +188,10 @@ class MarkdownRenderer {
       (m) => '${osc8Link(m.group(2)!, m.group(1)).styled.underline}',
     );
     // Bare URLs: https://... and http://...
-    // Runs after markdown links. The lookbehinds prevent re-matching URLs
-    // already inside OSC 8 sequences (href position after \x1b]8;; and
+    // Runs after markdown links. linkifyUrls' lookbehinds prevent re-matching
+    // URLs already inside OSC 8 sequences (href position after \x1b]8;; and
     // display text position after \x07).
-    text = text.replaceAllMapped(_bareUrlPattern, (m) {
-      var url = m.group(0)!;
-      // Strip trailing punctuation that's likely not part of the URL
-      var suffix = '';
-      while (url.isNotEmpty && '.,;:!?)'.contains(url[url.length - 1])) {
-        suffix = url[url.length - 1] + suffix;
-        url = url.substring(0, url.length - 1);
-      }
-      return '${osc8Link(url)}$suffix';
-    });
+    text = linkifyUrls(text);
     return text;
   }
 

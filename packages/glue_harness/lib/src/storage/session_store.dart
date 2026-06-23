@@ -284,17 +284,18 @@ class SessionStore {
   /// Writes the current metadata to disk.
   void updateMeta() => _writeMeta();
 
-  /// Appends a timestamped event record to the conversation log.
+  /// Appends a timestamped event record to the conversation log. Uses a
+  /// single append-mode write — the session dir already exists (constructor).
   void logEvent(String type, Map<String, dynamic> data) {
     final record = {
       'timestamp': DateTime.now().toUtc().toIso8601String(),
       'type': type,
       ...data,
     };
-    final previous = _conversationFile.existsSync()
-        ? _conversationFile.readAsStringSync()
-        : '';
-    atomicWrite(_conversationFile, '$previous${jsonEncode(record)}\n');
+    _conversationFile.writeAsStringSync(
+      '${jsonEncode(record)}\n',
+      mode: FileMode.append,
+    );
   }
 
   /// Closes this session, recording the end time.

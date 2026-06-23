@@ -144,14 +144,13 @@ class SpritesRuntime implements RuntimeSession {
 
   @override
   Future<RuntimeDiffOutcome> diffSinceBootstrap() async {
-    final outcome = await captureWorkspaceDiff(
+    return captureWorkspaceDiff(
       executor: executor,
       runtimeCwd: workspace.mapping.runtimeCwd,
       bootstrapSha: _effectiveBootstrapSha,
       runtimeId: id,
       sandboxId: spriteName,
     );
-    return outcome.toSurfaceOutcome();
   }
 
   /// On resume, [bootstrapSha] from the bootstrap call is null. We

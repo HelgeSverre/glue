@@ -7,13 +7,13 @@ import 'package:path/path.dart' as p;
 import 'package:glue_core/glue_core.dart';
 import 'package:glue/src/terminal/terminal.dart';
 import 'package:glue/src/terminal/layout.dart';
-import 'package:glue/src/input/line_editor.dart' show InputAction;
+import 'package:glue/src/input/input_action.dart' show InputAction;
 import 'package:glue/src/input/text_area_editor.dart';
 import 'package:glue/src/input/streaming_input_handler.dart';
 import 'package:glue/src/input/file_expander.dart';
 import 'package:glue_harness/glue_harness.dart';
-import 'package:glue/src/commands/config_command.dart' show userConfigPath;
 import 'package:glue/src/commands/builtin_commands.dart';
+import 'package:glue/src/commands/mcp_auth_login.dart';
 import 'package:glue/src/commands/slash_command_context.dart';
 import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/conversation/entry.dart';
@@ -1780,13 +1780,19 @@ class App {
   // ── Agent orchestration ────────────────────────────────────────────────
 
   void _endTurnSpan({Map<String, dynamic>? extra}) {
-    final span = _turnSpan;
+    _endSpanOnce(_turnSpan, extra: extra);
+    _turnSpan = null;
+  }
+
+  /// Ends [span] exactly once — only if observability is active and the span
+  /// hasn't already been closed — and clears it from [Observability.activeSpan]
+  /// when it was the current span. No-op when [span] is null or already ended,
+  /// so it's safe to call from `catch`/`finally` after an earlier close.
+  void _endSpanOnce(ObservabilitySpan? span, {Map<String, dynamic>? extra}) {
     final obs = _obs;
-    if (span != null && obs != null) {
-      obs.endSpan(span, extra: extra);
-      if (obs.activeSpan == span) obs.activeSpan = null;
-      _turnSpan = null;
-    }
+    if (span == null || obs == null) return;
+    if (span.endTime == null) obs.endSpan(span, extra: extra);
+    if (obs.activeSpan == span) obs.activeSpan = null;
   }
 
   /// Materialises any buffered streaming reasoning into a [EntryKind.thinking]
@@ -2294,17 +2300,15 @@ class App {
             break loop;
 
           case AgentError(:final error):
-            if (turnSpan != null && turnSpan.endTime == null) {
-              _obs!.endSpan(
-                turnSpan,
-                extra: {
-                  'error': true,
-                  'error.type': error.runtimeType.toString(),
-                  'error.message': error.toString(),
-                },
-              );
-              turnSpan = null;
-            }
+            _endSpanOnce(
+              turnSpan,
+              extra: {
+                'error': true,
+                'error.type': error.runtimeType.toString(),
+                'error.message': error.toString(),
+              },
+            );
+            turnSpan = null;
             stderr.writeln(error);
             return;
 
@@ -2338,35 +2342,27 @@ class App {
         stdout.writeln(const JsonEncoder.withIndent('  ').convert(output));
       }
     } catch (e) {
-      if (turnSpan != null && turnSpan.endTime == null) {
-        _obs!.endSpan(
-          turnSpan,
-          extra: {
-            'error': true,
-            'error.type': e.runtimeType.toString(),
-            'error.message': e.toString(),
-          },
-        );
-        turnSpan = null;
-      }
+      _endSpanOnce(
+        turnSpan,
+        extra: {
+          'error': true,
+          'error.type': e.runtimeType.toString(),
+          'error.message': e.toString(),
+        },
+      );
+      turnSpan = null;
       stderr.writeln('Error: $e');
     } finally {
       await agentIter?.cancel();
       await sigintSub.cancel();
-      if (turnSpan != null) {
-        final obs = _obs!;
-        if (turnSpan.endTime == null) {
-          obs.endSpan(
-            turnSpan,
-            extra: {
-              'output.value': redactBody(assistantText.toString()),
-              'output.length': assistantText.length,
-              if (cancelled) 'cancelled': true,
-            },
-          );
-        }
-        if (obs.activeSpan == turnSpan) obs.activeSpan = null;
-      }
+      _endSpanOnce(
+        turnSpan,
+        extra: {
+          'output.value': redactBody(assistantText.toString()),
+          'output.length': assistantText.length,
+          if (cancelled) 'cancelled': true,
+        },
+      );
       for (final tool in agent.tools.values) {
         try {
           await tool.dispose();
@@ -2637,28 +2633,24 @@ class App {
       if (exitCode != 0) {
         _blocks.add(ConversationEntry.system('Exit code: $exitCode'));
       }
-      if (span != null && _obs != null && span.endTime == null) {
-        _obs.endSpan(
-          span,
-          extra: {
-            'process.exit_code': exitCode,
-            'process.output_length': stripped.length,
-          },
-        );
-      }
+      _endSpanOnce(
+        span,
+        extra: {
+          'process.exit_code': exitCode,
+          'process.output_length': stripped.length,
+        },
+      );
     } catch (e) {
       _bashRunHandle = null;
       _blocks.add(ConversationEntry.error('Bash error: $e'));
-      if (span != null && _obs != null && span.endTime == null) {
-        _obs.endSpan(
-          span,
-          extra: {
-            'error': true,
-            'error.type': e.runtimeType.toString(),
-            'error.message': e.toString(),
-          },
-        );
-      }
+      _endSpanOnce(
+        span,
+        extra: {
+          'error': true,
+          'error.type': e.runtimeType.toString(),
+          'error.message': e.toString(),
+        },
+      );
     }
     _bashSpan = null;
     _mode = AppMode.idle;
@@ -2666,10 +2658,7 @@ class App {
   }
 
   void _cancelBash() {
-    final span = _bashSpan;
-    if (span != null && _obs != null && span.endTime == null) {
-      _obs.endSpan(span, extra: {'cancelled': true});
-    }
+    _endSpanOnce(_bashSpan, extra: {'cancelled': true});
     _bashSpan = null;
     final handle = _bashRunHandle;
     _bashRunHandle = null;
@@ -2795,61 +2784,21 @@ class App {
 
     _addSystemMessage('↳ MCP "$serverId" needs auth — starting OAuth flow.');
 
-    final runner = McpAuthFlowRunner(
-      serverId: serverId,
-      serverUrl: baseUrl,
-      credentials: config.credentials,
-      wwwAuthenticate: wwwAuthenticate,
-      cachedResourceMetadataUrl: cachedMeta,
-      openBrowser: openInBrowser,
+    unawaited(
+      runMcpAuthLogin(
+        serverId: serverId,
+        serverUrl: baseUrl,
+        credentials: config.credentials,
+        environment: _environment,
+        wwwAuthenticate: wwwAuthenticate,
+        cachedResourceMetadataUrl: cachedMeta,
+        onMessage: (message) {
+          _addSystemMessage('  $message');
+          _render();
+        },
+        onReconnect: _mcpPool.reconnect,
+      ),
     );
-
-    runner.states.listen((state) {
-      switch (state) {
-        case McpAuthFlowDiscovering():
-          _addSystemMessage('  • Discovering OAuth metadata…');
-        case McpAuthFlowRegistering():
-          _addSystemMessage('  • Registering OAuth client (DCR)…');
-        case McpAuthFlowAwaitingCallback(:final authUrl):
-          _addSystemMessage('  • Open in browser: $authUrl');
-        case McpAuthFlowSuccess(
-          :final resourceMetadataUrl,
-          :final authorizationServer,
-        ):
-          _writeBackMcpAuthConfig(
-            serverId,
-            resourceMetadataUrl,
-            authorizationServer,
-          );
-          _addSystemMessage('  ✓ Signed in to "$serverId". Reconnecting…');
-          _mcpPool.reconnect(serverId);
-        case McpAuthFlowError(:final message):
-          _addSystemMessage('  ✗ OAuth failed for "$serverId": $message');
-        case McpAuthFlowCancelled():
-          _addSystemMessage('  ✗ OAuth cancelled for "$serverId".');
-      }
-      _render();
-    });
-
-    unawaited(runner.run());
-  }
-
-  void _writeBackMcpAuthConfig(
-    String serverId,
-    Uri? resourceMetadataUrl,
-    Uri? authorizationServer,
-  ) {
-    try {
-      final writer = McpConfigWriter(userConfigPath(_environment));
-      writer.updateAuth(
-        serverId,
-        auth: const McpOAuthAuth(),
-        resourceMetadataUrl: resourceMetadataUrl,
-        authorizationServer: authorizationServer,
-      );
-    } catch (_) {
-      // Non-fatal — tokens are stored, just the config write-back didn't take.
-    }
   }
 
   // ── Subagent updates ───────────────────────────────────────────────────

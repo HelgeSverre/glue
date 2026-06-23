@@ -1,45 +1,29 @@
-import 'dart:async';
-import 'dart:convert';
-
-import 'package:http/http.dart' as http;
-
-import 'package:glue_strategies/src/web/browser/browser_endpoint.dart';
+import 'package:glue_strategies/src/web/browser/providers/http_session_browser_provider.dart';
 
 /// Hyperbrowser cloud browser provider.
-class HyperbrowserProvider implements BrowserEndpointProvider {
-  final String? apiKey;
-  final http.Client _client;
+class HyperbrowserProvider extends HttpSessionBrowserProvider {
+  HyperbrowserProvider({required super.apiKey, super.client});
 
   static const _baseUrl = 'https://api.hyperbrowser.ai/api';
-
-  HyperbrowserProvider({required this.apiKey, http.Client? client})
-    : _client = client ?? http.Client();
 
   @override
   String get name => 'hyperbrowser';
 
   @override
-  bool get isConfigured => apiKey != null && apiKey!.isNotEmpty;
+  String get label => 'Hyperbrowser';
 
   @override
-  Future<BrowserEndpoint> provision() async {
-    if (!isConfigured) throw StateError('Hyperbrowser API key not configured');
+  HttpSessionRequest createRequest() {
+    return HttpSessionRequest(
+      method: 'POST',
+      url: Uri.parse('$_baseUrl/session'),
+      headers: {'x-api-key': apiKey!, 'Content-Type': 'application/json'},
+      body: const {},
+    );
+  }
 
-    final response = await _client
-        .post(
-          Uri.parse('$_baseUrl/session'),
-          headers: {'x-api-key': apiKey!, 'Content-Type': 'application/json'},
-          body: jsonEncode({}),
-        )
-        .timeout(const Duration(seconds: 30));
-
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw StateError(
-        'Hyperbrowser API error ${response.statusCode}: ${response.body}',
-      );
-    }
-
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
+  @override
+  HttpSessionResult mapResponse(Map<String, dynamic> json) {
     final sessionId = json['id'] as String?;
     final cdpUrl = json['wsEndpoint'] as String?;
     final liveViewUrl = json['liveUrl'] as String?;
@@ -51,18 +35,14 @@ class HyperbrowserProvider implements BrowserEndpointProvider {
       throw StateError('Hyperbrowser API response missing wsEndpoint');
     }
 
-    return BrowserEndpoint(
+    return HttpSessionResult(
       cdpWsUrl: cdpUrl,
-      backendName: name,
       viewUrl: liveViewUrl,
-      onClose: () async {
-        try {
-          await _client.put(
-            Uri.parse('$_baseUrl/session/$sessionId/stop'),
-            headers: {'x-api-key': apiKey!},
-          );
-        } catch (_) {}
-      },
+      closeRequest: HttpSessionRequest(
+        method: 'PUT',
+        url: Uri.parse('$_baseUrl/session/$sessionId/stop'),
+        headers: {'x-api-key': apiKey!},
+      ),
     );
   }
 }

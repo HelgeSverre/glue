@@ -41,6 +41,47 @@ const _configOut = '../website/generated/config-examples.md';
 const _sessionOut = '../website/generated/session-events.md';
 const _brandOut = '../website/generated/brand-tokens.md';
 
+/// Emits the standard two-line `<!-- Generated from … -->` header into [sb].
+///
+/// Every generated file opens with this banner so editors know not to
+/// hand-edit it. [source] is the human-facing source path shown in the
+/// first line (e.g. `docs/reference/models.yaml`).
+void _writeGeneratedHeader(StringBuffer sb, String source) {
+  sb.writeln('<!-- Generated from $source. Do not edit by hand. -->');
+  sb.writeln(
+    '<!-- Re-run: `just website::generate-reference` (or `dart run tool/generate_site_reference.dart` in cli/) -->',
+  );
+}
+
+/// Extracts one row per model in `models.yaml`, flattening the
+/// `providers.<id>.models.<id>` nesting into a flat list. Each row carries the
+/// raw `YamlMap` under `'_raw'` so callers can pull provider-specific fields
+/// without re-walking the tree.
+List<Map<String, dynamic>> _modelRows(YamlMap providers) {
+  return providers.entries.expand((entry) {
+    final providerId = entry.key as String;
+    final provider = entry.value as YamlMap;
+    final models = provider['models'] as YamlMap? ?? YamlMap();
+    return models.entries.map((mEntry) {
+      final id = mEntry.key as String;
+      final m = mEntry.value as YamlMap;
+      return <String, dynamic>{
+        'id': id,
+        'provider': providerId,
+        'name': m['name'] ?? id,
+        'recommended': m['recommended'] ?? false,
+        'capabilities':
+            (m['capabilities'] as YamlList?)?.cast<String>().toList() ??
+            const <String>[],
+        'notes': m['notes'] ?? '',
+        'speed': m['speed'] ?? '',
+        'cost': m['cost'] ?? '',
+        'context_window': m['context_window'],
+      };
+    });
+  }).toList();
+}
+
 void main(List<String> args) {
   final outDir = Directory('../website/generated');
   if (!outDir.existsSync()) outDir.createSync(recursive: true);
@@ -64,37 +105,10 @@ void _writeModels() {
   final providers = yaml['providers'] as YamlMap;
   final capsDoc = yaml['capabilities'] as YamlMap;
 
-  final rows = <Map<String, dynamic>>[];
-  for (final entry in providers.entries) {
-    final providerId = entry.key as String;
-    final provider = entry.value as YamlMap;
-    final models = provider['models'] as YamlMap? ?? YamlMap();
-    for (final mEntry in models.entries) {
-      final id = mEntry.key as String;
-      final m = mEntry.value as YamlMap;
-      rows.add({
-        'id': id,
-        'provider': providerId,
-        'name': m['name'] ?? id,
-        'recommended': m['recommended'] ?? false,
-        'capabilities':
-            (m['capabilities'] as YamlList?)?.cast<String>().toList() ??
-            const <String>[],
-        'notes': m['notes'] ?? '',
-        'speed': m['speed'] ?? '',
-        'cost': m['cost'] ?? '',
-        'context_window': m['context_window'],
-      });
-    }
-  }
+  final rows = _modelRows(providers);
 
   final sb = StringBuffer();
-  sb.writeln(
-    '<!-- Generated from docs/reference/models.yaml. Do not edit by hand. -->',
-  );
-  sb.writeln(
-    '<!-- Re-run: `just website::generate-reference` (or `dart run tool/generate_site_reference.dart` in cli/) -->',
-  );
+  _writeGeneratedHeader(sb, 'docs/reference/models.yaml');
   sb.writeln();
   sb.writeln('# Model catalog');
   sb.writeln();
@@ -138,27 +152,19 @@ void _writeModelsRecommendedJson() {
   final yaml = loadYaml(File(_modelsYamlPath).readAsStringSync()) as YamlMap;
   final providers = yaml['providers'] as YamlMap;
 
-  final rows = <Map<String, dynamic>>[];
-  for (final entry in providers.entries) {
-    final providerId = entry.key as String;
-    final provider = entry.value as YamlMap;
-    final models = provider['models'] as YamlMap? ?? YamlMap();
-    for (final mEntry in models.entries) {
-      final id = mEntry.key as String;
-      final m = mEntry.value as YamlMap;
-      if (m['recommended'] != true) continue;
-      rows.add({
-        'id': id,
-        'provider': providerId,
-        'name': m['name'] ?? id,
-        'recommended': true,
-        'capabilities':
-            (m['capabilities'] as YamlList?)?.cast<String>().toList() ??
-            const <String>[],
-        'notes': m['notes']?.toString() ?? '',
-      });
-    }
-  }
+  final rows = _modelRows(providers)
+      .where((r) => r['recommended'] == true)
+      .map(
+        (r) => {
+          'id': r['id'],
+          'provider': r['provider'],
+          'name': r['name'],
+          'recommended': true,
+          'capabilities': r['capabilities'],
+          'notes': r['notes'].toString(),
+        },
+      )
+      .toList();
 
   const encoder = JsonEncoder.withIndent('  ');
   File(_modelsJsonOut).writeAsStringSync('${encoder.convert(rows)}\n');
@@ -176,12 +182,7 @@ void _writeRuntimeMatrix() {
   final capKeys = capsDoc.keys.cast<String>().toList();
 
   final sb = StringBuffer();
-  sb.writeln(
-    '<!-- Generated from docs/reference/runtime-capabilities.yaml. Do not edit by hand. -->',
-  );
-  sb.writeln(
-    '<!-- Re-run: `just website::generate-reference` (or `dart run tool/generate_site_reference.dart` in cli/) -->',
-  );
+  _writeGeneratedHeader(sb, 'docs/reference/runtime-capabilities.yaml');
   sb.writeln();
   sb.writeln('# Runtime capability matrix');
   sb.writeln();
@@ -280,12 +281,7 @@ void _writeConfigExamples() {
   }
 
   final sb = StringBuffer();
-  sb.writeln(
-    '<!-- Generated from docs/reference/config-yaml.md. Do not edit by hand. -->',
-  );
-  sb.writeln(
-    '<!-- Re-run: `just website::generate-reference` (or `dart run tool/generate_site_reference.dart` in cli/) -->',
-  );
+  _writeGeneratedHeader(sb, 'docs/reference/config-yaml.md');
   sb.writeln();
   sb.writeln('# Config examples');
   sb.writeln();
@@ -344,12 +340,7 @@ void _writeSessionEvents() {
   }
 
   final sb = StringBuffer();
-  sb.writeln(
-    '<!-- Generated from docs/reference/session-storage.md. Do not edit by hand. -->',
-  );
-  sb.writeln(
-    '<!-- Re-run: `just website::generate-reference` (or `dart run tool/generate_site_reference.dart` in cli/) -->',
-  );
+  _writeGeneratedHeader(sb, 'docs/reference/session-storage.md');
   sb.writeln();
   sb.writeln('# Session event types');
   sb.writeln();
@@ -421,12 +412,7 @@ void _writeBrandTokens() {
   final hc = _parseThemeMode(src, 'highContrast');
 
   final sb = StringBuffer();
-  sb.writeln(
-    '<!-- Generated from cli/lib/src/ui/theme_tokens.dart. Do not edit by hand. -->',
-  );
-  sb.writeln(
-    '<!-- Re-run: `just website::generate-reference` (or `dart run tool/generate_site_reference.dart` in cli/) -->',
-  );
+  _writeGeneratedHeader(sb, 'cli/lib/src/ui/theme_tokens.dart');
   sb.writeln();
   sb.writeln('## Terminal design tokens');
   sb.writeln();

@@ -72,6 +72,21 @@ int _countLines(String s) {
   return s.endsWith('\n') ? newlines : newlines + 1;
 }
 
+/// Builds the `diff` metadata block shared by write_file and edit_file.
+///
+/// `glue_server` reads `metadata['diff']` (path/old_text/new_text) to render
+/// an ACP diff view, so both tools must emit the exact same shape. Centralising
+/// it here removes the duplicated literal and keeps that contract in one place.
+Map<String, String> _diffMetadata({
+  required String path,
+  required String oldText,
+  required String newText,
+}) {
+  // ACP-side: glue_server emits this as a `diff` content block on
+  // tool_call_update so editors can render a real diff view.
+  return {'path': path, 'old_text': oldText, 'new_text': newText};
+}
+
 /// A tool that writes content to a file on disk.
 class WriteFileTool extends Tool {
   final Workspace workspace;
@@ -126,9 +141,7 @@ class WriteFileTool extends Tool {
         'bytes': content.length,
         'line_count': lineCount,
         'is_new_file': isNew,
-        // ACP-side: glue_server emits these as a `diff` content block
-        // on tool_call_update so editors can render a real diff view.
-        'diff': {'path': path, 'old_text': oldText, 'new_text': content},
+        'diff': _diffMetadata(path: path, oldText: oldText, newText: content),
       },
     );
   }
@@ -366,7 +379,7 @@ class EditFileTool extends Tool {
           'old_lines': 0,
           'new_lines': newLines,
           'is_new_file': true,
-          'diff': {'path': path, 'old_text': '', 'new_text': newString},
+          'diff': _diffMetadata(path: path, oldText: '', newText: newString),
         },
       );
     }
@@ -411,8 +424,11 @@ class EditFileTool extends Tool {
 
     await workspace.writeFileAsString(path, newContent);
 
-    final oldLines = oldString.split('\n').length;
-    final newLines = newString.split('\n').length;
+    // Count via _countLines (newline-based) so edit_file and write_file agree
+    // — the previous `.split('\n').length` over-counted by one for trailing
+    // newlines and reported 1 for empty strings.
+    final oldLines = _countLines(oldString);
+    final newLines = _countLines(newString);
     return ToolResult(
       content:
           'Applied edit to $path: replaced $oldLines line(s) with $newLines line(s)',
@@ -422,7 +438,11 @@ class EditFileTool extends Tool {
         'old_lines': oldLines,
         'new_lines': newLines,
         'is_new_file': false,
-        'diff': {'path': path, 'old_text': content, 'new_text': newContent},
+        'diff': _diffMetadata(
+          path: path,
+          oldText: content,
+          newText: newContent,
+        ),
       },
     );
   }

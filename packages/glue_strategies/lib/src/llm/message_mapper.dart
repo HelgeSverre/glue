@@ -252,6 +252,112 @@ class GeminiMessageMapper extends MessageMapper {
   }
 }
 
+/// Ollama `/api/chat` format.
+///
+/// Close to OpenAI's chat shape but with three deliberate differences that
+/// the Ollama server requires:
+/// - The system prompt is prepended as a `role: "system"` message.
+/// - Images ride on a top-level `images` array of **raw base64** strings
+///   (no `data:` URI prefix), not OpenAI's `image_url` content parts.
+/// - Tool results carry `tool_name` (Ollama matches results to calls by
+///   name/position, not `tool_call_id`), and assistant tool calls pass
+///   `arguments` as a parsed object, not a JSON string.
+///
+/// A tool result that includes screenshots emits a text-only `tool` message
+/// followed by a synthetic `user` message holding the images, because Ollama
+/// does not accept images on a `tool` message.
+class OllamaMessageMapper extends MessageMapper {
+  const OllamaMessageMapper();
+
+  @override
+  MappedMessages mapMessages(
+    List<Message> messages, {
+    required String systemPrompt,
+  }) {
+    final mapped = <Map<String, dynamic>>[];
+
+    // System prompt as first message.
+    if (systemPrompt.isNotEmpty) {
+      mapped.add({'role': 'system', 'content': systemPrompt});
+    }
+
+    for (final msg in messages) {
+      switch (msg.role) {
+        case Role.user:
+          final parts = msg.contentParts;
+          if (parts != null && ContentPart.hasImages(parts)) {
+            // Ollama expects images on a top-level `images` field as
+            // base64 strings; the text/resource_link parts collapse
+            // into the message content.
+            final images = parts
+                .whereType<ImagePart>()
+                .map((img) => img.toBase64())
+                .toList();
+            final body = StringBuffer(msg.text ?? '');
+            final extra = ContentPart.textWithLinks(parts);
+            if (extra.isNotEmpty) {
+              if (body.isNotEmpty) body.write('\n');
+              body.write(extra);
+            }
+            mapped.add({
+              'role': 'user',
+              'content': body.toString(),
+              'images': images,
+            });
+          } else if (parts != null && parts.isNotEmpty) {
+            // No images; render as text + markdown links.
+            final extra = ContentPart.textWithLinks(parts);
+            final body = StringBuffer(msg.text ?? '');
+            if (extra.isNotEmpty) {
+              if (body.isNotEmpty) body.write('\n');
+              body.write(extra);
+            }
+            mapped.add({'role': 'user', 'content': body.toString()});
+          } else {
+            mapped.add({'role': 'user', 'content': msg.text ?? ''});
+          }
+        case Role.assistant:
+          final entry = <String, dynamic>{
+            'role': 'assistant',
+            'content': msg.text ?? '',
+          };
+          if (msg.toolCalls.isNotEmpty) {
+            entry['tool_calls'] = [
+              for (final tc in msg.toolCalls)
+                {
+                  'function': {'name': tc.name, 'arguments': tc.arguments},
+                },
+            ];
+          }
+          mapped.add(entry);
+        case Role.toolResult:
+          final textContent = (msg.contentParts != null)
+              ? ContentPart.textWithLinks(msg.contentParts!)
+              : (msg.text ?? '');
+          mapped.add({
+            'role': 'tool',
+            'content': textContent.isNotEmpty ? textContent : (msg.text ?? ''),
+            'tool_name': msg.toolName ?? '',
+          });
+          if (msg.contentParts != null &&
+              ContentPart.hasImages(msg.contentParts!)) {
+            final images = msg.contentParts!
+                .whereType<ImagePart>()
+                .map((img) => img.toBase64())
+                .toList();
+            mapped.add({
+              'role': 'user',
+              'content': '[Screenshot from ${msg.toolName ?? "tool"}]',
+              'images': images,
+            });
+          }
+      }
+    }
+
+    return MappedMessages(systemPrompt: systemPrompt, messages: mapped);
+  }
+}
+
 /// OpenAI Chat Completions format.
 ///
 /// - System prompt is a message with `role: "system"`.

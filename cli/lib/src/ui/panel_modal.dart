@@ -157,6 +157,35 @@ List<String> applyBarrier(BarrierStyle style, List<String> lines) {
   };
 }
 
+/// Style a single plain-text background slice for the given barrier [style].
+/// Used by the floating panels when compositing overlay rows over a dimmed
+/// background.
+String applyBarrierStyle(BarrierStyle style, String text) {
+  if (text.isEmpty) return text;
+  return switch (style) {
+    BarrierStyle.dim => '${text.styled.dim}',
+    BarrierStyle.obscure => '${text.styled.gray}',
+    BarrierStyle.none => text,
+  };
+}
+
+/// Splice a `current/total` page indicator into the bottom [borderLine] of a
+/// panel, right-aligned with a two-column gutter. Returns [borderLine]
+/// unchanged when there isn't room for the indicator.
+String splicePageIndicator(String borderLine, int currentPage, int totalPages) {
+  final indicator = '$currentPage/$totalPages';
+  final insertPos = stripAnsi(borderLine).length - indicator.length - 2;
+  if (insertPos <= 0) return borderLine;
+  final before = borderLine.substring(
+    0,
+    ansiColumnToIndex(borderLine, insertPos),
+  );
+  final after = borderLine.substring(
+    ansiColumnToIndex(borderLine, insertPos + indicator.length),
+  );
+  return '$before$indicator$after';
+}
+
 abstract class PanelOverlay {
   bool get isComplete;
   bool handleEvent(TerminalEvent event);
@@ -186,11 +215,6 @@ class PanelModal implements PanelOverlay {
   final Completer<int?> _selectionCompleter = Completer<int?>();
   int _lastVisibleHeight = 0;
   List<String> _lastLines = const [];
-
-  /// Snapshot of the current lines at an assumed 80-col content width.
-  /// Prefer `linesBuilder(width)` for width-aware access.
-  List<String> get lines =>
-      _lastLines.isNotEmpty ? _lastLines : linesBuilder(80);
 
   PanelModal({
     required this.title,
@@ -369,25 +393,11 @@ class PanelModal implements PanelOverlay {
       if (r == 0) {
         panelLines.add(border.first);
       } else if (r == panelH - 1) {
-        if (hasOverflow) {
-          final indicator = '$currentPage/$totalPages';
-          final borderStr = stripAnsi(border.last);
-          final insertPos = borderStr.length - indicator.length - 2;
-          if (insertPos > 0) {
-            final before = border.last.substring(
-              0,
-              _ansiIndex(border.last, insertPos),
-            );
-            final after = border.last.substring(
-              _ansiIndex(border.last, insertPos + indicator.length),
-            );
-            panelLines.add('$before$indicator$after');
-          } else {
-            panelLines.add(border.last);
-          }
-        } else {
-          panelLines.add(border.last);
-        }
+        panelLines.add(
+          hasOverflow
+              ? splicePageIndicator(border.last, currentPage, totalPages)
+              : border.last,
+        );
       } else {
         final contentIdx = r - 1;
         final raw = contentIdx < visibleLines.length
@@ -412,64 +422,17 @@ class PanelModal implements PanelOverlay {
     for (var r = 0; r < panelH; r++) {
       final gridRow = topRow + r;
       if (gridRow < 0 || gridRow >= termHeight) continue;
-      grid[gridRow] = _spliceRow(
+      grid[gridRow] = spliceOverlayRow(
         grid[gridRow],
         leftCol,
         panelW,
         panelLines[r],
         termWidth,
+        barrierNone: barrier == BarrierStyle.none,
+        styleBarrier: (plain) => applyBarrierStyle(barrier, plain),
       );
     }
 
     return grid;
-  }
-
-  int _ansiIndex(String s, int visiblePos) {
-    final ansiPattern = RegExp(r'\x1b\[[0-9;]*[a-zA-Z]');
-    var visible = 0;
-    var i = 0;
-    while (i < s.length && visible < visiblePos) {
-      final match = ansiPattern.matchAsPrefix(s, i);
-      if (match != null) {
-        i += match.group(0)!.length;
-      } else {
-        visible++;
-        i++;
-      }
-    }
-    return i;
-  }
-
-  String _spliceRow(
-    String bgLine,
-    int leftCol,
-    int panelW,
-    String overlay,
-    int termWidth,
-  ) {
-    final bgVisible = visibleLength(bgLine);
-    final paddedBg = bgVisible < termWidth
-        ? '$bgLine${' ' * (termWidth - bgVisible)}'
-        : bgLine;
-    final safeLeft = leftCol.clamp(0, termWidth);
-    final safeRight = (leftCol + panelW).clamp(0, termWidth);
-    final beforeSlice = paddedBg.substring(0, _ansiIndex(paddedBg, safeLeft));
-    final afterSlice = paddedBg.substring(_ansiIndex(paddedBg, safeRight));
-    final overlayPad = max(0, panelW - visibleLength(overlay));
-    if (barrier == BarrierStyle.none) {
-      return '$beforeSlice$overlay${' ' * overlayPad}$afterSlice';
-    }
-    final before = _applyBarrierStyle(stripAnsi(beforeSlice));
-    final after = _applyBarrierStyle(stripAnsi(afterSlice));
-    return '$before$overlay${' ' * overlayPad}$after';
-  }
-
-  String _applyBarrierStyle(String text) {
-    if (text.isEmpty) return text;
-    return switch (barrier) {
-      BarrierStyle.dim => '${text.styled.dim}',
-      BarrierStyle.obscure => '${text.styled.gray}',
-      BarrierStyle.none => text,
-    };
   }
 }

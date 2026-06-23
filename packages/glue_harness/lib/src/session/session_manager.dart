@@ -233,15 +233,7 @@ class SessionManager {
       _endSpan(span, extra: {'session.id': store.meta.id});
       return store;
     } catch (e, st) {
-      _endSpan(
-        span,
-        extra: {
-          'error': true,
-          'error.type': e.runtimeType.toString(),
-          'error.message': e.toString(),
-          'error.stack': st.toString(),
-        },
-      );
+      _endSpanError(span, e, st);
       rethrow;
     }
   }
@@ -319,15 +311,7 @@ class SessionManager {
       await store.close();
       _endSpan(span, extra: {'session.closed': true});
     } catch (e, st) {
-      _endSpan(
-        span,
-        extra: {
-          'error': true,
-          'error.type': e.runtimeType.toString(),
-          'error.message': e.toString(),
-          'error.stack': st.toString(),
-        },
-      );
+      _endSpanError(span, e, st);
       rethrow;
     }
   }
@@ -372,15 +356,7 @@ class SessionManager {
         },
       );
     } catch (e, st) {
-      _endSpan(
-        span,
-        extra: {
-          'error': true,
-          'error.type': e.runtimeType.toString(),
-          'error.message': e.toString(),
-          'error.stack': st.toString(),
-        },
-      );
+      _endSpanError(span, e, st);
       rethrow;
     }
   }
@@ -408,15 +384,7 @@ class SessionManager {
       );
       _endSpan(span, extra: {'title.renamed': true});
     } catch (e, st) {
-      _endSpan(
-        span,
-        extra: {
-          'error': true,
-          'error.type': e.runtimeType.toString(),
-          'error.message': e.toString(),
-          'error.stack': st.toString(),
-        },
-      );
+      _endSpanError(span, e, st);
       rethrow;
     }
   }
@@ -493,15 +461,7 @@ class SessionManager {
         },
       );
     } catch (e, st) {
-      _endSpan(
-        span,
-        extra: {
-          'error': true,
-          'error.type': e.runtimeType.toString(),
-          'error.message': e.toString(),
-          'error.stack': st.toString(),
-        },
-      );
+      _endSpanError(span, e, st);
       rethrow;
     }
   }
@@ -566,15 +526,7 @@ class SessionManager {
       );
       return result;
     } catch (e, st) {
-      _endSpan(
-        span,
-        extra: {
-          'error': true,
-          'error.type': e.runtimeType.toString(),
-          'error.message': e.toString(),
-          'error.stack': st.toString(),
-        },
-      );
+      _endSpanError(span, e, st);
       rethrow;
     }
   }
@@ -652,15 +604,7 @@ class SessionManager {
       );
       return result;
     } catch (e, st) {
-      _endSpan(
-        span,
-        extra: {
-          'error': true,
-          'error.type': e.runtimeType.toString(),
-          'error.message': e.toString(),
-          'error.stack': st.toString(),
-        },
-      );
+      _endSpanError(span, e, st);
       rethrow;
     }
   }
@@ -853,5 +797,19 @@ class SessionManager {
     final obs = _obs;
     if (span == null || obs == null) return;
     obs.endSpan(span, extra: extra);
+  }
+
+  /// Ends [span] with the standard error attribute set. Shared by the
+  /// `catch (e, st) { … rethrow; }` blocks across the traced operations.
+  void _endSpanError(ObservabilitySpan? span, Object e, StackTrace st) {
+    _endSpan(
+      span,
+      extra: {
+        'error': true,
+        'error.type': e.runtimeType.toString(),
+        'error.message': e.toString(),
+        'error.stack': st.toString(),
+      },
+    );
   }
 }

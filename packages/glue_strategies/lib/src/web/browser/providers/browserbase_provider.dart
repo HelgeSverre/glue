@@ -1,25 +1,24 @@
-import 'dart:async';
-import 'dart:convert';
-
-import 'package:http/http.dart' as http;
-
-import 'package:glue_strategies/src/web/browser/browser_endpoint.dart';
+import 'package:glue_strategies/src/web/browser/providers/http_session_browser_provider.dart';
 
 /// Browserbase cloud browser provider.
-class BrowserbaseProvider implements BrowserEndpointProvider {
-  final String? apiKey;
-  final String? projectId;
-  final http.Client _client;
-  static const _baseUrl = 'https://www.browserbase.com/v1';
-
+class BrowserbaseProvider extends HttpSessionBrowserProvider {
   BrowserbaseProvider({
-    required this.apiKey,
+    required super.apiKey,
     required this.projectId,
-    http.Client? client,
-  }) : _client = client ?? http.Client();
+    super.client,
+  });
+
+  final String? projectId;
+  static const _baseUrl = 'https://www.browserbase.com/v1';
 
   @override
   String get name => 'browserbase';
+
+  @override
+  String get label => 'Browserbase';
+
+  @override
+  String get notConfiguredReason => 'API key or project ID not configured';
 
   @override
   bool get isConfigured =>
@@ -29,45 +28,27 @@ class BrowserbaseProvider implements BrowserEndpointProvider {
       projectId!.isNotEmpty;
 
   @override
-  Future<BrowserEndpoint> provision() async {
-    if (!isConfigured) {
-      throw StateError('Browserbase API key or project ID not configured');
-    }
+  HttpSessionRequest createRequest() {
+    return HttpSessionRequest(
+      method: 'POST',
+      url: Uri.parse('$_baseUrl/sessions'),
+      headers: {'X-BB-API-Key': apiKey!, 'Content-Type': 'application/json'},
+      body: {'projectId': projectId},
+    );
+  }
 
-    final response = await _client
-        .post(
-          Uri.parse('$_baseUrl/sessions'),
-          headers: {
-            'X-BB-API-Key': apiKey!,
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode({'projectId': projectId}),
-        )
-        .timeout(const Duration(seconds: 30));
-
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw StateError(
-        'Browserbase API error ${response.statusCode}: ${response.body}',
-      );
-    }
-
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
+  @override
+  HttpSessionResult mapResponse(Map<String, dynamic> json) {
     final sessionId = json['id'] as String;
-    final wsUrl =
-        'wss://connect.browserbase.com?apiKey=$apiKey&sessionId=$sessionId';
-
-    return BrowserEndpoint(
-      cdpWsUrl: wsUrl,
-      backendName: name,
+    return HttpSessionResult(
+      cdpWsUrl:
+          'wss://connect.browserbase.com?apiKey=$apiKey&sessionId=$sessionId',
       viewUrl: 'https://www.browserbase.com/sessions/$sessionId',
-      onClose: () async {
-        try {
-          await _client.post(
-            Uri.parse('$_baseUrl/sessions/$sessionId/stop'),
-            headers: {'X-BB-API-Key': apiKey!},
-          );
-        } catch (_) {}
-      },
+      closeRequest: HttpSessionRequest(
+        method: 'POST',
+        url: Uri.parse('$_baseUrl/sessions/$sessionId/stop'),
+        headers: {'X-BB-API-Key': apiKey!},
+      ),
     );
   }
 }

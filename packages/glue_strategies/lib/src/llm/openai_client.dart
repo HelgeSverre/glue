@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_strategies/src/llm/message_mapper.dart';
 import 'package:glue_strategies/src/llm/sse.dart';
+import 'package:glue_strategies/src/llm/stream_request.dart';
+import 'package:glue_strategies/src/llm/tool_args.dart';
 import 'package:glue_strategies/src/llm/tool_schema.dart';
 import 'package:glue_strategies/src/providers/compatibility_profile.dart';
 
@@ -37,56 +39,41 @@ class OpenAiClient implements LlmClient {
        _baseUri = Uri.parse(baseUrl);
 
   @override
-  Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
-    // Per-request client: closing it aborts the TCP connection when the
-    // stream subscription is cancelled, saving output tokens.
-    final requestClient = _requestClientFactory();
-    try {
-      const mapper = OpenAiMessageMapper();
-      final mapped = mapper.mapMessages(messages, systemPrompt: systemPrompt);
+  Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) {
+    const mapper = OpenAiMessageMapper();
+    final mapped = mapper.mapMessages(messages, systemPrompt: systemPrompt);
 
-      final body = <String, dynamic>{
-        'model': model,
-        'stream': true,
-        'stream_options': {'include_usage': true},
-        'messages': mapped.messages,
-      };
+    final body = <String, dynamic>{
+      'model': model,
+      'stream': true,
+      'stream_options': {'include_usage': true},
+      'messages': mapped.messages,
+    };
 
-      if (tools != null && tools.isNotEmpty) {
-        body['tools'] = const OpenAiToolEncoder().encodeAll(tools);
-      }
+    if (tools != null && tools.isNotEmpty) {
+      body['tools'] = const OpenAiToolEncoder().encodeAll(tools);
+    }
 
-      profile.mutateBody(body);
+    profile.mutateBody(body);
 
-      final endpointBase = _baseUri.path.endsWith('/')
-          ? _baseUri
-          : _baseUri.replace(path: '${_baseUri.path}/');
-      final request = http.Request(
-        'POST',
-        endpointBase.resolve('chat/completions'),
-      );
-      request.headers.addAll({
+    final endpointBase = _baseUri.path.endsWith('/')
+        ? _baseUri
+        : _baseUri.replace(path: '${_baseUri.path}/');
+
+    return sendAndStream(
+      requestClientFactory: _requestClientFactory,
+      uri: endpointBase.resolve('chat/completions'),
+      headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $apiKey',
         ...extraHeaders,
-      });
-      request.body = jsonEncode(body);
-
-      final response = await requestClient.send(request);
-
-      if (response.statusCode != 200) {
-        final errorBody = await response.stream.bytesToString();
-        throw Exception('OpenAI API error ${response.statusCode}: $errorBody');
-      }
-
-      yield* parseStreamEvents(
-        decodeSse(
-          response.stream,
-        ).map((e) => jsonDecode(e.data) as Map<String, dynamic>),
-      );
-    } finally {
-      requestClient.close();
-    }
+      },
+      body: body,
+      providerName: 'OpenAI',
+      parse: (bytes) => parseStreamEvents(
+        decodeSse(bytes).map((e) => jsonDecode(e.data) as Map<String, dynamic>),
+      ),
+    );
   }
 
   /// Parse OpenAI streaming chunks into [LlmChunk]s.
@@ -96,7 +83,7 @@ class OpenAiClient implements LlmClient {
     Stream<Map<String, dynamic>> events,
   ) async* {
     // Accumulate streamed tool call arguments.
-    final toolBuilders = <int, _ToolCallBuilder>{};
+    final toolBuilders = <int, ToolArgsBuffer<ToolCallId>>{};
 
     await for (final event in events) {
       // Usage may come in a final chunk.
@@ -144,13 +131,13 @@ class OpenAiClient implements LlmClient {
           if (!toolBuilders.containsKey(index)) {
             final id = ToolCallId((tcMap['id'] as String?) ?? 'call_$index');
             final name = fn?['name'] as String? ?? '';
-            toolBuilders[index] = _ToolCallBuilder(id: id, name: name);
+            toolBuilders[index] = ToolArgsBuffer(id: id, name: name);
             yield ToolCallStart(id: id, name: name);
           }
 
           final args = fn?['arguments'] as String?;
           if (args != null) {
-            toolBuilders[index]!.argsBuffer.write(args);
+            toolBuilders[index]!.write(args);
           }
         }
       }
@@ -158,17 +145,12 @@ class OpenAiClient implements LlmClient {
       // On finish, emit completed tool calls.
       if (finishReason != null && toolBuilders.isNotEmpty) {
         for (final builder in toolBuilders.values) {
-          final argsStr = builder.argsBuffer.toString();
-          Map<String, dynamic> args;
-          try {
-            args = argsStr.isNotEmpty
-                ? (jsonDecode(argsStr) as Map<String, dynamic>)
-                : <String, dynamic>{};
-          } on FormatException {
-            args = <String, dynamic>{'_raw': argsStr};
-          }
           yield ToolCallComplete(
-            ToolCall(id: builder.id, name: builder.name, arguments: args),
+            ToolCall(
+              id: builder.id,
+              name: builder.name,
+              arguments: builder.finalizeArguments(),
+            ),
           );
         }
         toolBuilders.clear();
@@ -209,11 +191,4 @@ UsageInfo _usageInfoFromOpenAi(Map<String, dynamic> usage) {
     cacheReadTokens: cachedTokens ?? (usage['cache_read_input_tokens'] as int?),
     cacheCreationTokens: cacheWriteOpenRouter ?? cacheCreateAnthropic,
   );
-}
-
-class _ToolCallBuilder {
-  final ToolCallId id;
-  final String name;
-  final StringBuffer argsBuffer = StringBuffer();
-  _ToolCallBuilder({required this.id, required this.name});
 }

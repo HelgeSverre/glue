@@ -2,11 +2,39 @@
 /// showing what credentials are stored and whether they're complete.
 library;
 
+import 'package:glue_strategies/glue_strategies.dart';
+
 import 'package:glue/src/terminal/brand.dart';
 import 'package:glue/src/terminal/styled.dart';
 import 'package:glue/src/terminal/tty_style.dart';
 
 enum McpAuthState { stored, missing, notLoggedIn, none }
+
+/// Classifies a server's stored credentials into a `(kind, state)` pair.
+///
+/// The auth kind is read from [spec] (stdio servers are always `none`).
+/// [hasBearer]/[hasOAuth] report whether the corresponding credential is
+/// present in the store. Shared by `glue mcp auth status` and the `/mcp auth
+/// status` slash command so the bearer/oauth → stored/missing mapping lives
+/// in one place.
+(String kind, McpAuthState state) classifyMcpCredential({
+  required McpServerSpec spec,
+  required bool hasBearer,
+  required bool hasOAuth,
+}) {
+  final authKind = spec is McpUrlServerSpec ? spec.auth : const McpNoAuth();
+  return switch (authKind) {
+    McpBearerAuth() => (
+      'bearer',
+      hasBearer ? McpAuthState.stored : McpAuthState.missing,
+    ),
+    McpOAuthAuth() => (
+      'oauth',
+      hasOAuth ? McpAuthState.stored : McpAuthState.notLoggedIn,
+    ),
+    McpNoAuth() => ('none', McpAuthState.none),
+  };
+}
 
 class McpAuthStatusRow {
   const McpAuthStatusRow({

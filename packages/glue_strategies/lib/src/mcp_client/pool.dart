@@ -271,12 +271,12 @@ class McpClientPool {
     if (_clients.containsKey(serverId)) {
       await _disconnect(s);
       _servers[serverId] = McpServerSnapshot(
-        spec: _disable(s.spec),
+        spec: s.spec.copyWith(enabled: false),
         state: const McpDisconnected(),
       );
     } else {
       _servers[serverId] = McpServerSnapshot(
-        spec: _enable(s.spec),
+        spec: s.spec.copyWith(enabled: true),
         state: const McpDisconnected(),
       );
       await _connect(_servers[serverId]!);
@@ -457,11 +457,7 @@ class McpClientPool {
           return;
         }
       } catch (_) {
-        invalidateMcpAuth(
-          serverId: s.id,
-          scope: McpAuthInvalidation.tokens,
-          credentials: credentials,
-        );
+        invalidateMcpTokens(serverId: s.id, credentials: credentials);
         // Fall through to AwaitingAuth.
       }
     }
@@ -541,68 +537,4 @@ class McpClientPool {
       _ => McpServerErrorKind.transportError,
     };
   }
-
-  /// Builds a copy of [spec] with `enabled = false`. Cheap dispatch on
-  /// the sealed type so we don't need a generic copyWith.
-  McpServerSpec _disable(McpServerSpec spec) => switch (spec) {
-    McpStdioServerSpec() => McpStdioServerSpec(
-      id: spec.id,
-      command: spec.command,
-      args: spec.args,
-      env: spec.env,
-      workingDirectory: spec.workingDirectory,
-      enabled: false,
-      callTimeoutSeconds: spec.callTimeoutSeconds,
-    ),
-    McpUrlServerSpec(
-      :final id,
-      :final url,
-      :final auth,
-      :final isWebSocket,
-      :final resourceMetadataUrl,
-      :final authorizationServer,
-      :final callTimeoutSeconds,
-    ) =>
-      McpUrlServerSpec(
-        id: id,
-        url: url,
-        auth: auth,
-        isWebSocket: isWebSocket,
-        resourceMetadataUrl: resourceMetadataUrl,
-        authorizationServer: authorizationServer,
-        enabled: false,
-        callTimeoutSeconds: callTimeoutSeconds,
-      ),
-  };
-
-  McpServerSpec _enable(McpServerSpec spec) => switch (spec) {
-    McpStdioServerSpec() => McpStdioServerSpec(
-      id: spec.id,
-      command: spec.command,
-      args: spec.args,
-      env: spec.env,
-      workingDirectory: spec.workingDirectory,
-      enabled: true,
-      callTimeoutSeconds: spec.callTimeoutSeconds,
-    ),
-    McpUrlServerSpec(
-      :final id,
-      :final url,
-      :final auth,
-      :final isWebSocket,
-      :final resourceMetadataUrl,
-      :final authorizationServer,
-      :final callTimeoutSeconds,
-    ) =>
-      McpUrlServerSpec(
-        id: id,
-        url: url,
-        auth: auth,
-        isWebSocket: isWebSocket,
-        resourceMetadataUrl: resourceMetadataUrl,
-        authorizationServer: authorizationServer,
-        enabled: true,
-        callTimeoutSeconds: callTimeoutSeconds,
-      ),
-  };
 }

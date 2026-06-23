@@ -163,6 +163,49 @@ class Observability {
     }
   }
 
+  /// Runs [body] inside a span named [name], owning the start/end lifecycle.
+  ///
+  /// The span is started with [kind]/[attributes]/[parent] (the same shape as
+  /// [startSpan]), passed to [body], and always ended — even when [body]
+  /// throws. On success the span is closed with the attributes returned by
+  /// [onSuccess] (if provided); on error it is closed with the standard
+  /// `error.*` attributes followed by anything [onError] contributes, then the
+  /// error is rethrown. This owns the start-span / end-span boilerplate so
+  /// callers stop hand-rolling try/catch span management.
+  Future<T> withSpan<T>(
+    String name, {
+    String kind = 'internal',
+    Map<String, dynamic>? attributes,
+    ObservabilitySpan? parent,
+    required Future<T> Function(ObservabilitySpan span) body,
+    Map<String, dynamic> Function(T value)? onSuccess,
+    Map<String, dynamic> Function(Object error, StackTrace stackTrace)? onError,
+  }) async {
+    final span = startSpan(
+      name,
+      kind: kind,
+      attributes: attributes,
+      parent: parent,
+    );
+    try {
+      final value = await body(span);
+      endSpan(span, extra: onSuccess?.call(value));
+      return value;
+    } catch (e, st) {
+      endSpan(
+        span,
+        extra: {
+          'error': true,
+          'error.type': e.runtimeType.toString(),
+          'error.message': e.toString(),
+          'error.stack': st.toString(),
+          ...?onError?.call(e, st),
+        },
+      );
+      rethrow;
+    }
+  }
+
   void startAutoFlush(Duration interval) {
     _flushTimer?.cancel();
     _flushTimer = Timer.periodic(interval, (_) {

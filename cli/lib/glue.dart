@@ -36,7 +36,7 @@ export 'src/terminal/terminal.dart'
         Key,
         AnsiStyle;
 export 'src/terminal/layout.dart' show Layout;
-export 'src/input/line_editor.dart' show LineEditor, InputAction;
+export 'src/input/input_action.dart' show InputAction;
 export 'src/input/text_area_editor.dart' show TextAreaEditor;
 export 'src/input/file_expander.dart' show expandFileRefs, extractFileRefs;
 export 'src/rendering/ansi_utils.dart'

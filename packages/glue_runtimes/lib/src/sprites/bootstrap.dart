@@ -1,5 +1,4 @@
 import 'package:glue_runtimes/src/common/bootstrap.dart';
-import 'package:glue_runtimes/src/common/runtime_exception.dart';
 import 'package:glue_runtimes/src/sprites/cli.dart';
 
 export 'package:glue_runtimes/src/common/bootstrap.dart' show BootstrapResult;
@@ -25,22 +24,14 @@ class SpritesBootstrap {
   Future<BootstrapResult> bootstrap({
     required String hostCwd,
     required String runtimeCwd,
-  }) async {
-    final ws = WorkspaceBootstrap(
+  }) {
+    return runWorkspaceBootstrap(
       exec: _SpritesBootstrapTransport(cli: cli, spriteName: spriteName),
+      runtimeId: 'sprites',
       sessionId: sessionId,
+      hostCwd: hostCwd,
+      runtimeCwd: runtimeCwd,
     );
-    try {
-      return await ws.bootstrap(hostCwd: hostCwd, runtimeCwd: runtimeCwd);
-    } on BootstrapException catch (e) {
-      throw RuntimeApiException(
-        runtimeId: 'sprites',
-        statusCode: e.exitCode ?? 0,
-        endpoint: 'bootstrap_${e.stage}',
-        message: e.message,
-        body: e.output,
-      );
-    }
   }
 }
 

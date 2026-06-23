@@ -56,18 +56,25 @@ abstract class RuntimeSession {
 
   /// Returns the outcome of attempting to diff the runtime workspace
   /// against [bootstrapSha]. The default implementation reports
-  /// [RuntimeDiffOutcomeUnavailable] (host/docker, no diff capture).
-  /// Cloud runtimes override this to return [RuntimeDiffOutcomeSuccess],
-  /// [RuntimeDiffOutcomeEmpty], or [RuntimeDiffOutcomeUnavailable] with
-  /// a typed reason and a hint.
+  /// [RuntimeDiffOutcomeUnavailable] (host/docker, no diff capture) via
+  /// [diffNotSupported]. Cloud runtimes override this to return
+  /// [RuntimeDiffOutcomeSuccess], [RuntimeDiffOutcomeEmpty], or
+  /// [RuntimeDiffOutcomeUnavailable] with a typed reason and a hint.
   ///
   /// Returning `unavailable` is explicitly *not* the same as "no
   /// changes". Surfaces must turn `unavailable` into a visible warning
   /// so the user knows the session didn't silently lose their work.
-  Future<RuntimeDiffOutcome> diffSinceBootstrap() async =>
-      const RuntimeDiffOutcomeUnavailable(
+  Future<RuntimeDiffOutcome> diffSinceBootstrap() async => diffNotSupported;
+
+  /// Shared `notSupported` outcome for runtimes that capture no
+  /// end-of-session diff (host/docker). Single source of truth so the
+  /// interface default and the built-in session don't drift.
+  static const RuntimeDiffOutcome diffNotSupported =
+      RuntimeDiffOutcomeUnavailable(
         reason: RuntimeDiffUnavailableReason.notSupported,
-        hint: 'this runtime does not capture an end-of-session diff',
+        hint:
+            'host/docker runtimes work directly on the host filesystem; '
+            'no end-of-session diff is captured',
       );
 }
 
@@ -181,12 +188,7 @@ class _BuiltinRuntimeSession implements RuntimeSession {
 
   @override
   Future<RuntimeDiffOutcome> diffSinceBootstrap() async =>
-      const RuntimeDiffOutcomeUnavailable(
-        reason: RuntimeDiffUnavailableReason.notSupported,
-        hint:
-            'host/docker runtimes work directly on the host filesystem; '
-            'no end-of-session diff is captured',
-      );
+      RuntimeSession.diffNotSupported;
 }
 
 /// Snapshot of the immutable runtime metadata that surfaces persist

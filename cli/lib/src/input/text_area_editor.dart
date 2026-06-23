@@ -1,6 +1,6 @@
 import 'package:glue/src/rendering/ansi_utils.dart';
 import 'package:glue/src/terminal/terminal.dart';
-import 'package:glue/src/input/line_editor.dart' show InputAction;
+import 'package:glue/src/input/input_action.dart';
 
 /// Maximum number of logical lines before rejecting further input.
 const _maxLines = 500;
@@ -257,15 +257,7 @@ class TextAreaEditor {
       return InputAction.changed;
     }
 
-    final line = _lines[_row];
-    var i = _col - 1;
-    while (i > 0 && line[i] == ' ') {
-      i--;
-    }
-    while (i > 0 && line[i - 1] != ' ') {
-      i--;
-    }
-    _col = i;
+    _col = _wordStart(_lines[_row], _col);
     return InputAction.changed;
   }
 
@@ -289,6 +281,20 @@ class TextAreaEditor {
     }
     _col = i;
     return InputAction.changed;
+  }
+
+  /// Scans backwards from [col] over the current word, returning the column at
+  /// the start of the word to the left. Skips trailing spaces, then walks to
+  /// the previous space boundary.
+  static int _wordStart(String line, int col) {
+    var i = col - 1;
+    while (i > 0 && line[i] == ' ') {
+      i--;
+    }
+    while (i > 0 && line[i - 1] != ' ') {
+      i--;
+    }
+    return i;
   }
 
   InputAction _moveHome() {
@@ -323,13 +329,7 @@ class TextAreaEditor {
     }
 
     final line = _lines[_row];
-    var i = _col - 1;
-    while (i > 0 && line[i] == ' ') {
-      i--;
-    }
-    while (i > 0 && line[i - 1] != ' ') {
-      i--;
-    }
+    final i = _wordStart(line, _col);
     _lines[_row] = line.substring(0, i) + line.substring(_col);
     _col = i;
     return InputAction.changed;

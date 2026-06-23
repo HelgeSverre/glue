@@ -12,6 +12,7 @@ import 'dart:convert';
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_strategies/src/llm/message_mapper.dart';
 import 'package:glue_strategies/src/llm/sse.dart';
+import 'package:glue_strategies/src/llm/stream_request.dart';
 import 'package:glue_strategies/src/llm/tool_schema.dart';
 import 'package:http/http.dart' as http;
 
@@ -35,56 +36,39 @@ class GeminiClient implements LlmClient {
   static const _defaultBaseUrl = 'https://generativelanguage.googleapis.com';
 
   @override
-  Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
-    final requestClient = _requestClientFactory();
-    try {
-      const mapper = GeminiMessageMapper();
-      final mapped = mapper.mapMessages(messages, systemPrompt: systemPrompt);
+  Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) {
+    const mapper = GeminiMessageMapper();
+    final mapped = mapper.mapMessages(messages, systemPrompt: systemPrompt);
 
-      final body = <String, dynamic>{
-        'contents': mapped.messages,
-        'generationConfig': {'maxOutputTokens': 8192},
+    final body = <String, dynamic>{
+      'contents': mapped.messages,
+      'generationConfig': {'maxOutputTokens': 8192},
+    };
+
+    if (mapped.systemPrompt.isNotEmpty) {
+      body['systemInstruction'] = {
+        'parts': [
+          {'text': mapped.systemPrompt},
+        ],
       };
-
-      if (mapped.systemPrompt.isNotEmpty) {
-        body['systemInstruction'] = {
-          'parts': [
-            {'text': mapped.systemPrompt},
-          ],
-        };
-      }
-
-      if (tools != null && tools.isNotEmpty) {
-        body['tools'] = const GeminiToolEncoder().encodeAll(tools);
-      }
-
-      final request = http.Request(
-        'POST',
-        _baseUri.resolve(
-          '/$_apiVersion/models/$model:streamGenerateContent?alt=sse',
-        ),
-      );
-      request.headers.addAll({
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
-      });
-      request.body = jsonEncode(body);
-
-      final response = await requestClient.send(request);
-
-      if (response.statusCode != 200) {
-        final errorBody = await response.stream.bytesToString();
-        throw Exception('Gemini API error ${response.statusCode}: $errorBody');
-      }
-
-      yield* parseStreamEvents(
-        decodeSse(
-          response.stream,
-        ).map((e) => jsonDecode(e.data) as Map<String, dynamic>),
-      );
-    } finally {
-      requestClient.close();
     }
+
+    if (tools != null && tools.isNotEmpty) {
+      body['tools'] = const GeminiToolEncoder().encodeAll(tools);
+    }
+
+    return sendAndStream(
+      requestClientFactory: _requestClientFactory,
+      uri: _baseUri.resolve(
+        '/$_apiVersion/models/$model:streamGenerateContent?alt=sse',
+      ),
+      headers: {'Content-Type': 'application/json', 'x-goog-api-key': apiKey},
+      body: body,
+      providerName: 'Gemini',
+      parse: (bytes) => parseStreamEvents(
+        decodeSse(bytes).map((e) => jsonDecode(e.data) as Map<String, dynamic>),
+      ),
+    );
   }
 
   /// Parse Gemini SSE event payloads into [LlmChunk]s.

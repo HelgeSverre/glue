@@ -82,7 +82,7 @@ class McpAuthFlowRunner {
     // ignore: prefer_initializing_formals
   }) : _httpClient = httpClient,
        _openBrowser = openBrowser ?? _noopOpen,
-       _codeFlow = codeFlow ?? _defaultCodeFlow;
+       _codeFlow = codeFlow ?? runOAuthAuthorizationCodeFlow;
 
   final String serverId;
   final Uri serverUrl;
@@ -218,23 +218,3 @@ class McpAuthFlowRunner {
 }
 
 Future<bool> _noopOpen(String url) async => false;
-
-Future<OAuthTokens> _defaultCodeFlow({
-  required OAuthEndpoints endpoints,
-  required OAuthClient client,
-  required List<String> scopes,
-  required void Function(String authUrl) onAuthUrl,
-  http.Client? httpClient,
-  HttpServer? preboundServer,
-  Uri? preboundRedirectUri,
-}) {
-  return runOAuthAuthorizationCodeFlow(
-    endpoints: endpoints,
-    client: client,
-    scopes: scopes,
-    onAuthUrl: onAuthUrl,
-    httpClient: httpClient,
-    preboundServer: preboundServer,
-    preboundRedirectUri: preboundRedirectUri,
-  );
-}

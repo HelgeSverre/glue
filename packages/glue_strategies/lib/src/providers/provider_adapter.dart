@@ -26,7 +26,15 @@ class DiscoveredModel {
 abstract class ProviderAdapter {
   String get adapterId;
 
-  ProviderHealth validate(ResolvedProvider provider);
+  /// Default health check: an adapter is healthy when it has a non-empty API
+  /// key. Adapters with different credential models (OAuth fields, no-auth
+  /// endpoints, daemons probed lazily) override this.
+  ProviderHealth validate(ResolvedProvider provider) {
+    final apiKey = provider.apiKey;
+    return (apiKey != null && apiKey.isNotEmpty)
+        ? ProviderHealth.ok
+        : ProviderHealth.missingCredential;
+  }
 
   LlmClient createClient({
     required ResolvedProvider provider,

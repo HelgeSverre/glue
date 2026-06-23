@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_strategies/src/llm/message_mapper.dart';
 import 'package:glue_strategies/src/llm/sse.dart';
+import 'package:glue_strategies/src/llm/stream_request.dart';
+import 'package:glue_strategies/src/llm/tool_args.dart';
 import 'package:glue_strategies/src/llm/tool_schema.dart';
 
 /// LLM client for the Anthropic Messages API with streaming.
@@ -40,60 +42,45 @@ class AnthropicClient implements LlmClient {
        _baseUri = Uri.parse(baseUrl);
 
   @override
-  Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
-    // Per-request client: closing it aborts the TCP connection when the
-    // stream subscription is cancelled, saving output tokens.
-    final requestClient = _requestClientFactory();
-    try {
-      const mapper = AnthropicMessageMapper();
-      final mapped = mapper.mapMessages(messages, systemPrompt: systemPrompt);
+  Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) {
+    const mapper = AnthropicMessageMapper();
+    final mapped = mapper.mapMessages(messages, systemPrompt: systemPrompt);
 
-      final body = <String, dynamic>{
-        'model': model,
-        'max_tokens': 8192,
-        'stream': true,
-        'system': mapped.systemPrompt,
-        'messages': mapped.messages,
-      };
+    final body = <String, dynamic>{
+      'model': model,
+      'max_tokens': 8192,
+      'stream': true,
+      'system': mapped.systemPrompt,
+      'messages': mapped.messages,
+    };
 
-      if (tools != null && tools.isNotEmpty) {
-        body['tools'] = const AnthropicToolEncoder().encodeAll(tools);
-      }
+    if (tools != null && tools.isNotEmpty) {
+      body['tools'] = const AnthropicToolEncoder().encodeAll(tools);
+    }
 
-      if (promptCacheEnabled) {
-        // Top-level auto-caching: Anthropic advances the cache breakpoint
-        // to the last cacheable block (system → tools → messages) so the
-        // largest stable prefix accrues cache hits across turns. No
-        // mapper changes needed; older models that don't support caching
-        // silently ignore this field.
-        body['cache_control'] = {'type': 'ephemeral'};
-      }
+    if (promptCacheEnabled) {
+      // Top-level auto-caching: Anthropic advances the cache breakpoint
+      // to the last cacheable block (system → tools → messages) so the
+      // largest stable prefix accrues cache hits across turns. No
+      // mapper changes needed; older models that don't support caching
+      // silently ignore this field.
+      body['cache_control'] = {'type': 'ephemeral'};
+    }
 
-      final request = http.Request('POST', _baseUri.resolve('/v1/messages'));
-      request.headers.addAll({
+    return sendAndStream(
+      requestClientFactory: _requestClientFactory,
+      uri: _baseUri.resolve('/v1/messages'),
+      headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
         'anthropic-version': _apiVersion,
-      });
-      request.body = jsonEncode(body);
-
-      final response = await requestClient.send(request);
-
-      if (response.statusCode != 200) {
-        final errorBody = await response.stream.bytesToString();
-        throw Exception(
-          'Anthropic API error ${response.statusCode}: $errorBody',
-        );
-      }
-
-      yield* parseStreamEvents(
-        decodeSse(
-          response.stream,
-        ).map((e) => jsonDecode(e.data) as Map<String, dynamic>),
-      );
-    } finally {
-      requestClient.close();
-    }
+      },
+      body: body,
+      providerName: 'Anthropic',
+      parse: (bytes) => parseStreamEvents(
+        decodeSse(bytes).map((e) => jsonDecode(e.data) as Map<String, dynamic>),
+      ),
+    );
   }
 
   /// Parse Anthropic SSE event payloads into [LlmChunk]s.
@@ -103,7 +90,7 @@ class AnthropicClient implements LlmClient {
     Stream<Map<String, dynamic>> events,
   ) async* {
     // Buffer for accumulating partial tool use input JSON.
-    final toolBuffers = <int, _ToolUseBuffer>{};
+    final toolBuffers = <int, ToolArgsBuffer<ToolCallId>>{};
     int inputTokens = 0;
     int outputTokens = 0;
     int? cacheReadTokens;
@@ -134,7 +121,7 @@ class AnthropicClient implements LlmClient {
           if (block['type'] == 'tool_use') {
             final id = ToolCallId(block['id'] as String);
             final name = block['name'] as String;
-            toolBuffers[index] = _ToolUseBuffer(id: id, name: name);
+            toolBuffers[index] = ToolArgsBuffer(id: id, name: name);
             yield ToolCallStart(id: id, name: name);
           }
 
@@ -154,24 +141,19 @@ class AnthropicClient implements LlmClient {
               yield ThinkingDelta(thinking);
             }
           } else if (deltaType == 'input_json_delta') {
-            toolBuffers[index]?.buffer.write(delta['partial_json'] as String);
+            toolBuffers[index]?.write(delta['partial_json'] as String);
           }
 
         case 'content_block_stop':
           final index = event['index'] as int;
           final buf = toolBuffers.remove(index);
           if (buf != null) {
-            final argsJson = buf.buffer.toString();
-            Map<String, dynamic> args;
-            try {
-              args = argsJson.isNotEmpty
-                  ? (jsonDecode(argsJson) as Map<String, dynamic>)
-                  : <String, dynamic>{};
-            } on FormatException {
-              args = <String, dynamic>{'_raw': argsJson};
-            }
             yield ToolCallComplete(
-              ToolCall(id: buf.id, name: buf.name, arguments: args),
+              ToolCall(
+                id: buf.id,
+                name: buf.name,
+                arguments: buf.finalizeArguments(),
+              ),
             );
           }
 
@@ -191,11 +173,4 @@ class AnthropicClient implements LlmClient {
       }
     }
   }
-}
-
-class _ToolUseBuffer {
-  final ToolCallId id;
-  final String name;
-  final StringBuffer buffer = StringBuffer();
-  _ToolUseBuffer({required this.id, required this.name});
 }

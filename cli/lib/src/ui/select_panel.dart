@@ -220,25 +220,11 @@ class SelectPanel<T> implements PanelOverlay {
         continue;
       }
       if (r == panelH - 1) {
-        if (!hasOverflow) {
-          panelLines.add(border.last);
-          continue;
-        }
-        final indicator = '$currentPage/$totalPages';
-        final borderStr = stripAnsi(border.last);
-        final insertPos = borderStr.length - indicator.length - 2;
-        if (insertPos > 0) {
-          final before = border.last.substring(
-            0,
-            _ansiIndex(border.last, insertPos),
-          );
-          final after = border.last.substring(
-            _ansiIndex(border.last, insertPos + indicator.length),
-          );
-          panelLines.add('$before$indicator$after');
-        } else {
-          panelLines.add(border.last);
-        }
+        panelLines.add(
+          hasOverflow
+              ? splicePageIndicator(border.last, currentPage, totalPages)
+              : border.last,
+        );
         continue;
       }
 
@@ -261,12 +247,14 @@ class SelectPanel<T> implements PanelOverlay {
     for (var r = 0; r < panelH; r++) {
       final gridRow = topRow + r;
       if (gridRow < 0 || gridRow >= termHeight) continue;
-      grid[gridRow] = _spliceRow(
+      grid[gridRow] = spliceOverlayRow(
         grid[gridRow],
         leftCol,
         panelW,
         panelLines[r],
         termWidth,
+        barrierNone: barrier == BarrierStyle.none,
+        styleBarrier: (plain) => applyBarrierStyle(barrier, plain),
       );
     }
 
@@ -381,53 +369,5 @@ class SelectPanel<T> implements PanelOverlay {
     final len = visibleLength(text);
     if (len >= width) return text;
     return '$text${' ' * (width - len)}';
-  }
-
-  int _ansiIndex(String s, int visiblePos) {
-    final ansiPattern = RegExp(r'\x1b\[[0-9;]*[a-zA-Z]');
-    var visible = 0;
-    var i = 0;
-    while (i < s.length && visible < visiblePos) {
-      final match = ansiPattern.matchAsPrefix(s, i);
-      if (match != null) {
-        i += match.group(0)!.length;
-      } else {
-        visible++;
-        i++;
-      }
-    }
-    return i;
-  }
-
-  String _spliceRow(
-    String bgLine,
-    int leftCol,
-    int panelW,
-    String overlay,
-    int termWidth,
-  ) {
-    final bgVisible = visibleLength(bgLine);
-    final paddedBg = bgVisible < termWidth
-        ? '$bgLine${' ' * (termWidth - bgVisible)}'
-        : bgLine;
-    final safeLeft = leftCol.clamp(0, termWidth);
-    final afterStart = min(termWidth, leftCol + panelW);
-    final beforeSlice = paddedBg.substring(0, _ansiIndex(paddedBg, safeLeft));
-    final afterSlice = paddedBg.substring(_ansiIndex(paddedBg, afterStart));
-    if (barrier == BarrierStyle.none) {
-      return '$beforeSlice$overlay$afterSlice';
-    }
-    final before = _applyBarrierStyle(stripAnsi(beforeSlice));
-    final after = _applyBarrierStyle(stripAnsi(afterSlice));
-    return '$before$overlay$after';
-  }
-
-  String _applyBarrierStyle(String text) {
-    if (text.isEmpty) return text;
-    return switch (barrier) {
-      BarrierStyle.dim => '${text.styled.dim}',
-      BarrierStyle.obscure => '${text.styled.gray}',
-      BarrierStyle.none => text,
-    };
   }
 }

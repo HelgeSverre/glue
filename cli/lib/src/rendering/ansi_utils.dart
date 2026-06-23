@@ -54,6 +54,57 @@ String linkifyUrls(String text) {
 final _oscPattern = RegExp(r'\x1b\][^\x07]*\x07');
 final _csiPattern = RegExp(r'\x1b\[[0-9;]*[a-zA-Z]');
 
+/// One visible cell produced by [_walkCells]: the raw substring [text] that
+/// renders it and its terminal column [width] (0 for zero-width marks, 2 for
+/// wide glyphs).
+class _Cell {
+  final String text;
+  final int width;
+  const _Cell(this.text, this.width);
+}
+
+/// Walk [s] left-to-right, invoking [onAnsi] for each CSI/OSC escape sequence
+/// (in source order) and [onCell] for each visible cell. This is the single
+/// tokenizer shared by [visibleLength], [ansiTruncate], and
+/// [applySelectionHighlight] so the surrogate-pair decode and escape-skipping
+/// logic lives in exactly one place.
+void _walkCells(
+  String s, {
+  void Function(String seq)? onAnsi,
+  required void Function(_Cell cell) onCell,
+}) {
+  var i = 0;
+  while (i < s.length) {
+    final csiMatch = _csiPattern.matchAsPrefix(s, i);
+    if (csiMatch != null) {
+      final seq = csiMatch.group(0)!;
+      onAnsi?.call(seq);
+      i += seq.length;
+      continue;
+    }
+    final oscMatch = _oscPattern.matchAsPrefix(s, i);
+    if (oscMatch != null) {
+      final seq = oscMatch.group(0)!;
+      onAnsi?.call(seq);
+      i += seq.length;
+      continue;
+    }
+    final codeUnit = s.codeUnitAt(i);
+    int cp;
+    int advance;
+    if (codeUnit >= 0xD800 && codeUnit <= 0xDBFF && i + 1 < s.length) {
+      final low = s.codeUnitAt(i + 1);
+      cp = 0x10000 + ((codeUnit - 0xD800) << 10) + (low - 0xDC00);
+      advance = 2;
+    } else {
+      cp = codeUnit;
+      advance = 1;
+    }
+    onCell(_Cell(s.substring(i, i + advance), charWidth(cp)));
+    i += advance;
+  }
+}
+
 /// Strip all ANSI escape sequences from [text],
 /// including CSI sequences and OSC sequences (e.g. hyperlinks).
 String stripAnsi(String text) {
@@ -66,11 +117,8 @@ String stripAnsi(String text) {
 /// accounting for ANSI escapes, wide characters (emoji, CJK), and
 /// zero-width characters (combining marks, variation selectors).
 int visibleLength(String text) {
-  final stripped = stripAnsi(text);
   var width = 0;
-  for (final cp in stripped.runes) {
-    width += charWidth(cp);
-  }
+  _walkCells(text, onCell: (cell) => width += cell.width);
   return width;
 }
 
@@ -83,57 +131,42 @@ String ansiTruncate(String text, int maxVisible) {
   if (visibleLength(text) <= maxVisible) return text;
   final buf = StringBuffer();
   int visible = 0;
-  var i = 0;
   var sawAnsi = false;
   var hasOpenOsc8 = false;
-  while (i < text.length && visible < maxVisible - 1) {
-    // Skip CSI sequences
-    final csiMatch = _csiPattern.matchAsPrefix(text, i);
-    if (csiMatch != null) {
-      final seq = csiMatch.group(0)!;
-      sawAnsi = true;
-      buf.write(seq);
-      i += seq.length;
-      continue;
-    }
-    // Skip OSC sequences
-    final oscMatch = _oscPattern.matchAsPrefix(text, i);
-    if (oscMatch != null) {
-      final seq = oscMatch.group(0)!;
+  var stopped = false;
+  _walkCells(
+    text,
+    onAnsi: (seq) {
+      // Mirror the original `while (visible < maxVisible - 1)` guard: once the
+      // visible budget is exhausted, no further tokens (escapes included) are
+      // emitted into the truncated output.
+      if (stopped || visible >= maxVisible - 1) {
+        stopped = true;
+        return;
+      }
       sawAnsi = true;
       if (seq.startsWith('\x1b]8;;')) {
-        if (seq == '\x1b]8;;\x07') {
-          hasOpenOsc8 = false;
-        } else {
-          hasOpenOsc8 = true;
-        }
+        hasOpenOsc8 = seq != '\x1b]8;;\x07';
       }
       buf.write(seq);
-      i += seq.length;
-      continue;
-    }
-    final codeUnit = text.codeUnitAt(i);
-    int cp;
-    int advance;
-    if (codeUnit >= 0xD800 && codeUnit <= 0xDBFF && i + 1 < text.length) {
-      final low = text.codeUnitAt(i + 1);
-      cp = 0x10000 + ((codeUnit - 0xD800) << 10) + (low - 0xDC00);
-      advance = 2;
-    } else {
-      cp = codeUnit;
-      advance = 1;
-    }
-    final w = charWidth(cp);
-    if (w == 0) {
-      buf.write(text.substring(i, i + advance));
-      i += advance;
-      continue;
-    }
-    if (visible + w > maxVisible - 1) break;
-    buf.write(text.substring(i, i + advance));
-    visible += w;
-    i += advance;
-  }
+    },
+    onCell: (cell) {
+      if (stopped || visible >= maxVisible - 1) {
+        stopped = true;
+        return;
+      }
+      if (cell.width == 0) {
+        buf.write(cell.text);
+        return;
+      }
+      if (visible + cell.width > maxVisible - 1) {
+        stopped = true;
+        return;
+      }
+      buf.write(cell.text);
+      visible += cell.width;
+    },
+  );
   buf.write('…');
   if (hasOpenOsc8) {
     buf.write('\x1b]8;;\x07');
@@ -255,7 +288,6 @@ String applySelectionHighlight(String line, int startCol, int endCol) {
   if (endCol <= startCol) return line;
   final buf = StringBuffer();
   var visible = 0;
-  var i = 0;
   var inHighlight = false;
 
   void openIfNeeded() {
@@ -272,55 +304,92 @@ String applySelectionHighlight(String line, int startCol, int endCol) {
     }
   }
 
-  while (i < line.length) {
-    final csiMatch = _csiPattern.matchAsPrefix(line, i);
-    if (csiMatch != null) {
-      final seq = csiMatch.group(0)!;
-      buf.write(seq);
-      i += seq.length;
-      continue;
-    }
-    final oscMatch = _oscPattern.matchAsPrefix(line, i);
-    if (oscMatch != null) {
-      final seq = oscMatch.group(0)!;
-      buf.write(seq);
-      i += seq.length;
-      continue;
-    }
-    final codeUnit = line.codeUnitAt(i);
-    int cp;
-    int advance;
-    if (codeUnit >= 0xD800 && codeUnit <= 0xDBFF && i + 1 < line.length) {
-      final low = line.codeUnitAt(i + 1);
-      cp = 0x10000 + ((codeUnit - 0xD800) << 10) + (low - 0xDC00);
-      advance = 2;
-    } else {
-      cp = codeUnit;
-      advance = 1;
-    }
-    final w = charWidth(cp);
-    // Zero-width characters (combining marks, ZWJ, etc.) attach to
-    // whatever was just emitted — keep the current highlight state so
-    // diacritics don't drift out of the reverse-video range.
-    if (w == 0) {
-      buf.write(line.substring(i, i + advance));
-      i += advance;
-      continue;
-    }
-    final cellStart = visible;
-    final cellEnd = visible + w;
-    final inRange = cellEnd > startCol && cellStart < endCol;
-    if (inRange) {
-      openIfNeeded();
-    } else {
-      closeIfNeeded();
-    }
-    buf.write(line.substring(i, i + advance));
-    visible += w;
-    i += advance;
-  }
+  _walkCells(
+    line,
+    onAnsi: buf.write,
+    onCell: (cell) {
+      // Zero-width characters (combining marks, ZWJ, etc.) attach to
+      // whatever was just emitted — keep the current highlight state so
+      // diacritics don't drift out of the reverse-video range.
+      if (cell.width == 0) {
+        buf.write(cell.text);
+        return;
+      }
+      final cellStart = visible;
+      final cellEnd = visible + cell.width;
+      final inRange = cellEnd > startCol && cellStart < endCol;
+      if (inRange) {
+        openIfNeeded();
+      } else {
+        closeIfNeeded();
+      }
+      buf.write(cell.text);
+      visible += cell.width;
+    },
+  );
   closeIfNeeded();
   return buf.toString();
+}
+
+/// Translate a visible column [visiblePos] into a code-unit index in [s],
+/// skipping CSI escape sequences (which occupy no columns) while counting
+/// every other code unit as one column.
+///
+/// Note: unlike [visibleLength], this counts code units (not display cells)
+/// for visible characters and only skips CSI (not OSC) escapes. It exists for
+/// the overlay-splice paths that slice an already-padded background row at a
+/// known column, where each background cell was emitted as a single code unit.
+int ansiColumnToIndex(String s, int visiblePos) {
+  var visible = 0;
+  var i = 0;
+  while (i < s.length && visible < visiblePos) {
+    final match = _csiPattern.matchAsPrefix(s, i);
+    if (match != null) {
+      i += match.group(0)!.length;
+    } else {
+      visible++;
+      i++;
+    }
+  }
+  return i;
+}
+
+/// Splice [overlay] onto [bgLine] at visible column [leftCol], occupying
+/// [panelW] columns, against a terminal [termWidth] wide. The background slices
+/// to the left and right of the panel are passed through [styleBarrier] (which
+/// receives the plain-text slice). When [barrierNone] is true the background is
+/// left styled as-is; otherwise it is restyled via [styleBarrier].
+///
+/// This is the shared centered-overlay row compositor used by the floating
+/// panel modals. The overlay is always padded to [panelW] columns so the right
+/// barrier slice lines up regardless of the overlay's intrinsic width.
+String spliceOverlayRow(
+  String bgLine,
+  int leftCol,
+  int panelW,
+  String overlay,
+  int termWidth, {
+  required bool barrierNone,
+  required String Function(String plain) styleBarrier,
+}) {
+  final bgVisible = visibleLength(bgLine);
+  final paddedBg = bgVisible < termWidth
+      ? '$bgLine${' ' * (termWidth - bgVisible)}'
+      : bgLine;
+  final safeLeft = leftCol.clamp(0, termWidth);
+  final safeRight = (leftCol + panelW).clamp(0, termWidth);
+  final beforeSlice = paddedBg.substring(
+    0,
+    ansiColumnToIndex(paddedBg, safeLeft),
+  );
+  final afterSlice = paddedBg.substring(ansiColumnToIndex(paddedBg, safeRight));
+  final overlayPad = max(0, panelW - visibleLength(overlay));
+  if (barrierNone) {
+    return '$beforeSlice$overlay${' ' * overlayPad}$afterSlice';
+  }
+  final before = styleBarrier(stripAnsi(beforeSlice));
+  final after = styleBarrier(stripAnsi(afterSlice));
+  return '$before$overlay${' ' * overlayPad}$after';
 }
 
 /// Terminal column width of a single Unicode code point.

@@ -247,6 +247,8 @@ class GlueConfig {
       titleGenerationEnabled: titleGenerationEnabled,
       anthropicPromptCache: anthropicPromptCache,
       mcp: mcp,
+      runtime: runtime,
+      runtimeOptions: runtimeOptions,
     );
   }
 
@@ -368,24 +370,25 @@ class GlueConfig {
     );
 
     // Approval mode.
-    final approvalStr = env['GLUE_APPROVAL_MODE'] ?? cfg.approvalMode;
-    final approvalMode = approvalStr != null
-        ? ApprovalMode.values.firstWhere(
-            (m) => m.name == approvalStr || m.label == approvalStr,
-            orElse: () => ApprovalMode.confirm,
-          )
-        : ApprovalMode.confirm;
+    final approvalMode = enumFromName(
+      ApprovalMode.values,
+      env['GLUE_APPROVAL_MODE'] ?? cfg.approvalMode,
+      fallback: ApprovalMode.confirm,
+      alias: (m) => m.label,
+    );
 
-    // Title generation toggle. Env wins over YAML; default enabled.
+    // Title generation toggle. Env wins over YAML; default enabled. A
+    // present-but-unparseable env value reads as `false` (legacy behaviour).
     final titleEnabledEnv = env['GLUE_TITLE_GENERATION_ENABLED'];
     final titleGenerationEnabled = titleEnabledEnv != null
-        ? (titleEnabledEnv.toLowerCase() == 'true' || titleEnabledEnv == '1')
+        ? (envBool(titleEnabledEnv) ?? false)
         : (cfg.titleGenerationEnabled ?? true);
 
-    // Anthropic prompt caching. Env wins over YAML; default enabled.
+    // Anthropic prompt caching. Env wins over YAML; default enabled. A
+    // present-but-unparseable env value reads as `false` (legacy behaviour).
     final cacheEnabledEnv = env['GLUE_ANTHROPIC_PROMPT_CACHE'];
     final anthropicPromptCache = cacheEnabledEnv != null
-        ? (cacheEnabledEnv.toLowerCase() == 'true' || cacheEnabledEnv == '1')
+        ? (envBool(cacheEnabledEnv) ?? false)
         : (cfg.anthropicPromptCache ?? true);
 
     // MCP servers (still hand-parsed — needs env-var expansion + validation).

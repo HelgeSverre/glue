@@ -1,57 +1,44 @@
-import 'dart:async';
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
-
 import 'package:glue_strategies/src/web/search/models.dart';
-import 'package:glue_strategies/src/web/search/provider.dart';
+import 'package:glue_strategies/src/web/search/providers/http_search_provider.dart';
 
-class FirecrawlSearchProvider implements WebSearchProvider {
-  final String? apiKey;
-  final String baseUrl;
-  final int timeoutSeconds;
-  final http.Client _client;
-
+class FirecrawlSearchProvider extends HttpSearchProvider {
   FirecrawlSearchProvider({
-    required this.apiKey,
+    required super.apiKey,
     this.baseUrl = 'https://api.firecrawl.dev',
-    this.timeoutSeconds = 15,
-    http.Client? client,
-  }) : _client = client ?? http.Client();
+    super.timeoutSeconds,
+    super.client,
+  });
+
+  final String baseUrl;
 
   @override
   String get name => 'firecrawl';
 
   @override
-  bool get isConfigured => apiKey != null && apiKey!.isNotEmpty;
+  String get apiLabel => 'Firecrawl API';
 
   @override
-  Future<WebSearchResponse> search(String query, {int maxResults = 5}) async {
-    if (!isConfigured) {
-      throw StateError('Firecrawl API key not configured');
-    }
+  String get notConfiguredMessage => 'Firecrawl API key not configured';
 
-    final response = await _client
-        .post(
-          Uri.parse('$baseUrl/v1/search'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $apiKey',
-          },
-          body: jsonEncode({'query': query, 'limit': maxResults}),
-        )
-        .timeout(Duration(seconds: timeoutSeconds));
-
-    if (response.statusCode != 200) {
-      throw Exception(
-        'Firecrawl API returned ${response.statusCode}: '
-        '${response.body.length > 200 ? response.body.substring(0, 200) : response.body}',
-      );
-    }
-
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    return parseResponse(json, query);
+  @override
+  HttpSearchRequest buildRequest(String query, int maxResults) {
+    return HttpSearchRequest(
+      uri: Uri.parse('$baseUrl/v1/search'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $apiKey',
+      },
+      body: jsonEncode({'query': query, 'limit': maxResults}),
+    );
   }
+
+  @override
+  WebSearchResponse parseResponseBody(
+    Map<String, dynamic> json,
+    String query,
+  ) => parseResponse(json, query);
 
   static WebSearchResponse parseResponse(
     Map<String, dynamic> json,

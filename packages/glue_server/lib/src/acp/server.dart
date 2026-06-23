@@ -291,6 +291,21 @@ class AcpServer {
     return false;
   }
 
+  /// Sends a single `session/update` notification carrying [update] for
+  /// [sessionId]. Centralises the JSON-RPC envelope so every event path
+  /// (mapper-delegated and server-synthesised) emits an identical shape.
+  void _sendUpdate(String sessionId, SessionUpdate update) {
+    transport.send(
+      JsonRpcNotification(
+        method: AcpMethod.sessionUpdate,
+        params: SessionUpdateNotification(
+          sessionId: sessionId,
+          update: update,
+        ).toJson(),
+      ),
+    );
+  }
+
   /// Runs a single prompt, streaming `session/update` notifications and
   /// gating tool calls through `session/request_permission`.
   Future<StopReason> _runPrompt(SessionPromptParams promptParams) async {
@@ -326,82 +341,55 @@ class AcpServer {
     try {
       await for (final event in stream) {
         switch (event) {
-          case AgentTextDelta(:final delta):
-            transport.send(
-              JsonRpcNotification(
-                method: AcpMethod.sessionUpdate,
-                params: SessionUpdateNotification(
-                  sessionId: sessionId,
-                  update: AgentMessageChunkUpdate(delta),
-                ).toJson(),
-              ),
-            );
+          // Pure message-chunk events (text deltas, soft-degradation notices)
+          // have a direct `session/update` representation; delegate their
+          // translation to the canonical [agentEventToAcpUpdate] mapper so the
+          // marker/glyph logic lives in exactly one place.
+          case AgentTextDelta():
+          case AgentNotice():
+            final update = agentEventToAcpUpdate(event);
+            if (update != null) _sendUpdate(sessionId, update);
           case AgentThinkingDelta():
             // Reasoning traces are a phase-2 ACP feature; agent_event_mapping
             // returns null so we drop the event here.
             break;
           case AgentToolCallPending(:final id, :final name):
             if (announced.add(id.value)) {
-              transport.send(
-                JsonRpcNotification(
-                  method: AcpMethod.sessionUpdate,
-                  params: SessionUpdateNotification(
-                    sessionId: sessionId,
-                    update: ToolCallUpdate(
-                      toolCallId: id.value,
-                      title: name,
-                      kind_: toolNameToAcpKind(name),
-                      status: ToolCallStatus.pending,
-                    ),
-                  ).toJson(),
+              _sendUpdate(
+                sessionId,
+                ToolCallUpdate(
+                  toolCallId: id.value,
+                  title: name,
+                  kind_: toolNameToAcpKind(name),
+                  status: ToolCallStatus.pending,
                 ),
               );
             }
           case AgentToolCall(:final call):
-            if (announced.add(call.id.value)) {
-              transport.send(
-                JsonRpcNotification(
-                  method: AcpMethod.sessionUpdate,
-                  params: SessionUpdateNotification(
-                    sessionId: sessionId,
-                    update: ToolCallUpdate(
+            _sendUpdate(
+              sessionId,
+              announced.add(call.id.value)
+                  ? ToolCallUpdate(
                       toolCallId: call.id.value,
                       title: call.name,
                       kind_: toolNameToAcpKind(call.name),
                       status: ToolCallStatus.inProgress,
                       rawInput: call.arguments,
-                    ),
-                  ).toJson(),
-                ),
-              );
-            } else {
-              transport.send(
-                JsonRpcNotification(
-                  method: AcpMethod.sessionUpdate,
-                  params: SessionUpdateNotification(
-                    sessionId: sessionId,
-                    update: ToolCallStatusUpdate(
+                    )
+                  : ToolCallStatusUpdate(
                       toolCallId: call.id.value,
                       status: ToolCallStatus.inProgress,
                     ),
-                  ).toJson(),
-                ),
-              );
-            }
+            );
           case AgentToolResult(:final result):
-            transport.send(
-              JsonRpcNotification(
-                method: AcpMethod.sessionUpdate,
-                params: SessionUpdateNotification(
-                  sessionId: sessionId,
-                  update: ToolCallStatusUpdate(
-                    toolCallId: result.callId.value,
-                    status: result.success
-                        ? ToolCallStatus.completed
-                        : ToolCallStatus.failed,
-                    content: _toolResultContent(result),
-                  ),
-                ).toJson(),
+            _sendUpdate(
+              sessionId,
+              ToolCallStatusUpdate(
+                toolCallId: result.callId.value,
+                status: result.success
+                    ? ToolCallStatus.completed
+                    : ToolCallStatus.failed,
+                content: toolResultContent(result),
               ),
             );
           case AgentUsage():
@@ -412,30 +400,11 @@ class AcpServer {
           case AgentDone():
             stopReason = StopReason.endTurn;
           case AgentError(:final error):
+            // The mapper returns null for AgentError (it documents a JSON-RPC
+            // error path); the server instead inlines the failure into the
+            // message stream and reports a refusal stop reason.
             stopReason = StopReason.refusal;
-            transport.send(
-              JsonRpcNotification(
-                method: AcpMethod.sessionUpdate,
-                params: SessionUpdateNotification(
-                  sessionId: sessionId,
-                  update: AgentMessageChunkUpdate('\n[error] $error'),
-                ).toJson(),
-              ),
-            );
-          case AgentNotice(:final message, :final kind):
-            // Soft-degradation announcement. Inline in the message stream
-            // so ACP clients see it in the transcript.
-            transport.send(
-              JsonRpcNotification(
-                method: AcpMethod.sessionUpdate,
-                params: SessionUpdateNotification(
-                  sessionId: sessionId,
-                  update: AgentMessageChunkUpdate(
-                    '${kind == 'warning' ? '!' : '·'} $message\n',
-                  ),
-                ).toJson(),
-              ),
-            );
+            _sendUpdate(sessionId, AgentMessageChunkUpdate('\n[error] $error'));
         }
       }
     } on _PromptCancelled {
@@ -478,52 +447,6 @@ class AcpServer {
       PermissionCancelled() => false,
     };
   }
-}
-
-/// Builds the `content[]` array for a `tool_call_update` notification.
-///
-/// Priority order:
-///   1. `result.metadata['diff']` (path/old_text/new_text) — emit a
-///      `diff` content block so editors render a real diff view.
-///   2. `result.contentParts` — multimodal output (text, images,
-///      resource links) flows through unchanged.
-///   3. Fallback: a single `text` block derived from
-///      [ToolResult.summary] or [ToolResult.content].
-///
-/// (1) and (2) compose: a write_file result whose contentParts include
-/// e.g. a confirmation TextPart still gets the diff block first, then
-/// the text parts after.
-List<AcpToolCallContent> _toolResultContent(ToolResult result) {
-  final out = <AcpToolCallContent>[];
-
-  // Diff metadata (write_file / edit_file).
-  final diffRaw = result.metadata['diff'];
-  if (diffRaw is Map) {
-    final diff = diffRaw.cast<String, Object?>();
-    final path = diff['path'];
-    final oldText = diff['old_text'];
-    final newText = diff['new_text'];
-    if (path is String && oldText is String && newText is String) {
-      out.add(AcpToolCallDiff(path: path, oldText: oldText, newText: newText));
-    }
-  }
-
-  // Multimodal content parts.
-  final parts = result.contentParts;
-  if (parts != null && parts.isNotEmpty) {
-    for (final part in parts) {
-      out.add(AcpToolCallContentValue(AcpContentBlock.fromContentPart(part)));
-    }
-    return out;
-  }
-
-  if (out.isEmpty) {
-    // No diff, no parts — fall back to a single text block.
-    out.add(
-      AcpToolCallContentValue(AcpTextBlock(result.summary ?? result.content)),
-    );
-  }
-  return out;
 }
 
 /// Internal sentinel used to signal a prompt was cancelled. Delegates

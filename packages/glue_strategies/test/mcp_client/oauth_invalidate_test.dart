@@ -11,7 +11,7 @@ CredentialStore _store() => CredentialStore(
 );
 
 void main() {
-  group('invalidateMcpAuth', () {
+  group('invalidateMcpTokens', () {
     late CredentialStore store;
 
     setUp(() {
@@ -26,12 +26,8 @@ void main() {
       });
     });
 
-    test('tokens scope clears tokens but keeps client_id/secret', () {
-      invalidateMcpAuth(
-        serverId: 'foo',
-        scope: McpAuthInvalidation.tokens,
-        credentials: store,
-      );
+    test('clears tokens but keeps client_id/secret', () {
+      invalidateMcpTokens(serverId: 'foo', credentials: store);
       final fields = store.getFields('mcp:foo');
       expect(fields['oauth_access'], isNull);
       expect(fields['oauth_refresh'], isNull);
@@ -39,41 +35,6 @@ void main() {
       expect(fields['oauth_scope'], isNull);
       expect(fields['oauth_client_id'], 'C');
       expect(fields['oauth_client_secret'], 'S');
-    });
-
-    test('client scope clears client_id/secret but keeps tokens', () {
-      invalidateMcpAuth(
-        serverId: 'foo',
-        scope: McpAuthInvalidation.client,
-        credentials: store,
-      );
-      final fields = store.getFields('mcp:foo');
-      expect(fields['oauth_client_id'], isNull);
-      expect(fields['oauth_client_secret'], isNull);
-      expect(fields['oauth_access'], 'A');
-      expect(fields['oauth_refresh'], 'R');
-    });
-
-    test('all scope clears everything oauth-related', () {
-      invalidateMcpAuth(
-        serverId: 'foo',
-        scope: McpAuthInvalidation.all,
-        credentials: store,
-      );
-      final fields = store.getFields('mcp:foo');
-      expect(fields, isEmpty);
-    });
-
-    test('discovery scope is a no-op at the credentials level', () {
-      invalidateMcpAuth(
-        serverId: 'foo',
-        scope: McpAuthInvalidation.discovery,
-        credentials: store,
-      );
-      final fields = store.getFields('mcp:foo');
-      // All oauth fields still present.
-      expect(fields['oauth_access'], 'A');
-      expect(fields['oauth_client_id'], 'C');
     });
   });
 }

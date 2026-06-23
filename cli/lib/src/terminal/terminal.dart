@@ -416,17 +416,15 @@ class Terminal {
     // (2=Shift, 3=Alt, 4=Shift+Alt, 5=Ctrl, etc).
     final parts = paramStr.split(';');
     final modifier = parts.length >= 2 ? (int.tryParse(parts.last) ?? 1) : 1;
-    final isShift = (modifier - 1) & 0x01 != 0;
-    final isAlt = (modifier - 1) & 0x02 != 0;
-    final isCtrl = (modifier - 1) & 0x04 != 0;
+    final (:shift, :alt, :ctrl) = _decodeModifiers(modifier);
 
     final TerminalEvent? event = switch (finalByte) {
-      0x41 => KeyEvent(Key.up, alt: isAlt, ctrl: isCtrl, shift: isShift),
-      0x42 => KeyEvent(Key.down, alt: isAlt, ctrl: isCtrl, shift: isShift),
-      0x43 => KeyEvent(Key.right, alt: isAlt, ctrl: isCtrl, shift: isShift),
-      0x44 => KeyEvent(Key.left, alt: isAlt, ctrl: isCtrl, shift: isShift),
-      0x48 => KeyEvent(Key.home, alt: isAlt, ctrl: isCtrl, shift: isShift),
-      0x46 => KeyEvent(Key.end, alt: isAlt, ctrl: isCtrl, shift: isShift),
+      0x41 => KeyEvent(Key.up, alt: alt, ctrl: ctrl, shift: shift),
+      0x42 => KeyEvent(Key.down, alt: alt, ctrl: ctrl, shift: shift),
+      0x43 => KeyEvent(Key.right, alt: alt, ctrl: ctrl, shift: shift),
+      0x44 => KeyEvent(Key.left, alt: alt, ctrl: ctrl, shift: shift),
+      0x48 => KeyEvent(Key.home, alt: alt, ctrl: ctrl, shift: shift),
+      0x46 => KeyEvent(Key.end, alt: alt, ctrl: ctrl, shift: shift),
       0x5a => KeyEvent(Key.shiftTab), // CSI Z = Shift+Tab
       // CSI u: keycode;modifiers u (Kitty keyboard protocol)
       0x75 => _parseCsiU(paramStr),
@@ -437,28 +435,45 @@ class Terminal {
     return (event, i, true);
   }
 
+  /// Decode the xterm/Kitty modifier byte (1 + bitmask, where bit 0 = Shift,
+  /// bit 1 = Alt, bit 2 = Ctrl) into named flags.
+  ({bool shift, bool alt, bool ctrl}) _decodeModifiers(int modifier) => (
+    shift: (modifier - 1) & 0x01 != 0,
+    alt: (modifier - 1) & 0x02 != 0,
+    ctrl: (modifier - 1) & 0x04 != 0,
+  );
+
+  /// Map a Unicode [keycode] (carried by CSI-u and modifyOtherKeys) plus its
+  /// decoded modifier flags into a [TerminalEvent]. Ctrl+Shift+C is special-
+  /// cased to [Key.ctrlShiftC] so it stays distinct from cancelling Ctrl+C.
+  TerminalEvent _keyForKeycode(
+    int keycode, {
+    required bool shift,
+    required bool alt,
+    required bool ctrl,
+  }) {
+    if (ctrl && shift && (keycode == 67 || keycode == 99)) {
+      return KeyEvent(Key.ctrlShiftC, ctrl: true, shift: true);
+    }
+    return switch (keycode) {
+      13 => KeyEvent(Key.enter, shift: shift, alt: alt, ctrl: ctrl),
+      9 => KeyEvent(Key.tab, shift: shift, alt: alt, ctrl: ctrl),
+      27 => KeyEvent(Key.escape, shift: shift, alt: alt, ctrl: ctrl),
+      127 => KeyEvent(Key.backspace, shift: shift, alt: alt, ctrl: ctrl),
+      _ =>
+        keycode >= 32 && keycode < 127
+            ? CharEvent(String.fromCharCode(keycode), alt: alt)
+            : KeyEvent(Key.unknown, charCode: keycode),
+    };
+  }
+
   /// Parse CSI u (Kitty keyboard protocol): ESC [ keycode;modifiers u
   TerminalEvent _parseCsiU(String paramStr) {
     final parts = paramStr.split(';');
     final keycode = int.tryParse(parts.first) ?? 0;
     final modifier = parts.length >= 2 ? (int.tryParse(parts[1]) ?? 1) : 1;
-    final isShift = (modifier - 1) & 0x01 != 0;
-    final isAlt = (modifier - 1) & 0x02 != 0;
-    final isCtrl = (modifier - 1) & 0x04 != 0;
-
-    if (isCtrl && isShift && (keycode == 67 || keycode == 99)) {
-      return KeyEvent(Key.ctrlShiftC, ctrl: true, shift: true);
-    }
-    return switch (keycode) {
-      13 => KeyEvent(Key.enter, shift: isShift, alt: isAlt, ctrl: isCtrl),
-      9 => KeyEvent(Key.tab, shift: isShift, alt: isAlt, ctrl: isCtrl),
-      27 => KeyEvent(Key.escape, shift: isShift, alt: isAlt, ctrl: isCtrl),
-      127 => KeyEvent(Key.backspace, shift: isShift, alt: isAlt, ctrl: isCtrl),
-      _ =>
-        keycode >= 32 && keycode < 127
-            ? CharEvent(String.fromCharCode(keycode), alt: isAlt)
-            : KeyEvent(Key.unknown, charCode: keycode),
-    };
+    final (:shift, :alt, :ctrl) = _decodeModifiers(modifier);
+    return _keyForKeycode(keycode, shift: shift, alt: alt, ctrl: ctrl);
   }
 
   /// Parse SGR mouse: params = "button;x;y", isPress distinguishes M vs m.
@@ -491,28 +506,8 @@ class Terminal {
     if (parts.length == 3 && parts[0] == '27') {
       final modifier = int.tryParse(parts[1]) ?? 1;
       final keycode = int.tryParse(parts[2]) ?? 0;
-      final isShift = (modifier - 1) & 0x01 != 0;
-      final isAlt = (modifier - 1) & 0x02 != 0;
-      final isCtrl = (modifier - 1) & 0x04 != 0;
-
-      if (isCtrl && isShift && (keycode == 67 || keycode == 99)) {
-        return KeyEvent(Key.ctrlShiftC, ctrl: true, shift: true);
-      }
-      return switch (keycode) {
-        13 => KeyEvent(Key.enter, shift: isShift, alt: isAlt, ctrl: isCtrl),
-        9 => KeyEvent(Key.tab, shift: isShift, alt: isAlt, ctrl: isCtrl),
-        27 => KeyEvent(Key.escape, shift: isShift, alt: isAlt, ctrl: isCtrl),
-        127 => KeyEvent(
-          Key.backspace,
-          shift: isShift,
-          alt: isAlt,
-          ctrl: isCtrl,
-        ),
-        _ =>
-          keycode >= 32 && keycode < 127
-              ? CharEvent(String.fromCharCode(keycode), alt: isAlt)
-              : KeyEvent(Key.unknown, charCode: keycode),
-      };
+      final (:shift, :alt, :ctrl) = _decodeModifiers(modifier);
+      return _keyForKeycode(keycode, shift: shift, alt: alt, ctrl: ctrl);
     }
 
     return switch (parts.first) {

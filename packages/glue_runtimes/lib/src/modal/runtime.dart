@@ -127,13 +127,12 @@ class ModalRuntime implements RuntimeSession {
             'process exited); end-of-session diff cannot be captured',
       );
     }
-    final outcome = await captureWorkspaceDiff(
+    return captureWorkspaceDiff(
       executor: executor,
       runtimeCwd: workspace.mapping.runtimeCwd,
       bootstrapSha: bootstrapSha,
       runtimeId: id,
       sandboxId: sandboxId,
     );
-    return outcome.toSurfaceOutcome();
   }
 }

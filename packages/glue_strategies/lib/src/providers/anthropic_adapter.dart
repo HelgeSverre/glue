@@ -25,14 +25,6 @@ class AnthropicAdapter extends ProviderAdapter {
   String get adapterId => 'anthropic';
 
   @override
-  ProviderHealth validate(ResolvedProvider provider) {
-    final apiKey = provider.apiKey;
-    return (apiKey != null && apiKey.isNotEmpty)
-        ? ProviderHealth.ok
-        : ProviderHealth.missingCredential;
-  }
-
-  @override
   LlmClient createClient({
     required ResolvedProvider provider,
     required ResolvedModel model,

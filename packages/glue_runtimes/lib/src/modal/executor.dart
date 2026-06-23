@@ -1,6 +1,7 @@
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 
+import 'package:glue_runtimes/src/common/transport_executor.dart';
 import 'package:glue_runtimes/src/modal/sidecar.dart';
 
 /// [CommandExecutor] backed by the modal sidecar.
@@ -8,97 +9,66 @@ import 'package:glue_runtimes/src/modal/sidecar.dart';
 /// Both synchronous capture (`runCapture`) and streaming background
 /// jobs (`startStreaming`) are supported via the sidecar's JSON-RPC
 /// protocol — sync ops block on a single response; streaming ops
-/// emit per-chunk `stream_data` events keyed by `stream_id`.
+/// emit per-chunk `stream_data` events keyed by `stream_id`. The
+/// runtime-event envelope lives in the shared [TransportExecutor];
+/// this class is just the Modal-specific [CaptureBackend].
 class ModalExecutor implements CommandExecutor {
-  final ModalSidecarBase sidecar;
-  final String sandboxId;
-  final String runtimeId;
-  final RuntimeEventSink? eventSink;
+  final TransportExecutor _delegate;
 
   ModalExecutor({
+    required ModalSidecarBase sidecar,
+    required String sandboxId,
+    String runtimeId = 'modal',
+    RuntimeEventSink? eventSink,
+  }) : _delegate = TransportExecutor(
+         backend: _ModalBackend(
+           sidecar: sidecar,
+           sandboxId: sandboxId,
+           runtimeId: runtimeId,
+         ),
+         eventSink: eventSink,
+       );
+
+  @override
+  Future<CaptureResult> runCapture(String command, {Duration? timeout}) =>
+      _delegate.runCapture(command, timeout: timeout);
+
+  @override
+  Future<RunningCommandHandle> startStreaming(String command) =>
+      _delegate.startStreaming(command);
+}
+
+class _ModalBackend implements CaptureBackend {
+  final ModalSidecarBase sidecar;
+
+  _ModalBackend({
     required this.sidecar,
     required this.sandboxId,
-    this.runtimeId = 'modal',
-    this.eventSink,
+    required this.runtimeId,
   });
 
   @override
-  Future<CaptureResult> runCapture(String command, {Duration? timeout}) async {
-    final commandId = generateRuntimeCommandId();
-    eventSink?.call(
-      RuntimeCommandStarted(
-        commandId: commandId,
-        runtimeId: runtimeId,
-        at: DateTime.now(),
-        command: command,
-        runtimeCwd: '/workspace',
-        sandboxId: sandboxId,
-      ),
+  final String runtimeId;
+
+  @override
+  final String sandboxId;
+
+  @override
+  bool get reportsStderr => true;
+
+  @override
+  Future<CaptureResult> capture(String command, {Duration? timeout}) async {
+    final result = await sidecar.execCapture(command, timeout: timeout);
+    return CaptureResult(
+      exitCode: result.exitCode,
+      stdout: result.stdout,
+      stderr: result.stderr,
+      runtimeId: runtimeId,
+      sessionId: sandboxId,
     );
-    final started = DateTime.now();
-    try {
-      final result = await sidecar.execCapture(command, timeout: timeout);
-      eventSink?.call(
-        RuntimeCommandCompleted(
-          commandId: commandId,
-          runtimeId: runtimeId,
-          at: DateTime.now(),
-          exitCode: result.exitCode,
-          duration: DateTime.now().difference(started),
-          stdoutBytes: result.stdout.length,
-          stderrBytes: result.stderr.length,
-        ),
-      );
-      return CaptureResult(
-        exitCode: result.exitCode,
-        stdout: result.stdout,
-        stderr: result.stderr,
-        runtimeId: runtimeId,
-        sessionId: sandboxId,
-      );
-    } catch (e) {
-      eventSink?.call(
-        RuntimeCommandFailed(
-          commandId: commandId,
-          runtimeId: runtimeId,
-          at: DateTime.now(),
-          errorType: e.runtimeType.toString(),
-          message: e.toString(),
-        ),
-      );
-      rethrow;
-    }
   }
 
   @override
-  Future<RunningCommandHandle> startStreaming(String command) async {
-    final commandId = generateRuntimeCommandId();
-    eventSink?.call(
-      RuntimeCommandStarted(
-        commandId: commandId,
-        runtimeId: runtimeId,
-        at: DateTime.now(),
-        command: command,
-        runtimeCwd: '/workspace',
-        sandboxId: sandboxId,
-      ),
-    );
-    final started = DateTime.now();
-    final handle = await sidecar.startStream(command);
-    final sink = eventSink;
-    if (sink != null) {
-      handle.exitCode.then((code) {
-        sink(
-          RuntimeCommandCompleted(
-            commandId: commandId,
-            runtimeId: runtimeId,
-            at: DateTime.now(),
-            exitCode: code,
-            duration: DateTime.now().difference(started),
-          ),
-        );
-      });
-    }
-    return handle;
-  }
+  Future<RunningCommandHandle> stream(String command) =>
+      sidecar.startStream(command);
 }

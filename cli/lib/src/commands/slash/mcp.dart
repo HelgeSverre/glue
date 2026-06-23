@@ -4,7 +4,9 @@ import 'package:glue_harness/glue_harness.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 
 import 'package:glue/src/commands/arg_completers.dart' as arg_completers;
-import 'package:glue/src/commands/config_command.dart' show userConfigPath;
+import 'package:glue/src/commands/mcp_auth_login.dart';
+import 'package:glue/src/commands/mcp_auth_status_format.dart';
+import 'package:glue/src/commands/mcp_command.dart' show McpCredentialKeys;
 import 'package:glue/src/commands/mcp_tools_format.dart';
 import 'package:glue/src/commands/slash_command_context.dart';
 import 'package:glue/src/commands/slash_commands.dart';
@@ -158,7 +160,7 @@ class McpSlashCommand extends SlashCommand {
     if (servers.isEmpty) return 'No MCP servers configured.';
     final lines = <String>['MCP credentials:'];
     for (final s in servers) {
-      final providerId = 'mcp:${s.id}';
+      final providerId = McpCredentialKeys.providerId(s.id);
       final fields = config.credentials.getFields(providerId);
       final tag = _credentialTag(s.spec, fields);
       lines.add('  ${s.id.padRight(20)} $tag');
@@ -167,14 +169,17 @@ class McpSlashCommand extends SlashCommand {
   }
 
   String _credentialTag(McpServerSpec spec, Map<String, String> fields) {
-    final hasBearer = fields.containsKey('bearer');
-    final hasOAuth = fields.containsKey(McpOAuthFields.accessToken);
-    final authKind = spec is McpUrlServerSpec ? spec.auth : const McpNoAuth();
-    return switch (authKind) {
-      McpBearerAuth() => hasBearer ? 'bearer (stored)' : 'bearer (missing)',
-      McpOAuthAuth() =>
-        hasOAuth ? 'oauth (access token stored)' : 'oauth (not logged in)',
-      McpNoAuth() => 'none',
+    final (kind, state) = classifyMcpCredential(
+      spec: spec,
+      hasBearer: fields.containsKey(McpCredentialKeys.bearer),
+      hasOAuth: fields.containsKey(McpOAuthFields.accessToken),
+    );
+    return switch ((kind, state)) {
+      ('bearer', McpAuthState.stored) => 'bearer (stored)',
+      ('bearer', _) => 'bearer (missing)',
+      ('oauth', McpAuthState.stored) => 'oauth (access token stored)',
+      ('oauth', _) => 'oauth (not logged in)',
+      _ => 'none',
     };
   }
 
@@ -204,73 +209,23 @@ class McpSlashCommand extends SlashCommand {
     Uri baseUrl,
     CredentialStore credentials,
   ) {
-    final snapshot = ctx.mcpPool.server(serverId);
-    final spec = snapshot?.spec;
-    final cachedMeta = switch (spec) {
+    final cachedMeta = switch (ctx.mcpPool.server(serverId)?.spec) {
       McpUrlServerSpec(:final resourceMetadataUrl) => resourceMetadataUrl,
       _ => null,
     };
 
-    final runner = McpAuthFlowRunner(
-      serverId: serverId,
-      serverUrl: baseUrl,
-      credentials: credentials,
-      cachedResourceMetadataUrl: cachedMeta,
-      openBrowser: openInBrowser,
+    // Fire and forget — the driver routes every outcome through onMessage.
+    unawaited(
+      runMcpAuthLogin(
+        serverId: serverId,
+        serverUrl: baseUrl,
+        credentials: credentials,
+        environment: Environment.detect(),
+        cachedResourceMetadataUrl: cachedMeta,
+        onMessage: ctx.conversation.notify,
+        onReconnect: ctx.mcpPool.reconnect,
+      ),
     );
-
-    runner.states.listen((state) {
-      switch (state) {
-        case McpAuthFlowDiscovering():
-          ctx.conversation.notify(
-            'Discovering OAuth metadata for "$serverId"…',
-          );
-        case McpAuthFlowRegistering():
-          ctx.conversation.notify('Registering OAuth client (DCR)…');
-        case McpAuthFlowAwaitingCallback(:final authUrl):
-          ctx.conversation.notify('Open in your browser: $authUrl');
-        case McpAuthFlowSuccess(
-          :final resourceMetadataUrl,
-          :final authorizationServer,
-        ):
-          ctx.conversation.notify('Signed in to "$serverId". Reconnecting…');
-          _writeBackAuthConfig(
-            serverId,
-            resourceMetadataUrl,
-            authorizationServer,
-          );
-          ctx.mcpPool.reconnect(serverId);
-        case McpAuthFlowError(:final message):
-          ctx.conversation.notify('OAuth failed for "$serverId": $message');
-        case McpAuthFlowCancelled():
-          ctx.conversation.notify('OAuth cancelled for "$serverId".');
-      }
-    });
-
-    // Fire and forget — state listener handles all outcomes.
-    unawaited(runner.run());
-  }
-
-  void _writeBackAuthConfig(
-    String serverId,
-    Uri? resourceMetadataUrl,
-    Uri? authorizationServer,
-  ) {
-    try {
-      final writer = McpConfigWriter(userConfigPath(Environment.detect()));
-      writer.updateAuth(
-        serverId,
-        auth: const McpOAuthAuth(),
-        resourceMetadataUrl: resourceMetadataUrl,
-        authorizationServer: authorizationServer,
-      );
-    } catch (_) {
-      // Non-fatal — tokens are already stored. Surface a soft warning.
-      ctx.conversation.notify(
-        'Tokens stored, but could not update config.yaml '
-        '(auth state may not persist between sessions).',
-      );
-    }
   }
 
   String _authLogout(List<String> args) {
@@ -279,11 +234,11 @@ class McpSlashCommand extends SlashCommand {
     final config = ctx.config;
     if (config == null) return 'Config not loaded.';
     clearMcpOAuthTokens(serverId: serverId, credentials: config.credentials);
-    final providerId = 'mcp:$serverId';
+    final providerId = McpCredentialKeys.providerId(serverId);
     final existing = config.credentials.getFields(providerId);
     final cleaned = <String, String>{
       for (final e in existing.entries)
-        if (e.key != 'bearer') e.key: e.value,
+        if (e.key != McpCredentialKeys.bearer) e.key: e.value,
     };
     config.credentials.setFields(providerId, cleaned);
     return 'Forgot credentials for "$serverId".';
@@ -456,7 +411,7 @@ class McpSlashCommand extends SlashCommand {
         isRemote &&
         ctx.config != null &&
         ctx.config!.credentials.getField(
-              'mcp:${s.id}',
+              McpCredentialKeys.providerId(s.id),
               McpOAuthFields.accessToken,
             ) !=
             null;
@@ -520,7 +475,7 @@ class McpSlashCommand extends SlashCommand {
     }
     final hasToken =
         ctx.config?.credentials.getField(
-          'mcp:${s.id}',
+          McpCredentialKeys.providerId(s.id),
           McpOAuthFields.accessToken,
         ) !=
         null;
@@ -536,27 +491,6 @@ class McpSlashCommand extends SlashCommand {
     McpStdioServerSpec(:final command) => command,
     McpUrlServerSpec(:final url) => url.toString(),
   };
-}
-
-/// Returns the auth-related action labels for a server, in display
-/// order. Pure helper — exposed at top-level for testability.
-///
-/// stdio servers always return an empty list. For HTTP/WS servers:
-///   • `'Authenticate'` when no access token is stored OR the server is
-///     in [McpAwaitingAuth].
-///   • `'Re-authenticate'` + `'Sign out'` when an access token is
-///     stored.
-List<String> resolveMcpAuthActions({
-  required McpServerSpec spec,
-  required McpConnectionState state,
-  required bool hasAccessToken,
-}) {
-  final isRemote = spec is McpUrlServerSpec;
-  if (!isRemote) return const [];
-  if (state is McpAwaitingAuth || !hasAccessToken) {
-    return const ['Authenticate'];
-  }
-  return const ['Re-authenticate', 'Sign out'];
 }
 
 enum _McpAction {

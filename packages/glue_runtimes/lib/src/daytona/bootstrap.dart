@@ -1,5 +1,4 @@
 import 'package:glue_runtimes/src/common/bootstrap.dart';
-import 'package:glue_runtimes/src/common/runtime_exception.dart';
 import 'package:glue_runtimes/src/daytona/client.dart';
 
 export 'package:glue_runtimes/src/common/bootstrap.dart' show BootstrapResult;
@@ -24,27 +23,17 @@ class DaytonaBootstrap {
   Future<BootstrapResult> bootstrap({
     required String hostCwd,
     required String runtimeCwd,
-  }) async {
-    final ws = WorkspaceBootstrap(
+  }) {
+    return runWorkspaceBootstrap(
       exec: _DaytonaBootstrapTransport(client: client, sandbox: sandbox),
+      runtimeId: 'daytona',
       sessionId: sessionId,
+      hostCwd: hostCwd,
+      runtimeCwd: runtimeCwd,
       prepCommand:
           'sudo mkdir -p $runtimeCwd && '
           'sudo chown "\$(id -u):\$(id -g)" $runtimeCwd',
     );
-    try {
-      return await ws.bootstrap(hostCwd: hostCwd, runtimeCwd: runtimeCwd);
-    } on BootstrapException catch (e) {
-      // Re-raise as a runtime-typed exception so callers don't have
-      // to know about BootstrapException specifically.
-      throw RuntimeApiException(
-        runtimeId: 'daytona',
-        statusCode: e.exitCode ?? 0,
-        endpoint: 'bootstrap_${e.stage}',
-        message: e.message,
-        body: e.output,
-      );
-    }
   }
 }
 

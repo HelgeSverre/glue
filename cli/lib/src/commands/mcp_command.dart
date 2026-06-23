@@ -16,6 +16,7 @@ import 'package:glue_strategies/glue_strategies.dart';
 
 import 'package:glue/src/commands/command_helpers.dart';
 import 'package:glue/src/commands/config_command.dart' show userConfigPath;
+import 'package:glue/src/commands/mcp_auth_login.dart';
 import 'package:glue/src/commands/mcp_auth_status_format.dart';
 import 'package:glue/src/commands/mcp_list_format.dart';
 import 'package:glue/src/commands/mcp_tools_format.dart';
@@ -587,20 +588,11 @@ class McpAuthStatusCommand extends Command<int> {
       final fields = config.credentials.getFields(
         McpCredentialKeys.providerId(spec.id),
       );
-      final hasBearer = fields.containsKey(McpCredentialKeys.bearer);
-      final hasOAuth = fields.containsKey(McpOAuthFields.accessToken);
-      final authKind = spec is McpUrlServerSpec ? spec.auth : const McpNoAuth();
-      final (kind, state) = switch (authKind) {
-        McpBearerAuth() => (
-          'bearer',
-          hasBearer ? McpAuthState.stored : McpAuthState.missing,
-        ),
-        McpOAuthAuth() => (
-          'oauth',
-          hasOAuth ? McpAuthState.stored : McpAuthState.notLoggedIn,
-        ),
-        McpNoAuth() => ('none', McpAuthState.none),
-      };
+      final (kind, state) = classifyMcpCredential(
+        spec: spec,
+        hasBearer: fields.containsKey(McpCredentialKeys.bearer),
+        hasOAuth: fields.containsKey(McpOAuthFields.accessToken),
+      );
       return McpAuthStatusRow(id: spec.id, kind: kind, state: state);
     }).toList();
 
@@ -708,53 +700,15 @@ class McpAuthLoginCommand extends Command<int> {
       );
       return 1;
     }
-    final baseUrl = spec.url;
-    final cachedMeta = spec.resourceMetadataUrl;
-
-    final runner = McpAuthFlowRunner(
-      serverId: serverId,
-      serverUrl: baseUrl,
-      credentials: config.credentials,
-      cachedResourceMetadataUrl: cachedMeta,
-      openBrowser: openInBrowser,
-    );
-    runner.states.listen((state) {
-      switch (state) {
-        case McpAuthFlowDiscovering():
-          stdout.writeln('Discovering OAuth metadata for $serverId…');
-        case McpAuthFlowRegistering():
-          stdout.writeln('Registering OAuth client (DCR)…');
-        case McpAuthFlowAwaitingCallback(:final authUrl):
-          stdout.writeln('Open this URL to sign in: $authUrl');
-        case McpAuthFlowSuccess(
-          :final resourceMetadataUrl,
-          :final authorizationServer,
-        ):
-          stdout.writeln('Stored OAuth tokens for "$serverId".');
-          try {
-            final writer = McpConfigWriter(
-              userConfigPath(Environment.detect()),
-            );
-            writer.updateAuth(
-              serverId,
-              auth: const McpOAuthAuth(),
-              resourceMetadataUrl: resourceMetadataUrl,
-              authorizationServer: authorizationServer,
-            );
-          } on McpConfigWriteError catch (e) {
-            stderr.writeln(
-              'Warning: could not update config.yaml: ${e.message}',
-            );
-          }
-        case McpAuthFlowError(:final message):
-          stderr.writeln('OAuth login failed: $message');
-        case McpAuthFlowCancelled():
-          stderr.writeln('Cancelled.');
-      }
-    });
-
     try {
-      final terminal = await runner.run();
+      final terminal = await runMcpAuthLogin(
+        serverId: serverId,
+        serverUrl: spec.url,
+        credentials: config.credentials,
+        environment: Environment.detect(),
+        cachedResourceMetadataUrl: spec.resourceMetadataUrl,
+        onMessage: stdout.writeln,
+      );
       return terminal is McpAuthFlowSuccess ? 0 : 1;
     } on StateError {
       stderr.writeln(

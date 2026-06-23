@@ -628,33 +628,19 @@ Future<OAuthTokens> runOAuthAuthorizationCodeFlow({
   }
 
   // Exchange code for tokens.
-  final http_ = httpClient ?? http.Client();
-  final ownsClient = httpClient == null;
-  try {
-    final res = await http_.post(
-      endpoints.tokenEndpoint,
-      headers: const {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
-      },
-      body: {
-        'grant_type': 'authorization_code',
-        'code': code!,
-        'redirect_uri': redirectUri.toString(),
-        'client_id': client.clientId,
-        'code_verifier': pkce.verifier,
-        if (client.clientSecret != null) 'client_secret': client.clientSecret!,
-      },
-    );
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw OAuthFlowException(
-        'token exchange failed (${res.statusCode}): ${res.body}',
-      );
-    }
-    return _parseTokenResponse(res.body);
-  } finally {
-    if (ownsClient) http_.close();
-  }
+  return _postTokenGrant(
+    tokenEndpoint: endpoints.tokenEndpoint,
+    failureLabel: 'token exchange',
+    body: {
+      'grant_type': 'authorization_code',
+      'code': code!,
+      'redirect_uri': redirectUri.toString(),
+      'client_id': client.clientId,
+      'code_verifier': pkce.verifier,
+      if (client.clientSecret != null) 'client_secret': client.clientSecret!,
+    },
+    httpClient: httpClient,
+  );
 }
 
 /// Refresh-token grant. Returns new tokens; the refresh token may rotate.
@@ -664,30 +650,49 @@ Future<OAuthTokens> refreshOAuthTokens({
   required String refreshToken,
   http.Client? httpClient,
 }) async {
-  final http_ = httpClient ?? http.Client();
+  return _postTokenGrant(
+    tokenEndpoint: endpoints.tokenEndpoint,
+    failureLabel: 'token refresh',
+    body: {
+      'grant_type': 'refresh_token',
+      'refresh_token': refreshToken,
+      'client_id': client.clientId,
+      if (client.clientSecret != null) 'client_secret': client.clientSecret!,
+    },
+    httpClient: httpClient,
+  );
+}
+
+/// Shared owns-client + token-endpoint POST boilerplate for the
+/// authorization-code and refresh-token grants. Posts [body] as
+/// `application/x-www-form-urlencoded`, validates the status, and parses
+/// the token response. [failureLabel] names the grant in the thrown
+/// [OAuthFlowException] (e.g. `token exchange`, `token refresh`).
+Future<OAuthTokens> _postTokenGrant({
+  required Uri tokenEndpoint,
+  required String failureLabel,
+  required Map<String, String> body,
+  http.Client? httpClient,
+}) async {
+  final client = httpClient ?? http.Client();
   final ownsClient = httpClient == null;
   try {
-    final res = await http_.post(
-      endpoints.tokenEndpoint,
+    final res = await client.post(
+      tokenEndpoint,
       headers: const {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json',
       },
-      body: {
-        'grant_type': 'refresh_token',
-        'refresh_token': refreshToken,
-        'client_id': client.clientId,
-        if (client.clientSecret != null) 'client_secret': client.clientSecret!,
-      },
+      body: body,
     );
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw OAuthFlowException(
-        'token refresh failed (${res.statusCode}): ${res.body}',
+        '$failureLabel failed (${res.statusCode}): ${res.body}',
       );
     }
     return _parseTokenResponse(res.body);
   } finally {
-    if (ownsClient) http_.close();
+    if (ownsClient) client.close();
   }
 }
 
@@ -804,64 +809,26 @@ void clearMcpOAuthTokens({
   credentials.setFields(providerId, next);
 }
 
-/// Scope of an MCP auth invalidation. Mirrors the TS SDK's
-/// `OAuthClientProvider.invalidateCredentials(scope)` granularity so
-/// we can drop just the bit that failed without round-tripping DCR
-/// or rediscovery.
-enum McpAuthInvalidation {
-  /// Wipe everything: tokens, client registration, scope, expires_at.
-  all,
-
-  /// Clear access_token, refresh_token, expires_at, scope. Used after
-  /// refresh-token failure; the DCR client_id stays so we don't need to
-  /// re-register.
-  tokens,
-
-  /// Clear oauth_client_id + oauth_client_secret. Used when the auth
-  /// server rejects our stored client (e.g. registration expired).
-  client,
-
-  /// Clear cached discovery URLs on the server spec. Implemented at the
-  /// config writer level, not here — included for symmetry.
-  discovery,
-}
-
-/// Drops [scope]'s portion of MCP OAuth credentials for [serverId].
-/// No-op for [McpAuthInvalidation.discovery] (handled in the config
-/// writer).
-void invalidateMcpAuth({
+/// Drops the access/refresh token portion of MCP OAuth credentials for
+/// [serverId] — clears `access_token`, `refresh_token`, `expires_at`,
+/// and `scope` while leaving the DCR `client_id`/`client_secret` intact
+/// so we don't need to re-register. Used after a refresh-token failure.
+void invalidateMcpTokens({
   required String serverId,
-  required McpAuthInvalidation scope,
   required CredentialStore credentials,
 }) {
   final providerId = 'mcp:$serverId';
   final existing = credentials.getFields(providerId);
-  final drop = switch (scope) {
-    McpAuthInvalidation.all => {
-      McpOAuthFields.accessToken,
-      McpOAuthFields.refreshToken,
-      McpOAuthFields.expiresAtIso,
-      McpOAuthFields.scope,
-      McpOAuthFields.clientId,
-      McpOAuthFields.clientSecret,
-    },
-    McpAuthInvalidation.tokens => {
-      McpOAuthFields.accessToken,
-      McpOAuthFields.refreshToken,
-      McpOAuthFields.expiresAtIso,
-      McpOAuthFields.scope,
-    },
-    McpAuthInvalidation.client => {
-      McpOAuthFields.clientId,
-      McpOAuthFields.clientSecret,
-    },
-    McpAuthInvalidation.discovery => const <String>{},
+  const drop = {
+    McpOAuthFields.accessToken,
+    McpOAuthFields.refreshToken,
+    McpOAuthFields.expiresAtIso,
+    McpOAuthFields.scope,
   };
-  final next = <String, String>{
+  credentials.setFields(providerId, <String, String>{
     for (final e in existing.entries)
       if (!drop.contains(e.key)) e.key: e.value,
-  };
-  credentials.setFields(providerId, next);
+  });
 }
 
 /// Reads the current OAuth access token for [serverId]. Returns `null`

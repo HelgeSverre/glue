@@ -45,45 +45,6 @@ class McpConfigWriter {
   /// and `mcp.servers:` blocks if missing. Throws if [spec.id] already
   /// exists and [overwrite] is `false`.
   void addServer(McpServerSpec spec, {bool overwrite = false}) {
-    // Bootstrap path: when there's no existing `mcp.servers:` block (or it
-    // exists but is empty), yaml_edit can't reliably emit a block-style
-    // nested entry — it inherits flow style from the null/empty parent. To
-    // produce clean block YAML for the user, render the whole block as
-    // text on first write. yaml_edit takes over from the second server on.
-    final preExisting = _bootstrapIfNeeded(spec);
-    if (preExisting) {
-      // mcp.servers existed and was non-empty — use yaml_edit.
-      _mutate((editor) {
-        final servers = _serversMap(editor)!;
-        if (servers.containsKey(spec.id) && !overwrite) {
-          throw McpConfigWriteError(
-            "Server '${spec.id}' already exists. Pass --force to overwrite.",
-          );
-        }
-        editor.update(
-          ['mcp', 'servers', spec.id],
-          wrapAsYamlNode(
-            _specToYaml(spec),
-            collectionStyle: CollectionStyle.BLOCK,
-          ),
-        );
-      });
-      return;
-    }
-    // We just bootstrapped the block with this spec already inside.
-    if (overwrite) {
-      // Overwrite-of-the-first-entry is a corner case: if the spec id
-      // existed before the bootstrap path realized it, we'd have hit the
-      // pre-existing branch. So nothing to do here.
-    }
-  }
-
-  /// If `mcp.servers` already exists and is non-empty, returns true and
-  /// leaves the file untouched (caller uses yaml_edit). Otherwise renders
-  /// the full `mcp:\n  servers:\n    <id>:\n      ...` block as text,
-  /// appends it (or replaces the existing empty block), writes, and
-  /// returns false to signal the caller that the bootstrap path ran.
-  bool _bootstrapIfNeeded(McpServerSpec spec) {
     final file = File(configPath);
     if (!file.existsSync()) {
       file.parent.createSync(recursive: true);
@@ -93,13 +54,45 @@ class McpConfigWriter {
     final parsed = _tryParse(original);
     final mcp = parsed is Map ? parsed['mcp'] : null;
     final servers = mcp is Map ? mcp['servers'] : null;
-    final hasNonEmptyServers = servers is Map && servers.isNotEmpty;
 
-    if (hasNonEmptyServers) return true;
+    if (servers is Map && servers.containsKey(spec.id) && !overwrite) {
+      throw McpConfigWriteError(
+        "Server '${spec.id}' already exists. Pass --force to overwrite.",
+      );
+    }
 
+    // When `mcp.servers` already has a block-styled entry, yaml_edit can
+    // splice a new one in cleanly. On the first server (empty/absent block)
+    // yaml_edit inherits flow style from the null parent, so we render the
+    // whole block as text instead.
+    if (servers is Map && servers.isNotEmpty) {
+      _mutate(
+        (editor) => editor.update(
+          ['mcp', 'servers', spec.id],
+          wrapAsYamlNode(
+            _specToYaml(spec),
+            collectionStyle: CollectionStyle.BLOCK,
+          ),
+        ),
+      );
+      return;
+    }
+
+    _bootstrapFirstServer(file, original, mcp is Map, spec);
+  }
+
+  /// Writes the first `mcp.servers.<id>` entry as rendered block YAML —
+  /// replacing an existing empty `mcp:` block or appending a fresh one —
+  /// then validates the round-trip and atomically swaps the file in.
+  void _bootstrapFirstServer(
+    File file,
+    String original,
+    bool mcpExists,
+    McpServerSpec spec,
+  ) {
     final block = _renderServerBlock(spec);
     final String newContent;
-    if (mcp is Map) {
+    if (mcpExists) {
       // `mcp:` exists but has no servers (servers: null or absent).
       // Re-emit as a fresh block right after the `mcp:` line.
       newContent = _replaceMcpBlock(original, block);
@@ -115,7 +108,6 @@ class McpConfigWriter {
     final tmp = File('$configPath.tmp');
     tmp.writeAsStringSync(newContent);
     tmp.renameSync(file.path);
-    return false;
   }
 
   /// Renders a single server entry as a top-level `mcp:\n  servers:\n    <id>:\n      ...`
@@ -127,80 +119,44 @@ class McpConfigWriter {
   }
 
   /// Renders a single `<id>:\n  command: ...` entry indented by [indent].
+  ///
+  /// Drives the same [_specToYaml] map used by the yaml_edit incremental
+  /// path through a block-YAML emitter, so the on-disk shape is identical
+  /// whether a server is the first one (text bootstrap) or appended later.
   String _renderServerEntry(McpServerSpec spec, {required String indent}) {
     final lines = StringBuffer();
-    final inner = '$indent  ';
     lines.writeln('$indent${spec.id}:');
-    switch (spec) {
-      case McpStdioServerSpec(
-        :final command,
-        :final args,
-        :final env,
-        :final workingDirectory,
-      ):
-        lines.writeln('${inner}command: ${_scalar(command)}');
-        if (args.isNotEmpty) {
-          lines.writeln('${inner}args:');
-          for (final a in args) {
-            lines.writeln('$inner  - ${_scalar(a)}');
-          }
-        }
-        if (env.isNotEmpty) {
-          lines.writeln('${inner}env:');
-          for (final e in env.entries) {
-            lines.writeln('$inner  ${e.key}: ${_scalar(e.value)}');
-          }
-        }
-        if (workingDirectory != null) {
-          lines.writeln(
-            '${inner}working_directory: ${_scalar(workingDirectory)}',
-          );
-        }
-      case McpUrlServerSpec(
-        :final url,
-        :final auth,
-        :final resourceMetadataUrl,
-        :final authorizationServer,
-      ):
-        lines.writeln('${inner}url: ${_scalar(url.toString())}');
-        _writeAuth(lines, auth, indent: inner);
-        if (resourceMetadataUrl != null) {
-          lines.writeln(
-            '${inner}resource_metadata_url: '
-            '${_scalar(resourceMetadataUrl.toString())}',
-          );
-        }
-        if (authorizationServer != null) {
-          lines.writeln(
-            '${inner}authorization_server: '
-            '${_scalar(authorizationServer.toString())}',
-          );
-        }
-    }
-    if (!spec.enabled) lines.writeln('${inner}enabled: false');
-    if (spec.callTimeoutSeconds != null) {
-      lines.writeln('${inner}call_timeout_seconds: ${spec.callTimeoutSeconds}');
-    }
+    _renderMap(lines, _specToYaml(spec), indent: '$indent  ');
     return lines.toString();
   }
 
-  void _writeAuth(
+  /// Emits a `Map` as block YAML at [indent]. Handles the value shapes
+  /// [_specToYaml] produces: scalars, string lists, and nested maps
+  /// (env, auth).
+  void _renderMap(
     StringBuffer out,
-    McpAuthSpec auth, {
+    Map<dynamic, dynamic> map, {
     required String indent,
   }) {
-    switch (auth) {
-      case McpNoAuth():
-        return;
-      case McpBearerAuth(:final token):
-        out.writeln('${indent}auth:');
-        out.writeln('$indent  kind: bearer');
-        if (token != null) out.writeln('$indent  token: ${_scalar(token)}');
-      case McpOAuthAuth():
-        out.writeln('${indent}auth:');
-        out.writeln('$indent  kind: oauth');
+    for (final entry in map.entries) {
+      final value = entry.value;
+      switch (value) {
+        case List():
+          out.writeln('$indent${entry.key}:');
+          for (final item in value) {
+            out.writeln('$indent  - ${_renderScalar(item)}');
+          }
+        case Map():
+          out.writeln('$indent${entry.key}:');
+          _renderMap(out, value, indent: '$indent  ');
+        default:
+          out.writeln('$indent${entry.key}: ${_renderScalar(value)}');
+      }
     }
   }
+
+  String _renderScalar(Object? value) =>
+      value is String ? _scalar(value) : '$value';
 
   /// Single-line scalar emitter with conservative quoting. Quotes only
   /// when the value would otherwise parse as a non-string (booleans,

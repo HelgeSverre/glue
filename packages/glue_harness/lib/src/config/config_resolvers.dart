@@ -72,13 +72,13 @@ WebSearchConfig resolveSearchConfig(
   Map<String, String> env,
 ) {
   final providerStr = env['GLUE_SEARCH_PROVIDER'] ?? section?.provider;
-  WebSearchProviderType? provider;
-  if (providerStr != null) {
-    provider = WebSearchProviderType.values.firstWhere(
-      (p) => p.name == providerStr,
-      orElse: () => WebSearchProviderType.brave,
-    );
-  }
+  final provider = providerStr != null
+      ? enumFromName(
+          WebSearchProviderType.values,
+          providerStr,
+          fallback: WebSearchProviderType.brave,
+        )
+      : null;
 
   return WebSearchConfig(
     provider: provider,
@@ -101,13 +101,11 @@ PdfConfig resolvePdfConfig(
   ModelCatalog catalog,
   CredentialStore credentials,
 ) {
-  final ocrProviderStr = env['GLUE_OCR_PROVIDER'] ?? section?.ocrProvider;
-  final ocrProvider = ocrProviderStr != null
-      ? OcrProviderType.values.firstWhere(
-          (p) => p.name == ocrProviderStr,
-          orElse: () => OcrProviderType.mistral,
-        )
-      : OcrProviderType.mistral;
+  final ocrProvider = enumFromName(
+    OcrProviderType.values,
+    env['GLUE_OCR_PROVIDER'] ?? section?.ocrProvider,
+    fallback: OcrProviderType.mistral,
+  );
 
   final mistralProvider = catalog.providers['mistral'];
   final openaiProvider = catalog.providers['openai'];
@@ -138,13 +136,11 @@ BrowserConfig resolveBrowserConfig(
   BrowserSectionConfig? section,
   Map<String, String> env,
 ) {
-  final backendStr = env['GLUE_BROWSER_BACKEND'] ?? section?.backend;
-  final backend = backendStr != null
-      ? BrowserBackend.values.firstWhere(
-          (b) => b.name == backendStr,
-          orElse: () => BrowserBackend.local,
-        )
-      : BrowserBackend.local;
+  final backend = enumFromName(
+    BrowserBackend.values,
+    env['GLUE_BROWSER_BACKEND'] ?? section?.backend,
+    fallback: BrowserBackend.local,
+  );
 
   return BrowserConfig(
     backend: backend,
@@ -223,7 +219,7 @@ ObservabilityConfig resolveObservabilityConfig(
 
   final otelEnabled =
       otelSection?.enabled ??
-      (_envBool(env['OTEL_SDK_DISABLED']) != true &&
+      (envBool(env['OTEL_SDK_DISABLED']) != true &&
           otelEndpoint != null &&
           otelEndpoint.isNotEmpty);
 
@@ -265,6 +261,22 @@ List<String> resolveSkillPaths(
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
+/// Resolves an enum member by its `.name` (or an optional [alias] selector,
+/// e.g. a human label) against a raw config/env [value]. Returns [fallback]
+/// when [value] is null or matches no member.
+T enumFromName<T extends Enum>(
+  Iterable<T> values,
+  String? value, {
+  required T fallback,
+  String Function(T value)? alias,
+}) {
+  if (value == null) return fallback;
+  return values.firstWhere(
+    (v) => v.name == value || (alias != null && alias(v) == value),
+    orElse: () => fallback,
+  );
+}
+
 Map<String, String>? _parseOtelEnvHeaders(Map<String, String> env) {
   final raw =
       env['OTEL_EXPORTER_OTLP_TRACES_HEADERS'] ??
@@ -293,7 +305,10 @@ Map<String, String> _parseOtelKeyValueList(String raw) {
   return parsed;
 }
 
-bool? _envBool(String? value) {
+/// Parses an env-var string as a tri-state bool: `true`/`1` → true,
+/// `false`/`0` → false, anything else (including null) → null so callers
+/// can fall through to a YAML key or default.
+bool? envBool(String? value) {
   if (value == null) return null;
   final normalized = value.toLowerCase();
   if (normalized == '1' || normalized == 'true') return true;

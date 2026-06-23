@@ -201,25 +201,11 @@ class SkillsDockedPanel extends DockedPanel {
         continue;
       }
       if (row == safeHeight - 1) {
-        if (!hasOverflow) {
-          lines.add(border.last);
-          continue;
-        }
-        final indicator = '$currentPage/$totalPages';
-        final borderText = stripAnsi(border.last);
-        final insertPos = borderText.length - indicator.length - 2;
-        if (insertPos <= 0) {
-          lines.add(border.last);
-          continue;
-        }
-        final before = border.last.substring(
-          0,
-          _ansiIndex(border.last, insertPos),
+        lines.add(
+          hasOverflow
+              ? splicePageIndicator(border.last, currentPage, totalPages)
+              : border.last,
         );
-        final after = border.last.substring(
-          _ansiIndex(border.last, insertPos + indicator.length),
-        );
-        lines.add('$before$indicator$after');
         continue;
       }
 
@@ -457,21 +443,5 @@ class SkillsDockedPanel extends DockedPanel {
     }
     if (current.isNotEmpty) lines.add(current);
     return lines;
-  }
-
-  int _ansiIndex(String text, int visiblePos) {
-    final ansiPattern = RegExp(r'\x1b\[[0-9;]*[a-zA-Z]');
-    var visible = 0;
-    var i = 0;
-    while (i < text.length && visible < visiblePos) {
-      final match = ansiPattern.matchAsPrefix(text, i);
-      if (match != null) {
-        i += match.group(0)!.length;
-      } else {
-        visible++;
-        i++;
-      }
-    }
-    return i;
   }
 }

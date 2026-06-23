@@ -128,7 +128,7 @@ class DaytonaRuntime implements RuntimeSession {
 
   @override
   Future<RuntimeDiffOutcome> diffSinceBootstrap() async {
-    final outcome = await captureWorkspaceDiff(
+    return captureWorkspaceDiff(
       executor: executor,
       runtimeCwd: workspace.mapping.runtimeCwd,
       bootstrapSha: bootstrapSha,
@@ -136,7 +136,6 @@ class DaytonaRuntime implements RuntimeSession {
       sandboxId: sandbox.id,
       remoteUrl: await _captureGitRemote(),
     );
-    return outcome.toSurfaceOutcome();
   }
 
   Future<String?> _captureGitRemote() async {

@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:glue_harness/src/storage/file_utils.dart';
+
 class ConfigStore {
   final String path;
   Map<String, dynamic> _cache = const {};
@@ -45,11 +47,8 @@ class ConfigStore {
 
   void save(Map<String, dynamic> config) {
     final file = File(path);
-    file.parent.createSync(recursive: true);
     const encoder = JsonEncoder.withIndent('  ');
-    final tmp = File('$path.tmp');
-    tmp.writeAsStringSync(encoder.convert(config));
-    tmp.renameSync(path);
+    atomicWrite(file, encoder.convert(config));
 
     _cache = Map<String, dynamic>.from(config);
     final stat = file.statSync();

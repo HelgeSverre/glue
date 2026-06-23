@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:glue_strategies/src/web/search/models.dart';
 import 'package:glue_strategies/src/web/search/provider.dart';
+import 'package:glue_strategies/src/web/search/providers/http_search_provider.dart';
 
 class DuckDuckGoSearchProvider implements WebSearchProvider {
   final int timeoutSeconds;
@@ -30,9 +31,9 @@ class DuckDuckGoSearchProvider implements WebSearchProvider {
         .timeout(Duration(seconds: timeoutSeconds));
 
     if (response.statusCode != 200) {
-      throw Exception(
+      throw SearchApiException(
         'DuckDuckGo search returned ${response.statusCode}: '
-        '${response.body.length > 200 ? response.body.substring(0, 200) : response.body}',
+        '${SearchApiException.truncateBody(response.body)}',
       );
     }
 
