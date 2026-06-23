@@ -2217,6 +2217,17 @@ class App {
           return;
         }
         _sessionManager.resumeSession(session: match.first, agent: agent);
+      } else if (_startupContinue) {
+        final sessions = _sessionManager.listSessions();
+        if (sessions.isNotEmpty) {
+          _sessionManager.resumeSession(session: sessions.first, agent: agent);
+          stderr.writeln(
+            'Continuing session ${sessions.first.id} '
+            '(${sessions.first.modelRef}).',
+          );
+        } else {
+          stderr.writeln('No sessions to continue; starting fresh.');
+        }
       }
 
       String? stdinContent;
@@ -2246,6 +2257,10 @@ class App {
       );
       expanded = expandFileRefs(fullPrompt);
 
+      // Ensure a session store exists before logging the user message.
+      // Idempotent: reuses the store set up by a resume/continue above,
+      // otherwise lazily creates a fresh one so the run is persisted.
+      _ensureSessionStore();
       _sessionManager.logEvent('user_message', {'text': expanded});
 
       turnSpan = _obs?.startSpan(
