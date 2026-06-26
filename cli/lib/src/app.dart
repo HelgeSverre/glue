@@ -1090,6 +1090,22 @@ class App {
         : (mcpUnhealthy == mcpAwaitingAuth
               ? 'MCP:$mcpAwaitingAuth🔑'
               : 'MCP:$mcpUnhealthy⚠');
+    // Context-occupancy gauge: last-turn billed input over the resolved
+    // window. Denominator = catalog window, falling back to a window-aware
+    // client (Ollama daemon-resolved). Hidden when unknown or pre-first-turn.
+    final activeModel = _config?.activeModel;
+    final llm = agent.llm;
+    final contextWindow =
+        (activeModel != null
+            ? _config?.resolveModel(activeModel).def.contextWindow
+            : null) ??
+        (llm is ContextWindowAware
+            ? (llm as ContextWindowAware).contextWindow
+            : null);
+    final gaugeSeg = formatContextGauge(
+      agent.lastTurnInputTokens,
+      contextWindow,
+    );
     final rightSegs = [
       formatStatusModelLabel(
         _config?.activeModel,
@@ -1100,6 +1116,7 @@ class App {
       ansiTruncate(shortCwd, 30),
       ?scrollSeg,
       ?mcpSeg,
+      ?gaugeSeg,
       '${formatCompactTokens(agent.stats.totalTokens)} tokens',
     ];
     final statusRight = ' ${rightSegs.join(sep)} ';
