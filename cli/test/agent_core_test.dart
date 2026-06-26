@@ -164,6 +164,27 @@ void main() {
   );
 
   test(
+    'lastTurnInputTokens reflects billed input of the latest turn only',
+    () async {
+      // First turn: billed input = 1200 + 300 = 1500.
+      mockLlm.responses.add([
+        TextDelta('a'),
+        UsageInfo(inputTokens: 1200, outputTokens: 40, cacheReadTokens: 300),
+      ]);
+      await agent.run('first').toList();
+      expect(agent.lastTurnInputTokens, 1500);
+
+      // Second turn overwrites (not cumulative): 2000 + 0 = 2000.
+      mockLlm.responses.add([
+        TextDelta('b'),
+        UsageInfo(inputTokens: 2000, outputTokens: 10),
+      ]);
+      await agent.run('second').toList();
+      expect(agent.lastTurnInputTokens, 2000);
+    },
+  );
+
+  test(
     'tool call flow: ToolCallComplete → completeToolCall → re-calls LLM',
     () async {
       final toolCall = ToolCall(

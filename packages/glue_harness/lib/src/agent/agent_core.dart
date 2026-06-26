@@ -44,6 +44,12 @@ class AgentCore {
   /// `stats.billedInputTokens` to compute hit rate.
   final UsageStats stats = UsageStats();
 
+  /// Billed input tokens of the most recent completed turn (uncached input +
+  /// cache reads) — i.e. what the model actually saw. The numerator for the
+  /// status-bar context-occupancy gauge. Distinct from [stats], which is the
+  /// cumulative lifetime total. Zero until the first turn completes.
+  int lastTurnInputTokens = 0;
+
   /// Optional observability sink. When non-null, tool invocations emit
   /// `tool.<name>` spans and fatal agent errors emit `agent.error` spans.
   final Observability? _obs;
@@ -229,6 +235,10 @@ class AgentCore {
           );
           continue;
         } finally {
+          // Billed input this turn = what the model saw. Gauge numerator.
+          // The tools-not-supported path `continue`s with both counters at 0,
+          // so a retry simply overwrites this on the next real turn.
+          lastTurnInputTokens = inputTokens + cacheReadTokens;
           if (_obs != null && llmSpan != null && _obs.activeSpan == llmSpan) {
             _obs.activeSpan = previousActive;
           }
