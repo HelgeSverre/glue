@@ -52,13 +52,31 @@ class OllamaAdapter extends ProviderAdapter {
       model: model.apiId,
       systemPrompt: systemPrompt,
       baseUrl: stripV1Suffix(provider.baseUrl ?? 'http://localhost:11434'),
-      // Inject num_ctx when the catalog knows the model's context window.
-      // Passthrough models (user-typed uncatalogued tags) get null here and
-      // fall back to Ollama's default, which is the same behaviour as
-      // before this adapter existed — no surprise regressions.
+      // Exact catalog window when the tag is catalogued; otherwise the client
+      // queries the daemon, then falls back to this base-name hint, then a
+      // safe default — so uncatalogued tags (e.g. gemma4:latest) are never
+      // exposed to Ollama's silent 2048 truncation.
       contextWindow: model.def.contextWindow,
+      contextWindowFallback: baseNameContextWindow(
+        model.apiId,
+        provider.def.models,
+      ),
       requestClientFactory: _requestClientFactory,
     );
+  }
+
+  /// First catalogued context window for a tag's family. `gemma4:latest`
+  /// matches any catalogued `gemma4:*` entry. Used only as a fallback when
+  /// the exact tag is uncatalogued and the daemon reports nothing.
+  static int? baseNameContextWindow(String tag, Map<String, ModelDef> models) {
+    final base = tag.split(':').first;
+    for (final entry in models.entries) {
+      if (entry.key.split(':').first == base &&
+          entry.value.contextWindow != null) {
+        return entry.value.contextWindow;
+      }
+    }
+    return null;
   }
 
   /// Discover locally-pulled tags. Used by the `/model` picker merge and by

@@ -177,13 +177,17 @@ void main() {
       expect(options?['num_ctx'], 8192);
     });
 
-    test('omits options entirely when ModelDef.contextWindow is null '
-        '(uncatalogued passthrough)', () async {
-      Map<String, Object?>? capturedBody;
+    test('injects the default num_ctx when the window cannot be resolved '
+        '(uncatalogued passthrough, daemon reports nothing)', () async {
+      Map<String, Object?>? chatBody;
       final adapter = OllamaAdapter(
         requestClientFactory: () => _FakeHttp((req) async {
-          capturedBody =
-              jsonDecode((req as http.Request).body) as Map<String, Object?>;
+          // /api/show carries no model_info -> showContextLength returns null;
+          // capture only the /api/chat body for the assertion.
+          if (req.url.path.endsWith('/api/chat')) {
+            chatBody =
+                jsonDecode((req as http.Request).body) as Map<String, Object?>;
+          }
           return http.StreamedResponse(
             Stream<List<int>>.value(
               utf8.encode(
@@ -204,7 +208,10 @@ void main() {
         systemPrompt: '',
       );
       await client.stream([]).toList();
-      expect(capturedBody?.containsKey('options'), isFalse);
+      // Never Ollama's silent 2048: always inject, falling back to the
+      // conservative default when nothing resolves.
+      final options = chatBody?['options'] as Map?;
+      expect(options?['num_ctx'], ollamaDefaultNumCtx);
     });
 
     test(
@@ -283,6 +290,40 @@ void main() {
       // an empty list (fail-soft), which is also a valid outcome.
       final out = await adapter.discoverModels(_provider());
       expect(out, isA<List<DiscoveredModel>>());
+    });
+  });
+
+  group('OllamaAdapter base-name context fallback', () {
+    test('matches gemma4:latest to a catalogued gemma4:* entry', () {
+      final models = {
+        'gemma4:26b': const ModelDef(
+          id: 'gemma4:26b',
+          name: 'g',
+          contextWindow: 256000,
+        ),
+      };
+      expect(
+        OllamaAdapter.baseNameContextWindow('gemma4:latest', models),
+        256000,
+      );
+    });
+
+    test('returns null when no family member is catalogued', () {
+      expect(
+        OllamaAdapter.baseNameContextWindow('mystery:latest', const {}),
+        isNull,
+      );
+    });
+
+    test('resolves the family window for an exact family member too', () {
+      final models = {
+        'gemma4:26b': const ModelDef(
+          id: 'gemma4:26b',
+          name: 'g',
+          contextWindow: 256000,
+        ),
+      };
+      expect(OllamaAdapter.baseNameContextWindow('gemma4:26b', models), 256000);
     });
   });
 }
