@@ -795,6 +795,29 @@ git commit -m "feat(cli): show context-occupancy gauge in the status bar"
 
 **Type consistency:** `contextWindow`/`contextWindowFallback` constructor params (Task 3) match the adapter call (Task 4). `lastTurnInputTokens : int` (Task 5) feeds `formatContextGauge(int, int?)` (Task 6) feeds the App call (Task 7). `OllamaDiscovery.showContextLength(String) -> Future<int?>` (Task 1) matches the call in Task 3. `LlmClient.contextWindow` getter (Task 2) is overridden in Task 3 and read in Task 7.
 
+## Implementation notes (as-built)
+
+Two deviations from the plan above, both adopted during execution:
+
+1. **Task 2 — capability interface, not an `LlmClient` member.** Adding
+   `int? get contextWindow` to `LlmClient` would have broken all five
+   `implements LlmClient` clients (Dart does not inherit a default body through
+   `implements`). Instead a separate `abstract interface class
+   ContextWindowAware { int? get contextWindow; }` lives in `llm_client.dart`;
+   only `OllamaClient` opts in (`implements LlmClient, ContextWindowAware`), and
+   the status bar (Task 7) reads it via a type check
+   (`llm is ContextWindowAware ? (llm as ContextWindowAware).contextWindow : null`).
+   No other client or test fake changed.
+
+2. **Task 4 — pre-existing test updated.** `ollama_adapter_test.dart` had a test
+   asserting the *old* footgun ("omits options entirely when contextWindow is
+   null"). It was rewritten to assert the new always-inject behavior
+   (`num_ctx == ollamaDefaultNumCtx` when nothing resolves).
+
+Minor: the Ollama fallback field is named `_fallbackContextWindow` (not
+`_contextWindowFallback`) to avoid a `prefer_initializing_formals` lint under
+`--fatal-infos`.
+
 ## Note on commits
 
 The working tree already carries the earlier, unrelated print-mode session fix (`cli/lib/src/app.dart` modified + `cli/test/app/print_mode_session_test.dart` untracked). Before starting Task 1, decide whether to commit that work first so these commits stay scoped — see the execution handoff.
