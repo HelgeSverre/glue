@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io' show pid;
+import 'dart:math';
 
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_harness/src/agent/agent_core.dart';
@@ -799,11 +801,15 @@ class SessionManager {
     return generic.contains(_normalizeTitle(title));
   }
 
+  static final Random _idRandom = Random();
+
   SessionId _newSessionId() {
     final now = DateTime.now();
-    return SessionId(
-      '${now.millisecondsSinceEpoch}-${now.microsecond.toRadixString(36)}',
-    );
+    // Timestamp alone collides when two processes start in the same
+    // millisecond (L5). Fold in the PID and a random suffix so concurrent
+    // `glue` invocations get distinct ids.
+    final rand = _idRandom.nextInt(1 << 32).toRadixString(36);
+    return SessionId('${now.millisecondsSinceEpoch}-$pid-$rand');
   }
 
   ObservabilitySpan? _startSpan(

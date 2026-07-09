@@ -323,6 +323,24 @@ void main() {
     expect(agent.conversation, isEmpty);
   });
 
+  test('new session ids include a pid + random suffix and are unique (L5)', () {
+    final ids = <String>{};
+    for (var i = 0; i < 200; i++) {
+      final manager = SessionManager(environment: environment);
+      final store = manager.ensureSessionStore(
+        cwd: environment.cwd,
+        modelRef: 'anthropic/claude-sonnet-4.6',
+      );
+      final id = store.meta.id.value;
+      // <epoch>-<pid>-<rand>: three hyphen-delimited components.
+      expect(id.split('-'), hasLength(3));
+      ids.add(id);
+    }
+    // Time-only ids collided within a millisecond; the pid+random suffix
+    // makes rapid successive ids distinct.
+    expect(ids, hasLength(200));
+  });
+
   test('updateSessionModel persists modelRef to meta.json', () {
     final manager = SessionManager(
       environment: environment,
