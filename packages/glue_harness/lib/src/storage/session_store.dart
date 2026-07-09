@@ -111,7 +111,11 @@ class SessionMeta {
   });
 
   Map<String, Object?> toJson() => {
-    'schema_version': schemaVersion,
+    // Always emit the version of the shape we actually write (v3: `model_ref`,
+    // no legacy `model`/`provider`). Writing back the loaded `schemaVersion`
+    // for a legacy session tagged the v3 body as v1/v2, so `fromJson` then
+    // ignored `model_ref` and resolved the model to `anthropic/unknown` (H4).
+    'schema_version': currentSchemaVersion,
     'id': id.value,
     'cwd': cwd,
     if (projectPath != null) 'project_path': projectPath,

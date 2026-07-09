@@ -40,6 +40,37 @@ void main() {
     expect(savedMeta.modelRef, 'anthropic/claude-sonnet-4.6');
   });
 
+  test('toJson always emits the current schema version (H4)', () {
+    SessionStore(sessionDir: sessionDir, meta: meta);
+    final metaJson =
+        jsonDecode(File(p.join(sessionDir, 'meta.json')).readAsStringSync())
+            as Map<String, dynamic>;
+    expect(metaJson['schema_version'], SessionMeta.currentSchemaVersion);
+    expect(metaJson['model_ref'], 'anthropic/claude-sonnet-4.6');
+  });
+
+  test('legacy session model_ref survives a save/load round-trip (H4)', () {
+    // A schema-1 session stored the model in separate model/provider fields.
+    final legacy = SessionMeta.fromJson({
+      'schema_version': 1,
+      'id': 'legacy-1',
+      'cwd': '/tmp/project',
+      'model': 'claude-3-5-sonnet',
+      'provider': 'anthropic',
+      'start_time': DateTime.utc(2026, 1, 1).toIso8601String(),
+    });
+    expect(legacy.modelRef, 'anthropic/claude-3-5-sonnet');
+
+    // Persisting rewrites the file in the v3 shape (model_ref only). Before
+    // the fix it kept schema_version: 1, so reloading dropped model_ref and
+    // resolved to anthropic/unknown.
+    final reloaded = SessionMeta.fromJson(
+      jsonDecode(jsonEncode(legacy.toJson())) as Map<String, dynamic>,
+    );
+    expect(reloaded.schemaVersion, SessionMeta.currentSchemaVersion);
+    expect(reloaded.modelRef, 'anthropic/claude-3-5-sonnet');
+  });
+
   test('logEvent appends JSONL lines', () async {
     final store = SessionStore(sessionDir: sessionDir, meta: meta);
     store.logEvent('user_message', {'text': 'hello'});
