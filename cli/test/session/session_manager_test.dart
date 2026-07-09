@@ -268,6 +268,44 @@ void main() {
     oldStore.logEvent('user_message', {'text': 'second question'});
     final oldId = oldStore.meta.id;
 
+    // Fork at the *second* user message: everything before it is replayed and
+    // the message itself becomes the draft (never replayed — see M14).
+    final result = manager.forkSession(
+      userMessageIndex: 1,
+      messageText: 'second question',
+      agent: agent,
+    );
+
+    expect(result, isNotNull);
+    expect(result!.message, contains('Forked from session'));
+    expect(result.draftText, 'second question');
+    expect(manager.currentSessionId, isNot(oldId));
+    expect(manager.currentStore!.meta.forkedFrom, oldId);
+
+    final events = SessionStore.loadConversation(
+      manager.currentStore!.sessionDir,
+    );
+    // Only the first user message is replayed; the fork-point one is not.
+    expect(events.where((e) => e['type'] == 'user_message'), hasLength(1));
+    expect(events.first['text'], 'first question');
+    expect(agent.conversation.map((m) => m.role), [Role.user, Role.assistant]);
+    final span = sink.spans.lastWhere((span) => span.name == 'session.fork');
+    expect(span.attributes['session.fork.source_session_id'], oldId);
+    expect(span.attributes['session.replay.entry_count'], 2);
+  });
+
+  test('forkSession does not duplicate the fork-point user message (M14)', () {
+    final manager = SessionManager(
+      environment: environment,
+      observability: obs,
+    );
+    final oldStore = manager.ensureSessionStore(
+      cwd: environment.cwd,
+      modelRef: 'anthropic/claude-sonnet-4.6',
+    );
+    oldStore.logEvent('user_message', {'text': 'first question'});
+    oldStore.logEvent('assistant_message', {'text': 'first answer'});
+
     final result = manager.forkSession(
       userMessageIndex: 0,
       messageText: 'first question',
@@ -275,20 +313,14 @@ void main() {
     );
 
     expect(result, isNotNull);
-    expect(result!.message, contains('Forked from session'));
-    expect(result.draftText, 'first question');
-    expect(manager.currentSessionId, isNot(oldId));
-    expect(manager.currentStore!.meta.forkedFrom, oldId);
-
+    // The fork point rewinds to before the first user message: it lives only
+    // in the draft, so the replayed history must not contain it.
+    expect(result!.draftText, 'first question');
     final events = SessionStore.loadConversation(
       manager.currentStore!.sessionDir,
     );
-    expect(events.where((e) => e['type'] == 'user_message'), hasLength(1));
-    expect(events.first['text'], 'first question');
-    expect(agent.conversation.map((m) => m.role), [Role.user]);
-    final span = sink.spans.lastWhere((span) => span.name == 'session.fork');
-    expect(span.attributes['session.fork.source_session_id'], oldId);
-    expect(span.attributes['session.replay.entry_count'], 1);
+    expect(events.where((e) => e['type'] == 'user_message'), isEmpty);
+    expect(agent.conversation, isEmpty);
   });
 
   test('updateSessionModel persists modelRef to meta.json', () {

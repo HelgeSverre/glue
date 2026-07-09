@@ -554,11 +554,14 @@ class SessionManager {
       var userCount = 0;
       final truncatedEvents = <Map<String, dynamic>>[];
       for (final event in allEvents) {
-        truncatedEvents.add(event);
+        // Rewind to *before* the fork-point user message (M14): it is handed
+        // back as the editable draft, so replaying it too would duplicate it
+        // in the conversation. Break before appending it.
         if (event['type'] == 'user_message') {
           if (userCount == userMessageIndex) break;
           userCount++;
         }
+        truncatedEvents.add(event);
       }
 
       oldStore.close();
