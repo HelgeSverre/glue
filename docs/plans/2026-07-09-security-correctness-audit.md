@@ -57,18 +57,18 @@ passes.
 
 ## HIGH
 
-- [ ] **H1 — Resume/fork drops tool-only turns.** `packages/glue_harness/lib/src/session/session_manager.dart:629-646`
+- [x] **H1 — Resume/fork drops tool-only turns.** `packages/glue_harness/lib/src/session/session_manager.dart:629-646`
   `flushPending()` is gated on `pendingAssistantText != null`; a turn where the model went
   straight to tools has its calls+results discarded on replay. *(Cross-confirmed by two
   reviewers.)* *Fix: emit assistant messages with tool calls even when text is empty.*
-- [ ] **H2 — Resume of a mid-tool crash → dangling `tool_use`, no result → provider 400.**
+- [x] **H2 — Resume of a mid-tool crash → dangling `tool_use`, no result → provider 400.**
   `ensureToolResultsComplete()` is wired only into the cancel path, never resume. *Fix: call
   it after `_replayEventsIntoAgent`/at the top of `resumeSession`/`forkSession`.*
 - [ ] **H3 — OpenAI cached tokens double-counted.** `packages/glue_strategies/lib/src/llm/openai_client.dart:189`
   sets `inputTokens: prompt_tokens` without subtracting `cached_tokens`, but the contract
   (`glue_core/.../message.dart:128`) is uncached-only → context gauge, billed tokens, cache
   hit-rate all inflated. *Fix: `prompt_tokens - (cached_tokens ?? 0)`, clamped ≥0.*
-- [ ] **H4 — Legacy session resume corrupts model ref to `anthropic/unknown`.**
+- [x] **H4 — Legacy session resume corrupts model ref to `anthropic/unknown`.**
   `packages/glue_harness/lib/src/storage/session_store.dart:113-118` writes back the old
   `schema_version` but only the v3 `model_ref`; `fromJson` ignores it for schema < 3, and
   the store rewrites `meta.json` on construction. *Fix: emit the current schema version.*
@@ -119,16 +119,16 @@ passes.
 - [ ] **M2 — MCP mid-session 401 never re-triggers auth.** `tool_factory.dart:69-81` swallows it as a failed result; pool stays "Connected".
 - [ ] **M3 — MCP HTTP transport: one request's error fails ALL in-flight calls.** `http_sse.dart:115-123` → `_failAllPending`.
 - [ ] **M4 — MCP HTTP transport: unguarded response-body reads → unhandled async error.** `http_sse.dart:102,107-111,143-146`.
-- [ ] **M5 — Agent loop has no max-turn / infinite-loop guard.** `agent_core.dart:126` `while(true)`; headless/subagent can't Escape. *Fix: configurable `maxIterations`.*
+- [x] **M5 — Agent loop has no max-turn / infinite-loop guard.** `agent_core.dart:126` `while(true)`; headless/subagent can't Escape. *Fix: configurable `maxIterations`.*
 - [ ] **M6 — No retry/backoff for 429/5xx/network** anywhere in the LLM path. `agent_core.dart` + clients.
 - [ ] **M7 — Gemini mapper drops all user multimodal content.** `message_mapper.dart:185-189` ignores `contentParts`.
-- [ ] **M8 — Empty/thinking-only turn → Anthropic `content: []` → 400.** `agent_core.dart:279-284` + `message_mapper.dart:83-95`. *Fix: skip empty assistant messages.*
+- [x] **M8 — Empty/thinking-only turn → Anthropic `content: []` → 400.** `agent_core.dart:279-284` + `message_mapper.dart:83-95`. *Fix: skip empty assistant messages.*
 - [ ] **M9 — Mid-stream provider `error` events silently swallowed** (Anthropic `anthropic_client.dart` no `case 'error'`; Ollama NDJSON; Gemini `blockReason`) → truncated turn looks like success.
 - [ ] **M10 — Ollama gauge under-reports on warm cache.** `ollama_client.dart:194-196` maps `prompt_eval_count` (newly-evaluated only) to `inputTokens`.
-- [ ] **M11 — No session file locking.** Two `glue --continue` interleave writes to one `conversation.jsonl` → duplicate tool_results on replay. *Fix: advisory lock or per-process ids.*
-- [ ] **M12 — JSONL/atomicWrite lack flush/fsync → torn tail lines silently dropped.** `session_store.dart:295-298`, `storage/file_utils.dart:3-11`. *Fix: `flush: true`; count skipped lines.*
+- [x] **M11 — No session file locking.** Two `glue --continue` interleave writes to one `conversation.jsonl` → duplicate tool_results on replay. *Fix: advisory lock or per-process ids.*
+- [x] **M12 — JSONL/atomicWrite lack flush/fsync → torn tail lines silently dropped.** `session_store.dart:295-298`, `storage/file_utils.dart:3-11`. *Fix: `flush: true`; count skipped lines.*
 - [ ] **M13 — Disabled MCP server with an unset `${VAR}` bricks all config loading.** `mcp_config.dart:82-119` expands regardless of `enabled:false`. *Fix: skip/defer expansion for disabled servers.*
-- [ ] **M14 — `/history` fork duplicates the forked-at user message.** `session_manager.dart:556-562` + `slash/history.dart:145-156`. *Fix: break before adding the fork-point event.*
+- [x] **M14 — `/history` fork duplicates the forked-at user message.** `session_manager.dart:556-562` + `slash/history.dart:145-156`. *Fix: break before adding the fork-point event.*
 - [ ] **M15 — `glue mcp auth set --bearer` crashes on piped stdin.** `mcp_command.dart:756` reads `stdin.echoMode` outside the try. *Fix: wrap in try/fallback.*
 - [ ] **M16 — `glue mcp auth login <unknown>` / `session show|diff|apply|export <unknown>` crash with raw `StateError`.** `mcp_command.dart:693-696`, `session_command.dart:307-310,365-368,419-422,470-473`. *Fix: catch, print, exit non-zero.*
 - [ ] **M17 — `--print` returns exit 0 on failure.** `app.dart:2334-2345,2376-2414`. *Fix: set exit 1 on `AgentError`/exception.*
@@ -147,11 +147,11 @@ passes.
 
 - [ ] **L1 — Reflected XSS in the OAuth loopback callback page.** `mcp_client/oauth.dart:594-612` interpolates `error` param unescaped. *Fix: HTML-escape.*
 - [ ] **L2 — Credentials tmp file world-readable before `chmod 600`; `~/.glue` not `0700`.** `credentials/credential_store.dart:147-158`. *Fix: create with 0600; check chmod result.*
-- [ ] **L3 — Session transcripts/logs created without `0700`/`0600`.** `storage/session_store.dart:289-299`, `storage/file_utils.dart`, `core/environment.dart:129-133`.
+- [x] **L3 — Session transcripts/logs created without `0700`/`0600`.** `storage/session_store.dart:289-299`, `storage/file_utils.dart`, `core/environment.dart:129-133`.
 - [ ] **L4 — YAML fidelity/injection on the first-server bootstrap renderer.** `mcp_config_writer.dart:158-174` never quotes newlines. *Fix: quote values with `\n`/edge whitespace; validate env keys.*
-- [ ] **L5 — Session id generation has no randomness** (microsecond collisions). `session_manager.dart:780-785`. *Fix: add random/PID component.*
-- [ ] **L6 — `sessionDir` trusts the meta.json `id` field (path traversal on imported session).** `core/environment.dart:112-113`. *Fix: derive id from directory name.*
-- [ ] **L7 — Unbounded session growth, no cap/rotation.** `conversation.jsonl` stores full content forever.
+- [x] **L5 — Session id generation has no randomness** (microsecond collisions). `session_manager.dart:780-785`. *Fix: add random/PID component.*
+- [x] **L6 — `sessionDir` trusts the meta.json `id` field (path traversal on imported session).** `core/environment.dart:112-113`. *Fix: derive id from directory name.*
+- [ ] **L7 — Unbounded session growth, no cap/rotation.** `conversation.jsonl` stores full content forever. *(Deferred: TODO note added at `session_store.dart` `logEvent`; a real size/age cap is out of scope for this pass.)*
 - [ ] **L8 — `glue config init --force` overwrites config.yaml non-atomically.** `config_command.dart:33-34`. *Fix: tmp+rename.*
 - [ ] **L9 — OTEL endpoint precedence inverted** (YAML before env, unlike everything else). `config_resolvers.dart:189-193`.
 - [ ] **L10 — MCP OAuth issuer check uses exact `Uri` equality** (trailing-slash interop failure). `oauth.dart:215`.
@@ -160,7 +160,7 @@ passes.
 - [ ] **L13 — Reserved-name collision filter compares bare names, silently dropping namespaced MCP tools.** `tool_factory.dart:96`.
 - [ ] **L14 — `charWidth` mismeasures ZWJ/emoji clusters and the 0x1F000–0x1FFFF plane.** `rendering/ansi_utils.dart:474`. *Fix: document; grapheme segmentation for a real fix.*
 - [ ] **L15 — `_persistTrustedTool` swallows all write errors silently.** `app.dart:2107-2119`. *Fix: surface a one-line message.*
-- [ ] **L16 — `ToolArgsBuffer.finalizeArguments` only catches `FormatException`** (non-object JSON throws `TypeError`). `tool_args.dart:29-33`.
+- [x] **L16 — `ToolArgsBuffer.finalizeArguments` only catches `FormatException`** (non-object JSON throws `TypeError`). `tool_args.dart:29-33`.
 - [ ] **L17 — OpenAI parser: stream ending without a `finish_reason` drops tool calls; `index` cast throws on servers that omit it.** `openai_client.dart:128,146-157`.
 - [ ] **L18 — `--print` mode persists no tool activity to the session log.** `app.dart:2312-2329,2361`.
 
