@@ -30,6 +30,7 @@ class McpTool extends Tool {
     required this.serverId,
     required this.bareName,
     required this.descriptor,
+    this.onAuthFailure,
   }) : _parameters = _parametersFromInputSchema(descriptor.inputSchema);
 
   final McpClient client;
@@ -37,6 +38,11 @@ class McpTool extends Tool {
   final String bareName;
   final McpToolDescriptor descriptor;
   final List<ToolParameter> _parameters;
+
+  /// Invoked when a `tools/call` fails with `auth_expired` (a mid-session
+  /// 401). Lets the pool re-trigger the auth flow — the failing call still
+  /// returns a failed [ToolResult] to the agent (M2).
+  final void Function(McpCallFailure failure)? onAuthFailure;
 
   @override
   String get name => '${serverId}__$bareName';
@@ -67,6 +73,11 @@ class McpTool extends Tool {
         },
       );
     } on McpCallFailure catch (e) {
+      // Surface a mid-session auth failure to the pool so it can re-auth /
+      // emit the auth-required event (M2). This call still fails.
+      if (e.reason == 'auth_expired') {
+        onAuthFailure?.call(e);
+      }
       return ToolResult(
         success: false,
         content: e.message ?? 'MCP call failed: ${e.reason}',
@@ -83,26 +94,39 @@ class McpTool extends Tool {
 }
 
 /// Builds glue_core [Tool]s for every descriptor advertised by a server.
-/// Skips descriptors whose namespaced name conflicts with [reservedNames]
-/// (typically the agent's native tools — natives win to avoid surprise
-/// behaviour from a server claiming `read_file`).
+///
+/// MCP tools are always registered under their namespaced name
+/// (`<serverId>__<tool>`), so they never actually shadow a native tool.
+/// The [reservedNames] filter therefore compares the *namespaced* name —
+/// dropping a tool only when it would genuinely collide, instead of
+/// silently discarding any MCP tool whose bare name matches a native like
+/// `read_file` or `grep` (L13). Descriptors that can't be converted are
+/// skipped individually rather than failing the whole connection (L12).
 List<McpTool> buildMcpTools({
   required McpClient client,
   required String serverId,
   required List<McpToolDescriptor> descriptors,
   Set<String> reservedNames = const {},
+  void Function(McpCallFailure failure)? onAuthFailure,
 }) {
-  return descriptors
-      .where((d) => !reservedNames.contains(d.name))
-      .map(
-        (d) => McpTool(
+  final tools = <McpTool>[];
+  for (final d in descriptors) {
+    if (reservedNames.contains('${serverId}__${d.name}')) continue;
+    try {
+      tools.add(
+        McpTool(
           client: client,
           serverId: serverId,
           bareName: d.name,
           descriptor: d,
+          onAuthFailure: onAuthFailure,
         ),
-      )
-      .toList();
+      );
+    } catch (_) {
+      // Skip a descriptor whose schema we can't convert.
+    }
+  }
+  return tools;
 }
 
 // ─── inputSchema → ToolParameter[] ─────────────────────────────────────────
@@ -122,7 +146,7 @@ List<ToolParameter> _parametersFromInputSchema(Map<String, dynamic> schema) {
         : const <String, dynamic>{};
     return ToolParameter(
       name: paramName,
-      type: (prop['type'] as String?) ?? 'string',
+      type: _schemaType(prop['type']),
       description: (prop['description'] as String?) ?? '',
       required: required.contains(paramName),
       items: prop['items'] is Map
@@ -130,4 +154,19 @@ List<ToolParameter> _parametersFromInputSchema(Map<String, dynamic> schema) {
           : null,
     );
   }).toList();
+}
+
+/// Resolves a JSON-Schema `type` value to a single type string. JSON
+/// Schema permits a list (`["string","null"]` for nullable fields); we
+/// take the first non-`null` entry. Anything unrecognised falls back to
+/// `string` (L12).
+String _schemaType(Object? raw) {
+  if (raw is String) return raw;
+  if (raw is List) {
+    return raw.whereType<String>().firstWhere(
+      (t) => t != 'null',
+      orElse: () => 'string',
+    );
+  }
+  return 'string';
 }

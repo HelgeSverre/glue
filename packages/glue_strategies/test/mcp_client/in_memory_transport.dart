@@ -22,6 +22,10 @@ class InMemoryMcpTransport implements JsonRpcTransport {
   final outgoing = <JsonRpcMessage>[];
   bool _closed = false;
 
+  /// Whether [close] (or [simulateDrop]) has run. Lets tests assert that a
+  /// client was torn down rather than leaked.
+  bool get isClosed => _closed;
+
   @override
   Stream<JsonRpcMessage> get incoming => _incoming.stream;
 

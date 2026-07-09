@@ -67,6 +67,12 @@ class McpHttpTransport implements JsonRpcTransport {
   // ─── private ─────────────────────────────────────────────────────────────
 
   Future<void> _send(JsonRpcMessage message) async {
+    // The id of the originating request (if any) — threaded onto a failure
+    // so the client can correlate it to a single pending call (M3).
+    final requestId = switch (message) {
+      JsonRpcRequest(:final id) => id,
+      _ => null,
+    };
     final body = encodeJsonRpcString(message);
     final req = http.Request('POST', endpoint);
     req.headers['Content-Type'] = 'application/json';
@@ -98,16 +104,28 @@ class McpHttpTransport implements JsonRpcTransport {
 
     // 202 Accepted with no body is the canonical response to a
     // notification — server has nothing to say back. Drain and return.
+    // Guard the read: a reset mid-drain must surface as a stream error,
+    // not an unhandled async exception (M4).
     if (streamed.statusCode == 202) {
-      await streamed.stream.drain<void>();
+      try {
+        await streamed.stream.drain<void>();
+      } catch (e) {
+        if (!_closed) _incoming.addError(e);
+      }
       return;
     }
 
     if (streamed.statusCode >= 400) {
-      final bodyBytes = await streamed.stream.fold<List<int>>(
-        <int>[],
-        (acc, chunk) => acc..addAll(chunk),
-      );
+      final List<int> bodyBytes;
+      try {
+        bodyBytes = await streamed.stream.fold<List<int>>(
+          <int>[],
+          (acc, chunk) => acc..addAll(chunk),
+        );
+      } catch (e) {
+        if (!_closed) _incoming.addError(e);
+        return;
+      }
       final text = utf8.decode(bodyBytes, allowMalformed: true);
       final wwwAuth =
           streamed.headers['www-authenticate'] ??
@@ -118,6 +136,7 @@ class McpHttpTransport implements JsonRpcTransport {
             statusCode: streamed.statusCode,
             body: text,
             wwwAuthenticate: wwwAuth,
+            requestId: requestId,
           ),
         );
       }
@@ -139,11 +158,18 @@ class McpHttpTransport implements JsonRpcTransport {
       return;
     }
 
-    // Default to JSON.
-    final bytes = await streamed.stream.fold<List<int>>(
-      <int>[],
-      (acc, chunk) => acc..addAll(chunk),
-    );
+    // Default to JSON. Guard the read so a connection reset mid-body
+    // surfaces as a stream error rather than an unhandled async error (M4).
+    final List<int> bytes;
+    try {
+      bytes = await streamed.stream.fold<List<int>>(
+        <int>[],
+        (acc, chunk) => acc..addAll(chunk),
+      );
+    } catch (e) {
+      if (!_closed) _incoming.addError(e);
+      return;
+    }
     final text = utf8.decode(bytes, allowMalformed: true).trim();
     if (text.isEmpty) return; // Empty 200 (rare) — nothing to dispatch.
     _emit(text);
@@ -170,6 +196,7 @@ class McpHttpTransportError implements Exception {
     required this.statusCode,
     required this.body,
     this.wwwAuthenticate,
+    this.requestId,
   });
   final int statusCode;
   final String body;
@@ -177,6 +204,11 @@ class McpHttpTransportError implements Exception {
   /// Raw `WWW-Authenticate` header from the response. Populated when
   /// the server returns 401. `null` for other failure statuses.
   final String? wwwAuthenticate;
+
+  /// JSON-RPC id of the request whose POST produced this error, when the
+  /// failing message was a request. Lets [McpClient] fail only that call
+  /// instead of every in-flight one (M3). `null` for notifications.
+  final Object? requestId;
 
   @override
   String toString() =>

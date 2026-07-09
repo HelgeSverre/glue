@@ -263,6 +263,92 @@ void main() {
     });
   });
 
+  group('McpClient error correlation (M3)', () {
+    test('a correlated transport error fails only its own request', () async {
+      final transport = InMemoryMcpTransport(
+        respond: (out) async {
+          if (out is JsonRpcRequest && out.method == McpMethod.toolsCall) {
+            final args = (out.params?['arguments'] as Map?) ?? const {};
+            if (args['fail'] == true) return const []; // no response
+            return [
+              _ok(out.id, {
+                'content': [
+                  {'type': 'text', 'text': 'ok'},
+                ],
+              }),
+            ];
+          }
+          return const [];
+        },
+      );
+      final client = McpClient(transport: transport);
+
+      final failing = client.callTool('t', {'fail': true});
+      final good = client.callTool('t', {'ok': true});
+      await Future<void>.delayed(Duration.zero);
+
+      // Correlate a 500 to the failing request only.
+      final failReq = transport.outgoing.whereType<JsonRpcRequest>().firstWhere(
+        (r) => (r.params?['arguments'] as Map?)?['fail'] == true,
+      );
+      transport.pushError(
+        McpHttpTransportError(
+          statusCode: 500,
+          body: 'boom',
+          requestId: failReq.id,
+        ),
+      );
+
+      await expectLater(
+        failing,
+        throwsA(
+          isA<McpCallFailure>().having(
+            (e) => e.reason,
+            'reason',
+            'transport_error',
+          ),
+        ),
+      );
+      expect(
+        (await good).textPayload,
+        'ok',
+        reason: 'a 4xx/5xx on one request must not fail concurrent calls',
+      );
+      await client.close();
+    });
+  });
+
+  group('McpClient.listTools tolerance (L12)', () {
+    test('skips a descriptor missing "name" rather than failing all', () async {
+      final transport = InMemoryMcpTransport(
+        respond: (out) async {
+          if (out is JsonRpcRequest && out.method == McpMethod.toolsList) {
+            return [
+              _ok(out.id, {
+                'tools': [
+                  {
+                    'description': 'no name here',
+                    'inputSchema': {'type': 'object'},
+                  },
+                  {
+                    'name': 'good',
+                    'description': '',
+                    'inputSchema': {'type': 'object'},
+                  },
+                ],
+              }),
+            ];
+          }
+          return const [];
+        },
+      );
+      final client = McpClient(transport: transport);
+      final tools = await client.listTools();
+      expect(tools.map((t) => t.name), ['good']);
+      await client.close();
+    });
+  });
+
   group('McpClient notifications', () {
     test('surfaces server-side notifications on the stream', () async {
       final transport = InMemoryMcpTransport();

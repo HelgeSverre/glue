@@ -310,40 +310,210 @@ void main() {
   });
 
   group('McpClientPool — reservedToolNames', () {
-    test(
-      'native names win — MCP descriptor with same name is dropped',
-      () async {
-        const spec = McpStdioServerSpec(id: 'fs', command: 'fake');
-        final pool = McpClientPool(
-          config: const McpConfig(servers: [spec]),
-          credentials: _emptyCreds(),
-          reservedToolNames: const {'read_file'},
-          clientFactory: _fakeFactory(
-            toolsByServer: const {
-              'fs': [
-                McpToolDescriptor(
-                  name: 'read_file',
-                  description: '',
-                  inputSchema: {'type': 'object'},
-                ),
-                McpToolDescriptor(
-                  name: 'list_directory',
-                  description: '',
-                  inputSchema: {'type': 'object'},
-                ),
-              ],
-            },
-          ),
+    test('L13: bare native names do not drop namespaced MCP tools', () async {
+      const spec = McpStdioServerSpec(id: 'fs', command: 'fake');
+      final pool = McpClientPool(
+        config: const McpConfig(servers: [spec]),
+        credentials: _emptyCreds(),
+        // Natives are bare; MCP tools are namespaced (`fs__read_file`)
+        // so they never actually collide and must not be dropped.
+        reservedToolNames: const {'read_file'},
+        clientFactory: _fakeFactory(
+          toolsByServer: const {
+            'fs': [
+              McpToolDescriptor(
+                name: 'read_file',
+                description: '',
+                inputSchema: {'type': 'object'},
+              ),
+              McpToolDescriptor(
+                name: 'list_directory',
+                description: '',
+                inputSchema: {'type': 'object'},
+              ),
+            ],
+          },
+        ),
+      );
+
+      pool.connectAll();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(pool.allTools.map((t) => t.name), [
+        'fs__read_file',
+        'fs__list_directory',
+      ]);
+      await pool.close();
+    });
+  });
+
+  group('McpClientPool — lifecycle hardening', () {
+    test('H11: generic throw after registration closes the client', () async {
+      // initialize() returns a non-map result → a CastError (NOT an
+      // McpCallFailure) is thrown *after* _clients[id] = client. The
+      // generic catch must remove + close the client, not leak it.
+      final transports = <InMemoryMcpTransport>[];
+      Future<McpClient> factory(
+        McpServerSpec spec,
+        CredentialStore creds,
+      ) async {
+        final t = InMemoryMcpTransport(
+          respond: (out) async {
+            if (out is JsonRpcRequest && out.method == McpMethod.initialize) {
+              return [JsonRpcResponse(id: out.id, result: 'not-a-map')];
+            }
+            return [];
+          },
         );
+        transports.add(t);
+        return McpClient(transport: t);
+      }
 
+      final pool = McpClientPool(
+        config: const McpConfig(
+          servers: [McpStdioServerSpec(id: 'fs', command: 'x')],
+          reconnect: McpReconnectPolicy(enabled: false),
+        ),
+        credentials: _emptyCreds(),
+        clientFactory: factory,
+      );
+      pool.connectAll();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(transports, hasLength(1));
+      expect(
+        transports.single.isClosed,
+        isTrue,
+        reason: 'generic connect failure must close the half-started client',
+      );
+      await pool.close();
+    });
+
+    test(
+      'H12b: toggling an enabled-but-unhealthy server disables it',
+      () async {
+        const failer = McpStdioServerSpec(id: 'broken', command: 'x');
+        final pool = McpClientPool(
+          config: const McpConfig(
+            servers: [failer],
+            reconnect: McpReconnectPolicy(enabled: false),
+          ),
+          credentials: _emptyCreds(),
+          clientFactory: _failingFactory(),
+        );
         pool.connectAll();
-        await Future<void>.delayed(const Duration(milliseconds: 20));
+        await Future<void>.delayed(const Duration(milliseconds: 30));
+        expect(pool.server('broken')!.state, isA<McpDead>());
+        expect(pool.server('broken')!.enabled, isTrue);
 
-        // read_file was reserved; list_directory makes it through namespaced.
-        expect(pool.allTools.map((t) => t.name), ['fs__list_directory']);
+        // It's enabled (just unhealthy) → toggle must DISABLE, not restart.
+        await pool.toggle('broken');
+        expect(
+          pool.server('broken')!.enabled,
+          isFalse,
+          reason: 'enabled server toggles off even without a live client',
+        );
+        expect(pool.server('broken')!.state, isA<McpDisconnected>());
         await pool.close();
       },
     );
+
+    test(
+      'H12a: overlapping connects do not leak the superseded client',
+      () async {
+        final transports = <InMemoryMcpTransport>[];
+        Future<McpClient> slowFactory(
+          McpServerSpec spec,
+          CredentialStore creds,
+        ) async {
+          await Future<void>.delayed(const Duration(milliseconds: 30));
+          final t = InMemoryMcpTransport(
+            respond: (out) async {
+              if (out is JsonRpcRequest && out.method == McpMethod.initialize) {
+                return [
+                  JsonRpcResponse(
+                    id: out.id,
+                    result: {
+                      'protocolVersion': mcpProtocolVersion,
+                      'serverInfo': {'name': 'x', 'version': '1'},
+                      'capabilities': const <String, dynamic>{},
+                    },
+                  ),
+                ];
+              }
+              if (out is JsonRpcRequest && out.method == McpMethod.toolsList) {
+                return [
+                  JsonRpcResponse(id: out.id, result: {'tools': const []}),
+                ];
+              }
+              return [];
+            },
+          );
+          transports.add(t);
+          return McpClient(transport: t);
+        }
+
+        final pool = McpClientPool(
+          config: const McpConfig(
+            servers: [McpStdioServerSpec(id: 'fs', command: 'x')],
+          ),
+          credentials: _emptyCreds(),
+          clientFactory: slowFactory,
+        );
+
+        pool.connectAll();
+        // Kick a second connect while the first factory call is still pending.
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        await pool.reconnect('fs');
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+
+        expect(pool.server('fs')!.state, isA<McpConnected>());
+        expect(transports.length, greaterThanOrEqualTo(2));
+        final open = transports.where((t) => !t.isClosed).toList();
+        expect(
+          open,
+          hasLength(1),
+          reason: 'the superseded connect must close its own client',
+        );
+        await pool.close();
+      },
+    );
+  });
+
+  group('defaultMcpClientFactory — call timeout (M1)', () {
+    test(
+      'per-server callTimeoutSeconds wins over the global default',
+      () async {
+        final spec = McpUrlServerSpec(
+          id: 'r',
+          url: Uri.parse('https://remote.example/mcp'),
+          isWebSocket: false,
+          callTimeoutSeconds: 7,
+        );
+        final client = await defaultMcpClientFactory(
+          spec,
+          _emptyCreds(),
+          defaultCallTimeoutSeconds: 30,
+        );
+        expect(client.callTimeout, const Duration(seconds: 7));
+        await client.close();
+      },
+    );
+
+    test('falls back to the global default when spec has none', () async {
+      final spec = McpUrlServerSpec(
+        id: 'r',
+        url: Uri.parse('https://remote.example/mcp'),
+        isWebSocket: false,
+      );
+      final client = await defaultMcpClientFactory(
+        spec,
+        _emptyCreds(),
+        defaultCallTimeoutSeconds: 12,
+      );
+      expect(client.callTimeout, const Duration(seconds: 12));
+      await client.close();
+    });
   });
 
   group('McpClientPool — toggle / reconnect', () {
