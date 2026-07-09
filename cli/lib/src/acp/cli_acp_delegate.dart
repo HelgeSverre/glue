@@ -14,15 +14,41 @@ import 'dart:async';
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_harness/glue_harness.dart';
 import 'package:glue_server/glue_server.dart';
+import 'package:meta/meta.dart';
 
 class CliAcpDelegate extends AcpServerDelegate {
-  CliAcpDelegate({required this.services});
+  // Keep the public `services:` parameter name (production call sites use it)
+  // while storing into the nullable `_services` backing field.
+  // ignore: prefer_initializing_formals
+  CliAcpDelegate({required AppServices services}) : _services = services;
 
-  final AppServices services;
+  /// Test-only constructor that builds a delegate without harness services.
+  /// Pair with [debugInstallSession] to drive [prompt]'s permission flow
+  /// against a hand-built [AgentCore] + [PermissionGate]. Production wiring
+  /// always uses the default constructor.
+  @visibleForTesting
+  CliAcpDelegate.forTest() : _services = null;
+
+  final AppServices? _services;
+
+  /// Harness services. Non-null for production delegates; a
+  /// [CliAcpDelegate.forTest] instance never calls into it.
+  AppServices get services => _services!;
 
   // Per-session state, keyed by ACP sessionId.
   final Map<String, _AcpSession> _sessions = {};
   int _sessionCounter = 0;
+
+  /// Test-only: install a pre-built session so [prompt] can be exercised
+  /// without a live LLM. Not used by production wiring.
+  @visibleForTesting
+  void debugInstallSession(
+    String id, {
+    required AgentCore agent,
+    required PermissionGate gate,
+  }) {
+    _sessions[id] = _AcpSession(agent: agent, gate: gate);
+  }
 
   @override
   Future<String> createSession(SessionNewParams params) async {
@@ -100,18 +126,32 @@ class CliAcpDelegate extends AcpServerDelegate {
 
         // For tool calls: gate locally first, fall back to client.
         controller.add(event); // tell the client a tool is starting
-        final decision = session.gate.resolve(event.call);
-        bool granted;
-        switch (decision) {
-          case PermissionDecision.allow:
-            granted = true;
-          case PermissionDecision.deny:
-            granted = false;
-          case PermissionDecision.ask:
-            granted = await requestPermission(event.call);
-        }
 
+        // The whole gate → permission → execute path must stay inside this
+        // try. `requestPermission` routes through the ACP server, which
+        // error-completes its pending completer when the client sends an
+        // error reply or disconnects mid-prompt. If that throw escaped this
+        // detached `listen` callback it would become an unhandled zone error
+        // AND skip `completeToolCall`, stranding `AgentCore` on its per-call
+        // completer forever (the `session/prompt` request would never return).
         try {
+          final decision = session.gate.resolve(event.call);
+          bool granted;
+          switch (decision) {
+            case PermissionDecision.allow:
+              granted = true;
+            case PermissionDecision.deny:
+              granted = false;
+            case PermissionDecision.ask:
+              try {
+                granted = await requestPermission(event.call);
+              } on Object {
+                // An unanswerable prompt (client error reply / disconnect)
+                // is treated as a denial rather than a hang.
+                granted = false;
+              }
+          }
+
           final result = granted
               ? await session.agent.executeTool(event.call)
               : ToolResult.denied(event.call.id);

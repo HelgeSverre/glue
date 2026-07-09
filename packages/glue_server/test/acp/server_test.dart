@@ -71,6 +71,48 @@ class _FakeDelegate extends AcpServerDelegate {
   }
 }
 
+/// Delegate that requests permission for a tool and blocks the prompt until
+/// that request resolves. [permissionThrew] completes with `true` if the
+/// awaited permission future threw (the server drained it), `false` if it
+/// resolved normally — letting tests assert the H9 drain behaviour.
+class _BlockingPermissionDelegate extends AcpServerDelegate {
+  final Completer<bool> permissionThrew = Completer<bool>();
+
+  @override
+  Future<String> createSession(SessionNewParams params) async => 'sess-block';
+
+  @override
+  Stream<AgentEvent> prompt({
+    required String sessionId,
+    required String userMessage,
+    required Future<bool> Function(ToolCall call) requestPermission,
+    List<ContentPart> userContentParts = const [],
+  }) async* {
+    final call = ToolCall(
+      id: const ToolCallId('tc-block'),
+      name: 'bash',
+      arguments: const {'command': 'ls'},
+    );
+    yield AgentToolCall(call);
+    try {
+      await requestPermission(call);
+      if (!permissionThrew.isCompleted) permissionThrew.complete(false);
+    } on Object {
+      if (!permissionThrew.isCompleted) permissionThrew.complete(true);
+    }
+  }
+
+  @override
+  void cancelPrompt(String sessionId) {}
+
+  @override
+  UsageReport usageSummary(String sessionId) =>
+      buildUsageReport(usageEvents: const [], sessionId: sessionId);
+
+  @override
+  Future<void> closeSession(String sessionId) async {}
+}
+
 void main() {
   group('AcpServer', () {
     late StreamController<List<int>> input;
@@ -707,5 +749,202 @@ void main() {
           .toList();
       expect(completeds, isNotEmpty);
     });
+
+    test('transport close drains pending permissions (H9)', () async {
+      final delegate = _BlockingPermissionDelegate();
+      final server = AcpServer(transport: transport, delegate: delegate);
+      final serverFuture = server.serve();
+
+      input.add(
+        utf8.encode(
+          '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
+          '{"cwd":"/tmp/p"}}\n',
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      final sessionId =
+          ((await readSent()).single['result']! as Map)['sessionId'] as String;
+      output.buffer.clear();
+
+      input.add(
+        utf8.encode(
+          '{"jsonrpc":"2.0","id":2,"method":"session/prompt","params":'
+          '{"sessionId":"$sessionId","prompt":[{"type":"text","text":"go"}]}}\n',
+        ),
+      );
+      await _waitForRequestPermission(readSent);
+
+      // Client disconnects mid-permission-prompt.
+      await input.close();
+      await serverFuture;
+
+      expect(
+        await delegate.permissionThrew.future.timeout(
+          const Duration(seconds: 2),
+        ),
+        isTrue,
+        reason: 'pending permission must be failed when the transport closes',
+      );
+    });
+
+    test(
+      "session/close drains that session's pending permissions (H9)",
+      () async {
+        final delegate = _BlockingPermissionDelegate();
+        final server = AcpServer(transport: transport, delegate: delegate);
+        final serverFuture = server.serve();
+
+        input.add(
+          utf8.encode(
+            '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
+            '{"cwd":"/tmp/p"}}\n',
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        final sessionId =
+            ((await readSent()).single['result']! as Map)['sessionId']
+                as String;
+        output.buffer.clear();
+
+        input.add(
+          utf8.encode(
+            '{"jsonrpc":"2.0","id":2,"method":"session/prompt","params":'
+            '{"sessionId":"$sessionId","prompt":[{"type":"text","text":"go"}]}}\n',
+          ),
+        );
+        await _waitForRequestPermission(readSent);
+
+        // Explicit close of the session that still has an in-flight prompt.
+        input.add(
+          utf8.encode(
+            '{"jsonrpc":"2.0","id":3,"method":"session/close","params":'
+            '{"sessionId":"$sessionId"}}\n',
+          ),
+        );
+
+        expect(
+          await delegate.permissionThrew.future.timeout(
+            const Duration(seconds: 2),
+          ),
+          isTrue,
+          reason: "session/close must drain the session's pending permissions",
+        );
+
+        await input.close();
+        await serverFuture;
+      },
+    );
+
+    test(
+      'initialize negotiates protocolVersion to the lower of the two (C5)',
+      () async {
+        // Agent supports v2; a client asking for v1 gets v1 back.
+        final delegate = _FakeDelegate(scripted: const []);
+        final server = AcpServer(
+          transport: transport,
+          delegate: delegate,
+          config: const AcpServerConfig(protocolVersion: 2),
+        );
+        final serverFuture = server.serve();
+
+        input.add(
+          utf8.encode(
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":'
+            '{"protocolVersion":1}}\n',
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        await input.close();
+        await serverFuture;
+
+        final sent = await readSent();
+        expect((sent.single['result']! as Map)['protocolVersion'], 1);
+      },
+    );
+
+    test(
+      'initialize caps a too-new client protocolVersion at agent max (C5)',
+      () async {
+        final delegate = _FakeDelegate(scripted: const []);
+        // Default agent protocolVersion is 1.
+        final server = AcpServer(transport: transport, delegate: delegate);
+        final serverFuture = server.serve();
+
+        input.add(
+          utf8.encode(
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":'
+            '{"protocolVersion":5}}\n',
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        await input.close();
+        await serverFuture;
+
+        final sent = await readSent();
+        expect((sent.single['result']! as Map)['protocolVersion'], 1);
+      },
+    );
+
+    test(
+      'a second concurrent session/prompt is rejected as busy (C4-acp)',
+      () async {
+        final delegate = _BlockingPermissionDelegate();
+        final server = AcpServer(transport: transport, delegate: delegate);
+        final serverFuture = server.serve();
+
+        input.add(
+          utf8.encode(
+            '{"jsonrpc":"2.0","id":1,"method":"session/new","params":'
+            '{"cwd":"/tmp/p"}}\n',
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        final sessionId =
+            ((await readSent()).single['result']! as Map)['sessionId']
+                as String;
+        output.buffer.clear();
+
+        // First prompt blocks on a permission request.
+        input.add(
+          utf8.encode(
+            '{"jsonrpc":"2.0","id":2,"method":"session/prompt","params":'
+            '{"sessionId":"$sessionId","prompt":[{"type":"text","text":"go"}]}}\n',
+          ),
+        );
+        await _waitForRequestPermission(readSent);
+
+        // Second prompt for the SAME session while the first is still active.
+        input.add(
+          utf8.encode(
+            '{"jsonrpc":"2.0","id":3,"method":"session/prompt","params":'
+            '{"sessionId":"$sessionId","prompt":[{"type":"text","text":"again"}]}}\n',
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        final busy = (await readSent()).firstWhere((m) => m['id'] == 3);
+        expect(((busy['error']! as Map)['code'] as num).toInt(), -32600);
+
+        // Drain + finish.
+        await input.close();
+        await serverFuture;
+      },
+    );
   });
+}
+
+/// Polls [readSent] until the server has emitted a `session/request_permission`
+/// request, or fails after a short timeout.
+Future<void> _waitForRequestPermission(
+  Future<List<Map<String, Object?>>> Function() readSent,
+) async {
+  final start = DateTime.now();
+  while (true) {
+    final sent = await readSent();
+    if (sent.any((m) => m['method'] == 'session/request_permission')) return;
+    if (DateTime.now().difference(start).inSeconds > 3) {
+      fail('timed out waiting for session/request_permission');
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+  }
 }

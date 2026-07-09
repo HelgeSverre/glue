@@ -240,4 +240,95 @@ void main() {
       expect((jsonDecode(reply) as Map)['id'], 1);
     });
   });
+
+  group('AcpHttpHost Origin defense (H7)', () {
+    test(
+      'rejects an upgrade request carrying an Origin header with 403',
+      () async {
+        // A browser attaches `Origin` to every WebSocket handshake; native /
+        // editor ACP clients do not. Rejecting any request that carries an
+        // Origin header defeats the DNS-rebinding / drive-by attack where a
+        // visited website opens ws://127.0.0.1:<port>/acp to drive the agent.
+        final host = AcpHttpHost(delegateFactory: _TextOnlyDelegate.new);
+        final port = await host.start(port: 0);
+        addTearDown(host.stop);
+
+        final client = HttpClient();
+        addTearDown(client.close);
+        final request = await client.getUrl(
+          Uri.parse('http://127.0.0.1:$port/acp'),
+        );
+        request.headers.add('origin', 'http://evil.example');
+        final response = await request.close();
+        expect(response.statusCode, 403);
+        await response.drain<void>();
+      },
+    );
+
+    test('still accepts an upgrade request without an Origin header', () async {
+      final host = AcpHttpHost(delegateFactory: _TextOnlyDelegate.new);
+      final port = await host.start(port: 0);
+      addTearDown(host.stop);
+
+      final ws = await WebSocket.connect('ws://127.0.0.1:$port/acp');
+      addTearDown(ws.close);
+      ws.add(
+        jsonEncode({
+          'jsonrpc': '2.0',
+          'id': 1,
+          'method': 'initialize',
+          'params': {'protocolVersion': 1},
+        }),
+      );
+      final reply = await ws.first as String;
+      expect((jsonDecode(reply) as Map)['id'], 1);
+    });
+  });
+
+  group('AcpHttpHost connection resilience (H10)', () {
+    test(
+      'a throwing delegateFactory neither crashes the host nor stops accepting',
+      () async {
+        // The first connection's delegateFactory throws inside
+        // _runConnection, which is dispatched un-awaited. Without a catch
+        // this is an isolate-fatal unhandled async error; with one, the host
+        // logs, tears down that socket, and keeps accepting.
+        var attempts = 0;
+        final host = AcpHttpHost(
+          delegateFactory: () {
+            attempts++;
+            if (attempts == 1) {
+              throw StateError('delegate init boom');
+            }
+            return _TextOnlyDelegate();
+          },
+        );
+        final port = await host.start(port: 0);
+        addTearDown(host.stop);
+
+        // First connection: upgrade succeeds, then the factory throws.
+        final doomed = await WebSocket.connect('ws://127.0.0.1:$port/acp');
+        addTearDown(doomed.close);
+        // Give _runConnection time to run and (pre-fix) surface the uncaught
+        // error into the test zone.
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+
+        // Second connection must still handshake — proof the host survived.
+        final ws = await WebSocket.connect('ws://127.0.0.1:$port/acp');
+        addTearDown(ws.close);
+        ws.add(
+          jsonEncode({
+            'jsonrpc': '2.0',
+            'id': 1,
+            'method': 'initialize',
+            'params': {'protocolVersion': 1},
+          }),
+        );
+        final reply = await ws.cast<String>().first.timeout(
+          const Duration(seconds: 5),
+        );
+        expect((jsonDecode(reply) as Map)['id'], 1);
+      },
+    );
+  });
 }

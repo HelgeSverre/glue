@@ -23,6 +23,11 @@ class WebSocketTransport implements JsonRpcTransport {
   StreamController<JsonRpcMessage>? _controller;
   StreamSubscription<dynamic>? _sub;
 
+  /// Set once we've warned about dropping an outbound message on a
+  /// not-open socket, so a disconnected peer mid-turn doesn't spam stderr
+  /// with one line per dropped frame.
+  bool _warnedDroppedSend = false;
+
   @override
   Stream<JsonRpcMessage> get incoming {
     final existing = _controller;
@@ -66,7 +71,19 @@ class WebSocketTransport implements JsonRpcTransport {
 
   @override
   void send(JsonRpcMessage message) {
-    if (_socket.readyState != WebSocket.open) return;
+    if (_socket.readyState != WebSocket.open) {
+      // Surface rather than silently swallow: a send once the socket has
+      // left the open state means the peer is gone and this reply / update /
+      // permission request is being dropped. Warn once per transport.
+      if (!_warnedDroppedSend) {
+        _warnedDroppedSend = true;
+        stderr.writeln(
+          'WebSocketTransport: dropping outbound message(s) — socket not open '
+          '(readyState=${_socket.readyState}); the peer has disconnected',
+        );
+      }
+      return;
+    }
     _socket.add(encodeJsonRpcString(message));
   }
 
