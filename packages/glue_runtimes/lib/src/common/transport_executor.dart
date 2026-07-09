@@ -109,17 +109,35 @@ class TransportExecutor implements CommandExecutor {
     final handle = await backend.stream(command);
     final sink = eventSink;
     if (sink != null) {
-      handle.exitCode.then((code) {
-        sink(
-          RuntimeCommandCompleted(
-            commandId: commandId,
-            runtimeId: _runtimeId,
-            at: DateTime.now(),
-            exitCode: code,
-            duration: DateTime.now().difference(started),
-          ),
-        );
-      });
+      handle.exitCode.then(
+        (code) {
+          sink(
+            RuntimeCommandCompleted(
+              commandId: commandId,
+              runtimeId: _runtimeId,
+              at: DateTime.now(),
+              exitCode: code,
+              duration: DateTime.now().difference(started),
+            ),
+          );
+        },
+        // Without this handler an error completion (e.g. a
+        // DaytonaRunningCommand whose logs/status poll hit a transient
+        // HTTP failure) becomes an unhandled zone error — fatal to the
+        // isolate by default. Surface it as a transport-level failure
+        // event instead.
+        onError: (Object error, StackTrace st) {
+          sink(
+            RuntimeCommandFailed(
+              commandId: commandId,
+              runtimeId: _runtimeId,
+              at: DateTime.now(),
+              errorType: error.runtimeType.toString(),
+              message: error.toString(),
+            ),
+          );
+        },
+      );
     }
     return handle;
   }

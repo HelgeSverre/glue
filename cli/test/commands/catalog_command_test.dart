@@ -26,6 +26,14 @@ class _StubFetcher implements RemoteCatalogFetcher {
 Directory _scratch() =>
     Directory.systemTemp.createTempSync('glue_catalog_cmd_test_');
 
+/// A minimal body that survives `parseCatalogYaml` (H5 validates the fetched
+/// body before writing it to the cache, so fixtures must be real catalogs).
+const _validCatalog =
+    'version: 1\n'
+    'defaults:\n'
+    '  model: anthropic/claude\n'
+    'providers: {}\n';
+
 void main() {
   group('refreshCatalog', () {
     test('writes cache from first successful candidate and stops', () async {
@@ -42,7 +50,7 @@ void main() {
         cachePath: cachePath,
         fetcher: _StubFetcher((uri) async {
           attempted.add(uri);
-          return const FetchUpdated(yaml: 'version: 1\nproviders: {}\n');
+          return const FetchUpdated(yaml: _validCatalog);
         }),
       );
 
@@ -72,7 +80,7 @@ void main() {
           if (uri.host == 'primary.invalid') {
             return const FetchFailed(reason: 'connection refused');
           }
-          return const FetchUpdated(yaml: 'version: 1\nproviders: {}\n');
+          return const FetchUpdated(yaml: _validCatalog);
         }),
       );
 
@@ -112,6 +120,66 @@ void main() {
           isFalse,
           reason: 'cache must not be created on total failure',
         );
+      },
+    );
+
+    test('rejects a fetched body that is not a valid catalog and does not '
+        'overwrite an existing cache (H5)', () async {
+      final dir = _scratch();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final cachePath = '${dir.path}/models.yaml';
+      // A previously-good cache the refresh must not clobber.
+      File(cachePath).writeAsStringSync('version: 1\nproviders: {}\n');
+
+      final outcome = await refreshCatalog(
+        candidates: [Uri.parse('https://a.invalid/m.yaml')],
+        cachePath: cachePath,
+        fetcher: _StubFetcher(
+          (_) async => const FetchUpdated(yaml: ': not : valid : yaml ['),
+        ),
+      );
+
+      expect(
+        outcome,
+        isA<RefreshAllFailed>(),
+        reason: 'invalid catalog must not count as a successful write',
+      );
+      expect(
+        File(cachePath).readAsStringSync(),
+        'version: 1\nproviders: {}\n',
+        reason: 'the good cache must be preserved untouched',
+      );
+    });
+
+    test(
+      'falls back to the next candidate when a body fails validation (H5)',
+      () async {
+        final dir = _scratch();
+        addTearDown(() => dir.deleteSync(recursive: true));
+        final cachePath = '${dir.path}/models.yaml';
+
+        final attempted = <Uri>[];
+        final outcome = await refreshCatalog(
+          candidates: [
+            Uri.parse('https://primary.invalid/m.yaml'),
+            Uri.parse('https://fallback.invalid/m.yaml'),
+          ],
+          cachePath: cachePath,
+          fetcher: _StubFetcher((uri) async {
+            attempted.add(uri);
+            if (uri.host == 'primary.invalid') {
+              return const FetchUpdated(yaml: 'garbage: [unterminated');
+            }
+            return const FetchUpdated(yaml: _validCatalog);
+          }),
+        );
+
+        expect(outcome, isA<RefreshWrote>());
+        expect(attempted.map((u) => u.host), [
+          'primary.invalid',
+          'fallback.invalid',
+        ]);
+        expect(File(cachePath).readAsStringSync(), contains('version'));
       },
     );
 

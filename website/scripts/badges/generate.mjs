@@ -16,7 +16,7 @@ import {
   FONT_FAMILY,
   LAYOUT,
 } from "./design-tokens.mjs";
-import { BADGE_CONFIGS, STYLES } from "./config.mjs";
+import { BADGE_CONFIGS, STYLES } from "./badge-config.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WEBSITE_ROOT = path.resolve(HERE, "..", "..");

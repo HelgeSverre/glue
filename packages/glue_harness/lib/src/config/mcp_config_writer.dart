@@ -44,6 +44,11 @@ class McpConfigWriter {
   /// Writes a server entry under `mcp.servers.<id>`. Creates the `mcp:`
   /// and `mcp.servers:` blocks if missing. Throws if [spec.id] already
   /// exists and [overwrite] is `false`.
+  ///
+  /// Every path is a *scoped* edit of the `mcp.servers` subtree only. We
+  /// never re-render or replace the whole `mcp:` block, so sibling keys
+  /// (e.g. `mcp.tool_policy` — a security deny-list) and user comments are
+  /// preserved. See the C2 regression tests in `mcp_config_writer_test.dart`.
   void addServer(McpServerSpec spec, {bool overwrite = false}) {
     final file = File(configPath);
     if (!file.existsSync()) {
@@ -52,7 +57,8 @@ class McpConfigWriter {
     }
     final original = file.readAsStringSync();
     final parsed = _tryParse(original);
-    final mcp = parsed is Map ? parsed['mcp'] : null;
+    final rootIsMap = parsed is Map;
+    final mcp = rootIsMap ? parsed['mcp'] : null;
     final servers = mcp is Map ? mcp['servers'] : null;
 
     if (servers is Map && servers.containsKey(spec.id) && !overwrite) {
@@ -61,142 +67,88 @@ class McpConfigWriter {
       );
     }
 
-    // When `mcp.servers` already has a block-styled entry, yaml_edit can
-    // splice a new one in cleanly. On the first server (empty/absent block)
-    // yaml_edit inherits flow style from the null parent, so we render the
-    // whole block as text instead.
+    final specMap = _specToYaml(spec);
+
+    // Case A — `mcp.servers` already has a block-styled entry: splice the
+    // new entry in beside it.
     if (servers is Map && servers.isNotEmpty) {
       _mutate(
+        (editor) => editor.update([
+          'mcp',
+          'servers',
+          spec.id,
+        ], wrapAsYamlNode(specMap, collectionStyle: CollectionStyle.BLOCK)),
+      );
+      return;
+    }
+
+    // Case B — `mcp:` exists but `servers` is empty (`{}`), null, or the
+    // key is absent: set the whole `servers` value in ONE update. This is
+    // the fix for C2 — it touches only `mcp.servers`, leaving sibling
+    // `mcp.*` keys and comments untouched.
+    if (mcp is Map) {
+      _mutate(
         (editor) => editor.update(
-          ['mcp', 'servers', spec.id],
-          wrapAsYamlNode(
-            _specToYaml(spec),
-            collectionStyle: CollectionStyle.BLOCK,
-          ),
+          ['mcp', 'servers'],
+          wrapAsYamlNode({
+            spec.id: specMap,
+          }, collectionStyle: CollectionStyle.BLOCK),
         ),
       );
       return;
     }
 
-    _bootstrapFirstServer(file, original, mcp is Map, spec);
-  }
-
-  /// Writes the first `mcp.servers.<id>` entry as rendered block YAML —
-  /// replacing an existing empty `mcp:` block or appending a fresh one —
-  /// then validates the round-trip and atomically swaps the file in.
-  void _bootstrapFirstServer(
-    File file,
-    String original,
-    bool mcpExists,
-    McpServerSpec spec,
-  ) {
-    final block = _renderServerBlock(spec);
-    final String newContent;
-    if (mcpExists) {
-      // `mcp:` exists but has no servers (servers: null or absent).
-      // Re-emit as a fresh block right after the `mcp:` line.
-      newContent = _replaceMcpBlock(original, block);
-    } else {
-      // No `mcp:` section at all — append.
-      final suffix = original.endsWith('\n') ? '' : '\n';
-      newContent = '$original$suffix\n$block';
+    // Case C — no `mcp:` block at all, but the document root is a mapping:
+    // add the whole `mcp.servers` subtree. yaml_edit leaves the rest of the
+    // file (keys + comments) untouched.
+    if (rootIsMap) {
+      _mutate(
+        (editor) => editor.update(
+          ['mcp'],
+          wrapAsYamlNode({
+            'servers': {spec.id: specMap},
+          }, collectionStyle: CollectionStyle.BLOCK),
+        ),
+      );
+      return;
     }
 
-    // Round-trip guard.
+    // Case D — empty or comments-only file (null/scalar root). yaml_edit
+    // cannot add a key to a non-map root, so render the block through a
+    // throwaway editor and append it. An append never deletes content.
+    _bootstrapEmptyRoot(file, original, spec, specMap);
+  }
+
+  /// Appends a freshly rendered `mcp.servers.<id>` block to a file whose
+  /// root is not a mapping (empty or comments-only).
+  ///
+  /// Rendering goes through a throwaway [YamlEditor] so scalar quoting and
+  /// escaping match the incremental path exactly — a value containing a
+  /// newline is quoted (the L4 fix), not splattered across lines.
+  void _bootstrapEmptyRoot(
+    File file,
+    String original,
+    McpServerSpec spec,
+    Map<String, dynamic> specMap,
+  ) {
+    final gen = YamlEditor('mcp:\n  servers:\n');
+    gen.update(
+      ['mcp', 'servers'],
+      wrapAsYamlNode({
+        spec.id: specMap,
+      }, collectionStyle: CollectionStyle.BLOCK),
+    );
+    final block = gen.toString();
+
+    final suffix = original.isEmpty || original.endsWith('\n') ? '' : '\n';
+    final sep = original.trim().isEmpty ? '' : '\n';
+    final newContent = '$original$suffix$sep$block';
+
     _validateOrThrow(newContent);
 
     final tmp = File('$configPath.tmp');
     tmp.writeAsStringSync(newContent);
     tmp.renameSync(file.path);
-  }
-
-  /// Renders a single server entry as a top-level `mcp:\n  servers:\n    <id>:\n      ...`
-  /// block in block YAML style.
-  String _renderServerBlock(McpServerSpec spec) {
-    final buf = StringBuffer('mcp:\n  servers:\n');
-    buf.write(_renderServerEntry(spec, indent: '    '));
-    return buf.toString();
-  }
-
-  /// Renders a single `<id>:\n  command: ...` entry indented by [indent].
-  ///
-  /// Drives the same [_specToYaml] map used by the yaml_edit incremental
-  /// path through a block-YAML emitter, so the on-disk shape is identical
-  /// whether a server is the first one (text bootstrap) or appended later.
-  String _renderServerEntry(McpServerSpec spec, {required String indent}) {
-    final lines = StringBuffer();
-    lines.writeln('$indent${spec.id}:');
-    _renderMap(lines, _specToYaml(spec), indent: '$indent  ');
-    return lines.toString();
-  }
-
-  /// Emits a `Map` as block YAML at [indent]. Handles the value shapes
-  /// [_specToYaml] produces: scalars, string lists, and nested maps
-  /// (env, auth).
-  void _renderMap(
-    StringBuffer out,
-    Map<dynamic, dynamic> map, {
-    required String indent,
-  }) {
-    for (final entry in map.entries) {
-      final value = entry.value;
-      switch (value) {
-        case List():
-          out.writeln('$indent${entry.key}:');
-          for (final item in value) {
-            out.writeln('$indent  - ${_renderScalar(item)}');
-          }
-        case Map():
-          out.writeln('$indent${entry.key}:');
-          _renderMap(out, value, indent: '$indent  ');
-        default:
-          out.writeln('$indent${entry.key}: ${_renderScalar(value)}');
-      }
-    }
-  }
-
-  String _renderScalar(Object? value) =>
-      value is String ? _scalar(value) : '$value';
-
-  /// Single-line scalar emitter with conservative quoting. Quotes only
-  /// when the value would otherwise parse as a non-string (booleans,
-  /// numbers, null) or starts with a YAML indicator.
-  String _scalar(String value) {
-    if (value.isEmpty) return '""';
-    const reserved = {'true', 'false', 'null', 'yes', 'no', 'on', 'off', '~'};
-    final needsQuote =
-        reserved.contains(value.toLowerCase()) ||
-        RegExp(r'^[-+]?\d').hasMatch(value) ||
-        RegExp(r'''[:#'"\[\]{}|>*&!%@`]''').hasMatch(value);
-    if (!needsQuote) return value;
-    final escaped = value.replaceAll(r'\', r'\\').replaceAll('"', r'\"');
-    return '"$escaped"';
-  }
-
-  /// Replace the empty `mcp:` (with `servers:` empty or absent) block
-  /// with the rendered [block] text. Preserves everything before and
-  /// after the `mcp:` block.
-  String _replaceMcpBlock(String source, String block) {
-    final lines = source.split('\n');
-    final mcpIdx = lines.indexWhere((l) => l.startsWith('mcp:'));
-    if (mcpIdx == -1) {
-      final suffix = source.endsWith('\n') ? '' : '\n';
-      return '$source$suffix\n$block';
-    }
-    var end = mcpIdx + 1;
-    while (end < lines.length) {
-      final l = lines[end];
-      if (l.isEmpty || l.startsWith(' ') || l.startsWith('\t')) {
-        end++;
-      } else {
-        break;
-      }
-    }
-    final before = lines.sublist(0, mcpIdx).join('\n');
-    final after = lines.sublist(end).join('\n');
-    final beforeSep = before.isEmpty || before.endsWith('\n') ? '' : '\n';
-    final afterSep = after.startsWith('\n') || after.isEmpty ? '' : '\n';
-    return '$before$beforeSep$block$afterSep$after';
   }
 
   Object? _tryParse(String yamlSource) {

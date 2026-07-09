@@ -18,8 +18,11 @@ import 'package:glue_runtimes/src/daytona/client.dart';
 /// to [stdout] and leave [stderr] empty — callers should not rely
 /// on stderr being populated for cloud runtimes.
 ///
-/// **Kill semantics:** `kill(force: false)` deletes the parent
-/// session, which sends SIGTERM to all running commands within it.
+/// **Kill semantics:** each streaming command runs in its *own*
+/// Daytona session (created per-command by `_DaytonaBackend.stream`),
+/// so `kill(force: false)` deletes only this command's session —
+/// SIGTERMing just this command, not its siblings. The session is also
+/// deleted on normal completion so sessions don't accumulate.
 /// `kill(force: true)` additionally stops the entire sandbox via
 /// [DaytonaClient.stopSandbox] — drastic (kills sibling commands and
 /// renders the sandbox unusable) but matches the host-runtime
@@ -131,6 +134,17 @@ class DaytonaRunningCommand implements RunningCommandHandle {
     if (_stopped) return;
     _stopped = true;
     if (!_exitCompleter.isCompleted) _exitCompleter.complete(0);
+    // Each command owns its session (see class doc). Delete it on
+    // completion so per-command sessions don't accumulate for the
+    // sandbox's lifetime. kill() already deleted it, so skip then
+    // (the delete is idempotent regardless).
+    if (!_killed) {
+      try {
+        await _client.deleteSession(_sandbox, _command.sessionId);
+      } catch (_) {
+        // Best-effort cleanup — the sandbox teardown reclaims sessions.
+      }
+    }
     await _stdoutCtrl.close();
     await _stderrCtrl.close();
   }

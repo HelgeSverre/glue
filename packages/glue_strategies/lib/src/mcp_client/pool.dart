@@ -115,10 +115,21 @@ typedef McpRefreshGrant =
     Future<OAuthTokens> Function(String serverId, String refreshToken);
 
 /// Default factory — spawns real transports for each spec type.
+///
+/// The per-call timeout resolves to the server's own
+/// [McpServerSpec.callTimeoutSeconds] when set, otherwise
+/// [defaultCallTimeoutSeconds] (the pool passes
+/// [McpConfig.callTimeoutSeconds]) — without this the config value was
+/// parsed but never applied and the client's built-in 30s default always
+/// won (M1).
 Future<McpClient> defaultMcpClientFactory(
   McpServerSpec spec,
-  CredentialStore credentials,
-) async {
+  CredentialStore credentials, {
+  int defaultCallTimeoutSeconds = 30,
+}) async {
+  final callTimeout = Duration(
+    seconds: spec.callTimeoutSeconds ?? defaultCallTimeoutSeconds,
+  );
   return switch (spec) {
     McpStdioServerSpec() => () async {
       final transport = await McpStdioTransport.spawn(
@@ -127,7 +138,7 @@ Future<McpClient> defaultMcpClientFactory(
         extraEnv: spec.env,
         workingDirectory: spec.workingDirectory,
       );
-      return McpClient(transport: transport);
+      return McpClient(transport: transport, callTimeout: callTimeout);
     }(),
     McpUrlServerSpec(:final url, :final auth, :final isWebSocket) =>
       isWebSocket
@@ -136,14 +147,14 @@ Future<McpClient> defaultMcpClientFactory(
                 url: url,
                 bearerToken: resolveMcpBearerToken(auth, credentials, spec.id),
               );
-              return McpClient(transport: transport);
+              return McpClient(transport: transport, callTimeout: callTimeout);
             }()
           : () async {
               final transport = McpHttpTransport(
                 endpoint: url,
                 bearerToken: resolveMcpBearerToken(auth, credentials, spec.id),
               );
-              return McpClient(transport: transport);
+              return McpClient(transport: transport, callTimeout: callTimeout);
             }(),
   };
 }
@@ -178,7 +189,13 @@ class McpClientPool {
     McpClientFactory? clientFactory,
     McpRefreshGrant? refreshGrant,
   }) : _reservedToolNames = reservedToolNames ?? const {},
-       _clientFactory = clientFactory ?? defaultMcpClientFactory,
+       _clientFactory =
+           clientFactory ??
+           ((spec, creds) => defaultMcpClientFactory(
+             spec,
+             creds,
+             defaultCallTimeoutSeconds: config.callTimeoutSeconds,
+           )),
        // ignore: prefer_initializing_formals
        _refreshGrant = refreshGrant {
     for (final spec in config.servers) {
@@ -205,6 +222,18 @@ class McpClientPool {
   /// Per-server attempt counter. Bumped before each `_connect` call;
   /// reset to 0 on successful connect or manual user action.
   final Map<String, int> _attempts = {};
+
+  /// Per-server connect generation. Bumped on entry to `_connect` and on
+  /// `_disconnect` so a superseded in-flight `_connect` (double-connect
+  /// race, or a disconnect landing mid-handshake) bails after its next
+  /// await instead of overwriting `_clients[id]` and leaking a live
+  /// child process (H12a).
+  final Map<String, int> _generation = {};
+
+  /// Server ids with an in-flight mid-session re-auth. Collapses the burst
+  /// of `auth_expired` failures that arrive when a single 401 fails every
+  /// pending call, so we re-trigger auth only once (M2).
+  final Set<String> _reauthInFlight = {};
 
   final _events = StreamController<McpPoolEvent>.broadcast();
 
@@ -268,7 +297,10 @@ class McpClientPool {
     if (s == null) return;
     _cancelRetry(serverId);
     _attempts[serverId] = 0;
-    if (_clients.containsKey(serverId)) {
+    // Branch on the enabled flag, not on whether a client happens to be
+    // live: an enabled-but-unhealthy server (dead / awaiting auth, no
+    // client entry) must toggle *off*, not restart (H12b).
+    if (s.enabled) {
       await _disconnect(s);
       _servers[serverId] = McpServerSnapshot(
         spec: s.spec.copyWith(enabled: false),
@@ -296,11 +328,23 @@ class McpClientPool {
   // ─── private ─────────────────────────────────────────────────────────────
 
   Future<void> _connect(McpServerSnapshot s) async {
+    // Claim this generation. Any concurrent/older _connect for this server
+    // (or a _disconnect) invalidates us; we bail after our next await
+    // rather than clobbering the newer client (H12a).
+    final generation = (_generation[s.id] ?? 0) + 1;
+    _generation[s.id] = generation;
+
     final attempt = (_attempts[s.id] ?? 0) + 1;
     _attempts[s.id] = attempt;
+    McpClient? client;
     try {
       s.state = McpConnecting(attempt: attempt);
-      final client = await _clientFactory(s.spec, credentials);
+      client = await _clientFactory(s.spec, credentials);
+      if (_generation[s.id] != generation) {
+        // Superseded before we registered — discard, don't leak.
+        await client.close();
+        return;
+      }
       _clients[s.id] = client;
 
       final init = await client.initialize();
@@ -310,7 +354,15 @@ class McpClientPool {
         serverId: s.id,
         descriptors: descriptors,
         reservedNames: _reservedToolNames,
+        onAuthFailure: (failure) => _onToolAuthFailure(s.id, failure),
       );
+      if (_generation[s.id] != generation) {
+        // Superseded mid-handshake. Drop our client without disturbing a
+        // newer one that may already own the slot.
+        if (identical(_clients[s.id], client)) _clients.remove(s.id);
+        await client.close();
+        return;
+      }
       s.tools = tools;
       s.state = McpConnected(
         connectedAt: DateTime.now(),
@@ -337,8 +389,11 @@ class McpClientPool {
       });
     } on McpCallFailure catch (e) {
       s.lastError = e.message ?? e.reason;
-      // Clean up the half-started client if any.
-      final client = _clients.remove(s.id);
+      // Clean up the half-started client — but only if it's still the
+      // registered one (a newer connect may have replaced it).
+      if (client != null && identical(_clients[s.id], client)) {
+        _clients.remove(s.id);
+      }
       await client?.close();
 
       if (e.reason == 'auth_expired') {
@@ -355,7 +410,15 @@ class McpClientPool {
       );
       _handleFailure(s, reason: e.reason, attempt: attempt);
     } catch (e) {
+      // H11: mirror the McpCallFailure cleanup. Anything thrown after
+      // `_clients[s.id] = client` (a bad tool descriptor, a malformed
+      // initialize result, …) must remove + close the client so a live
+      // stdio child isn't leaked while the reconnect timer piles up more.
       s.lastError = e.toString();
+      if (client != null && identical(_clients[s.id], client)) {
+        _clients.remove(s.id);
+      }
+      await client?.close();
       _events.add(
         McpPoolServerErrorEvent(
           serverId: s.id,
@@ -365,6 +428,27 @@ class McpClientPool {
       );
       _handleFailure(s, reason: 'spawn_failed', attempt: attempt);
     }
+  }
+
+  /// Re-triggers the auth flow when a live connection hits a mid-session
+  /// 401 on `tools/call` (surfaced from [McpTool.execute]). The originating
+  /// tool call still fails; here we tear the connection down and run the
+  /// same challenge path `_connect` uses, so the user gets an
+  /// auth-required event / silent refresh (M2).
+  void _onToolAuthFailure(String serverId, McpCallFailure failure) {
+    final s = _servers[serverId];
+    if (s == null) return;
+    if (s.state is McpAwaitingAuth) return;
+    if (!_reauthInFlight.add(serverId)) return;
+    unawaited(() async {
+      try {
+        await _disconnect(s);
+        s.state = const McpDisconnected();
+        await _handleAuthChallenge(s, failure);
+      } finally {
+        _reauthInFlight.remove(serverId);
+      }
+    }());
   }
 
   /// Decide whether to schedule another reconnect attempt or mark dead.
@@ -491,6 +575,7 @@ class McpClientPool {
         serverId: s.id,
         descriptors: descriptors,
         reservedNames: _reservedToolNames,
+        onAuthFailure: (failure) => _onToolAuthFailure(s.id, failure),
       );
       final oldNames = s.tools.map((t) => t.name).toSet();
       final newNames = newTools.map((t) => t.name).toSet();
@@ -514,6 +599,9 @@ class McpClientPool {
 
   Future<void> _disconnect(McpServerSnapshot s) async {
     _cancelRetry(s.id);
+    // Invalidate any in-flight _connect so it doesn't re-register a client
+    // after we've torn down (H12a).
+    _generation[s.id] = (_generation[s.id] ?? 0) + 1;
     final client = _clients.remove(s.id);
     if (client != null) {
       await client.close();

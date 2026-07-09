@@ -18,6 +18,10 @@ Every feature carries a status —
 
 </div>
 
+## The important parts
+
+These are the pieces that define Glue: a terminal agent that edits code, runs commands, keeps local sessions, and can operate the web.
+
 <div class="feature-grid">
 
 <article class="feature-card">
@@ -46,6 +50,32 @@ Every feature carries a status —
 </div>
 <p>Run shell commands through your <code>$SHELL</code>. Output is captured, streamed back, and written to the session log.</p>
 </article>
+
+<article class="feature-card">
+<div class="fc-icon">◐</div>
+<div class="fc-head">
+<h3>Web tools</h3>
+<FeatureStatus status="shipping" />
+</div>
+<p>Fetch, search, extract, PDF OCR, browser automation. The CDP backend is <FeatureStatus status="experimental" />. <a href="/web">Web →</a></p>
+</article>
+
+<article class="feature-card">
+<div class="fc-icon">⌘</div>
+<div class="fc-head">
+<h3>Sessions</h3>
+<FeatureStatus status="shipping" />
+</div>
+<p>Append-only JSONL logs under <code>~/.glue/sessions/</code>. Resumable across runs. Replay UI is <FeatureStatus status="planned" />. <a href="/sessions">How it works →</a></p>
+</article>
+
+</div>
+
+## Also ships with
+
+Everything else you need to wire Glue into your setup.
+
+<div class="feature-grid">
 
 <article class="feature-card">
 <div class="fc-icon">◆</div>
@@ -81,24 +111,6 @@ Every feature carries a status —
 <FeatureStatus status="shipping" />
 </div>
 <p>Offload commands to a remote sandbox. Daytona, Sprites, and Modal are available today via the same <code>RuntimeFactory</code> adapter pattern. <a href="/runtimes">Runtimes →</a></p>
-</article>
-
-<article class="feature-card">
-<div class="fc-icon">⌘</div>
-<div class="fc-head">
-<h3>Sessions</h3>
-<FeatureStatus status="shipping" />
-</div>
-<p>Append-only JSONL logs under <code>~/.glue/sessions/</code>. Resumable across runs. Replay UI is <FeatureStatus status="planned" />. <a href="/sessions">How it works →</a></p>
-</article>
-
-<article class="feature-card">
-<div class="fc-icon">◐</div>
-<div class="fc-head">
-<h3>Web tools</h3>
-<FeatureStatus status="shipping" />
-</div>
-<p>Fetch, search, extract, PDF OCR, browser automation. The CDP backend is <FeatureStatus status="experimental" />. <a href="/web">Web →</a></p>
 </article>
 
 <article class="feature-card">
@@ -157,6 +169,29 @@ display: grid;
 grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
 gap: 1rem;
 margin: 2rem 0 3rem;
+}
+
+h2 {
+font-size: clamp(1.4rem, 2.5vw, 1.8rem);
+line-height: 1.15;
+letter-spacing: -0.02em;
+font-weight: 600;
+margin: 3rem 0 0;
+border: none;
+padding: 0;
+color: var(--vp-c-text-1);
+}
+
+h2:first-of-type {
+margin-top: 0;
+}
+
+h2 + p {
+max-width: 680px;
+color: var(--vp-c-text-2);
+font-size: 1.05rem;
+line-height: 1.55;
+margin: 0.75rem 0 0;
 }
 
 .feature-card {

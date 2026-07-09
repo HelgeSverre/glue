@@ -221,19 +221,89 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
       debug: debug,
     );
 
-    // Interactive mode owns SIGINT here. Print mode installs its own
-    // two-press handler in session_runtime.dart and drives cancellation
-    // via the agent stream iterator — installing this global handler in
-    // print mode would just be a benign no-op (it completes a future
-    // nothing awaits) and confuses the cancellation chain.
-    final sigintSub = printMode
-        ? null
-        : ProcessSignal.sigint.watch().listen((_) => app.requestExit());
+    // Print mode installs its own two-press SIGINT handler in
+    // session_runtime.dart and never enters raw mode / the alt screen, so it
+    // needs neither the interactive SIGINT handler nor the terminal-restore
+    // guard below. (Installing the global SIGINT handler here would just be a
+    // benign no-op that confuses the cancellation chain.)
+    if (printMode) {
+      await app.run();
+      return;
+    }
+
+    await _runInteractive(app);
+  }
+
+  /// Runs the interactive TUI wrapped in a terminal-restore safety net (H6).
+  ///
+  /// The app's own `run()` `finally` restores the terminal, but it only
+  /// executes for work awaited after the exit completer resolves. A
+  /// synchronous throw in any fire-and-forget callback (terminal input, agent
+  /// events, the spinner `Timer.periodic`, or `_render`'s `Future.delayed`)
+  /// surfaces as an *unhandled async error* that would otherwise kill the
+  /// isolate WITHOUT running that `finally` — stranding the user in raw mode
+  /// with the alt screen, mouse capture, a hidden cursor, and a set scroll
+  /// region still active. [runZonedGuarded] catches those and restores the TTY
+  /// before exiting. SIGTERM/SIGHUP (which default to immediate termination)
+  /// are routed to `requestExit()` so the normal `finally` restore runs.
+  Future<void> _runInteractive(App app) async {
+    void restoreTty() {
+      try {
+        app.terminal
+          ..disableMouse()
+          ..resetScrollRegion()
+          ..showCursor()
+          ..write('\x1b[0m')
+          ..disableAltScreen()
+          ..disableRawMode();
+      } catch (_) {
+        // Best-effort: never mask the original failure with a restore error.
+      }
+    }
+
+    final signalSubs = <StreamSubscription<ProcessSignal>>[];
+    // SIGINT keeps its existing behavior: request a clean exit, letting
+    // run()'s finally restore the terminal.
+    signalSubs.add(
+      ProcessSignal.sigint.watch().listen((_) => app.requestExit()),
+    );
+    // SIGTERM / SIGHUP would otherwise terminate the process immediately,
+    // skipping run()'s finally. Watch them where the platform allows and route
+    // to the same clean-exit path. Windows can't watch these — guard each.
+    for (final signal in const [ProcessSignal.sigterm, ProcessSignal.sighup]) {
+      try {
+        signalSubs.add(signal.watch().listen((_) => app.requestExit()));
+      } catch (_) {
+        // Signal not watchable on this platform; skip it.
+      }
+    }
+
+    final done = Completer<void>();
+    runZonedGuarded(
+      () async {
+        try {
+          await app.run();
+        } finally {
+          if (!done.isCompleted) done.complete();
+        }
+      },
+      (error, stack) {
+        // An unhandled async error escaped a fire-and-forget callback; run()'s
+        // finally may never run. Restore the terminal, report, and exit
+        // non-zero so we never leave the user in a broken TTY.
+        restoreTty();
+        stderr.writeln('glue: fatal error: $error');
+        stderr.writeln(stack);
+        exit(70); // EX_SOFTWARE
+      },
+    );
 
     try {
-      await app.run();
+      await done.future;
     } finally {
-      await sigintSub?.cancel();
+      for (final sub in signalSubs) {
+        await sub.cancel();
+      }
     }
   }
 }

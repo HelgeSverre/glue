@@ -26,6 +26,53 @@ class _RecordingLlm implements LlmClient {
   }
 }
 
+/// LLM stub whose stream throws, so `AgentCore.run` yields an `AgentError`.
+/// Drives the print/json error paths (M17/M18).
+class _FailingLlm implements LlmClient {
+  @override
+  Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
+    throw StateError('boom');
+  }
+}
+
+/// A trivial tool that records invocations and returns a fixed result.
+class _EchoTool extends Tool {
+  int calls = 0;
+  @override
+  String get name => 'echo';
+  @override
+  String get description => 'echoes';
+  @override
+  List<ToolParameter> get parameters => const [];
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> args) async {
+    calls++;
+    return ToolResult(content: 'echoed');
+  }
+}
+
+/// Emits a tool call on the first turn, then a plain reply on the second, so
+/// the print-mode loop executes a tool and continues (L18).
+class _ToolThenReplyLlm implements LlmClient {
+  int _turn = 0;
+  @override
+  Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
+    if (_turn++ == 0) {
+      yield ToolCallComplete(
+        ToolCall(
+          id: const ToolCallId('call-1'),
+          name: 'echo',
+          arguments: const {},
+        ),
+      );
+      yield UsageInfo(inputTokens: 1, outputTokens: 1);
+      return;
+    }
+    yield TextDelta('final answer');
+    yield UsageInfo(inputTokens: 1, outputTokens: 1);
+  }
+}
+
 /// Stdin stub that reports no terminal and immediate EOF, so the
 /// print-mode stdin drain returns instantly under `dart test`.
 class _EofStdin implements Stdin {
@@ -88,18 +135,19 @@ class _NoopTerminal extends Terminal {
 }
 
 App _printApp({
-  required _RecordingLlm llm,
+  required LlmClient llm,
   required Environment environment,
   required String? prompt,
   bool jsonMode = false,
   String? resumeSessionId,
   bool startupContinue = false,
+  Map<String, Tool> tools = const {},
 }) {
   return App(
     terminal: _NoopTerminal(),
     layout: Layout(_NoopTerminal()),
     editor: TextAreaEditor(),
-    agent: AgentCore(llm: llm, tools: const {}),
+    agent: AgentCore(llm: llm, tools: tools),
     modelId: 'anthropic/claude-sonnet-4.6',
     printMode: true,
     jsonMode: jsonMode,
@@ -397,5 +445,80 @@ void main() {
 
     final lastTexts = llm.calls.last.map((m) => m.text).toList();
     expect(lastTexts, contains('first q'));
+  });
+
+  test('--print sets a non-zero exit code on agent error (M17)', () async {
+    final savedExit = exitCode;
+    exitCode = 0;
+    try {
+      final app = _printApp(
+        llm: _FailingLlm(),
+        environment: environment,
+        prompt: 'hello',
+      );
+
+      final result = await _runPrint(app);
+
+      expect(
+        exitCode,
+        isNot(0),
+        reason: 'failure must be observable to shells',
+      );
+      expect(result.stderr, contains('boom'));
+    } finally {
+      exitCode = savedExit;
+    }
+  });
+
+  test('--json emits a JSON error envelope on agent error (M18)', () async {
+    final savedExit = exitCode;
+    exitCode = 0;
+    try {
+      final app = _printApp(
+        llm: _FailingLlm(),
+        environment: environment,
+        prompt: 'hello',
+        jsonMode: true,
+      );
+
+      final result = await _runPrint(app);
+
+      // Non-zero exit (M17) …
+      expect(exitCode, isNot(0));
+      // … and stdout is still valid JSON carrying an `error` field so that a
+      // downstream `| jq` doesn't choke on empty input (M18).
+      expect(result.stdout.trim(), isNotEmpty);
+      final envelope = jsonDecode(result.stdout) as Map<String, dynamic>;
+      expect(envelope['error'], isNotNull);
+      expect(envelope['error'].toString(), contains('boom'));
+      expect(envelope['conversation'], isA<List<dynamic>>());
+    } finally {
+      exitCode = savedExit;
+    }
+  });
+
+  test('--print logs tool_call/tool_result to the session (L18)', () async {
+    final tool = _EchoTool();
+    final app = _printApp(
+      llm: _ToolThenReplyLlm(),
+      environment: environment,
+      prompt: 'use the tool',
+      tools: {'echo': tool},
+    );
+
+    await _runPrint(app);
+
+    expect(tool.calls, 1, reason: 'the tool should have executed');
+
+    final sessions = SessionStore.listSessions(environment.sessionsDir);
+    expect(sessions, hasLength(1));
+    final convo = SessionStore.loadConversation(
+      environment.sessionDir(sessions.first.id),
+    );
+    final types = convo.map((e) => e['type']).toList();
+    // --continue must see a faithful history including tool activity.
+    expect(types, contains('tool_call'));
+    expect(types, contains('tool_result'));
+    expect(convo.firstWhere((e) => e['type'] == 'tool_call')['name'], 'echo');
   });
 }

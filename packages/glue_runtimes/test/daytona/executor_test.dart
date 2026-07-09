@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -97,6 +98,94 @@ void main() {
       );
       await expectLater(executor.runCapture('echo hi'), throwsException);
       expect(events.last, isA<RuntimeCommandFailed>());
+    });
+  });
+
+  group('DaytonaExecutor.startStreaming (H13: per-command sessions)', () {
+    /// A router that records every session created / exec'd / deleted so
+    /// tests can assert kill isolation. Every command stays "running"
+    /// (status.exitCode == null) unless its session was deleted.
+    MockClient sessionTrackingClient({
+      required List<String> created,
+      required List<String> deleted,
+    }) {
+      return MockClient((req) async {
+        final path = req.url.path;
+        if (req.method == 'POST' && path.endsWith('/process/session')) {
+          final body = jsonDecode(req.body) as Map<String, dynamic>;
+          created.add(body['sessionId'] as String);
+          return http.Response('', 201);
+        }
+        if (req.method == 'POST' &&
+            path.contains('/process/session/') &&
+            path.endsWith('/exec')) {
+          return http.Response(jsonEncode({'cmdId': 'cmd-x'}), 202);
+        }
+        if (req.method == 'DELETE') {
+          deleted.add(path.split('/process/session/').last);
+          return http.Response('', 204);
+        }
+        if (path.endsWith('/logs')) return http.Response('', 200);
+        // Status poll — always still running.
+        return http.Response(jsonEncode({'exitCode': null}), 200);
+      });
+    }
+
+    test('each streaming command gets its own session', () async {
+      final created = <String>[];
+      final deleted = <String>[];
+      final client = DaytonaClient(
+        config: config,
+        httpClient: sessionTrackingClient(created: created, deleted: deleted),
+      );
+      final executor = DaytonaExecutor(client: client, sandbox: sandbox);
+      final c1 = await executor.startStreaming('long-running-1');
+      final c2 = await executor.startStreaming('long-running-2');
+      unawaited(c1.stdout.drain<void>());
+      unawaited(c2.stdout.drain<void>());
+
+      expect(
+        created.toSet(),
+        hasLength(2),
+        reason: 'a shared session would create only one',
+      );
+
+      await c1.kill();
+      await c2.kill();
+    });
+
+    test('killing one command does not delete a sibling\'s session', () async {
+      final created = <String>[];
+      final deleted = <String>[];
+      final client = DaytonaClient(
+        config: config,
+        httpClient: sessionTrackingClient(created: created, deleted: deleted),
+      );
+      final executor = DaytonaExecutor(client: client, sandbox: sandbox);
+      final c1 = await executor.startStreaming('cmd-1');
+      final c2 = await executor.startStreaming('cmd-2');
+      unawaited(c1.stdout.drain<void>());
+      unawaited(c2.stdout.drain<void>());
+
+      final session1 = created[0];
+      final session2 = created[1];
+
+      await c1.kill();
+
+      expect(
+        deleted,
+        contains(session1),
+        reason: 'kill must delete the killed command\'s own session',
+      );
+      expect(
+        deleted,
+        isNot(contains(session2)),
+        reason:
+            'killing one background command must NOT SIGTERM its siblings '
+            'by deleting a shared session',
+      );
+
+      await c2.kill();
     });
   });
 }

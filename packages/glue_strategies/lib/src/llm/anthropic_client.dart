@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_strategies/src/llm/message_mapper.dart';
+import 'package:glue_strategies/src/llm/retry.dart';
 import 'package:glue_strategies/src/llm/sse.dart';
 import 'package:glue_strategies/src/llm/stream_request.dart';
 import 'package:glue_strategies/src/llm/tool_args.dart';
@@ -67,18 +68,22 @@ class AnthropicClient implements LlmClient {
       body['cache_control'] = {'type': 'ephemeral'};
     }
 
-    return sendAndStream(
-      requestClientFactory: _requestClientFactory,
-      uri: _baseUri.resolve('/v1/messages'),
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': _apiVersion,
-      },
-      body: body,
-      providerName: 'Anthropic',
-      parse: (bytes) => parseStreamEvents(
-        decodeSse(bytes).map((e) => jsonDecode(e.data) as Map<String, dynamic>),
+    return retryStream(
+      () => sendAndStream(
+        requestClientFactory: _requestClientFactory,
+        uri: _baseUri.resolve('/v1/messages'),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': _apiVersion,
+        },
+        body: body,
+        providerName: 'Anthropic',
+        parse: (bytes) => parseStreamEvents(
+          decodeSse(
+            bytes,
+          ).map((e) => jsonDecode(e.data) as Map<String, dynamic>),
+        ),
       ),
     );
   }
@@ -169,6 +174,20 @@ class AnthropicClient implements LlmClient {
             outputTokens: outputTokens,
             cacheReadTokens: cacheReadTokens,
             cacheCreationTokens: cacheCreationTokens,
+          );
+
+        case 'error':
+          // Anthropic streams `{"type":"error","error":{...}}` then closes the
+          // connection (e.g. `overloaded_error`, `api_error`). Without this the
+          // parser would swallow the event and a truncated turn would look like
+          // a clean success. Throw so the agent loop surfaces an AgentError
+          // instead of committing a partial assistant turn.
+          final err = (event['error'] as Map?)?.cast<String, dynamic>();
+          final errType = err?['type'] as String?;
+          final message = err?['message'] as String? ?? 'unknown error';
+          throw Exception(
+            'Anthropic stream error'
+            '${errType != null ? ' ($errType)' : ''}: $message',
           );
       }
     }

@@ -151,6 +151,48 @@ void main() {
     );
 
     test(
+      'checkout failure wipes runtimeCwd so a retry re-clones (M24)',
+      () async {
+        // Regression for M24: clone succeeds but `git checkout <sha>`
+        // fails, leaving a half-cloned tree with a `.git`. On a retry
+        // against the same persistent sandbox, the resume probe would
+        // see `.git`, return `resumed: true`, and silently run against
+        // the default branch. The fix wipes runtimeCwd on checkout
+        // failure so a retry re-clones cleanly.
+        final exec = _PrefixMatchingExec({
+          "test -d '/workspace/.git'": const BootstrapExecResult(
+            exitCode: 1,
+            output: '',
+          ),
+          'git clone ': const BootstrapExecResult(exitCode: 0, output: ''),
+          "cd '/workspace' && git checkout ": const BootstrapExecResult(
+            exitCode: 1,
+            output: 'error: pathspec did not match',
+          ),
+        });
+        final ws = WorkspaceBootstrap(exec: exec, sessionId: 'test');
+        await expectLater(
+          ws.bootstrap(
+            hostCwd: Directory.current.path,
+            runtimeCwd: '/workspace',
+          ),
+          throwsA(
+            isA<BootstrapException>().having(
+              (e) => e.stage,
+              'stage',
+              'checkout',
+            ),
+          ),
+        );
+        expect(
+          exec.calls,
+          contains("rm -rf '/workspace'"),
+          reason: 'a failed checkout must wipe the half-cloned runtimeCwd',
+        );
+      },
+    );
+
+    test(
       'non-git cwd + non-bundle transport throws BootstrapException(clone)',
       () async {
         // Phase 2: a non-git cwd is no longer a hard error when the

@@ -6,6 +6,128 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Added
 
+- **Context-occupancy gauge in the status bar.** Glue now tracks
+  `lastTurnInputTokens` and renders a live context-window gauge so you
+  can see how close the current conversation is to the model's limit.
+- **Ollama context-window resolution.** `OllamaDiscovery.showContextLength`
+  probes `/api/show` and the client falls back to the base-name context
+  window when needed; `num_ctx` is always injected.
+- **`ContextWindowAware` optional capability** in `glue_core` so adapters
+  can advertise context-window knowledge.
+
+### Changed
+
+- **Adapter-owned runtime diagnostics** — runtime diagnostic logic moved
+  into the adapters and command logic reunited with the commands that
+  own it.
+- **Dead-code removal and deduplication** pass across the CLI surface.
+
+### Fixed
+
+- **Security audit — SSRF + ANSI injection.** `web_fetch` and the Jina
+  reader proxy now block requests to internal addresses; untrusted
+  output is neutralized before it can inject ANSI control bytes.
+- **Security audit — credential storage.** Temporary files are secured
+  before secrets are written; config initialization is now atomic
+  (tmp+rename).
+- **Security audit — ACP server hardening.** Rejects cross-origin
+  WebSocket upgrades, hardens the accept loop, surfaces dropped sends,
+  drains pending permission requests on teardown, serialises prompts,
+  and negotiates the ACP version.
+- **Security audit — MCP client hardening.** Fixes pool lifecycle leaks,
+  call-timeouts, mid-session re-authentication, request correlation, and
+  schema tolerance; stdio servers now close stdin before SIGTERM; OAuth
+  callback errors are escaped and issuer checks normalised.
+- **Cloud runtime fixes.** One Daytona session per streaming command,
+  robust bootstrap error handling, sprite payloads streamed via stdin
+  with timeout/kill, typed timeouts and UTF-8 logs in the Daytona
+  client.
+- **Session / conversation fixes.** Advisory PID lock stops concurrent
+  writers; session IDs and `sessionDir` paths are hardened; `/history`
+  fork no longer duplicates the fork-point message; tool-only turns are
+  replayed and dangling `tool_use` blocks repaired on resume; empty
+  assistant turns are skipped; max-iteration guard added.
+- **Config / command fixes.** Survives corrupt catalog cache and
+  validates refresh; OTEL endpoint is env-first; `${VAR}` expansion is
+  deferred for disabled MCP servers; `McpConfigWriter` scopes edits to
+  `mcp.servers` instead of replacing the whole block; `mcp`/`session`
+  commands no longer crash on piped stdin or unknown IDs.
+- **Storage fixes.** Writes are flushed, corrupt lines are logged,
+  permissions are restricted, and the current schema version is emitted
+  so legacy `model_ref` survives resume.
+- **LLM client fixes.** Gemini maps `contentParts` to inlineData/text
+  and surfaces blocked prompts / abnormal finish reasons; Ollama
+  surfaces stream errors and passes context-window fallback; Anthropic
+  surfaces mid-stream error events; OpenAI corrects cached-token
+  accounting and tool-call flushing; a `retryStream` helper adds
+  backoff+jitter for transient errors.
+- **CLI / TUI fixes.** Terminal restoration, `--print` / JSON exit
+  contract, render throttle, and detached-future guards hardened;
+  duplicate `tool_result` on cancel mid-tool prevented.
+- **`--print` mode now persists sessions** and wires `--continue`.
+- **Leading `~` in user/agent paths** is expanded at all `dart:io`
+  boundaries.
+
+### Internal
+
+- Security & correctness audit tracking doc added under `docs/`.
+- `actions/cache` bumped from 5 to 6 in CI.
+
+## [0.7.1] - 2026-06-23
+
+### Fixed
+
+- Cross-platform (Windows/macOS) test + path-mapping correctness (#36).
+
+## [0.7.0] - 2026-06-23
+
+### Added
+
+- **`glue trace export`** — export traces for the Firefox Profiler.
+- **ACP readiness** and simplified skills/catalog plumbing.
+
+### Changed
+
+- **Typed mappable config parsing** across the CLI.
+- **Deep code quality audit and structural cleanup** in
+  `glue_strategies`.
+- **Consolidated duplicated helpers** for browser-open, atomic-write,
+  env-resolve, and safe-load-config.
+- Bumped `actions/checkout` from 6 to 7 in CI.
+
+### Fixed
+
+- Format-check ordering: `chrome_trace.dart` formatting and
+  `build_info` generation.
+- Git identity setup for the diff round-trip test on a fresh clone.
+- `build_info` is now generated before tests and layer-hygiene checks
+  in CI.
+
+### Removed
+
+- Disabled the nightly e2e integration workflow.
+
+## [0.6.3] - 2026-05-22
+
+### Fixed
+
+- Release CI now syncs the `pubspec` version to the tag before build.
+- Homebrew tap bump now stages the formula before checking the diff.
+
+## [0.6.2] - 2026-05-22
+
+### Added
+
+- Changelog and MCP auth guide documentation for the OAuth overhaul.
+
+### Removed
+
+- Dropped Intel Mac build (GitHub `macos-13` unavailable).
+
+## [0.6.1] - 2026-05-21
+
+### Added
+
 - **MCP OAuth that actually works on real servers.** Glue now follows
   the current MCP authorization spec end-to-end (RFC 9728 protected
   resource metadata + RFC 8414 authorization server metadata + RFC 7591

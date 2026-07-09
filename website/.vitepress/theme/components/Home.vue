@@ -352,8 +352,8 @@ const matrixRows = [
   },
   {
     runtime: "cloud",
-    status: "planned" as const,
-    notes: "e2b · modal · daytona · ssh workers",
+    status: "shipping" as const,
+    notes: "daytona · sprites · modal",
     capabilities: {
       local: "no",
       docker: "planned",
@@ -371,6 +371,34 @@ const jsonlSample = [
   `{"t":"10:30:00.630Z","type":"tool_result","content":"…"}`,
   `{"t":"10:30:01.900Z","type":"assistant_message","text":"Exponential backoff with jitter."}`,
   `{"t":"10:30:02.120Z","type":"title_generated","title":"HTTP client retry walkthrough"}`,
+];
+
+// ── What to use Glue for ──────────────────────────────────────────────────
+interface UseCase {
+  title: string;
+  desc: string;
+  href: string;
+  linkText: string;
+}
+const useCases: UseCase[] = [
+  {
+    title: "Refactor across files",
+    desc: "Rename a concept, update callers, run tests, and review every diff in the transcript before applying it.",
+    href: "/docs/getting-started/quick-start",
+    linkText: "Quick start →",
+  },
+  {
+    title: "Scrape JS-rendered sites",
+    desc: "Navigate, click, fill forms, and screenshot with web_browser. The same tab stays open across tool calls.",
+    href: "/web",
+    linkText: "Web tools →",
+  },
+  {
+    title: "Research with sources",
+    desc: "Search the web, fetch pages as markdown, and OCR scanned PDFs into the conversation.",
+    href: "/docs/advanced/web-tools",
+    linkText: "Web tools guide →",
+  },
 ];
 </script>
 
@@ -391,7 +419,8 @@ const jsonlSample = [
             things. The web tooling is a bit more developed than in most coding
             agents: browser automation, fetch with OCR fallback, search. That's
             because I use Glue for scraping and automation about as much as for
-            coding. Runs on your host or in a Docker sandbox.
+            coding. Runs on your host, in a Docker sandbox, or in a cloud
+            sandbox (Daytona, Sprites, Modal).
           </p>
 
           <div class="install">
@@ -509,19 +538,44 @@ const jsonlSample = [
       </div>
     </section>
 
-    <!-- ─── Browser automation ────────────────────────────────────────── -->
+    <!-- ─── What to use Glue for ──────────────────────────────────────── -->
     <section class="section section-divider">
       <div class="wrap">
-        <div class="kicker">browser automation</div>
-        <h2 class="display">Drive a browser, when the task calls for it.</h2>
-        <p class="lede">
-          There's a <code>web_browser</code> tool that exposes a headless Chrome
-          over the DevTools Protocol. Useful for scraping JS-rendered pages,
-          clicking through auth flows, or taking screenshots. The browser
-          session stays open between tool calls in the same turn, so the agent
-          can fill a form, submit, and read the result without re-opening the
-          tab.
-        </p>
+        <div class="section-intro">
+          <div class="kicker">what to use it for</div>
+          <h2 class="display">A few jobs Glue is good at.</h2>
+          <p class="lede">
+            Glue is a terminal coding agent first, but the web tooling is more
+            developed than usual. If any of these sound like your work, it
+            probably fits.
+          </p>
+        </div>
+
+        <ul class="use-cases">
+          <li v-for="u in useCases" :key="u.title" class="use-case">
+            <h3 class="uc-title">{{ u.title }}</h3>
+            <p class="uc-desc">{{ u.desc }}</p>
+            <a class="uc-link" :href="u.href">{{ u.linkText }}</a>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ─── Browser automation ────────────────────────────────────────── -->
+    <section class="section section-divider section-muted">
+      <div class="wrap">
+        <div class="section-intro">
+          <div class="kicker">browser automation</div>
+          <h2 class="display">Drive a browser, when the task calls for it.</h2>
+          <p class="lede">
+            There's a <code>web_browser</code> tool that exposes a headless Chrome
+            over the DevTools Protocol. Useful for scraping JS-rendered pages,
+            clicking through auth flows, or taking screenshots. The browser
+            session stays open between tool calls in the same turn, so the agent
+            can fill a form, submit, and read the result without re-opening the
+            tab.
+          </p>
+        </div>
 
         <ul class="primitives">
           <li v-for="p in primitives" :key="p.name" class="primitive">
@@ -542,16 +596,18 @@ const jsonlSample = [
     <!-- ─── Browser backends ──────────────────────────────────────────── -->
     <section class="section section-divider">
       <div class="wrap">
-        <div class="kicker">browser backends</div>
-        <h2 class="display">Local Chrome, Docker, or cloud.</h2>
-        <p class="lede">
-          The browser tool is one interface
-          (<code>BrowserEndpointProvider</code>) with several backends behind
-          it. Local Chrome is the default for iteration. A Docker container
-          keeps the browser off your host when the page is untrusted. Cloud
-          backends are there if you need replays or to offload scale. Swap is a
-          config change.
-        </p>
+        <div class="section-intro">
+          <div class="kicker">browser backends</div>
+          <h2 class="display">Local Chrome, Docker, or cloud.</h2>
+          <p class="lede">
+            The browser tool is one interface
+            (<code>BrowserEndpointProvider</code>) with several backends behind
+            it. Local Chrome is the default for iteration. A Docker container
+            keeps the browser off your host when the page is untrusted. Cloud
+            backends are there if you need replays or to offload scale. Swap is a
+            config change.
+          </p>
+        </div>
 
         <div class="backends">
           <article
@@ -572,16 +628,18 @@ const jsonlSample = [
     </section>
 
     <!-- ─── Fetch / OCR / search ──────────────────────────────────────── -->
-    <section class="section section-divider">
+    <section class="section section-divider section-muted">
       <div class="wrap">
-        <div class="kicker">fetch · search · ocr</div>
-        <h2 class="display">Fetch and search.</h2>
-        <p class="lede">
-          Not everything needs a full browser. The fetch tool reads HTML as
-          cleaned markdown, pulls text out of PDFs, and falls back to a vision
-          model when the PDF is scanned. Search uses whichever provider you've
-          set an API key for.
-        </p>
+        <div class="section-intro">
+          <div class="kicker">fetch · search · ocr</div>
+          <h2 class="display">Fetch and search.</h2>
+          <p class="lede">
+            Not everything needs a full browser. The fetch tool reads HTML as
+            cleaned markdown, pulls text out of PDFs, and falls back to a vision
+            model when the PDF is scanned. Search uses whichever provider you've
+            set an API key for.
+          </p>
+        </div>
 
         <ul class="capabilities">
           <li>
@@ -611,14 +669,17 @@ const jsonlSample = [
     <!-- ─── Runtimes ──────────────────────────────────────────────────── -->
     <section class="section section-divider">
       <div class="wrap">
-        <div class="kicker">runtimes</div>
-        <h2 class="display">Where Glue runs.</h2>
-        <p class="lede">
-          Glue itself runs on your host or inside a Docker container. The
-          browser backend composes on top — on your machine, in a sibling
-          container, or in someone else's cloud. The matrix below shows what's
-          shipping, what's experimental, and what's still planned.
-        </p>
+        <div class="section-intro">
+          <div class="kicker">runtimes</div>
+          <h2 class="display">Where Glue runs.</h2>
+          <p class="lede">
+            Glue runs on your host, inside a Docker container, or in a cloud
+            sandbox — Daytona, Sprites, or Modal. The browser backend composes on
+            top: on your machine, in a sibling container, or in someone else's
+            cloud once the CDP backend lands there. The matrix below shows what's
+            shipping, what's experimental, and what's still planned.
+          </p>
+        </div>
 
         <RuntimeMatrix
           :capabilities="matrixCaps"
@@ -633,16 +694,18 @@ const jsonlSample = [
     </section>
 
     <!-- ─── The rest of the agent ─────────────────────────────────────── -->
-    <section class="section section-divider">
+    <section class="section section-divider section-muted">
       <div class="wrap">
-        <div class="kicker">the rest</div>
-        <h2 class="display">The rest of the agent.</h2>
-        <p class="lede">
-          The web tooling is the part that's more developed than usual.
-          Underneath, Glue is a normal coding agent: it edits files, runs shell,
-          and writes every session to a JSONL log on your machine. Nothing
-          hosted, nothing uploaded.
-        </p>
+        <div class="section-intro">
+          <div class="kicker">the rest</div>
+          <h2 class="display">The rest of the agent.</h2>
+          <p class="lede">
+            The web tooling is the part that's more developed than usual.
+            Underneath, Glue is a normal coding agent: it edits files, runs shell,
+            and writes every session to a JSONL log on your machine. Nothing
+            hosted, nothing uploaded.
+          </p>
+        </div>
 
         <ul class="coding-list">
           <li>
@@ -745,6 +808,44 @@ const jsonlSample = [
 
 .section-divider {
   border-top: 1px solid var(--div);
+}
+
+.section-muted {
+  background: var(--vp-c-bg-soft);
+  border-top: none;
+}
+
+.section-muted + .section-divider {
+  border-top: 1px solid var(--div);
+}
+
+.section-intro {
+  border-left: 2px solid var(--accent);
+  padding-left: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+@media (max-width: 720px) {
+  .section-intro {
+    padding-left: 1rem;
+  }
+}
+
+.section-intro .kicker {
+  margin-bottom: 1rem;
+}
+
+.section-intro .display {
+  font-size: clamp(2.25rem, 4.8vw, 3.75rem);
+  line-height: 1.04;
+  letter-spacing: -0.025em;
+  font-weight: 600;
+  margin: 0 0 1rem;
+}
+
+.section-intro .lede {
+  margin: 0;
+  max-width: 680px;
 }
 
 .kicker {
@@ -1240,7 +1341,7 @@ const jsonlSample = [
   padding: 1.5rem;
   border: 1px solid var(--div);
   border-radius: 10px;
-  background: var(--vp-c-bg-soft);
+  background: var(--vp-c-bg-alt);
 }
 
 .backend[data-status="experimental"] {
@@ -1365,6 +1466,53 @@ const jsonlSample = [
 .jsonl code {
   display: block;
   white-space: pre;
+}
+
+/* ── Use cases ────────────────────────────────────────────────────────── */
+.use-cases {
+  list-style: none;
+  margin: 3rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+}
+
+.use-case {
+  border: 1px solid var(--div);
+  border-radius: 10px;
+  padding: 1.5rem;
+  background: var(--vp-c-bg-alt, #111113);
+}
+
+.uc-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 0.6rem;
+  border: none;
+  padding: 0;
+  color: var(--fg);
+}
+
+.uc-desc {
+  margin: 0 0 1.25rem;
+  color: var(--fg-dim);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  max-width: none;
+}
+
+.uc-link {
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.85rem;
+  color: var(--accent);
+  border-bottom: 1px dashed color-mix(in srgb, var(--accent) 40%, transparent);
+  padding-bottom: 2px;
+  text-decoration: none;
+}
+
+.uc-link:hover {
+  border-bottom-style: solid;
 }
 
 /* ── CTA ──────────────────────────────────────────────────────────────── */

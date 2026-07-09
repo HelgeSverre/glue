@@ -146,14 +146,47 @@ class CredentialStore {
 
   void _writeRaw(Map<String, dynamic> data) {
     final file = File(path);
-    file.parent.createSync(recursive: true);
+    final dir = file.parent;
+    dir.createSync(recursive: true);
     final tmp = File('$path.tmp');
+
+    // Lock the file down to 0600 BEFORE any secret bytes touch the disk.
+    // Writing content first (as the old code did) left a window where the
+    // API keys/tokens were world-readable under the default umask, and the
+    // chmod exit code went unchecked so a missing/failing chmod passed
+    // silently (L2). We create the tmp empty, secure it (and the parent dir
+    // to 0700), then write — `writeAsStringSync` truncates in place and
+    // keeps the existing 0600 mode, which `rename(2)` then preserves.
+    if (tmp.existsSync()) tmp.deleteSync();
+    tmp.createSync();
+    if (!Platform.isWindows) {
+      _chmodOrThrow('700', dir.path);
+      _chmodOrThrow('600', tmp.path);
+    }
     tmp.writeAsStringSync(
       '${const JsonEncoder.withIndent('  ').convert(data)}\n',
     );
-    if (!Platform.isWindows) {
-      Process.runSync('chmod', ['600', tmp.path]);
-    }
     tmp.renameSync(file.path);
+  }
+
+  /// Runs `chmod [mode] [target]` and throws [FileSystemException] if chmod
+  /// is missing or exits non-zero — so a failure to secure a credential file
+  /// is loud, not silent.
+  void _chmodOrThrow(String mode, String target) {
+    final ProcessResult result;
+    try {
+      result = Process.runSync('chmod', [mode, target]);
+    } on ProcessException catch (e) {
+      throw FileSystemException(
+        'could not run chmod to secure the credentials file ($e)',
+        target,
+      );
+    }
+    if (result.exitCode != 0) {
+      throw FileSystemException(
+        'chmod $mode failed (exit ${result.exitCode}): ${result.stderr}',
+        target,
+      );
+    }
   }
 }

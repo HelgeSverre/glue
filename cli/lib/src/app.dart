@@ -245,9 +245,16 @@ class App {
   late final SkillRuntime _skillRuntime;
   ApprovalMode _approvalMode;
   final Set<ToolCallId> _earlyApprovedIds = {};
+  final Set<ToolCallId> _earlyDeniedIds = {};
 
   DateTime _lastRender = DateTime(0);
   bool _renderScheduled = false;
+
+  /// Set on every [_render] request, cleared only in [_doRender]. Lets the
+  /// trailing-edge throttled callback always repaint pending state instead of
+  /// second-guessing itself against [_lastRender] and dropping the final
+  /// frame (M21).
+  bool _dirty = false;
 
   App({
     required this.terminal,
@@ -331,6 +338,13 @@ class App {
     tools: agent.tools,
     cwd: _cwd,
   );
+
+  /// Single source of truth for the confirm-modal invariant: the app is in
+  /// [AppMode.confirming] exactly when a modal is active. The ~8 modal
+  /// transition sites maintain `_mode`/`_activeModal` by hand; this getter is
+  /// the canonical "is a modal up?" test and the invariant is guarded by an
+  /// assertion in [_doRender] (M22).
+  bool get _isConfirming => _activeModal != null;
 
   /// Convenience factory that creates a fully wired [App] with real
   /// LLM provider and subagent system.
@@ -749,6 +763,10 @@ class App {
   }) {
     () async {
       final installed = await discovery.listInstalled();
+      // The app may have been torn down while we awaited discovery (the modal
+      // isn't up yet, so requestExit couldn't cancel it). Bail before touching
+      // any UI state on a shutting-down app (M20).
+      if (_exitCompleter.isCompleted) return;
       final isPresent = installed.any((m) => m.tag == tag);
       if (installed.isEmpty || isPresent) {
         onPull();
@@ -769,6 +787,9 @@ class App {
       final idx = await _activeModal!.result;
       _activeModal = null;
       _mode = AppMode.idle;
+      // requestExit cancels the modal (completing this future); don't paint or
+      // pull on a torn-down app (M20).
+      if (_exitCompleter.isCompleted) return;
 
       if (idx != 0) {
         _addSystemMessage('Pull aborted — model not switched.');
@@ -785,6 +806,7 @@ class App {
       OllamaPullProgress? finalFrame;
       try {
         await for (final frame in discovery.pullModel(tag)) {
+          if (_exitCompleter.isCompleted) return;
           finalFrame = frame;
           if (frame.hasError) break;
           if (frame.status != lastStatus) {
@@ -822,15 +844,17 @@ class App {
   // ── Rendering ──────────────────────────────────────────────────────────
 
   void _render() {
+    _dirty = true;
     final now = DateTime.now();
     if (now.difference(_lastRender) < _minRenderInterval) {
       if (!_renderScheduled) {
         _renderScheduled = true;
         Future.delayed(_minRenderInterval, () {
           _renderScheduled = false;
-          if (DateTime.now().difference(_lastRender) >= _minRenderInterval) {
-            _doRender();
-          }
+          // Always flush pending state on the trailing edge — _doRender is
+          // idempotent. Re-checking _lastRender here would drop the final
+          // frame whenever a direct render landed in the interim (M21).
+          if (_dirty) _doRender();
         });
       }
       return;
@@ -839,7 +863,14 @@ class App {
   }
 
   void _doRender() {
+    _dirty = false;
     _lastRender = DateTime.now();
+
+    assert(
+      (_mode == AppMode.confirming) == _isConfirming,
+      'mode/modal invariant broken: _mode=$_mode but '
+      '_activeModal is ${_activeModal == null ? 'null' : 'set'} (M22)',
+    );
 
     final panelActive = _panelStack.isNotEmpty;
     if (_renderedPanelLastFrame && !panelActive) {
@@ -1133,7 +1164,7 @@ class App {
       (AppMode.idle, false) => AnsiStyle.yellow,
       _ => AnsiStyle.dim,
     };
-    final showCursor = !(_mode == AppMode.confirming && _activeModal != null);
+    final showCursor = !_isConfirming;
     layout.paintInput(
       prompt,
       editor.lines,
@@ -1957,8 +1988,15 @@ class App {
                 _startSpinner();
                 _render();
               default: // No
-                _cancelAgent();
-                agent.completeToolCall(ToolResult.denied(id));
+                // Deny just this tool (symmetric to early-approve) and keep
+                // the turn alive so the model can react to the denial — rather
+                // than aborting the whole turn. The denial is applied when the
+                // full AgentToolCall arrives (its completer exists by then).
+                _earlyDeniedIds.add(id);
+                _toolUi[id]?.phase = _ToolPhase.denied;
+                _mode = AppMode.streaming;
+                _startSpinner();
+                _render();
             }
           });
           return;
@@ -1990,6 +2028,14 @@ class App {
           'name': call.name,
           'arguments': call.arguments,
         });
+
+        // Early-denied at ToolCallPending time — feed a denial back to the
+        // model and keep the turn alive.
+        if (_earlyDeniedIds.remove(call.id)) {
+          _traceToolApproval(call, 'deny');
+          _denyTool(call);
+          return;
+        }
 
         // Early-approved at ToolCallPending time — re-check with full args.
         if (_earlyApprovedIds.remove(call.id)) {
@@ -2080,6 +2126,7 @@ class App {
   }
 
   void _cancelAgent() {
+    agent.abort();
     _agentSub?.cancel();
     _endTurnSpan(extra: {'cancelled': true});
     // Stop the spinner before flipping mode — otherwise the timer keeps
@@ -2115,7 +2162,16 @@ class App {
           c['trusted_tools'] = tools;
         }
       });
-    } catch (_) {}
+    } catch (e) {
+      // Persistence failed (read-only config, disk full, malformed yaml). The
+      // tool stays trusted for this session; tell the user it won't survive a
+      // restart rather than swallowing it silently (L15).
+      _addSystemMessage(
+        "Couldn't persist '$name' to trusted tools: $e "
+        '(it stays trusted for this session only).',
+      );
+      _render();
+    }
   }
 
   void _approveTool(ToolCall call) {
@@ -2217,6 +2273,26 @@ class App {
     ObservabilitySpan? turnSpan;
     String expanded = '';
 
+    // Emit a valid JSON envelope carrying whatever conversation exists so far
+    // plus an `error` field. Used on the failure paths so json mode never
+    // writes zero bytes to stdout (which would break a downstream `| jq`)
+    // (M18).
+    void emitJsonErrorEnvelope(Object error) {
+      final output = {
+        'session_id': _sessionManager.currentSessionId,
+        'model': _modelId,
+        'conversation': [
+          {'type': 'user_message', 'text': expanded},
+          ...conversationLog,
+          if (assistantText.isNotEmpty)
+            {'type': 'assistant_message', 'text': assistantText.toString()},
+        ],
+        'error': error.toString(),
+        if (cancelled) 'cancelled': true,
+      };
+      stdout.writeln(const JsonEncoder.withIndent('  ').convert(output));
+    }
+
     try {
       if (_resumeSessionId != null) {
         if (_resumeSessionId.isEmpty) {
@@ -2315,18 +2391,32 @@ class App {
               'name': call.name,
               'arguments': call.arguments,
             });
+            // Persist tool activity to the session log too (mirrors the
+            // interactive path) so `--continue` sees a faithful history. This
+            // touches neither stdout nor stderr, so the print/json output
+            // contract is unchanged (L18).
+            _sessionManager.logEvent('tool_call', {
+              'id': call.id,
+              'name': call.name,
+              'arguments': call.arguments,
+            });
+            ToolResult result;
             try {
-              final result = await agent.executeTool(call);
-              agent.completeToolCall(result);
+              result = await agent.executeTool(call);
             } catch (e) {
-              agent.completeToolCall(
-                ToolResult(
-                  callId: call.id,
-                  content: 'Tool error: $e',
-                  success: false,
-                ),
+              result = ToolResult(
+                callId: call.id,
+                content: 'Tool error: $e',
+                success: false,
               );
             }
+            agent.completeToolCall(result);
+            _sessionManager.logEvent('tool_result', {
+              'call_id': result.callId,
+              'content': result.content,
+              if (result.summary != null) 'summary': result.summary,
+              if (result.metadata.isNotEmpty) 'metadata': result.metadata,
+            });
 
           case AgentDone():
             break loop;
@@ -2341,7 +2431,15 @@ class App {
               },
             );
             turnSpan = null;
-            stderr.writeln(error);
+            // A failed run must be observable to the caller's shell (M17).
+            exitCode = 1;
+            // In json mode still emit a parseable envelope carrying the error
+            // rather than writing nothing to stdout (M18).
+            if (_jsonMode) {
+              emitJsonErrorEnvelope(error);
+            } else {
+              stderr.writeln(error);
+            }
             return;
 
           case AgentNotice(:final message, :final kind):
@@ -2383,7 +2481,14 @@ class App {
         },
       );
       turnSpan = null;
-      stderr.writeln('Error: $e');
+      // Same failure contract as the AgentError path: non-zero exit (M17) and,
+      // in json mode, a valid error envelope instead of empty stdout (M18).
+      exitCode = 1;
+      if (_jsonMode) {
+        emitJsonErrorEnvelope(e);
+      } else {
+        stderr.writeln('Error: $e');
+      }
     } finally {
       await agentIter?.cancel();
       await sigintSub.cancel();
@@ -2640,12 +2745,8 @@ class App {
       final running = await _executor.startStreaming(command);
       _bashRunHandle = running;
 
-      final stdoutFuture = running.stdout
-          .transform(const SystemEncoding().decoder)
-          .join();
-      final stderrFuture = running.stderr
-          .transform(const SystemEncoding().decoder)
-          .join();
+      final stdoutFuture = _collectCappedOutput(running.stdout);
+      final stderrFuture = _collectCappedOutput(running.stderr);
 
       final exitCode = await running.exitCode;
       _bashRunHandle = null;
@@ -2689,6 +2790,37 @@ class App {
     _render();
   }
 
+  /// Upper bound on how much text a blocking `! command` may retain in memory.
+  /// An unbounded `.join()` here let a runaway command (e.g. `yes`) OOM the
+  /// app, and once the OS pipe filled it would also wedge the process (M19).
+  static const int _blockingBashOutputCapChars = 256 * 1024;
+
+  /// Drains [stream] to completion — so the child never blocks on a full pipe
+  /// — while accumulating at most [_blockingBashOutputCapChars] characters.
+  /// Appends a one-line notice when the cap is hit (M19).
+  Future<String> _collectCappedOutput(Stream<List<int>> stream) async {
+    final buffer = StringBuffer();
+    var truncated = false;
+    await for (final chunk in stream.transform(
+      const SystemEncoding().decoder,
+    )) {
+      if (truncated) continue; // keep draining, stop accumulating
+      final remaining = _blockingBashOutputCapChars - buffer.length;
+      if (chunk.length <= remaining) {
+        buffer.write(chunk);
+      } else {
+        if (remaining > 0) buffer.write(chunk.substring(0, remaining));
+        truncated = true;
+      }
+    }
+    if (truncated) {
+      buffer.write(
+        '\n<<< output truncated at $_blockingBashOutputCapChars characters >>>',
+      );
+    }
+    return buffer.toString();
+  }
+
   void _cancelBash() {
     _endSpanOnce(_bashSpan, extra: {'cancelled': true});
     _bashSpan = null;
@@ -2708,6 +2840,7 @@ class App {
       try {
         await _jobManager.start(command);
       } catch (e) {
+        if (_exitCompleter.isCompleted) return;
         _blocks.add(ConversationEntry.error('Failed to start job: $e'));
         _render();
       }
@@ -2825,6 +2958,7 @@ class App {
         wwwAuthenticate: wwwAuthenticate,
         cachedResourceMetadataUrl: cachedMeta,
         onMessage: (message) {
+          if (_exitCompleter.isCompleted) return;
           _addSystemMessage('  $message');
           _render();
         },

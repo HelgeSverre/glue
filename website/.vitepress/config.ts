@@ -55,32 +55,14 @@ function buildChangelogSidebar(): DefaultTheme.SidebarItem[] {
   };
 
   const versions: DefaultTheme.SidebarItem[] = [];
-  let currentVersion: DefaultTheme.SidebarItem | null = null;
   for (const h of headings) {
-    if (h.level === 2) {
-      if (!/^\[/.test(h.text)) continue;
-      const slug = anchorFor(h.text);
-      currentVersion = {
-        text: prettifyVersionLabel(h.text),
-        link: `/changelog#${slug}`,
-        collapsed: false,
-        items: [],
-      };
-      versions.push(currentVersion);
-    } else if (h.level === 3 && currentVersion) {
-      const slug = anchorFor(h.text);
-      (currentVersion.items as DefaultTheme.SidebarItem[]).push({
-        text: h.text,
-        link: `/changelog#${slug}`,
-      });
-    }
-  }
-
-  // Prune empty items arrays so VitePress doesn't render an empty caret.
-  for (const v of versions) {
-    if (Array.isArray(v.items) && v.items.length === 0) {
-      delete (v as { items?: unknown }).items;
-    }
+    if (h.level !== 2) continue;
+    if (!/^\[/.test(h.text)) continue;
+    const slug = anchorFor(h.text);
+    versions.push({
+      text: prettifyVersionLabel(h.text),
+      link: `/changelog#${slug}`,
+    });
   }
 
   return versions;
@@ -235,7 +217,6 @@ export default defineConfig({
       {
         text: "Meta",
         items: [
-          { text: "Roadmap", link: "/roadmap" },
           { text: "API Reference", link: "/api/", activeMatch: "^/api/" },
           { text: "Brand", link: "/brand" },
           { text: "Badges", link: "/badges" },

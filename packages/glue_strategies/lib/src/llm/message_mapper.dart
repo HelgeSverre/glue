@@ -184,9 +184,31 @@ class GeminiMessageMapper extends MessageMapper {
       switch (msg.role) {
         case Role.user:
           lastFunctionCallNames = {};
-          appendOrCoalesce('user', [
-            {'text': msg.text ?? ''},
-          ]);
+          final parts = msg.contentParts;
+          if (parts != null && parts.isNotEmpty) {
+            // Multimodal user input — mirror the tool-result branch: images
+            // become inlineData parts; text and resource links become text
+            // parts. Previously this branch dropped everything but msg.text.
+            appendOrCoalesce('user', [
+              if (msg.text != null && msg.text!.isNotEmpty) {'text': msg.text},
+              for (final part in parts)
+                if (part is TextPart)
+                  {'text': part.text}
+                else if (part is ImagePart)
+                  {
+                    'inlineData': {
+                      'mimeType': part.mimeType,
+                      'data': part.toBase64(),
+                    },
+                  }
+                else if (part is ResourceLinkPart)
+                  {'text': part.toMarkdownLink()},
+            ]);
+          } else {
+            appendOrCoalesce('user', [
+              {'text': msg.text ?? ''},
+            ]);
+          }
         case Role.assistant:
           lastFunctionCallNames = {for (final tc in msg.toolCalls) tc.name};
           final parts = <Map<String, dynamic>>[];

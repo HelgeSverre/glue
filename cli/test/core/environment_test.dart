@@ -35,6 +35,26 @@ void main() {
     );
   });
 
+  test('sessionDir contains a traversal id within sessionsDir (L6)', () {
+    final environment = Environment.test(home: tempDir.path, cwd: tempDir.path);
+
+    final dir = environment.sessionDir(const SessionId('../../etc/passwd'));
+
+    // Sanitised into a single path segment directly beneath sessionsDir —
+    // the traversal cannot escape even after normalisation.
+    expect(p.isWithin(environment.sessionsDir, p.normalize(dir)), isTrue);
+    final rel = p.relative(p.normalize(dir), from: environment.sessionsDir);
+    expect(p.split(rel), hasLength(1));
+  });
+
+  test('sessionDir leaves a well-formed id untouched (L6)', () {
+    final environment = Environment.test(home: tempDir.path, cwd: tempDir.path);
+    expect(
+      environment.sessionDir(const SessionId('1720000000000-4242-abcd')),
+      endsWith(p.join('sessions', '1720000000000-4242-abcd')),
+    );
+  });
+
   test('ensureDirectories creates sessions, logs, and cache dirs', () {
     final environment = Environment.test(home: tempDir.path, cwd: tempDir.path);
     environment.ensureDirectories();

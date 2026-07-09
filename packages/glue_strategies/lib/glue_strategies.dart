@@ -78,4 +78,5 @@ export 'package:glue_strategies/src/web/search/providers/duckduckgo_provider.dar
 export 'package:glue_strategies/src/web/search/providers/firecrawl_provider.dart';
 export 'package:glue_strategies/src/web/search/providers/tavily_provider.dart';
 export 'package:glue_strategies/src/web/search/search_router.dart';
+export 'package:glue_strategies/src/web/ssrf_guard.dart';
 export 'package:glue_strategies/src/web/web_config.dart';

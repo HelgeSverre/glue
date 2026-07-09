@@ -137,7 +137,29 @@ void main() {
       client.close();
     });
 
-    test('reservedNames filters out conflicting descriptors', () {
+    test('L13: a bare native name does not drop the namespaced MCP tool', () {
+      final transport = InMemoryMcpTransport();
+      final client = _client(transport);
+      // Natives register bare (`read_file`, `grep`); MCP tools register
+      // namespaced (`fs__read_file`) so they never actually collide.
+      final tools = buildMcpTools(
+        client: client,
+        serverId: 'fs',
+        descriptors: const [
+          McpToolDescriptor(
+            name: 'read_file',
+            description: '',
+            inputSchema: {},
+          ),
+          McpToolDescriptor(name: 'grep', description: '', inputSchema: {}),
+        ],
+        reservedNames: {'read_file', 'grep'},
+      );
+      expect(tools.map((t) => t.name), ['fs__read_file', 'fs__grep']);
+      client.close();
+    });
+
+    test('L13: a reserved name matching the namespaced form drops it', () {
       final transport = InMemoryMcpTransport();
       final client = _client(transport);
       final tools = buildMcpTools(
@@ -155,7 +177,7 @@ void main() {
             inputSchema: {},
           ),
         ],
-        reservedNames: {'read_file'},
+        reservedNames: {'fs__read_file'},
       );
       expect(tools.map((t) => t.bareName), ['unique_tool']);
       client.close();
@@ -192,6 +214,32 @@ void main() {
       final limit = params.firstWhere((p) => p.name == 'limit');
       expect(limit.required, isFalse);
       expect(limit.type, 'integer');
+      client.close();
+    });
+
+    test('L12: list-typed schema type resolves to first non-null', () {
+      final transport = InMemoryMcpTransport();
+      final client = _client(transport);
+      final tool = McpTool(
+        client: client,
+        serverId: 's',
+        bareName: 't',
+        descriptor: const McpToolDescriptor(
+          name: 't',
+          description: '',
+          inputSchema: {
+            'type': 'object',
+            'properties': {
+              'x': {
+                'type': ['null', 'string'],
+              },
+            },
+          },
+        ),
+      );
+      // A JSON-Schema `type: ["null","string"]` must not crash; the first
+      // non-null entry is used.
+      expect(tool.parameters.single.type, 'string');
       client.close();
     });
 

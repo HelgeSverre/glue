@@ -56,6 +56,37 @@ void main() {
       expect(cliWins.activeModel.modelId, 'claude-haiku-4-5');
     });
 
+    test('corrupt catalog cache does not crash load — falls back to '
+        'bundled (H5)', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      final env = _envWith(home: home);
+      // Write malformed YAML into the catalog cache path.
+      final cache = File(env.catalogCachePath);
+      cache.parent.createSync(recursive: true);
+      cache.writeAsStringSync(':\n  - not: [valid: yaml\n   bad indent');
+
+      // Must not throw a YamlException — falls back to the bundled catalog.
+      final config = GlueConfig.load(environment: env);
+      expect(config.activeModel.providerId, isNotEmpty);
+      expect(config.catalogData.providers, isNotEmpty);
+    });
+
+    test('catalog cache that is valid YAML but an invalid catalog is '
+        'ignored (H5)', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      final env = _envWith(home: home);
+      final cache = File(env.catalogCachePath);
+      cache.parent.createSync(recursive: true);
+      // Parses as YAML fine, but is not a valid catalog (no version).
+      cache.writeAsStringSync('just_a_string_scalar\n');
+
+      final config = GlueConfig.load(environment: env);
+      expect(config.activeModel.providerId, isNotEmpty);
+      expect(config.catalogData.providers, isNotEmpty);
+    });
+
     test('legacy v1 config format is rejected with a migration hint', () {
       final home = _scratch();
       addTearDown(() => home.deleteSync(recursive: true));
@@ -156,7 +187,8 @@ anthropic:
       );
     });
 
-    test('YAML OTEL config wins over standard environment fallback', () {
+    test('env OTEL endpoint wins over YAML; YAML still wins for headers / '
+        'service_name / resource_attributes (L9)', () {
       final home = _scratch();
       addTearDown(() => home.deleteSync(recursive: true));
       Directory('${home.path}/.glue').createSync();
@@ -185,7 +217,10 @@ observability:
       );
 
       final otel = config.observability.otel;
-      expect(otel.endpoint, 'https://yaml.example.test');
+      // L9: the endpoint now follows the env→config order used everywhere
+      // else, so the env var wins.
+      expect(otel.endpoint, 'https://env.example.test');
+      // The remaining OTEL fields still let YAML override env.
       expect(otel.headers['Authorization'], 'Bearer yaml');
       expect(otel.serviceName, 'glue-yaml');
       expect(

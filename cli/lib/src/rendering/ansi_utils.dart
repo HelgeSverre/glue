@@ -113,6 +113,34 @@ String stripAnsi(String text) {
       .replaceAll(_csiPattern, ''); // CSI
 }
 
+/// Remove terminal control bytes from untrusted [text] so it can be safely
+/// composed into terminal output.
+///
+/// Model output, tool results, and fetched web/MCP content are attacker-
+/// influenceable. If their raw bytes reach the terminal, an embedded escape
+/// sequence can drive the emulator: `ESC ] 52` writes the system clipboard,
+/// `ESC ] 8` forges hyperlinks, `ESC [ 2J` clears the screen, and device-query
+/// sequences (`ESC [ 6n`, DA/DSR) make the terminal answer onto stdin — bytes
+/// the host program reads back as if they were keystrokes.
+///
+/// This drops the introducers those attacks depend on: every C0 control byte
+/// (`< 0x20`) except `\n` and `\t`, `DEL` (`0x7f`), and the C1 range
+/// (`0x80–0x9f`, which includes the 8-bit `CSI` `0x9b` and `OSC` `0x9d`). It
+/// intentionally does NOT strip the CSI/OSC bytes that a *renderer* adds
+/// afterward — callers must sanitize the untrusted text first, then apply
+/// styling, never the reverse.
+String stripControlChars(String text) {
+  final buf = StringBuffer();
+  for (final rune in text.runes) {
+    final keep =
+        rune == 0x0A || // \n
+        rune == 0x09 || // \t
+        (rune >= 0x20 && rune != 0x7F && !(rune >= 0x80 && rune <= 0x9F));
+    if (keep) buf.writeCharCode(rune);
+  }
+  return buf.toString();
+}
+
 /// Compute the visible column width of [text] in a terminal,
 /// accounting for ANSI escapes, wide characters (emoji, CJK), and
 /// zero-width characters (combining marks, variation selectors).
@@ -393,6 +421,21 @@ String spliceOverlayRow(
 }
 
 /// Terminal column width of a single Unicode code point.
+///
+/// LIMITATION (L14): this measures one *code point* in isolation and cannot see
+/// grapheme clusters. Two known inaccuracies follow from that:
+///
+///  - The `0x1F000–0x1FFFF` plane is treated as uniformly width-2. That block
+///    is mostly emoji (correctly wide) but also holds width-1 symbols and
+///    unassigned code points, which are then over-counted.
+///  - ZWJ emoji sequences (e.g. 👩‍👩‍👧 = woman + ZWJ + woman + ZWJ + girl) render
+///    as a single 2-cell glyph, but here each base emoji counts as 2 and each
+///    joiner as 0, so the cluster is measured as 4–6 cells.
+///
+/// The practical effect is occasionally misaligned box borders or selection
+/// highlights around exotic emoji. A correct fix needs Unicode grapheme-cluster
+/// segmentation (UAX #29) plus an emoji-width table, which is out of scope here;
+/// callers should not rely on exact widths for arbitrary emoji input.
 int charWidth(int cp) {
   // Zero-width: combining marks, variation selectors, joiners
   if ((cp >= 0x0300 && cp <= 0x036F) ||

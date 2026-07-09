@@ -212,8 +212,11 @@ Future<OAuthEndpoints> discoverAuthorizationServerMetadata({
         final json = jsonDecode(res.body);
         if (json is! Map<String, dynamic>) continue;
         final issuer = json['issuer'] as String?;
-        if (issuer == null || Uri.tryParse(issuer) != authServer) {
-          // Issuer mismatch — reject per spec.
+        final issuerUri = issuer == null ? null : Uri.tryParse(issuer);
+        if (issuerUri == null || !_sameIssuer(issuerUri, authServer)) {
+          // Issuer mismatch — reject per spec. Compared on normalized
+          // forms so a mere trailing-slash difference doesn't abort
+          // discovery (L10).
           throw OAuthDiscoveryException(
             'metadata issuer "$issuer" does not match $authServer',
           );
@@ -238,6 +241,25 @@ class OAuthDiscoveryException implements Exception {
   final String message;
   @override
   String toString() => 'OAuthDiscoveryException: $message';
+}
+
+/// RFC 8414 issuer identifiers compare on scheme/host/port/path but a
+/// trailing slash is not semantically significant. [Uri] already
+/// lowercases scheme + host, so we only need to normalize the path's
+/// trailing slashes before comparing (L10).
+bool _sameIssuer(Uri a, Uri b) {
+  String normPath(String p) {
+    var out = p;
+    while (out.endsWith('/')) {
+      out = out.substring(0, out.length - 1);
+    }
+    return out;
+  }
+
+  return a.scheme == b.scheme &&
+      a.host == b.host &&
+      a.port == b.port &&
+      normPath(a.path) == normPath(b.path);
 }
 
 // ─── Protected Resource Metadata Discovery (RFC 9728) ──────────────────────
@@ -604,9 +626,12 @@ Future<OAuthTokens> runOAuthAuthorizationCodeFlow({
     req.response.headers.contentType = ContentType.html;
     final ok = code != null;
     final heading = ok ? 'Authorization complete' : 'Authorization failed';
+    // `error` is attacker-controllable (it comes straight from the
+    // redirect's query string), so HTML-escape it before reflecting it
+    // into the page to avoid reflected XSS (L1).
     final body = ok
         ? 'You can close this window and return to Glue.'
-        : 'Reason: ${error ?? "unknown"}';
+        : 'Reason: ${htmlEscape.convert(error ?? "unknown")}';
     req.response.write(
       '<!doctype html><html><body><h2>$heading</h2><p>$body</p></body></html>',
     );

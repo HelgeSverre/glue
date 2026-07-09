@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_strategies/src/llm/message_mapper.dart';
+import 'package:glue_strategies/src/llm/retry.dart';
 import 'package:glue_strategies/src/llm/sse.dart';
 import 'package:glue_strategies/src/llm/stream_request.dart';
 import 'package:glue_strategies/src/llm/tool_args.dart';
@@ -60,18 +61,22 @@ class OpenAiClient implements LlmClient {
         ? _baseUri
         : _baseUri.replace(path: '${_baseUri.path}/');
 
-    return sendAndStream(
-      requestClientFactory: _requestClientFactory,
-      uri: endpointBase.resolve('chat/completions'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $apiKey',
-        ...extraHeaders,
-      },
-      body: body,
-      providerName: 'OpenAI',
-      parse: (bytes) => parseStreamEvents(
-        decodeSse(bytes).map((e) => jsonDecode(e.data) as Map<String, dynamic>),
+    return retryStream(
+      () => sendAndStream(
+        requestClientFactory: _requestClientFactory,
+        uri: endpointBase.resolve('chat/completions'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $apiKey',
+          ...extraHeaders,
+        },
+        body: body,
+        providerName: 'OpenAI',
+        parse: (bytes) => parseStreamEvents(
+          decodeSse(
+            bytes,
+          ).map((e) => jsonDecode(e.data) as Map<String, dynamic>),
+        ),
       ),
     );
   }
@@ -125,7 +130,10 @@ class OpenAiClient implements LlmClient {
       if (toolCalls != null) {
         for (final tc in toolCalls) {
           final tcMap = (tc as Map).cast<String, dynamic>();
-          final index = tcMap['index'] as int;
+          // Some OpenAI-compatible servers omit `index` on tool-call deltas
+          // (they only ever stream one tool call). Default it to 0 rather
+          // than throwing on the cast.
+          final index = tcMap['index'] as int? ?? 0;
           final fn = (tcMap['function'] as Map?)?.cast<String, dynamic>();
 
           if (!toolBuilders.containsKey(index)) {
@@ -161,6 +169,23 @@ class OpenAiClient implements LlmClient {
         yield _usageInfoFromOpenAi(usage);
       }
     }
+
+    // The stream ended (`[DONE]` sentinel or a disconnect) without a chunk
+    // carrying `finish_reason` — some OpenAI-compatible servers close right
+    // after the last argument delta. Flush any accumulated tool calls so they
+    // are not silently dropped.
+    if (toolBuilders.isNotEmpty) {
+      for (final builder in toolBuilders.values) {
+        yield ToolCallComplete(
+          ToolCall(
+            id: builder.id,
+            name: builder.name,
+            arguments: builder.finalizeArguments(),
+          ),
+        );
+      }
+      toolBuilders.clear();
+    }
   }
 }
 
@@ -185,8 +210,13 @@ UsageInfo _usageInfoFromOpenAi(Map<String, dynamic> usage) {
   final cachedTokens = promptDetails?['cached_tokens'] as int?;
   final cacheWriteOpenRouter = usage['cache_write_tokens'] as int?;
   final cacheCreateAnthropic = usage['cache_creation_input_tokens'] as int?;
+  final promptTokens = (usage['prompt_tokens'] as int?) ?? 0;
+  // OpenAI's `cached_tokens` is a SUBSET of `prompt_tokens` (unlike Anthropic,
+  // whose `input_tokens` already excludes cache reads). The `UsageInfo`
+  // contract requires `inputTokens` to be uncached-only, so subtract the cache
+  // reads here or they double-count against the context gauge and billing.
   return UsageInfo(
-    inputTokens: (usage['prompt_tokens'] as int?) ?? 0,
+    inputTokens: (promptTokens - (cachedTokens ?? 0)).clamp(0, promptTokens),
     outputTokens: (usage['completion_tokens'] as int?) ?? 0,
     cacheReadTokens: cachedTokens ?? (usage['cache_read_input_tokens'] as int?),
     cacheCreationTokens: cacheWriteOpenRouter ?? cacheCreateAnthropic,

@@ -27,8 +27,14 @@ class MarkdownRenderer {
   MarkdownRenderer(this.width);
 
   /// Render markdown text to ANSI-styled terminal output.
+  ///
+  /// [markdown] is treated as untrusted (it is typically model output). Its
+  /// terminal control bytes are stripped up front — see [stripControlChars] —
+  /// so injected escape sequences (OSC 52 clipboard writes, OSC 8 hyperlinks,
+  /// CSI screen/cursor control, stdin-injecting device queries) can never reach
+  /// the terminal. Every escape below this line is one the renderer itself adds.
   String render(String markdown) {
-    final lines = markdown.split('\n');
+    final lines = stripControlChars(markdown).split('\n');
     final output = <String>[];
     var inCodeBlock = false;
     String? codeBlockLang;

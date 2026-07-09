@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -220,6 +221,10 @@ class DaytonaClient {
   /// completion signal in this body — call
   /// [getSessionCommandStatus] for that.
   ///
+  /// The body is decoded as UTF-8, not via `http.Response.body` — the
+  /// logs endpoint returns `text/plain` with no charset, so `.body`
+  /// would fall back to Latin-1 and mangle any multi-byte UTF-8 output.
+  ///
   /// Endpoint: `GET <toolboxBaseUrl>/{id}/process/session/{sid}/command/{cmdId}/logs`
   Future<String> getSessionCommandLogs(
     DaytonaSandbox sandbox,
@@ -232,7 +237,7 @@ class DaytonaClient {
     );
     final res = await _http.get(uri, headers: _headers());
     _ensureOk(res, 'session_logs');
-    return res.body;
+    return utf8.decode(res.bodyBytes, allowMalformed: true);
   }
 
   /// Returns the current status of a session command, including the
@@ -392,7 +397,23 @@ class DaytonaClient {
     final uri = _toolboxUri(sandbox, path);
     Future<http.Response> req() =>
         _http.post(uri, headers: _headers(json: true), body: jsonEncode(body));
-    final res = timeout == null ? await req() : await req().timeout(timeout);
+    final http.Response res;
+    if (timeout == null) {
+      res = await req();
+    } else {
+      try {
+        res = await req().timeout(timeout);
+      } on TimeoutException {
+        // Map to the runtime-typed exception callers actually catch —
+        // a raw TimeoutException escapes the RuntimeApiException contract
+        // and slips past `on RuntimeApiException` handlers.
+        throw RuntimeApiException(
+          runtimeId: 'daytona',
+          endpoint: endpoint,
+          message: 'request timed out after ${timeout.inMilliseconds}ms',
+        );
+      }
+    }
     _ensureOk(res, endpoint);
     return res;
   }
