@@ -111,11 +111,16 @@ class McpStdioTransport implements JsonRpcTransport {
   /// died on its own" vs. "we shut it down".
   Future<int> get exitCode => _process.exitCode;
 
-  /// SIGTERM the child; if it hasn't exited after 2s, SIGKILL.
+  /// Close stdin, then SIGTERM the child; if it hasn't exited after 2s,
+  /// SIGKILL.
   @override
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
+    // Close stdin first (via the inner transport's output sink) so a child
+    // blocked on a stdin read sees EOF and can exit cleanly, then escalate
+    // with signals (L11).
+    await _inner.close();
     try {
       _process.kill();
     } catch (_) {
@@ -130,7 +135,6 @@ class McpStdioTransport implements JsonRpcTransport {
         // Already exited.
       }
     }
-    await _inner.close();
   }
 }
 
