@@ -196,6 +196,145 @@ mcp:
       expect(_serverEntry(configPath, 'on').containsKey('enabled'), isFalse);
       expect(_serverEntry(configPath, 'off')['enabled'], false);
     });
+
+    // ─── C2: adding the first server must NEVER wipe sibling `mcp.*` keys ───
+
+    test('first add preserves sibling mcp.* keys + comments when servers: {} '
+        'is empty (C2)', () {
+      final dir = _scratch();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final configPath = '${dir.path}/config.yaml';
+
+      const original = '''# top-of-file comment must survive
+mcp:
+  # security deny-list — must survive
+  tool_policy:
+    deny:
+      - "*__delete_file"
+  call_timeout_seconds: 45
+  servers: {}
+''';
+      File(configPath).writeAsStringSync(original);
+
+      McpConfigWriter(configPath).addServer(
+        const McpStdioServerSpec(id: 'demo', command: 'echo', args: ['hi']),
+      );
+
+      final after = _read(configPath);
+      // Sibling keys under mcp: survive.
+      expect(after, contains('tool_policy:'));
+      expect(after, contains('*__delete_file'));
+      expect(after, contains('call_timeout_seconds: 45'));
+      // Comments survive.
+      expect(after, contains('# top-of-file comment must survive'));
+      expect(after, contains('# security deny-list'));
+      // New server landed.
+      expect(_serverEntry(configPath, 'demo')['command'], 'echo');
+      // Full parser sees BOTH the deny-list and the new server.
+      final root = loadYaml(after) as Map;
+      final parsed = parseMcpConfig(root['mcp'], const {});
+      expect(parsed.toolPolicy.deny, contains('*__delete_file'));
+      expect(parsed.callTimeoutSeconds, 45);
+      expect(parsed.servers.single.id, 'demo');
+    });
+
+    test('first add preserves sibling mcp.* keys when the servers: key is '
+        'entirely absent (C2)', () {
+      final dir = _scratch();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final configPath = '${dir.path}/config.yaml';
+
+      const original = '''mcp:
+  # deny-list with no servers block at all
+  tool_policy:
+    deny:
+      - "*__delete_file"
+  call_timeout_seconds: 45
+''';
+      File(configPath).writeAsStringSync(original);
+
+      McpConfigWriter(
+        configPath,
+      ).addServer(const McpStdioServerSpec(id: 'demo', command: 'echo'));
+
+      final after = _read(configPath);
+      expect(after, contains('*__delete_file'));
+      expect(after, contains('call_timeout_seconds: 45'));
+      final root = loadYaml(after) as Map;
+      final parsed = parseMcpConfig(root['mcp'], const {});
+      expect(parsed.toolPolicy.deny, contains('*__delete_file'));
+      expect(parsed.servers.single.id, 'demo');
+    });
+
+    test('adding after remove-of-last (servers: {} again) preserves siblings '
+        '(C2)', () {
+      final dir = _scratch();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final configPath = '${dir.path}/config.yaml';
+
+      const original = '''mcp:
+  tool_policy:
+    deny:
+      - "*__delete_file"
+  servers:
+    only:
+      command: echo
+''';
+      File(configPath).writeAsStringSync(original);
+
+      final writer = McpConfigWriter(configPath);
+      writer.removeServer('only'); // leaves servers empty
+      writer.addServer(const McpStdioServerSpec(id: 'demo', command: 'ls'));
+
+      final after = _read(configPath);
+      expect(after, contains('*__delete_file'));
+      final root = loadYaml(after) as Map;
+      final parsed = parseMcpConfig(root['mcp'], const {});
+      expect(parsed.toolPolicy.deny, contains('*__delete_file'));
+      expect(parsed.servers.single.id, 'demo');
+    });
+
+    test(
+      'first add to a comments-only file appends a valid mcp block (C2)',
+      () {
+        final dir = _scratch();
+        addTearDown(() => dir.deleteSync(recursive: true));
+        final configPath = '${dir.path}/config.yaml';
+        File(configPath).writeAsStringSync('# only a comment\n');
+
+        McpConfigWriter(
+          configPath,
+        ).addServer(const McpStdioServerSpec(id: 'demo', command: 'echo'));
+
+        final after = _read(configPath);
+        expect(after, contains('# only a comment'));
+        final root = loadYaml(after) as Map;
+        final parsed = parseMcpConfig(root['mcp'], const {});
+        expect(parsed.servers.single.id, 'demo');
+      },
+    );
+
+    // ─── L4: env values with newlines must round-trip, not corrupt YAML ───
+
+    test('env value containing a newline round-trips safely (L4)', () {
+      final dir = _scratch();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final configPath = '${dir.path}/config.yaml';
+
+      McpConfigWriter(configPath).addServer(
+        const McpStdioServerSpec(
+          id: 'demo',
+          command: 'echo',
+          env: {'PEM': 'line1\nline2', 'OK': 'plain'},
+        ),
+      );
+
+      final root = loadYaml(_read(configPath)) as Map;
+      final parsed = parseMcpConfig(root['mcp'], const {});
+      final spec = parsed.servers.single as McpStdioServerSpec;
+      expect(spec.env['PEM'], 'line1\nline2');
+      expect(spec.env['OK'], 'plain');
+    });
   });
 
   group('McpConfigWriter.removeServer', () {
