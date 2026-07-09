@@ -74,54 +74,87 @@ class AcpHttpHost {
   }
 
   Future<void> _acceptLoop(HttpServer server) async {
-    await for (final request in server) {
-      if (path != '*' && request.uri.path != path) {
-        request.response
-          ..statusCode = HttpStatus.notFound
-          ..write('not found');
-        await request.response.close();
-        continue;
+    try {
+      await for (final request in server) {
+        // A single misbehaving request (client resetting mid-response, a
+        // malformed upgrade, …) must never throw out of the `await for` —
+        // that would silently stop the host from accepting ALL future
+        // connections. Isolate every request in its own try/catch.
+        try {
+          await _handleRequest(request);
+        } on Object catch (e) {
+          stderr.writeln('AcpHttpHost: request handling failed: $e');
+        }
       }
-      if (!_authorized(request)) {
-        request.response
-          ..statusCode = HttpStatus.unauthorized
-          ..headers.add(HttpHeaders.wwwAuthenticateHeader, 'Bearer realm="acp"')
-          ..write('unauthorized');
-        await request.response.close();
-        continue;
-      }
-      if (!WebSocketTransformer.isUpgradeRequest(request)) {
-        request.response
-          ..statusCode = HttpStatus.badRequest
-          ..write('expected WebSocket upgrade');
-        await request.response.close();
-        continue;
-      }
-      try {
-        final socket = await WebSocketTransformer.upgrade(request);
-        _runConnection(socket);
-      } on Object catch (e) {
-        // Upgrade failed (likely a malformed request) — log and move on.
-        stderr.writeln('AcpHttpHost: WS upgrade failed: $e');
-      }
+    } on Object catch (e) {
+      // The server socket itself errored; there is nothing left to accept.
+      stderr.writeln('AcpHttpHost: accept loop terminated: $e');
     }
+  }
+
+  Future<void> _handleRequest(HttpRequest request) async {
+    if (path != '*' && request.uri.path != path) {
+      request.response
+        ..statusCode = HttpStatus.notFound
+        ..write('not found');
+      await request.response.close();
+      return;
+    }
+    // Reject any request that carries an `Origin` header. Browsers attach
+    // Origin to every WebSocket handshake; legitimate native / editor ACP
+    // clients do not send one. Refusing Origin-bearing upgrades blocks the
+    // DNS-rebinding / drive-by attack where a website the user visits opens
+    // ws://127.0.0.1:<port>/acp, drives the agent, and auto-approves its own
+    // tool requests — a defence that holds even on a token-less loopback bind.
+    if (request.headers.value('origin') != null) {
+      request.response
+        ..statusCode = HttpStatus.forbidden
+        ..write('cross-origin WebSocket connections are not allowed');
+      await request.response.close();
+      return;
+    }
+    if (!_authorized(request)) {
+      request.response
+        ..statusCode = HttpStatus.unauthorized
+        ..headers.add(HttpHeaders.wwwAuthenticateHeader, 'Bearer realm="acp"')
+        ..write('unauthorized');
+      await request.response.close();
+      return;
+    }
+    if (!WebSocketTransformer.isUpgradeRequest(request)) {
+      request.response
+        ..statusCode = HttpStatus.badRequest
+        ..write('expected WebSocket upgrade');
+      await request.response.close();
+      return;
+    }
+    final socket = await WebSocketTransformer.upgrade(request);
+    // Fire-and-forget: _runConnection guards its own body so a connection's
+    // serve loop failing can never escape as an isolate-fatal async error.
+    unawaited(_runConnection(socket));
   }
 
   Future<void> _runConnection(WebSocket socket) async {
     final transport = WebSocketTransport(socket);
-    final delegate = delegateFactory();
-    final acp = AcpServer(
-      transport: transport,
-      delegate: delegate,
-      config: config,
-    );
-    final connection = _Connection(transport: transport, server: acp);
-    _connections.add(connection);
+    _Connection? connection;
     try {
+      final delegate = delegateFactory();
+      final acp = AcpServer(
+        transport: transport,
+        delegate: delegate,
+        config: config,
+      );
+      connection = _Connection(transport: transport, server: acp);
+      _connections.add(connection);
       await acp.serve();
+    } on Object catch (e) {
+      // One connection's failure (delegate construction, serve loop error,
+      // transport error) must not take down the host or leak as an unhandled
+      // async error. Log and let the finally tear the socket down.
+      stderr.writeln('AcpHttpHost: connection failed: $e');
     } finally {
       await transport.close();
-      _connections.remove(connection);
+      if (connection != null) _connections.remove(connection);
       if (!_connectionsClosed.isClosed) _connectionsClosed.add(null);
     }
   }
