@@ -43,6 +43,14 @@ class FakeSpritesCli implements SpritesCliBase {
     existingSprites.remove(name);
   }
 
+  /// Records `(command, stdinBytes)` pairs fed to [execCaptureStdin].
+  final List<({String command, List<int> stdin})> stdinCommands = [];
+
+  /// When true, [execCaptureStdin] returns a non-zero result — lets
+  /// tests exercise the write-failure path without reconstructing the
+  /// exact command string.
+  bool failStdinWrites = false;
+
   @override
   Future<SpritesExecResult> execCapture(
     String spriteName,
@@ -50,6 +58,22 @@ class FakeSpritesCli implements SpritesCliBase {
     Duration? timeout,
   }) async {
     executedCommands.add(command);
+    return execCaptureResults[command] ??
+        SpritesExecResult(exitCode: 0, stdout: '', stderr: '');
+  }
+
+  @override
+  Future<SpritesExecResult> execCaptureStdin(
+    String spriteName,
+    String command,
+    List<int> stdinBytes, {
+    Duration? timeout,
+  }) async {
+    executedCommands.add(command);
+    stdinCommands.add((command: command, stdin: stdinBytes));
+    if (failStdinWrites) {
+      return SpritesExecResult(exitCode: 1, stdout: '', stderr: 'write failed');
+    }
     return execCaptureResults[command] ??
         SpritesExecResult(exitCode: 0, stdout: '', stderr: '');
   }
