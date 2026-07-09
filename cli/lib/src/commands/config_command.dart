@@ -31,7 +31,12 @@ ConfigInitResult initUserConfig(Environment environment, {bool force = false}) {
     return ConfigInitResult(status: ConfigInitStatus.exists, path: path);
   }
   file.parent.createSync(recursive: true);
-  file.writeAsStringSync(buildConfigTemplate());
+  // Atomic write (tmp + rename) so a kill mid-write can't leave a truncated
+  // config.yaml — matters most for `--force`, which overwrites a working
+  // file (L8).
+  final tmp = File('$path.tmp');
+  tmp.writeAsStringSync(buildConfigTemplate());
+  tmp.renameSync(path);
   return ConfigInitResult(
     status: existed ? ConfigInitStatus.overwritten : ConfigInitStatus.created,
     path: path,
