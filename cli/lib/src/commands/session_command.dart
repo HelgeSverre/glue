@@ -289,6 +289,25 @@ class SessionListCommand extends Command<int> {
   }
 }
 
+/// Finds a session by id, or prints a friendly not-found message to stderr
+/// and returns null.
+///
+/// Using a nullable lookup instead of `firstWhere(orElse: throw StateError)`
+/// keeps an unknown id from crashing with an uncaught StateError —
+/// `bin/glue.dart` does not catch StateError, so the raw one would surface a
+/// Dart stack trace to the user (M16). Callers return a non-zero exit code
+/// when this returns null.
+SessionSummary? _findSessionOrReport(Environment env, String id) {
+  final matches = listSessions(
+    env,
+  ).where((s) => s.meta.id.value == id).toList();
+  if (matches.isEmpty) {
+    stderr.writeln('Session not found: $id');
+    return null;
+  }
+  return matches.first;
+}
+
 class SessionShowCommand extends Command<int> {
   @override
   String get name => 'show';
@@ -304,10 +323,8 @@ class SessionShowCommand extends Command<int> {
       return 64;
     }
     final env = Environment.detect();
-    final session = listSessions(env).firstWhere(
-      (s) => s.meta.id.value == args.first,
-      orElse: () => throw StateError('session not found: ${args.first}'),
-    );
+    final session = _findSessionOrReport(env, args.first);
+    if (session == null) return 1;
     final m = session.meta;
     stdout.writeln(
       '$brandDot ${styledOrPlain('Session ${m.id.value}', (x) => x.bold)}',
@@ -362,10 +379,8 @@ class SessionDiffCommand extends Command<int> {
       return 64;
     }
     final env = Environment.detect();
-    final session = listSessions(env).firstWhere(
-      (s) => s.meta.id.value == args.first,
-      orElse: () => throw StateError('session not found: ${args.first}'),
-    );
+    final session = _findSessionOrReport(env, args.first);
+    if (session == null) return 1;
     final patch = session.patchPath;
     if (patch == null) {
       stderr.writeln('No patch found for session ${args.first}');
@@ -416,10 +431,8 @@ class SessionApplyCommand extends Command<int> {
       return 64;
     }
     final env = Environment.detect();
-    final session = listSessions(env).firstWhere(
-      (s) => s.meta.id.value == args.first,
-      orElse: () => throw StateError('session not found: ${args.first}'),
-    );
+    final session = _findSessionOrReport(env, args.first);
+    if (session == null) return 1;
     final target = argResults!.option('target') ?? Directory.current.path;
     final result = await applySessionPatch(
       session: session,
@@ -467,10 +480,8 @@ class SessionExportCommand extends Command<int> {
       return 64;
     }
     final env = Environment.detect();
-    final session = listSessions(env).firstWhere(
-      (s) => s.meta.id.value == args.first,
-      orElse: () => throw StateError('session not found: ${args.first}'),
-    );
+    final session = _findSessionOrReport(env, args.first);
+    if (session == null) return 1;
     final patch = session.patchPath;
     if (patch == null) {
       stderr.writeln('No patch found for session ${args.first}');

@@ -182,6 +182,23 @@ void main() {
       expect(r.stderr.toString(), contains("ghost' is not in config.yaml"));
     });
 
+    test('auth login of unknown id exits 1 with a friendly message, not a '
+        'raw StateError (M16)', () async {
+      final dir = _scratch();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      File('${dir.path}/config.yaml').createSync(recursive: true);
+
+      final r = await _runGlue([
+        'mcp',
+        'auth',
+        'login',
+        'ghost',
+      ], glueHome: dir.path);
+      expect(r.exitCode, 1, reason: r.stderr.toString());
+      expect(r.stderr.toString(), contains('ghost'));
+      expect(r.stderr.toString(), isNot(contains('StateError')));
+    }, timeout: const Timeout(Duration(minutes: 2)));
+
     test(
       'tools warns and exits 1 when server is disabled',
       () async {
