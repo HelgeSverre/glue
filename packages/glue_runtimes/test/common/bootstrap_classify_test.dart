@@ -43,6 +43,25 @@ void main() {
       expect(r.kind, BootstrapErrorKind.missingBinary);
     });
 
+    test('classifies GitHub "Repository not found" (private repo, no creds) as '
+        'auth — not a missing git binary', () {
+      // Regression for M25: the remote URL contains "git" (github.com)
+      // and the message contains "not found", so the missing-binary
+      // heuristic (`not found` + `git`) used to misfire here.
+      final r = classifyCloneFailure(
+        'remote: Repository not found.\n'
+        "fatal: repository 'https://github.com/acme/private.git/' not found",
+      );
+      expect(r.kind, BootstrapErrorKind.auth);
+      expect(r.kind, isNot(BootstrapErrorKind.missingBinary));
+      expect(r.hint, isNotNull);
+    });
+
+    test('classifies bare "remote: Repository not found." as auth', () {
+      final r = classifyCloneFailure('remote: Repository not found.');
+      expect(r.kind, BootstrapErrorKind.auth);
+    });
+
     test('falls back to unknown when no pattern matches', () {
       final r = classifyCloneFailure(
         'some weird git internal error 0xdeadbeef',

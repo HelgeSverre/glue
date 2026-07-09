@@ -208,6 +208,23 @@ class BootstrapException implements Exception {
           'sandbox-side fetch entirely',
     );
   }
+  // Must precede the missing-binary heuristic below: GitHub (and
+  // friends) return "Repository not found" for a private repo accessed
+  // without credentials — it hides existence rather than admitting 403.
+  // The remote URL in the message usually contains the substring "git"
+  // (github.com), so `not found` + `git` would otherwise misclassify
+  // this as a missing `git` binary with a useless hint.
+  if (RegExp(r'repository\b.*not found').hasMatch(lower)) {
+    return (
+      kind: BootstrapErrorKind.auth,
+      hint:
+          'remote reports the repository as not found — it is most likely '
+          'private and the sandbox has no credentials. Use a runtime that '
+          'supports bundle bootstrap (Daytona, Modal, Sprites) so the '
+          'working tree ships from the host, or inject an HTTPS token into '
+          'the clone URL.',
+    );
+  }
   if (lower.contains('command not found') ||
       lower.contains('not found') && lower.contains('git')) {
     return (
@@ -358,16 +375,16 @@ class WorkspaceBootstrap {
         await bundle.path.readAsBytes(),
       );
     } catch (e) {
-      throw BootstrapException(
-        stage: 'upload',
-        kind: BootstrapErrorKind.upload,
-        remediationHint:
-            'bundle upload failed; if the bundle is large, '
-            'try a runtime with a larger upload cap (Daytona) or push '
-            'the working tree to a remote first to take the clone path',
-        message: 'bundle upload to $runtimeBundlePath failed',
-        output: e.toString(),
-      );
+      // An upload failure must not abort bootstrap — fall back to
+      // clone-from-remote instead (skip, not fail). This matters for
+      // transports whose upload has a hard ceiling well below the
+      // advertised cap (e.g. Sprites' base64-over-shell hitting
+      // ARG_MAX/E2BIG). Delete the host bundle first so we don't leak
+      // it, mirroring the size-cap fallback above.
+      try {
+        await bundle.path.delete();
+      } catch (_) {}
+      throw _BundleSkipped('bundle upload to $runtimeBundlePath failed: $e');
     }
 
     // Note the brace-scoped `|| true` on the remote-remove step only —
@@ -442,6 +459,13 @@ class WorkspaceBootstrap {
       'cd ${shQuote(runtimeCwd)} && git checkout ${shQuote(sha)}',
     );
     if (checkout.exitCode != 0) {
+      // The clone succeeded, so `<runtimeCwd>/.git` now exists. Leaving
+      // the half-cloned tree in place would poison a retry against a
+      // persistent sandbox: the resume probe would see `.git`, return
+      // `resumed: true`, and silently run the agent against the default
+      // branch (bootstrapSha: null) instead of the user's HEAD. Wipe it
+      // so a retry re-clones cleanly.
+      await exec.run('rm -rf ${shQuote(runtimeCwd)}');
       throw BootstrapException(
         stage: 'checkout',
         kind: BootstrapErrorKind.checkout,
