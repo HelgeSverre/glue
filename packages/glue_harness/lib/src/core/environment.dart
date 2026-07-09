@@ -140,8 +140,20 @@ class Environment {
   }
 
   void ensureDirectories() {
-    Directory(sessionsDir).createSync(recursive: true);
-    Directory(logsDir).createSync(recursive: true);
-    Directory(cacheDir).createSync(recursive: true);
+    _ensureDir(sessionsDir);
+    _ensureDir(logsDir);
+    _ensureDir(cacheDir);
+  }
+
+  /// Creates [dir] and restricts it to owner-only (0700) on non-Windows.
+  /// These trees hold session transcripts and logs that shouldn't be
+  /// group/world readable (L3).
+  void _ensureDir(String dir) {
+    Directory(dir).createSync(recursive: true);
+    if (!isWindows) {
+      try {
+        Process.runSync('chmod', ['700', dir]);
+      } catch (_) {}
+    }
   }
 }

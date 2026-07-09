@@ -92,6 +92,36 @@ void main() {
     expect(second['text'], 'hi there');
   });
 
+  test('loadConversation skips corrupt/torn tail lines (M12)', () {
+    final store = SessionStore(sessionDir: sessionDir, meta: meta);
+    store.logEvent('user_message', {'text': 'hello'});
+    // Simulate a torn tail line from a crash mid-append.
+    File(p.join(sessionDir, 'conversation.jsonl')).writeAsStringSync(
+      '{"type":"assistant_message","text":"partia',
+      mode: FileMode.append,
+    );
+
+    final events = SessionStore.loadConversation(sessionDir);
+
+    // The valid record survives; the corrupt tail is dropped, not fatal.
+    expect(events, hasLength(1));
+    expect(events.single['type'], 'user_message');
+  });
+
+  test('session dir and files get owner-only perms (L3)', () {
+    final store = SessionStore(sessionDir: sessionDir, meta: meta);
+    store.logEvent('user_message', {'text': 'hello'});
+
+    if (Platform.isWindows) return; // POSIX-only perms.
+
+    int perms(String path) => File(path).statSync().mode & 0x1FF;
+    int dirPerms(String path) => Directory(path).statSync().mode & 0x1FF;
+
+    expect(dirPerms(sessionDir), 0x1C0); // 0700
+    expect(perms(p.join(sessionDir, 'meta.json')), 0x180); // 0600
+    expect(perms(p.join(sessionDir, 'conversation.jsonl')), 0x180); // 0600
+  });
+
   test('setTitle persists title to meta.json', () {
     final store = SessionStore(sessionDir: sessionDir, meta: meta);
     store.setTitle('Fix auth bug');

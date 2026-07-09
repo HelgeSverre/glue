@@ -252,10 +252,24 @@ class SessionStore {
   final SessionMeta meta;
   late final File _conversationFile;
 
+  /// Whether the owner-only permissions have been applied to the conversation
+  /// log yet. Set on the first append so the chmod runs once, not per event.
+  bool _conversationPermsSet = false;
+
   SessionStore({required this.sessionDir, required this.meta}) {
     Directory(sessionDir).createSync(recursive: true);
+    _restrictDirPerms(sessionDir);
     _conversationFile = File(p.join(sessionDir, 'conversation.jsonl'));
     _writeMeta();
+  }
+
+  /// Restricts [dir] to owner-only (0700) on non-Windows. Session dirs hold
+  /// full transcripts, so they should not be group/world traversable (L3).
+  static void _restrictDirPerms(String dir) {
+    if (Platform.isWindows) return;
+    try {
+      Process.runSync('chmod', ['700', dir]);
+    } catch (_) {}
   }
 
   void _writeMeta() {
@@ -290,6 +304,13 @@ class SessionStore {
 
   /// Appends a timestamped event record to the conversation log. Uses a
   /// single append-mode write — the session dir already exists (constructor).
+  ///
+  /// Flushes each append so a crash can't strip the tail line (M12). The log
+  /// is chmod'd to owner-only (0600) on its first write (L3).
+  ///
+  /// TODO(L7): the conversation log grows unbounded — full request/response
+  /// content is retained forever. A size/age cap or rollup should be added
+  /// before this becomes a disk-usage problem on long-lived sessions.
   void logEvent(String type, Map<String, dynamic> data) {
     final record = {
       'timestamp': DateTime.now().toUtc().toIso8601String(),
@@ -299,7 +320,17 @@ class SessionStore {
     _conversationFile.writeAsStringSync(
       '${jsonEncode(record)}\n',
       mode: FileMode.append,
+      flush: true,
     );
+    _restrictConversationPerms();
+  }
+
+  void _restrictConversationPerms() {
+    if (_conversationPermsSet || Platform.isWindows) return;
+    _conversationPermsSet = true;
+    try {
+      Process.runSync('chmod', ['600', _conversationFile.path]);
+    } catch (_) {}
   }
 
   /// Closes this session, recording the end time.
@@ -335,11 +366,20 @@ class SessionStore {
     if (!file.existsSync()) return [];
 
     final events = <Map<String, dynamic>>[];
+    var skipped = 0;
     for (final line in file.readAsLinesSync()) {
       if (line.trim().isEmpty) continue;
       try {
         events.add(jsonDecode(line) as Map<String, dynamic>);
-      } catch (_) {}
+      } catch (_) {
+        // A torn tail line (partial write interrupted by a crash) or an
+        // otherwise corrupt record. Count it rather than dropping it
+        // silently, so the loss is at least observable (M12).
+        skipped++;
+      }
+    }
+    if (skipped > 0) {
+      stderr.writeln('glue: skipped $skipped corrupt line(s) in ${file.path}');
     }
     return events;
   }
