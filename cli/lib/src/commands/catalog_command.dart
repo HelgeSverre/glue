@@ -76,12 +76,26 @@ Future<RefreshOutcome> refreshCatalog({
     final result = await fetcher.fetch(uri);
     switch (result) {
       case FetchUpdated(:final yaml):
-        final file = File(cachePath);
-        file.parent.createSync(recursive: true);
-        final tmp = File('$cachePath.tmp');
-        tmp.writeAsStringSync(yaml);
-        tmp.renameSync(file.path);
-        return RefreshWrote(uri: uri, bytes: file.lengthSync());
+        // Validate BEFORE committing the cache file (H5). A corrupt body
+        // must never overwrite a good `~/.glue/cache/models.yaml` and brick
+        // every subsequent `glue` run. `parseCatalogYaml` throws on both
+        // malformed YAML and an invalid catalog shape.
+        String? invalid;
+        try {
+          parseCatalogYaml(yaml);
+        } on Exception catch (e) {
+          invalid = '$e';
+        }
+        if (invalid != null) {
+          failures.add((uri: uri, reason: 'invalid catalog: $invalid'));
+        } else {
+          final file = File(cachePath);
+          file.parent.createSync(recursive: true);
+          final tmp = File('$cachePath.tmp');
+          tmp.writeAsStringSync(yaml);
+          tmp.renameSync(file.path);
+          return RefreshWrote(uri: uri, bytes: file.lengthSync());
+        }
       case FetchNotModified():
         return RefreshNotModified(uri: uri);
       case FetchFailed(:final reason):
