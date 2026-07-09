@@ -249,7 +249,9 @@ void main() {
           Stream.fromIterable(events),
         ).toList()).whereType<UsageInfo>().single;
 
-        expect(usage.inputTokens, 4096);
+        // inputTokens is uncached-only: OpenAI's cached_tokens is a subset of
+        // prompt_tokens, so 4096 - 3500 = 596 (see H3 fix in openai_client).
+        expect(usage.inputTokens, 596);
         expect(usage.outputTokens, 64);
         expect(usage.cacheReadTokens, 3500);
         expect(usage.cacheCreationTokens, isNull);
