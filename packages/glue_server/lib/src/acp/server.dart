@@ -94,8 +94,21 @@ class AcpServer {
 
   // Per-session state for active prompts and pending permission requests.
   final Set<String> _knownSessions = {};
+
+  /// Sessions with a `session/prompt` turn currently running. Used to
+  /// serialise prompts per session so two concurrent prompts can't both drive
+  /// the same delegate turn and clobber each other's cancellation state.
+  final Set<String> _activePrompts = {};
   int _nextRequestId = 1000000;
-  final Map<int, Completer<RequestPermissionResult>> _pendingPermissions = {};
+
+  /// Outstanding `session/request_permission` requests, keyed by JSON-RPC id.
+  /// Each entry remembers its owning session so a `session/close` (or a
+  /// transport teardown) can fail exactly the prompts it should.
+  final Map<
+    int,
+    ({String sessionId, Completer<RequestPermissionResult> completer})
+  >
+  _pendingPermissions = {};
 
   /// Drives the dispatch loop until the inbound stream closes.
   Future<void> serve() async {
@@ -113,10 +126,34 @@ class AcpServer {
       await completer.future;
     } finally {
       await sub.cancel();
+      // Fail any permission prompt still awaiting a client reply — the
+      // transport is gone, so it will never arrive. Leaving these pending
+      // strands the delegate's `requestPermission` future and pins
+      // `AgentCore` mid-turn forever.
+      _failPendingPermissions(
+        error: StateError('transport closed before permission was answered'),
+      );
       for (final id in _knownSessions.toList()) {
         await delegate.closeSession(id);
       }
       _knownSessions.clear();
+    }
+  }
+
+  /// Error-completes outstanding permission requests so a blocked delegate
+  /// unwinds instead of waiting forever. Drains every pending request when
+  /// [sessionId] is null, otherwise only those owned by [sessionId].
+  void _failPendingPermissions({String? sessionId, required Object error}) {
+    final ids = _pendingPermissions.entries
+        .where((e) => sessionId == null || e.value.sessionId == sessionId)
+        .map((e) => e.key)
+        .toList();
+    for (final id in ids) {
+      final pending = _pendingPermissions.remove(id);
+      final pendingCompleter = pending?.completer;
+      if (pendingCompleter != null && !pendingCompleter.isCompleted) {
+        pendingCompleter.completeError(error);
+      }
     }
   }
 
@@ -141,11 +178,22 @@ class AcpServer {
     try {
       switch (method) {
         case AcpMethod.initialize:
+          // Negotiate the protocol version: speak the highest version we both
+          // support, i.e. min(client-requested, ours). A client asking for a
+          // newer version is told the older one we can actually speak; one
+          // asking for an older version gets that version back. Falls back to
+          // our version when the client omits/!sends a valid number.
+          final requested = params?['protocolVersion'];
+          final negotiatedVersion = requested is num
+              ? (requested.toInt() < config.protocolVersion
+                    ? requested.toInt()
+                    : config.protocolVersion)
+              : config.protocolVersion;
           transport.send(
             JsonRpcResponse(
               id: id,
               result: InitializeResult(
-                protocolVersion: config.protocolVersion,
+                protocolVersion: negotiatedVersion,
                 agentInfo: config.agentInfo,
                 agentCapabilities: config.agentCapabilities,
                 authMethods: config.authMethods,
@@ -174,6 +222,13 @@ class AcpServer {
           final closeParams = SessionCloseParams.fromJson(params);
           if (!_ensureKnownSession(id, closeParams.sessionId)) return;
           delegate.cancelPrompt(closeParams.sessionId);
+          // Fail any permission prompt still in flight for this session so
+          // its delegate turn unwinds instead of hanging on a reply that
+          // will never come now that the session is closing.
+          _failPendingPermissions(
+            sessionId: closeParams.sessionId,
+            error: StateError('session closed before permission was answered'),
+          );
           await delegate.closeSession(closeParams.sessionId);
           _knownSessions.remove(closeParams.sessionId);
           transport.send(JsonRpcResponse(id: id, result: <String, Object?>{}));
@@ -184,13 +239,35 @@ class AcpServer {
           }
           final promptParams = SessionPromptParams.fromJson(params);
           if (!_ensureKnownSession(id, promptParams.sessionId)) return;
-          final stopReason = await _runPrompt(promptParams);
-          transport.send(
-            JsonRpcResponse(
-              id: id,
-              result: SessionPromptResult(stopReason: stopReason).toJson(),
-            ),
-          );
+          // Serialise prompts per session. Dispatch is fire-and-forget, so a
+          // second `session/prompt` arriving before the first turn finishes
+          // would run a concurrent `agent.run()` on the same delegate session
+          // and overwrite its active controller — leaving `session/cancel`
+          // able to reach only the newer turn. Reject the overlap as busy.
+          if (_activePrompts.contains(promptParams.sessionId)) {
+            transport.send(
+              JsonRpcError(
+                id: id,
+                code: JsonRpcErrorCode.invalidRequest,
+                message:
+                    'session "${promptParams.sessionId}" is already handling a '
+                    'prompt; wait for it to finish or cancel it first',
+              ),
+            );
+            return;
+          }
+          _activePrompts.add(promptParams.sessionId);
+          try {
+            final stopReason = await _runPrompt(promptParams);
+            transport.send(
+              JsonRpcResponse(
+                id: id,
+                result: SessionPromptResult(stopReason: stopReason).toJson(),
+              ),
+            );
+          } finally {
+            _activePrompts.remove(promptParams.sessionId);
+          }
         case AcpMethod.sessionUsageSummary:
           final sessionId = (params?['sessionId'] as String?)?.trim();
           if (sessionId == null || sessionId.isEmpty) {
@@ -239,7 +316,7 @@ class AcpServer {
 
   void _handlePeerResponse({required Object id, required Object? result}) {
     if (id is! int) return;
-    final pending = _pendingPermissions.remove(id);
+    final pending = _pendingPermissions.remove(id)?.completer;
     if (pending == null) return;
     if (result is! Map) {
       pending.completeError(
@@ -263,7 +340,7 @@ class AcpServer {
     required Object? data,
   }) {
     if (id is! int) return;
-    final pending = _pendingPermissions.remove(id);
+    final pending = _pendingPermissions.remove(id)?.completer;
     pending?.completeError(StateError('permission request failed: $message'));
   }
 
@@ -422,7 +499,7 @@ class AcpServer {
   }) async {
     final id = _nextRequestId++;
     final completer = Completer<RequestPermissionResult>();
-    _pendingPermissions[id] = completer;
+    _pendingPermissions[id] = (sessionId: sessionId, completer: completer);
 
     transport.send(
       JsonRpcRequest(
