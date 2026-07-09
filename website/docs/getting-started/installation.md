@@ -1,16 +1,37 @@
 # Installation
 
+## Quick install
+
+The fastest way to get Glue is a prebuilt binary from GitHub Releases.
+
+<InstallSnippet />
+
+### macOS via Homebrew
+
+```bash
+brew install helgesverre/tap/glue
+```
+
+### Windows
+
+Download `glue-windows-x64.exe` from the [latest GitHub release](https://github.com/helgesverre/glue/releases/latest) and place it somewhere on your `PATH`.
+
+```bash
+brew install helgesverre/tap/glue
+```
+
+### Windows
+
+Download `glue-windows-x64.exe` from the [latest GitHub release](https://github.com/helgesverre/glue/releases/latest) and place it somewhere on your `PATH`.
+
 ## Prerequisites
 
-Before installing Glue, make sure you have the following:
+To run Glue you need:
 
-- **Dart SDK 3.12+** -- available at [dart.dev/get-dart](https://dart.dev/get-dart)
-- **Git** -- required for worktree support and cloning the repository
-- **API key** for at least one LLM provider (Anthropic, OpenAI, Gemini, Mistral, Groq, OpenRouter, GitHub Copilot via OAuth device-code, or a local Ollama instance — no key needed for Ollama or Copilot)
+- **Git** — required for worktree support.
+- **API key** for at least one LLM provider (Anthropic, OpenAI, Gemini, Mistral, Groq, OpenRouter, GitHub Copilot via OAuth device-code, or a local Ollama instance — no key needed for Ollama or Copilot).
 
-::: tip
-If you already have the Flutter SDK installed, the Dart SDK is included. You can verify with `dart --version`.
-:::
+To build from source you also need the **Dart SDK 3.12+** — available at [dart.dev/get-dart](https://dart.dev/get-dart). If you already have the Flutter SDK installed, the Dart SDK is included. Verify with `dart --version`.
 
 ## Install from Source
 
