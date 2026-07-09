@@ -149,12 +149,23 @@ class BlockRenderer {
   }
 
   /// Render a tool result block.
+  ///
+  /// [content] is untrusted — a tool can echo attacker-controlled bytes (a
+  /// poisoned file via read_file, a fetched web page, an MCP tool result). Its
+  /// terminal control bytes are stripped ([stripControlChars]) before any
+  /// styling or linkification so injected escape sequences can't reach the
+  /// terminal. `renderAssistant`/`renderThinking` get the same protection via
+  /// [MarkdownRenderer.render].
   String renderToolResult(String content, {bool success = true}) {
     final icon = success ? '✓' : '✗';
     final headerText = '$icon Tool result';
     final header =
         ' ${success ? headerText.styled.bold.green : headerText.styled.bold.red}';
-    final truncated = _truncateLines(content, 20, _inner - 2);
+    final truncated = _truncateLines(
+      stripControlChars(content),
+      20,
+      _inner - 2,
+    );
     final lines = truncated.split('\n');
     final linked = lines.map((l) {
       final m = _grepLinePattern.firstMatch(l);
