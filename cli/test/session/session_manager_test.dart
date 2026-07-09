@@ -112,6 +112,82 @@ void main() {
     expect(span.attributes['session.user_count'], 1);
   });
 
+  test('resumeSession replays a tool-only assistant turn (H1)', () {
+    final manager = SessionManager(
+      environment: environment,
+      observability: obs,
+    );
+    final meta = SessionMeta(
+      id: const SessionId('resume-tool-only'),
+      cwd: environment.cwd,
+      modelRef: 'anthropic/claude-sonnet-4.6',
+      startTime: DateTime.now(),
+    );
+    final store = SessionStore(
+      sessionDir: environment.sessionDir(meta.id),
+      meta: meta,
+    );
+    // Model went straight to a tool call — no assistant_message event.
+    store.logEvent('user_message', {'text': 'read the file'});
+    store.logEvent('tool_call', {
+      'id': 'c1',
+      'name': 'read_file',
+      'arguments': {'path': 'README.md'},
+    });
+    store.logEvent('tool_result', {'call_id': 'c1', 'content': 'file content'});
+
+    final result = manager.resumeSession(session: meta, agent: agent);
+
+    expect(result.hasConversation, isTrue);
+    // The assistant turn carrying the tool_use block must survive replay,
+    // followed by its tool_result — otherwise the next request loses context.
+    expect(agent.conversation.map((m) => m.role), [
+      Role.user,
+      Role.assistant,
+      Role.toolResult,
+    ]);
+    final assistant = agent.conversation[1];
+    expect(assistant.toolCalls, hasLength(1));
+    expect(assistant.toolCalls.single.name, 'read_file');
+    expect((assistant.text ?? '').isEmpty, isTrue);
+    expect(agent.conversation.last.text, 'file content');
+  });
+
+  test('resumeSession repairs a dangling tool_use with no result (H2)', () {
+    final manager = SessionManager(
+      environment: environment,
+      observability: obs,
+    );
+    final meta = SessionMeta(
+      id: const SessionId('resume-dangling'),
+      cwd: environment.cwd,
+      modelRef: 'anthropic/claude-sonnet-4.6',
+      startTime: DateTime.now(),
+    );
+    final store = SessionStore(
+      sessionDir: environment.sessionDir(meta.id),
+      meta: meta,
+    );
+    // Session crashed after the tool_call was logged but before its result.
+    store.logEvent('user_message', {'text': 'run it'});
+    store.logEvent('assistant_message', {'text': 'on it'});
+    store.logEvent('tool_call', {
+      'id': 'c1',
+      'name': 'bash',
+      'arguments': {'command': 'ls'},
+    });
+
+    final result = manager.resumeSession(session: meta, agent: agent);
+
+    expect(result.hasConversation, isTrue);
+    // A synthetic tool_result must be injected so the next provider call
+    // does not 400 on the unmatched tool_use block.
+    final last = agent.conversation.last;
+    expect(last.role, Role.toolResult);
+    expect(last.toolCallId, 'c1');
+    expect(last.text, contains('cancelled'));
+  });
+
   test('resumeSession reuses summary-first tool result text for replay UI', () {
     final manager = SessionManager(
       environment: environment,

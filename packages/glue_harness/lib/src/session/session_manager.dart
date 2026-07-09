@@ -627,15 +627,28 @@ class SessionManager {
     var pendingToolResults = <Message>[];
 
     void flushPending() {
-      if (pendingAssistantText != null) {
+      // Emit the pending assistant turn when it produced *either* visible
+      // text *or* tool calls. A turn where the model went straight to tools
+      // (no assistant text — H1) still owns an assistant message carrying the
+      // tool_use blocks; dropping it would strip the calls + their results
+      // from the replayed conversation. All provider mappers accept a
+      // tool-use-only assistant message (null/empty text).
+      final hasText = pendingAssistantText != null;
+      final hasToolCalls = pendingToolCalls.isNotEmpty;
+      if (hasText || hasToolCalls) {
         agent.addMessage(
           Message.assistant(
             text: pendingAssistantText,
             toolCalls: pendingToolCalls,
           ),
         );
-        entries.add(SessionReplayEntry.assistant(pendingAssistantText!));
-        assistantCount++;
+        // Only surface a replay entry / bump the count for visible assistant
+        // text — a tool-only turn already contributes its own toolCall
+        // entries and would otherwise render as an empty assistant block.
+        if (hasText) {
+          entries.add(SessionReplayEntry.assistant(pendingAssistantText!));
+          assistantCount++;
+        }
         for (final tr in pendingToolResults) {
           agent.addMessage(tr);
         }
@@ -727,6 +740,12 @@ class SessionManager {
       }
     }
     flushPending();
+
+    // A session that crashed mid-tool leaves a dangling `tool_use` block with
+    // no matching `tool_result`, which every provider rejects (400) on the
+    // next request. Repair the replayed history the same way the cancel path
+    // does before we hand it back to the model (H2).
+    agent.ensureToolResultsComplete();
 
     return SessionReplay(
       entries: entries,
