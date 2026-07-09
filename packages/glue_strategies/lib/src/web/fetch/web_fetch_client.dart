@@ -7,6 +7,7 @@ import 'package:glue_strategies/src/web/fetch/jina_reader_client.dart';
 import 'package:glue_strategies/src/web/fetch/ocr_client.dart';
 import 'package:glue_strategies/src/web/fetch/pdf_text_extractor.dart';
 import 'package:glue_strategies/src/web/fetch/truncation.dart';
+import 'package:glue_strategies/src/web/ssrf_guard.dart';
 
 class WebFetchResult {
   final String url;
@@ -35,6 +36,7 @@ class WebFetchClient {
   final WebFetchConfig config;
   final PdfConfig pdfConfig;
   final http.Client _client;
+  final SsrfGuard _guard;
   late final JinaReaderClient? _jinaClient;
   late final PdfTextExtractor _pdfExtractor;
   late final OcrClient? _ocrClient;
@@ -43,14 +45,17 @@ class WebFetchClient {
     required this.config,
     PdfConfig? pdfConfig,
     http.Client? client,
+    SsrfGuard? guard,
   }) : pdfConfig = pdfConfig ?? const PdfConfig(),
-       _client = client ?? http.Client() {
+       _client = client ?? http.Client(),
+       _guard = guard ?? SsrfGuard() {
     _jinaClient = config.allowJinaFallback
         ? JinaReaderClient(
             baseUrl: config.jinaBaseUrl,
             apiKey: config.jinaApiKey,
             timeoutSeconds: config.timeoutSeconds,
             client: client,
+            guard: _guard,
           )
         : null;
     _pdfExtractor = PdfTextExtractor(
@@ -84,21 +89,43 @@ class WebFetchClient {
       return WebFetchResult.withError(url: url, error: 'Invalid URL: $e');
     }
 
-    // Single GET — route by content-type / magic bytes.
+    // SSRF guard: reject internal targets (loopback / private / link-local /
+    // ULA / multicast, incl. the cloud metadata endpoint) before connecting.
+    // web_fetch is auto-allowed, so a prompt injection must not be able to
+    // reach 169.254.169.254 and exfiltrate IAM credentials.
+    try {
+      await _guard.validate(uri);
+    } on SsrfBlockedException catch (e) {
+      return WebFetchResult.withError(
+        url: url,
+        error: 'Blocked URL: ${e.reason}',
+      );
+    }
+
+    // Single GET — route by content-type / magic bytes. [SsrfGuard.safeGet]
+    // disables automatic redirect following and re-validates every hop, so a
+    // 302 → internal address can't be used to bypass the check above.
     http.Response? response;
     try {
-      final r = await _client
-          .get(
-            uri,
-            headers: {
-              'Accept':
-                  'text/markdown, text/plain;q=0.9, '
-                  'text/html;q=0.8, application/pdf;q=0.7, */*;q=0.1',
-              'User-Agent': 'Glue/0.1 (coding-agent)',
-            },
-          )
-          .timeout(Duration(seconds: config.timeoutSeconds));
+      final r = await _guard.safeGet(
+        _client,
+        uri,
+        headers: {
+          'Accept':
+              'text/markdown, text/plain;q=0.9, '
+              'text/html;q=0.8, application/pdf;q=0.7, */*;q=0.1',
+          'User-Agent': 'Glue/0.1 (coding-agent)',
+        },
+        timeout: Duration(seconds: config.timeoutSeconds),
+      );
       response = r.statusCode == 200 ? r : null;
+    } on SsrfBlockedException catch (e) {
+      // A redirect pointed at an internal address — surface the block rather
+      // than silently falling through to the Jina proxy.
+      return WebFetchResult.withError(
+        url: url,
+        error: 'Blocked URL: ${e.reason}',
+      );
     } catch (_) {
       response = null;
     }
