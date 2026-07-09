@@ -486,6 +486,64 @@ void main() {
     expect(toolCallIndices.last, lessThan(toolResultIndices.first));
   });
 
+  // ── Empty/thinking-only turns (M8) ────────────────────────────────────
+
+  test('thinking-only turn adds no empty assistant message (M8)', () async {
+    // Thinking is streamed but never appended to assistantText, and there are
+    // no tool calls — so the turn is empty. Appending it would send Anthropic
+    // a content: [] assistant message and 400 the next request.
+    mockLlm.responses.add([ThinkingDelta('just pondering')]);
+
+    final events = await agent.run('hi').toList();
+
+    expect(events.whereType<AgentThinkingDelta>(), hasLength(1));
+    expect(events.last, isA<AgentDone>());
+    // Only the user message — no dangling empty assistant message.
+    expect(agent.conversation, hasLength(1));
+    expect(agent.conversation.single.role, Role.user);
+  });
+
+  test('turn with no chunks at all adds no assistant message (M8)', () async {
+    mockLlm.responses.add(const []);
+
+    await agent.run('hi').toList();
+
+    expect(agent.conversation, hasLength(1));
+    expect(agent.conversation.single.role, Role.user);
+  });
+
+  // ── Max-iteration guard (M5) ──────────────────────────────────────────
+
+  test('run stops after maxIterations without looping forever (M5)', () async {
+    final agent = AgentCore(
+      llm: _AlwaysToolLlm(),
+      tools: {'test_tool': MockTool()},
+      maxIterations: 3,
+    );
+
+    final events = <AgentEvent>[];
+    await for (final event in agent.run('go')) {
+      events.add(event);
+      if (event is AgentToolCall) {
+        unawaited(
+          Future(() async {
+            final result = await agent.executeTool(event.call);
+            agent.completeToolCall(result);
+          }),
+        );
+      }
+    }
+
+    // The loop terminated (did not hang) with a warning notice + AgentDone.
+    final notices = events.whereType<AgentNotice>().toList();
+    expect(notices, hasLength(1));
+    expect(notices.single.kind, 'warning');
+    expect(notices.single.message, contains('maximum'));
+    expect(events.last, isA<AgentDone>());
+    // Tool calls are bounded by maxIterations.
+    expect(events.whereType<AgentToolCall>().length, lessThanOrEqualTo(3));
+  });
+
   // ── Soft fallback: ToolsNotSupportedException ─────────────────────────
 
   test('ToolsNotSupportedException on first call yields AgentNotice, '
@@ -524,6 +582,20 @@ void main() {
     // The second call received tools: null/empty — the retry was tool-less.
     expect(llm.lastCallToolsCount, 0);
   });
+}
+
+/// Mock LLM that returns a fresh tool call on every request and never
+/// finishes — used to exercise the max-iteration guard (M5).
+class _AlwaysToolLlm extends LlmClient {
+  int _n = 0;
+
+  @override
+  Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
+    _n++;
+    yield ToolCallComplete(
+      ToolCall(id: ToolCallId('call_$_n'), name: 'test_tool', arguments: {}),
+    );
+  }
 }
 
 /// Mock LLM that throws ToolsNotSupportedException on the first call
