@@ -167,6 +167,27 @@ void main() {
       expect(r.exitCode, 1);
       expect(r.result, 'nope\n');
     });
+
+    test('a client-side timeout maps to RuntimeApiException, not a raw '
+        'TimeoutException (M23)', () async {
+      final mock = MockClient((_) async {
+        await Future<void>.delayed(const Duration(seconds: 5));
+        return http.Response(jsonEncode({'result': '', 'exitCode': 0}), 200);
+      });
+      final client = DaytonaClient(config: config, httpClient: mock);
+      await expectLater(
+        client.execCapture(
+          sandbox,
+          'sleep 5',
+          timeout: const Duration(milliseconds: 30),
+        ),
+        throwsA(
+          isA<RuntimeApiException>()
+              .having((e) => e.endpoint, 'endpoint', 'execute')
+              .having((e) => e.message, 'message', contains('timed out')),
+        ),
+      );
+    });
   });
 
   group('DaytonaClient session API', () {
@@ -219,6 +240,24 @@ void main() {
         'cmd-42',
       );
       expect(logs, 'hello\nworld\n');
+    });
+
+    test('getSessionCommandLogs decodes UTF-8, not Latin-1 (B9)', () async {
+      // The logs endpoint returns text/plain with no charset, so
+      // http.Response.body would fall back to Latin-1 and mangle
+      // multi-byte output. Serve real UTF-8 bytes and assert they
+      // survive the round trip.
+      const text = 'café → 世界 🚀';
+      final mock = MockClient(
+        (_) async => http.Response.bytes(utf8.encode(text), 200),
+      );
+      final client = DaytonaClient(config: config, httpClient: mock);
+      final logs = await client.getSessionCommandLogs(
+        sandbox,
+        'bg-1',
+        'cmd-42',
+      );
+      expect(logs, text);
     });
 
     test('getSessionCommandStatus parses exitCode (null until done)', () async {

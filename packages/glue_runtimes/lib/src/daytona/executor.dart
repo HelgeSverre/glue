@@ -18,16 +18,12 @@ class DaytonaExecutor implements CommandExecutor {
     required DaytonaClient client,
     required DaytonaSandbox sandbox,
     String runtimeId = 'daytona',
-    String? backgroundSessionId,
     RuntimeEventSink? eventSink,
   }) : _delegate = TransportExecutor(
          backend: _DaytonaBackend(
            client: client,
            sandbox: sandbox,
            runtimeId: runtimeId,
-           backgroundSessionId:
-               backgroundSessionId ??
-               'glue-bg-${DateTime.now().microsecondsSinceEpoch}',
          ),
          eventSink: eventSink,
        );
@@ -43,20 +39,20 @@ class DaytonaExecutor implements CommandExecutor {
 
 /// Daytona-specific transport. Returns a single combined output stream
 /// (stderr stays empty — see [DaytonaRunningCommand] for the same
-/// convention) and creates the long-lived background session lazily on
-/// the first streaming call.
+/// convention) and creates a *fresh* background session per streaming
+/// command (see [stream]).
 class _DaytonaBackend implements CaptureBackend {
   final DaytonaClient client;
   final DaytonaSandbox sandbox;
-  final String backgroundSessionId;
 
-  bool _sessionCreated = false;
+  /// Monotonic suffix guaranteeing per-command session-id uniqueness
+  /// even if two `stream()` calls land in the same microsecond.
+  int _streamSeq = 0;
 
   _DaytonaBackend({
     required this.client,
     required this.sandbox,
     required this.runtimeId,
-    required this.backgroundSessionId,
   });
 
   @override
@@ -84,13 +80,18 @@ class _DaytonaBackend implements CaptureBackend {
 
   @override
   Future<RunningCommandHandle> stream(String command) async {
-    if (!_sessionCreated) {
-      await client.createSession(sandbox, backgroundSessionId);
-      _sessionCreated = true;
-    }
+    // One session per streaming command. A single shared session meant
+    // that killing one background command (which deletes its parent
+    // session) SIGTERMed every sibling, and the next stream() would
+    // exec into a now-deleted session. A per-command session keeps
+    // kills isolated; DaytonaRunningCommand deletes its own session on
+    // completion or kill so they don't accumulate.
+    final sessionId =
+        'glue-bg-${DateTime.now().microsecondsSinceEpoch}-${_streamSeq++}';
+    await client.createSession(sandbox, sessionId);
     final sessionCmd = await client.executeSessionCommand(
       sandbox,
-      backgroundSessionId,
+      sessionId,
       command,
       runAsync: true,
     );

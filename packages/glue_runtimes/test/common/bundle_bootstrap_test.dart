@@ -167,6 +167,42 @@ void main() {
       },
     );
 
+    test('upload failure falls back to clone-from-remote instead of aborting '
+        '(H15)', () async {
+      // Regression for H15: an upload failure (e.g. Sprites' base64-
+      // over-shell hitting E2BIG below the advertised cap) used to
+      // throw BootstrapException(stage: upload) and abort bootstrap.
+      // It must instead skip the bundle path and fall back to
+      // clone-from-remote. Here the host has no remote, so the
+      // fallback itself fails at stage 'clone' — which proves the
+      // fallback was *reached* (not 'upload').
+      final hostCwd = await Directory('${tmp.path}/host').create();
+      await _git(['init', '-q'], hostCwd);
+      await _git(['config', 'user.email', 'test@test'], hostCwd);
+      await _git(['config', 'user.name', 'test'], hostCwd);
+      File('${hostCwd.path}/a.txt').writeAsStringSync('a\n');
+      await _git(['add', 'a.txt'], hostCwd);
+      await _git(['commit', '-q', '-m', 'init'], hostCwd);
+
+      final bundleBase = await Directory('${tmp.path}/glue').create();
+      final ws = WorkspaceBootstrap(
+        exec: _UploadFailingTransport(),
+        sessionId: 'upload-test',
+        bundleBaseDir: bundleBase.path,
+      );
+      await expectLater(
+        ws.bootstrap(hostCwd: hostCwd.path, runtimeCwd: '/workspace'),
+        throwsA(
+          isA<BootstrapException>().having((e) => e.stage, 'stage', 'clone'),
+        ),
+      );
+      expect(
+        File('${bundleBase.path}/bootstrap.bundle').existsSync(),
+        isFalse,
+        reason: 'host bundle must be cleaned up when the upload fails',
+      );
+    });
+
     test(
       'falls back to clone-from-remote when bundle exceeds size cap',
       () async {
@@ -244,6 +280,31 @@ class _FakeBundleTransport implements BootstrapBundleTransport {
       exitCode: r.exitCode,
       output: '${r.stdout}${r.stderr}',
     );
+  }
+}
+
+/// Transport whose [uploadBytes] always throws — used to verify that an
+/// upload failure is treated as a skip (fall back to clone-from-remote)
+/// rather than a fatal `BootstrapException(stage: upload)`. Its cap is
+/// large so the size-cap fallback isn't what's exercised.
+class _UploadFailingTransport implements BootstrapBundleTransport {
+  @override
+  int get bundleSizeCapBytes => 1 << 30;
+
+  @override
+  Future<void> uploadBytes(String runtimePath, List<int> bytes) async {
+    throw Exception('simulated E2BIG: argument list too long');
+  }
+
+  @override
+  Future<BootstrapExecResult> run(String shellCommand) async {
+    // Probe answers "not yet bootstrapped" so we proceed to the bundle
+    // path; everything else succeeds (the clone fallback fails earlier,
+    // host-side, because there's no remote configured).
+    if (shellCommand.startsWith('test -d')) {
+      return const BootstrapExecResult(exitCode: 1, output: '');
+    }
+    return const BootstrapExecResult(exitCode: 0, output: '');
   }
 }
 

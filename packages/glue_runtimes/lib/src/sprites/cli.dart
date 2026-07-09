@@ -52,6 +52,19 @@ abstract class SpritesCliBase {
     Duration? timeout,
   });
 
+  /// Like [execCapture] but streams [stdinBytes] to the command's
+  /// standard input instead of relying on the caller to inline data in
+  /// the command string. Used to ship large payloads (e.g. a base64
+  /// bundle piped into `base64 -d`) without hitting the single-argv
+  /// `ARG_MAX`/`MAX_ARG_STRLEN` (E2BIG) ceiling — and without exposing
+  /// the payload in the host's `ps` listing.
+  Future<SpritesExecResult> execCaptureStdin(
+    String spriteName,
+    String command,
+    List<int> stdinBytes, {
+    Duration? timeout,
+  });
+
   /// Starts [command] and returns a streaming [Process]. The caller
   /// is responsible for closing stdin / waiting on exitCode.
   Future<Process> execStream(String spriteName, String command);
@@ -147,17 +160,32 @@ class SpritesCli implements SpritesCliBase {
     // The CLI's `create` subcommand handles capacity-wait + URL
     // settings consistently. We pin auth=sprite so glue isn't
     // accidentally exposing a public-by-default URL.
-    final res = await Process.run(config.spriteCliPath, [
+    final r = await _runWithTimeout([
       'create',
       name,
-    ]).timeout(config.startTimeout);
-    if (res.exitCode != 0) {
+    ], limit: config.startTimeout);
+    if (r.timedOut) {
+      // A plain `Process.run(...).timeout(...)` would throw a raw
+      // TimeoutException and leave the `sprite create` child running.
+      // _runWithTimeout kills it; surface the typed exception callers
+      // expect.
       throw RuntimeApiException(
         runtimeId: 'sprites',
-        statusCode: res.exitCode,
+        statusCode: -1,
+        endpoint: 'create_sprite',
+        message:
+            'sprite create timed out after '
+            '${config.startTimeout.inSeconds}s',
+        body: '${r.result.stdout}\n${r.result.stderr}',
+      );
+    }
+    if (r.result.exitCode != 0) {
+      throw RuntimeApiException(
+        runtimeId: 'sprites',
+        statusCode: r.result.exitCode,
         endpoint: 'create_sprite',
         message: 'sprite create failed',
-        body: '${res.stdout}\n${res.stderr}',
+        body: '${r.result.stdout}\n${r.result.stderr}',
       );
     }
   }
@@ -197,21 +225,78 @@ class SpritesCli implements SpritesCliBase {
     Duration? timeout,
   }) async {
     final args = ['exec', '-s', spriteName, '--', 'sh', '-c', command];
-    final res = await Process.run(config.spriteCliPath, args).timeout(
-      timeout ?? config.execTimeout,
-      onTimeout: () => ProcessResult(0, -1, '', 'glue: exec timed out'),
+    final r = await _runWithTimeout(args, limit: timeout ?? config.execTimeout);
+    return r.result;
+  }
+
+  @override
+  Future<SpritesExecResult> execCaptureStdin(
+    String spriteName,
+    String command,
+    List<int> stdinBytes, {
+    Duration? timeout,
+  }) async {
+    final args = ['exec', '-s', spriteName, '--', 'sh', '-c', command];
+    final r = await _runWithTimeout(
+      args,
+      limit: timeout ?? config.execTimeout,
+      stdinBytes: stdinBytes,
     );
-    return SpritesExecResult(
-      exitCode: res.exitCode,
-      stdout: res.stdout as String,
-      stderr: res.stderr as String,
-    );
+    return r.result;
   }
 
   @override
   Future<Process> execStream(String spriteName, String command) {
     final args = ['exec', '-s', spriteName, '--', 'sh', '-c', command];
     return Process.start(config.spriteCliPath, args);
+  }
+
+  /// Starts the `sprite` CLI with [args], optionally streaming
+  /// [stdinBytes] to the child's stdin, and waits with a [limit] that
+  /// **kills the child** on expiry. `Process.run(...).timeout(...)`
+  /// only abandons the Dart future — the subprocess (and the remote
+  /// command it drives) keeps running. Returns the collected result
+  /// plus whether the timeout fired.
+  Future<({SpritesExecResult result, bool timedOut})> _runWithTimeout(
+    List<String> args, {
+    required Duration limit,
+    List<int>? stdinBytes,
+  }) async {
+    final process = await Process.start(config.spriteCliPath, args);
+    if (stdinBytes != null) {
+      process.stdin.add(stdinBytes);
+    }
+    // Close stdin so readers (e.g. `base64 -d`) see EOF. Ignore a
+    // broken pipe if the child has already exited.
+    unawaited(process.stdin.close().catchError((Object _) {}));
+    // Lenient decode: matches the old `Process.run` behaviour and
+    // avoids crashing exec on a stray non-UTF-8 byte in child output.
+    const decoder = Utf8Decoder(allowMalformed: true);
+    final stdoutF = process.stdout.transform(decoder).join();
+    final stderrF = process.stderr.transform(decoder).join();
+    var timedOut = false;
+    final code = await process.exitCode.timeout(
+      limit,
+      onTimeout: () {
+        timedOut = true;
+        process.kill(ProcessSignal.sigkill);
+        return -1;
+      },
+    );
+    final out = await stdoutF;
+    final err = await stderrF;
+    return (
+      result: SpritesExecResult(
+        exitCode: timedOut ? -1 : code,
+        stdout: out,
+        stderr: timedOut
+            ? (err.isEmpty
+                  ? 'glue: exec timed out'
+                  : '$err\nglue: exec timed out')
+            : err,
+      ),
+      timedOut: timedOut,
+    );
   }
 }
 
@@ -247,6 +332,13 @@ extension SpritesFs on SpritesCliBase {
   /// -d`. We invoke `sh -c "mkdir -p $(dirname …) && base64 -d > …"`
   /// to be parent-dir-creating, matching the host workspace's
   /// behaviour.
+  ///
+  /// The base64 payload is streamed via **stdin**, not inlined into the
+  /// command string. Inlining put the whole payload into a single argv
+  /// value, which hit `ARG_MAX`/`MAX_ARG_STRLEN` (E2BIG) far below the
+  /// advertised 3 MB bundle cap, and leaked the bytes (incl. any secret
+  /// a `write_file` is delivering) into the host's `ps` output. base64
+  /// text is ASCII, so it survives the CLI's WebSocket framing intact.
   Future<void> writeFileBytes(
     String spriteName,
     String path,
@@ -254,9 +346,10 @@ extension SpritesFs on SpritesCliBase {
   ) async {
     final encoded = base64Encode(bytes);
     final p = shQuote(path);
-    final res = await execCapture(
+    final res = await execCaptureStdin(
       spriteName,
-      "mkdir -p \"\$(dirname $p)\" && printf '%s' '$encoded' | base64 -d > $p",
+      'mkdir -p "\$(dirname $p)" && base64 -d > $p',
+      utf8.encode(encoded),
     );
     if (res.exitCode != 0) {
       throw RuntimeApiException(
