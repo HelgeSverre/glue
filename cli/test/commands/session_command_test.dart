@@ -64,6 +64,29 @@ void main() {
     });
   });
 
+  group('unknown session id (M16)', () {
+    for (final verb in ['show', 'diff', 'apply', 'export']) {
+      test(
+        '`session $verb <unknown>` exits non-zero without a raw StateError',
+        () async {
+          final extra = verb == 'export'
+              ? ['--to', '${tmp.path}/out']
+              : <String>[];
+          final r = await _runGlue([
+            'session',
+            verb,
+            'ghost',
+            ...extra,
+          ], glueHome: tmp.path);
+          expect(r.exitCode, isNot(0), reason: r.stderr);
+          expect(r.stderr, isNot(contains('StateError')));
+          expect(r.stderr, contains('ghost'));
+        },
+        timeout: const Timeout(Duration(minutes: 2)),
+      );
+    }
+  });
+
   group('applySessionPatch', () {
     test('returns ok=false when patch is missing', () async {
       _writeMeta(env, _meta(id: 'sid'));
@@ -95,6 +118,28 @@ void main() {
       expect(result.message, contains('truncated'));
     });
   });
+}
+
+Future<({int exitCode, String stdout, String stderr})> _runGlue(
+  List<String> args, {
+  required String glueHome,
+}) async {
+  final process = await Process.start(
+    'dart',
+    ['run', '--verbosity=error', 'bin/glue.dart', ...args],
+    workingDirectory: Directory.current.path,
+    runInShell: true,
+    environment: {...Platform.environment, 'GLUE_HOME': glueHome},
+  );
+  await process.stdin.close();
+  final out = await process.stdout
+      .transform(const SystemEncoding().decoder)
+      .join();
+  final err = await process.stderr
+      .transform(const SystemEncoding().decoder)
+      .join();
+  final code = await process.exitCode;
+  return (exitCode: code, stdout: out, stderr: err);
 }
 
 SessionMeta _meta({required String id, String? startTime, String? runtimeId}) {

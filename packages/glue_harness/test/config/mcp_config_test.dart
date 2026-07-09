@@ -202,6 +202,63 @@ mcp:
         throwsA(isA<ConfigError>()),
       );
     });
+
+    // ─── M13: a disabled server must not brick loading over an unset var ───
+
+    test(
+      'disabled stdio server with an unset \${VAR} does not brick loading',
+      () {
+        final cfg = parse('''
+mcp:
+  servers:
+    parked:
+      command: "\${UNSET_CMD}"
+      enabled: false
+    live:
+      command: echo
+''');
+        expect(cfg.servers, hasLength(2));
+        final parked =
+            cfg.servers.firstWhere((s) => s.id == 'parked')
+                as McpStdioServerSpec;
+        expect(parked.enabled, isFalse);
+        // Expansion is deferred: the raw ${VAR} is preserved verbatim.
+        expect(parked.command, contains('UNSET_CMD'));
+      },
+    );
+
+    test(
+      'disabled http server with an unset \${VAR} bearer token does not throw',
+      () {
+        final cfg = parse('''
+mcp:
+  servers:
+    parked:
+      url: "https://mcp.example.com/wiki"
+      enabled: false
+      auth:
+        kind: bearer
+        token: "\${UNSET_TOKEN}"
+''');
+        final spec = cfg.servers.single as McpUrlServerSpec;
+        expect(spec.enabled, isFalse);
+        final auth = spec.auth as McpBearerAuth;
+        expect(auth.token, contains('UNSET_TOKEN'));
+      },
+    );
+
+    test('an ENABLED server with an unset \${VAR} still fails loudly', () {
+      expect(
+        () => parse('''
+mcp:
+  servers:
+    live:
+      command: "\${UNSET_CMD}"
+      enabled: true
+'''),
+        throwsA(isA<ConfigError>()),
+      );
+    });
   });
 
   group('parseMcpConfig — tool_policy', () {

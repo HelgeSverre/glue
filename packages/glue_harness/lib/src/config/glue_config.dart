@@ -468,9 +468,15 @@ ModelRef _resolveModelRef(String raw, ModelCatalog catalog) {
 ModelCatalog? _loadOptionalYaml(String path) {
   final file = File(path);
   if (!file.existsSync()) return null;
+  // A corrupt cache/override must never brick loading. `parseCatalogYaml`
+  // throws `CatalogParseException` on invalid *catalogs* but bubbles up
+  // `YamlException` on malformed *YAML* (and `readAsStringSync` can throw
+  // `FileSystemException`). Catch them all and fall back to the bundled
+  // catalog so a bad `~/.glue/cache/models.yaml` can't take down every
+  // `glue` run. See the H5 regression tests.
   try {
     return parseCatalogYaml(file.readAsStringSync());
-  } on CatalogParseException {
+  } on Exception {
     return null;
   }
 }

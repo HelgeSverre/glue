@@ -186,11 +186,14 @@ ObservabilityConfig resolveObservabilityConfig(
   final debug = env['GLUE_DEBUG'] == '1' || (section?.debug ?? false);
 
   final otelSection = section?.otel;
+  // Env wins over YAML, matching the env→config order used everywhere else
+  // in this resolver (shell, docker, title generation, …). Previously the
+  // YAML `endpoint` shadowed all three env vars (L9).
   final otelEndpoint =
-      otelSection?.endpoint ??
       env['OTEL_EXPORTER_OTLP_TRACES_ENDPOINT'] ??
       env['OTEL_EXPORTER_OTLP_ENDPOINT'] ??
-      env['PHOENIX_COLLECTOR_ENDPOINT'];
+      env['PHOENIX_COLLECTOR_ENDPOINT'] ??
+      otelSection?.endpoint;
 
   final otelHeaders = <String, String>{
     ...?_parseOtelEnvHeaders(env),

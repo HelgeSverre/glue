@@ -690,33 +690,33 @@ class McpAuthLoginCommand extends Command<int> {
     final config = safeLoadConfig();
     if (config == null) return 1;
 
-    final spec = config.mcp.servers.firstWhere(
-      (s) => s.id == serverId,
-      orElse: () => throw StateError(''),
-    );
-    if (spec is! McpUrlServerSpec) {
-      stderr.writeln(
-        'OAuth is only supported for HTTP/WS servers. "$serverId" is stdio.',
-      );
-      return 1;
-    }
-    try {
-      final terminal = await runMcpAuthLogin(
-        serverId: serverId,
-        serverUrl: spec.url,
-        credentials: config.credentials,
-        environment: Environment.detect(),
-        cachedResourceMetadataUrl: spec.resourceMetadataUrl,
-        onMessage: stdout.writeln,
-      );
-      return terminal is McpAuthFlowSuccess ? 0 : 1;
-    } on StateError {
+    // Look up without `firstWhere(orElse: throw)` — a raw StateError here
+    // sits before the try below and isn't caught by `bin/glue.dart`, so an
+    // unknown id would crash with a stack trace (M16).
+    final matches = config.mcp.servers.where((s) => s.id == serverId).toList();
+    if (matches.isEmpty) {
       stderr.writeln(
         'Server "$serverId" is not in your config. '
         'Known: ${config.mcp.servers.map((s) => s.id).join(", ")}.',
       );
       return 1;
     }
+    final spec = matches.first;
+    if (spec is! McpUrlServerSpec) {
+      stderr.writeln(
+        'OAuth is only supported for HTTP/WS servers. "$serverId" is stdio.',
+      );
+      return 1;
+    }
+    final terminal = await runMcpAuthLogin(
+      serverId: serverId,
+      serverUrl: spec.url,
+      credentials: config.credentials,
+      environment: Environment.detect(),
+      cachedResourceMetadataUrl: spec.resourceMetadataUrl,
+      onMessage: stdout.writeln,
+    );
+    return terminal is McpAuthFlowSuccess ? 0 : 1;
   }
 }
 
@@ -751,20 +751,28 @@ class McpAuthLogoutCommand extends Command<int> {
 // ─── helpers ───────────────────────────────────────────────────────────────
 
 /// Reads a single line from stdin without echoing. Falls back to plain
-/// readLineSync on platforms where echoMode isn't available.
+/// readLineSync on platforms/streams where echoMode isn't available.
+///
+/// The `echoMode` *getter* itself throws `StdinException` on non-TTY
+/// (e.g. piped) stdin, so it must live inside the try — otherwise
+/// `glue mcp auth set --bearer` crashes when the token is piped in (M15).
 String _readSecret() {
-  final hadEcho = stdin.echoMode;
+  bool? hadEcho;
   try {
+    hadEcho = stdin.echoMode;
     stdin.echoMode = false;
   } catch (_) {
-    // Some terminals don't support echoMode; fall through with echo on.
+    // Non-TTY (piped) stdin, or a terminal without echoMode support:
+    // fall through and read with echo left as-is.
   }
   try {
     final line = stdin.readLineSync();
     return line?.trim() ?? '';
   } finally {
-    try {
-      stdin.echoMode = hadEcho;
-    } catch (_) {}
+    if (hadEcho != null) {
+      try {
+        stdin.echoMode = hadEcho;
+      } catch (_) {}
+    }
   }
 }
