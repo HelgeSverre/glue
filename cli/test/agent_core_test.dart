@@ -395,6 +395,49 @@ void main() {
     expect((events[2] as AgentTextDelta).delta, 'Understood');
   });
 
+  test('aborted run does not append a duplicate tool_result (C1)', () async {
+    final llm = MockLlmClient();
+    llm.responses.add([
+      ToolCallComplete(
+        ToolCall(id: const ToolCallId('tc1'), name: 'test_tool', arguments: {}),
+      ),
+    ]);
+    final agent = AgentCore(llm: llm, tools: {'test_tool': MockTool()});
+    final iterator = StreamIterator(agent.run('go'));
+
+    expect(await iterator.moveNext(), isTrue);
+    expect(iterator.current, isA<AgentToolCall>());
+
+    // Drive the generator into `await Future.wait(...)` and let it park.
+    final pending = iterator.moveNext();
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    // The tool finishes (completer resolves with a value) and, in the same
+    // synchronous turn, the user cancels. abort() must stop the resumed
+    // generator from appending the real result on top of the synthetic
+    // [cancelled] result that ensureToolResultsComplete() injects — otherwise
+    // the conversation holds two tool_results for one id and the next API
+    // request 400s.
+    agent.completeToolCall(
+      ToolResult(callId: const ToolCallId('tc1'), content: 'late real result'),
+    );
+    agent.abort();
+    agent.ensureToolResultsComplete();
+    await iterator.cancel();
+    await pending.then((_) {}, onError: (_) {});
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    final toolResults = agent.conversation
+        .where((m) => m.role == Role.toolResult)
+        .toList();
+    expect(
+      toolResults,
+      hasLength(1),
+      reason: 'exactly one tool_result per call id after cancel',
+    );
+    expect(toolResults.single.text, '[cancelled by user]');
+  });
+
   test('emits all tool calls before awaiting results (parallel)', () async {
     final toolCall1 = ToolCall(
       id: const ToolCallId('tc1'),

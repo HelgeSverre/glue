@@ -245,6 +245,7 @@ class App {
   late final SkillRuntime _skillRuntime;
   ApprovalMode _approvalMode;
   final Set<ToolCallId> _earlyApprovedIds = {};
+  final Set<ToolCallId> _earlyDeniedIds = {};
 
   DateTime _lastRender = DateTime(0);
   bool _renderScheduled = false;
@@ -1957,8 +1958,15 @@ class App {
                 _startSpinner();
                 _render();
               default: // No
-                _cancelAgent();
-                agent.completeToolCall(ToolResult.denied(id));
+                // Deny just this tool (symmetric to early-approve) and keep
+                // the turn alive so the model can react to the denial — rather
+                // than aborting the whole turn. The denial is applied when the
+                // full AgentToolCall arrives (its completer exists by then).
+                _earlyDeniedIds.add(id);
+                _toolUi[id]?.phase = _ToolPhase.denied;
+                _mode = AppMode.streaming;
+                _startSpinner();
+                _render();
             }
           });
           return;
@@ -1990,6 +1998,14 @@ class App {
           'name': call.name,
           'arguments': call.arguments,
         });
+
+        // Early-denied at ToolCallPending time — feed a denial back to the
+        // model and keep the turn alive.
+        if (_earlyDeniedIds.remove(call.id)) {
+          _traceToolApproval(call, 'deny');
+          _denyTool(call);
+          return;
+        }
 
         // Early-approved at ToolCallPending time — re-check with full args.
         if (_earlyApprovedIds.remove(call.id)) {
@@ -2080,6 +2096,7 @@ class App {
   }
 
   void _cancelAgent() {
+    agent.abort();
     _agentSub?.cancel();
     _endTurnSpan(extra: {'cancelled': true});
     // Stop the spinner before flipping mode — otherwise the timer keeps

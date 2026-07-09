@@ -83,6 +83,11 @@ class AgentCore {
   /// Completers keyed by tool call ID for parallel tool execution.
   final Map<ToolCallId, Completer<ToolResult>> _pendingToolResults = {};
 
+  /// Set by [abort] when the current run is cancelled. Checked before the
+  /// post-`Future.wait` tool_result append loop so a generator that resumes
+  /// after cancellation does not write duplicate tool_result messages.
+  bool _aborted = false;
+
   AgentCore({
     required this.llm,
     required this.tools,
@@ -118,6 +123,7 @@ class AgentCore {
       yield startup;
     }
 
+    _aborted = false;
     _conversation.add(
       Message.user(userMessage, contentParts: userContentParts),
     );
@@ -302,6 +308,12 @@ class AgentCore {
         // get here.
         final results = await Future.wait(toolFutures);
 
+        // If the run was aborted (user cancelled) while tools were in flight,
+        // do NOT append tool_result messages here. The caller repairs history
+        // via ensureToolResultsComplete(); appending would duplicate the
+        // synthetic [cancelled] results and 400 the next request.
+        if (_aborted) break;
+
         // Add results to conversation and yield events
         for (var i = 0; i < toolCalls.length; i++) {
           _conversation.add(
@@ -363,9 +375,30 @@ class AgentCore {
   /// Called by the application after the user approves (or denies) a tool
   /// invocation.
   void completeToolCall(ToolResult result) {
+    if (_aborted) return;
     final completer = _pendingToolResults.remove(result.callId);
     if (completer == null || completer.isCompleted) return;
     completer.complete(result);
+  }
+
+  /// Aborts the in-flight run so the caller can cancel cleanly.
+  ///
+  /// Sets the abort flag (checked before the post-`Future.wait` tool_result
+  /// append loop in [run]) and error-completes any pending tool-result
+  /// completers so a generator parked on `Future.wait` unwinds through its
+  /// error path instead of appending results. The caller is responsible for
+  /// repairing conversation history via [ensureToolResultsComplete] and for
+  /// cancelling the stream subscription.
+  void abort() {
+    _aborted = true;
+    for (final completer in _pendingToolResults.values) {
+      if (!completer.isCompleted) {
+        completer.completeError(
+          StateError('Agent run aborted while awaiting tool result'),
+        );
+      }
+    }
+    _pendingToolResults.clear();
   }
 
   /// Ensures the conversation history is structurally valid for the next
