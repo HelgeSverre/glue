@@ -79,6 +79,14 @@ McpServerSpec _parseServer(
     );
   }
 
+  // A disabled server is parked, not connected — so `${VAR}` interpolation
+  // is deferred until it is re-enabled (the config is re-parsed from disk).
+  // Expanding eagerly here would let one disabled server referencing an
+  // unset var brick *all* config loading (and block `glue mcp add`). For
+  // disabled servers we pass raw values through untouched.
+  String expand(String value, String field) =>
+      enabled ? _expandEnvVars(value, env, server: id, field: field) : value;
+
   if (command != null) {
     final args = (raw['args'] as List?)?.cast<String>() ?? const <String>[];
     final envBlock = <String, String>{};
@@ -88,29 +96,17 @@ McpServerSpec _parseServer(
         final key = e.key.toString();
         final value = e.value?.toString();
         if (value == null) continue;
-        envBlock[key] = _expandEnvVars(
-          value,
-          env,
-          server: id,
-          field: 'env.$key',
-        );
+        envBlock[key] = expand(value, 'env.$key');
       }
     }
     return McpStdioServerSpec(
       id: id,
-      command: _expandEnvVars(command, env, server: id, field: 'command'),
-      args: args
-          .map((a) => _expandEnvVars(a, env, server: id, field: 'args'))
-          .toList(),
+      command: expand(command, 'command'),
+      args: args.map((a) => expand(a, 'args')).toList(),
       env: envBlock,
       workingDirectory: raw['working_directory'] != null
           ? expandUserPath(
-              _expandEnvVars(
-                raw['working_directory'] as String,
-                env,
-                server: id,
-                field: 'working_directory',
-              ),
+              expand(raw['working_directory'] as String, 'working_directory'),
               home: env['HOME'] ?? env['USERPROFILE'],
             )
           : null,
@@ -120,8 +116,8 @@ McpServerSpec _parseServer(
   }
 
   if (url != null) {
-    final expandedUrl = _expandEnvVars(url, env, server: id, field: 'url');
-    final auth = _parseAuth(raw['auth'], env, serverId: id);
+    final expandedUrl = expand(url, 'url');
+    final auth = _parseAuth(raw['auth'], env, serverId: id, enabled: enabled);
     final parsed = Uri.tryParse(expandedUrl);
     if (parsed == null) {
       throw ConfigError(
@@ -155,6 +151,7 @@ McpAuthSpec _parseAuth(
   Object? raw,
   Map<String, String> env, {
   required String serverId,
+  required bool enabled,
 }) {
   if (raw == null) return const McpNoAuth();
   if (raw is! Map) {
@@ -164,8 +161,17 @@ McpAuthSpec _parseAuth(
   switch (kind) {
     case 'bearer':
       final rawToken = raw['token'] as String?;
+      // Defer `${VAR}` expansion for parked (disabled) servers — see the
+      // note in `_parseServer`.
       final token = rawToken != null
-          ? _expandEnvVars(rawToken, env, server: serverId, field: 'auth.token')
+          ? (enabled
+                ? _expandEnvVars(
+                    rawToken,
+                    env,
+                    server: serverId,
+                    field: 'auth.token',
+                  )
+                : rawToken)
           : null;
       return McpBearerAuth(token: token);
     case 'oauth':
