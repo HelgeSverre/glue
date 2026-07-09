@@ -222,6 +222,8 @@ class SessionManager {
     );
     try {
       final id = _newSessionId();
+      // Freshly-minted id → no contention; claim it so a concurrent
+      // `--continue` on this session is detected (M11).
       final store = SessionStore(
         sessionDir: environment.sessionDir(id),
         meta: SessionMeta(
@@ -230,6 +232,7 @@ class SessionManager {
           modelRef: modelRef,
           startTime: DateTime.now(),
         ),
+        lock: SessionLock.acquire(environment.sessionDir(id)),
       );
       _store = store;
       _endSpan(span, extra: {'session.id': store.meta.id});
@@ -240,15 +243,25 @@ class SessionManager {
     }
   }
 
-  void switchToSessionStore(SessionMeta meta) {
+  /// Switches the active store to [meta]. When [lock] is set, acquires the
+  /// advisory session lock *before* touching any state (M11); if another live
+  /// process holds it, throws [SessionInUseException] and leaves the current
+  /// store untouched.
+  void switchToSessionStore(SessionMeta meta, {bool lock = false}) {
     final oldStore = _store;
     if (oldStore?.meta.id == meta.id) return;
+    // Acquire before closing the old store / swapping, so a lock conflict is a
+    // clean no-op rather than a half-applied switch.
+    final sessionLock = lock
+        ? SessionLock.acquire(environment.sessionDir(meta.id))
+        : null;
     if (oldStore != null) {
       oldStore.close();
     }
     _store = SessionStore(
       sessionDir: environment.sessionDir(meta.id),
       meta: meta,
+      lock: sessionLock,
     );
   }
 
@@ -480,7 +493,29 @@ class SessionManager {
       final events = SessionStore.loadConversation(
         environment.sessionDir(session.id),
       );
-      switchToSessionStore(session);
+      try {
+        switchToSessionStore(session, lock: true);
+      } on SessionInUseException catch (e) {
+        // Another live Glue process owns this session (M11). Bail cleanly
+        // instead of interleaving writes — the current store is untouched.
+        final result = SessionResumeResult(
+          message:
+              'Session ${session.id.value} is already open in another Glue '
+              'process${e.holderPid != null ? ' (pid ${e.holderPid})' : ''}.',
+          hasConversation: false,
+          replay: SessionReplay(
+            entries: const [],
+            userCount: 0,
+            assistantCount: 0,
+            totalUsage: buildUsageReport(usageEvents: const []),
+          ),
+        );
+        _endSpan(
+          span,
+          extra: {'session.locked': true, 'session.has_conversation': false},
+        );
+        return result;
+      }
       agent.clearConversation();
 
       if (events.isEmpty) {
@@ -578,6 +613,7 @@ class SessionManager {
           startTime: DateTime.now(),
           forkedFrom: oldSessionId.value,
         ),
+        lock: SessionLock.acquire(environment.sessionDir(newId)),
       );
 
       for (final event in truncatedEvents) {

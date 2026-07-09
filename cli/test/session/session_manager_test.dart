@@ -341,6 +341,81 @@ void main() {
     expect(ids, hasLength(200));
   });
 
+  test('resumeSession refuses a session locked by another process (M11)', () {
+    final manager = SessionManager(
+      environment: environment,
+      observability: obs,
+    );
+    final meta = SessionMeta(
+      id: const SessionId('locked-1'),
+      cwd: environment.cwd,
+      modelRef: 'anthropic/claude-sonnet-4.6',
+      startTime: DateTime.now(),
+    );
+    final store = SessionStore(
+      sessionDir: environment.sessionDir(meta.id),
+      meta: meta,
+    );
+    store.logEvent('user_message', {'text': 'hello'});
+    // A foreign, still-running process holds the advisory lock.
+    File(
+      '${environment.sessionDir(meta.id)}/.lock',
+    ).writeAsStringSync('999999\n');
+
+    final result = manager.resumeSession(session: meta, agent: agent);
+
+    expect(result.hasConversation, isFalse);
+    expect(result.message, contains('already open'));
+    // The agent conversation must be left untouched — no interleaving.
+    expect(agent.conversation, isEmpty);
+  });
+
+  test('resumeSession allows a session locked by our own pid (M11)', () {
+    final manager = SessionManager(
+      environment: environment,
+      observability: obs,
+    );
+    final meta = SessionMeta(
+      id: const SessionId('locked-self'),
+      cwd: environment.cwd,
+      modelRef: 'anthropic/claude-sonnet-4.6',
+      startTime: DateTime.now(),
+    );
+    final store = SessionStore(
+      sessionDir: environment.sessionDir(meta.id),
+      meta: meta,
+    );
+    store.logEvent('user_message', {'text': 'hi'});
+    File(
+      '${environment.sessionDir(meta.id)}/.lock',
+    ).writeAsStringSync('$pid\n');
+
+    final result = manager.resumeSession(session: meta, agent: agent);
+
+    // Same-process re-entry is allowed.
+    expect(result.hasConversation, isTrue);
+  });
+
+  test(
+    'ensureSessionStore writes and releases an advisory lock (M11)',
+    () async {
+      final manager = SessionManager(
+        environment: environment,
+        observability: obs,
+      );
+      final store = manager.ensureSessionStore(
+        cwd: environment.cwd,
+        modelRef: 'anthropic/claude-sonnet-4.6',
+      );
+      final lockFile = File('${store.sessionDir}/.lock');
+      expect(lockFile.existsSync(), isTrue);
+      expect(lockFile.readAsStringSync().trim(), '$pid');
+
+      await manager.closeCurrent();
+      expect(lockFile.existsSync(), isFalse);
+    },
+  );
+
   test('updateSessionModel persists modelRef to meta.json', () {
     final manager = SessionManager(
       environment: environment,

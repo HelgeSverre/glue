@@ -246,17 +246,89 @@ class SessionMeta {
   }
 }
 
+/// Thrown when a session directory is already claimed by another live Glue
+/// process (M11) and cannot be opened for writing.
+class SessionInUseException implements Exception {
+  SessionInUseException(this.sessionDir, {this.holderPid});
+
+  final String sessionDir;
+  final int? holderPid;
+
+  @override
+  String toString() =>
+      'SessionInUseException: session at $sessionDir is already open'
+      '${holderPid != null ? ' in process $holderPid' : ''}';
+}
+
+/// Advisory PID lock guarding a session directory against two Glue processes
+/// writing the same `conversation.jsonl` concurrently (M11).
+///
+/// It is a plain `.lock` file recording the owning PID — deliberately *not* an
+/// OS file lock, which would keep an open handle and (on Windows) block temp
+/// dir cleanup. Re-entry by the same process is allowed; a `.lock` owned by a
+/// different PID fails acquisition. Released (file deleted) on [release].
+///
+/// Limitation: a hard crash leaves a stale `.lock`. There is no portable
+/// liveness probe in Dart (no signal-0), so a stale lock blocks resume until
+/// removed — the raised [SessionInUseException] names the file so it can be
+/// deleted manually. TODO: portable staleness detection.
+class SessionLock {
+  SessionLock._(this._file);
+
+  final File _file;
+  bool _released = false;
+
+  /// Claims [sessionDir] for the current process, or throws
+  /// [SessionInUseException] if a foreign PID already holds it.
+  static SessionLock acquire(String sessionDir) {
+    Directory(sessionDir).createSync(recursive: true);
+    final file = File(p.join(sessionDir, '.lock'));
+    if (file.existsSync()) {
+      final holder = _readPid(file);
+      if (holder != null && holder != pid) {
+        throw SessionInUseException(sessionDir, holderPid: holder);
+      }
+    }
+    file.writeAsStringSync('$pid\n', flush: true);
+    return SessionLock._(file);
+  }
+
+  static int? _readPid(File file) {
+    try {
+      return int.tryParse(file.readAsStringSync().trim());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Releases the lock if we still own it. Idempotent.
+  void release() {
+    if (_released) return;
+    _released = true;
+    try {
+      if (_file.existsSync() && _readPid(_file) == pid) {
+        _file.deleteSync();
+      }
+    } catch (_) {}
+  }
+}
+
 /// Persistent storage for a single session's metadata and conversation log.
 class SessionStore {
   final String sessionDir;
   final SessionMeta meta;
   late final File _conversationFile;
 
+  /// Advisory lock held for the lifetime of this store (M11). Null for stores
+  /// opened without a lock (e.g. read-only inspection, tests). Released by
+  /// [close].
+  final SessionLock? _lock;
+
   /// Whether the owner-only permissions have been applied to the conversation
   /// log yet. Set on the first append so the chmod runs once, not per event.
   bool _conversationPermsSet = false;
 
-  SessionStore({required this.sessionDir, required this.meta}) {
+  SessionStore({required this.sessionDir, required this.meta, this._lock}) {
     Directory(sessionDir).createSync(recursive: true);
     _restrictDirPerms(sessionDir);
     _conversationFile = File(p.join(sessionDir, 'conversation.jsonl'));
@@ -333,10 +405,12 @@ class SessionStore {
     } catch (_) {}
   }
 
-  /// Closes this session, recording the end time.
+  /// Closes this session, recording the end time and releasing the advisory
+  /// lock (M11) so another process may resume it.
   Future<void> close() async {
     meta.endTime = DateTime.now().toUtc();
     _writeMeta();
+    _lock?.release();
   }
 
   /// Lists all saved sessions in [sessionsDir], sorted newest first.
