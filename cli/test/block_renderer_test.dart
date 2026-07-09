@@ -372,4 +372,75 @@ void main() {
       }
     });
   });
+
+  // C3: untrusted model/tool text must never carry raw control bytes into the
+  // terminal. A poisoned file, web page, or MCP tool result could otherwise
+  // emit OSC 52 (clipboard write), OSC 8 (arbitrary hyperlink), or CSI
+  // sequences (screen clear, cursor moves, device queries that answer onto
+  // stdin as if they were keystrokes).
+  group('C3: ANSI escape injection is neutralized', () {
+    // OSC 52 clipboard write with a base64 payload, terminated by BEL.
+    const osc52 = '\x1b]52;c;aGFjaw==\x07';
+    // CSI erase-display ("clear screen").
+    const clearScreen = '\x1b[2J';
+    // Device Status Report — some terminals answer onto stdin.
+    const deviceQuery = '\x1b[6n';
+
+    test('renderAssistant strips OSC 52 clipboard sequence', () {
+      final output = renderer.renderAssistant('hi $osc52 there');
+      expect(output, isNot(contains('\x1b]52')));
+      expect(output, isNot(contains('\x07')));
+    });
+
+    test('renderAssistant strips CSI clear-screen and device-query', () {
+      final output = renderer.renderAssistant(
+        'a ${clearScreen}b ${deviceQuery}c',
+      );
+      expect(output, isNot(contains('\x1b[2J')));
+      expect(output, isNot(contains('\x1b[6n')));
+      // Visible text survives (minus the escape introducer).
+      expect(stripAnsi(output), contains('c'));
+    });
+
+    test('renderThinking strips injected control sequences', () {
+      final output = renderer.renderThinking('think $osc52$clearScreen');
+      expect(output, isNot(contains('\x1b]52')));
+      expect(output, isNot(contains('\x1b[2J')));
+      expect(output, isNot(contains('\x07')));
+    });
+
+    test('renderToolResult strips injected control sequences', () {
+      final output = renderer.renderToolResult('tool $osc52$clearScreen out');
+      expect(output, isNot(contains('\x1b]52')));
+      expect(output, isNot(contains('\x1b[2J')));
+      expect(output, isNot(contains('\x07')));
+      expect(stripAnsi(output), contains('out'));
+    });
+
+    test('renderToolResult strips C1 control bytes and DEL', () {
+      // 0x9b is the C1 CSI introducer; 0x7f is DEL; a bare ESC (0x1b) too.
+      final output = renderer.renderToolResult('x\x9b2J\x7f\x1byz');
+      expect(output, isNot(contains('\x9b')));
+      expect(output, isNot(contains('\x7f')));
+      expect(stripAnsi(output), contains('x'));
+      expect(stripAnsi(output), contains('yz'));
+    });
+
+    test('markdown link with escape-laden target does not emit raw OSC 8', () {
+      // The link URL is attacker-controlled; a raw BEL inside it must be
+      // stripped before it reaches the OSC 8 envelope, so it can neither
+      // prematurely terminate the sequence nor inject a second one. The BEL
+      // bytes the renderer emits as legitimate OSC 8 terminators are fine.
+      final output = renderer.renderAssistant('[click](http://x\x07evil)');
+      expect(output, isNot(contains('x\x07evil')));
+      expect(output, contains('http://xevil'));
+    });
+
+    test('preserves newlines and tabs in untrusted text', () {
+      final output = renderer.renderAssistant('line1\nline2\twith tab');
+      final stripped = stripAnsi(output);
+      expect(stripped, contains('line1'));
+      expect(stripped, contains('line2'));
+    });
+  });
 }
