@@ -22,12 +22,21 @@ class ToolArgsBuffer<Id> {
 
   /// Parse the accumulated buffer into an arguments map.
   ///
-  /// Empty buffer → `{}`. Invalid JSON → `{'_raw': <buffer>}`.
+  /// Empty buffer → `{}`. A JSON object → itself. Anything else — invalid
+  /// JSON, or valid-but-non-object JSON (`"foo"`, `[1,2]`, `42`) — falls back
+  /// to `{'_raw': <buffer>}`. The non-object case previously slipped past the
+  /// `FormatException` catch and threw a `TypeError` on the `as Map` cast
+  /// (L16).
   Map<String, dynamic> finalizeArguments() {
     final raw = _buffer.toString();
     if (raw.isEmpty) return <String, dynamic>{};
     try {
-      return jsonDecode(raw) as Map<String, dynamic>;
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) {
+        return decoded.map((key, value) => MapEntry('$key', value));
+      }
+      return <String, dynamic>{'_raw': raw};
     } on FormatException {
       return <String, dynamic>{'_raw': raw};
     }
