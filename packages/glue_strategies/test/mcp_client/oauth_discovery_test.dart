@@ -173,6 +173,26 @@ void main() {
       );
     });
 
+    test('L10: issuer trailing-slash difference still matches', () async {
+      final client = _FakeHttpClient({
+        Uri.parse(
+          'https://auth.example/.well-known/oauth-authorization-server',
+        ): const _Response(
+          200,
+          '{'
+          '"issuer":"https://auth.example/",'
+          '"authorization_endpoint":"https://auth.example/authorize",'
+          '"token_endpoint":"https://auth.example/token"'
+          '}',
+        ),
+      });
+      final endpoints = await discoverAuthorizationServerMetadata(
+        authServer: Uri.parse('https://auth.example'),
+        httpClient: client,
+      );
+      expect(endpoints.tokenEndpoint, Uri.parse('https://auth.example/token'));
+    });
+
     test('falls back to OIDC discovery path on 404', () async {
       final client = _FakeHttpClient({
         Uri.parse(
