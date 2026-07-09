@@ -49,4 +49,4 @@ Glue runs as an interactive REPL. Type messages, use slash commands, or enter ba
 ## See also
 
 - [SlashCommands](/api/commands/slash-commands)
-- [LineEditor](/api/input/line-editor)
+- [TextAreaEditor](/api/input/text-area-editor)
