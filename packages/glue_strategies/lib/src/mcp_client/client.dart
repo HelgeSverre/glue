@@ -131,10 +131,18 @@ class McpClient {
     final result = await _request(McpMethod.toolsList, const {});
     final list = (result as Map<String, dynamic>)['tools'];
     if (list is! List) return const [];
-    return list
-        .whereType<Map<String, dynamic>>()
-        .map(McpToolDescriptor.fromJson)
-        .toList();
+    // Skip individually-malformed descriptors (e.g. a missing `name`)
+    // rather than failing the entire tools/list — one bad tool must not
+    // take down the whole server connection (L12).
+    final tools = <McpToolDescriptor>[];
+    for (final raw in list.whereType<Map<String, dynamic>>()) {
+      try {
+        tools.add(McpToolDescriptor.fromJson(raw));
+      } catch (_) {
+        // Ignore this descriptor; keep the rest.
+      }
+    }
+    return tools;
   }
 
   /// Calls a tool. On JSON-RPC rate-limit (`-32011`) we honour the hint
@@ -197,6 +205,9 @@ class McpClient {
       return response.result;
     } on TimeoutException {
       _pending.remove(id);
+      // Tell the server to stop working on the abandoned request so it
+      // doesn't keep burning resources on a result we'll never read (L11).
+      _notify(McpMethod.cancelled, {'requestId': id, 'reason': 'timeout'});
       throw McpCallFailure(
         reason: 'timeout',
         message: 'request "$method" timed out after ${callTimeout.inSeconds}s',
@@ -244,23 +255,38 @@ class McpClient {
   }
 
   void _handleTransportError(Object error) {
-    if (error is McpHttpTransportError && error.statusCode == 401) {
-      _failAllPending(
-        McpCallFailure(
-          reason: 'auth_expired',
-          message: error.body.isEmpty ? '401 Unauthorized' : error.body,
-          retryable: true,
-          wwwAuthenticate: error.wwwAuthenticate,
-        ),
-      );
-      return;
+    final failure = _mapTransportError(error);
+    // When the transport can tell us which request failed (HTTP transport
+    // threads the JSON-RPC id onto the error), fail only that request so a
+    // single 4xx/5xx doesn't take down every concurrent call (M3).
+    if (error is McpHttpTransportError && error.requestId != null) {
+      final id = _coerceId(error.requestId);
+      final completer = id != null ? _pending.remove(id) : null;
+      if (completer != null) {
+        if (!completer.isCompleted) completer.completeError(failure);
+        return;
+      }
+      // Unknown/absent id — fall through to the fail-all safety net.
     }
-    _failAllPending(
-      McpCallFailure(
-        reason: 'transport_error',
-        message: error.toString(),
+    _failAllPending(failure);
+  }
+
+  /// Maps a raw transport error onto the stable [McpCallFailure] shape.
+  /// A 401 becomes `auth_expired` (carrying the `WWW-Authenticate` header
+  /// for RFC 9728 discovery); everything else is `transport_error`.
+  McpCallFailure _mapTransportError(Object error) {
+    if (error is McpHttpTransportError && error.statusCode == 401) {
+      return McpCallFailure(
+        reason: 'auth_expired',
+        message: error.body.isEmpty ? '401 Unauthorized' : error.body,
         retryable: true,
-      ),
+        wwwAuthenticate: error.wwwAuthenticate,
+      );
+    }
+    return McpCallFailure(
+      reason: 'transport_error',
+      message: error.toString(),
+      retryable: true,
     );
   }
 

@@ -8,6 +8,7 @@ import 'package:glue_strategies/src/mcp_client/config.dart';
 import 'package:glue_strategies/src/mcp_client/connection_state.dart';
 import 'package:glue_strategies/src/mcp_client/oauth.dart';
 import 'package:glue_strategies/src/mcp_client/pool.dart';
+import 'package:glue_strategies/src/mcp_client/protocol.dart';
 import 'package:glue_strategies/src/mcp_client/transport/http_sse.dart';
 import 'package:test/test.dart';
 
@@ -160,6 +161,94 @@ void main() {
       final fields = creds.getFields('mcp:foo');
       expect(fields['oauth_access'], 'fresh-AT');
       expect(fields['oauth_refresh'], 'fresh-RT');
+      await pool.close();
+    });
+
+    test('M2: mid-session 401 on tools/call re-triggers pool auth', () async {
+      final creds = _store();
+      late InMemoryMcpTransport transport;
+      final pool = McpClientPool(
+        config: McpConfig(
+          servers: [
+            McpUrlServerSpec(
+              id: 'foo',
+              isWebSocket: false,
+              url: Uri.parse('https://foo.example/mcp'),
+              auth: const McpNoAuth(),
+            ),
+          ],
+        ),
+        credentials: creds,
+        clientFactory: (spec, c) async {
+          transport = InMemoryMcpTransport(
+            respond: (out) async {
+              if (out is! JsonRpcRequest) return const [];
+              switch (out.method) {
+                case McpMethod.initialize:
+                  return [
+                    JsonRpcResponse(
+                      id: out.id,
+                      result: {
+                        'protocolVersion': mcpProtocolVersion,
+                        'serverInfo': {'name': 'foo', 'version': '1'},
+                        'capabilities': const <String, dynamic>{},
+                      },
+                    ),
+                  ];
+                case McpMethod.toolsList:
+                  return [
+                    JsonRpcResponse(
+                      id: out.id,
+                      result: {
+                        'tools': [
+                          {
+                            'name': 'do_thing',
+                            'description': '',
+                            'inputSchema': {'type': 'object'},
+                          },
+                        ],
+                      },
+                    ),
+                  ];
+                case McpMethod.toolsCall:
+                  // Simulate a mid-session 401 correlated to this call.
+                  scheduleMicrotask(
+                    () => transport.pushError(
+                      McpHttpTransportError(
+                        statusCode: 401,
+                        body: '',
+                        wwwAuthenticate:
+                            'Bearer resource_metadata="https://meta.example/x"',
+                        requestId: out.id,
+                      ),
+                    ),
+                  );
+                  return const [];
+              }
+              return const [];
+            },
+          );
+          return McpClient(transport: transport);
+        },
+      );
+
+      final events = <McpPoolEvent>[];
+      pool.events.listen(events.add);
+      pool.connectAll();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(pool.server('foo')!.state, isA<McpConnected>());
+
+      final tool = pool.allTools.single;
+      final result = await tool.execute(const {});
+      expect(result.success, isFalse);
+
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(
+        pool.server('foo')!.state,
+        isA<McpAwaitingAuth>(),
+        reason: 'pool must re-trigger auth on a mid-session 401',
+      );
+      expect(events.whereType<McpPoolServerAuthRequiredEvent>(), hasLength(1));
       await pool.close();
     });
 

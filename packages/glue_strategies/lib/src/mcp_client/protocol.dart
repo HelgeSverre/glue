@@ -137,8 +137,15 @@ class McpToolDescriptor {
   final Map<String, dynamic> inputSchema;
 
   factory McpToolDescriptor.fromJson(Map<String, dynamic> json) {
+    // A descriptor without a usable name can't be namespaced or called;
+    // throw a clean [FormatException] so `listTools` can skip just this
+    // one instead of failing the whole connection (L12).
+    final name = json['name'];
+    if (name is! String || name.isEmpty) {
+      throw const FormatException('tool descriptor missing "name"');
+    }
     return McpToolDescriptor(
-      name: json['name'] as String,
+      name: name,
       description: json['description'] as String? ?? '',
       inputSchema:
           (json['inputSchema'] as Map?)?.cast<String, dynamic>() ??
@@ -223,6 +230,7 @@ abstract final class McpMethod {
   static const toolsList = 'tools/list';
   static const toolsCall = 'tools/call';
   static const toolsListChanged = 'notifications/tools/list_changed';
+  static const cancelled = 'notifications/cancelled';
   static const ping = 'ping';
 }
 
