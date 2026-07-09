@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_strategies/src/llm/message_mapper.dart';
 import 'package:glue_strategies/src/llm/ndjson.dart';
+import 'package:glue_strategies/src/llm/retry.dart';
 import 'package:glue_strategies/src/llm/stream_request.dart';
 import 'package:glue_strategies/src/llm/tool_schema.dart';
 import 'package:glue_strategies/src/providers/ollama_discovery.dart';
@@ -119,26 +120,29 @@ class OllamaClient implements LlmClient, ContextWindowAware {
       body['tools'] = const OpenAiToolEncoder().encodeAll(tools);
     }
 
-    yield* sendAndStream(
-      requestClientFactory: _requestClientFactory,
-      uri: _baseUri.resolve('/api/chat'),
-      headers: const {'Content-Type': 'application/json'},
-      body: body,
-      providerName: 'Ollama',
-      parse: (bytes) => parseStreamEvents(decodeNdjson(bytes)),
-      classifyError: (status, errorBody) {
-        // Ollama returns 400 with body containing "does not support tools"
-        // when the loaded model has no function-calling support but we
-        // sent a `tools` array. Surface this as a typed exception so the
-        // agent loop can soft-degrade to chat-only instead of crashing.
-        // Loose match — body shape is `{"error":"<model> does not support tools"}`
-        // today but stay defensive about wording drift.
-        if (status == 400 &&
-            errorBody.toLowerCase().contains('does not support tools')) {
-          throw ToolsNotSupportedException(model);
-        }
-        throw Exception('Ollama API error $status: $errorBody');
-      },
+    yield* retryStream(
+      () => sendAndStream(
+        requestClientFactory: _requestClientFactory,
+        uri: _baseUri.resolve('/api/chat'),
+        headers: const {'Content-Type': 'application/json'},
+        body: body,
+        providerName: 'Ollama',
+        parse: (bytes) => parseStreamEvents(decodeNdjson(bytes)),
+        classifyError: (status, errorBody) {
+          // Ollama returns 400 with body containing "does not support tools"
+          // when the loaded model has no function-calling support but we
+          // sent a `tools` array. Surface this as a typed exception so the
+          // agent loop can soft-degrade to chat-only instead of crashing.
+          // Loose match — body shape is
+          // `{"error":"<model> does not support tools"}` today but stay
+          // defensive about wording drift.
+          if (status == 400 &&
+              errorBody.toLowerCase().contains('does not support tools')) {
+            throw ToolsNotSupportedException(model);
+          }
+          throw Exception('Ollama API error $status: $errorBody');
+        },
+      ),
     );
   }
 
@@ -149,6 +153,16 @@ class OllamaClient implements LlmClient, ContextWindowAware {
     int toolCallCounter = 0;
 
     await for (final event in events) {
+      // Ollama reports mid-stream failures as an NDJSON line carrying a
+      // top-level `error` field (e.g. `{"error":"model runner has crashed"}`),
+      // then closes the connection. Without this the parser would swallow the
+      // line and a truncated turn would look like a clean success. Throw so the
+      // agent loop surfaces an AgentError instead of committing a partial turn.
+      final errorField = event['error'];
+      if (errorField != null) {
+        throw Exception('Ollama stream error: $errorField');
+      }
+
       final messageRaw = event['message'] as Map?;
       final message = messageRaw?.cast<String, dynamic>();
       final done = event['done'] as bool? ?? false;
@@ -191,6 +205,14 @@ class OllamaClient implements LlmClient, ContextWindowAware {
 
       // Final chunk contains token counts.
       if (done) {
+        // M10 caveat: `prompt_eval_count` counts only the tokens Ollama
+        // *newly* evaluated this turn. With a warm KV cache (the common case
+        // across an agent loop's back-to-back turns) the already-cached prefix
+        // is excluded, so this UNDER-reports true context occupancy in the
+        // gauge. Ollama's `/api/chat` response exposes no total-prompt figure,
+        // so there is nothing here to accumulate into a better numerator;
+        // documenting the limitation is the conservative fix. The gauge should
+        // treat this as a lower bound, not an exact prompt size.
         final promptTokens = event['prompt_eval_count'] as int? ?? 0;
         final evalTokens = event['eval_count'] as int? ?? 0;
         yield UsageInfo(inputTokens: promptTokens, outputTokens: evalTokens);
