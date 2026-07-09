@@ -33,6 +33,13 @@ class AgentCore {
   LlmClient llm;
   final Map<String, Tool> tools;
   final String modelId;
+
+  /// Hard ceiling on ReAct iterations (LLM↔tool round-trips) within a single
+  /// [run]. Guards against a model that keeps calling tools forever — a
+  /// headless/subagent run has no Escape key (M5). On exhaustion [run] yields
+  /// an [AgentNotice] and stops cleanly with [AgentDone].
+  final int maxIterations;
+
   final List<Message> _conversation = [];
 
   /// Cumulative usage across every LLM call this core has run. Surfaces
@@ -92,6 +99,7 @@ class AgentCore {
     required this.llm,
     required this.tools,
     String? modelId,
+    this.maxIterations = 100,
     this._obs,
     this._traceParent,
   }) : modelId = modelId ?? 'unknown';
@@ -128,8 +136,23 @@ class AgentCore {
       Message.user(userMessage, contentParts: userContentParts),
     );
 
+    var iterations = 0;
     try {
       while (true) {
+        // Max-turn guard (M5). At the top of each pass the conversation is in
+        // a valid "ready to send" state (the previous pass appended its tool
+        // results), so we can stop cleanly without leaving a dangling
+        // tool_use. Do NOT touch the cancel/abort path.
+        if (iterations >= maxIterations) {
+          yield AgentNotice(
+            'Reached the maximum of $maxIterations agent iterations without a '
+            'final answer — stopping. Send another message to continue.',
+            kind: 'warning',
+          );
+          break;
+        }
+        iterations++;
+
         final assistantText = StringBuffer();
         final toolCalls = <ToolCall>[];
         final toolFutures = <Future<ToolResult>>[];
@@ -282,12 +305,16 @@ class AgentCore {
           }
         }
 
-        _conversation.add(
-          Message.assistant(
-            text: assistantText.toString(),
-            toolCalls: toolCalls,
-          ),
-        );
+        // Skip a turn that produced neither visible text nor tool calls —
+        // e.g. a thinking-only turn (thinking is not appended to
+        // assistantText). Appending it would send Anthropic a `content: []`
+        // assistant message and 400 the next request (M8).
+        final assistantMessageText = assistantText.toString();
+        if (assistantMessageText.isNotEmpty || toolCalls.isNotEmpty) {
+          _conversation.add(
+            Message.assistant(text: assistantMessageText, toolCalls: toolCalls),
+          );
+        }
 
         // No tool calls → turn is complete.
         if (toolCalls.isEmpty) {

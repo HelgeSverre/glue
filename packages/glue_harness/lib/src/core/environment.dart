@@ -110,7 +110,20 @@ class Environment {
   }
 
   String sessionDir(SessionId sessionId) =>
-      p.join(sessionsDir, sessionId.value);
+      p.join(sessionsDir, _safeSessionSegment(sessionId.value));
+
+  /// Collapses a session id into a single safe path segment so a crafted
+  /// `meta.json` `id` (e.g. `../../foo`) on an imported session can't escape
+  /// [sessionsDir] (L6). Well-formed ids (`<epoch>-<pid>-<rand>`) pass through
+  /// unchanged; anything with a path separator or other unsafe character is
+  /// replaced, and empty/`.`/`..` degrade to `_`.
+  static String _safeSessionSegment(String id) {
+    final sanitized = id.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+    if (sanitized.isEmpty || sanitized == '.' || sanitized == '..') {
+      return '_';
+    }
+    return sanitized;
+  }
 
   /// Replace a leading [home] with `~` for compact display. Returns [path]
   /// unchanged when [home] is empty or [path] doesn't sit beneath it.
@@ -127,8 +140,20 @@ class Environment {
   }
 
   void ensureDirectories() {
-    Directory(sessionsDir).createSync(recursive: true);
-    Directory(logsDir).createSync(recursive: true);
-    Directory(cacheDir).createSync(recursive: true);
+    _ensureDir(sessionsDir);
+    _ensureDir(logsDir);
+    _ensureDir(cacheDir);
+  }
+
+  /// Creates [dir] and restricts it to owner-only (0700) on non-Windows.
+  /// These trees hold session transcripts and logs that shouldn't be
+  /// group/world readable (L3).
+  void _ensureDir(String dir) {
+    Directory(dir).createSync(recursive: true);
+    if (!isWindows) {
+      try {
+        Process.runSync('chmod', ['700', dir]);
+      } catch (_) {}
+    }
   }
 }

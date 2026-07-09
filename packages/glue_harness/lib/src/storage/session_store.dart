@@ -111,7 +111,11 @@ class SessionMeta {
   });
 
   Map<String, Object?> toJson() => {
-    'schema_version': schemaVersion,
+    // Always emit the version of the shape we actually write (v3: `model_ref`,
+    // no legacy `model`/`provider`). Writing back the loaded `schemaVersion`
+    // for a legacy session tagged the v3 body as v1/v2, so `fromJson` then
+    // ignored `model_ref` and resolved the model to `anthropic/unknown` (H4).
+    'schema_version': currentSchemaVersion,
     'id': id.value,
     'cwd': cwd,
     if (projectPath != null) 'project_path': projectPath,
@@ -242,16 +246,102 @@ class SessionMeta {
   }
 }
 
+/// Thrown when a session directory is already claimed by another live Glue
+/// process (M11) and cannot be opened for writing.
+class SessionInUseException implements Exception {
+  SessionInUseException(this.sessionDir, {this.holderPid});
+
+  final String sessionDir;
+  final int? holderPid;
+
+  @override
+  String toString() =>
+      'SessionInUseException: session at $sessionDir is already open'
+      '${holderPid != null ? ' in process $holderPid' : ''}';
+}
+
+/// Advisory PID lock guarding a session directory against two Glue processes
+/// writing the same `conversation.jsonl` concurrently (M11).
+///
+/// It is a plain `.lock` file recording the owning PID — deliberately *not* an
+/// OS file lock, which would keep an open handle and (on Windows) block temp
+/// dir cleanup. Re-entry by the same process is allowed; a `.lock` owned by a
+/// different PID fails acquisition. Released (file deleted) on [release].
+///
+/// Limitation: a hard crash leaves a stale `.lock`. There is no portable
+/// liveness probe in Dart (no signal-0), so a stale lock blocks resume until
+/// removed — the raised [SessionInUseException] names the file so it can be
+/// deleted manually. TODO: portable staleness detection.
+class SessionLock {
+  SessionLock._(this._file);
+
+  final File _file;
+  bool _released = false;
+
+  /// Claims [sessionDir] for the current process, or throws
+  /// [SessionInUseException] if a foreign PID already holds it.
+  static SessionLock acquire(String sessionDir) {
+    Directory(sessionDir).createSync(recursive: true);
+    final file = File(p.join(sessionDir, '.lock'));
+    if (file.existsSync()) {
+      final holder = _readPid(file);
+      if (holder != null && holder != pid) {
+        throw SessionInUseException(sessionDir, holderPid: holder);
+      }
+    }
+    file.writeAsStringSync('$pid\n', flush: true);
+    return SessionLock._(file);
+  }
+
+  static int? _readPid(File file) {
+    try {
+      return int.tryParse(file.readAsStringSync().trim());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Releases the lock if we still own it. Idempotent.
+  void release() {
+    if (_released) return;
+    _released = true;
+    try {
+      if (_file.existsSync() && _readPid(_file) == pid) {
+        _file.deleteSync();
+      }
+    } catch (_) {}
+  }
+}
+
 /// Persistent storage for a single session's metadata and conversation log.
 class SessionStore {
   final String sessionDir;
   final SessionMeta meta;
   late final File _conversationFile;
 
-  SessionStore({required this.sessionDir, required this.meta}) {
+  /// Advisory lock held for the lifetime of this store (M11). Null for stores
+  /// opened without a lock (e.g. read-only inspection, tests). Released by
+  /// [close].
+  final SessionLock? _lock;
+
+  /// Whether the owner-only permissions have been applied to the conversation
+  /// log yet. Set on the first append so the chmod runs once, not per event.
+  bool _conversationPermsSet = false;
+
+  SessionStore({required this.sessionDir, required this.meta, this._lock}) {
     Directory(sessionDir).createSync(recursive: true);
+    _restrictDirPerms(sessionDir);
     _conversationFile = File(p.join(sessionDir, 'conversation.jsonl'));
     _writeMeta();
+  }
+
+  /// Restricts [dir] to owner-only (0700) on non-Windows. Session dirs hold
+  /// full transcripts, so they should not be group/world traversable (L3).
+  static void _restrictDirPerms(String dir) {
+    if (Platform.isWindows) return;
+    try {
+      Process.runSync('chmod', ['700', dir]);
+    } catch (_) {}
   }
 
   void _writeMeta() {
@@ -286,6 +376,13 @@ class SessionStore {
 
   /// Appends a timestamped event record to the conversation log. Uses a
   /// single append-mode write — the session dir already exists (constructor).
+  ///
+  /// Flushes each append so a crash can't strip the tail line (M12). The log
+  /// is chmod'd to owner-only (0600) on its first write (L3).
+  ///
+  /// TODO(L7): the conversation log grows unbounded — full request/response
+  /// content is retained forever. A size/age cap or rollup should be added
+  /// before this becomes a disk-usage problem on long-lived sessions.
   void logEvent(String type, Map<String, dynamic> data) {
     final record = {
       'timestamp': DateTime.now().toUtc().toIso8601String(),
@@ -295,13 +392,25 @@ class SessionStore {
     _conversationFile.writeAsStringSync(
       '${jsonEncode(record)}\n',
       mode: FileMode.append,
+      flush: true,
     );
+    _restrictConversationPerms();
   }
 
-  /// Closes this session, recording the end time.
+  void _restrictConversationPerms() {
+    if (_conversationPermsSet || Platform.isWindows) return;
+    _conversationPermsSet = true;
+    try {
+      Process.runSync('chmod', ['600', _conversationFile.path]);
+    } catch (_) {}
+  }
+
+  /// Closes this session, recording the end time and releasing the advisory
+  /// lock (M11) so another process may resume it.
   Future<void> close() async {
     meta.endTime = DateTime.now().toUtc();
     _writeMeta();
+    _lock?.release();
   }
 
   /// Lists all saved sessions in [sessionsDir], sorted newest first.
@@ -331,11 +440,20 @@ class SessionStore {
     if (!file.existsSync()) return [];
 
     final events = <Map<String, dynamic>>[];
+    var skipped = 0;
     for (final line in file.readAsLinesSync()) {
       if (line.trim().isEmpty) continue;
       try {
         events.add(jsonDecode(line) as Map<String, dynamic>);
-      } catch (_) {}
+      } catch (_) {
+        // A torn tail line (partial write interrupted by a crash) or an
+        // otherwise corrupt record. Count it rather than dropping it
+        // silently, so the loss is at least observable (M12).
+        skipped++;
+      }
+    }
+    if (skipped > 0) {
+      stderr.writeln('glue: skipped $skipped corrupt line(s) in ${file.path}');
     }
     return events;
   }

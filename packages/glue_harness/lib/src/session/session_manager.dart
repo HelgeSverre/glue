@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io' show pid;
+import 'dart:math';
 
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_harness/src/agent/agent_core.dart';
@@ -220,6 +222,8 @@ class SessionManager {
     );
     try {
       final id = _newSessionId();
+      // Freshly-minted id → no contention; claim it so a concurrent
+      // `--continue` on this session is detected (M11).
       final store = SessionStore(
         sessionDir: environment.sessionDir(id),
         meta: SessionMeta(
@@ -228,6 +232,7 @@ class SessionManager {
           modelRef: modelRef,
           startTime: DateTime.now(),
         ),
+        lock: SessionLock.acquire(environment.sessionDir(id)),
       );
       _store = store;
       _endSpan(span, extra: {'session.id': store.meta.id});
@@ -238,15 +243,25 @@ class SessionManager {
     }
   }
 
-  void switchToSessionStore(SessionMeta meta) {
+  /// Switches the active store to [meta]. When [lock] is set, acquires the
+  /// advisory session lock *before* touching any state (M11); if another live
+  /// process holds it, throws [SessionInUseException] and leaves the current
+  /// store untouched.
+  void switchToSessionStore(SessionMeta meta, {bool lock = false}) {
     final oldStore = _store;
     if (oldStore?.meta.id == meta.id) return;
+    // Acquire before closing the old store / swapping, so a lock conflict is a
+    // clean no-op rather than a half-applied switch.
+    final sessionLock = lock
+        ? SessionLock.acquire(environment.sessionDir(meta.id))
+        : null;
     if (oldStore != null) {
       oldStore.close();
     }
     _store = SessionStore(
       sessionDir: environment.sessionDir(meta.id),
       meta: meta,
+      lock: sessionLock,
     );
   }
 
@@ -478,7 +493,29 @@ class SessionManager {
       final events = SessionStore.loadConversation(
         environment.sessionDir(session.id),
       );
-      switchToSessionStore(session);
+      try {
+        switchToSessionStore(session, lock: true);
+      } on SessionInUseException catch (e) {
+        // Another live Glue process owns this session (M11). Bail cleanly
+        // instead of interleaving writes — the current store is untouched.
+        final result = SessionResumeResult(
+          message:
+              'Session ${session.id.value} is already open in another Glue '
+              'process${e.holderPid != null ? ' (pid ${e.holderPid})' : ''}.',
+          hasConversation: false,
+          replay: SessionReplay(
+            entries: const [],
+            userCount: 0,
+            assistantCount: 0,
+            totalUsage: buildUsageReport(usageEvents: const []),
+          ),
+        );
+        _endSpan(
+          span,
+          extra: {'session.locked': true, 'session.has_conversation': false},
+        );
+        return result;
+      }
       agent.clearConversation();
 
       if (events.isEmpty) {
@@ -554,11 +591,14 @@ class SessionManager {
       var userCount = 0;
       final truncatedEvents = <Map<String, dynamic>>[];
       for (final event in allEvents) {
-        truncatedEvents.add(event);
+        // Rewind to *before* the fork-point user message (M14): it is handed
+        // back as the editable draft, so replaying it too would duplicate it
+        // in the conversation. Break before appending it.
         if (event['type'] == 'user_message') {
           if (userCount == userMessageIndex) break;
           userCount++;
         }
+        truncatedEvents.add(event);
       }
 
       oldStore.close();
@@ -573,6 +613,7 @@ class SessionManager {
           startTime: DateTime.now(),
           forkedFrom: oldSessionId.value,
         ),
+        lock: SessionLock.acquire(environment.sessionDir(newId)),
       );
 
       for (final event in truncatedEvents) {
@@ -627,15 +668,28 @@ class SessionManager {
     var pendingToolResults = <Message>[];
 
     void flushPending() {
-      if (pendingAssistantText != null) {
+      // Emit the pending assistant turn when it produced *either* visible
+      // text *or* tool calls. A turn where the model went straight to tools
+      // (no assistant text — H1) still owns an assistant message carrying the
+      // tool_use blocks; dropping it would strip the calls + their results
+      // from the replayed conversation. All provider mappers accept a
+      // tool-use-only assistant message (null/empty text).
+      final hasText = pendingAssistantText != null;
+      final hasToolCalls = pendingToolCalls.isNotEmpty;
+      if (hasText || hasToolCalls) {
         agent.addMessage(
           Message.assistant(
             text: pendingAssistantText,
             toolCalls: pendingToolCalls,
           ),
         );
-        entries.add(SessionReplayEntry.assistant(pendingAssistantText!));
-        assistantCount++;
+        // Only surface a replay entry / bump the count for visible assistant
+        // text — a tool-only turn already contributes its own toolCall
+        // entries and would otherwise render as an empty assistant block.
+        if (hasText) {
+          entries.add(SessionReplayEntry.assistant(pendingAssistantText!));
+          assistantCount++;
+        }
         for (final tr in pendingToolResults) {
           agent.addMessage(tr);
         }
@@ -728,6 +782,12 @@ class SessionManager {
     }
     flushPending();
 
+    // A session that crashed mid-tool leaves a dangling `tool_use` block with
+    // no matching `tool_result`, which every provider rejects (400) on the
+    // next request. Repair the replayed history the same way the cancel path
+    // does before we hand it back to the model (H2).
+    agent.ensureToolResultsComplete();
+
     return SessionReplay(
       entries: entries,
       userCount: userCount,
@@ -777,11 +837,15 @@ class SessionManager {
     return generic.contains(_normalizeTitle(title));
   }
 
+  static final Random _idRandom = Random();
+
   SessionId _newSessionId() {
     final now = DateTime.now();
-    return SessionId(
-      '${now.millisecondsSinceEpoch}-${now.microsecond.toRadixString(36)}',
-    );
+    // Timestamp alone collides when two processes start in the same
+    // millisecond (L5). Fold in the PID and a random suffix so concurrent
+    // `glue` invocations get distinct ids.
+    final rand = _idRandom.nextInt(1 << 32).toRadixString(36);
+    return SessionId('${now.millisecondsSinceEpoch}-$pid-$rand');
   }
 
   ObservabilitySpan? _startSpan(

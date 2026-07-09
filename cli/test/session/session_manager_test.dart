@@ -112,6 +112,82 @@ void main() {
     expect(span.attributes['session.user_count'], 1);
   });
 
+  test('resumeSession replays a tool-only assistant turn (H1)', () {
+    final manager = SessionManager(
+      environment: environment,
+      observability: obs,
+    );
+    final meta = SessionMeta(
+      id: const SessionId('resume-tool-only'),
+      cwd: environment.cwd,
+      modelRef: 'anthropic/claude-sonnet-4.6',
+      startTime: DateTime.now(),
+    );
+    final store = SessionStore(
+      sessionDir: environment.sessionDir(meta.id),
+      meta: meta,
+    );
+    // Model went straight to a tool call — no assistant_message event.
+    store.logEvent('user_message', {'text': 'read the file'});
+    store.logEvent('tool_call', {
+      'id': 'c1',
+      'name': 'read_file',
+      'arguments': {'path': 'README.md'},
+    });
+    store.logEvent('tool_result', {'call_id': 'c1', 'content': 'file content'});
+
+    final result = manager.resumeSession(session: meta, agent: agent);
+
+    expect(result.hasConversation, isTrue);
+    // The assistant turn carrying the tool_use block must survive replay,
+    // followed by its tool_result — otherwise the next request loses context.
+    expect(agent.conversation.map((m) => m.role), [
+      Role.user,
+      Role.assistant,
+      Role.toolResult,
+    ]);
+    final assistant = agent.conversation[1];
+    expect(assistant.toolCalls, hasLength(1));
+    expect(assistant.toolCalls.single.name, 'read_file');
+    expect((assistant.text ?? '').isEmpty, isTrue);
+    expect(agent.conversation.last.text, 'file content');
+  });
+
+  test('resumeSession repairs a dangling tool_use with no result (H2)', () {
+    final manager = SessionManager(
+      environment: environment,
+      observability: obs,
+    );
+    final meta = SessionMeta(
+      id: const SessionId('resume-dangling'),
+      cwd: environment.cwd,
+      modelRef: 'anthropic/claude-sonnet-4.6',
+      startTime: DateTime.now(),
+    );
+    final store = SessionStore(
+      sessionDir: environment.sessionDir(meta.id),
+      meta: meta,
+    );
+    // Session crashed after the tool_call was logged but before its result.
+    store.logEvent('user_message', {'text': 'run it'});
+    store.logEvent('assistant_message', {'text': 'on it'});
+    store.logEvent('tool_call', {
+      'id': 'c1',
+      'name': 'bash',
+      'arguments': {'command': 'ls'},
+    });
+
+    final result = manager.resumeSession(session: meta, agent: agent);
+
+    expect(result.hasConversation, isTrue);
+    // A synthetic tool_result must be injected so the next provider call
+    // does not 400 on the unmatched tool_use block.
+    final last = agent.conversation.last;
+    expect(last.role, Role.toolResult);
+    expect(last.toolCallId, 'c1');
+    expect(last.text, contains('cancelled'));
+  });
+
   test('resumeSession reuses summary-first tool result text for replay UI', () {
     final manager = SessionManager(
       environment: environment,
@@ -192,6 +268,44 @@ void main() {
     oldStore.logEvent('user_message', {'text': 'second question'});
     final oldId = oldStore.meta.id;
 
+    // Fork at the *second* user message: everything before it is replayed and
+    // the message itself becomes the draft (never replayed — see M14).
+    final result = manager.forkSession(
+      userMessageIndex: 1,
+      messageText: 'second question',
+      agent: agent,
+    );
+
+    expect(result, isNotNull);
+    expect(result!.message, contains('Forked from session'));
+    expect(result.draftText, 'second question');
+    expect(manager.currentSessionId, isNot(oldId));
+    expect(manager.currentStore!.meta.forkedFrom, oldId);
+
+    final events = SessionStore.loadConversation(
+      manager.currentStore!.sessionDir,
+    );
+    // Only the first user message is replayed; the fork-point one is not.
+    expect(events.where((e) => e['type'] == 'user_message'), hasLength(1));
+    expect(events.first['text'], 'first question');
+    expect(agent.conversation.map((m) => m.role), [Role.user, Role.assistant]);
+    final span = sink.spans.lastWhere((span) => span.name == 'session.fork');
+    expect(span.attributes['session.fork.source_session_id'], oldId);
+    expect(span.attributes['session.replay.entry_count'], 2);
+  });
+
+  test('forkSession does not duplicate the fork-point user message (M14)', () {
+    final manager = SessionManager(
+      environment: environment,
+      observability: obs,
+    );
+    final oldStore = manager.ensureSessionStore(
+      cwd: environment.cwd,
+      modelRef: 'anthropic/claude-sonnet-4.6',
+    );
+    oldStore.logEvent('user_message', {'text': 'first question'});
+    oldStore.logEvent('assistant_message', {'text': 'first answer'});
+
     final result = manager.forkSession(
       userMessageIndex: 0,
       messageText: 'first question',
@@ -199,21 +313,108 @@ void main() {
     );
 
     expect(result, isNotNull);
-    expect(result!.message, contains('Forked from session'));
-    expect(result.draftText, 'first question');
-    expect(manager.currentSessionId, isNot(oldId));
-    expect(manager.currentStore!.meta.forkedFrom, oldId);
-
+    // The fork point rewinds to before the first user message: it lives only
+    // in the draft, so the replayed history must not contain it.
+    expect(result!.draftText, 'first question');
     final events = SessionStore.loadConversation(
       manager.currentStore!.sessionDir,
     );
-    expect(events.where((e) => e['type'] == 'user_message'), hasLength(1));
-    expect(events.first['text'], 'first question');
-    expect(agent.conversation.map((m) => m.role), [Role.user]);
-    final span = sink.spans.lastWhere((span) => span.name == 'session.fork');
-    expect(span.attributes['session.fork.source_session_id'], oldId);
-    expect(span.attributes['session.replay.entry_count'], 1);
+    expect(events.where((e) => e['type'] == 'user_message'), isEmpty);
+    expect(agent.conversation, isEmpty);
   });
+
+  test('new session ids include a pid + random suffix and are unique (L5)', () {
+    final ids = <String>{};
+    for (var i = 0; i < 200; i++) {
+      final manager = SessionManager(environment: environment);
+      final store = manager.ensureSessionStore(
+        cwd: environment.cwd,
+        modelRef: 'anthropic/claude-sonnet-4.6',
+      );
+      final id = store.meta.id.value;
+      // <epoch>-<pid>-<rand>: three hyphen-delimited components.
+      expect(id.split('-'), hasLength(3));
+      ids.add(id);
+    }
+    // Time-only ids collided within a millisecond; the pid+random suffix
+    // makes rapid successive ids distinct.
+    expect(ids, hasLength(200));
+  });
+
+  test('resumeSession refuses a session locked by another process (M11)', () {
+    final manager = SessionManager(
+      environment: environment,
+      observability: obs,
+    );
+    final meta = SessionMeta(
+      id: const SessionId('locked-1'),
+      cwd: environment.cwd,
+      modelRef: 'anthropic/claude-sonnet-4.6',
+      startTime: DateTime.now(),
+    );
+    final store = SessionStore(
+      sessionDir: environment.sessionDir(meta.id),
+      meta: meta,
+    );
+    store.logEvent('user_message', {'text': 'hello'});
+    // A foreign, still-running process holds the advisory lock.
+    File(
+      '${environment.sessionDir(meta.id)}/.lock',
+    ).writeAsStringSync('999999\n');
+
+    final result = manager.resumeSession(session: meta, agent: agent);
+
+    expect(result.hasConversation, isFalse);
+    expect(result.message, contains('already open'));
+    // The agent conversation must be left untouched — no interleaving.
+    expect(agent.conversation, isEmpty);
+  });
+
+  test('resumeSession allows a session locked by our own pid (M11)', () {
+    final manager = SessionManager(
+      environment: environment,
+      observability: obs,
+    );
+    final meta = SessionMeta(
+      id: const SessionId('locked-self'),
+      cwd: environment.cwd,
+      modelRef: 'anthropic/claude-sonnet-4.6',
+      startTime: DateTime.now(),
+    );
+    final store = SessionStore(
+      sessionDir: environment.sessionDir(meta.id),
+      meta: meta,
+    );
+    store.logEvent('user_message', {'text': 'hi'});
+    File(
+      '${environment.sessionDir(meta.id)}/.lock',
+    ).writeAsStringSync('$pid\n');
+
+    final result = manager.resumeSession(session: meta, agent: agent);
+
+    // Same-process re-entry is allowed.
+    expect(result.hasConversation, isTrue);
+  });
+
+  test(
+    'ensureSessionStore writes and releases an advisory lock (M11)',
+    () async {
+      final manager = SessionManager(
+        environment: environment,
+        observability: obs,
+      );
+      final store = manager.ensureSessionStore(
+        cwd: environment.cwd,
+        modelRef: 'anthropic/claude-sonnet-4.6',
+      );
+      final lockFile = File('${store.sessionDir}/.lock');
+      expect(lockFile.existsSync(), isTrue);
+      expect(lockFile.readAsStringSync().trim(), '$pid');
+
+      await manager.closeCurrent();
+      expect(lockFile.existsSync(), isFalse);
+    },
+  );
 
   test('updateSessionModel persists modelRef to meta.json', () {
     final manager = SessionManager(
