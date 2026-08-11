@@ -109,7 +109,7 @@ void main() {
         vars: {'GLUE_HOME': '~/glue'},
       );
       expect(env.glueDir, '/Users/me/glue');
-      expect(env.configPath, '/Users/me/glue/preferences.json');
+      expect(env.configPath, p.join('/Users/me/glue', 'preferences.json'));
     });
 
     test('catalogCachePath expands a leading ~ in GLUE_CATALOG_CACHE', () {
