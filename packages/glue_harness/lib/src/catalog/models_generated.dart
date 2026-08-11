@@ -8,10 +8,10 @@ import 'package:glue_core/glue_core.dart';
 const String _bundledCatalogJson = r'''
 {
   "version": 1,
-  "updated_at": "2026-05-21",
+  "updated_at": "2026-08-11",
   "defaults": {
-    "model": "anthropic/claude-sonnet-4-6",
-    "small_model": "openai/gpt-5.4-mini",
+    "model": "anthropic/claude-sonnet-5",
+    "small_model": "openai/gpt-5.6-luna",
     "local_model": "ollama/qwen3-coder:30b"
   },
   "capabilities": {
@@ -39,12 +39,78 @@ const String _bundledCatalogJson = r'''
         "help_url": null
       },
       "models": {
+        "claude-fable-5": {
+          "id": "claude-fable-5",
+          "name": "Claude Fable 5",
+          "api_id": "claude-fable-5",
+          "recommended": true,
+          "default": false,
+          "enabled": true,
+          "capabilities": [
+            "chat",
+            "tools",
+            "vision",
+            "files",
+            "json",
+            "reasoning",
+            "coding"
+          ],
+          "context_window": 1000000,
+          "max_output_tokens": 128000,
+          "speed": "slower",
+          "cost": "premium",
+          "notes": "Anthropic's most capable generally available model for demanding reasoning and long-running agents. Adaptive thinking is always on. $10/$50 per input/output MTok."
+        },
+        "claude-opus-5": {
+          "id": "claude-opus-5",
+          "name": "Claude Opus 5",
+          "api_id": "claude-opus-5",
+          "recommended": true,
+          "default": false,
+          "enabled": true,
+          "capabilities": [
+            "chat",
+            "tools",
+            "vision",
+            "files",
+            "json",
+            "reasoning",
+            "coding"
+          ],
+          "context_window": 1000000,
+          "max_output_tokens": 128000,
+          "speed": "slower",
+          "cost": "premium",
+          "notes": "Complex agentic coding and enterprise work with adaptive thinking. $5/$25 per input/output MTok."
+        },
+        "claude-sonnet-5": {
+          "id": "claude-sonnet-5",
+          "name": "Claude Sonnet 5",
+          "api_id": "claude-sonnet-5",
+          "recommended": true,
+          "default": true,
+          "enabled": true,
+          "capabilities": [
+            "chat",
+            "tools",
+            "vision",
+            "files",
+            "json",
+            "reasoning",
+            "coding"
+          ],
+          "context_window": 1000000,
+          "max_output_tokens": 128000,
+          "speed": "fast",
+          "cost": "high",
+          "notes": "Best balance of speed and intelligence with adaptive thinking. $3/$15 per input/output MTok; introductory $2/$10 pricing runs through 2026-08-31."
+        },
         "claude-sonnet-4-6": {
           "id": "claude-sonnet-4-6",
           "name": "Claude Sonnet 4.6",
           "api_id": "claude-sonnet-4-6",
-          "recommended": true,
-          "default": true,
+          "recommended": false,
+          "default": false,
           "enabled": true,
           "capabilities": [
             "chat",
@@ -59,7 +125,7 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 64000,
           "speed": "standard",
           "cost": "high",
-          "notes": "Default high-quality coding model."
+          "notes": "Active pinned predecessor retained for existing configurations; prefer Claude Sonnet 5."
         },
         "claude-haiku-4-5": {
           "id": "claude-haiku-4-5",
@@ -85,7 +151,7 @@ const String _bundledCatalogJson = r'''
           "id": "claude-opus-4-7",
           "name": "Claude Opus 4.7",
           "api_id": "claude-opus-4-7",
-          "recommended": true,
+          "recommended": false,
           "default": false,
           "enabled": true,
           "capabilities": [
@@ -101,13 +167,13 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 128000,
           "speed": "slower",
           "cost": "premium",
-          "notes": "Most capable Claude model — agentic coding and long-horizon work."
+          "notes": "Active pinned predecessor retained for existing configurations; prefer Claude Opus 5 or Fable 5."
         }
       },
       "compatibility": null,
       "enabled": true,
       "base_url": "https://api.anthropic.com",
-      "docs_url": "https://docs.anthropic.com/",
+      "docs_url": "https://platform.claude.com/docs/en/about-claude/models/overview",
       "request_headers": {}
     },
     "openai": {
@@ -120,10 +186,10 @@ const String _bundledCatalogJson = r'''
         "help_url": null
       },
       "models": {
-        "gpt-5.5": {
-          "id": "gpt-5.5",
-          "name": "GPT-5.5",
-          "api_id": "gpt-5.5",
+        "gpt-5.6-sol": {
+          "id": "gpt-5.6-sol",
+          "name": "GPT-5.6 Sol",
+          "api_id": "gpt-5.6-sol",
           "recommended": true,
           "default": true,
           "enabled": true,
@@ -140,13 +206,79 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 128000,
           "speed": "standard",
           "cost": "high",
-          "notes": "Frontier general-purpose and agentic coding model."
+          "notes": "OpenAI's flagship for complex professional work. The gpt-5.6 alias routes here. Supports reasoning effort none through max. $5/$30 per input/output MTok."
+        },
+        "gpt-5.6-terra": {
+          "id": "gpt-5.6-terra",
+          "name": "GPT-5.6 Terra",
+          "api_id": "gpt-5.6-terra",
+          "recommended": true,
+          "default": false,
+          "enabled": true,
+          "capabilities": [
+            "chat",
+            "tools",
+            "vision",
+            "files",
+            "json",
+            "reasoning",
+            "coding"
+          ],
+          "context_window": 1050000,
+          "max_output_tokens": 128000,
+          "speed": "standard",
+          "cost": "medium",
+          "notes": "Balanced GPT-5.6 model for intelligence and cost. Supports reasoning effort none through max. $2/$12 per input/output MTok."
+        },
+        "gpt-5.6-luna": {
+          "id": "gpt-5.6-luna",
+          "name": "GPT-5.6 Luna",
+          "api_id": "gpt-5.6-luna",
+          "recommended": true,
+          "default": false,
+          "enabled": true,
+          "capabilities": [
+            "chat",
+            "tools",
+            "vision",
+            "files",
+            "json",
+            "reasoning",
+            "coding"
+          ],
+          "context_window": 1050000,
+          "max_output_tokens": 128000,
+          "speed": "fast",
+          "cost": "low",
+          "notes": "Cost-sensitive GPT-5.6 model for high-volume workloads. Supports reasoning effort none through max. $0.20/$1.20 per input/output MTok."
+        },
+        "gpt-5.5": {
+          "id": "gpt-5.5",
+          "name": "GPT-5.5",
+          "api_id": "gpt-5.5",
+          "recommended": false,
+          "default": false,
+          "enabled": true,
+          "capabilities": [
+            "chat",
+            "tools",
+            "vision",
+            "files",
+            "json",
+            "reasoning",
+            "coding"
+          ],
+          "context_window": 1050000,
+          "max_output_tokens": 128000,
+          "speed": "standard",
+          "cost": "high",
+          "notes": "Previous frontier model retained for pinned configurations; prefer the GPT-5.6 family."
         },
         "gpt-5.5-pro": {
           "id": "gpt-5.5-pro",
           "name": "GPT-5.5 Pro",
           "api_id": "gpt-5.5-pro",
-          "recommended": true,
+          "recommended": false,
           "default": false,
           "enabled": true,
           "capabilities": [
@@ -249,7 +381,7 @@ const String _bundledCatalogJson = r'''
       "compatibility": null,
       "enabled": true,
       "base_url": "https://api.openai.com/v1",
-      "docs_url": "https://platform.openai.com/docs/",
+      "docs_url": "https://developers.openai.com/api/docs/models",
       "request_headers": {}
     },
     "gemini": {

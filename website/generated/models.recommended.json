@@ -1,8 +1,8 @@
 [
   {
-    "id": "claude-sonnet-4-6",
+    "id": "claude-fable-5",
     "provider": "anthropic",
-    "name": "Claude Sonnet 4.6",
+    "name": "Claude Fable 5",
     "recommended": true,
     "capabilities": [
       "chat",
@@ -13,7 +13,39 @@
       "reasoning",
       "coding"
     ],
-    "notes": "Default high-quality coding model."
+    "notes": "Anthropic's most capable generally available model for demanding reasoning and long-running agents. Adaptive thinking is always on. $10/$50 per input/output MTok."
+  },
+  {
+    "id": "claude-opus-5",
+    "provider": "anthropic",
+    "name": "Claude Opus 5",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "files",
+      "json",
+      "reasoning",
+      "coding"
+    ],
+    "notes": "Complex agentic coding and enterprise work with adaptive thinking. $5/$25 per input/output MTok."
+  },
+  {
+    "id": "claude-sonnet-5",
+    "provider": "anthropic",
+    "name": "Claude Sonnet 5",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "files",
+      "json",
+      "reasoning",
+      "coding"
+    ],
+    "notes": "Best balance of speed and intelligence with adaptive thinking. $3/$15 per input/output MTok; introductory $2/$10 pricing runs through 2026-08-31."
   },
   {
     "id": "claude-haiku-4-5",
@@ -30,9 +62,9 @@
     "notes": "Good small_model candidate for titles, summaries, and quick checks."
   },
   {
-    "id": "claude-opus-4-7",
-    "provider": "anthropic",
-    "name": "Claude Opus 4.7",
+    "id": "gpt-5.6-sol",
+    "provider": "openai",
+    "name": "GPT-5.6 Sol",
     "recommended": true,
     "capabilities": [
       "chat",
@@ -43,12 +75,12 @@
       "reasoning",
       "coding"
     ],
-    "notes": "Most capable Claude model — agentic coding and long-horizon work."
+    "notes": "OpenAI's flagship for complex professional work. The gpt-5.6 alias routes here. Supports reasoning effort none through max. $5/$30 per input/output MTok."
   },
   {
-    "id": "gpt-5.5",
+    "id": "gpt-5.6-terra",
     "provider": "openai",
-    "name": "GPT-5.5",
+    "name": "GPT-5.6 Terra",
     "recommended": true,
     "capabilities": [
       "chat",
@@ -59,12 +91,12 @@
       "reasoning",
       "coding"
     ],
-    "notes": "Frontier general-purpose and agentic coding model."
+    "notes": "Balanced GPT-5.6 model for intelligence and cost. Supports reasoning effort none through max. $2/$12 per input/output MTok."
   },
   {
-    "id": "gpt-5.5-pro",
+    "id": "gpt-5.6-luna",
     "provider": "openai",
-    "name": "GPT-5.5 Pro",
+    "name": "GPT-5.6 Luna",
     "recommended": true,
     "capabilities": [
       "chat",
@@ -75,7 +107,7 @@
       "reasoning",
       "coding"
     ],
-    "notes": "High-compute reasoning variant. Use for hard architecture, proofs, and long-horizon planning."
+    "notes": "Cost-sensitive GPT-5.6 model for high-volume workloads. Supports reasoning effort none through max. $0.20/$1.20 per input/output MTok."
   },
   {
     "id": "gpt-5.4-mini",

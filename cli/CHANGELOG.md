@@ -4,6 +4,13 @@ All notable changes to Glue CLI will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **Current OpenAI and Anthropic model catalog.** Added the GPT-5.6 and
+  Claude 5 families from the providers' official catalogs, retained active
+  pinned predecessors, and updated the defaults to Claude Sonnet 5 and
+  GPT-5.6 Luna.
+
 ## [0.8.0] - 2026-07-09
 
 ### Added
