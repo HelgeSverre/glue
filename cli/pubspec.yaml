@@ -22,7 +22,7 @@ resolution: workspace
 
 dependencies:
   args: ^2.7.0
-  cli_completion: ^0.5.1
+  cli_completion: ^0.6.0
   glue_core:
     path: ../packages/glue_core
   glue_runtimes:
