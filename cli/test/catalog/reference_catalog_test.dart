@@ -19,8 +19,8 @@ void main() {
 
     test('has expected version and defaults', () {
       expect(catalog.version, 1);
-      expect(catalog.defaults.model, 'anthropic/claude-sonnet-4-6');
-      expect(catalog.defaults.smallModel, 'openai/gpt-5.4-mini');
+      expect(catalog.defaults.model, 'anthropic/claude-sonnet-5');
+      expect(catalog.defaults.smallModel, 'openai/gpt-5.6-luna');
       expect(catalog.defaults.localModel, isNotEmpty);
     });
 
@@ -45,31 +45,38 @@ void main() {
       );
     });
 
-    test('anthropic provider includes current 4.6/4.7 family models', () {
+    test('anthropic provider includes Claude 5 and active predecessors', () {
       final anthropic = catalog.providers['anthropic']!;
+      final fable5 = anthropic.models['claude-fable-5']!;
+      final opus5 = anthropic.models['claude-opus-5']!;
+      final sonnet5 = anthropic.models['claude-sonnet-5']!;
       final opus47 = anthropic.models['claude-opus-4-7']!;
       final sonnet46 = anthropic.models['claude-sonnet-4-6']!;
       final haiku45 = anthropic.models['claude-haiku-4-5']!;
-      expect(opus47.recommended, isTrue);
-      expect(sonnet46.recommended, isTrue);
+      expect(fable5.recommended, isTrue);
+      expect(opus5.recommended, isTrue);
+      expect(sonnet5.recommended, isTrue);
+      expect(opus47.recommended, isFalse);
+      expect(sonnet46.recommended, isFalse);
       expect(haiku45.recommended, isTrue);
-      expect(opus47.capabilities, contains('tools'));
+      expect(fable5.capabilities, contains('tools'));
       // opus-4-6 was moved to Anthropic's Legacy table; the catalog
       // should not advertise it as a current model.
       expect(anthropic.models.containsKey('claude-opus-4-6'), isFalse);
     });
 
-    test('anthropic 4.6/4.7 family advertises native 1M context', () {
+    test('anthropic Claude 5 family advertises native 1M context', () {
       final anthropic = catalog.providers['anthropic']!;
-      expect(anthropic.models['claude-opus-4-7']!.contextWindow, 1000000);
-      expect(anthropic.models['claude-sonnet-4-6']!.contextWindow, 1000000);
+      expect(anthropic.models['claude-fable-5']!.contextWindow, 1000000);
+      expect(anthropic.models['claude-opus-5']!.contextWindow, 1000000);
+      expect(anthropic.models['claude-sonnet-5']!.contextWindow, 1000000);
       expect(anthropic.models['claude-haiku-4-5']!.contextWindow, 200000);
     });
 
     test('anthropic defaults point at the current Sonnet ID', () {
       final anthropic = catalog.providers['anthropic']!;
-      final sonnet = anthropic.models['claude-sonnet-4-6']!;
-      expect(catalog.defaults.model, 'anthropic/claude-sonnet-4-6');
+      final sonnet = anthropic.models['claude-sonnet-5']!;
+      expect(catalog.defaults.model, 'anthropic/claude-sonnet-5');
       expect(sonnet.isDefault, isTrue);
       expect(sonnet.capabilities, contains('tools'));
     });
@@ -84,6 +91,9 @@ void main() {
       () {
         final openai = catalog.providers['openai']!;
         expect(openai.models.containsKey('gpt-5.3-codex'), isFalse);
+        expect(openai.models.containsKey('gpt-5.6-sol'), isTrue);
+        expect(openai.models.containsKey('gpt-5.6-terra'), isTrue);
+        expect(openai.models.containsKey('gpt-5.6-luna'), isTrue);
         expect(openai.models.containsKey('gpt-5.4'), isTrue);
         expect(openai.models.containsKey('gpt-5.4-mini'), isTrue);
       },
@@ -117,8 +127,8 @@ void main() {
 
     test('api_id defaults to the catalog key when omitted', () {
       final anthropic = catalog.providers['anthropic']!;
-      final sonnet = anthropic.models['claude-sonnet-4-6']!;
-      expect(sonnet.apiId, 'claude-sonnet-4-6');
+      final sonnet = anthropic.models['claude-sonnet-5']!;
+      expect(sonnet.apiId, 'claude-sonnet-5');
     });
 
     test('openrouter declares required request headers', () {
