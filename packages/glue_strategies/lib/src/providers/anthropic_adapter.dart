@@ -37,6 +37,7 @@ class AnthropicAdapter extends ProviderAdapter {
       baseUrl: provider.baseUrl ?? 'https://api.anthropic.com',
       requestClientFactory: _requestClientFactory,
       promptCacheEnabled: promptCacheEnabled,
+      reasoning: model.reasoning,
     );
   }
 }

@@ -39,6 +39,7 @@ class GeminiClient implements LlmClient {
     required this.systemPrompt,
     String baseUrl = _defaultBaseUrl,
     http.Client Function()? requestClientFactory,
+    this.reasoning = const ReasoningConfig(),
   }) : _requestClientFactory = requestClientFactory ?? http.Client.new,
        _baseUri = Uri.parse(baseUrl);
 
@@ -47,6 +48,7 @@ class GeminiClient implements LlmClient {
   final String model;
   final String systemPrompt;
   final Uri _baseUri;
+  final ReasoningConfig reasoning;
 
   static const _apiVersion = 'v1beta';
   static const _defaultBaseUrl = 'https://generativelanguage.googleapis.com';
@@ -56,10 +58,19 @@ class GeminiClient implements LlmClient {
     const mapper = GeminiMessageMapper();
     final mapped = mapper.mapMessages(messages, systemPrompt: systemPrompt);
 
+    final generationConfig = <String, dynamic>{'maxOutputTokens': 8192};
     final body = <String, dynamic>{
       'contents': mapped.messages,
-      'generationConfig': {'maxOutputTokens': 8192},
+      'generationConfig': generationConfig,
     };
+
+    if (reasoning.effort != ReasoningEffort.auto || reasoning.showThoughts) {
+      generationConfig['thinkingConfig'] = {
+        if (reasoning.effort != ReasoningEffort.auto)
+          'thinkingLevel': reasoning.effort.name,
+        if (reasoning.showThoughts) 'includeThoughts': true,
+      };
+    }
 
     if (mapped.systemPrompt.isNotEmpty) {
       body['systemInstruction'] = {
@@ -86,6 +97,7 @@ class GeminiClient implements LlmClient {
           decodeSse(
             bytes,
           ).map((e) => jsonDecode(e.data) as Map<String, dynamic>),
+          showThoughts: reasoning.showThoughts,
         ),
       ),
     );
@@ -96,10 +108,12 @@ class GeminiClient implements LlmClient {
   /// Exposed as static for testability — callers feed already-decoded JSON
   /// objects (one per SSE `data:` event).
   static Stream<LlmChunk> parseStreamEvents(
-    Stream<Map<String, dynamic>> events,
-  ) async* {
+    Stream<Map<String, dynamic>> events, {
+    bool showThoughts = true,
+  }) async* {
     int inputTokens = 0;
     int outputTokens = 0;
+    int? reasoningTokens;
     int callCounter = 0;
 
     await for (final event in events) {
@@ -140,7 +154,11 @@ class GeminiClient implements LlmClient {
             if (part is! Map) continue;
             final text = part['text'];
             if (text is String && text.isNotEmpty) {
-              yield TextDelta(text);
+              if (part['thought'] == true) {
+                if (showThoughts) yield ThinkingDelta(text);
+              } else {
+                yield TextDelta(text);
+              }
               continue;
             }
             final fc = part['functionCall'];
@@ -166,6 +184,14 @@ class GeminiClient implements LlmClient {
                   thoughtSignature: thoughtSig,
                 ),
               );
+            } else if (part['thoughtSignature'] != null) {
+              // Gemini may stream an otherwise-empty final Part containing
+              // only a thought signature. It must be replayed verbatim on
+              // the next turn, especially around function calls.
+              yield ReasoningArtifactChunk({
+                'type': 'gemini_thought_part',
+                'part': Map<String, dynamic>.from(part),
+              });
             }
           }
         }
@@ -175,11 +201,17 @@ class GeminiClient implements LlmClient {
       if (usage is Map) {
         final p = usage['promptTokenCount'];
         final c = usage['candidatesTokenCount'];
+        final thoughts = usage['thoughtsTokenCount'];
         if (p is int) inputTokens = p;
         if (c is int) outputTokens = c;
+        if (thoughts is int) reasoningTokens = thoughts;
       }
     }
 
-    yield UsageInfo(inputTokens: inputTokens, outputTokens: outputTokens);
+    yield UsageInfo(
+      inputTokens: inputTokens,
+      outputTokens: outputTokens,
+      reasoningTokens: reasoningTokens,
+    );
   }
 }

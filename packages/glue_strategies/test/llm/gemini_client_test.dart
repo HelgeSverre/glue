@@ -56,5 +56,30 @@ void main() {
       expect(chunks.whereType<TextDelta>().single.text, 'hello');
       expect(chunks.whereType<UsageInfo>().single.inputTokens, 5);
     });
+
+    test('preserves a signature-only thought part', () async {
+      final events = Stream<Map<String, dynamic>>.fromIterable([
+        {
+          'candidates': [
+            {
+              'content': {
+                'parts': [
+                  {'text': '', 'thoughtSignature': 'opaque-signature'},
+                ],
+              },
+              'finishReason': 'STOP',
+            },
+          ],
+        },
+      ]);
+
+      final chunks = await GeminiClient.parseStreamEvents(events).toList();
+      final artifact = chunks.whereType<ReasoningArtifactChunk>().single;
+      expect(artifact.artifact['type'], 'gemini_thought_part');
+      expect(
+        (artifact.artifact['part'] as Map)['thoughtSignature'],
+        'opaque-signature',
+      );
+    });
   });
 }

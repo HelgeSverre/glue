@@ -32,6 +32,7 @@ class GeminiProvider extends ProviderAdapter {
       systemPrompt: systemPrompt,
       baseUrl: provider.baseUrl ?? _defaultBaseUrl,
       requestClientFactory: _requestClientFactory,
+      reasoning: model.reasoning,
     );
   }
 }

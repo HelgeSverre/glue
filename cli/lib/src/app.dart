@@ -350,6 +350,7 @@ class App {
   /// LLM provider and subagent system.
   static Future<App> create({
     String? model,
+    String? reasoning,
     String? prompt,
     bool printMode = false,
     bool jsonMode = false,
@@ -357,7 +358,11 @@ class App {
     bool startupContinue = false,
     bool debug = false,
   }) async {
-    final services = await ServiceLocator.create(model: model, debug: debug);
+    final services = await ServiceLocator.create(
+      model: model,
+      reasoning: reasoning,
+      debug: debug,
+    );
 
     // Surface objects (terminal/layout/editor) are constructed here, not
     // by the harness. ServiceLocator deliberately does not bundle them so
@@ -680,6 +685,7 @@ class App {
       ensureSession: _ensureSessionStore,
       backfillTitle: _generateTitle,
       switchModel: _switchToModelRow,
+      setReasoning: _setReasoning,
       conversation: _conversation,
       approval: _approvalState,
       lifecycle: _lifecycle,
@@ -733,14 +739,48 @@ class App {
     final config = _config;
     final prompt = _systemPrompt;
     final ref = ModelRef(providerId: row.providerId, modelId: row.model.id);
+    var notice = '';
     if (factory != null && config != null && prompt != null) {
-      final llm = factory.createFor(ref, systemPrompt: prompt);
+      var nextConfig = config.copyWith(activeModel: ref);
+      final support = row.model.reasoning;
+      if (nextConfig.reasoning.effort != ReasoningEffort.auto &&
+          (support == null || !support.supports(nextConfig.reasoning.effort))) {
+        nextConfig = nextConfig.copyWith(
+          reasoning: nextConfig.reasoning.copyWith(
+            effort: ReasoningEffort.auto,
+          ),
+        );
+        notice = ' Reasoning reset to Auto for this model.';
+      }
+      _config = nextConfig;
+      final llm = LlmClientFactory(
+        nextConfig,
+      ).createFor(ref, systemPrompt: prompt);
       agent.llm = llm;
-      _config = config.copyWith(activeModel: ref);
     }
     _modelId = ref.modelId;
     _sessionManager.updateSessionModel(modelRef: ref.toString());
-    return 'Switched to ${row.model.name}';
+    return 'Switched to ${row.model.name}.$notice';
+  }
+
+  String _setReasoning(ReasoningConfig reasoning) {
+    final config = _config;
+    final prompt = _systemPrompt;
+    if (config == null || prompt == null) return 'Config not ready.';
+    final next = config.copyWith(reasoning: reasoning);
+    try {
+      agent.llm = LlmClientFactory(next).createFromConfig(systemPrompt: prompt);
+    } on ConfigError catch (error) {
+      return error.message;
+    }
+    _config = next;
+    _ensureSessionStore();
+    _sessionManager.updateSessionReasoning(
+      effort: reasoning.effort,
+      showThoughts: reasoning.showThoughts,
+    );
+    return 'Reasoning: ${reasoning.effort.name}; thoughts '
+        '${reasoning.showThoughts ? 'shown' : 'hidden'}.';
   }
 
   /// Kick off the "pull this model?" confirmation flow for an Ollama tag.
@@ -1143,6 +1183,8 @@ class App {
         _config?.catalogData,
         _modelId,
       ),
+      if (_config case final config?)
+        'R:${config.reasoning.effort.name}${config.reasoning.showThoughts ? '+thoughts' : ''}',
       modeLabel,
       ansiTruncate(shortCwd, 30),
       ?scrollSeg,
@@ -2622,10 +2664,9 @@ class App {
 
     final target = _resolveTitleTarget(config);
     try {
-      return factory.createFor(
-        target,
-        systemPrompt: TitleGenerator.systemPrompt,
-      );
+      return LlmClientFactory(
+        config.copyWith(reasoning: const ReasoningConfig()),
+      ).createFor(target, systemPrompt: TitleGenerator.systemPrompt);
     } on ConfigError {
       // No adapter or missing credentials for the small model — skip titling.
       return null;
@@ -2638,6 +2679,12 @@ class App {
       cwd: _cwd,
       modelRef: config?.activeModel.toString() ?? _modelId,
     );
+    if (config != null) {
+      _sessionManager.updateSessionReasoning(
+        effort: config.reasoning.effort,
+        showThoughts: config.reasoning.showThoughts,
+      );
+    }
     _persistRuntimeInfo();
   }
 
@@ -2668,6 +2715,19 @@ class App {
       agent: agent,
     );
     _conversation.resetForReplay();
+    final storedEffort = ReasoningEffort.values.where(
+      (effort) => effort.name == session.reasoningEffort,
+    );
+    if (storedEffort.isNotEmpty || session.showThoughts != null) {
+      final current = _config?.reasoning ?? const ReasoningConfig();
+      final message = _setReasoning(
+        current.copyWith(
+          effort: storedEffort.isEmpty ? current.effort : storedEffort.first,
+          showThoughts: session.showThoughts ?? current.showThoughts,
+        ),
+      );
+      if (message.contains('not supported')) _conversation.notify(message);
+    }
     _sessionManager
       ..titleInitialRequested = session.title != null
       ..titleReevaluationRequested =

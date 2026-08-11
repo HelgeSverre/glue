@@ -8,6 +8,7 @@ library;
 
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_strategies/src/llm/openai_client.dart';
+import 'package:glue_strategies/src/llm/openai_responses_client.dart';
 import 'package:glue_strategies/src/providers/compatibility_profile.dart';
 import 'package:glue_strategies/src/providers/provider_adapter.dart';
 import 'package:glue_strategies/src/providers/resolved.dart';
@@ -46,6 +47,18 @@ class OpenAiCompatibleAdapter extends ProviderAdapter {
       );
     }
     final profile = CompatibilityProfile.fromString(provider.compatibility);
+    if (provider.compatibility == 'openai' &&
+        model.def.reasoning?.transport == 'responses') {
+      return OpenAiResponsesClient(
+        apiKey: provider.apiKey ?? '',
+        model: model.apiId,
+        systemPrompt: systemPrompt,
+        baseUrl: baseUrl,
+        reasoning: model.reasoning,
+        extraHeaders: provider.requestHeaders,
+        requestClientFactory: _requestClientFactory,
+      );
+    }
     return OpenAiClient(
       apiKey: provider.apiKey ?? '',
       model: model.apiId,
@@ -54,6 +67,7 @@ class OpenAiCompatibleAdapter extends ProviderAdapter {
       profile: profile,
       extraHeaders: provider.requestHeaders,
       requestClientFactory: _requestClientFactory,
+      reasoning: model.reasoning,
     );
   }
 }

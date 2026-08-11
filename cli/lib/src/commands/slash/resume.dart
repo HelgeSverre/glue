@@ -1,3 +1,4 @@
+import 'package:glue_core/glue_core.dart';
 import 'package:glue_harness/glue_harness.dart';
 
 import 'package:glue/src/commands/slash_command_context.dart';
@@ -152,6 +153,21 @@ class ResumeCommand extends SlashCommand {
   String _resume(SessionMeta meta) {
     final result = ctx.session.resumeSession(session: meta, agent: ctx.agent);
     ctx.conversation.resetForReplay();
+    final storedEffort = ReasoningEffort.values.where(
+      (effort) => effort.name == meta.reasoningEffort,
+    );
+    if (storedEffort.isNotEmpty || meta.showThoughts != null) {
+      final current = ctx.config?.reasoning ?? const ReasoningConfig();
+      final message = ctx.setReasoning(
+        current.copyWith(
+          effort: storedEffort.isEmpty ? current.effort : storedEffort.first,
+          showThoughts: meta.showThoughts ?? current.showThoughts,
+        ),
+      );
+      if (message.contains('not supported')) {
+        ctx.conversation.notify(message);
+      }
+    }
     ctx.session
       ..titleInitialRequested = meta.title != null
       ..titleReevaluationRequested =

@@ -4,6 +4,24 @@ All notable changes to Glue CLI will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Provider-aware reasoning controls.** Use `/reasoning`, `--reasoning`,
+  `GLUE_REASONING`, or `reasoning.effort` in config to choose only the effort
+  levels supported by the active model. Thought display is an independent,
+  opt-in setting and session overrides are restored on resume.
+
+### Changed
+
+- **Current OpenAI and Anthropic model catalog.** Added the GPT-5.6 and
+  Claude 5 families from the providers' official catalogs, retained active
+  pinned predecessors, and updated the defaults to Claude Sonnet 5 and
+  GPT-5.6 Luna.
+- **Correct reasoning transports across providers.** Direct OpenAI reasoning
+  with tools now uses the Responses API; Anthropic, Gemini, Mistral, Groq,
+  OpenRouter, Ollama, and declared vLLM models receive their native request
+  shapes, with structured reasoning state retained across tool turns.
+
 ## [0.8.0] - 2026-07-09
 
 ### Added

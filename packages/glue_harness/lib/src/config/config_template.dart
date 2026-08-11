@@ -22,7 +22,7 @@ String buildConfigTemplate() {
 
 # Primary model for agent conversations.
 # CLI `--model` and `GLUE_MODEL` override this.
-# active_model: anthropic/claude-sonnet-4-6
+# active_model: anthropic/claude-sonnet-5
 
 # Cheap/fast model for session titles, summaries, and small subagent calls.
 # Omit to use the catalog's default small_model.
@@ -44,6 +44,12 @@ String buildConfigTemplate() {
 #   remote_url: https://getglue.dev/models.yaml
 
 # ─── Behavior ──────────────────────────────────────────────────────────────
+
+# Model reasoning. `--reasoning` / `GLUE_REASONING` override effort.
+# Explicit values are validated against the active model's catalog metadata.
+# reasoning:
+#   effort: auto # auto | off | minimal | low | medium | high | xhigh | max
+#   show_thoughts: false
 
 # Tool approval. `GLUE_APPROVAL_MODE` overrides.
 #   confirm  → prompt for every tool call.

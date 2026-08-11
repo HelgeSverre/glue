@@ -65,6 +65,7 @@ class GlueConfig {
     this.observability = const ObservabilityConfig(),
     this.skillPaths = const [],
     this.approvalMode = ApprovalMode.confirm,
+    this.reasoning = const ReasoningConfig(),
     this.titleGenerationEnabled = true,
     this.anthropicPromptCache = true,
     this.mcp = const McpConfig(),
@@ -107,6 +108,7 @@ class GlueConfig {
   final ObservabilityConfig observability;
   final List<String> skillPaths;
   final ApprovalMode approvalMode;
+  final ReasoningConfig reasoning;
 
   /// When `false`, session title generation is skipped entirely. No LLM
   /// client is created and the session title remains `null`.
@@ -189,7 +191,7 @@ class GlueConfig {
     final def =
         provider.models[ref.modelId] ??
         ModelDef(id: ref.modelId, name: ref.modelId);
-    return ResolvedModel(def: def, provider: provider);
+    return ResolvedModel(def: def, provider: provider, reasoning: reasoning);
   }
 
   /// Validates that the active model's provider has a usable credential.
@@ -227,6 +229,7 @@ class GlueConfig {
   GlueConfig copyWith({
     ModelRef? activeModel,
     ObservabilityConfig? observability,
+    ReasoningConfig? reasoning,
   }) {
     return GlueConfig(
       activeModel: activeModel ?? this.activeModel,
@@ -244,6 +247,7 @@ class GlueConfig {
       observability: observability ?? this.observability,
       skillPaths: skillPaths,
       approvalMode: approvalMode,
+      reasoning: reasoning ?? this.reasoning,
       titleGenerationEnabled: titleGenerationEnabled,
       anthropicPromptCache: anthropicPromptCache,
       mcp: mcp,
@@ -260,6 +264,7 @@ class GlueConfig {
   /// in the legacy v1 shape (top-level `provider:`, per-provider `api_key:`).
   factory GlueConfig.load({
     String? cliModel,
+    String? cliReasoning,
     Environment? environment,
     String? configPath,
     ModelCatalog? catalogOverride,
@@ -377,6 +382,24 @@ class GlueConfig {
       alias: (m) => m.label,
     );
 
+    final reasoningName =
+        cliReasoning ?? env['GLUE_REASONING'] ?? cfg.reasoning?.effort;
+    final reasoningEffort = ReasoningEffort.values.where(
+      (effort) => effort.name == reasoningName,
+    );
+    if (reasoningName != null && reasoningEffort.isEmpty) {
+      throw ConfigError(
+        'Unknown reasoning effort "$reasoningName". Expected one of: '
+        '${ReasoningEffort.values.map((e) => e.name).join(', ')}.',
+      );
+    }
+    final reasoning = ReasoningConfig(
+      effort: reasoningEffort.isEmpty
+          ? ReasoningEffort.auto
+          : reasoningEffort.first,
+      showThoughts: cfg.reasoning?.showThoughts ?? false,
+    );
+
     // Title generation toggle. Env wins over YAML; default enabled. A
     // present-but-unparseable env value reads as `false` (legacy behaviour).
     final titleEnabledEnv = env['GLUE_TITLE_GENERATION_ENABLED'];
@@ -421,6 +444,7 @@ class GlueConfig {
       observability: observabilityConfig,
       skillPaths: skillPaths,
       approvalMode: approvalMode,
+      reasoning: reasoning,
       titleGenerationEnabled: titleGenerationEnabled,
       anthropicPromptCache: anthropicPromptCache,
       mcp: mcp,

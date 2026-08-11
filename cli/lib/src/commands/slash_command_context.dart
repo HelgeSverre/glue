@@ -1,3 +1,4 @@
+import 'package:glue_core/glue_core.dart';
 import 'package:glue_harness/glue_harness.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 
@@ -37,6 +38,7 @@ class SlashCommandContext {
     required this.ensureSession,
     required this.backfillTitle,
     required this.switchModel,
+    String Function(ReasoningConfig reasoning)? setReasoning,
     // Services
     required this.conversation,
     required this.approval,
@@ -50,7 +52,8 @@ class SlashCommandContext {
        _cwd = cwdGetter,
        _modelId = modelIdGetter,
        _isIdle = isIdleGetter,
-       _commands = commandsGetter;
+       _commands = commandsGetter,
+       _setReasoning = setReasoning ?? ((_) => 'Reasoning is unavailable.');
 
   /// Currently-active config, if any. May be `null` until startup completes.
   GlueConfig? get config => _config();
@@ -112,6 +115,7 @@ class SlashCommandContext {
   /// (`_mode = AppMode.confirming`, `_activeModal`). Decomposing it requires
   /// a larger design pass — left as a callback for now.
   final String Function(CatalogRow row) switchModel;
+  String setReasoning(ReasoningConfig reasoning) => _setReasoning(reasoning);
 
   final ConversationView conversation;
   final ApprovalState approval;
@@ -129,4 +133,5 @@ class SlashCommandContext {
   final String Function() _modelId;
   final bool Function() _isIdle;
   final Iterable<SlashCommand> Function() _commands;
+  final String Function(ReasoningConfig reasoning) _setReasoning;
 }

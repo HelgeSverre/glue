@@ -252,6 +252,33 @@ ModelDef _parseModel(String id, Object? node, {required String providerId}) {
     speed: node['speed']?.toString(),
     cost: node['cost']?.toString(),
     notes: node['notes']?.toString(),
+    reasoning: _parseReasoning(node['reasoning']),
+  );
+}
+
+ModelReasoningDef? _parseReasoning(Object? node) {
+  if (node is! Map) return null;
+  final efforts = <ReasoningEffort>{ReasoningEffort.auto};
+  final rawEfforts = node['efforts'];
+  if (rawEfforts is Iterable) {
+    for (final value in rawEfforts) {
+      final parsed = ReasoningEffort.values.where(
+        (effort) => effort.name == value.toString(),
+      );
+      if (parsed.isNotEmpty) efforts.add(parsed.first);
+    }
+  }
+  final defaultName = node['default']?.toString();
+  final defaultEffort = ReasoningEffort.values.where(
+    (effort) => effort.name == defaultName,
+  );
+  return ModelReasoningDef(
+    efforts: efforts,
+    defaultEffort: defaultEffort.isEmpty
+        ? ReasoningEffort.auto
+        : defaultEffort.first,
+    showThoughts: _asBool(node['show_thoughts']),
+    transport: node['transport']?.toString(),
   );
 }
 

@@ -190,6 +190,7 @@ class AgentCore {
         var cacheCreationTokens = 0;
         var sawCacheStats = false;
         var textDeltaCount = 0;
+        final reasoningArtifacts = <Map<String, dynamic>>[];
 
         try {
           await for (final chunk in llm.stream(
@@ -209,6 +210,8 @@ class AgentCore {
                 // content stays out of the conversation history we send
                 // back to the model.
                 yield AgentThinkingDelta(text);
+              case ReasoningArtifactChunk(:final artifact):
+                reasoningArtifacts.add(artifact);
               case ToolCallStart(:final id, :final name):
                 llmSpan?.addEvent(
                   'llm.tool_call.start',
@@ -312,7 +315,11 @@ class AgentCore {
         final assistantMessageText = assistantText.toString();
         if (assistantMessageText.isNotEmpty || toolCalls.isNotEmpty) {
           _conversation.add(
-            Message.assistant(text: assistantMessageText, toolCalls: toolCalls),
+            Message.assistant(
+              text: assistantMessageText,
+              toolCalls: toolCalls,
+              reasoningArtifacts: reasoningArtifacts,
+            ),
           );
         }
 

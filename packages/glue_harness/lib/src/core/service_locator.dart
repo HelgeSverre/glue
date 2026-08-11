@@ -26,11 +26,16 @@ import 'package:http/http.dart' as http;
 class ServiceLocator {
   static Future<AppServices> create({
     String? model,
+    String? reasoning,
     bool debug = false,
     Environment? environment,
   }) async {
     final resolvedEnv = environment ?? Environment.detect();
-    final config = GlueConfig.load(cliModel: model, environment: resolvedEnv);
+    final config = GlueConfig.load(
+      cliModel: model,
+      cliReasoning: reasoning,
+      environment: resolvedEnv,
+    );
     config.validate();
 
     final skillRuntime = SkillRuntime(

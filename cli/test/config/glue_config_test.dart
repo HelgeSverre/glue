@@ -22,7 +22,7 @@ void main() {
       addTearDown(() => home.deleteSync(recursive: true));
       final config = GlueConfig.load(environment: _envWith(home: home));
       expect(config.activeModel.providerId, 'anthropic');
-      expect(config.activeModel.modelId, 'claude-sonnet-4-6');
+      expect(config.activeModel.modelId, 'claude-sonnet-5');
     });
 
     test('--model CLI arg takes priority', () {
@@ -434,6 +434,33 @@ anthropic_prompt_cache: true
         ModelRef.parse('anthropic/my-custom-experiment'),
       );
       expect(model.id, 'my-custom-experiment');
+    });
+  });
+
+  group('GlueConfig reasoning', () {
+    test('defaults to auto with hidden thoughts', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      final config = GlueConfig.load(environment: _envWith(home: home));
+      expect(config.reasoning.effort, ReasoningEffort.auto);
+      expect(config.reasoning.showThoughts, isFalse);
+    });
+
+    test('CLI wins over env and YAML effort', () {
+      final home = _scratch();
+      addTearDown(() => home.deleteSync(recursive: true));
+      Directory('${home.path}/.glue').createSync();
+      File('${home.path}/.glue/config.yaml').writeAsStringSync('''
+reasoning:
+  effort: low
+  show_thoughts: true
+''');
+      final config = GlueConfig.load(
+        cliReasoning: 'high',
+        environment: _envWith(home: home, vars: {'GLUE_REASONING': 'medium'}),
+      );
+      expect(config.reasoning.effort, ReasoningEffort.high);
+      expect(config.reasoning.showThoughts, isTrue);
     });
   });
 }

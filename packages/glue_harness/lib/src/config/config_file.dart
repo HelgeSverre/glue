@@ -24,6 +24,7 @@ class ConfigFile with ConfigFileMappable {
   final bool? titleGenerationEnabled;
   final bool? anthropicPromptCache;
   final String? approvalMode;
+  final ReasoningSectionConfig? reasoning;
 
   const ConfigFile({
     this.activeModel,
@@ -41,7 +42,16 @@ class ConfigFile with ConfigFileMappable {
     this.titleGenerationEnabled,
     this.anthropicPromptCache,
     this.approvalMode,
+    this.reasoning,
   });
+}
+
+@MappableClass()
+class ReasoningSectionConfig with ReasoningSectionConfigMappable {
+  final String? effort;
+  final bool? showThoughts;
+
+  const ReasoningSectionConfig({this.effort, this.showThoughts});
 }
 
 @MappableClass()

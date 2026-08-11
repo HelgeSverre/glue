@@ -103,6 +103,11 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
         help: 'Output session conversation as JSON (implies --print).',
       )
       ..addOption('model', abbr: 'm', help: 'LLM model to use.')
+      ..addOption(
+        'reasoning',
+        allowed: ReasoningEffort.values.map((effort) => effort.name),
+        help: 'Reasoning effort for supported models.',
+      )
       ..addFlag(
         'resume',
         abbr: 'r',
@@ -196,6 +201,7 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
 
   Future<void> _runApp(ArgResults topLevelResults) async {
     final model = topLevelResults.option('model');
+    final reasoning = topLevelResults.option('reasoning');
     final jsonMode = topLevelResults.flag('json');
     final printMode = topLevelResults.flag('print') || jsonMode;
     final resumeSessionId = topLevelResults.option('resume-id');
@@ -213,6 +219,7 @@ class GlueCommandRunner extends CompletionCommandRunner<int> {
 
     final app = await App.create(
       model: model,
+      reasoning: reasoning,
       prompt: prompt,
       printMode: printMode,
       jsonMode: jsonMode,

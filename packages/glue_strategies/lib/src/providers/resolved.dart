@@ -37,10 +37,15 @@ class ResolvedProvider {
 }
 
 class ResolvedModel {
-  const ResolvedModel({required this.def, required this.provider});
+  const ResolvedModel({
+    required this.def,
+    required this.provider,
+    this.reasoning = const ReasoningConfig(),
+  });
 
   final ModelDef def;
   final ProviderDef provider;
+  final ReasoningConfig reasoning;
 
   String get id => def.id;
   String get name => def.name;

@@ -22,6 +22,7 @@ class ConfigFileMapper extends ClassMapperBase<ConfigFile> {
       WebSectionConfigMapper.ensureInitialized();
       ObservabilitySectionConfigMapper.ensureInitialized();
       SkillsSectionConfigMapper.ensureInitialized();
+      ReasoningSectionConfigMapper.ensureInitialized();
     }
     return _instance!;
   }
@@ -123,6 +124,12 @@ class ConfigFileMapper extends ClassMapperBase<ConfigFile> {
     key: r'approval_mode',
     opt: true,
   );
+  static ReasoningSectionConfig? _$reasoning(ConfigFile v) => v.reasoning;
+  static const Field<ConfigFile, ReasoningSectionConfig> _f$reasoning = Field(
+    'reasoning',
+    _$reasoning,
+    opt: true,
+  );
 
   @override
   final MappableFields<ConfigFile> fields = const {
@@ -141,6 +148,7 @@ class ConfigFileMapper extends ClassMapperBase<ConfigFile> {
     #titleGenerationEnabled: _f$titleGenerationEnabled,
     #anthropicPromptCache: _f$anthropicPromptCache,
     #approvalMode: _f$approvalMode,
+    #reasoning: _f$reasoning,
   };
   @override
   final bool ignoreNull = true;
@@ -162,6 +170,7 @@ class ConfigFileMapper extends ClassMapperBase<ConfigFile> {
       titleGenerationEnabled: data.dec(_f$titleGenerationEnabled),
       anthropicPromptCache: data.dec(_f$anthropicPromptCache),
       approvalMode: data.dec(_f$approvalMode),
+      reasoning: data.dec(_f$reasoning),
     );
   }
 
@@ -245,6 +254,12 @@ abstract class ConfigFileCopyWith<$R, $In extends ConfigFile, $Out>
   get mcp;
   SkillsSectionConfigCopyWith<$R, SkillsSectionConfig, SkillsSectionConfig>?
   get skills;
+  ReasoningSectionConfigCopyWith<
+    $R,
+    ReasoningSectionConfig,
+    ReasoningSectionConfig
+  >?
+  get reasoning;
   $R call({
     String? activeModel,
     String? smallModel,
@@ -261,6 +276,7 @@ abstract class ConfigFileCopyWith<$R, $In extends ConfigFile, $Out>
     bool? titleGenerationEnabled,
     bool? anthropicPromptCache,
     String? approvalMode,
+    ReasoningSectionConfig? reasoning,
   });
   ConfigFileCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
 }
@@ -318,6 +334,13 @@ class _ConfigFileCopyWithImpl<$R, $Out>
   SkillsSectionConfigCopyWith<$R, SkillsSectionConfig, SkillsSectionConfig>?
   get skills => $value.skills?.copyWith.$chain((v) => call(skills: v));
   @override
+  ReasoningSectionConfigCopyWith<
+    $R,
+    ReasoningSectionConfig,
+    ReasoningSectionConfig
+  >?
+  get reasoning => $value.reasoning?.copyWith.$chain((v) => call(reasoning: v));
+  @override
   $R call({
     Object? activeModel = $none,
     Object? smallModel = $none,
@@ -334,6 +357,7 @@ class _ConfigFileCopyWithImpl<$R, $Out>
     Object? titleGenerationEnabled = $none,
     Object? anthropicPromptCache = $none,
     Object? approvalMode = $none,
+    Object? reasoning = $none,
   }) => $apply(
     FieldCopyWithData({
       if (activeModel != $none) #activeModel: activeModel,
@@ -353,6 +377,7 @@ class _ConfigFileCopyWithImpl<$R, $Out>
       if (anthropicPromptCache != $none)
         #anthropicPromptCache: anthropicPromptCache,
       if (approvalMode != $none) #approvalMode: approvalMode,
+      if (reasoning != $none) #reasoning: reasoning,
     }),
   );
   @override
@@ -378,6 +403,7 @@ class _ConfigFileCopyWithImpl<$R, $Out>
       or: $value.anthropicPromptCache,
     ),
     approvalMode: data.get(#approvalMode, or: $value.approvalMode),
+    reasoning: data.get(#reasoning, or: $value.reasoning),
   );
 
   @override
@@ -3228,5 +3254,151 @@ class _SkillsSectionConfigCopyWithImpl<$R, $Out>
   SkillsSectionConfigCopyWith<$R2, SkillsSectionConfig, $Out2>
   $chain<$R2, $Out2>(Then<$Out2, $R2> t) =>
       _SkillsSectionConfigCopyWithImpl<$R2, $Out2>($value, $cast, t);
+}
+
+class ReasoningSectionConfigMapper
+    extends ClassMapperBase<ReasoningSectionConfig> {
+  ReasoningSectionConfigMapper._();
+
+  static ReasoningSectionConfigMapper? _instance;
+  static ReasoningSectionConfigMapper ensureInitialized() {
+    if (_instance == null) {
+      MapperContainer.globals.use(_instance = ReasoningSectionConfigMapper._());
+    }
+    return _instance!;
+  }
+
+  @override
+  final String id = 'ReasoningSectionConfig';
+
+  static String? _$effort(ReasoningSectionConfig v) => v.effort;
+  static const Field<ReasoningSectionConfig, String> _f$effort = Field(
+    'effort',
+    _$effort,
+    opt: true,
+  );
+  static bool? _$showThoughts(ReasoningSectionConfig v) => v.showThoughts;
+  static const Field<ReasoningSectionConfig, bool> _f$showThoughts = Field(
+    'showThoughts',
+    _$showThoughts,
+    key: r'show_thoughts',
+    opt: true,
+  );
+
+  @override
+  final MappableFields<ReasoningSectionConfig> fields = const {
+    #effort: _f$effort,
+    #showThoughts: _f$showThoughts,
+  };
+
+  static ReasoningSectionConfig _instantiate(DecodingData data) {
+    return ReasoningSectionConfig(
+      effort: data.dec(_f$effort),
+      showThoughts: data.dec(_f$showThoughts),
+    );
+  }
+
+  @override
+  final Function instantiate = _instantiate;
+
+  static ReasoningSectionConfig fromMap(Map<String, dynamic> map) {
+    return ensureInitialized().decodeMap<ReasoningSectionConfig>(map);
+  }
+
+  static ReasoningSectionConfig fromJson(String json) {
+    return ensureInitialized().decodeJson<ReasoningSectionConfig>(json);
+  }
+}
+
+mixin ReasoningSectionConfigMappable {
+  String toJson() {
+    return ReasoningSectionConfigMapper.ensureInitialized()
+        .encodeJson<ReasoningSectionConfig>(this as ReasoningSectionConfig);
+  }
+
+  Map<String, dynamic> toMap() {
+    return ReasoningSectionConfigMapper.ensureInitialized()
+        .encodeMap<ReasoningSectionConfig>(this as ReasoningSectionConfig);
+  }
+
+  ReasoningSectionConfigCopyWith<
+    ReasoningSectionConfig,
+    ReasoningSectionConfig,
+    ReasoningSectionConfig
+  >
+  get copyWith =>
+      _ReasoningSectionConfigCopyWithImpl<
+        ReasoningSectionConfig,
+        ReasoningSectionConfig
+      >(this as ReasoningSectionConfig, $identity, $identity);
+  @override
+  String toString() {
+    return ReasoningSectionConfigMapper.ensureInitialized().stringifyValue(
+      this as ReasoningSectionConfig,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return ReasoningSectionConfigMapper.ensureInitialized().equalsValue(
+      this as ReasoningSectionConfig,
+      other,
+    );
+  }
+
+  @override
+  int get hashCode {
+    return ReasoningSectionConfigMapper.ensureInitialized().hashValue(
+      this as ReasoningSectionConfig,
+    );
+  }
+}
+
+extension ReasoningSectionConfigValueCopy<$R, $Out>
+    on ObjectCopyWith<$R, ReasoningSectionConfig, $Out> {
+  ReasoningSectionConfigCopyWith<$R, ReasoningSectionConfig, $Out>
+  get $asReasoningSectionConfig => $base.as(
+    (v, t, t2) => _ReasoningSectionConfigCopyWithImpl<$R, $Out>(v, t, t2),
+  );
+}
+
+abstract class ReasoningSectionConfigCopyWith<
+  $R,
+  $In extends ReasoningSectionConfig,
+  $Out
+>
+    implements ClassCopyWith<$R, $In, $Out> {
+  $R call({String? effort, bool? showThoughts});
+  ReasoningSectionConfigCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(
+    Then<$Out2, $R2> t,
+  );
+}
+
+class _ReasoningSectionConfigCopyWithImpl<$R, $Out>
+    extends ClassCopyWithBase<$R, ReasoningSectionConfig, $Out>
+    implements
+        ReasoningSectionConfigCopyWith<$R, ReasoningSectionConfig, $Out> {
+  _ReasoningSectionConfigCopyWithImpl(super.value, super.then, super.then2);
+
+  @override
+  late final ClassMapperBase<ReasoningSectionConfig> $mapper =
+      ReasoningSectionConfigMapper.ensureInitialized();
+  @override
+  $R call({Object? effort = $none, Object? showThoughts = $none}) => $apply(
+    FieldCopyWithData({
+      if (effort != $none) #effort: effort,
+      if (showThoughts != $none) #showThoughts: showThoughts,
+    }),
+  );
+  @override
+  ReasoningSectionConfig $make(CopyWithData data) => ReasoningSectionConfig(
+    effort: data.get(#effort, or: $value.effort),
+    showThoughts: data.get(#showThoughts, or: $value.showThoughts),
+  );
+
+  @override
+  ReasoningSectionConfigCopyWith<$R2, ReasoningSectionConfig, $Out2>
+  $chain<$R2, $Out2>(Then<$Out2, $R2> t) =>
+      _ReasoningSectionConfigCopyWithImpl<$R2, $Out2>($value, $cast, t);
 }
 
