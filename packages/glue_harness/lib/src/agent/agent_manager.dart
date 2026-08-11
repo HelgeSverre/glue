@@ -52,8 +52,8 @@ class SubagentUpdate {
 /// tools by default).
 class AgentManager {
   final Map<String, Tool> tools;
-  final LlmClientFactory llmFactory;
-  final GlueConfig config;
+  GlueConfig Function() configProvider;
+  final LlmClientFactory Function(GlueConfig)? llmFactoryProvider;
   final String systemPrompt;
   final Set<String> allowedSubagentTools;
   final Observability? obs;
@@ -83,8 +83,8 @@ class AgentManager {
 
   AgentManager({
     required this.tools,
-    required this.llmFactory,
-    required this.config,
+    required this.configProvider,
+    this.llmFactoryProvider,
     required this.systemPrompt,
     Set<String>? allowedSubagentTools,
     this.obs,
@@ -116,6 +116,7 @@ class AgentManager {
     int? total,
     String? parentSubagentId,
   }) async {
+    final config = configProvider();
     if (currentDepth >= config.maxSubagentDepth) {
       throw Exception(
         'Maximum subagent depth (${config.maxSubagentDepth}) exceeded. '
@@ -124,6 +125,8 @@ class AgentManager {
     }
 
     final ref = modelOverride ?? config.activeModel;
+    final llmFactory =
+        llmFactoryProvider?.call(config) ?? LlmClientFactory(config);
     final llm = llmFactory.createFor(ref, systemPrompt: systemPrompt);
 
     final subagentId = _mintSubagentId();

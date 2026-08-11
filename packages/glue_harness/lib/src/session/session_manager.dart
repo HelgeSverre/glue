@@ -128,14 +128,18 @@ class SessionReplay {
   });
 }
 
+enum SessionResumeStatus { resumed, empty, locked }
+
 class SessionResumeResult {
   final String message;
-  final bool hasConversation;
+  final SessionResumeStatus status;
   final SessionReplay replay;
+
+  bool get hasConversation => status == SessionResumeStatus.resumed;
 
   const SessionResumeResult({
     required this.message,
-    required this.hasConversation,
+    required this.status,
     required this.replay,
   });
 }
@@ -514,7 +518,7 @@ class SessionManager {
           message:
               'Session ${session.id.value} is already open in another Glue '
               'process${e.holderPid != null ? ' (pid ${e.holderPid})' : ''}.',
-          hasConversation: false,
+          status: SessionResumeStatus.locked,
           replay: SessionReplay(
             entries: const [],
             userCount: 0,
@@ -533,7 +537,7 @@ class SessionManager {
       if (events.isEmpty) {
         final result = SessionResumeResult(
           message: 'Session has no conversation data.',
-          hasConversation: false,
+          status: SessionResumeStatus.empty,
           replay: SessionReplay(
             entries: const [],
             userCount: 0,
@@ -560,7 +564,7 @@ class SessionManager {
       final result = SessionResumeResult(
         message:
             'Restored ${replay.userCount} user + ${replay.assistantCount} assistant messages.',
-        hasConversation: true,
+        status: SessionResumeStatus.resumed,
         replay: replay,
       );
       _endSpan(

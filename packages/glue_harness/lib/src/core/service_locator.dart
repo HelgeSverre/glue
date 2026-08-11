@@ -220,8 +220,7 @@ class ServiceLocator {
 
     final manager = AgentManager(
       tools: tools,
-      llmFactory: llmFactory,
-      config: config,
+      configProvider: () => config,
       systemPrompt: systemPrompt,
       obs: obs,
     );

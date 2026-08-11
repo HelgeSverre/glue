@@ -32,7 +32,7 @@ export 'package:glue_core/src/tool.dart' show Tool;
 class AgentCore {
   LlmClient llm;
   final Map<String, Tool> tools;
-  final String modelId;
+  String modelId;
 
   /// Hard ceiling on ReAct iterations (LLM↔tool round-trips) within a single
   /// [run]. Guards against a model that keeps calling tools forever — a

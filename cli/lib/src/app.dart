@@ -21,6 +21,7 @@ import 'package:glue/src/extensions/time_ago.dart';
 import 'package:glue/src/extensions/token_format.dart';
 import 'package:glue/src/services/approval_state.dart';
 import 'package:glue/src/services/conversation_view.dart';
+import 'package:glue/src/services/conversation_settings_controller.dart';
 import 'package:glue/src/services/lifecycle.dart';
 import 'package:glue/src/app/model_display.dart';
 import 'package:glue/src/app/transcript_selection.dart';
@@ -207,6 +208,7 @@ class App {
   late final AtFileHint _atHint;
   late final ShellAutocomplete _shellComplete;
   late final SessionManager _sessionManager;
+  ConversationSettingsController? _settingsController;
   late final ConversationView _conversation;
   late final ApprovalState _approvalState;
   late final Lifecycle _lifecycle;
@@ -267,6 +269,7 @@ class App {
     this._llmFactory,
     GlueConfig? config,
     this._systemPrompt,
+    ConversationClientBuilder? settingsClientBuilder,
     Set<String>? extraTrustedTools,
     SessionStore? sessionStore,
     CommandExecutor? executor,
@@ -308,6 +311,22 @@ class App {
       sessionStore: sessionStore,
       observability: obs,
     );
+    final liveConfig = _config;
+    final prompt = _systemPrompt;
+    if (liveConfig != null && prompt != null) {
+      _settingsController = ConversationSettingsController(
+        configGetter: () => _config,
+        configSetter: (value) => _config = value,
+        modelIdSetter: (value) => _modelId = value,
+        agent: agent,
+        session: _sessionManager,
+        systemPrompt: prompt,
+        configWriter: ConversationConfigWriter(_environment.configYamlPath),
+        ensureSession: _ensureSessionStore,
+        clientBuilder: settingsClientBuilder,
+      );
+      _manager?.configProvider = () => _config ?? liveConfig;
+    }
     _manager?.onPersistEvent = (type, data) {
       _sessionManager.logEvent(type, data);
     };
@@ -684,6 +703,7 @@ class App {
       autoApprovedTools: _autoApprovedTools,
       ensureSession: _ensureSessionStore,
       backfillTitle: _generateTitle,
+      resumeSession: _resumeWithSettings,
       switchModel: _switchToModelRow,
       setReasoning: _setReasoning,
       conversation: _conversation,
@@ -735,52 +755,24 @@ class App {
   }
 
   String _applyModelSwitch(CatalogRow row) {
-    final factory = _llmFactory;
-    final config = _config;
-    final prompt = _systemPrompt;
     final ref = ModelRef(providerId: row.providerId, modelId: row.model.id);
-    var notice = '';
-    if (factory != null && config != null && prompt != null) {
-      var nextConfig = config.copyWith(activeModel: ref);
-      final support = row.model.reasoning;
-      if (nextConfig.reasoning.effort != ReasoningEffort.auto &&
-          (support == null || !support.supports(nextConfig.reasoning.effort))) {
-        nextConfig = nextConfig.copyWith(
-          reasoning: nextConfig.reasoning.copyWith(
-            effort: ReasoningEffort.auto,
-          ),
-        );
-        notice = ' Reasoning reset to Auto for this model.';
-      }
-      _config = nextConfig;
-      final llm = LlmClientFactory(
-        nextConfig,
-      ).createFor(ref, systemPrompt: prompt);
-      agent.llm = llm;
-    }
-    _modelId = ref.modelId;
-    _sessionManager.updateSessionModel(modelRef: ref.toString());
-    return 'Switched to ${row.model.name}.$notice';
+    final settings = _settingsController;
+    if (settings == null) return 'Config not ready.';
+    return settings
+        .selectModel(
+          ref,
+          origin: SettingsChangeOrigin.user,
+          displayName: row.model.name,
+        )
+        .message;
   }
 
   String _setReasoning(ReasoningConfig reasoning) {
-    final config = _config;
-    final prompt = _systemPrompt;
-    if (config == null || prompt == null) return 'Config not ready.';
-    final next = config.copyWith(reasoning: reasoning);
-    try {
-      agent.llm = LlmClientFactory(next).createFromConfig(systemPrompt: prompt);
-    } on ConfigError catch (error) {
-      return error.message;
-    }
-    _config = next;
-    _ensureSessionStore();
-    _sessionManager.updateSessionReasoning(
-      effort: reasoning.effort,
-      showThoughts: reasoning.showThoughts,
-    );
-    return 'Reasoning: ${reasoning.effort.name}; thoughts '
-        '${reasoning.showThoughts ? 'shown' : 'hidden'}.';
+    final settings = _settingsController;
+    if (settings == null) return 'Config not ready.';
+    return settings
+        .setReasoning(reasoning, origin: SettingsChangeOrigin.user)
+        .message;
   }
 
   /// Kick off the "pull this model?" confirmation flow for an Ollama tag.
@@ -2351,11 +2343,25 @@ class App {
           stderr.writeln('Session $_resumeSessionId not found.');
           return;
         }
-        _sessionManager.resumeSession(session: match.first, agent: agent);
+        final resumed = _resumeWithSettings(match.first);
+        for (final warning in resumed.warnings) {
+          stderr.writeln('Warning: $warning');
+        }
+        if (resumed.sessionResult.status == SessionResumeStatus.locked) {
+          stderr.writeln(resumed.sessionResult.message);
+          return;
+        }
       } else if (_startupContinue) {
         final sessions = _sessionManager.listSessions();
         if (sessions.isNotEmpty) {
-          _sessionManager.resumeSession(session: sessions.first, agent: agent);
+          final resumed = _resumeWithSettings(sessions.first);
+          for (final warning in resumed.warnings) {
+            stderr.writeln('Warning: $warning');
+          }
+          if (resumed.sessionResult.status == SessionResumeStatus.locked) {
+            stderr.writeln(resumed.sessionResult.message);
+            return;
+          }
           stderr.writeln(
             'Continuing session ${sessions.first.id} '
             '(${sessions.first.modelRef}).',
@@ -2705,28 +2711,30 @@ class App {
     store.updateMeta();
   }
 
-  /// Resume [session] into the running app. Used by startup paths
-  /// (`--resume <id>`, bare `--resume`). The interactive `/resume` command
-  /// composes the same primitives directly via [_conversation] —
-  /// duplication is deliberate; each call site is self-contained.
-  String _resumeSession(SessionMeta session) {
-    final result = _sessionManager.resumeSession(
-      session: session,
-      agent: agent,
-    );
-    _conversation.resetForReplay();
-    final storedEffort = ReasoningEffort.values.where(
-      (effort) => effort.name == session.reasoningEffort,
-    );
-    if (storedEffort.isNotEmpty || session.showThoughts != null) {
-      final current = _config?.reasoning ?? const ReasoningConfig();
-      final message = _setReasoning(
-        current.copyWith(
-          effort: storedEffort.isEmpty ? current.effort : storedEffort.first,
-          showThoughts: session.showThoughts ?? current.showThoughts,
+  ConversationSessionResumeResult _resumeWithSettings(SessionMeta session) {
+    final settings = _settingsController;
+    if (settings == null) {
+      return ConversationSessionResumeResult(
+        sessionResult: _sessionManager.resumeSession(
+          session: session,
+          agent: agent,
         ),
       );
-      if (message.contains('not supported')) _conversation.notify(message);
+    }
+    return settings.resume(session);
+  }
+
+  /// Resume [session] into the running app. Used by startup paths
+  /// (`--resume <id>`, bare `--resume`). The interactive `/resume` command
+  /// uses the same settings-aware operation and keeps only transcript
+  /// rendering surface-specific.
+  String _resumeSession(SessionMeta session) {
+    final resumed = _resumeWithSettings(session);
+    final result = resumed.sessionResult;
+    if (result.status == SessionResumeStatus.locked) return result.message;
+    _conversation.resetForReplay();
+    for (final warning in resumed.warnings) {
+      _conversation.notify('Warning: $warning');
     }
     _sessionManager
       ..titleInitialRequested = session.title != null
@@ -2741,8 +2749,8 @@ class App {
       '(${session.modelRef}, ${session.startTime.timeAgo})',
     );
 
-    if (!result.hasConversation) {
-      return 'Session ${session.id} has no conversation data.';
+    if (result.status == SessionResumeStatus.empty) {
+      return result.message;
     }
 
     final usage = result.replay.totalUsage;

@@ -29,8 +29,8 @@ void main() {
     setUp(() {
       manager = AgentManager(
         tools: {'read_file': ReadFileTool(testWorkspace())},
-        llmFactory: _EchoFactory(),
-        config: testConfig(env: {'ANTHROPIC_API_KEY': 'sk-test'}),
+        configProvider: () => testConfig(env: {'ANTHROPIC_API_KEY': 'sk-test'}),
+        llmFactoryProvider: (_) => _EchoFactory(),
         systemPrompt: 'You are a test agent.',
       );
     });
@@ -39,6 +39,36 @@ void main() {
       final result = await manager.spawnSubagent(task: 'Do something');
       expect(result, contains('Processed:'));
       expect(result, contains('Do something'));
+    });
+
+    test('reads the current config for each future subagent', () async {
+      var config = testConfig(
+        activeModel: ModelRef.parse('anthropic/claude-sonnet-4-6'),
+        env: {'ANTHROPIC_API_KEY': 'sk-test'},
+      );
+      final seen = <GlueConfig>[];
+      final liveManager = AgentManager(
+        tools: const {},
+        configProvider: () => config,
+        llmFactoryProvider: (value) {
+          seen.add(value);
+          return _EchoFactory();
+        },
+        systemPrompt: 'test',
+      );
+
+      await liveManager.spawnSubagent(task: 'first');
+      config = config.copyWith(
+        activeModel: ModelRef.parse('openai/o3'),
+        reasoning: const ReasoningConfig(effort: ReasoningEffort.high),
+      );
+      await liveManager.spawnSubagent(task: 'second');
+
+      expect(seen.map((value) => value.activeModel.toString()), [
+        'anthropic/claude-sonnet-4-6',
+        'openai/o3',
+      ]);
+      expect(seen.last.reasoning.effort, ReasoningEffort.high);
     });
 
     test('spawns parallel subagents', () async {
@@ -143,8 +173,9 @@ void main() {
         // run of deltas into one row whose text is the concatenation.
         final coalescingManager = AgentManager(
           tools: {'read_file': ReadFileTool(testWorkspace())},
-          llmFactory: _MultiDeltaFactory(),
-          config: testConfig(env: {'ANTHROPIC_API_KEY': 'sk-test'}),
+          configProvider: () =>
+              testConfig(env: {'ANTHROPIC_API_KEY': 'sk-test'}),
+          llmFactoryProvider: (_) => _MultiDeltaFactory(),
           systemPrompt: 'You are a test agent.',
         );
         final persisted = <Map<String, dynamic>>[];
@@ -180,8 +211,8 @@ void main() {
       // pipe fires its terminal event regardless of how the runner finishes.
       final failingManager = AgentManager(
         tools: const {},
-        llmFactory: _ThrowingFactory(),
-        config: testConfig(env: {'ANTHROPIC_API_KEY': 'sk-test'}),
+        configProvider: () => testConfig(env: {'ANTHROPIC_API_KEY': 'sk-test'}),
+        llmFactoryProvider: (_) => _ThrowingFactory(),
         systemPrompt: 'unused',
       );
       final persisted = <Map<String, dynamic>>[];

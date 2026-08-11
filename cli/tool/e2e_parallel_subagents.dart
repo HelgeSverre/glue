@@ -63,8 +63,8 @@ void main() async {
         LocalWorkspace(WorkspaceMapping.host(fixturesDir.path)),
       ),
     },
-    llmFactory: llmFactory,
-    config: config,
+    configProvider: () => config,
+    llmFactoryProvider: (_) => llmFactory,
     systemPrompt:
         'You are a focused agent. Use the read_file and list_directory '
         'tools to answer the question concisely.',

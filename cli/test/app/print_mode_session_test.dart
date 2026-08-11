@@ -4,7 +4,10 @@ import 'dart:io';
 
 import 'package:glue_core/glue_core.dart';
 import 'package:glue/glue.dart';
+import 'package:glue/src/services/conversation_settings_controller.dart';
 import 'package:test/test.dart';
+
+import '../_helpers/test_config.dart';
 
 /// Records every inbound history list and yields a fixed (or queued) reply.
 class _RecordingLlm implements LlmClient {
@@ -142,6 +145,9 @@ App _printApp({
   String? resumeSessionId,
   bool startupContinue = false,
   Map<String, Tool> tools = const {},
+  GlueConfig? config,
+  String? systemPrompt,
+  ConversationClientBuilder? settingsClientBuilder,
 }) {
   return App(
     terminal: _NoopTerminal(),
@@ -154,6 +160,9 @@ App _printApp({
     startupPrompt: prompt,
     resumeSessionId: resumeSessionId,
     startupContinue: startupContinue,
+    config: config,
+    systemPrompt: systemPrompt,
+    settingsClientBuilder: settingsClientBuilder,
     environment: environment,
   );
 }
@@ -222,12 +231,19 @@ void main() {
     tempDir.deleteSync(recursive: true);
   });
 
-  SessionMeta seedSession(String id, {String? model}) {
+  SessionMeta seedSession(
+    String id, {
+    String? model,
+    String? reasoningEffort,
+    bool? showThoughts,
+  }) {
     final meta = SessionMeta(
       id: SessionId(id),
       cwd: environment.cwd,
       modelRef: model ?? 'anthropic/claude-sonnet-4.6',
       startTime: DateTime.now(),
+      reasoningEffort: reasoningEffort,
+      showThoughts: showThoughts,
     );
     final store = SessionStore(
       sessionDir: environment.sessionDir(meta.id),
@@ -380,6 +396,51 @@ void main() {
     expect(lastTexts, contains('first q'));
     expect(lastTexts, contains('first a'));
   });
+
+  test(
+    '--resume restores model and reasoning without changing defaults',
+    () async {
+      seedSession(
+        'settings-target',
+        model: 'anthropic/claude-sonnet-5',
+        reasoningEffort: 'high',
+        showThoughts: true,
+      );
+      const defaults = '''# keep defaults
+active_model: anthropic/claude-sonnet-4-6
+reasoning:
+  effort: low
+  show_thoughts: false
+''';
+      File(environment.configYamlPath).writeAsStringSync(defaults);
+      var config = testConfig(
+        activeModel: ModelRef.parse('anthropic/claude-sonnet-4-6'),
+      ).copyWith(reasoning: const ReasoningConfig(effort: ReasoningEffort.low));
+      final builtConfigs = <GlueConfig>[];
+      final llm = _RecordingLlm(replies: ['again a']);
+      final app = _printApp(
+        llm: llm,
+        environment: environment,
+        prompt: 'again',
+        resumeSessionId: 'settings-target',
+        config: config,
+        systemPrompt: 'test',
+        settingsClientBuilder: (next, _) {
+          config = next;
+          builtConfigs.add(next);
+          return llm;
+        },
+      );
+
+      await _runPrint(app);
+
+      expect(builtConfigs, isNotEmpty);
+      expect(config.activeModel, ModelRef.parse('anthropic/claude-sonnet-5'));
+      expect(config.reasoning.effort, ReasoningEffort.high);
+      expect(config.reasoning.showThoughts, isTrue);
+      expect(File(environment.configYamlPath).readAsStringSync(), defaults);
+    },
+  );
 
   test('bare --resume errors and persists nothing', () async {
     final llm = _RecordingLlm(replies: ['reply']);

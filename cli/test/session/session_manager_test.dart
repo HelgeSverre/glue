@@ -96,6 +96,7 @@ void main() {
 
     final result = manager.resumeSession(session: meta, agent: agent);
 
+    expect(result.status, SessionResumeStatus.resumed);
     expect(result.hasConversation, isTrue);
     expect(result.message, contains('Restored 1 user + 1 assistant messages.'));
     expect(result.replay.entries, hasLength(4));
@@ -243,6 +244,7 @@ void main() {
 
     final result = manager.resumeSession(session: meta, agent: agent);
 
+    expect(result.status, SessionResumeStatus.empty);
     expect(result.hasConversation, isFalse);
     expect(result.message, contains('no conversation data'));
     final dirs = Directory(
@@ -364,6 +366,7 @@ void main() {
 
     final result = manager.resumeSession(session: meta, agent: agent);
 
+    expect(result.status, SessionResumeStatus.locked);
     expect(result.hasConversation, isFalse);
     expect(result.message, contains('already open'));
     // The agent conversation must be left untouched — no interleaving.

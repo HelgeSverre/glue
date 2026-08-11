@@ -6,6 +6,7 @@ import 'package:glue/src/commands/slash_commands.dart';
 import 'package:glue/src/input/text_area_editor.dart';
 import 'package:glue/src/services/approval_state.dart';
 import 'package:glue/src/services/conversation_view.dart';
+import 'package:glue/src/services/conversation_settings_controller.dart';
 import 'package:glue/src/services/lifecycle.dart';
 import 'package:glue/src/ui/dock_manager.dart';
 import 'package:glue/src/ui/model_panel_formatter.dart' show CatalogRow;
@@ -37,6 +38,7 @@ class SlashCommandContext {
     required this.autoApprovedTools,
     required this.ensureSession,
     required this.backfillTitle,
+    ConversationSessionResumeResult Function(SessionMeta meta)? resumeSession,
     required this.switchModel,
     String Function(ReasoningConfig reasoning)? setReasoning,
     // Services
@@ -53,6 +55,14 @@ class SlashCommandContext {
        _modelId = modelIdGetter,
        _isIdle = isIdleGetter,
        _commands = commandsGetter,
+       _resumeSession =
+           resumeSession ??
+           ((meta) => ConversationSessionResumeResult(
+             sessionResult: session.resumeSession(
+               session: meta,
+               agent: agentGetter(),
+             ),
+           )),
        _setReasoning = setReasoning ?? ((_) => 'Reasoning is unavailable.');
 
   /// Currently-active config, if any. May be `null` until startup completes.
@@ -105,6 +115,9 @@ class SlashCommandContext {
   /// were saved before titling existed.
   final void Function(String firstUserMessage) backfillTitle;
 
+  ConversationSessionResumeResult resumeSession(SessionMeta meta) =>
+      _resumeSession(meta);
+
   /// Apply a model switch: handles the Ollama pull-confirm flow (interactive
   /// `ConfirmModal`) when needed and otherwise mutates `agent.llm`,
   /// `config.activeModel`, the cached model id, and persists the active
@@ -133,5 +146,7 @@ class SlashCommandContext {
   final String Function() _modelId;
   final bool Function() _isIdle;
   final Iterable<SlashCommand> Function() _commands;
+  final ConversationSessionResumeResult Function(SessionMeta meta)
+  _resumeSession;
   final String Function(ReasoningConfig reasoning) _setReasoning;
 }

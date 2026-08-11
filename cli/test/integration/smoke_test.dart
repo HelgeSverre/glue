@@ -60,8 +60,8 @@ void main() {
     test('AgentManager spawns parallel subagents', () async {
       final manager = AgentManager(
         tools: {'read_file': ReadFileTool(testWorkspace())},
-        llmFactory: _MockFactory(),
-        config: testConfig(env: {'ANTHROPIC_API_KEY': 'sk-test'}),
+        configProvider: () => testConfig(env: {'ANTHROPIC_API_KEY': 'sk-test'}),
+        llmFactoryProvider: (_) => _MockFactory(),
         systemPrompt: 'test',
       );
 

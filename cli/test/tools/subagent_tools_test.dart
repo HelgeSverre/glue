@@ -30,8 +30,8 @@ void main() {
   setUp(() {
     manager = AgentManager(
       tools: {},
-      llmFactory: _EchoFactory(),
-      config: testConfig(env: {'ANTHROPIC_API_KEY': 'sk-test'}),
+      configProvider: () => testConfig(env: {'ANTHROPIC_API_KEY': 'sk-test'}),
+      llmFactoryProvider: (_) => _EchoFactory(),
       systemPrompt: 'test',
     );
   });

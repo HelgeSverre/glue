@@ -1,4 +1,3 @@
-import 'package:glue_core/glue_core.dart';
 import 'package:glue_harness/glue_harness.dart';
 
 import 'package:glue/src/commands/slash_command_context.dart';
@@ -151,22 +150,12 @@ class ResumeCommand extends SlashCommand {
   /// transcript reset, replay, and optional title backfill via [ctx]
   /// primitives. Returns the user-visible result message.
   String _resume(SessionMeta meta) {
-    final result = ctx.session.resumeSession(session: meta, agent: ctx.agent);
+    final resumed = ctx.resumeSession(meta);
+    final result = resumed.sessionResult;
+    if (result.status == SessionResumeStatus.locked) return result.message;
     ctx.conversation.resetForReplay();
-    final storedEffort = ReasoningEffort.values.where(
-      (effort) => effort.name == meta.reasoningEffort,
-    );
-    if (storedEffort.isNotEmpty || meta.showThoughts != null) {
-      final current = ctx.config?.reasoning ?? const ReasoningConfig();
-      final message = ctx.setReasoning(
-        current.copyWith(
-          effort: storedEffort.isEmpty ? current.effort : storedEffort.first,
-          showThoughts: meta.showThoughts ?? current.showThoughts,
-        ),
-      );
-      if (message.contains('not supported')) {
-        ctx.conversation.notify(message);
-      }
+    for (final warning in resumed.warnings) {
+      ctx.conversation.notify('Warning: $warning');
     }
     ctx.session
       ..titleInitialRequested = meta.title != null
@@ -180,8 +169,8 @@ class ResumeCommand extends SlashCommand {
       '(${meta.modelRef}, ${meta.startTime.timeAgo})',
     );
 
-    if (!result.hasConversation) {
-      return 'Session ${meta.id} has no conversation data.';
+    if (result.status == SessionResumeStatus.empty) {
+      return result.message;
     }
 
     // Carry-over summary surfaces cost continuity instead of pretending the

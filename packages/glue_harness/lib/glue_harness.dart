@@ -29,6 +29,7 @@ export 'package:glue_harness/src/catalog/remote_catalog_sanitizer.dart';
 export 'package:glue_harness/src/config/approval_mode.dart';
 export 'package:glue_harness/src/config/build_info.dart';
 export 'package:glue_harness/src/config/config_file.dart';
+export 'package:glue_harness/src/config/conversation_config_writer.dart';
 export 'package:glue_harness/src/config/config_resolvers.dart';
 export 'package:glue_harness/src/config/config_template.dart';
 export 'package:glue_harness/src/config/glue_config.dart';
