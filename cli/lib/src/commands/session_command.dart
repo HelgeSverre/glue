@@ -4,7 +4,9 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:glue/src/terminal/brand.dart';
 import 'package:glue/src/terminal/tty_style.dart';
+import 'package:glue/src/generated/session_schemas_generated.dart';
 import 'package:glue_harness/glue_harness.dart';
+import 'package:json_schema/json_schema.dart';
 import 'package:path/path.dart' as p;
 
 /// `glue session …` — list, inspect, apply, and export the
@@ -240,6 +242,7 @@ class SessionCommand extends Command<int> {
     addSubcommand(SessionDiffCommand());
     addSubcommand(SessionApplyCommand());
     addSubcommand(SessionExportCommand());
+    addSubcommand(SessionValidateCommand());
   }
 
   @override
@@ -248,6 +251,120 @@ class SessionCommand extends Command<int> {
   @override
   String get description =>
       'List, inspect, and apply the workspace patches captured by cloud sessions.';
+}
+
+class SessionValidateCommand extends Command<int> {
+  SessionValidateCommand() {
+    argParser.addFlag(
+      'all',
+      negatable: false,
+      help: 'Validate every session under GLUE_HOME.',
+    );
+  }
+
+  @override
+  String get name => 'validate';
+
+  @override
+  String get description =>
+      'Validate session metadata and transcript rows against the public contract.';
+
+  @override
+  Future<int> run() async {
+    final validateAll = argResults!.flag('all');
+    final rest = argResults!.rest;
+    if (validateAll == rest.isNotEmpty) {
+      usageException('pass exactly one session ID/path, or --all');
+    }
+    final env = Environment.detect();
+    final sessionsDir = Directory(env.sessionsDir);
+    final roots = validateAll
+        ? (sessionsDir.existsSync()
+              ? sessionsDir.listSync().whereType<Directory>().toList()
+              : <Directory>[])
+        : [_resolveSessionDir(rest.single, env)];
+    final metaSchema = JsonSchema.create(
+      jsonDecode(sessionMetaV5SchemaJson) as Object,
+      schemaVersion: SchemaVersion.draft2020_12,
+    );
+    final eventSchema = JsonSchema.create(
+      jsonDecode(conversationEventV1SchemaJson) as Object,
+      schemaVersion: SchemaVersion.draft2020_12,
+    );
+    var errors = 0;
+    var warnings = 0;
+    for (final dir in roots) {
+      final result = _validateSessionDirectory(dir, metaSchema, eventSchema);
+      errors += result.$1;
+      warnings += result.$2;
+    }
+    if (errors == 0) {
+      stdout.writeln(
+        'Validated ${roots.length} session(s)${warnings > 0 ? ' with $warnings warning(s)' : ''}.',
+      );
+      return 0;
+    }
+    stderr.writeln('$errors validation error(s), $warnings warning(s).');
+    return 1;
+  }
+}
+
+Directory _resolveSessionDir(String value, Environment env) {
+  final direct = Directory(value);
+  if (direct.existsSync()) return direct;
+  final byId = Directory(p.join(env.sessionsDir, value));
+  if (byId.existsSync()) return byId;
+  throw UsageException('session not found: $value', 'glue session validate');
+}
+
+(int, int) _validateSessionDirectory(
+  Directory dir,
+  JsonSchema metaSchema,
+  JsonSchema eventSchema,
+) {
+  var errors = 0;
+  var warnings = 0;
+  final metaFile = File(p.join(dir.path, 'meta.json'));
+  try {
+    final meta = jsonDecode(metaFile.readAsStringSync());
+    final version = meta is Map ? meta['schema_version'] as int? ?? 1 : 0;
+    if (version == SessionMeta.currentSchemaVersion) {
+      final result = metaSchema.validate(meta, validateFormats: true);
+      for (final error in result.errors) {
+        stderr.writeln('${metaFile.path}: ${error.toString()}');
+        errors++;
+      }
+    } else {
+      stdout.writeln('${metaFile.path}: legacy metadata v$version');
+      warnings++;
+    }
+  } catch (error) {
+    stderr.writeln('${metaFile.path}: $error');
+    errors++;
+  }
+
+  final transcript = File(p.join(dir.path, 'conversation.jsonl'));
+  if (!transcript.existsSync()) return (errors, warnings);
+  final lines = transcript.readAsLinesSync();
+  for (var i = 0; i < lines.length; i++) {
+    try {
+      final event = jsonDecode(lines[i]);
+      final version = event is Map ? event['schema_version'] as int? : null;
+      if (version == null) {
+        warnings++;
+        continue;
+      }
+      final result = eventSchema.validate(event, validateFormats: true);
+      for (final error in result.errors) {
+        stderr.writeln('${transcript.path}:${i + 1}: ${error.toString()}');
+        errors++;
+      }
+    } catch (error) {
+      stderr.writeln('${transcript.path}:${i + 1}: $error');
+      errors++;
+    }
+  }
+  return (errors, warnings);
 }
 
 class SessionListCommand extends Command<int> {

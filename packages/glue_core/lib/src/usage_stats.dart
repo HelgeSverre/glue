@@ -20,6 +20,7 @@ class UsageStats {
   int outputTokens;
   int cacheReadTokens;
   int cacheCreationTokens;
+  int reasoningTokens;
   int turnCount;
 
   UsageStats({
@@ -27,6 +28,7 @@ class UsageStats {
     this.outputTokens = 0,
     this.cacheReadTokens = 0,
     this.cacheCreationTokens = 0,
+    this.reasoningTokens = 0,
     this.turnCount = 0,
   });
 
@@ -38,6 +40,7 @@ class UsageStats {
     outputTokens += usage.outputTokens;
     cacheReadTokens += usage.cacheReadTokens ?? 0;
     cacheCreationTokens += usage.cacheCreationTokens ?? 0;
+    reasoningTokens += usage.reasoningTokens ?? 0;
     turnCount++;
   }
 
@@ -48,6 +51,7 @@ class UsageStats {
     outputTokens += other.outputTokens;
     cacheReadTokens += other.cacheReadTokens;
     cacheCreationTokens += other.cacheCreationTokens;
+    reasoningTokens += other.reasoningTokens;
     turnCount += other.turnCount;
   }
 
@@ -73,6 +77,7 @@ class UsageStats {
     outputTokens: outputTokens,
     cacheReadTokens: cacheReadTokens,
     cacheCreationTokens: cacheCreationTokens,
+    reasoningTokens: reasoningTokens,
     turnCount: turnCount,
   );
 
@@ -81,6 +86,7 @@ class UsageStats {
     'output_tokens': outputTokens,
     if (cacheReadTokens > 0) 'cache_read_tokens': cacheReadTokens,
     if (cacheCreationTokens > 0) 'cache_creation_tokens': cacheCreationTokens,
+    if (reasoningTokens > 0) 'reasoning_tokens': reasoningTokens,
     'turn_count': turnCount,
   };
 
@@ -89,6 +95,7 @@ class UsageStats {
     outputTokens: (json['output_tokens'] as int?) ?? 0,
     cacheReadTokens: (json['cache_read_tokens'] as int?) ?? 0,
     cacheCreationTokens: (json['cache_creation_tokens'] as int?) ?? 0,
+    reasoningTokens: (json['reasoning_tokens'] as int?) ?? 0,
     turnCount: (json['turn_count'] as int?) ?? 0,
   );
 

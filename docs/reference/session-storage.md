@@ -22,13 +22,16 @@ Session metadata (`SessionMeta`).
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 5,
   "id": "1740654600000-abc",
+  "glue_version": "0.9.0",
+  "transcript_schema_version": 1,
   "cwd": "/Users/helge/code/project",
   "model": "claude-sonnet-4-6",
   "provider": "anthropic",
   "start_time": "2026-02-27T10:30:00.000Z",
   "end_time": "2026-02-27T11:15:00.000Z",
+  "termination_status": "completed",
   "forked_from": "1740650000000-xyz",
   "title": "Fix flaky shell test"
 }
@@ -36,7 +39,7 @@ Session metadata (`SessionMeta`).
 
 Supported fields include:
 
-- Core: `schema_version`, `id`, `cwd`, `project_path`, `model`, `provider`, `start_time`, `end_time`, `forked_from`
+- Core: `schema_version`, `id`, `glue_version`, `transcript_schema_version`, `cwd`, `project_path`, `model_ref`, `start_time`, `end_time`, `termination_status`, `forked_from`
 - Git context: `worktree_path`, `branch`, `base_branch`, `repo_remote`, `head_sha`
 - Display: `title`, `tags`
 - PR lifecycle: `pr_url`, `pr_status`
@@ -47,21 +50,34 @@ Supported fields include:
 
 Append-only JSON-lines event log.
 
-Each line contains:
+Newly written lines conform to
+[`schemas/session/conversation-event-v1.schema.json`](../../schemas/session/conversation-event-v1.schema.json).
+Legacy unversioned lines remain readable and are not rewritten. Each v1 line
+contains:
 
+- `schema_version` (currently `1`)
+- `event_id` and `session_id`
 - `timestamp` (UTC ISO-8601)
 - `type` (event type)
+- monotonic `sequence`
+- `turn_id` and `request_id` when available
 - event payload fields
 
 Common event types:
 
 - `user_message` with `text`
 - `assistant_message` with `text`
+- `assistant_thinking` with `text` when reasoning retention is enabled
 - `tool_call` with `id`, `name`, `arguments`
 - `tool_result` with `call_id`, `content`
 - `title_generated` with `title`
 
 Glue may append additional event types over time.
+
+The authoritative metadata contract is
+[`schemas/session/meta-v5.schema.json`](../../schemas/session/meta-v5.schema.json).
+Run `glue session validate <session-id-or-path>` to validate one session, or
+`glue session validate --all` to validate the complete local archive.
 
 ### Runtime command events (in-process only)
 

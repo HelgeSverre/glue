@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://getglue.dev/schemas/session/meta-v5.schema.json",
+  "title": "Glue session metadata v5",
+  "type": "object",
+  "required": [
+    "schema_version", "id", "glue_version", "transcript_schema_version",
+    "cwd", "model_ref", "start_time", "termination_status"
+  ],
+  "properties": {
+    "schema_version": { "const": 5 },
+    "id": { "$ref": "#/$defs/nonEmptyString" },
+    "glue_version": { "$ref": "#/$defs/nonEmptyString" },
+    "transcript_schema_version": { "const": 1 },
+    "cwd": { "type": "string" },
+    "project_path": { "type": "string" },
+    "model_ref": { "$ref": "#/$defs/modelRef" },
+    "reasoning_effort": { "type": "string" },
+    "show_thoughts": { "type": "boolean" },
+    "start_time": { "$ref": "#/$defs/timestamp" },
+    "end_time": { "$ref": "#/$defs/timestamp" },
+    "termination_status": {
+      "enum": ["running", "completed", "cancelled", "failed", "interrupted"]
+    },
+    "forked_from": { "type": "string" },
+    "worktree_path": { "type": "string" },
+    "branch": { "type": "string" },
+    "base_branch": { "type": "string" },
+    "repo_remote": { "type": "string" },
+    "head_sha": { "type": "string" },
+    "title": { "type": "string" },
+    "title_source": { "enum": ["auto", "user"] },
+    "title_state": { "enum": ["provisional", "stable"] },
+    "title_generation_count": { "type": "integer", "minimum": 0 },
+    "title_generated_at": { "$ref": "#/$defs/timestamp" },
+    "title_last_evaluated_at": { "$ref": "#/$defs/timestamp" },
+    "title_renamed_at": { "$ref": "#/$defs/timestamp" },
+    "tags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "pr_url": { "type": "string", "format": "uri" },
+    "pr_status": { "type": "string" },
+    "token_count": { "$ref": "#/$defs/nonNegativeInteger" },
+    "cache_read_tokens": { "$ref": "#/$defs/nonNegativeInteger" },
+    "cache_creation_tokens": { "$ref": "#/$defs/nonNegativeInteger" },
+    "message_count": { "$ref": "#/$defs/nonNegativeInteger" },
+    "summary": { "type": "string" },
+    "runtime_id": { "type": "string" },
+    "sandbox_id": { "type": "string" },
+    "runtime_bootstrap_sha": { "type": "string" },
+    "runtime_remote_url": { "type": "string" },
+    "runtime_patch_path": { "type": "string" },
+    "runtime_closed_at": { "$ref": "#/$defs/timestamp" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "nonEmptyString": { "type": "string", "minLength": 1 },
+    "modelRef": { "type": "string", "pattern": "^[^/]+/.+$" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "nonNegativeInteger": { "type": "integer", "minimum": 0 }
+  }
+}

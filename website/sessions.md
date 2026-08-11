@@ -47,7 +47,7 @@ file edits, and error details — is <FeatureStatus status="planned" />.
 ## Example
 
 ```jsonl
-{"timestamp":"2026-04-19T10:30:00.000Z","type":"user_message","text":"explain the retry logic in http_client.dart"}
+{"schema_version":1,"event_id":"1740654600000-abc:1","session_id":"1740654600000-abc","sequence":1,"timestamp":"2026-04-19T10:30:00.000Z","type":"user_message","turn_id":"1740654600000-abc:turn:1","text":"explain the retry logic in http_client.dart"}
 {"timestamp":"2026-04-19T10:30:00.420Z","type":"assistant_message","text":"Reading the file and the tests around it."}
 {"timestamp":"2026-04-19T10:30:00.510Z","type":"tool_call","id":"t_1","name":"read","arguments":{"path":"packages/glue_strategies/lib/src/web/http_client.dart"}}
 {"timestamp":"2026-04-19T10:30:00.630Z","type":"tool_result","call_id":"t_1","content":"…"}

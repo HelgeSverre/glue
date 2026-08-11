@@ -330,8 +330,13 @@ class App {
     _manager?.onPersistEvent = (type, data) {
       _sessionManager.logEvent(type, data);
     };
-    _manager?.onSubagentUsage = (stats) {
-      _sessionManager.recordUsage(stats, role: 'subagent');
+    _manager?.onSubagentUsageDetailed = (stats, modelRef, subagentId) {
+      _sessionManager.recordUsage(
+        stats,
+        role: 'subagent',
+        modelRef: modelRef,
+        subagentId: subagentId,
+      );
     };
     _panels = ModalSurface(panelStack: _panelStack, render: _render);
     _toast = Toast(onRender: _render);
@@ -1883,6 +1888,12 @@ class App {
   /// the turn.
   void _flushThinking() {
     if (_streamingThinking.isEmpty) return;
+    if (_config?.reasoning.showThoughts ?? false) {
+      _ensureSessionStore();
+      _sessionManager.logEvent('assistant_thinking', {
+        'text': _streamingThinking,
+      });
+    }
     final entry = ConversationEntry.thinking(_streamingThinking);
     _blocks.add(entry);
     _rebindStreamingSelection(kStreamingThinkingId, entry.id);
@@ -2098,6 +2109,8 @@ class App {
         _sessionManager.logEvent('tool_result', {
           'call_id': result.callId,
           'content': result.content,
+          'success': result.success,
+          'status': result.success ? 'completed' : 'failed',
           if (result.summary != null) 'summary': result.summary,
           if (result.metadata.isNotEmpty) 'metadata': result.metadata,
         });
@@ -2462,6 +2475,8 @@ class App {
             _sessionManager.logEvent('tool_result', {
               'call_id': result.callId,
               'content': result.content,
+              'success': result.success,
+              'status': result.success ? 'completed' : 'failed',
               if (result.summary != null) 'summary': result.summary,
               if (result.metadata.isNotEmpty) 'metadata': result.metadata,
             });
@@ -2553,7 +2568,13 @@ class App {
           await tool.dispose();
         } catch (_) {}
       }
-      await _sessionManager.closeCurrent();
+      await _sessionManager.closeCurrent(
+        status: cancelled
+            ? SessionTerminationStatus.cancelled
+            : exitCode != 0
+            ? SessionTerminationStatus.failed
+            : SessionTerminationStatus.completed,
+      );
       await _obs?.flush();
       await _obs?.close();
       // Tear down the active runtime (cloud sandboxes need this so the

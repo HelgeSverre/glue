@@ -10,11 +10,22 @@ enum SessionTitleSource { auto, user }
 
 enum SessionTitleState { provisional, stable }
 
+enum SessionTerminationStatus {
+  running,
+  completed,
+  cancelled,
+  failed,
+  interrupted,
+}
+
 class SessionMeta {
-  static const int currentSchemaVersion = 4;
+  static const int currentSchemaVersion = 5;
+  static const int currentTranscriptSchemaVersion = 1;
 
   final int schemaVersion;
   final SessionId id;
+  final String glueVersion;
+  final int transcriptSchemaVersion;
   final String cwd;
   final String? projectPath;
 
@@ -28,6 +39,7 @@ class SessionMeta {
   bool? showThoughts;
   final DateTime startTime;
   DateTime? endTime;
+  SessionTerminationStatus terminationStatus;
   final String? forkedFrom;
 
   // Git context.
@@ -78,6 +90,8 @@ class SessionMeta {
   SessionMeta({
     this.schemaVersion = currentSchemaVersion,
     required this.id,
+    this.glueVersion = AppConstants.version,
+    this.transcriptSchemaVersion = currentTranscriptSchemaVersion,
     required this.cwd,
     this.projectPath,
     required this.modelRef,
@@ -85,6 +99,7 @@ class SessionMeta {
     this.showThoughts,
     required this.startTime,
     this.endTime,
+    this.terminationStatus = SessionTerminationStatus.running,
     this.forkedFrom,
     this.worktreePath,
     this.branch,
@@ -121,6 +136,8 @@ class SessionMeta {
     // ignored `model_ref` and resolved the model to `anthropic/unknown` (H4).
     'schema_version': currentSchemaVersion,
     'id': id.value,
+    'glue_version': glueVersion,
+    'transcript_schema_version': transcriptSchemaVersion,
     'cwd': cwd,
     if (projectPath != null) 'project_path': projectPath,
     'model_ref': modelRef,
@@ -128,6 +145,7 @@ class SessionMeta {
     if (showThoughts != null) 'show_thoughts': showThoughts,
     'start_time': startTime.toUtc().toIso8601String(),
     if (endTime != null) 'end_time': endTime!.toUtc().toIso8601String(),
+    'termination_status': terminationStatus.name,
     if (forkedFrom != null) 'forked_from': forkedFrom,
     if (worktreePath != null) 'worktree_path': worktreePath,
     if (branch != null) 'branch': branch,
@@ -185,6 +203,13 @@ class SessionMeta {
     return SessionMeta(
       schemaVersion: schema,
       id: SessionId(json['id'] as String),
+      glueVersion: schema >= 5
+          ? json['glue_version'] as String? ?? AppConstants.version
+          : AppConstants.version,
+      transcriptSchemaVersion: schema >= 5
+          ? json['transcript_schema_version'] as int? ??
+                currentTranscriptSchemaVersion
+          : currentTranscriptSchemaVersion,
       cwd: json['cwd'] as String? ?? '',
       projectPath: json['project_path'] as String?,
       modelRef: resolvedRef,
@@ -194,6 +219,10 @@ class SessionMeta {
       endTime: json['end_time'] != null
           ? DateTime.parse(json['end_time'] as String)
           : null,
+      terminationStatus: _parseTerminationStatus(
+        json['termination_status'] as String?,
+        hasEndTime: json['end_time'] != null,
+      ),
       forkedFrom: json['forked_from'] as String?,
       worktreePath: json['worktree_path'] as String?,
       branch: json['branch'] as String?,
@@ -252,6 +281,21 @@ class SessionMeta {
       _ => null,
     };
   }
+
+  static SessionTerminationStatus _parseTerminationStatus(
+    String? value, {
+    required bool hasEndTime,
+  }) => switch (value) {
+    'completed' => SessionTerminationStatus.completed,
+    'cancelled' => SessionTerminationStatus.cancelled,
+    'failed' => SessionTerminationStatus.failed,
+    'interrupted' => SessionTerminationStatus.interrupted,
+    'running' => SessionTerminationStatus.running,
+    _ =>
+      hasEndTime
+          ? SessionTerminationStatus.completed
+          : SessionTerminationStatus.running,
+  };
 }
 
 /// Thrown when a session directory is already claimed by another live Glue
@@ -335,12 +379,39 @@ class SessionStore {
   /// Whether the owner-only permissions have been applied to the conversation
   /// log yet. Set on the first append so the chmod runs once, not per event.
   bool _conversationPermsSet = false;
+  late int _nextSequence;
 
   SessionStore({required this.sessionDir, required this.meta, this._lock}) {
     Directory(sessionDir).createSync(recursive: true);
     _restrictDirPerms(sessionDir);
     _conversationFile = File(p.join(sessionDir, 'conversation.jsonl'));
+    _nextSequence = _existingLineCount(_conversationFile) + 1;
     _writeMeta();
+  }
+
+  static int _existingLineCount(File file) {
+    if (!file.existsSync()) return 0;
+    final input = file.openSync();
+    var lines = 0;
+    var sawBytes = false;
+    var lastByte = -1;
+    try {
+      while (true) {
+        final chunk = input.readSync(64 * 1024);
+        if (chunk.isEmpty) break;
+        sawBytes = true;
+        lastByte = chunk.last;
+        for (final byte in chunk) {
+          if (byte == 0x0a) lines++;
+        }
+      }
+    } finally {
+      input.closeSync();
+    }
+    // Count a final unterminated row so a repaired log cannot reuse its
+    // sequence number.
+    if (sawBytes && lastByte != 0x0a) lines++;
+    return lines;
   }
 
   /// Restricts [dir] to owner-only (0700) on non-Windows. Session dirs hold
@@ -392,11 +463,28 @@ class SessionStore {
   /// content is retained forever. A size/age cap or rollup should be added
   /// before this becomes a disk-usage problem on long-lived sessions.
   void logEvent(String type, Map<String, dynamic> data) {
+    final sequence = _nextSequence++;
+    final modelRef = data['model_ref'] ?? data['model'];
     final record = {
+      'schema_version': SessionMeta.currentTranscriptSchemaVersion,
+      'event_id': '${meta.id.value}:$sequence',
+      'session_id': meta.id.value,
       'timestamp': DateTime.now().toUtc().toIso8601String(),
       'type': type,
+      'sequence': sequence,
+      if ((type == 'assistant_message' ||
+              type == 'assistant_thinking' ||
+              type == 'usage') &&
+          modelRef == null)
+        'model_ref': meta.modelRef,
+      if (type == 'subagent_spawned' && modelRef != null) 'model_ref': modelRef,
+      if (type == 'tool_result' && !data.containsKey('success'))
+        'success': true,
+      if (type == 'tool_result' && !data.containsKey('status'))
+        'status': 'completed',
       ...data,
     };
+    if (type == 'subagent_spawned') record.remove('model');
     _conversationFile.writeAsStringSync(
       '${jsonEncode(record)}\n',
       mode: FileMode.append,
@@ -415,8 +503,9 @@ class SessionStore {
 
   /// Closes this session, recording the end time and releasing the advisory
   /// lock (M11) so another process may resume it.
-  Future<void> close() async {
+  Future<void> close({SessionTerminationStatus? status}) async {
     meta.endTime = DateTime.now().toUtc();
+    meta.terminationStatus = status ?? SessionTerminationStatus.completed;
     _writeMeta();
     _lock?.release();
   }

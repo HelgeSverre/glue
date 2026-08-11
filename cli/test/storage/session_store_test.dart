@@ -47,6 +47,9 @@ void main() {
             as Map<String, dynamic>;
     expect(metaJson['schema_version'], SessionMeta.currentSchemaVersion);
     expect(metaJson['model_ref'], 'anthropic/claude-sonnet-4.6');
+    expect(metaJson['glue_version'], AppConstants.version);
+    expect(metaJson['transcript_schema_version'], 1);
+    expect(metaJson['termination_status'], 'running');
   });
 
   test('legacy session model_ref survives a save/load round-trip (H4)', () {
@@ -86,10 +89,16 @@ void main() {
     expect(first['type'], 'user_message');
     expect(first['text'], 'hello');
     expect(first['timestamp'], isNotNull);
+    expect(first['schema_version'], 1);
+    expect(first['event_id'], 'session-001:1');
+    expect(first['session_id'], 'session-001');
+    expect(first['sequence'], 1);
 
     final second = jsonDecode(lines[1]) as Map<String, dynamic>;
     expect(second['type'], 'assistant_message');
     expect(second['text'], 'hi there');
+    expect(second['event_id'], 'session-001:2');
+    expect(second['sequence'], 2);
   });
 
   test('loadConversation skips corrupt/torn tail lines (M12)', () {
@@ -150,6 +159,24 @@ void main() {
           as Map<String, dynamic>,
     );
     expect(savedMeta.endTime, isNotNull);
+    expect(savedMeta.terminationStatus, SessionTerminationStatus.completed);
+  });
+
+  test('new events continue sequence after legacy rows', () {
+    Directory(sessionDir).createSync(recursive: true);
+    File(p.join(sessionDir, 'conversation.jsonl')).writeAsStringSync(
+      '${jsonEncode({'timestamp': '2026-01-01T00:00:00Z', 'type': 'user_message', 'text': 'legacy'})}\n',
+    );
+    final store = SessionStore(sessionDir: sessionDir, meta: meta);
+    store.logEvent('user_message', {'text': 'new'});
+
+    final rows = File(p.join(sessionDir, 'conversation.jsonl'))
+        .readAsLinesSync()
+        .map((line) => jsonDecode(line) as Map<String, dynamic>)
+        .toList();
+    expect(rows.first.containsKey('schema_version'), isFalse);
+    expect(rows.last['sequence'], 2);
+    expect(rows.last['event_id'], 'session-001:2');
   });
 
   test('atomic writes do not leave temporary files behind', () async {

@@ -176,6 +176,8 @@ class TitleContext {
 }
 
 class SessionManager {
+  String? _currentTurnId;
+  String? _currentRequestId;
   final Environment environment;
   final Observability? _obs;
   SessionStore? _store;
@@ -262,6 +264,9 @@ class SessionManager {
     if (oldStore != null) {
       oldStore.close();
     }
+    meta
+      ..endTime = null
+      ..terminationStatus = SessionTerminationStatus.running;
     _store = SessionStore(
       sessionDir: environment.sessionDir(meta.id),
       meta: meta,
@@ -289,7 +294,30 @@ class SessionManager {
   }
 
   void logEvent(String type, Map<String, dynamic> data) {
-    _store?.logEvent(type, data);
+    final store = _store;
+    if (store == null) return;
+    if (type == 'user_message') {
+      _currentTurnId =
+          '${store.meta.id.value}:turn:${DateTime.now().microsecondsSinceEpoch}';
+      _currentRequestId = null;
+    }
+    if (_requestScopedEventTypes.contains(type)) {
+      _currentRequestId ??=
+          '${store.meta.id.value}:request:${DateTime.now().microsecondsSinceEpoch}';
+    }
+    store.logEvent(type, {
+      'turn_id': ?_currentTurnId,
+      'request_id': ?_currentRequestId,
+      if ((type == 'assistant_message' || type == 'assistant_thinking') &&
+          !data.containsKey('model_ref'))
+        'model_ref': store.meta.modelRef,
+      if (type == 'tool_result' && !data.containsKey('success'))
+        'success': true,
+      if (type == 'tool_result' && !data.containsKey('status'))
+        'status': 'completed',
+      ...data,
+    });
+    if (type == 'tool_result') _currentRequestId = null;
 
     // Track message counts
     if (type == 'user_message' || type == 'assistant_message') {
@@ -307,7 +335,12 @@ class SessionManager {
   /// surface or replay can attribute costs to where they came from.
   ///
   /// No-op when no session store is active.
-  void recordUsage(UsageStats stats, {required String role}) {
+  void recordUsage(
+    UsageStats stats, {
+    required String role,
+    String? modelRef,
+    String? subagentId,
+  }) {
     final store = _store;
     if (store == null || stats.turnCount == 0) return;
 
@@ -328,10 +361,25 @@ class SessionManager {
     }
     store.updateMeta();
 
-    store.logEvent('usage', {'role': role, ...stats.toJson()});
+    store.logEvent('usage', {
+      'turn_id': ?_currentTurnId,
+      'request_id': (_currentRequestId ??=
+          '${store.meta.id.value}:request:${DateTime.now().microsecondsSinceEpoch}'),
+      'role': role,
+      'model_ref': modelRef ?? store.meta.modelRef,
+      'subagent_id': ?subagentId,
+      ...stats.toJson(),
+    });
   }
 
-  Future<void> closeCurrent() async {
+  static const _requestScopedEventTypes = {
+    'assistant_message',
+    'assistant_thinking',
+    'tool_call',
+    'tool_result',
+  };
+
+  Future<void> closeCurrent({SessionTerminationStatus? status}) async {
     final store = _store;
     if (store == null) return;
     final span = _startSpan(
@@ -339,7 +387,7 @@ class SessionManager {
       attributes: {'session.id': store.meta.id},
     );
     try {
-      await store.close();
+      await store.close(status: status);
       _endSpan(span, extra: {'session.closed': true});
     } catch (e, st) {
       _endSpanError(span, e, st);

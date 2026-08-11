@@ -75,6 +75,10 @@ class AgentManager {
   /// is also persisted.
   void Function(UsageStats)? onSubagentUsage;
 
+  /// Rich usage callback retaining the model and subagent identity.
+  void Function(UsageStats, String modelRef, String subagentId)?
+  onSubagentUsageDetailed;
+
   final _updateController = StreamController<SubagentUpdate>.broadcast();
   final _idRandom = Random();
 
@@ -175,7 +179,7 @@ class AgentManager {
       'depth': currentDepth,
       'index': ?index,
       'total': ?total,
-      'model': ref.toString(),
+      'model_ref': ref.toString(),
     });
 
     final core = AgentCore(
@@ -255,20 +259,25 @@ class AgentManager {
       },
     );
 
+    final stopwatch = Stopwatch()..start();
     try {
       final result = await runner.runToCompletion(task);
       flushPendingMessages();
-      _finaliseSubagentUsage(subagentId, runner.stats);
+      _finaliseSubagentUsage(subagentId, runner.stats, ref);
       onPersistEvent?.call('subagent_completed', {
         'subagent_id': subagentId.value,
+        'status': 'completed',
+        'duration_ms': stopwatch.elapsedMilliseconds,
       });
       if (span != null) obs!.endSpan(span);
       return result;
     } catch (e) {
       flushPendingMessages();
-      _finaliseSubagentUsage(subagentId, runner.stats);
+      _finaliseSubagentUsage(subagentId, runner.stats, ref);
       onPersistEvent?.call('subagent_completed', {
         'subagent_id': subagentId.value,
+        'status': 'failed',
+        'duration_ms': stopwatch.elapsedMilliseconds,
         'error': e.toString(),
       });
       if (span != null) obs!.endSpan(span, extra: {'error': e.toString()});
@@ -276,14 +285,25 @@ class AgentManager {
     }
   }
 
-  void _finaliseSubagentUsage(SubagentId subagentId, UsageStats subagent) {
+  void _finaliseSubagentUsage(
+    SubagentId subagentId,
+    UsageStats subagent,
+    ModelRef modelRef,
+  ) {
     if (subagent.turnCount == 0) return;
     subagentStats.merge(subagent);
     onPersistEvent?.call('subagent_usage', {
       'subagent_id': subagentId.value,
+      'model_ref': modelRef.toString(),
       ...subagent.toJson(),
     });
-    onSubagentUsage?.call(subagent.snapshot());
+    final snapshot = subagent.snapshot();
+    onSubagentUsage?.call(snapshot);
+    onSubagentUsageDetailed?.call(
+      snapshot,
+      modelRef.toString(),
+      subagentId.value,
+    );
   }
 
   /// Spawns [tasks] in parallel, each as independent subagents.

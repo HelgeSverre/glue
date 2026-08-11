@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://getglue.dev/schemas/session/conversation-event-v1.schema.json",
+  "title": "Glue conversation event v1",
+  "type": "object",
+  "required": ["schema_version", "event_id", "session_id", "timestamp", "type", "sequence"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "event_id": { "$ref": "#/$defs/nonEmptyString" },
+    "session_id": { "$ref": "#/$defs/nonEmptyString" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "type": {
+      "enum": [
+        "user_message", "assistant_message", "assistant_thinking",
+        "tool_call", "tool_result", "usage", "title_generated",
+        "title_reevaluated", "agent_notice", "subagent_spawned",
+        "subagent_event", "subagent_usage", "subagent_completed"
+      ]
+    },
+    "sequence": { "type": "integer", "minimum": 1 },
+    "turn_id": { "$ref": "#/$defs/nonEmptyString" },
+    "request_id": { "$ref": "#/$defs/nonEmptyString" },
+    "id": { "$ref": "#/$defs/nonEmptyString" },
+    "text": { "type": "string" },
+    "model_ref": { "$ref": "#/$defs/modelRef" },
+    "stop_reason": { "type": "string" },
+    "name": { "$ref": "#/$defs/nonEmptyString" },
+    "arguments": { "type": "object" },
+    "file_path": { "type": "string" },
+    "call_id": { "$ref": "#/$defs/nonEmptyString" },
+    "content": { "type": "string" },
+    "summary": { "type": "string" },
+    "success": { "type": "boolean" },
+    "status": { "enum": ["completed", "failed", "cancelled", "denied"] },
+    "duration_ms": { "$ref": "#/$defs/nonNegativeInteger" },
+    "exit_code": { "type": "integer" },
+    "metadata": { "type": "object" },
+    "role": { "$ref": "#/$defs/nonEmptyString" },
+    "input_tokens": { "$ref": "#/$defs/nonNegativeInteger" },
+    "output_tokens": { "$ref": "#/$defs/nonNegativeInteger" },
+    "cache_read_tokens": { "$ref": "#/$defs/nonNegativeInteger" },
+    "cache_creation_tokens": { "$ref": "#/$defs/nonNegativeInteger" },
+    "reasoning_tokens": { "$ref": "#/$defs/nonNegativeInteger" },
+    "turn_count": { "type": "integer", "minimum": 1 },
+    "title": { "type": "string" },
+    "kind": { "type": "string" },
+    "message": { "type": "string" },
+    "subagent_id": { "$ref": "#/$defs/nonEmptyString" },
+    "parent_subagent_id": { "type": "string" },
+    "task": { "type": "string" },
+    "depth": { "$ref": "#/$defs/nonNegativeInteger" },
+    "index": { "$ref": "#/$defs/nonNegativeInteger" },
+    "total": { "type": "integer", "minimum": 1 },
+    "inner": { "$ref": "#/$defs/subagentInnerEvent" },
+    "error": { "type": "string" }
+  },
+  "allOf": [
+    { "if": { "properties": { "type": { "const": "user_message" } } }, "then": { "required": ["text"] } },
+    { "if": { "properties": { "type": { "enum": ["assistant_message", "assistant_thinking"] } } }, "then": { "required": ["text", "model_ref"] } },
+    { "if": { "properties": { "type": { "const": "tool_call" } } }, "then": { "required": ["id", "name", "arguments"] } },
+    { "if": { "properties": { "type": { "const": "tool_result" } } }, "then": { "required": ["call_id", "content", "success", "status"] } },
+    { "if": { "properties": { "type": { "const": "usage" } } }, "then": { "required": ["role", "model_ref", "input_tokens", "output_tokens", "turn_count"] } },
+    { "if": { "properties": { "type": { "enum": ["title_generated", "title_reevaluated"] } } }, "then": { "required": ["title"] } },
+    { "if": { "properties": { "type": { "const": "agent_notice" } } }, "then": { "required": ["kind", "message"] } },
+    { "if": { "properties": { "type": { "const": "subagent_spawned" } } }, "then": { "required": ["subagent_id", "task", "depth", "model_ref"] } },
+    { "if": { "properties": { "type": { "const": "subagent_event" } } }, "then": { "required": ["subagent_id", "inner"] } },
+    { "if": { "properties": { "type": { "const": "subagent_usage" } } }, "then": { "required": ["subagent_id", "model_ref", "input_tokens", "output_tokens", "turn_count"] } },
+    { "if": { "properties": { "type": { "const": "subagent_completed" } } }, "then": { "required": ["subagent_id", "status", "duration_ms"] } }
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "nonEmptyString": { "type": "string", "minLength": 1 },
+    "modelRef": { "type": "string", "pattern": "^[^/]+/.+$" },
+    "nonNegativeInteger": { "type": "integer", "minimum": 0 },
+    "subagentInnerEvent": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "enum": [
+            "assistant_message", "assistant_thinking", "tool_call_pending",
+            "tool_call", "tool_result", "agent_done", "agent_error",
+            "usage", "agent_notice"
+          ]
+        },
+        "text": { "type": "string" },
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "arguments": { "type": "object" },
+        "call_id": { "type": "string" },
+        "success": { "type": "boolean" },
+        "content": { "type": "string" },
+        "summary": { "type": "string" },
+        "error": { "type": "string" },
+        "input_tokens": { "$ref": "#/$defs/nonNegativeInteger" },
+        "output_tokens": { "$ref": "#/$defs/nonNegativeInteger" },
+        "cache_read_tokens": { "$ref": "#/$defs/nonNegativeInteger" },
+        "cache_creation_tokens": { "$ref": "#/$defs/nonNegativeInteger" },
+        "kind": { "type": "string" },
+        "message": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}
