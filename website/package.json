@@ -11,14 +11,14 @@
     "badges": "node scripts/badges/generate.mjs"
   },
   "devDependencies": {
-    "@fontsource/inter": "^5.2.8",
-    "@fontsource/jetbrains-mono": "^5.2.8",
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
     "@resvg/resvg-js": "^2.6.2",
     "@types/node": "^22.20.1",
     "gray-matter": "^4.0.3",
     "typescript": "^5.9.3",
-    "vitepress": "^2.0.0-alpha.18",
-    "vue": "^3.5.39"
+    "vitepress": "^2.0.0-alpha.19",
+    "vue": "^3.5.41"
   },
   "overrides": {
     "esbuild": "^0.25.12"
