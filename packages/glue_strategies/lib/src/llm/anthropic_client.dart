@@ -28,6 +28,7 @@ class AnthropicClient implements LlmClient {
   final String systemPrompt;
   final Uri _baseUri;
   final bool promptCacheEnabled;
+  final ReasoningConfig reasoning;
 
   static const _apiVersion = '2023-06-01';
   static const _defaultBaseUrl = 'https://api.anthropic.com';
@@ -39,6 +40,7 @@ class AnthropicClient implements LlmClient {
     String baseUrl = _defaultBaseUrl,
     http.Client Function()? requestClientFactory,
     this.promptCacheEnabled = true,
+    this.reasoning = const ReasoningConfig(),
   }) : _requestClientFactory = requestClientFactory ?? http.Client.new,
        _baseUri = Uri.parse(baseUrl);
 
@@ -68,6 +70,15 @@ class AnthropicClient implements LlmClient {
       body['cache_control'] = {'type': 'ephemeral'};
     }
 
+    if (reasoning.effort != ReasoningEffort.auto) {
+      if (reasoning.effort == ReasoningEffort.off) {
+        body['thinking'] = {'type': 'disabled'};
+      } else {
+        body['output_config'] = {'effort': reasoning.effort.name};
+        body['thinking'] = {'type': 'adaptive'};
+      }
+    }
+
     return retryStream(
       () => sendAndStream(
         requestClientFactory: _requestClientFactory,
@@ -83,6 +94,7 @@ class AnthropicClient implements LlmClient {
           decodeSse(
             bytes,
           ).map((e) => jsonDecode(e.data) as Map<String, dynamic>),
+          showThoughts: reasoning.showThoughts,
         ),
       ),
     );
@@ -92,14 +104,17 @@ class AnthropicClient implements LlmClient {
   ///
   /// Exposed as static for testability (can feed synthetic events).
   static Stream<LlmChunk> parseStreamEvents(
-    Stream<Map<String, dynamic>> events,
-  ) async* {
+    Stream<Map<String, dynamic>> events, {
+    bool showThoughts = true,
+  }) async* {
     // Buffer for accumulating partial tool use input JSON.
     final toolBuffers = <int, ToolArgsBuffer<ToolCallId>>{};
+    final thinkingBlocks = <int, Map<String, dynamic>>{};
     int inputTokens = 0;
     int outputTokens = 0;
     int? cacheReadTokens;
     int? cacheCreationTokens;
+    int? reasoningTokens;
 
     await for (final event in events) {
       final type = event['type'] as String?;
@@ -128,6 +143,9 @@ class AnthropicClient implements LlmClient {
             final name = block['name'] as String;
             toolBuffers[index] = ToolArgsBuffer(id: id, name: name);
             yield ToolCallStart(id: id, name: name);
+          } else if (block['type'] == 'thinking' ||
+              block['type'] == 'redacted_thinking') {
+            thinkingBlocks[index] = Map<String, dynamic>.from(block);
           }
 
         case 'content_block_delta':
@@ -143,8 +161,14 @@ class AnthropicClient implements LlmClient {
             // human-readable content and are intentionally ignored here.
             final thinking = delta['thinking'];
             if (thinking is String && thinking.isNotEmpty) {
-              yield ThinkingDelta(thinking);
+              if (showThoughts) yield ThinkingDelta(thinking);
+              final block = thinkingBlocks[index];
+              if (block != null) {
+                block['thinking'] = '${block['thinking'] ?? ''}$thinking';
+              }
             }
+          } else if (deltaType == 'signature_delta') {
+            thinkingBlocks[index]?['signature'] = delta['signature'];
           } else if (deltaType == 'input_json_delta') {
             toolBuffers[index]?.write(delta['partial_json'] as String);
           }
@@ -161,11 +185,16 @@ class AnthropicClient implements LlmClient {
               ),
             );
           }
+          final thinking = thinkingBlocks.remove(index);
+          if (thinking != null) yield ReasoningArtifactChunk(thinking);
 
         case 'message_delta':
           final usage = event['usage'] as Map?;
           if (usage != null) {
             outputTokens = (usage['output_tokens'] as int?) ?? 0;
+            reasoningTokens =
+                (usage['output_tokens_details'] as Map?)?['thinking_tokens']
+                    as int?;
           }
 
         case 'message_stop':
@@ -174,6 +203,7 @@ class AnthropicClient implements LlmClient {
             outputTokens: outputTokens,
             cacheReadTokens: cacheReadTokens,
             cacheCreationTokens: cacheCreationTokens,
+            reasoningTokens: reasoningTokens,
           );
 
         case 'error':

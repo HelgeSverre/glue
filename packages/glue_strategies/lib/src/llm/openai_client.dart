@@ -27,6 +27,7 @@ class OpenAiClient implements LlmClient {
   final CompatibilityProfile profile;
   final Map<String, String> extraHeaders;
   final Uri _baseUri;
+  final ReasoningConfig reasoning;
 
   OpenAiClient({
     required this.apiKey,
@@ -35,6 +36,7 @@ class OpenAiClient implements LlmClient {
     required this.baseUrl,
     this.profile = CompatibilityProfile.openai,
     this.extraHeaders = const {},
+    this.reasoning = const ReasoningConfig(),
     http.Client Function()? requestClientFactory,
   }) : _requestClientFactory = requestClientFactory ?? http.Client.new,
        _baseUri = Uri.parse(baseUrl);
@@ -53,6 +55,23 @@ class OpenAiClient implements LlmClient {
 
     if (tools != null && tools.isNotEmpty) {
       body['tools'] = const OpenAiToolEncoder().encodeAll(tools);
+    }
+
+    if (reasoning.effort != ReasoningEffort.auto) {
+      final wireEffort = reasoning.effort == ReasoningEffort.off
+          ? 'none'
+          : reasoning.effort.name;
+      if (profile == CompatibilityProfile.openrouter) {
+        body['reasoning'] = {
+          'effort': wireEffort,
+          'exclude': !reasoning.showThoughts,
+        };
+      } else {
+        body['reasoning_effort'] = wireEffort;
+        if (profile == CompatibilityProfile.groq) {
+          body['reasoning_format'] = 'parsed';
+        }
+      }
     }
 
     profile.mutateBody(body);
@@ -76,6 +95,7 @@ class OpenAiClient implements LlmClient {
           decodeSse(
             bytes,
           ).map((e) => jsonDecode(e.data) as Map<String, dynamic>),
+          showThoughts: reasoning.showThoughts,
         ),
       ),
     );
@@ -85,8 +105,9 @@ class OpenAiClient implements LlmClient {
   ///
   /// Exposed as static for testability.
   static Stream<LlmChunk> parseStreamEvents(
-    Stream<Map<String, dynamic>> events,
-  ) async* {
+    Stream<Map<String, dynamic>> events, {
+    bool showThoughts = true,
+  }) async* {
     // Accumulate streamed tool call arguments.
     final toolBuilders = <int, ToolArgsBuffer<ToolCallId>>{};
 
@@ -116,13 +137,46 @@ class OpenAiClient implements LlmClient {
       // reasoning and content, so this branch precedes the content check.
       final reasoning = delta['reasoning'] ?? delta['reasoning_content'];
       if (reasoning is String && reasoning.isNotEmpty) {
-        yield ThinkingDelta(reasoning);
+        if (showThoughts) yield ThinkingDelta(reasoning);
+      }
+
+      final reasoningDetails = delta['reasoning_details'];
+      if (reasoningDetails is List) {
+        for (final detail
+            in reasoningDetails.whereType<Map<Object?, Object?>>()) {
+          yield ReasoningArtifactChunk({
+            'type': 'openrouter_reasoning_detail',
+            'detail': Map<String, dynamic>.from(detail),
+          });
+        }
       }
 
       // Text content.
-      final content = delta['content'] as String?;
-      if (content != null && content.isNotEmpty) {
+      final content = delta['content'];
+      if (content is String && content.isNotEmpty) {
         yield TextDelta(content);
+      } else if (content is List) {
+        for (final chunkRaw in content.whereType<Map<Object?, Object?>>()) {
+          final chunk = Map<String, dynamic>.from(chunkRaw);
+          if (chunk['type'] == 'thinking') {
+            yield ReasoningArtifactChunk({
+              'type': 'mistral_thinking',
+              'chunk': chunk,
+            });
+            final thinking = chunk['thinking'];
+            if (thinking is List) {
+              for (final part in thinking.whereType<Map<Object?, Object?>>()) {
+                final text = part['text'];
+                if (text is String && text.isNotEmpty) {
+                  if (showThoughts) yield ThinkingDelta(text);
+                }
+              }
+            }
+          } else {
+            final text = chunk['text'];
+            if (text is String && text.isNotEmpty) yield TextDelta(text);
+          }
+        }
       }
 
       // Tool calls (streamed incrementally).
@@ -220,5 +274,8 @@ UsageInfo _usageInfoFromOpenAi(Map<String, dynamic> usage) {
     outputTokens: (usage['completion_tokens'] as int?) ?? 0,
     cacheReadTokens: cachedTokens ?? (usage['cache_read_input_tokens'] as int?),
     cacheCreationTokens: cacheWriteOpenRouter ?? cacheCreateAnthropic,
+    reasoningTokens:
+        (usage['completion_tokens_details'] as Map?)?['reasoning_tokens']
+            as int?,
   );
 }

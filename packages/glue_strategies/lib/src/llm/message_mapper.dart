@@ -81,6 +81,7 @@ class AnthropicMessageMapper extends MessageMapper {
         case Role.assistant:
           lastToolUseIds = {for (final tc in msg.toolCalls) tc.id};
           final content = <Map<String, dynamic>>[];
+          content.addAll(msg.reasoningArtifacts);
           if (msg.text != null && msg.text!.isNotEmpty) {
             content.add({'type': 'text', 'text': msg.text});
           }
@@ -226,6 +227,12 @@ class GeminiMessageMapper extends MessageMapper {
             }
             parts.add(part);
           }
+          parts.addAll(
+            msg.reasoningArtifacts
+                .where((artifact) => artifact['type'] == 'gemini_thought_part')
+                .map((artifact) => artifact['part'])
+                .whereType<Map<String, dynamic>>(),
+          );
           appendOrCoalesce('model', parts);
         case Role.toolResult:
           // Gemini matches tool results to calls by *name*, not id, so drop
@@ -343,6 +350,12 @@ class OllamaMessageMapper extends MessageMapper {
             'role': 'assistant',
             'content': msg.text ?? '',
           };
+          final ollamaThinking = msg.reasoningArtifacts.where(
+            (artifact) => artifact['type'] == 'ollama_thinking',
+          );
+          if (ollamaThinking.isNotEmpty) {
+            entry['thinking'] = ollamaThinking.first['thinking'];
+          }
           if (msg.toolCalls.isNotEmpty) {
             entry['tool_calls'] = [
               for (final tc in msg.toolCalls)
@@ -429,10 +442,31 @@ class OpenAiMessageMapper extends MessageMapper {
             mapped.add({'role': 'user', 'content': msg.text ?? ''});
           }
         case Role.assistant:
+          final mistralThinking = msg.reasoningArtifacts
+              .where((artifact) => artifact['type'] == 'mistral_thinking')
+              .map((artifact) => artifact['chunk'])
+              .whereType<Map<String, dynamic>>()
+              .toList();
           final entry = <String, dynamic>{
             'role': 'assistant',
-            'content': msg.text ?? '',
+            'content': mistralThinking.isEmpty
+                ? (msg.text ?? '')
+                : <Map<String, dynamic>>[
+                    ...mistralThinking,
+                    if (msg.text != null && msg.text!.isNotEmpty)
+                      {'type': 'text', 'text': msg.text},
+                  ],
           };
+          final reasoningDetails = msg.reasoningArtifacts
+              .where(
+                (artifact) => artifact['type'] == 'openrouter_reasoning_detail',
+              )
+              .map((artifact) => artifact['detail'])
+              .whereType<Map<String, dynamic>>()
+              .toList();
+          if (reasoningDetails.isNotEmpty) {
+            entry['reasoning_details'] = reasoningDetails;
+          }
           if (msg.toolCalls.isNotEmpty) {
             entry['tool_calls'] = [
               for (final tc in msg.toolCalls)

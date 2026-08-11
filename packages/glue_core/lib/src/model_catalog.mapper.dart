@@ -8,6 +8,76 @@
 
 part of 'model_catalog.dart';
 
+class ReasoningEffortMapper extends EnumMapper<ReasoningEffort> {
+  ReasoningEffortMapper._();
+
+  static ReasoningEffortMapper? _instance;
+  static ReasoningEffortMapper ensureInitialized() {
+    if (_instance == null) {
+      MapperContainer.globals.use(_instance = ReasoningEffortMapper._());
+    }
+    return _instance!;
+  }
+
+  static ReasoningEffort fromValue(dynamic value) {
+    ensureInitialized();
+    return MapperContainer.globals.fromValue(value);
+  }
+
+  @override
+  ReasoningEffort decode(dynamic value) {
+    switch (value) {
+      case r'auto':
+        return ReasoningEffort.auto;
+      case r'off':
+        return ReasoningEffort.off;
+      case r'minimal':
+        return ReasoningEffort.minimal;
+      case r'low':
+        return ReasoningEffort.low;
+      case r'medium':
+        return ReasoningEffort.medium;
+      case r'high':
+        return ReasoningEffort.high;
+      case r'xhigh':
+        return ReasoningEffort.xhigh;
+      case r'max':
+        return ReasoningEffort.max;
+      default:
+        throw MapperException.unknownEnumValue(value);
+    }
+  }
+
+  @override
+  dynamic encode(ReasoningEffort self) {
+    switch (self) {
+      case ReasoningEffort.auto:
+        return r'auto';
+      case ReasoningEffort.off:
+        return r'off';
+      case ReasoningEffort.minimal:
+        return r'minimal';
+      case ReasoningEffort.low:
+        return r'low';
+      case ReasoningEffort.medium:
+        return r'medium';
+      case ReasoningEffort.high:
+        return r'high';
+      case ReasoningEffort.xhigh:
+        return r'xhigh';
+      case ReasoningEffort.max:
+        return r'max';
+    }
+  }
+}
+
+extension ReasoningEffortMapperExtension on ReasoningEffort {
+  String toValue() {
+    ReasoningEffortMapper.ensureInitialized();
+    return MapperContainer.globals.toValue<ReasoningEffort>(this) as String;
+  }
+}
+
 class AuthKindMapper extends EnumMapper<AuthKind> {
   AuthKindMapper._();
 
@@ -56,6 +126,184 @@ extension AuthKindMapperExtension on AuthKind {
     AuthKindMapper.ensureInitialized();
     return MapperContainer.globals.toValue<AuthKind>(this) as String;
   }
+}
+
+class ModelReasoningDefMapper extends ClassMapperBase<ModelReasoningDef> {
+  ModelReasoningDefMapper._();
+
+  static ModelReasoningDefMapper? _instance;
+  static ModelReasoningDefMapper ensureInitialized() {
+    if (_instance == null) {
+      MapperContainer.globals.use(_instance = ModelReasoningDefMapper._());
+      ReasoningEffortMapper.ensureInitialized();
+    }
+    return _instance!;
+  }
+
+  @override
+  final String id = 'ModelReasoningDef';
+
+  static Set<ReasoningEffort> _$efforts(ModelReasoningDef v) => v.efforts;
+  static const Field<ModelReasoningDef, Set<ReasoningEffort>> _f$efforts =
+      Field('efforts', _$efforts, opt: true, def: const {ReasoningEffort.auto});
+  static ReasoningEffort _$defaultEffort(ModelReasoningDef v) =>
+      v.defaultEffort;
+  static const Field<ModelReasoningDef, ReasoningEffort> _f$defaultEffort =
+      Field(
+        'defaultEffort',
+        _$defaultEffort,
+        key: r'default_effort',
+        opt: true,
+        def: ReasoningEffort.auto,
+      );
+  static bool _$showThoughts(ModelReasoningDef v) => v.showThoughts;
+  static const Field<ModelReasoningDef, bool> _f$showThoughts = Field(
+    'showThoughts',
+    _$showThoughts,
+    key: r'show_thoughts',
+    opt: true,
+    def: false,
+  );
+  static String? _$transport(ModelReasoningDef v) => v.transport;
+  static const Field<ModelReasoningDef, String> _f$transport = Field(
+    'transport',
+    _$transport,
+    opt: true,
+  );
+
+  @override
+  final MappableFields<ModelReasoningDef> fields = const {
+    #efforts: _f$efforts,
+    #defaultEffort: _f$defaultEffort,
+    #showThoughts: _f$showThoughts,
+    #transport: _f$transport,
+  };
+
+  static ModelReasoningDef _instantiate(DecodingData data) {
+    return ModelReasoningDef(
+      efforts: data.dec(_f$efforts),
+      defaultEffort: data.dec(_f$defaultEffort),
+      showThoughts: data.dec(_f$showThoughts),
+      transport: data.dec(_f$transport),
+    );
+  }
+
+  @override
+  final Function instantiate = _instantiate;
+
+  static ModelReasoningDef fromMap(Map<String, dynamic> map) {
+    return ensureInitialized().decodeMap<ModelReasoningDef>(map);
+  }
+
+  static ModelReasoningDef fromJson(String json) {
+    return ensureInitialized().decodeJson<ModelReasoningDef>(json);
+  }
+}
+
+mixin ModelReasoningDefMappable {
+  String toJson() {
+    return ModelReasoningDefMapper.ensureInitialized()
+        .encodeJson<ModelReasoningDef>(this as ModelReasoningDef);
+  }
+
+  Map<String, dynamic> toMap() {
+    return ModelReasoningDefMapper.ensureInitialized()
+        .encodeMap<ModelReasoningDef>(this as ModelReasoningDef);
+  }
+
+  ModelReasoningDefCopyWith<
+    ModelReasoningDef,
+    ModelReasoningDef,
+    ModelReasoningDef
+  >
+  get copyWith =>
+      _ModelReasoningDefCopyWithImpl<ModelReasoningDef, ModelReasoningDef>(
+        this as ModelReasoningDef,
+        $identity,
+        $identity,
+      );
+  @override
+  String toString() {
+    return ModelReasoningDefMapper.ensureInitialized().stringifyValue(
+      this as ModelReasoningDef,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return ModelReasoningDefMapper.ensureInitialized().equalsValue(
+      this as ModelReasoningDef,
+      other,
+    );
+  }
+
+  @override
+  int get hashCode {
+    return ModelReasoningDefMapper.ensureInitialized().hashValue(
+      this as ModelReasoningDef,
+    );
+  }
+}
+
+extension ModelReasoningDefValueCopy<$R, $Out>
+    on ObjectCopyWith<$R, ModelReasoningDef, $Out> {
+  ModelReasoningDefCopyWith<$R, ModelReasoningDef, $Out>
+  get $asModelReasoningDef => $base.as(
+    (v, t, t2) => _ModelReasoningDefCopyWithImpl<$R, $Out>(v, t, t2),
+  );
+}
+
+abstract class ModelReasoningDefCopyWith<
+  $R,
+  $In extends ModelReasoningDef,
+  $Out
+>
+    implements ClassCopyWith<$R, $In, $Out> {
+  $R call({
+    Set<ReasoningEffort>? efforts,
+    ReasoningEffort? defaultEffort,
+    bool? showThoughts,
+    String? transport,
+  });
+  ModelReasoningDefCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(
+    Then<$Out2, $R2> t,
+  );
+}
+
+class _ModelReasoningDefCopyWithImpl<$R, $Out>
+    extends ClassCopyWithBase<$R, ModelReasoningDef, $Out>
+    implements ModelReasoningDefCopyWith<$R, ModelReasoningDef, $Out> {
+  _ModelReasoningDefCopyWithImpl(super.value, super.then, super.then2);
+
+  @override
+  late final ClassMapperBase<ModelReasoningDef> $mapper =
+      ModelReasoningDefMapper.ensureInitialized();
+  @override
+  $R call({
+    Set<ReasoningEffort>? efforts,
+    ReasoningEffort? defaultEffort,
+    bool? showThoughts,
+    Object? transport = $none,
+  }) => $apply(
+    FieldCopyWithData({
+      if (efforts != null) #efforts: efforts,
+      if (defaultEffort != null) #defaultEffort: defaultEffort,
+      if (showThoughts != null) #showThoughts: showThoughts,
+      if (transport != $none) #transport: transport,
+    }),
+  );
+  @override
+  ModelReasoningDef $make(CopyWithData data) => ModelReasoningDef(
+    efforts: data.get(#efforts, or: $value.efforts),
+    defaultEffort: data.get(#defaultEffort, or: $value.defaultEffort),
+    showThoughts: data.get(#showThoughts, or: $value.showThoughts),
+    transport: data.get(#transport, or: $value.transport),
+  );
+
+  @override
+  ModelReasoningDefCopyWith<$R2, ModelReasoningDef, $Out2> $chain<$R2, $Out2>(
+    Then<$Out2, $R2> t,
+  ) => _ModelReasoningDefCopyWithImpl<$R2, $Out2>($value, $cast, t);
 }
 
 class ModelCatalogMapper extends ClassMapperBase<ModelCatalog> {
@@ -803,6 +1051,7 @@ class ModelDefMapper extends ClassMapperBase<ModelDef> {
   static ModelDefMapper ensureInitialized() {
     if (_instance == null) {
       MapperContainer.globals.use(_instance = ModelDefMapper._());
+      ModelReasoningDefMapper.ensureInitialized();
     }
     return _instance!;
   }
@@ -882,6 +1131,12 @@ class ModelDefMapper extends ClassMapperBase<ModelDef> {
     _$notes,
     opt: true,
   );
+  static ModelReasoningDef? _$reasoning(ModelDef v) => v.reasoning;
+  static const Field<ModelDef, ModelReasoningDef> _f$reasoning = Field(
+    'reasoning',
+    _$reasoning,
+    opt: true,
+  );
 
   @override
   final MappableFields<ModelDef> fields = const {
@@ -897,6 +1152,7 @@ class ModelDefMapper extends ClassMapperBase<ModelDef> {
     #speed: _f$speed,
     #cost: _f$cost,
     #notes: _f$notes,
+    #reasoning: _f$reasoning,
   };
 
   static ModelDef _instantiate(DecodingData data) {
@@ -913,6 +1169,7 @@ class ModelDefMapper extends ClassMapperBase<ModelDef> {
       speed: data.dec(_f$speed),
       cost: data.dec(_f$cost),
       notes: data.dec(_f$notes),
+      reasoning: data.dec(_f$reasoning),
     );
   }
 
@@ -973,6 +1230,8 @@ extension ModelDefValueCopy<$R, $Out> on ObjectCopyWith<$R, ModelDef, $Out> {
 
 abstract class ModelDefCopyWith<$R, $In extends ModelDef, $Out>
     implements ClassCopyWith<$R, $In, $Out> {
+  ModelReasoningDefCopyWith<$R, ModelReasoningDef, ModelReasoningDef>?
+  get reasoning;
   $R call({
     String? id,
     String? name,
@@ -986,6 +1245,7 @@ abstract class ModelDefCopyWith<$R, $In extends ModelDef, $Out>
     String? speed,
     String? cost,
     String? notes,
+    ModelReasoningDef? reasoning,
   });
   ModelDefCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
 }
@@ -998,6 +1258,9 @@ class _ModelDefCopyWithImpl<$R, $Out>
   @override
   late final ClassMapperBase<ModelDef> $mapper =
       ModelDefMapper.ensureInitialized();
+  @override
+  ModelReasoningDefCopyWith<$R, ModelReasoningDef, ModelReasoningDef>?
+  get reasoning => $value.reasoning?.copyWith.$chain((v) => call(reasoning: v));
   @override
   $R call({
     String? id,
@@ -1012,6 +1275,7 @@ class _ModelDefCopyWithImpl<$R, $Out>
     Object? speed = $none,
     Object? cost = $none,
     Object? notes = $none,
+    Object? reasoning = $none,
   }) => $apply(
     FieldCopyWithData({
       if (id != null) #id: id,
@@ -1026,6 +1290,7 @@ class _ModelDefCopyWithImpl<$R, $Out>
       if (speed != $none) #speed: speed,
       if (cost != $none) #cost: cost,
       if (notes != $none) #notes: notes,
+      if (reasoning != $none) #reasoning: reasoning,
     }),
   );
   @override
@@ -1042,6 +1307,7 @@ class _ModelDefCopyWithImpl<$R, $Out>
     speed: data.get(#speed, or: $value.speed),
     cost: data.get(#cost, or: $value.cost),
     notes: data.get(#notes, or: $value.notes),
+    reasoning: data.get(#reasoning, or: $value.reasoning),
   );
 
   @override

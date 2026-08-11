@@ -62,6 +62,7 @@ class OllamaAdapter extends ProviderAdapter {
         provider.def.models,
       ),
       requestClientFactory: _requestClientFactory,
+      reasoning: model.reasoning,
     );
   }
 

@@ -1,5 +1,6 @@
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_harness/src/config/glue_config.dart';
+import 'package:glue_strategies/glue_strategies.dart' show ResolvedModel;
 
 /// Creates [LlmClient] instances from a [ModelRef] via the adapter registry.
 ///
@@ -17,7 +18,22 @@ class LlmClientFactory {
   /// not been registered.
   LlmClient createFor(ModelRef ref, {required String systemPrompt}) {
     final provider = _config.resolveProvider(ref);
-    final model = _config.resolveModel(ref);
+    final resolved = _config.resolveModel(ref);
+    final selectedReasoning = _config.reasoning;
+    final support = resolved.def.reasoning;
+    if (selectedReasoning.effort != ReasoningEffort.auto &&
+        (support == null || !support.supports(selectedReasoning.effort))) {
+      final allowed = support?.efforts.map((effort) => effort.name).join(', ');
+      throw ConfigError(
+        'Reasoning effort "${selectedReasoning.effort.name}" is not supported '
+        'by "$ref". Supported: ${allowed?.isNotEmpty == true ? allowed : 'auto'}.',
+      );
+    }
+    final model = ResolvedModel(
+      def: resolved.def,
+      provider: resolved.provider,
+      reasoning: selectedReasoning,
+    );
     final adapter = _config.adapters.lookup(provider.adapter);
     if (adapter == null) {
       throw ConfigError(

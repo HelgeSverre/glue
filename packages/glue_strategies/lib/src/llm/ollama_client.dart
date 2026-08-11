@@ -53,6 +53,7 @@ class OllamaClient implements LlmClient, ContextWindowAware {
   final int? _fallbackContextWindow;
 
   final Uri _baseUri;
+  final ReasoningConfig reasoning;
 
   // Resolved once on the first stream(); see [_ensureResolved].
   bool _resolved = false;
@@ -66,6 +67,7 @@ class OllamaClient implements LlmClient, ContextWindowAware {
     int? contextWindow,
     int? contextWindowFallback,
     http.Client Function()? requestClientFactory,
+    this.reasoning = const ReasoningConfig(),
   }) : _exactContextWindow = contextWindow,
        _fallbackContextWindow = contextWindowFallback,
        _requestClientFactory = requestClientFactory ?? http.Client.new,
@@ -116,6 +118,16 @@ class OllamaClient implements LlmClient, ContextWindowAware {
       'options': <String, dynamic>{'num_ctx': _numCtx},
     };
 
+    if (reasoning.effort != ReasoningEffort.auto) {
+      body['think'] = switch (reasoning.effort) {
+        ReasoningEffort.off => false,
+        ReasoningEffort.low ||
+        ReasoningEffort.medium ||
+        ReasoningEffort.high => reasoning.effort.name,
+        _ => true,
+      };
+    }
+
     if (tools != null && tools.isNotEmpty) {
       body['tools'] = const OpenAiToolEncoder().encodeAll(tools);
     }
@@ -127,7 +139,10 @@ class OllamaClient implements LlmClient, ContextWindowAware {
         headers: const {'Content-Type': 'application/json'},
         body: body,
         providerName: 'Ollama',
-        parse: (bytes) => parseStreamEvents(decodeNdjson(bytes)),
+        parse: (bytes) => parseStreamEvents(
+          decodeNdjson(bytes),
+          showThoughts: reasoning.showThoughts,
+        ),
         classifyError: (status, errorBody) {
           // Ollama returns 400 with body containing "does not support tools"
           // when the loaded model has no function-calling support but we
@@ -148,9 +163,11 @@ class OllamaClient implements LlmClient, ContextWindowAware {
 
   /// Parse Ollama NDJSON streaming events into [LlmChunk]s.
   static Stream<LlmChunk> parseStreamEvents(
-    Stream<Map<String, dynamic>> events,
-  ) async* {
+    Stream<Map<String, dynamic>> events, {
+    bool showThoughts = true,
+  }) async* {
     int toolCallCounter = 0;
+    final thinkingBuffer = StringBuffer();
 
     await for (final event in events) {
       // Ollama reports mid-stream failures as an NDJSON line carrying a
@@ -173,7 +190,8 @@ class OllamaClient implements LlmClient, ContextWindowAware {
         // can carry both fields.
         final thinking = message['thinking'] as String?;
         if (thinking != null && thinking.isNotEmpty) {
-          yield ThinkingDelta(thinking);
+          thinkingBuffer.write(thinking);
+          if (showThoughts) yield ThinkingDelta(thinking);
         }
 
         // Text content.
@@ -205,6 +223,12 @@ class OllamaClient implements LlmClient, ContextWindowAware {
 
       // Final chunk contains token counts.
       if (done) {
+        if (thinkingBuffer.isNotEmpty) {
+          yield ReasoningArtifactChunk({
+            'type': 'ollama_thinking',
+            'thinking': thinkingBuffer.toString(),
+          });
+        }
         // M10 caveat: `prompt_eval_count` counts only the tokens Ollama
         // *newly* evaluated this turn. With a warm KV cache (the common case
         // across an agent loop's back-to-back turns) the already-cached prefix

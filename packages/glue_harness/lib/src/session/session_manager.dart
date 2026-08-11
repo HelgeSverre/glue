@@ -272,6 +272,18 @@ class SessionManager {
     store.updateMeta();
   }
 
+  void updateSessionReasoning({
+    required ReasoningEffort effort,
+    required bool showThoughts,
+  }) {
+    final store = _store;
+    if (store == null) return;
+    store.meta
+      ..reasoningEffort = effort.name
+      ..showThoughts = showThoughts;
+    store.updateMeta();
+  }
+
   void logEvent(String type, Map<String, dynamic> data) {
     _store?.logEvent(type, data);
 
@@ -610,6 +622,8 @@ class SessionManager {
           id: newId,
           cwd: oldStore.meta.cwd,
           modelRef: oldStore.meta.modelRef,
+          reasoningEffort: oldStore.meta.reasoningEffort,
+          showThoughts: oldStore.meta.showThoughts,
           startTime: DateTime.now(),
           forkedFrom: oldSessionId.value,
         ),

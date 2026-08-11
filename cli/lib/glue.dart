@@ -124,6 +124,8 @@ export 'package:glue_core/glue_core.dart'
         ModelRef,
         ModelRefParseException,
         ProviderDef,
+        ReasoningConfig,
+        ReasoningEffort,
         TextDelta,
         TextPart,
         ToolCall,

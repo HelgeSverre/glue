@@ -29,6 +29,7 @@ class Message {
   final String? toolCallId;
   final String? toolName;
   final List<ContentPart>? contentParts;
+  final List<Map<String, dynamic>> reasoningArtifacts;
 
   const Message._({
     required this.role,
@@ -37,6 +38,7 @@ class Message {
     this.toolCallId,
     this.toolName,
     this.contentParts,
+    this.reasoningArtifacts = const [],
   });
 
   /// Build a user message. Pass [contentParts] for multimodal input
@@ -46,12 +48,16 @@ class Message {
   factory Message.user(String text, {List<ContentPart>? contentParts}) =>
       Message._(role: Role.user, text: text, contentParts: contentParts);
 
-  factory Message.assistant({String? text, List<ToolCall>? toolCalls}) =>
-      Message._(
-        role: Role.assistant,
-        text: text,
-        toolCalls: toolCalls ?? const [],
-      );
+  factory Message.assistant({
+    String? text,
+    List<ToolCall>? toolCalls,
+    List<Map<String, dynamic>>? reasoningArtifacts,
+  }) => Message._(
+    role: Role.assistant,
+    text: text,
+    toolCalls: toolCalls ?? const [],
+    reasoningArtifacts: reasoningArtifacts ?? const [],
+  );
 
   factory Message.toolResult({
     required ToolCallId callId,
@@ -97,6 +103,13 @@ class ThinkingDelta extends LlmChunk {
   ThinkingDelta(this.text);
 }
 
+/// Opaque provider-native reasoning state that must be replayed unchanged on
+/// later turns. It is never rendered directly.
+class ReasoningArtifactChunk extends LlmChunk {
+  final Map<String, dynamic> artifact;
+  ReasoningArtifactChunk(this.artifact);
+}
+
 /// The model has started a tool call, but the arguments are still streaming in.
 ///
 /// Use this to show early UI feedback (e.g. "preparing read_file…") before the
@@ -135,12 +148,14 @@ class UsageInfo extends LlmChunk {
   final int outputTokens;
   final int? cacheReadTokens;
   final int? cacheCreationTokens;
+  final int? reasoningTokens;
 
   UsageInfo({
     required this.inputTokens,
     required this.outputTokens,
     this.cacheReadTokens,
     this.cacheCreationTokens,
+    this.reasoningTokens,
   });
 
   int get totalTokens => inputTokens + outputTokens;

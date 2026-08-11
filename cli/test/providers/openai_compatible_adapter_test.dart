@@ -100,9 +100,15 @@ const _placeholderProvider = ProviderDef(
   models: {},
 );
 
-ResolvedModel _model(String id, {ProviderDef? provider}) => ResolvedModel(
-  def: ModelDef(id: id, name: id),
+ResolvedModel _model(
+  String id, {
+  ProviderDef? provider,
+  ModelReasoningDef? reasoning,
+  ReasoningConfig reasoningConfig = const ReasoningConfig(),
+}) => ResolvedModel(
+  def: ModelDef(id: id, name: id, reasoning: reasoning),
   provider: provider ?? _placeholderProvider,
+  reasoning: reasoningConfig,
 );
 
 void main() {
@@ -113,6 +119,29 @@ void main() {
   });
 
   group('OpenAiCompatibleAdapter.createClient', () {
+    test('native OpenAI reasoning transport uses Responses API client', () {
+      final provider = _resolved(
+        id: 'openai',
+        compatibility: 'openai',
+        baseUrl: 'https://api.openai.com/v1',
+        apiKey: 'sk-test',
+      );
+      final client = OpenAiCompatibleAdapter().createClient(
+        provider: provider,
+        model: _model(
+          'gpt-5.6-sol',
+          provider: provider.def,
+          reasoning: const ModelReasoningDef(
+            efforts: {ReasoningEffort.high},
+            transport: 'responses',
+          ),
+          reasoningConfig: const ReasoningConfig(effort: ReasoningEffort.high),
+        ),
+        systemPrompt: 'system',
+      );
+      expect(client, isA<OpenAiResponsesClient>());
+    });
+
     test(
       'vanilla openai: uses api.openai.com/v1 + Bearer + stream_options',
       () async {

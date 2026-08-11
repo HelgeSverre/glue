@@ -59,7 +59,20 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 128000,
           "speed": "slower",
           "cost": "premium",
-          "notes": "Anthropic's most capable generally available model for demanding reasoning and long-running agents. Adaptive thinking is always on. $10/$50 per input/output MTok."
+          "notes": "Anthropic's most capable generally available model for demanding reasoning and long-running agents. Adaptive thinking is always on. $10/$50 per input/output MTok.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ],
+            "default_effort": "high",
+            "show_thoughts": false,
+            "transport": "anthropic_adaptive"
+          }
         },
         "claude-opus-5": {
           "id": "claude-opus-5",
@@ -81,7 +94,21 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 128000,
           "speed": "slower",
           "cost": "premium",
-          "notes": "Complex agentic coding and enterprise work with adaptive thinking. $5/$25 per input/output MTok."
+          "notes": "Complex agentic coding and enterprise work with adaptive thinking. $5/$25 per input/output MTok.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "off",
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ],
+            "default_effort": "high",
+            "show_thoughts": false,
+            "transport": "anthropic_adaptive"
+          }
         },
         "claude-sonnet-5": {
           "id": "claude-sonnet-5",
@@ -103,7 +130,21 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 128000,
           "speed": "fast",
           "cost": "high",
-          "notes": "Best balance of speed and intelligence with adaptive thinking. $3/$15 per input/output MTok; introductory $2/$10 pricing runs through 2026-08-31."
+          "notes": "Best balance of speed and intelligence with adaptive thinking. $3/$15 per input/output MTok; introductory $2/$10 pricing runs through 2026-08-31.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "off",
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ],
+            "default_effort": "high",
+            "show_thoughts": false,
+            "transport": "anthropic_adaptive"
+          }
         },
         "claude-sonnet-4-6": {
           "id": "claude-sonnet-4-6",
@@ -125,7 +166,20 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 64000,
           "speed": "standard",
           "cost": "high",
-          "notes": "Active pinned predecessor retained for existing configurations; prefer Claude Sonnet 5."
+          "notes": "Active pinned predecessor retained for existing configurations; prefer Claude Sonnet 5.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "off",
+              "low",
+              "medium",
+              "high",
+              "max"
+            ],
+            "default_effort": "high",
+            "show_thoughts": false,
+            "transport": "anthropic_adaptive"
+          }
         },
         "claude-haiku-4-5": {
           "id": "claude-haiku-4-5",
@@ -145,7 +199,15 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 64000,
           "speed": "fast",
           "cost": "low",
-          "notes": "Good small_model candidate for titles, summaries, and quick checks."
+          "notes": "Good small_model candidate for titles, summaries, and quick checks.",
+          "reasoning": {
+            "efforts": [
+              "auto"
+            ],
+            "default_effort": "auto",
+            "show_thoughts": false,
+            "transport": "anthropic_manual"
+          }
         },
         "claude-opus-4-7": {
           "id": "claude-opus-4-7",
@@ -167,7 +229,21 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 128000,
           "speed": "slower",
           "cost": "premium",
-          "notes": "Active pinned predecessor retained for existing configurations; prefer Claude Opus 5 or Fable 5."
+          "notes": "Active pinned predecessor retained for existing configurations; prefer Claude Opus 5 or Fable 5.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "off",
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ],
+            "default_effort": "high",
+            "show_thoughts": false,
+            "transport": "anthropic_adaptive"
+          }
         }
       },
       "compatibility": null,
@@ -206,7 +282,21 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 128000,
           "speed": "standard",
           "cost": "high",
-          "notes": "OpenAI's flagship for complex professional work. The gpt-5.6 alias routes here. Supports reasoning effort none through max. $5/$30 per input/output MTok."
+          "notes": "OpenAI's flagship for complex professional work. The gpt-5.6 alias routes here. Supports reasoning effort none through max. $5/$30 per input/output MTok.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "off",
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ],
+            "default_effort": "medium",
+            "show_thoughts": false,
+            "transport": "responses"
+          }
         },
         "gpt-5.6-terra": {
           "id": "gpt-5.6-terra",
@@ -228,7 +318,21 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 128000,
           "speed": "standard",
           "cost": "medium",
-          "notes": "Balanced GPT-5.6 model for intelligence and cost. Supports reasoning effort none through max. $2/$12 per input/output MTok."
+          "notes": "Balanced GPT-5.6 model for intelligence and cost. Supports reasoning effort none through max. $2/$12 per input/output MTok.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "off",
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ],
+            "default_effort": "medium",
+            "show_thoughts": false,
+            "transport": "responses"
+          }
         },
         "gpt-5.6-luna": {
           "id": "gpt-5.6-luna",
@@ -250,7 +354,21 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 128000,
           "speed": "fast",
           "cost": "low",
-          "notes": "Cost-sensitive GPT-5.6 model for high-volume workloads. Supports reasoning effort none through max. $0.20/$1.20 per input/output MTok."
+          "notes": "Cost-sensitive GPT-5.6 model for high-volume workloads. Supports reasoning effort none through max. $0.20/$1.20 per input/output MTok.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "off",
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ],
+            "default_effort": "medium",
+            "show_thoughts": false,
+            "transport": "responses"
+          }
         },
         "gpt-5.5": {
           "id": "gpt-5.5",
@@ -272,7 +390,20 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 128000,
           "speed": "standard",
           "cost": "high",
-          "notes": "Previous frontier model retained for pinned configurations; prefer the GPT-5.6 family."
+          "notes": "Previous frontier model retained for pinned configurations; prefer the GPT-5.6 family.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "off",
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ],
+            "default_effort": "medium",
+            "show_thoughts": false,
+            "transport": "responses"
+          }
         },
         "gpt-5.5-pro": {
           "id": "gpt-5.5-pro",
@@ -294,7 +425,18 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 128000,
           "speed": "slower",
           "cost": "premium",
-          "notes": "High-compute reasoning variant. Use for hard architecture, proofs, and long-horizon planning."
+          "notes": "High-compute reasoning variant. Use for hard architecture, proofs, and long-horizon planning.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "medium",
+              "high",
+              "xhigh"
+            ],
+            "default_effort": "high",
+            "show_thoughts": false,
+            "transport": "responses"
+          }
         },
         "gpt-5.4": {
           "id": "gpt-5.4",
@@ -316,7 +458,20 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 128000,
           "speed": "standard",
           "cost": "high",
-          "notes": "Prior frontier model — kept for pinned configs."
+          "notes": "Prior frontier model — kept for pinned configs.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "off",
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ],
+            "default_effort": "off",
+            "show_thoughts": false,
+            "transport": "responses"
+          }
         },
         "gpt-5.4-mini": {
           "id": "gpt-5.4-mini",
@@ -330,13 +485,27 @@ const String _bundledCatalogJson = r'''
             "tools",
             "vision",
             "json",
+            "reasoning",
             "coding"
           ],
           "context_window": 400000,
           "max_output_tokens": 128000,
           "speed": "fast",
           "cost": "low",
-          "notes": "Default small_model candidate."
+          "notes": "Default small_model candidate.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "off",
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ],
+            "default_effort": "off",
+            "show_thoughts": false,
+            "transport": "responses"
+          }
         },
         "gpt-5.4-nano": {
           "id": "gpt-5.4-nano",
@@ -349,13 +518,27 @@ const String _bundledCatalogJson = r'''
             "chat",
             "tools",
             "json",
+            "reasoning",
             "coding"
           ],
           "context_window": 400000,
           "max_output_tokens": 128000,
           "speed": "fast",
           "cost": "low",
-          "notes": "Cheapest GPT-5.4-class model for high-volume tasks."
+          "notes": "Cheapest GPT-5.4-class model for high-volume tasks.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "off",
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ],
+            "default_effort": "off",
+            "show_thoughts": false,
+            "transport": "responses"
+          }
         },
         "o3": {
           "id": "o3",
@@ -375,7 +558,8 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": null,
           "speed": "slower",
           "cost": "high",
-          "notes": "Reasoning-specialized flagship. Use for hard debugging, proofs, and multi-step planning."
+          "notes": "Reasoning-specialized flagship. Use for hard debugging, proofs, and multi-step planning.",
+          "reasoning": null
         }
       },
       "compatibility": null,
@@ -415,7 +599,19 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 65536,
           "speed": "fast",
           "cost": "low",
-          "notes": "GA Flash (May 2026). Most intelligent Flash-tier model for agentic and coding tasks. Supports Google Search grounding."
+          "notes": "GA Flash (May 2026). Most intelligent Flash-tier model for agentic and coding tasks. Supports Google Search grounding.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "minimal",
+              "low",
+              "medium",
+              "high"
+            ],
+            "default_effort": "medium",
+            "show_thoughts": false,
+            "transport": "gemini_level"
+          }
         },
         "gemini-3.1-pro-preview": {
           "id": "gemini-3.1-pro-preview",
@@ -438,7 +634,18 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 65536,
           "speed": "standard",
           "cost": "medium",
-          "notes": "Pro-class preview. Strongest Gemini model for complex reasoning, coding, and research. Supports Google Search grounding."
+          "notes": "Pro-class preview. Strongest Gemini model for complex reasoning, coding, and research. Supports Google Search grounding.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "low",
+              "medium",
+              "high"
+            ],
+            "default_effort": "high",
+            "show_thoughts": false,
+            "transport": "gemini_level"
+          }
         },
         "gemini-3-flash-preview": {
           "id": "gemini-3-flash-preview",
@@ -453,13 +660,26 @@ const String _bundledCatalogJson = r'''
             "vision",
             "files",
             "json",
+            "reasoning",
             "coding"
           ],
           "context_window": 1000000,
           "max_output_tokens": 65536,
           "speed": "fast",
           "cost": "low",
-          "notes": "Fast, balanced, multimodal preview. Strong agentic-coding candidate."
+          "notes": "Fast, balanced, multimodal preview. Strong agentic-coding candidate.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "minimal",
+              "low",
+              "medium",
+              "high"
+            ],
+            "default_effort": "high",
+            "show_thoughts": false,
+            "transport": "gemini_level"
+          }
         },
         "gemini-3.1-flash-lite": {
           "id": "gemini-3.1-flash-lite",
@@ -479,7 +699,19 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 65536,
           "speed": "fast",
           "cost": "low",
-          "notes": "GA Flash-Lite (May 2026). Cost-efficient, fastest performance for high-frequency, lightweight tasks."
+          "notes": "GA Flash-Lite (May 2026). Cost-efficient, fastest performance for high-frequency, lightweight tasks.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "minimal",
+              "low",
+              "medium",
+              "high"
+            ],
+            "default_effort": "minimal",
+            "show_thoughts": false,
+            "transport": "gemini_level"
+          }
         },
         "deep-research-preview-04-2026": {
           "id": "deep-research-preview-04-2026",
@@ -498,7 +730,8 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 65536,
           "speed": "slower",
           "cost": "high",
-          "notes": "Fast Deep Research agent — interactive use. Requires background runner (not yet wired up in Glue)."
+          "notes": "Fast Deep Research agent — interactive use. Requires background runner (not yet wired up in Glue).",
+          "reasoning": null
         },
         "deep-research-max-preview-04-2026": {
           "id": "deep-research-max-preview-04-2026",
@@ -517,7 +750,8 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 65536,
           "speed": "slower",
           "cost": "high",
-          "notes": "Maximum-comprehensiveness Deep Research agent. Requires background runner (not yet wired up in Glue)."
+          "notes": "Maximum-comprehensiveness Deep Research agent. Requires background runner (not yet wired up in Glue).",
+          "reasoning": null
         }
       },
       "compatibility": null,
@@ -553,7 +787,8 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": null,
           "speed": "standard",
           "cost": "medium",
-          "notes": "Mistral's agentic coding model. Strong tool use."
+          "notes": "Mistral's agentic coding model. Strong tool use.",
+          "reasoning": null
         },
         "mistral-large-latest": {
           "id": "mistral-large-latest",
@@ -573,7 +808,8 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": null,
           "speed": "standard",
           "cost": "medium",
-          "notes": "Flagship multimodal general-purpose model."
+          "notes": "Flagship multimodal general-purpose model.",
+          "reasoning": null
         },
         "mistral-small-latest": {
           "id": "mistral-small-latest",
@@ -594,15 +830,25 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": null,
           "speed": "fast",
           "cost": "low",
-          "notes": "Unified reasoning + coding + vision (Small 4, March 2026). Strong small-model default; cheaper than Medium with better agentic behavior."
+          "notes": "Unified reasoning + coding + vision (Small 4, March 2026). Strong small-model default; cheaper than Medium with better agentic behavior.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "off",
+              "high"
+            ],
+            "default_effort": "auto",
+            "show_thoughts": false,
+            "transport": "mistral_effort"
+          }
         },
         "magistral-medium-latest": {
           "id": "magistral-medium-latest",
           "name": "Magistral Medium Latest",
           "api_id": "magistral-medium-latest",
-          "recommended": true,
+          "recommended": false,
           "default": false,
-          "enabled": true,
+          "enabled": false,
           "capabilities": [
             "chat",
             "tools",
@@ -613,7 +859,8 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": null,
           "speed": "standard",
           "cost": "medium",
-          "notes": "Pure reasoning model. Use when you need explicit long-chain thinking; not a general chat pick."
+          "notes": "Pure reasoning model. Use when you need explicit long-chain thinking; not a general chat pick.",
+          "reasoning": null
         },
         "mistral-medium-latest": {
           "id": "mistral-medium-latest",
@@ -626,13 +873,24 @@ const String _bundledCatalogJson = r'''
             "chat",
             "tools",
             "vision",
-            "json"
+            "json",
+            "reasoning"
           ],
           "context_window": 262000,
           "max_output_tokens": null,
           "speed": "standard",
           "cost": "medium",
-          "notes": "Mistral Medium 3.5 (April 2026). Mid-tier general-purpose; multimodal with tool use."
+          "notes": "Mistral Medium 3.5 (April 2026). Mid-tier general-purpose; multimodal with tool use.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "off",
+              "high"
+            ],
+            "default_effort": "auto",
+            "show_thoughts": false,
+            "transport": "mistral_effort"
+          }
         }
       },
       "compatibility": "mistral",
@@ -669,7 +927,8 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": null,
           "speed": "fast",
           "cost": "low",
-          "notes": "Native multimodal MoE in production on Groq. Strong speed/quality default as of 2026-04."
+          "notes": "Native multimodal MoE in production on Groq. Strong speed/quality default as of 2026-04.",
+          "reasoning": null
         },
         "gpt-oss-120b": {
           "id": "gpt-oss-120b",
@@ -689,7 +948,18 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": null,
           "speed": "fast",
           "cost": "low",
-          "notes": "OpenAI's open-weight reasoning + coding model. 120B weights at Groq speed."
+          "notes": "OpenAI's open-weight reasoning + coding model. 120B weights at Groq speed.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "low",
+              "medium",
+              "high"
+            ],
+            "default_effort": "medium",
+            "show_thoughts": false,
+            "transport": "groq_effort"
+          }
         },
         "gpt-oss-20b": {
           "id": "gpt-oss-20b",
@@ -702,13 +972,25 @@ const String _bundledCatalogJson = r'''
             "chat",
             "tools",
             "json",
+            "reasoning",
             "coding"
           ],
           "context_window": 131072,
           "max_output_tokens": null,
           "speed": "fast",
           "cost": "low",
-          "notes": "Coding-optimized, faster/cheaper than 120B."
+          "notes": "Coding-optimized, faster/cheaper than 120B.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "low",
+              "medium",
+              "high"
+            ],
+            "default_effort": "medium",
+            "show_thoughts": false,
+            "transport": "groq_effort"
+          }
         }
       },
       "compatibility": "groq",
@@ -745,7 +1027,8 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": null,
           "speed": "depends_on_hardware",
           "cost": "local",
-          "notes": "Consensus local coding agent. 30B/3.3B MoE. ~20 GB VRAM at Q4_K_M."
+          "notes": "Consensus local coding agent. 30B/3.3B MoE. ~20 GB VRAM at Q4_K_M.",
+          "reasoning": null
         },
         "qwen3-coder-next:latest": {
           "id": "qwen3-coder-next:latest",
@@ -765,7 +1048,8 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": null,
           "speed": "depends_on_hardware",
           "cost": "local",
-          "notes": "2026-04 flagship local coder. Qwen3-Next-80B-A3B; ~52 GB at Q4_K_M, ~85 GB at Q8_0. Needs a workstation GPU or 64 GB+ Mac."
+          "notes": "2026-04 flagship local coder. Qwen3-Next-80B-A3B; ~52 GB at Q4_K_M, ~85 GB at Q8_0. Needs a workstation GPU or 64 GB+ Mac.",
+          "reasoning": null
         },
         "qwen3.6:35b": {
           "id": "qwen3.6:35b",
@@ -787,7 +1071,19 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": null,
           "speed": "depends_on_hardware",
           "cost": "local",
-          "notes": "Latest Qwen generalist with agentic coding upgrades. Vision + thinking + tools. ~24 GB at Q4_K_M."
+          "notes": "Latest Qwen generalist with agentic coding upgrades. Vision + thinking + tools. ~24 GB at Q4_K_M.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "off",
+              "low",
+              "medium",
+              "high"
+            ],
+            "default_effort": "auto",
+            "show_thoughts": false,
+            "transport": "ollama_think"
+          }
         },
         "gemma4:26b": {
           "id": "gemma4:26b",
@@ -808,7 +1104,8 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": null,
           "speed": "depends_on_hardware",
           "cost": "local",
-          "notes": "Google's latest with native function-calling. Multimodal, 256K context. ~18 GB at Q4_K_M."
+          "notes": "Google's latest with native function-calling. Multimodal, 256K context. ~18 GB at Q4_K_M.",
+          "reasoning": null
         },
         "devstral:24b": {
           "id": "devstral:24b",
@@ -828,7 +1125,8 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": null,
           "speed": "depends_on_hardware",
           "cost": "local",
-          "notes": "Mistral's agentic coding model. ~14 GB at Q4_K_M."
+          "notes": "Mistral's agentic coding model. ~14 GB at Q4_K_M.",
+          "reasoning": null
         },
         "qwen2.5-coder:32b": {
           "id": "qwen2.5-coder:32b",
@@ -848,7 +1146,8 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": null,
           "speed": "depends_on_hardware",
           "cost": "local",
-          "notes": "Previous-generation safe fallback. Prefer qwen3-coder:30b."
+          "notes": "Previous-generation safe fallback. Prefer qwen3-coder:30b.",
+          "reasoning": null
         },
         "qwen3:8b": {
           "id": "qwen3:8b",
@@ -861,13 +1160,23 @@ const String _bundledCatalogJson = r'''
             "chat",
             "tools",
             "json",
+            "reasoning",
             "local"
           ],
           "context_window": 128000,
           "max_output_tokens": null,
           "speed": "depends_on_hardware",
           "cost": "local",
-          "notes": "Low-end floor for tool use. ~5 GB at Q4_K_M. Fits a 16 GB laptop."
+          "notes": "Low-end floor for tool use. ~5 GB at Q4_K_M. Fits a 16 GB laptop.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "off"
+            ],
+            "default_effort": "auto",
+            "show_thoughts": false,
+            "transport": "ollama_think"
+          }
         }
       },
       "compatibility": null,
@@ -904,7 +1213,8 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 64000,
           "speed": "standard",
           "cost": "subscription",
-          "notes": "Uses your GitHub Copilot subscription."
+          "notes": "Uses your GitHub Copilot subscription.",
+          "reasoning": null
         },
         "claude-opus-4-7": {
           "id": "claude-opus-4-7",
@@ -926,7 +1236,8 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 128000,
           "speed": "slower",
           "cost": "subscription",
-          "notes": "Top-tier Anthropic model via Copilot subscription."
+          "notes": "Top-tier Anthropic model via Copilot subscription.",
+          "reasoning": null
         },
         "claude-opus-4-6": {
           "id": "claude-opus-4-6",
@@ -948,7 +1259,8 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 128000,
           "speed": "slower",
           "cost": "subscription",
-          "notes": "Kept available; superseded by Opus 4.7 for new work."
+          "notes": "Kept available; superseded by Opus 4.7 for new work.",
+          "reasoning": null
         },
         "gpt-5.5": {
           "id": "gpt-5.5",
@@ -970,7 +1282,8 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 128000,
           "speed": "standard",
           "cost": "subscription",
-          "notes": "Uses your GitHub Copilot subscription."
+          "notes": "Uses your GitHub Copilot subscription.",
+          "reasoning": null
         },
         "gpt-5.3-codex": {
           "id": "gpt-5.3-codex",
@@ -989,7 +1302,8 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 128000,
           "speed": "fast",
           "cost": "subscription",
-          "notes": "OpenAI's agentic coding model via Copilot subscription."
+          "notes": "OpenAI's agentic coding model via Copilot subscription.",
+          "reasoning": null
         },
         "gemini-2.5-pro": {
           "id": "gemini-2.5-pro",
@@ -1011,7 +1325,8 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": null,
           "speed": "standard",
           "cost": "subscription",
-          "notes": "Google option via Copilot subscription."
+          "notes": "Google option via Copilot subscription.",
+          "reasoning": null
         }
       },
       "compatibility": null,
@@ -1050,7 +1365,20 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 64000,
           "speed": "standard",
           "cost": "provider_routed",
-          "notes": "Useful when users want one router key."
+          "notes": "Useful when users want one router key.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "off",
+              "low",
+              "medium",
+              "high",
+              "max"
+            ],
+            "default_effort": "high",
+            "show_thoughts": false,
+            "transport": "openrouter_reasoning"
+          }
         },
         "gpt-5.4-mini": {
           "id": "gpt-5.4-mini",
@@ -1064,13 +1392,27 @@ const String _bundledCatalogJson = r'''
             "tools",
             "vision",
             "json",
+            "reasoning",
             "coding"
           ],
           "context_window": 400000,
           "max_output_tokens": null,
           "speed": "fast",
           "cost": "provider_routed",
-          "notes": "Small-model fallback through a router."
+          "notes": "Small-model fallback through a router.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "off",
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ],
+            "default_effort": "off",
+            "show_thoughts": false,
+            "transport": "openrouter_reasoning"
+          }
         },
         "gemini-3.5-flash": {
           "id": "gemini-3.5-flash",
@@ -1085,13 +1427,26 @@ const String _bundledCatalogJson = r'''
             "vision",
             "files",
             "json",
+            "reasoning",
             "browser"
           ],
           "context_window": 1000000,
           "max_output_tokens": null,
           "speed": "fast",
           "cost": "provider_routed",
-          "notes": "Good for research and extraction workflows."
+          "notes": "Good for research and extraction workflows.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "minimal",
+              "low",
+              "medium",
+              "high"
+            ],
+            "default_effort": "medium",
+            "show_thoughts": false,
+            "transport": "openrouter_reasoning"
+          }
         }
       },
       "compatibility": "openrouter",
@@ -1129,7 +1484,8 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": null,
           "speed": "depends_on_hardware",
           "cost": "local",
-          "notes": "Rename this entry to the model served by vLLM, LM Studio, or another local gateway."
+          "notes": "Rename this entry to the model served by vLLM, LM Studio, or another local gateway.",
+          "reasoning": null
         }
       },
       "compatibility": "vllm",

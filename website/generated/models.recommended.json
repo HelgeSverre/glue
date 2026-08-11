@@ -119,6 +119,7 @@
       "tools",
       "vision",
       "json",
+      "reasoning",
       "coding"
     ],
     "notes": "Default small_model candidate."
@@ -132,6 +133,7 @@
       "chat",
       "tools",
       "json",
+      "reasoning",
       "coding"
     ],
     "notes": "Cheapest GPT-5.4-class model for high-volume tasks."
@@ -195,6 +197,7 @@
       "vision",
       "files",
       "json",
+      "reasoning",
       "coding"
     ],
     "notes": "Fast, balanced, multimodal preview. Strong agentic-coding candidate."
@@ -256,19 +259,6 @@
     "notes": "Unified reasoning + coding + vision (Small 4, March 2026). Strong small-model default; cheaper than Medium with better agentic behavior."
   },
   {
-    "id": "magistral-medium-latest",
-    "provider": "mistral",
-    "name": "Magistral Medium Latest",
-    "recommended": true,
-    "capabilities": [
-      "chat",
-      "tools",
-      "json",
-      "reasoning"
-    ],
-    "notes": "Pure reasoning model. Use when you need explicit long-chain thinking; not a general chat pick."
-  },
-  {
     "id": "mistral-medium-latest",
     "provider": "mistral",
     "name": "Mistral Medium Latest",
@@ -277,7 +267,8 @@
       "chat",
       "tools",
       "vision",
-      "json"
+      "json",
+      "reasoning"
     ],
     "notes": "Mistral Medium 3.5 (April 2026). Mid-tier general-purpose; multimodal with tool use."
   },
@@ -318,6 +309,7 @@
       "chat",
       "tools",
       "json",
+      "reasoning",
       "coding"
     ],
     "notes": "Coding-optimized, faster/cheaper than 120B."
@@ -404,6 +396,7 @@
       "chat",
       "tools",
       "json",
+      "reasoning",
       "local"
     ],
     "notes": "Low-end floor for tool use. ~5 GB at Q4_K_M. Fits a 16 GB laptop."
@@ -493,6 +486,7 @@
       "tools",
       "vision",
       "json",
+      "reasoning",
       "coding"
     ],
     "notes": "Small-model fallback through a router."
@@ -508,6 +502,7 @@
       "vision",
       "files",
       "json",
+      "reasoning",
       "browser"
     ],
     "notes": "Good for research and extraction workflows."

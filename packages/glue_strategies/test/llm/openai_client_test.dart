@@ -1,10 +1,56 @@
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_strategies/glue_strategies.dart';
 import 'package:test/test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'dart:convert';
 
 Future<List<LlmChunk>> drain(Stream<LlmChunk> s) => s.toList();
 
 void main() {
+  group('OpenAiClient reasoning request mapping', () {
+    test('maps Off to OpenRouter none and excludes hidden thoughts', () async {
+      Map<String, dynamic>? requestBody;
+      final client = OpenAiClient(
+        apiKey: 'test',
+        model: 'model',
+        systemPrompt: '',
+        baseUrl: 'https://example.test/v1',
+        profile: CompatibilityProfile.openrouter,
+        reasoning: const ReasoningConfig(effort: ReasoningEffort.off),
+        requestClientFactory: () => MockClient((request) async {
+          requestBody = jsonDecode(request.body) as Map<String, dynamic>;
+          return http.Response('data: [DONE]\n\n', 200);
+        }),
+      );
+
+      await client.stream(const []).toList();
+
+      expect(requestBody?['reasoning'], {'effort': 'none', 'exclude': true});
+    });
+
+    test('uses Groq parsed reasoning with tools-safe effort', () async {
+      Map<String, dynamic>? requestBody;
+      final client = OpenAiClient(
+        apiKey: 'test',
+        model: 'model',
+        systemPrompt: '',
+        baseUrl: 'https://example.test/openai/v1',
+        profile: CompatibilityProfile.groq,
+        reasoning: const ReasoningConfig(effort: ReasoningEffort.high),
+        requestClientFactory: () => MockClient((request) async {
+          requestBody = jsonDecode(request.body) as Map<String, dynamic>;
+          return http.Response('data: [DONE]\n\n', 200);
+        }),
+      );
+
+      await client.stream(const []).toList();
+
+      expect(requestBody?['reasoning_effort'], 'high');
+      expect(requestBody?['reasoning_format'], 'parsed');
+    });
+  });
+
   group('OpenAiClient.parseStreamEvents usage (H3)', () {
     test(
       'subtracts OpenAI cached_tokens from prompt_tokens for inputTokens',

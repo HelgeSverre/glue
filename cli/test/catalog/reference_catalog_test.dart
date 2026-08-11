@@ -81,6 +81,21 @@ void main() {
       expect(sonnet.capabilities, contains('tools'));
     });
 
+    test('reasoning efforts are model-specific', () {
+      final anthropic = catalog.providers['anthropic']!;
+      final openai = catalog.providers['openai']!;
+      final gemini = catalog.providers['gemini']!;
+      expect(
+        anthropic.models['claude-fable-5']!.reasoning!.efforts,
+        isNot(contains(ReasoningEffort.off)),
+      );
+      expect(openai.models['gpt-5.6-sol']!.reasoning!.transport, 'responses');
+      expect(
+        gemini.models['gemini-3.1-pro-preview']!.reasoning!.efforts,
+        isNot(contains(ReasoningEffort.minimal)),
+      );
+    });
+
     test('anthropic catalog does not list the non-existent sonnet-4-7', () {
       final anthropic = catalog.providers['anthropic']!;
       expect(anthropic.models.containsKey('claude-sonnet-4-7'), isFalse);

@@ -11,7 +11,7 @@ enum SessionTitleSource { auto, user }
 enum SessionTitleState { provisional, stable }
 
 class SessionMeta {
-  static const int currentSchemaVersion = 3;
+  static const int currentSchemaVersion = 4;
 
   final int schemaVersion;
   final SessionId id;
@@ -24,6 +24,8 @@ class SessionMeta {
   /// if the stored value has no slash, the legacy `provider` field is
   /// prepended on read (see [fromJson]).
   String modelRef;
+  String? reasoningEffort;
+  bool? showThoughts;
   final DateTime startTime;
   DateTime? endTime;
   final String? forkedFrom;
@@ -79,6 +81,8 @@ class SessionMeta {
     required this.cwd,
     this.projectPath,
     required this.modelRef,
+    this.reasoningEffort,
+    this.showThoughts,
     required this.startTime,
     this.endTime,
     this.forkedFrom,
@@ -120,6 +124,8 @@ class SessionMeta {
     'cwd': cwd,
     if (projectPath != null) 'project_path': projectPath,
     'model_ref': modelRef,
+    if (reasoningEffort != null) 'reasoning_effort': reasoningEffort,
+    if (showThoughts != null) 'show_thoughts': showThoughts,
     'start_time': startTime.toUtc().toIso8601String(),
     if (endTime != null) 'end_time': endTime!.toUtc().toIso8601String(),
     if (forkedFrom != null) 'forked_from': forkedFrom,
@@ -182,6 +188,8 @@ class SessionMeta {
       cwd: json['cwd'] as String? ?? '',
       projectPath: json['project_path'] as String?,
       modelRef: resolvedRef,
+      reasoningEffort: json['reasoning_effort'] as String?,
+      showThoughts: json['show_thoughts'] as bool?,
       startTime: DateTime.parse(json['start_time'] as String),
       endTime: json['end_time'] != null
           ? DateTime.parse(json['end_time'] as String)

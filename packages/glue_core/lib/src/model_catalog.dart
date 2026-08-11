@@ -49,6 +49,43 @@ class Capability {
   };
 }
 
+@MappableEnum(caseStyle: CaseStyle.snakeCase)
+enum ReasoningEffort { auto, off, minimal, low, medium, high, xhigh, max }
+
+@MappableClass()
+class ModelReasoningDef with ModelReasoningDefMappable {
+  const ModelReasoningDef({
+    this.efforts = const {ReasoningEffort.auto},
+    this.defaultEffort = ReasoningEffort.auto,
+    this.showThoughts = false,
+    this.transport,
+  });
+
+  final Set<ReasoningEffort> efforts;
+  final ReasoningEffort defaultEffort;
+  final bool showThoughts;
+  final String? transport;
+
+  bool supports(ReasoningEffort effort) =>
+      effort == ReasoningEffort.auto || efforts.contains(effort);
+}
+
+class ReasoningConfig {
+  const ReasoningConfig({
+    this.effort = ReasoningEffort.auto,
+    this.showThoughts = false,
+  });
+
+  final ReasoningEffort effort;
+  final bool showThoughts;
+
+  ReasoningConfig copyWith({ReasoningEffort? effort, bool? showThoughts}) =>
+      ReasoningConfig(
+        effort: effort ?? this.effort,
+        showThoughts: showThoughts ?? this.showThoughts,
+      );
+}
+
 /// Top-level catalog object.
 @MappableClass()
 class ModelCatalog with ModelCatalogMappable {
@@ -154,6 +191,7 @@ class ModelDef with ModelDefMappable {
     this.speed,
     this.cost,
     this.notes,
+    this.reasoning,
   }) : apiId = apiId ?? id;
 
   /// Catalog key — stable, user-facing (CLI, config, session files, URLs).
@@ -183,4 +221,5 @@ class ModelDef with ModelDefMappable {
   final String? speed;
   final String? cost;
   final String? notes;
+  final ModelReasoningDef? reasoning;
 }
