@@ -17,14 +17,14 @@ void main() {
       expect(client, isA<AnthropicClient>());
     });
 
-    test('returns OpenAiClient for openai/<model>', () {
+    test('returns OpenAiResponsesClient for reasoning OpenAI models', () {
       final config = testConfig(env: {'OPENAI_API_KEY': 'sk-openai'});
       final factory = LlmClientFactory(config);
       final client = factory.createFor(
         ModelRef.parse('openai/gpt-5.4'),
         systemPrompt: 'test',
       );
-      expect(client, isA<OpenAiClient>());
+      expect(client, isA<OpenAiResponsesClient>());
     });
 
     test('returns OpenAiClient for groq/gpt-oss-120b', () {
