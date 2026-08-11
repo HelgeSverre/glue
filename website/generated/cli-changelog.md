@@ -4,6 +4,8 @@ All notable changes to Glue CLI will be documented in this file.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-08-11
+
 ### Added
 
 - **Provider-aware reasoning controls.** Use `/reasoning`, `--reasoning`,
