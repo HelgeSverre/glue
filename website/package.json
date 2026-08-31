@@ -18,7 +18,7 @@
     "gray-matter": "^4.0.3",
     "typescript": "^7.0.2",
     "vitepress": "^2.0.0-alpha.19",
-    "vue": "^3.5.41"
+    "vue": "^3.5.42"
   },
   "overrides": {
     "esbuild": "^0.25.12"
