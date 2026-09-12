@@ -4,6 +4,24 @@ All notable changes to Glue CLI will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **`glue completions install --shell zsh` installs an autoloaded function.**
+  Completions are written as `_glue` into the first zsh completion directory
+  found on `fpath` (`~/.zsh/completions`, `~/.zfunc`, or
+  `~/.local/share/zsh/site-functions`) instead of a script sourced from
+  `.zshrc`, so installing no longer edits your shell config and no longer
+  overrides global `zstyle` completion settings. Installing migrates an
+  earlier `~/.dart-cli-completion` setup automatically. Bash, fish, and
+  PowerShell are unchanged.
+
+### Fixed
+
+- **System messages wrap to the terminal width.** Long system output — `/recap`
+  summaries, the startup banner, slash-command replies — ran past the right
+  edge instead of wrapping. Each line is also styled independently now, so
+  multi-line messages keep their colour when partially scrolled.
+
 ## [0.9.0] - 2026-08-11
 
 ### Added
