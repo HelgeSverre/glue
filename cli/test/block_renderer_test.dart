@@ -171,6 +171,18 @@ void main() {
       expect(output, equals(' \x1b[90m\x1b[39m'));
     });
 
+    test('wraps long text and styles every line independently', () {
+      final r = BlockRenderer(40);
+      final lines = r.renderSystem('word ' * 30).split('\n');
+
+      expect(lines.length, greaterThan(1));
+      for (final line in lines) {
+        expect(line, startsWith(' \x1b[90m'));
+        expect(line, endsWith('\x1b[39m'));
+        expect(stripAnsi(line).length, lessThanOrEqualTo(40));
+      }
+    });
+
     test('wraps bare URLs in OSC 8 hyperlinks', () {
       final output = renderer.renderSystem('See https://example.com/docs.');
       expect(output, contains('\x1b]8;;https://example.com/docs\x07'));

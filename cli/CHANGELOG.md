@@ -4,6 +4,13 @@ All notable changes to Glue CLI will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **System messages wrap to the terminal width.** Long system output — `/recap`
+  summaries, the startup banner, slash-command replies — ran past the right
+  edge instead of wrapping. Each line is also styled independently now, so
+  multi-line messages keep their colour when partially scrolled.
+
 ## [0.9.0] - 2026-08-11
 
 ### Added

@@ -204,8 +204,15 @@ class BlockRenderer {
   }
 
   /// Render a system message block.
+  ///
+  /// Styles each line separately: the app splits blocks into lines to scroll
+  /// them, so a single SGR pair around the whole block would leave every line
+  /// but the first unstyled once the block is partially scrolled.
   String renderSystem(String text) {
-    return ' ${linkifyUrls(text).styled.gray}';
+    return wrapIndented(
+      linkifyUrls(text),
+      _inner - 1,
+    ).split('\n').map((line) => ' ${line.styled.gray}').join('\n');
   }
 
   String renderBash(String command, String output, {int maxLines = 50}) {
