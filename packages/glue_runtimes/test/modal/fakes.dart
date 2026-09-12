@@ -26,9 +26,12 @@ class FakeModalSidecar implements ModalSidecarBase {
     started = true;
   }
 
+  bool? shutdownDetach;
+
   @override
-  Future<void> shutdown() async {
+  Future<void> shutdown({bool detach = false}) async {
     shutdownCalled = true;
+    shutdownDetach = detach;
     started = false;
   }
 

@@ -235,8 +235,7 @@ class DaytonaClient {
       sandbox,
       '/process/session/$sessionId/command/$commandId/logs',
     );
-    final res = await _http.get(uri, headers: _headers());
-    _ensureOk(res, 'session_logs');
+    final res = await _getToolbox(endpoint: 'session_logs', uri: uri);
     return utf8.decode(res.bodyBytes, allowMalformed: true);
   }
 
@@ -253,8 +252,7 @@ class DaytonaClient {
       sandbox,
       '/process/session/$sessionId/command/$commandId',
     );
-    final res = await _http.get(uri, headers: _headers());
-    _ensureOk(res, 'session_command_status');
+    final res = await _getToolbox(endpoint: 'session_command_status', uri: uri);
     final json = _decodeJson(res, 'session_command_status');
     final exitCode = json['exitCode'];
     return DaytonaSessionCommandStatus(
@@ -413,6 +411,34 @@ class DaytonaClient {
           message: 'request timed out after ${timeout.inMilliseconds}ms',
         );
       }
+    }
+    _ensureOk(res, endpoint);
+    return res;
+  }
+
+  /// Poll deadline for a single toolbox GET.
+  ///
+  /// Deliberately not [DaytonaConfig.execTimeout] (30 min): these are the
+  /// requests `DaytonaRunningCommand._pump` issues in a loop, and a hung
+  /// connection there leaves `exitCode` unresolved forever. The command
+  /// itself may still run long; one poll must not.
+  static const _pollTimeout = Duration(seconds: 30);
+
+  Future<http.Response> _getToolbox({
+    required String endpoint,
+    required Uri uri,
+  }) async {
+    final http.Response res;
+    try {
+      res = await _http.get(uri, headers: _headers()).timeout(_pollTimeout);
+    } on TimeoutException {
+      // Same mapping as _postToolbox: a raw TimeoutException slips past
+      // `on RuntimeApiException` handlers.
+      throw RuntimeApiException(
+        runtimeId: 'daytona',
+        endpoint: endpoint,
+        message: 'request timed out after ${_pollTimeout.inMilliseconds}ms',
+      );
     }
     _ensureOk(res, endpoint);
     return res;

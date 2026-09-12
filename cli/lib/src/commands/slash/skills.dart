@@ -85,6 +85,11 @@ class SkillsCommand extends SlashCommand {
   }
 
   Future<void> _activate(String skillName) async {
+    if (!ctx.isIdle) {
+      return ctx.conversation.notify(
+        'Wait for the current turn to finish before activating a skill.',
+      );
+    }
     try {
       final activation = await activateSkillIntoConversation(
         agent: ctx.agent,

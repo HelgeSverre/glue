@@ -15,6 +15,9 @@ class ClearCommand extends SlashCommand {
 
   @override
   String execute(List<String> args) {
+    if (!ctx.isIdle) {
+      return 'Wait for the current turn to finish before clearing.';
+    }
     ctx.conversation.clear();
     return 'Cleared.';
   }

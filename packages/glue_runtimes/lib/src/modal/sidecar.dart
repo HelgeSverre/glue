@@ -52,7 +52,14 @@ abstract class ModalSidecarBase {
 
   Future<bool> isAvailable();
   Future<void> start();
-  Future<void> shutdown();
+
+  /// Tear down the local sidecar process, its subscriptions and its temp
+  /// dir. Unless [detach] is set, the remote sandbox is terminated too.
+  ///
+  /// The local teardown always runs: it is the only thing that reaps the
+  /// python child, and leaving it behind strands a process and a temp
+  /// directory for the rest of the glue session.
+  Future<void> shutdown({bool detach = false});
 
   Future<ModalExecResult> execCapture(String command, {Duration? timeout});
 
@@ -362,7 +369,7 @@ class ModalSidecar implements ModalSidecarBase {
   }
 
   @override
-  Future<void> shutdown() async {
+  Future<void> shutdown({bool detach = false}) async {
     if (_proc == null) return;
     _shuttingDown = true;
     try {
@@ -370,7 +377,9 @@ class ModalSidecar implements ModalSidecarBase {
       // is already dead the request future may complete with an
       // error — swallow it.
       try {
-        await _send('shutdown', {}).timeout(const Duration(seconds: 10));
+        await _send('shutdown', {
+          if (detach) 'detach': true,
+        }).timeout(const Duration(seconds: 10));
       } catch (_) {
         /* fallthrough to forced cleanup */
       }

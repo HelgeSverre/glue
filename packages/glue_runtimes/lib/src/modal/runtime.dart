@@ -107,9 +107,10 @@ class ModalRuntime implements RuntimeSession {
   /// running until its [ModalConfig.sandboxTimeoutSeconds] elapses.
   @override
   Future<void> close() async {
-    if (_config.deleteOnClose) {
-      await _sidecar.shutdown();
-    }
+    // Always tear down locally — `deleteOnClose` governs the *remote*
+    // sandbox, and skipping shutdown entirely also stranded the python
+    // child process and its temp dir.
+    await _sidecar.shutdown(detach: !_config.deleteOnClose);
   }
 
   @override

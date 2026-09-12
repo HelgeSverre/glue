@@ -93,7 +93,15 @@ class DockerBrowserProvider implements BrowserEndpointProvider {
       throw StateError('Failed to parse port from: $portOutput');
     }
 
-    await _waitForReady(hostPort);
+    try {
+      await _waitForReady(hostPort);
+    } catch (_) {
+      // The two checks above clean up on failure; readiness must too, or
+      // the container we just started is only reaped by a later glue
+      // startup's cleanupStaleContainers().
+      await _cleanup();
+      rethrow;
+    }
 
     return BrowserEndpoint(
       cdpWsUrl: buildWsUrl(hostPort),
@@ -115,8 +123,11 @@ class DockerBrowserProvider implements BrowserEndpointProvider {
           await response.drain<void>();
           if (response.statusCode == 200) return;
         } catch (_) {
-          await Future.delayed(const Duration(milliseconds: 500));
+          // Fall through to the delay below.
         }
+        // Outside the catch: Chrome answers with a non-200 while booting,
+        // and delaying only on throw burned all 30 attempts in milliseconds.
+        await Future.delayed(const Duration(milliseconds: 500));
       }
       throw StateError('Browser container did not become ready in time');
     } finally {

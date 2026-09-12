@@ -587,8 +587,14 @@ class SessionExportCommand extends Command<int> {
     }
     final to = argResults!.option('to')!;
     File(patch).copySync(to);
-    // Copy the .meta.json sidecar alongside.
-    final metaSrc = File('$patch.meta.json');
+    // Copy the .meta.json sidecar alongside. The sidecar is always written
+    // as `runtime.<ext>.meta.json`, but a truncated patch is recorded as
+    // `runtime.<ext>.truncated` — strip that suffix or the lookup can
+    // never hit.
+    final metaSrc = File(
+      '${patch.endsWith('.truncated') ? patch.substring(0, patch.length - '.truncated'.length) : patch}'
+      '.meta.json',
+    );
     if (metaSrc.existsSync()) {
       metaSrc.copySync('$to.meta.json');
     }

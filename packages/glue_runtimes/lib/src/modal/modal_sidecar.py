@@ -156,6 +156,10 @@ def main(argv: list[str]):
         with streams_lock:
             streams.pop(sid, None)
 
+    # Cleared only by an explicit `shutdown` with detach=true; every other
+    # exit path (parent died, stdin closed, crash) still terminates.
+    terminate_on_exit = True
+
     try:
         for line in sys.stdin:
             line = line.strip()
@@ -289,6 +293,9 @@ def main(argv: list[str]):
                         killer.wait()
                     emit({"id": req_id, "ok": True})
                 elif op == "shutdown":
+                    # detach: leave the sandbox running (delete_on_close
+                    # = false). The local process still exits.
+                    terminate_on_exit = not req.get("detach", False)
                     emit({"id": req_id, "ok": True})
                     break
                 else:
@@ -304,21 +311,22 @@ def main(argv: list[str]):
         # Best-effort: SIGTERM any in-flight streams so the sandbox
         # shuts down quickly (terminate-the-sandbox would do this
         # too, but signalling first lets the user processes clean
-        # up).
-        with streams_lock:
-            for entry in streams.values():
-                try:
-                    sb.exec(
-                        "sh", "-c",
-                        f"[ -f {entry['pid_file']} ] && "
-                        f"kill -TERM $(cat {entry['pid_file']}) || true",
-                    ).wait()
-                except Exception:
-                    pass
-        try:
-            sb.terminate()
-        except Exception:  # noqa: BLE001
-            pass
+        # up). When detaching we leave them running on purpose.
+        if terminate_on_exit:
+            with streams_lock:
+                for entry in streams.values():
+                    try:
+                        sb.exec(
+                            "sh", "-c",
+                            f"[ -f {entry['pid_file']} ] && "
+                            f"kill -TERM $(cat {entry['pid_file']}) || true",
+                        ).wait()
+                    except Exception:
+                        pass
+            try:
+                sb.terminate()
+            except Exception:  # noqa: BLE001
+                pass
 
 
 if __name__ == "__main__":

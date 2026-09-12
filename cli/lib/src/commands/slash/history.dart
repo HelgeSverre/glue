@@ -143,6 +143,11 @@ class HistoryCommand extends SlashCommand {
   }
 
   void _fork(int userMessageIndex, String messageText) {
+    if (!ctx.isIdle) {
+      return ctx.conversation.notify(
+        'Wait for the current turn to finish before forking.',
+      );
+    }
     final result = ctx.session.forkSession(
       userMessageIndex: userMessageIndex,
       messageText: messageText,

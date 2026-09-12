@@ -150,6 +150,9 @@ class ResumeCommand extends SlashCommand {
   /// transcript reset, replay, and optional title backfill via [ctx]
   /// primitives. Returns the user-visible result message.
   String _resume(SessionMeta meta) {
+    if (!ctx.isIdle) {
+      return 'Wait for the current turn to finish before resuming.';
+    }
     final resumed = ctx.resumeSession(meta);
     final result = resumed.sessionResult;
     if (result.status == SessionResumeStatus.locked) return result.message;
