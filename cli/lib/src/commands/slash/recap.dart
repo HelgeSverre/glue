@@ -51,7 +51,12 @@ class RecapCommand extends SlashCommand {
       onUsage: (usage) =>
           ctx.session.recordUsage(UsageStats()..record(usage), role: 'recap'),
     );
-    final summary = await generator.generateFromContext(_buildContext());
+    final summary = await generator.generateFromContext(
+      TitleContext.fromConversation(
+        ctx.agent.conversation,
+        cwdBasename: ctx.cwd.split(Platform.pathSeparator).last,
+      ),
+    );
     ctx.conversation.notify(
       summary == null || summary.isEmpty
           ? 'Could not generate recap.'
@@ -60,52 +65,12 @@ class RecapCommand extends SlashCommand {
   }
 
   LlmClient? _resolveLlm() {
-    final config = ctx.config;
     final factory = ctx.llmFactory;
-    if (config == null || factory == null) return null;
-    final ref = config.smallModel ?? config.activeModel;
+    if (factory == null) return null;
     try {
-      return factory.createFor(ref, systemPrompt: RecapGenerator.systemPrompt);
+      return factory.createSmall(systemPrompt: RecapGenerator.systemPrompt);
     } on ConfigError {
       return null;
     }
-  }
-
-  TitleContext _buildContext() {
-    String? firstUser;
-    String? latestUser;
-    String? firstAssistant;
-    String? latestAssistant;
-    final tools = <String>{};
-
-    for (final msg in ctx.agent.conversation) {
-      final text = msg.text?.trim();
-      switch (msg.role) {
-        case Role.user:
-          if (text != null && text.isNotEmpty) {
-            firstUser ??= text;
-            latestUser = text;
-          }
-        case Role.assistant:
-          if (text != null && text.isNotEmpty) {
-            firstAssistant ??= text;
-            latestAssistant = text;
-          }
-          for (final call in msg.toolCalls) {
-            tools.add(call.name);
-          }
-        case Role.toolResult:
-          break;
-      }
-    }
-
-    return TitleContext(
-      firstUserMessage: firstUser,
-      latestUserMessage: latestUser,
-      firstAssistantMessage: firstAssistant,
-      latestAssistantMessage: latestAssistant,
-      toolNames: tools.toList(),
-      cwdBasename: ctx.cwd.split(Platform.pathSeparator).last,
-    );
   }
 }

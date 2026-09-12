@@ -9,6 +9,7 @@ import 'package:glue_harness/src/observability/observability.dart';
 import 'package:glue_harness/src/observability/redaction.dart';
 import 'package:glue_harness/src/session/session_event_normalizer.dart';
 import 'package:glue_harness/src/storage/session_store.dart';
+import 'package:path/path.dart' as p;
 
 enum SessionReplayKind {
   user,
@@ -156,13 +157,18 @@ class SessionForkResult {
   });
 }
 
-/// Handles session lifecycle operations independent of UI rendering.
+/// The compact view of a conversation handed to the title/recap generators.
+///
+/// Deliberately small: a handful of short fields, never the transcript and
+/// never tool output. [filesTouched] is the only grounding the generators
+/// get — without it a recap has to invent the outcomes it reports.
 class TitleContext {
   final String? firstUserMessage;
   final String? latestUserMessage;
   final String? firstAssistantMessage;
   final String? latestAssistantMessage;
   final List<String> toolNames;
+  final List<String> filesTouched;
   final String? cwdBasename;
 
   const TitleContext({
@@ -171,8 +177,66 @@ class TitleContext {
     this.firstAssistantMessage,
     this.latestAssistantMessage,
     this.toolNames = const [],
+    this.filesTouched = const [],
     this.cwdBasename,
   });
+
+  /// Argument keys tool authors use for the file a tool acts on.
+  static const _pathKeys = {'path', 'file_path', 'filePath', 'file'};
+
+  /// Collect the context from a live conversation.
+  ///
+  /// Tool *results* are never read — only call names and the file paths they
+  /// name — so the blob stays a few hundred tokens regardless of session size.
+  factory TitleContext.fromConversation(
+    List<Message> conversation, {
+    String? cwdBasename,
+  }) {
+    String? firstUser;
+    String? latestUser;
+    String? firstAssistant;
+    String? latestAssistant;
+    final tools = <String>{};
+    final files = <String>{};
+
+    for (final message in conversation) {
+      final text = message.text?.trim();
+      switch (message.role) {
+        case Role.user:
+          if (text != null && text.isNotEmpty) {
+            firstUser ??= text;
+            latestUser = text;
+          }
+        case Role.assistant:
+          if (text != null && text.isNotEmpty) {
+            firstAssistant ??= text;
+            latestAssistant = text;
+          }
+          for (final call in message.toolCalls) {
+            tools.add(call.name);
+            for (final key in _pathKeys) {
+              if (call.arguments[key] case final String path
+                  when path.isNotEmpty) {
+                files.add(p.basename(path));
+                break;
+              }
+            }
+          }
+        case Role.toolResult:
+          break;
+      }
+    }
+
+    return TitleContext(
+      firstUserMessage: firstUser,
+      latestUserMessage: latestUser,
+      firstAssistantMessage: firstAssistant,
+      latestAssistantMessage: latestAssistant,
+      toolNames: tools.toList(),
+      filesTouched: files.toList(),
+      cwdBasename: cwdBasename,
+    );
+  }
 }
 
 class SessionManager {
@@ -871,17 +935,14 @@ class SessionManager {
     required String? currentTitle,
     required String? proposedTitle,
   }) {
+    // The re-evaluation pass sees the assistant's reply, the tools that ran
+    // and the files they touched; the first pass saw one user message. More
+    // context wins — the only reasons to keep the old title are that there is
+    // no new one, or the new one says the same thing.
     final current = _normalizeTitle(currentTitle);
     final proposed = _normalizeTitle(proposedTitle);
     if (current == null || proposed == null) return false;
-    if (current == proposed) return false;
-    if (proposed.length < current.length && _looksGeneric(current)) {
-      return false;
-    }
-    if (_looksGeneric(current) && !_looksGeneric(proposed)) {
-      return true;
-    }
-    return proposed.length > current.length;
+    return current != proposed;
   }
 
   String? _normalizeTitle(String? title) {
@@ -890,17 +951,6 @@ class SessionManager {
     return sanitized
         .replaceAll(RegExp(r'^[^a-z0-9]+|[^a-z0-9]+$'), '')
         .replaceAll(RegExp(r'\s+'), ' ');
-  }
-
-  bool _looksGeneric(String title) {
-    const generic = {
-      'investigate issue',
-      'help debug this',
-      'fix problem',
-      'check code',
-      'session question',
-    };
-    return generic.contains(_normalizeTitle(title));
   }
 
   static final Random _idRandom = Random();

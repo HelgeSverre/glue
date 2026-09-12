@@ -51,4 +51,19 @@ class LlmClientFactory {
   /// Shortcut: use the config's [GlueConfig.activeModel].
   LlmClient createFromConfig({required String systemPrompt}) =>
       createFor(_config.activeModel, systemPrompt: systemPrompt);
+
+  /// Client for the configured small model — titles, recaps, and anything
+  /// else cheap and out-of-band.
+  ///
+  /// Reasoning is forced back to auto: the small model usually doesn't
+  /// support whatever effort the user picked for the main model, and
+  /// [createFor] would throw [ConfigError] rather than fall back. Thinking
+  /// on a one-line summary is wasted latency and spend regardless.
+  LlmClient createSmall({required String systemPrompt}) =>
+      LlmClientFactory(
+        _config.copyWith(reasoning: const ReasoningConfig()),
+      ).createFor(
+        _config.smallModel ?? _config.activeModel,
+        systemPrompt: systemPrompt,
+      );
 }

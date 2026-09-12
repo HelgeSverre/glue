@@ -15,7 +15,35 @@ All notable changes to Glue CLI will be documented in this file.
   earlier `~/.dart-cli-completion` setup automatically. Bash, fish, and
   PowerShell are unchanged.
 
+- **Session titles and `/recap` are grounded in the files a session touched.**
+  Both prompts now carry worked examples and a `<files>` field listing the
+  files tools acted on, so a recap reports what was worked on instead of
+  inventing an outcome, and titles stay on the concrete task.
+
 ### Fixed
+
+- **Titles describe your request, not the files you attached.** A first message
+  containing `@file` references was titled from the attached file's contents
+  rather than what you asked, and sent those contents to the title model.
+
+- **`/recap` works at any reasoning effort.** It inherited the effort set for
+  the main model, so it failed outright with "Recap unavailable" whenever the
+  small model didn't support that level, and burned thinking tokens on a
+  one-line summary when it did.
+
+- **Titles keep non-English characters.** Everything outside ASCII was stripped,
+  so an accented or non-English title came out mangled or empty. Only control
+  characters, combining marks, and emoji are removed now.
+
+- **Titles truncate on a word boundary** and end with `...`, instead of cutting
+  mid-word at 60 characters.
+
+- **Re-generated titles no longer drift longer.** The second pass picked
+  whichever title had more characters; it now takes the one written with more
+  context.
+
+- **Title and recap generation give up after 20 seconds** rather than hanging
+  indefinitely on an unresponsive provider.
 
 - **System messages wrap to the terminal width.** Long system output — `/recap`
   summaries, the startup banner, slash-command replies — ran past the right

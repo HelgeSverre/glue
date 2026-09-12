@@ -155,4 +155,8 @@ class _OllamaFactory implements LlmClientFactory {
   @override
   LlmClient createFromConfig({required String systemPrompt}) =>
       throw UnimplementedError();
+
+  @override
+  LlmClient createSmall({required String systemPrompt}) =>
+      throw UnimplementedError();
 }

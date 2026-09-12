@@ -38,6 +38,9 @@ class _MockFactory implements LlmClientFactory {
 
   @override
   LlmClient createFromConfig({required String systemPrompt}) => _MockLlm();
+
+  @override
+  LlmClient createSmall({required String systemPrompt}) => _MockLlm();
 }
 
 void main() {

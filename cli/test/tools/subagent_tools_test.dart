@@ -22,6 +22,9 @@ class _EchoFactory implements LlmClientFactory {
 
   @override
   LlmClient createFromConfig({required String systemPrompt}) => _EchoLlm();
+
+  @override
+  LlmClient createSmall({required String systemPrompt}) => _EchoLlm();
 }
 
 void main() {

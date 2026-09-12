@@ -20,6 +20,9 @@ class _EchoFactory implements LlmClientFactory {
 
   @override
   LlmClient createFromConfig({required String systemPrompt}) => _EchoLlm();
+
+  @override
+  LlmClient createSmall({required String systemPrompt}) => _EchoLlm();
 }
 
 void main() {
@@ -234,6 +237,9 @@ class _ThrowingFactory implements LlmClientFactory {
 
   @override
   LlmClient createFromConfig({required String systemPrompt}) => _ThrowingLlm();
+
+  @override
+  LlmClient createSmall({required String systemPrompt}) => _ThrowingLlm();
 }
 
 class _ThrowingLlm implements LlmClient {
@@ -251,6 +257,9 @@ class _MultiDeltaFactory implements LlmClientFactory {
   @override
   LlmClient createFromConfig({required String systemPrompt}) =>
       _MultiDeltaLlm();
+
+  @override
+  LlmClient createSmall({required String systemPrompt}) => _MultiDeltaLlm();
 }
 
 class _MultiDeltaLlm implements LlmClient {
