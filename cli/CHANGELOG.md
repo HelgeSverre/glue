@@ -20,7 +20,47 @@ All notable changes to Glue CLI will be documented in this file.
   files tools acted on, so a recap reports what was worked on instead of
   inventing an outcome, and titles stay on the concrete task.
 
+- **Slash commands that reset the conversation wait for the current turn.**
+  `/clear`, `/history` fork, `/resume`, and `/skills` activate now say so
+  instead of mutating the transcript mid-stream, matching `/share`. Listing
+  panels still open at any time.
+
 ### Fixed
+
+- **Models use their full output budget.** Every model's documented output
+  cap was ignored in favour of a hardcoded 8192, so long replies truncated
+  mid-thought on models that allow 64000 or 128000.
+
+- **Requests carry a provider's configured `request_headers`.** They only
+  reached OpenAI-compatible providers; Anthropic and Gemini silently dropped
+  them, which breaks proxies and gateways in front of those APIs.
+
+- **OpenAI reasoning models retry on rate limits.** Models on the Responses
+  transport were the only ones with no 429/5xx backoff.
+
+- **A failed OpenAI or Gemini stream reports the failure.** A provider error
+  arriving mid-stream ended the turn silently, so a truncated reply looked
+  like a complete one.
+
+- **`--reasoning` works on GitHub Copilot models.** The effort was accepted
+  and then dropped before the request.
+
+- **Cloud sandboxes with `delete_on_close: false` no longer strand a local
+  process.** The option is about leaving the *remote* Modal sandbox running;
+  it was also skipping local cleanup, leaving a python process and a temp
+  directory behind for the rest of the session.
+
+- **A hung Daytona connection no longer hangs a background command.** The
+  status/log polling requests had no timeout, so `exitCode` could never
+  resolve.
+
+- **The Docker browser backend cleans up after a failed start** instead of
+  leaving the container for a later `glue` run to reap, and waits properly
+  for Chrome instead of exhausting its 30 retries in milliseconds.
+
+- **`glue session export` copies the `.meta.json` sidecar for truncated
+  patches.** It looked for the sidecar under the wrong name and always
+  missed.
 
 - **Titles describe your request, not the files you attached.** A first message
   containing `@file` references was titled from the attached file's contents
