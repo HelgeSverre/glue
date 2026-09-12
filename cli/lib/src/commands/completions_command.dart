@@ -167,7 +167,7 @@ void _installCompletions(
     case CompletionShell.bash:
       _installCliCompletion(runner, SystemShell.bash);
     case CompletionShell.zsh:
-      _installCliCompletion(runner, SystemShell.zsh);
+      _installZshCompletion(runner);
     case CompletionShell.fish:
       _installFishCompletion(runner.executableName);
     case CompletionShell.powershell:
@@ -188,7 +188,7 @@ void _uninstallCompletions(
     case CompletionShell.bash:
       _uninstallCliCompletion(runner, SystemShell.bash);
     case CompletionShell.zsh:
-      _uninstallCliCompletion(runner, SystemShell.zsh);
+      _uninstallZshCompletion(runner);
     case CompletionShell.fish:
       _uninstallFishCompletion(runner.executableName);
     case CompletionShell.powershell:
@@ -223,6 +223,90 @@ void _uninstallCliCompletion(
     environmentOverride: Platform.environment,
   );
   completionInstallation.uninstall(runner.executableName);
+}
+
+/// User-level zsh `fpath` directories, most conventional first. The first one
+/// that already exists wins; when none do, the first is created.
+const _zshCompletionDirs = [
+  ['.zsh', 'completions'],
+  ['.zfunc'],
+  ['.local', 'share', 'zsh', 'site-functions'],
+];
+
+/// Resolves the directory to drop the autoloaded `_<command>` function into.
+Directory resolveZshCompletionsDir(String home) {
+  final candidates = _zshCompletionDirs
+      .map((parts) => Directory(p.joinAll([home, ...parts])))
+      .toList();
+  return candidates.firstWhere(
+    (dir) => dir.existsSync(),
+    orElse: () => candidates.first,
+  );
+}
+
+/// Installs zsh completion as an autoloaded `_<command>` function on `fpath`,
+/// rather than a script eagerly sourced from `.zshrc`.
+void _installZshCompletion(CompletionCommandRunner<int> runner) {
+  final executableName = runner.executableName;
+  final dir = resolveZshCompletionsDir(_homeDirectory());
+  // A directory we had to create is almost certainly not on fpath yet.
+  final needsFpathHint = !dir.existsSync();
+  dir.createSync(recursive: true);
+
+  final scriptFile = File(p.join(dir.path, '_$executableName'));
+  scriptFile.writeAsStringSync(zshCompletionScript(executableName));
+  _removeLegacyZshCompletion(runner);
+
+  stdout.writeln('Installed zsh completion: ${scriptFile.path}');
+  if (needsFpathHint) {
+    stdout.writeln('Add to ~/.zshrc, before compinit runs:');
+    stdout.writeln('  fpath=(${dir.path} \$fpath)');
+  }
+}
+
+void _uninstallZshCompletion(CompletionCommandRunner<int> runner) {
+  final scriptFile = File(
+    p.join(
+      resolveZshCompletionsDir(_homeDirectory()).path,
+      '_${runner.executableName}',
+    ),
+  );
+  if (scriptFile.existsSync()) {
+    scriptFile.deleteSync();
+  }
+  _removeLegacyZshCompletion(runner);
+  stdout.writeln('Uninstalled zsh completion: ${scriptFile.path}');
+}
+
+/// Clears a completion installed the old way (a `cli_completion` script sourced
+/// from `.zshrc`), which would otherwise double-register alongside the
+/// autoloaded function. Throws when nothing was installed that way, which is
+/// the common case and not an error.
+void _removeLegacyZshCompletion(CompletionCommandRunner<int> runner) {
+  try {
+    _uninstallCliCompletion(runner, SystemShell.zsh);
+  } on Exception {
+    // Nothing to migrate.
+  }
+}
+
+/// The `#compdef` tag on the first line is what registers the function for
+/// [executableName]; zsh autoloads the file on first completion.
+String zshCompletionScript(String executableName) {
+  return '''
+#compdef $executableName
+
+local reply
+local si=\$IFS
+IFS=\$'\\n' reply=(\$(COMP_CWORD="\$((CURRENT - 1))" COMP_LINE="\$BUFFER" COMP_POINT="\$CURSOR" $executableName completion -- "\${words[@]}" 2>/dev/null))
+IFS=\$si
+
+if [[ -z "\$reply" ]]; then
+  _path_files
+else
+  _describe 'values' reply
+fi
+''';
 }
 
 void _installFishCompletion(String executableName) {

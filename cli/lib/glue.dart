@@ -74,6 +74,8 @@ export 'src/commands/slash_commands.dart'
         SlashCommand,
         SlashCommandRegistry;
 export 'src/commands/builtin_commands.dart' show BuiltinCommands;
+export 'src/commands/completions_command.dart'
+    show resolveZshCompletionsDir, zshCompletionScript;
 export 'src/commands/config_command.dart'
     show
         ConfigInitResult,
