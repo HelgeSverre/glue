@@ -40,6 +40,8 @@ class GeminiClient implements LlmClient {
     String baseUrl = _defaultBaseUrl,
     http.Client Function()? requestClientFactory,
     this.reasoning = const ReasoningConfig(),
+    this.maxOutputTokens,
+    this.extraHeaders = const {},
   }) : _requestClientFactory = requestClientFactory ?? http.Client.new,
        _baseUri = Uri.parse(baseUrl);
 
@@ -50,6 +52,12 @@ class GeminiClient implements LlmClient {
   final Uri _baseUri;
   final ReasoningConfig reasoning;
 
+  /// Output cap for a turn, from the catalog's `max_output_tokens`.
+  final int? maxOutputTokens;
+
+  /// Extra request headers declared by the provider (`request_headers:`).
+  final Map<String, String> extraHeaders;
+
   static const _apiVersion = 'v1beta';
   static const _defaultBaseUrl = 'https://generativelanguage.googleapis.com';
 
@@ -58,7 +66,9 @@ class GeminiClient implements LlmClient {
     const mapper = GeminiMessageMapper();
     final mapped = mapper.mapMessages(messages, systemPrompt: systemPrompt);
 
-    final generationConfig = <String, dynamic>{'maxOutputTokens': 8192};
+    final generationConfig = <String, dynamic>{
+      'maxOutputTokens': maxOutputTokens ?? 8192,
+    };
     final body = <String, dynamic>{
       'contents': mapped.messages,
       'generationConfig': generationConfig,
@@ -90,7 +100,11 @@ class GeminiClient implements LlmClient {
         uri: _baseUri.resolve(
           '/$_apiVersion/models/$model:streamGenerateContent?alt=sse',
         ),
-        headers: {'Content-Type': 'application/json', 'x-goog-api-key': apiKey},
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+          ...extraHeaders,
+        },
         body: body,
         providerName: 'Gemini',
         parse: (bytes) => parseStreamEvents(
@@ -117,6 +131,13 @@ class GeminiClient implements LlmClient {
     int callCounter = 0;
 
     await for (final event in events) {
+      // A transport/quota failure mid-stream arrives as a top-level `error`
+      // object and the stream closes — same reasoning as the blockReason
+      // check below: do not let it pass as an empty success.
+      if (event['error'] case final error?) {
+        throw Exception('Gemini stream error: $error');
+      }
+
       // A blocked prompt (safety/recitation filter) arrives as
       // `promptFeedback.blockReason` with no usable candidates. Surface it as
       // an error so a blocked turn does not masquerade as a clean, empty

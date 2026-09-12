@@ -74,6 +74,7 @@ class CopilotAdapter extends ProviderAdapter {
       baseUrl: provider.baseUrl ?? 'https://api.githubcopilot.com',
       httpClient: _http,
       requestClientFactory: _requestClientFactory,
+      reasoning: model.reasoning,
     );
   }
 
@@ -237,6 +238,7 @@ class _CopilotClient implements LlmClient {
     required this.baseUrl,
     http.Client? httpClient,
     this._requestClientFactory,
+    this.reasoning = const ReasoningConfig(),
   }) : _http = httpClient;
 
   final CredentialStore store;
@@ -245,6 +247,11 @@ class _CopilotClient implements LlmClient {
   final String baseUrl;
   final http.Client? _http;
   final http.Client Function()? _requestClientFactory;
+
+  /// Without this the effort the user picked was silently dropped:
+  /// `llm_factory`'s validation passes because the catalog declares
+  /// support, so `--effort high` on a Copilot model did nothing.
+  final ReasoningConfig reasoning;
 
   @override
   Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) async* {
@@ -255,6 +262,7 @@ class _CopilotClient implements LlmClient {
       systemPrompt: systemPrompt,
       baseUrl: baseUrl,
       profile: CompatibilityProfile.openai,
+      reasoning: reasoning,
       extraHeaders: {
         'Copilot-Integration-Id': 'vscode-chat',
         'Editor-Version': 'Glue/${AppConstants.version}',

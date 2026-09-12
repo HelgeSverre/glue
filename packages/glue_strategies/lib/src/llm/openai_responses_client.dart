@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:glue_core/glue_core.dart';
+import 'package:glue_strategies/src/llm/retry.dart';
 import 'package:glue_strategies/src/llm/sse.dart';
 import 'package:glue_strategies/src/llm/stream_request.dart';
 import 'package:glue_strategies/src/llm/tool_args.dart';
@@ -97,20 +98,22 @@ class OpenAiResponsesClient implements LlmClient {
     final endpointBase = _baseUri.path.endsWith('/')
         ? _baseUri
         : _baseUri.replace(path: '${_baseUri.path}/');
-    return sendAndStream(
-      requestClientFactory: _requestClientFactory,
-      uri: endpointBase.resolve('responses'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $apiKey',
-        ...extraHeaders,
-      },
-      body: body,
-      providerName: 'OpenAI',
-      parse: (bytes) => parseStreamEvents(
-        decodeSse(
-          bytes,
-        ).map((event) => jsonDecode(event.data) as Map<String, dynamic>),
+    return retryStream(
+      () => sendAndStream(
+        requestClientFactory: _requestClientFactory,
+        uri: endpointBase.resolve('responses'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $apiKey',
+          ...extraHeaders,
+        },
+        body: body,
+        providerName: 'OpenAI',
+        parse: (bytes) => parseStreamEvents(
+          decodeSse(
+            bytes,
+          ).map((event) => jsonDecode(event.data) as Map<String, dynamic>),
+        ),
       ),
     );
   }

@@ -9,6 +9,7 @@ library;
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:glue_core/glue_core.dart';
 import 'package:glue_strategies/src/credentials/credential_store.dart';
 import 'package:http/http.dart' as http;
 
@@ -54,7 +55,7 @@ Future<CopilotTokenExchange> exchangeGithubTokenForCopilotToken(
       headers: {
         'authorization': 'token $githubToken',
         'accept': 'application/json',
-        'editor-version': 'Glue/dev',
+        'editor-version': 'Glue/${AppConstants.version}',
       },
     );
     if (response.statusCode != 200) {

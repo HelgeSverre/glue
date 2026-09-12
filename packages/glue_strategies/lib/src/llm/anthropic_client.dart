@@ -41,8 +41,18 @@ class AnthropicClient implements LlmClient {
     http.Client Function()? requestClientFactory,
     this.promptCacheEnabled = true,
     this.reasoning = const ReasoningConfig(),
+    this.maxOutputTokens,
+    this.extraHeaders = const {},
   }) : _requestClientFactory = requestClientFactory ?? http.Client.new,
        _baseUri = Uri.parse(baseUrl);
+
+  /// Output cap for a turn. Comes from the catalog's `max_output_tokens`;
+  /// the 8192 fallback is only for models the catalog doesn't describe.
+  final int? maxOutputTokens;
+
+  /// Extra request headers declared by the provider (`request_headers:` in
+  /// the catalog) — proxies and gateways fronting Anthropic need these.
+  final Map<String, String> extraHeaders;
 
   @override
   Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) {
@@ -51,7 +61,7 @@ class AnthropicClient implements LlmClient {
 
     final body = <String, dynamic>{
       'model': model,
-      'max_tokens': 8192,
+      'max_tokens': maxOutputTokens ?? 8192,
       'stream': true,
       'system': mapped.systemPrompt,
       'messages': mapped.messages,
@@ -87,6 +97,7 @@ class AnthropicClient implements LlmClient {
           'Content-Type': 'application/json',
           'x-api-key': apiKey,
           'anthropic-version': _apiVersion,
+          ...extraHeaders,
         },
         body: body,
         providerName: 'Anthropic',

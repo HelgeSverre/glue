@@ -38,6 +38,8 @@ class AnthropicAdapter extends ProviderAdapter {
       requestClientFactory: _requestClientFactory,
       promptCacheEnabled: promptCacheEnabled,
       reasoning: model.reasoning,
+      maxOutputTokens: model.def.maxOutputTokens,
+      extraHeaders: provider.requestHeaders,
     );
   }
 }

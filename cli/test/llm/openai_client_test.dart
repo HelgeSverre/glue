@@ -39,6 +39,29 @@ void main() {
       expect(text, 'Hello world');
     });
 
+    test('throws on a mid-stream error frame', () async {
+      // No `choices`, so before the guard this fell through to `continue`
+      // and the truncated turn was committed as a clean success.
+      final events = [
+        {
+          'choices': [
+            {
+              'index': 0,
+              'delta': {'content': 'Hel'},
+            },
+          ],
+        },
+        {
+          'error': {'message': 'upstream capacity', 'code': 502},
+        },
+      ];
+
+      expect(
+        OpenAiClient.parseStreamEvents(Stream.fromIterable(events)).toList(),
+        throwsA(isA<Exception>()),
+      );
+    });
+
     test('parses streaming tool calls', () async {
       final events = [
         {

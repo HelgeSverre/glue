@@ -112,6 +112,14 @@ class OpenAiClient implements LlmClient {
     final toolBuilders = <int, ToolArgsBuffer<ToolCallId>>{};
 
     await for (final event in events) {
+      // A provider that fails mid-stream (OpenRouter, most gateways) sends
+      // an `error` frame and closes. It carries no `choices`, so without
+      // this check it falls through to `continue` and a truncated turn is
+      // committed as a clean success.
+      if (event['error'] case final error?) {
+        throw Exception('OpenAI stream error: $error');
+      }
+
       // Usage may come in a final chunk.
       final usageRaw = event['usage'] as Map?;
       final usage = usageRaw?.cast<String, dynamic>();

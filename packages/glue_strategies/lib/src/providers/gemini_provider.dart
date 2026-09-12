@@ -33,6 +33,8 @@ class GeminiProvider extends ProviderAdapter {
       baseUrl: provider.baseUrl ?? _defaultBaseUrl,
       requestClientFactory: _requestClientFactory,
       reasoning: model.reasoning,
+      maxOutputTokens: model.def.maxOutputTokens,
+      extraHeaders: provider.requestHeaders,
     );
   }
 }

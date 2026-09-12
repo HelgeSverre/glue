@@ -44,6 +44,52 @@ void main() {
       final body = jsonDecode(captured.body!) as Map<String, dynamic>;
       expect(body.containsKey('cache_control'), isFalse);
     });
+
+    test('uses the catalog max_output_tokens, not the 8192 fallback', () async {
+      final captured = _CapturingHttpClient(_minimalSseResponse());
+      final client = AnthropicClient(
+        apiKey: 'sk-test',
+        model: 'claude-sonnet-4-6',
+        systemPrompt: 'You are Glue.',
+        requestClientFactory: () => captured,
+        maxOutputTokens: 64000,
+      );
+
+      await client.stream([Message.user('hi')]).drain<void>();
+
+      final body = jsonDecode(captured.body!) as Map<String, dynamic>;
+      expect(body['max_tokens'], 64000);
+    });
+
+    test('falls back to 8192 when the catalog omits a cap', () async {
+      final captured = _CapturingHttpClient(_minimalSseResponse());
+      final client = AnthropicClient(
+        apiKey: 'sk-test',
+        model: 'some-uncatalogued-model',
+        systemPrompt: 'You are Glue.',
+        requestClientFactory: () => captured,
+      );
+
+      await client.stream([Message.user('hi')]).drain<void>();
+
+      final body = jsonDecode(captured.body!) as Map<String, dynamic>;
+      expect(body['max_tokens'], 8192);
+    });
+
+    test('sends provider request_headers', () async {
+      final captured = _CapturingHttpClient(_minimalSseResponse());
+      final client = AnthropicClient(
+        apiKey: 'sk-test',
+        model: 'claude-sonnet-4-6',
+        systemPrompt: 'You are Glue.',
+        requestClientFactory: () => captured,
+        extraHeaders: const {'x-gateway-tenant': 'acme'},
+      );
+
+      await client.stream([Message.user('hi')]).drain<void>();
+
+      expect(captured.headers?['x-gateway-tenant'], 'acme');
+    });
   });
 
   group('AnthropicClient.parseStream', () {
