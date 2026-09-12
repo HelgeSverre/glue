@@ -1,7 +1,8 @@
 default:
     @just --list
 
-# Install JavaScript dependencies
+# Install JS dependencies
+[group('setup')]
 deps:
     npm ci
 
@@ -13,7 +14,33 @@ deps-if-needed:
         npm ci
     fi
 
-# Generate API docs from Dart source
+# Remove build artifacts
+[group('setup')]
+clean:
+    rm -rf .vitepress/dist .vitepress/cache
+
+# Serve locally
+[group('build')]
+dev: deps-if-needed generate
+    npx vitepress dev
+
+# Build static site
+[group('build')]
+build: deps-if-needed generate
+    npx vitepress build
+
+# Preview production build
+[group('build')]
+preview: deps-if-needed build
+    npx vitepress preview
+
+# Deploy to Vercel production
+[group('build')]
+deploy: build
+    vc --prod
+
+# All generated docs + OG images
+[group('gen')]
 generate: deps-if-needed
     cd ../cli && dart run tool/gen_models.dart
     cd ../cli && dart run tool/generate_website_api.dart
@@ -22,53 +49,23 @@ generate: deps-if-needed
     npm run og
     npx prettier --write ./generated/*.md
 
-
-# Regenerate site reference files only (models, runtime matrix, config, sessions, CLI changelog)
+# Reference files only (models, runtimes, config, sessions, changelog)
+[group('gen')]
 generate-reference:
     cd ../cli && dart run tool/generate_site_reference.dart
     cp ../cli/CHANGELOG.md generated/cli-changelog.md
     npx prettier --write ./generated/*.md
 
-
-# Generate per-page OpenGraph images (public/og/*.png)
+# Per-page OpenGraph images → public/og/
+[group('gen')]
 og: deps-if-needed
     npm run og
 
-# Fail if generated reference files are out of date with canonical sources
-check-generated: generate-reference
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if ! git diff --quiet -- generated/; then
-      echo "✗ Generated site reference files are out of date." >&2
-      echo "  Run 'just website::generate-reference' and commit the result." >&2
-      git --no-pager diff --stat -- generated/ >&2
-      exit 1
-    fi
-    echo "✓ Generated site reference files match canonical sources."
+# Consistency check + build (generated/ drift: just gen-check)
+[group('check')]
+check: check-consistency build
 
-# Serve locally for development
-dev: deps-if-needed generate
-    npx vitepress dev
-
-# Build static site
-build: deps-if-needed generate
-    npx vitepress build
-
-# Quality gate for docs (drift check + consistency check + build)
-check: check-generated check-consistency build
-
-# Consistency checks — feature-status labels, banned terms, install-snippet uniqueness
+# Feature-status labels, banned terms, install-snippet uniqueness
+[group('check')]
 check-consistency:
     cd ../cli && dart run tool/check_site_consistency.dart
-
-# Preview production build
-preview: deps-if-needed build
-    npx vitepress preview
-
-# Deploy to Vercel production (runs `vc --prod`)
-deploy: build
-    vc --prod
-
-# Remove docs build artifacts
-clean:
-    rm -rf .vitepress/dist .vitepress/cache

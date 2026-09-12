@@ -3,7 +3,8 @@ set dotenv-load
 default:
     @just --list
 
-# Compile AOT native binary to <repo>/dist/glue
+# AOT binary → dist/glue
+[group('build')]
 build: gen
     #!/usr/bin/env bash
     set -euo pipefail
@@ -12,93 +13,90 @@ build: gen
     mv ../dist/bundle/bin/glue ../dist/glue
     rm -rf ../dist/bundle
 
-# Compile and symlink to ~/.local/bin
+# Build + symlink into ~/.local/bin
+[group('build')]
 install: build
     mkdir -p ~/.local/bin
     ln -sf "$(cd .. && pwd)/dist/glue" ~/.local/bin/glue
 
-# Build and run interactively
+# Remove the ~/.local/bin/glue symlink
+[group('build')]
+uninstall:
+    rm -f ~/.local/bin/glue
+
+# Unlink, rebuild from scratch, relink
+[group('build')]
+reinstall: uninstall install
+
+# Build + run interactively
+[group('build')]
 run *args: build
-    @../dist/glue {{args}}
+    @../dist/glue {{ args }}
 
-# Run unit tests (pass args: just test test/llm/)
+# Bump version, commit, tag, build
+[group('build')]
+[confirm: "Release a new version?"]
+release version:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    sed -i '' "s/^version: .*/version: {{ version }}/" pubspec.yaml
+    dart run tool/gen_version.dart
+    echo "Updated pubspec.yaml to {{ version }}"
+    git add pubspec.yaml ../packages/glue_core/lib/src/version_generated.dart
+    git commit -m "release: v{{ version }}"
+    git tag "v{{ version }}"
+    just build
+    echo ""
+    echo "Released v{{ version }} — ../dist/glue --version"
+    ../dist/glue --version
+    echo "  Run: git push && git push --tags"
+
+# cli tests only (all packages: just test)
+[group('check')]
 test *args: gen
-    dart test {{args}}
+    dart test {{ args }}
 
-# Run e2e integration tests (requires: ollama + qwen3:1.7b)
-e2e:
+# E2E tests (needs ollama + qwen3:1.7b)
+[group('check')]
+e2e: build-info
     dart test --run-skipped -t e2e
 
-# Run network-backed integration tests (e.g. live DuckDuckGo search)
-integration *args:
-    dart test --run-skipped -t integration {{args}}
+# Network-backed tests (live DuckDuckGo etc.)
+[group('check')]
+integration *args: build-info
+    dart test --run-skipped -t integration {{ args }}
 
-# Generate the local build metadata file needed from a clean checkout.
-local-gen: deps
+# Layer-import linter — see docs/plans/2026-04-29-harness-layers.md
+[group('check')]
+check-layers *args:
+    dart run tool/check_layers.dart --strict {{ args }}
+
+# build_info_generated.dart is gitignored but imported transitively, so it must
+# exist before anything analyzes or runs against the harness.
+[private]
+build-info:
     dart run tool/gen_build_info.dart
 
-# Static analysis
-analyze: local-gen
-    dart analyze --fatal-infos
-
-# Format all Dart files
-format:
-    dart format .
-
-# Regenerate committed source snapshots from their source files.
-gen: local-gen
-    cd ../packages/glue_core && just gen
+# cli source snapshots only (whole repo: just gen)
+[group('gen')]
+gen: build-info
     dart run tool/gen_models.dart
     dart run tool/gen_version.dart
     dart run tool/gen_share_assets.dart
     dart run tool/gen_session_schemas.dart
 
-# Fail if any committed generated file is out of date.
-gen-check: local-gen
-    cd ../packages/glue_core && just gen-check
-    dart run tool/gen_models.dart --check
-    dart run tool/gen_version.dart --check
-    dart run tool/gen_share_assets.dart --check
-    dart run tool/gen_session_schemas.dart --check
-
-# Layer-import linter (strict — see docs/plans/2026-04-29-harness-layers.md)
-# Enforces the full four-layer architecture: surface → harness → strategies → core.
-check-layers *args:
-    dart run tool/check_layers.dart --strict {{args}}
-
-# Analyze + test + codegen freshness + layer hygiene
-check: gen-check analyze test check-layers
-
-# Get dependencies
-deps:
-    dart pub get
-
-# Generate API docs (→ doc/api)
+# API docs → doc/api
+[group('docs')]
 docs:
     dart doc --output doc/api --validate-links
 
-# Generate and serve API docs
+# Build + serve API docs
+[group('docs')]
 docs-serve: docs
     npx serve doc/api
 
-# Bump version, commit, tag, then build so the binary carries the tagged SHA
-[confirm: "Release a new version?"]
-release version:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    sed -i '' "s/^version: .*/version: {{version}}/" pubspec.yaml
-    dart run tool/gen_version.dart
-    echo "Updated pubspec.yaml to {{version}}"
-    git add pubspec.yaml ../packages/glue_core/lib/src/version_generated.dart
-    git commit -m "release: v{{version}}"
-    git tag "v{{version}}"
-    just build
-    echo ""
-    echo "Released v{{version}} — ../dist/glue --version"
-    ../dist/glue --version
-    echo "  Run: git push && git push --tags"
-
-# Generate per-subsystem class diagrams into diagrams/ (format: svg|png|txt)
+# Per-subsystem class diagrams (svg|png|txt)
+[group('docs')]
 diagrams format="svg":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -114,32 +112,29 @@ diagrams format="svg":
     subsystems=(agent app catalog commands config core credentials doctor input llm observability orchestrator providers rendering session share shell skills storage terminal tools ui web)
     echo "→ all (full project)"
     dart pub global run dcdg -b plantuml --exclude-private=all -o diagrams/_all.puml
-    plantuml -t{{format}} diagrams/_all.puml
+    plantuml -t{{ format }} diagrams/_all.puml
     for sub in "${subsystems[@]}"; do
       dir="lib/src/$sub"
       [ -d "$dir" ] || continue
       echo "→ $sub"
       dart pub global run dcdg -b plantuml --exclude-private=all -s "$dir" -o "diagrams/$sub.puml"
-      plantuml -t{{format}} "diagrams/$sub.puml"
+      plantuml -t{{ format }} "diagrams/$sub.puml"
     done
     echo ""
-    echo "Generated $(ls diagrams/*.{{format}} 2>/dev/null | wc -l | tr -d ' ') diagrams in diagrams/"
+    echo "Generated $(ls diagrams/*.{{ format }} 2>/dev/null | wc -l | tr -d ' ') diagrams in diagrams/"
 
-# Remove build artifacts
-clean:
-    rm -rf ../dist build
-    rm -rf doc/api
-    rm -rf diagrams
-
-# Run with DevTools observability (JIT mode, dev only)
+# Run with DevTools (JIT)
+[group('dev')]
 dev *ARGS:
-    dart --enable-vm-service --timeline-streams=Dart run bin/glue.dart {{ARGS}}
+    dart --enable-vm-service --timeline-streams=Dart run bin/glue.dart {{ ARGS }}
 
-# Run with DevTools, paused at start for debugger attachment
+# Run with DevTools, paused for debugger attach
+[group('dev')]
 dev-pause *ARGS:
-    dart --enable-vm-service --pause-isolates-on-start --timeline-streams=Dart run bin/glue.dart {{ARGS}}
+    dart --enable-vm-service --pause-isolates-on-start --timeline-streams=Dart run bin/glue.dart {{ ARGS }}
 
-# Run with full profiling streams (VM, Isolate, GC, Dart)
+# Run with full profiling streams
+[group('dev')]
 dev-profile *ARGS:
     @echo "Starting Glue with full profiling..."
-    dart --enable-vm-service --timeline-streams=VM,Isolate,GC,Dart run bin/glue.dart {{ARGS}}
+    dart --enable-vm-service --timeline-streams=VM,Isolate,GC,Dart run bin/glue.dart {{ ARGS }}

@@ -30,36 +30,35 @@ Naming guidance:
 
 ## Common Commands
 
-All commands assume working directory is `cli/` unless noted.
+The repo is a Dart pub workspace, so `deps`, `format`, and `analyze` are
+single repo-wide commands and live only in the **root** justfile. Run these
+from the repo root. `cli/` and `website/` keep justfiles for their own
+build/run/release workflows.
 
 ```sh
-# Build & run
-just build                                 # AOT binary → ../dist/glue (via `dart build cli`)
-dart run bin/glue.dart                     # Run from source
-
 # Quality gate (run before committing)
-dart format --set-exit-if-changed .
-dart analyze --fatal-infos                 # Zero warnings policy
-dart test
-just check                                 # gen-check + analyze + test
-just gen-check                             # Fail if bundled model catalog is stale
+just check                                 # format + gen-check + analyze + test + layers + site
+just analyze                               # dart analyze --fatal-infos, whole workspace
+just format                                # dart format . + prettier on website/generated
+just test                                  # unit tests for every package
+just cli::test test/llm/                   # path filters are per-package, not repo-wide
 
-# Regenerate bundled model catalog from docs/reference/models.yaml
-just gen                                   # dart run tool/gen_models.dart
+# Codegen (build_runner, model catalog, version, site reference)
+just gen                                   # regenerate everything committed
+just gen-check                             # fail if any generated file is stale
 
-# Single test file
-dart test test/llm/anthropic_client_test.dart
+# Build & run
+just cli::build                            # AOT binary → dist/glue
+just cli::run                              # build, then run interactively
+cd cli && dart run bin/glue.dart           # run from source, no build
 
-# E2E tests (requires Ollama + qwen3:1.7b)
-just e2e                                   # dart test --run-skipped -t e2e
+# CLI-only test loops (from repo root)
+just cli::test                             # cli package tests only
+just cli::e2e                              # requires Ollama + qwen3:1.7b
+just cli::integration                      # live DuckDuckGo, Hyperbrowser, etc.
 
-# Network-backed integration tests (live DuckDuckGo, Hyperbrowser, etc.)
-just integration                           # dart test --run-skipped -t integration
-
-# Monorepo shortcuts (from repo root, requires just)
-just check          # Full quality gate across cli + website
-just cli::check     # CLI only: gen-check + analyze + test
-just cli::test      # CLI tests only
+# Live cloud-runtime suites (opt-in, need credentials)
+just daytona / just sprites / just modal
 ```
 
 ## Architecture

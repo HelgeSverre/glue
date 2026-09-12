@@ -9,7 +9,6 @@ on:
       - "docs/**"
       - "justfile"
       - "cli/justfile"
-      - "packages/glue_core/justfile"
       - "website/justfile"
       - ".github/workflows/ci-monorepo-check.yml"
   push:
@@ -22,7 +21,6 @@ on:
       - "docs/**"
       - "justfile"
       - "cli/justfile"
-      - "packages/glue_core/justfile"
       - "website/justfile"
       - ".github/workflows/ci-monorepo-check.yml"
   workflow_dispatch:
@@ -49,51 +47,13 @@ jobs:
           cache: "npm"
           cache-dependency-path: website/package-lock.json
 
-      - name: Install glue_core dependencies
-        run: just glue_core::deps
-
-      - name: Install glue_strategies dependencies
-        # Depends on glue_core via path; resolve after glue_core::deps.
-        run: just glue_strategies::deps
-
-      - name: Install glue_harness dependencies
-        # Depends on glue_core + glue_strategies via path.
-        run: just glue_harness::deps
-
-      - name: Install glue_server dependencies
-        # Depends only on glue_core via path.
-        run: just glue_server::deps
-
-      - name: Install CLI dependencies
-        # CLI's pubspec depends on all four via path; resolve last.
-        run: just cli::deps
-
-      - name: Install site dependencies
-        run: npm ci --prefix website
-
-      - name: Check formatting (all Dart packages)
-        run: |
-          dart format --output=none --set-exit-if-changed cli
-          dart format --output=none --set-exit-if-changed packages/glue_core
-          dart format --output=none --set-exit-if-changed packages/glue_strategies
-          dart format --output=none --set-exit-if-changed packages/glue_harness
-          dart format --output=none --set-exit-if-changed packages/glue_server
-
-      - name: Generate build metadata
-        # build_info_generated.dart is gitignored; the layer-hygiene check and
-        # tests below import it transitively, so generate it after the format
-        # check (generated artifacts aren't format-gated) and before they run.
-        working-directory: cli
-        run: dart run tool/gen_build_info.dart
-
-      - name: Layer-import hygiene
-        # See docs/plans/2026-04-29-harness-layers.md.
-        # Enforces the full four-layer architecture (surface → harness →
-        # strategies → core).
-        working-directory: cli
-        run: dart run tool/check_layers.dart --strict
+      - name: Install dependencies
+        # One `dart pub get` resolves the whole pub workspace (see root
+        # pubspec.yaml), plus `npm ci` for the site.
+        run: just deps
 
       - name: Run monorepo quality gate
+        # format + gen-check + analyze + test + layer hygiene + site build.
         run: just check
 
       - name: Verify local site output (act)
