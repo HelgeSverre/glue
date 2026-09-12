@@ -33,12 +33,12 @@ enum _Mode { name, arg }
 /// keys and calls [update]/[accept]. [ShellAutocomplete] is the only other
 /// overlay with a similar mid-buffer splice pattern, but it only activates
 /// in bash mode, so there is no collision risk with slash commands.
-class SlashAutocomplete implements AutocompleteOverlay {
+class SlashAutocomplete
+    with AutocompleteSelection
+    implements AutocompleteOverlay {
   final SlashCommandRegistry _registry;
 
   bool _active = false;
-  int _selected = 0;
-  int _scrollOffset = 0;
   List<_Candidate> _matches = [];
   _Mode _mode = _Mode.name;
   String _buffer = '';
@@ -51,17 +51,13 @@ class SlashAutocomplete implements AutocompleteOverlay {
   bool get active => _active;
 
   @override
-  int get selected => _selected;
-
-  @override
   int get matchCount => _matches.length;
 
   @override
   void dismiss() {
     _active = false;
     _matches = [];
-    _selected = 0;
-    _scrollOffset = 0;
+    resetSelection();
     _buffer = '';
     _mode = _Mode.name;
   }
@@ -120,9 +116,7 @@ class SlashAutocomplete implements AutocompleteOverlay {
     _mode = _Mode.name;
     _matches = candidates;
     _buffer = buffer;
-    _selected = _selected.clamp(0, _matches.length - 1);
-    _scrollOffset = 0;
-    _clampScroll();
+    clampSelectionToMatches();
   }
 
   _Candidate _candidateForCommand(
@@ -176,34 +170,7 @@ class SlashAutocomplete implements AutocompleteOverlay {
     _active = true;
     _mode = _Mode.arg;
     _buffer = buffer;
-    _selected = _selected.clamp(0, _matches.length - 1);
-    _scrollOffset = 0;
-    _clampScroll();
-  }
-
-  @override
-  void moveUp() {
-    if (!_active || _matches.isEmpty) return;
-    _selected = (_selected - 1) % _matches.length;
-    if (_selected < 0) _selected += _matches.length;
-    _clampScroll();
-  }
-
-  @override
-  void moveDown() {
-    if (!_active || _matches.isEmpty) return;
-    _selected = (_selected + 1) % _matches.length;
-    _clampScroll();
-  }
-
-  void _clampScroll() {
-    if (_selected < _scrollOffset) {
-      _scrollOffset = _selected;
-    } else if (_selected >= _scrollOffset + maxVisible) {
-      _scrollOffset = _selected - maxVisible + 1;
-    }
-    final maxStart = (_matches.length - maxVisible).clamp(0, _matches.length);
-    _scrollOffset = _scrollOffset.clamp(0, maxStart);
+    clampSelectionToMatches();
   }
 
   /// The full command text the current selection would set. Used by the
@@ -211,7 +178,7 @@ class SlashAutocomplete implements AutocompleteOverlay {
   /// instead of re-accepting.
   String? get selectedText {
     if (!_active || _matches.isEmpty) return null;
-    final match = _matches[_selected];
+    final match = _matches[selected];
     if (_mode == _Mode.name) {
       return match.acceptValue + (match.acceptContinues ? ' ' : '');
     }
@@ -226,7 +193,7 @@ class SlashAutocomplete implements AutocompleteOverlay {
   @override
   AcceptResult? accept(String buffer, int cursor) {
     if (!_active || _matches.isEmpty) return null;
-    final match = _matches[_selected];
+    final match = _matches[selected];
 
     String text;
     if (_mode == _Mode.name) {
@@ -248,22 +215,18 @@ class SlashAutocomplete implements AutocompleteOverlay {
   List<String> render(int width) {
     if (!_active || _matches.isEmpty) return [];
 
-    final end = (_scrollOffset + maxVisible).clamp(0, _matches.length);
-    final visible = _matches.sublist(_scrollOffset, end);
+    final end = (scrollOffset + maxVisible).clamp(0, _matches.length);
+    final visible = _matches.sublist(scrollOffset, end);
 
     final lines = <String>[];
     for (var i = 0; i < visible.length; i++) {
       final c = visible[i];
-      final absoluteIndex = _scrollOffset + i;
+      final absoluteIndex = scrollOffset + i;
       final namePadded = c.display.padRight(16);
       final content = '   $namePadded ${c.description}';
-      final truncated = visibleLength(content) > width
-          ? ansiTruncate(content, width)
-          : content;
-      final padCount = width - visibleLength(truncated);
-      final padded = '$truncated${' ' * (padCount > 0 ? padCount : 0)}';
+      final padded = ansiFit(content, width);
       lines.add(
-        absoluteIndex == _selected
+        absoluteIndex == selected
             ? '${padded.styled.bg256(24).brightWhite}'
             : '${padded.styled.bg256(236).white}',
       );

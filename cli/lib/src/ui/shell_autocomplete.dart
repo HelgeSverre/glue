@@ -8,12 +8,12 @@ import 'package:glue/src/ui/autocomplete_overlay.dart';
 /// Implements [AutocompleteOverlay]. Unlike slash/@-file overlays, this
 /// one activates only on explicit Tab press via [requestCompletions]
 /// (async, because it shells out to `fish complete -C` / `compgen`).
-class ShellAutocomplete implements AutocompleteOverlay {
+class ShellAutocomplete
+    with AutocompleteSelection
+    implements AutocompleteOverlay {
   final ShellCompleter _completer;
 
   bool _active = false;
-  int _selected = 0;
-  int _scrollOffset = 0;
   int _tokenStart = 0;
   String _buffer = '';
   int _cursor = 0;
@@ -28,26 +28,16 @@ class ShellAutocomplete implements AutocompleteOverlay {
   bool get active => _active;
 
   @override
-  int get selected => _selected;
-
-  @override
   int get matchCount => _matches.length;
 
   /// The start position of the completable token in the buffer.
   int get tokenStart => _tokenStart;
 
   @override
-  int get overlayHeight {
-    if (!_active || _matches.isEmpty) return 0;
-    return _matches.length > maxVisible ? maxVisible : _matches.length;
-  }
-
-  @override
   void dismiss() {
     _active = false;
     _matches = [];
-    _selected = 0;
-    _scrollOffset = 0;
+    resetSelection();
     _tokenStart = 0;
     _buffer = '';
     _cursor = 0;
@@ -80,42 +70,18 @@ class ShellAutocomplete implements AutocompleteOverlay {
     _cursor = cursor;
     _tokenStart = _completer.tokenStart(line);
     _matches = candidates;
-    _selected = 0;
-    _scrollOffset = 0;
+    resetSelection();
   }
 
   @override
-  void moveUp() {
-    if (!_active || _matches.isEmpty) return;
-    _selected = (_selected - 1) % _matches.length;
-    if (_selected < 0) _selected += _matches.length;
-    _clampScroll();
-  }
-
   @override
-  void moveDown() {
-    if (!_active || _matches.isEmpty) return;
-    _selected = (_selected + 1) % _matches.length;
-    _clampScroll();
-  }
-
-  void _clampScroll() {
-    if (_selected < _scrollOffset) {
-      _scrollOffset = _selected;
-    } else if (_selected >= _scrollOffset + maxVisible) {
-      _scrollOffset = _selected - maxVisible + 1;
-    }
-    final maxStart = (_matches.length - maxVisible).clamp(0, _matches.length);
-    _scrollOffset = _scrollOffset.clamp(0, maxStart);
-  }
-
   /// Accept the current selection. The shell overlay has cached the
   /// triggering buffer/cursor at `requestCompletions` time, so the
   /// passed-in [buffer] and [cursor] are ignored.
   @override
   AcceptResult? accept(String buffer, int cursor) {
     if (!_active || _matches.isEmpty) return null;
-    final candidate = _matches[_selected];
+    final candidate = _matches[selected];
 
     final before = _buffer.substring(0, _tokenStart);
     final after = _cursor < _buffer.length ? _buffer.substring(_cursor) : '';
@@ -135,8 +101,8 @@ class ShellAutocomplete implements AutocompleteOverlay {
   List<String> render(int width) {
     if (!_active || _matches.isEmpty) return [];
 
-    final end = (_scrollOffset + maxVisible).clamp(0, _matches.length);
-    final visible = _matches.sublist(_scrollOffset, end);
+    final end = (scrollOffset + maxVisible).clamp(0, _matches.length);
+    final visible = _matches.sublist(scrollOffset, end);
 
     const bgDim = '\x1b[48;5;236m\x1b[37m';
     const bgSel = '\x1b[48;5;24m\x1b[97m';
@@ -145,16 +111,12 @@ class ShellAutocomplete implements AutocompleteOverlay {
     final lines = <String>[];
     for (var i = 0; i < visible.length; i++) {
       final c = visible[i];
-      final globalIndex = i + _scrollOffset;
-      final bg = globalIndex == _selected ? bgSel : bgDim;
+      final globalIndex = i + scrollOffset;
+      final bg = globalIndex == selected ? bgSel : bgDim;
       final icon = c.isDirectory ? '📁 ' : '   ';
       final descPart = c.description != null ? '  ${c.description}' : '';
       final content = '   $icon${c.text}$descPart';
-      final truncated = visibleLength(content) > width
-          ? ansiTruncate(content, width)
-          : content;
-      final padCount = width - visibleLength(truncated);
-      lines.add('$bg$truncated${' ' * (padCount > 0 ? padCount : 0)}$rst');
+      lines.add('$bg${ansiFit(content, width)}$rst');
     }
 
     return lines;

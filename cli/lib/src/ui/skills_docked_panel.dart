@@ -215,11 +215,11 @@ class SkillsDockedPanel extends DockedPanel {
       String rightContent;
 
       if (contentRow == 0) {
-        leftContent = _padAnsi(
+        leftContent = ansiFit(
           _buildFilterRow(leftWidth, filtered.length),
           leftWidth,
         );
-        rightContent = _padAnsi(
+        rightContent = ansiFit(
           '\x1b[2mType to filter | Enter select | Esc close\x1b[0m',
           rightWidth,
         );
@@ -230,7 +230,7 @@ class SkillsDockedPanel extends DockedPanel {
       final leftPos = _scrollOffset + contentRow - 1;
 
       if (leftPos < leftItems.length) {
-        final padded = _padAnsi(leftItems[leftPos], leftWidth);
+        final padded = ansiFit(leftItems[leftPos], leftWidth);
         if (leftPos < filtered.length && filtered[leftPos] == selectedIndex) {
           leftContent = '\x1b[7m${stripAnsi(padded)}\x1b[27m';
         } else {
@@ -242,7 +242,7 @@ class SkillsDockedPanel extends DockedPanel {
 
       final detailRow = contentRow - 1;
       if (detailRow < rightLines.length) {
-        rightContent = _padAnsi(rightLines[detailRow], rightWidth);
+        rightContent = ansiFit(rightLines[detailRow], rightWidth);
       } else {
         rightContent = ' ' * rightWidth;
       }
@@ -334,24 +334,18 @@ class SkillsDockedPanel extends DockedPanel {
 
   String _buildFilterRow(int width, int filteredCount) {
     if (_skills.isEmpty) {
-      return _padAnsi('\x1b[2mNo skills available\x1b[0m', width);
+      return ansiFit('\x1b[2mNo skills available\x1b[0m', width);
     }
     if (_query.isEmpty) {
-      return _padAnsi(
+      return ansiFit(
         '\x1b[2m/ filter  (${_skills.length} skills)\x1b[0m',
         width,
       );
     }
-    return _padAnsi(
+    return ansiFit(
       '\x1b[2m/$_query  ($filteredCount/${_skills.length})\x1b[0m',
       width,
     );
-  }
-
-  String _padAnsi(String text, int width) {
-    final truncated = ansiTruncate(text, width);
-    final padLen = width - visibleLength(truncated);
-    return '$truncated${' ' * max(0, padLen)}';
   }
 
   int get _visibleListHeight => max(1, _lastVisibleHeight - 1);

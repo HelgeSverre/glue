@@ -3,19 +3,17 @@ import 'package:glue_strategies/src/web/search/provider.dart';
 
 class SearchRouter {
   final List<WebSearchProvider> providers;
-  final Set<String> _freeFallbackProviders;
 
-  SearchRouter(
-    this.providers, {
-    this._freeFallbackProviders = const {'duckduckgo'},
-  });
+  SearchRouter(this.providers);
 
+  /// The first provider that reports itself usable.
+  ///
+  /// Keyless providers say so through [WebSearchProvider.isConfigured] —
+  /// DuckDuckGo returns true unconditionally — so there is no separate
+  /// "free fallback" tier.
   WebSearchProvider? get defaultProvider {
     for (final p in providers) {
       if (p.isConfigured) return p;
-    }
-    for (final p in providers) {
-      if (_freeFallbackProviders.contains(p.name)) return p;
     }
     return null;
   }
@@ -39,8 +37,8 @@ class SearchRouter {
     final defaultP = defaultProvider;
     if (defaultP == null) {
       throw StateError(
-        'No search provider configured. Set one of: '
-        'BRAVE_API_KEY, TAVILY_API_KEY, or FIRECRAWL_API_KEY',
+        'No usable search provider. DuckDuckGo needs no key, so this means '
+        'the router was built with no providers at all.',
       );
     }
 
@@ -48,14 +46,9 @@ class SearchRouter {
       return defaultP.search(query, maxResults: maxResults);
     }
 
-    // Try configured providers first, then free fallbacks, with fallback.
     final available = [
       defaultP,
-      ...providers.where(
-        (p) =>
-            p != defaultP &&
-            (p.isConfigured || _freeFallbackProviders.contains(p.name)),
-      ),
+      ...providers.where((p) => p != defaultP && p.isConfigured),
     ];
 
     Exception? lastError;

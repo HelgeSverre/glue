@@ -11,30 +11,19 @@ import 'package:glue_runtimes/src/daytona/running_command.dart';
 /// runtime's cwd (which is `/workspace`). The runtime-event envelope
 /// lives in the shared [TransportExecutor]; this class is just the
 /// Daytona-specific [CaptureBackend].
-class DaytonaExecutor implements CommandExecutor {
-  final TransportExecutor _delegate;
-
+class DaytonaExecutor extends TransportExecutor {
   DaytonaExecutor({
     required DaytonaClient client,
     required DaytonaSandbox sandbox,
     String runtimeId = 'daytona',
-    RuntimeEventSink? eventSink,
-  }) : _delegate = TransportExecutor(
+    super.eventSink,
+  }) : super(
          backend: _DaytonaBackend(
            client: client,
            sandbox: sandbox,
            runtimeId: runtimeId,
          ),
-         eventSink: eventSink,
        );
-
-  @override
-  Future<CaptureResult> runCapture(String command, {Duration? timeout}) =>
-      _delegate.runCapture(command, timeout: timeout);
-
-  @override
-  Future<RunningCommandHandle> startStreaming(String command) =>
-      _delegate.startStreaming(command);
 }
 
 /// Daytona-specific transport. Returns a single combined output stream

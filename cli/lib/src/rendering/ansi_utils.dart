@@ -150,9 +150,22 @@ int visibleLength(String text) {
   return width;
 }
 
+/// Fit [text] to exactly [width] visible columns: truncate if it is too
+/// long, pad with spaces if it is too short.
+///
+/// This is what every panel, table and overlay wants when painting a row of
+/// fixed width — [ansiTruncate] alone leaves short rows ragged, and padding
+/// alone lets long rows overflow the border.
+String ansiFit(String text, int width) {
+  final truncated = ansiTruncate(text, width);
+  final pad = width - visibleLength(truncated);
+  return pad > 0 ? '$truncated${' ' * pad}' : truncated;
+}
+
 /// Truncate [text] to [maxVisible] visible columns, preserving ANSI
 /// sequences (both CSI and OSC) and handling wide characters.
-/// Appends '…' if truncated.
+/// Appends '…' if truncated. Returns [text] unchanged when it already
+/// fits, so callers never need to pre-check the width.
 String ansiTruncate(String text, int maxVisible) {
   if (maxVisible <= 0) return '';
   if (maxVisible == 1) return visibleLength(text) <= 1 ? text : '…';

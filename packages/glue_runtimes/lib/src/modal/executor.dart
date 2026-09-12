@@ -12,30 +12,19 @@ import 'package:glue_runtimes/src/modal/sidecar.dart';
 /// emit per-chunk `stream_data` events keyed by `stream_id`. The
 /// runtime-event envelope lives in the shared [TransportExecutor];
 /// this class is just the Modal-specific [CaptureBackend].
-class ModalExecutor implements CommandExecutor {
-  final TransportExecutor _delegate;
-
+class ModalExecutor extends TransportExecutor {
   ModalExecutor({
     required ModalSidecarBase sidecar,
     required String sandboxId,
     String runtimeId = 'modal',
-    RuntimeEventSink? eventSink,
-  }) : _delegate = TransportExecutor(
+    super.eventSink,
+  }) : super(
          backend: _ModalBackend(
            sidecar: sidecar,
            sandboxId: sandboxId,
            runtimeId: runtimeId,
          ),
-         eventSink: eventSink,
        );
-
-  @override
-  Future<CaptureResult> runCapture(String command, {Duration? timeout}) =>
-      _delegate.runCapture(command, timeout: timeout);
-
-  @override
-  Future<RunningCommandHandle> startStreaming(String command) =>
-      _delegate.startStreaming(command);
 }
 
 class _ModalBackend implements CaptureBackend {

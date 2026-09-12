@@ -237,8 +237,7 @@ class SelectPanel<T> implements PanelOverlay {
         filtered: filtered,
         selectedGlobalIndex: selectedGlobalIndex,
       );
-      final truncated = ansiTruncate(raw.$1, contentW);
-      final padded = _padAnsi(truncated, contentW);
+      final padded = ansiFit(raw.$1, contentW);
       final styledContent = raw.$2 ? '${padded.styled.bg256(237)}' : padded;
       final (leftBorder, rightBorder) = box.styledSides(color: borderColor);
       panelLines.add('$leftBorder $styledContent $rightBorder');
@@ -363,11 +362,5 @@ class SelectPanel<T> implements PanelOverlay {
     if (char.isEmpty) return false;
     final rune = char.runes.first;
     return rune >= 0x20 && rune != 0x7f;
-  }
-
-  String _padAnsi(String text, int width) {
-    final len = visibleLength(text);
-    if (len >= width) return text;
-    return '$text${' ' * (width - len)}';
   }
 }

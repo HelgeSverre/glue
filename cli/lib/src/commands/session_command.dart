@@ -17,25 +17,6 @@ import 'package:path/path.dart' as p;
 /// `cli/lib/src/app.dart` `_captureRuntimePatch`); these are the
 /// host-side commands that turn it into something useful.
 
-/// Sessions whose runtime started a cloud sandbox but whose
-/// `runtimeClosedAt` is null and start time is older than [maxAge]
-/// are likely leaks — glue closed/crashed before stopping the
-/// sandbox, and the user is still being billed (or has a sandbox
-/// counting toward an account quota).
-List<SessionSummary> findOrphanedRuntimeSessions(
-  Environment env, {
-  Duration maxAge = const Duration(hours: 24),
-}) {
-  final now = DateTime.now().toUtc();
-  return listSessions(env).where((s) {
-    final m = s.meta;
-    if (m.runtimeId == null || m.sandboxId == null) return false;
-    if (m.runtimeId == 'host' || m.runtimeId == 'docker') return false;
-    if (m.runtimeClosedAt != null) return false;
-    return now.difference(m.startTime.toUtc()) > maxAge;
-  }).toList();
-}
-
 /// Loads all sessions from the on-disk store sorted by start time
 /// descending. Sessions without a runtime patch on disk are still
 /// listed — call sites distinguish via [SessionSummary.patchPath].

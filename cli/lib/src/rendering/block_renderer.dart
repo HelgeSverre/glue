@@ -234,18 +234,14 @@ class BlockRenderer {
     final contentLines = <String>[];
     if (truncated) {
       final notice = '… (${lines.length - maxLines} lines above)';
-      final noticeDisplay = visibleLength(notice) > contentWidth
-          ? ansiTruncate(notice, contentWidth)
-          : notice;
+      final noticeDisplay = ansiTruncate(notice, contentWidth);
       contentLines.add(
         ' ${'│ $noticeDisplay${_bashPad(notice, contentWidth)} │'.styled.gray}',
       );
     }
     for (final line in visible) {
       final stripped = stripAnsi(line);
-      final display = visibleLength(stripped) > contentWidth
-          ? ansiTruncate(stripped, contentWidth)
-          : stripped;
+      final display = ansiTruncate(stripped, contentWidth);
       contentLines.add(
         ' ${'│'.styled.gray} $display${_bashPad(display, contentWidth)} ${'│'.styled.gray}',
       );
@@ -274,8 +270,6 @@ class BlockRenderer {
             '  … (${lines.length - maxLines} more lines)',
           ]
         : lines;
-    return capped
-        .map((l) => visibleLength(l) > maxWidth ? ansiTruncate(l, maxWidth) : l)
-        .join('\n');
+    return capped.map((l) => ansiTruncate(l, maxWidth)).join('\n');
   }
 }

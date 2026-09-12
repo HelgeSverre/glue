@@ -102,7 +102,7 @@ void main() {
       expect(() => router.search('test'), throwsA(isA<StateError>()));
     });
 
-    test('uses unconfigured free fallback provider when available', () async {
+    test('skips unconfigured providers ahead of a keyless one', () async {
       const fallbackResponse = WebSearchResponse(
         provider: 'duckduckgo',
         query: 'test',
@@ -110,11 +110,9 @@ void main() {
       );
       final router = SearchRouter([
         _MockProvider(name: 'brave', isConfigured: false),
-        _MockProvider(
-          name: 'duckduckgo',
-          isConfigured: false,
-          response: fallbackResponse,
-        ),
+        // The real DuckDuckGo provider reports configured unconditionally:
+        // it needs no key.
+        _MockProvider(name: 'duckduckgo', response: fallbackResponse),
       ]);
 
       final result = await router.search('test');

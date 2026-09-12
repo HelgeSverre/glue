@@ -403,9 +403,7 @@ class PanelModal implements PanelOverlay {
         final raw = contentIdx < visibleLines.length
             ? visibleLines[contentIdx]
             : '';
-        final truncated = ansiTruncate(raw, contentW);
-        final padLen = contentW - visibleLength(truncated);
-        final padded = '$truncated${' ' * max(0, padLen)}';
+        final padded = ansiFit(raw, contentW);
 
         final isSelected =
             selectable && (contentIdx + _scrollOffset) == _selectedIndex;
@@ -435,4 +433,50 @@ class PanelModal implements PanelOverlay {
 
     return grid;
   }
+}
+
+String _borderedRow(String content, int innerW) =>
+    '\x1b[2m│\x1b[0m${ansiFit(content, innerW)}\x1b[2m│\x1b[0m';
+
+/// Paint [content] inside a simple bordered panel and center it over
+/// [background], returning a full [termHeight]-row frame.
+///
+/// The one-shot overlays (`DeviceCodePanel`, `ApiKeyPromptPanel`) use this
+/// instead of [PanelModal]: they own their own input loop and only need the
+/// frame. Interactive modals composite per-row via [spliceOverlayRow], which
+/// also restyles the barrier.
+List<String> composeModal({
+  required String title,
+  required int panelW,
+  required int panelH,
+  required List<String> content,
+  required List<String> background,
+  required int termWidth,
+  required int termHeight,
+}) {
+  final bordered = renderBorder(PanelStyle.simple, panelW, panelH, title);
+  final innerW = max(1, panelW - 2);
+
+  final painted = [
+    bordered.first,
+    for (var i = 1; i < bordered.length - 1; i++)
+      _borderedRow(i - 1 < content.length ? content[i - 1] : '', innerW),
+    bordered.last,
+  ];
+
+  final topPad = max(0, (termHeight - panelH) ~/ 2);
+  final leftPad = max(0, (termWidth - panelW) ~/ 2);
+  final out = List<String>.from(background);
+  while (out.length < termHeight) {
+    out.add('');
+  }
+  for (var i = 0; i < panelH && topPad + i < out.length; i++) {
+    final bg = out[topPad + i];
+    final bgLen = visibleLength(bg);
+    final leftBg = bgLen >= leftPad
+        ? ansiTruncate(bg, leftPad)
+        : bg + ' ' * (leftPad - bgLen);
+    out[topPad + i] = '$leftBg${painted[i]}';
+  }
+  return out;
 }

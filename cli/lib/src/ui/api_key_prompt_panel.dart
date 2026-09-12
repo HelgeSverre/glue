@@ -114,7 +114,7 @@ class ApiKeyPromptPanel implements PanelOverlay {
     }
     content.add(' ${'Enter submit · Esc cancel'.styled.dim}');
 
-    return _composeModal(
+    return composeModal(
       title: 'Connect $providerName',
       panelW: panelW,
       panelH: panelH,
@@ -134,65 +134,4 @@ class ApiKeyPromptPanel implements PanelOverlay {
         ? visible.substring(visible.length - width)
         : visible;
   }
-}
-
-List<String> _composeModal({
-  required String title,
-  required int panelW,
-  required int panelH,
-  required List<String> content,
-  required List<String> background,
-  required int termWidth,
-  required int termHeight,
-}) {
-  final bordered = renderBorder(PanelStyle.simple, panelW, panelH, title);
-  final innerW = max(1, panelW - 2);
-
-  // Paint content into the border's interior.
-  final painted = <String>[];
-  painted.add(bordered.first);
-  for (var i = 1; i < bordered.length - 1; i++) {
-    final row = i - 1;
-    final line = row < content.length ? content[row] : '';
-    final visibleLine = ansiTruncate(line, innerW);
-    final pad = max(0, innerW - visibleLength(visibleLine));
-    painted.add('\x1b[2m│\x1b[0m$visibleLine${' ' * pad}\x1b[2m│\x1b[0m');
-  }
-  painted.add(bordered.last);
-
-  return _centerOverlay(
-    painted,
-    background,
-    panelW,
-    panelH,
-    termWidth,
-    termHeight,
-  );
-}
-
-List<String> _centerOverlay(
-  List<String> panel,
-  List<String> background,
-  int panelW,
-  int panelH,
-  int termWidth,
-  int termHeight,
-) {
-  final topPad = max(0, (termHeight - panelH) ~/ 2);
-  final leftPad = max(0, (termWidth - panelW) ~/ 2);
-
-  final out = List<String>.from(background);
-  while (out.length < termHeight) {
-    out.add('');
-  }
-  for (var i = 0; i < panelH && topPad + i < out.length; i++) {
-    final bg = out[topPad + i];
-    final bgLen = visibleLength(bg);
-    final leftBg = bgLen >= leftPad
-        ? ansiTruncate(bg, leftPad)
-        : bg + ' ' * (leftPad - bgLen);
-    final line = panel[i];
-    out[topPad + i] = '$leftBg$line';
-  }
-  return out;
 }

@@ -7,30 +7,19 @@ import 'package:glue_runtimes/src/sprites/cli.dart';
 /// [CommandExecutor] backed by the `sprite` CLI's exec subcommand. The
 /// runtime-event envelope lives in the shared [TransportExecutor]; this
 /// class is just the Sprites-specific [CaptureBackend].
-class SpritesExecutor implements CommandExecutor {
-  final TransportExecutor _delegate;
-
+class SpritesExecutor extends TransportExecutor {
   SpritesExecutor({
     required SpritesCliBase cli,
     required String spriteName,
     String runtimeId = 'sprites',
-    RuntimeEventSink? eventSink,
-  }) : _delegate = TransportExecutor(
+    super.eventSink,
+  }) : super(
          backend: _SpritesBackend(
            cli: cli,
            spriteName: spriteName,
            runtimeId: runtimeId,
          ),
-         eventSink: eventSink,
        );
-
-  @override
-  Future<CaptureResult> runCapture(String command, {Duration? timeout}) =>
-      _delegate.runCapture(command, timeout: timeout);
-
-  @override
-  Future<RunningCommandHandle> startStreaming(String command) =>
-      _delegate.startStreaming(command);
 }
 
 class _SpritesBackend implements CaptureBackend {

@@ -6,7 +6,6 @@
 library;
 
 import 'dart:async';
-import 'dart:math';
 
 import 'package:glue_harness/glue_harness.dart';
 import 'package:glue_strategies/glue_strategies.dart';
@@ -154,7 +153,7 @@ class DeviceCodePanel implements PanelOverlay {
       ' ${'Enter open in browser · c copy code · Esc cancel'.styled.dim}',
     );
 
-    return _composeModal(
+    return composeModal(
       title: 'Connect ${flow.providerName}',
       panelW: panelW,
       panelH: panelH,
@@ -171,44 +170,4 @@ class DeviceCodePanel implements PanelOverlay {
     if (m > 0) return '${m}m ${s}s';
     return '${s}s';
   }
-}
-
-List<String> _composeModal({
-  required String title,
-  required int panelW,
-  required int panelH,
-  required List<String> content,
-  required List<String> background,
-  required int termWidth,
-  required int termHeight,
-}) {
-  final bordered = renderBorder(PanelStyle.simple, panelW, panelH, title);
-  final innerW = max(1, panelW - 2);
-
-  final painted = <String>[];
-  painted.add(bordered.first);
-  for (var i = 1; i < bordered.length - 1; i++) {
-    final row = i - 1;
-    final line = row < content.length ? content[row] : '';
-    final visible = ansiTruncate(line, innerW);
-    final pad = max(0, innerW - visibleLength(visible));
-    painted.add('\x1b[2m│\x1b[0m$visible${' ' * pad}\x1b[2m│\x1b[0m');
-  }
-  painted.add(bordered.last);
-
-  final topPad = max(0, (termHeight - panelH) ~/ 2);
-  final leftPad = max(0, (termWidth - panelW) ~/ 2);
-  final out = List<String>.from(background);
-  while (out.length < termHeight) {
-    out.add('');
-  }
-  for (var i = 0; i < panelH && topPad + i < out.length; i++) {
-    final bg = out[topPad + i];
-    final bgLen = visibleLength(bg);
-    final leftBg = bgLen >= leftPad
-        ? ansiTruncate(bg, leftPad)
-        : bg + ' ' * (leftPad - bgLen);
-    out[topPad + i] = '$leftBg${painted[i]}';
-  }
-  return out;
 }

@@ -1,3 +1,5 @@
+import 'package:glue_core/glue_core.dart';
+
 /// Result of accepting an autocomplete suggestion.
 ///
 /// Represents the full new buffer contents and the absolute cursor
@@ -51,4 +53,72 @@ abstract class AutocompleteOverlay {
 
   /// Render the overlay as styled lines for the given [width].
   List<String> render(int width);
+}
+
+/// Selection and viewport state shared by the three overlays.
+///
+/// They differ entirely in how they build their match list and not at all
+/// in how the user moves through it, so [moveUp], [moveDown], the scroll
+/// clamp and [overlayHeight] live here. Implementers supply [matchCount]
+/// and reset the cursor with [resetSelection] whenever the list changes.
+mixin AutocompleteSelection {
+  /// Number of matches currently displayed.
+  int get matchCount;
+
+  int _selected = 0;
+  int _scrollOffset = 0;
+
+  /// Index of the currently highlighted match.
+  int get selected => _selected;
+
+  /// First match index visible in the render window.
+  int get scrollOffset => _scrollOffset;
+
+  /// Rows the overlay occupies: the match count, capped at one screenful.
+  int get overlayHeight => matchCount > AppConstants.maxVisibleDropdownItems
+      ? AppConstants.maxVisibleDropdownItems
+      : matchCount;
+
+  /// Put the cursor back at the top. Call after rebuilding the match list.
+  void resetSelection() {
+    _selected = 0;
+    _scrollOffset = 0;
+  }
+
+  /// Keep the selection in range after the match list was rebuilt, and put
+  /// the render window back at the top.
+  void clampSelectionToMatches() {
+    if (matchCount == 0) return resetSelection();
+    _selected = _selected.clamp(0, matchCount - 1);
+    _scrollOffset = 0;
+    clampScroll();
+  }
+
+  void moveUp() {
+    if (matchCount == 0) return;
+    // Dart's `%` is never negative for a positive divisor, so this wraps
+    // to the last entry without a correction step.
+    _selected = (_selected - 1) % matchCount;
+    clampScroll();
+  }
+
+  void moveDown() {
+    if (matchCount == 0) return;
+    _selected = (_selected + 1) % matchCount;
+    clampScroll();
+  }
+
+  /// Slide the render window so [selected] stays inside it.
+  void clampScroll() {
+    const maxVisible = AppConstants.maxVisibleDropdownItems;
+    if (_selected < _scrollOffset) {
+      _scrollOffset = _selected;
+    } else if (_selected >= _scrollOffset + maxVisible) {
+      _scrollOffset = _selected - maxVisible + 1;
+    }
+    _scrollOffset = _scrollOffset.clamp(
+      0,
+      (matchCount - maxVisible).clamp(0, matchCount),
+    );
+  }
 }

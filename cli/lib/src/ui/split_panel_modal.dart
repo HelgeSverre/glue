@@ -160,9 +160,7 @@ class SplitPanelModal implements PanelOverlay {
 
         String leftContent;
         if (leftIdx < leftItems.length) {
-          final truncated = ansiTruncate(leftItems[leftIdx], leftW);
-          final padLen = leftW - visibleLength(truncated);
-          final padded = '$truncated${' ' * max(0, padLen)}';
+          final padded = ansiFit(leftItems[leftIdx], leftW);
           if (leftIdx == _selectedIndex) {
             final plain = stripAnsi(padded);
             leftContent = '\x1b[7m$plain\x1b[27m';
@@ -175,9 +173,7 @@ class SplitPanelModal implements PanelOverlay {
 
         String rightContent;
         if (contentIdx < rightLines.length) {
-          final truncated = ansiTruncate(rightLines[contentIdx], rightW);
-          final padLen = rightW - visibleLength(truncated);
-          rightContent = '$truncated${' ' * max(0, padLen)}';
+          rightContent = ansiFit(rightLines[contentIdx], rightW);
         } else {
           rightContent = ' ' * rightW;
         }

@@ -211,11 +211,7 @@ class MarkdownRenderer {
     final output = <String>[];
     output.add('${'╭─$label$headerRule╮'.styled.gray}');
     for (final line in lines) {
-      final truncated = visibleLength(line) > codeWidth - 4
-          ? ansiTruncate(line, codeWidth - 4)
-          : line;
-      final pad = (codeWidth - 4) - visibleLength(truncated);
-      final padded = pad > 0 ? '$truncated${' ' * pad}' : truncated;
+      final padded = ansiFit(line, codeWidth - 4);
       output.add('${'│'.styled.gray} ${padded.styled.dim} ${'│'.styled.gray}');
     }
     output.add('${'╰${'─' * (codeWidth - 2)}╯'.styled.gray}');
