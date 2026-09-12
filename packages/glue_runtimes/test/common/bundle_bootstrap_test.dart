@@ -46,6 +46,7 @@ void main() {
         final ws = WorkspaceBootstrap(
           exec: transport,
           sessionId: 'test-session',
+          bundleBaseDir: '${tmp.path}/glue',
         );
         final result = await ws.bootstrap(
           hostCwd: hostCwd.path,
@@ -79,7 +80,11 @@ void main() {
         final sandboxDir = await Directory('${tmp.path}/sandbox').create();
         final transport = _FakeBundleTransport(sandboxDir);
 
-        final ws = WorkspaceBootstrap(exec: transport, sessionId: 'test');
+        final ws = WorkspaceBootstrap(
+          exec: transport,
+          sessionId: 'test',
+          bundleBaseDir: '${tmp.path}/glue',
+        );
         await ws.bootstrap(
           hostCwd: hostCwd.path,
           runtimeCwd: '${sandboxDir.path}/workspace',
@@ -108,7 +113,11 @@ void main() {
         final sandboxDir = await Directory('${tmp.path}/sandbox').create();
 
         final transport = _AlwaysFailingCloneTransport(sandboxDir);
-        final ws = WorkspaceBootstrap(exec: transport, sessionId: 'test');
+        final ws = WorkspaceBootstrap(
+          exec: transport,
+          sessionId: 'test',
+          bundleBaseDir: '${tmp.path}/glue',
+        );
         await expectLater(
           ws.bootstrap(
             hostCwd: hostCwd.path,
@@ -226,7 +235,11 @@ void main() {
           bundleSizeCapBytes: 1,
         );
 
-        final ws = WorkspaceBootstrap(exec: transport, sessionId: 'test');
+        final ws = WorkspaceBootstrap(
+          exec: transport,
+          sessionId: 'test',
+          bundleBaseDir: '${tmp.path}/glue',
+        );
         await expectLater(
           ws.bootstrap(
             hostCwd: hostCwd.path,

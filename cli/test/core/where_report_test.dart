@@ -19,6 +19,8 @@ void main() {
       expect(report, contains('preferences.json'));
       expect(report, contains('credentials.json'));
       expect(report, contains('models.yaml'));
+      expect(report, contains('catalog cache'));
+      expect(report, contains(env.catalogCachePath));
       expect(report, contains('sessions/'));
       expect(report, contains('logs/'));
       expect(report, contains('cache/'));

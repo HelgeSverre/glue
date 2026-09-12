@@ -25,6 +25,7 @@ String buildWhereReport(Environment env, {PathExistenceCheck? existsCheck}) {
     (label: 'preferences.json', path: env.configPath, isDir: false),
     (label: 'credentials.json', path: env.credentialsPath, isDir: false),
     (label: 'models.yaml', path: env.modelsYamlPath, isDir: false),
+    (label: 'catalog cache', path: env.catalogCachePath, isDir: false),
     (label: 'sessions/', path: env.sessionsDir, isDir: true),
     (label: 'logs/', path: env.logsDir, isDir: true),
     (label: 'cache/', path: env.cacheDir, isDir: true),
