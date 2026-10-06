@@ -115,6 +115,10 @@ class OpenAiResponsesClient implements LlmClient {
           ).map((event) => jsonDecode(event.data) as Map<String, dynamic>),
         ),
       ),
+      // Provider diagnostics can contain HTTP-looking text, but a terminal
+      // Responses event must never trigger a retry.
+      isTransient: (error) =>
+          error is! _ResponsesStreamException && isTransientLlmError(error),
     );
   }
 
@@ -163,24 +167,63 @@ class OpenAiResponsesClient implements LlmClient {
             yield ReasoningArtifactChunk(item);
           }
         case 'response.completed':
+        case 'response.failed':
+        case 'response.incomplete':
           final response = event['response'];
-          if (response is! Map) continue;
-          final usage = response['usage'];
-          if (usage is! Map) continue;
-          final input = usage['input_tokens'] as int? ?? 0;
-          final cached =
-              (usage['input_tokens_details'] as Map?)?['cached_tokens']
-                  as int? ??
-              0;
-          yield UsageInfo(
-            inputTokens: (input - cached).clamp(0, input),
-            outputTokens: usage['output_tokens'] as int? ?? 0,
-            cacheReadTokens: cached,
-            reasoningTokens:
-                (usage['output_tokens_details'] as Map?)?['reasoning_tokens']
-                    as int?,
-          );
+          final usage = response is Map ? response['usage'] : null;
+          if (usage is Map) {
+            final input = usage['input_tokens'] as int? ?? 0;
+            final cached =
+                (usage['input_tokens_details'] as Map?)?['cached_tokens']
+                    as int? ??
+                0;
+            yield UsageInfo(
+              inputTokens: (input - cached).clamp(0, input),
+              outputTokens: usage['output_tokens'] as int? ?? 0,
+              cacheReadTokens: cached,
+              reasoningTokens:
+                  (usage['output_tokens_details'] as Map?)?['reasoning_tokens']
+                      as int?,
+            );
+          }
+          if (event['type'] == 'response.completed') return;
+          if (event['type'] == 'response.incomplete') {
+            final details = response is Map
+                ? response['incomplete_details']
+                : null;
+            final reason = details is Map ? details['reason'] : null;
+            throw _ResponsesStreamException(
+              'OpenAI response.incomplete: '
+              '${reason ?? 'Response incomplete without a reason'}',
+            );
+          }
+          final error = response is Map ? response['error'] : null;
+          throw _providerError('response.failed', error);
+        case 'error':
+          throw _providerError('error', event);
       }
     }
+    throw const _ResponsesStreamException(
+      'OpenAI Responses stream ended before response.completed; '
+      'the response may be truncated',
+    );
   }
+}
+
+_ResponsesStreamException _providerError(String type, Object? details) {
+  final code = details is Map ? details['code'] : null;
+  final message = details is Map ? details['message'] : null;
+  return _ResponsesStreamException(
+    'OpenAI $type: ${code ?? 'unknown_error'}: '
+    '${message ?? 'Provider reported an error without a message'}',
+  );
+}
+
+class _ResponsesStreamException implements Exception {
+  const _ResponsesStreamException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
 }
