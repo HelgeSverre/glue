@@ -9,7 +9,7 @@ build: gen
     #!/usr/bin/env bash
     set -euo pipefail
     rm -rf ../dist
-    dart build cli bin/glue.dart -o ../dist
+    dart build cli --target bin/glue.dart -o ../dist
     mv ../dist/bundle/bin/glue ../dist/glue
     rm -rf ../dist/bundle
 

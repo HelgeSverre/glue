@@ -38,6 +38,9 @@ All notable changes to Glue CLI will be documented in this file.
 
 ### Fixed
 
+- **Native builds work with Dart 3.13.** Local and release builds pass the
+  entrypoint through `--target`, as required by the current Dart CLI.
+
 - **Models use their full output budget.** Every model's documented output
   cap was ignored in favour of a hardcoded 8192, so long replies truncated
   mid-thought on models that allow 64000 or 128000.
