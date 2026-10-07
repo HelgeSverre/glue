@@ -4,6 +4,8 @@ All notable changes to Glue CLI will be documented in this file.
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-10-08
+
 ### Added
 
 - **Claude Haiku 5.5** is recommended in the model picker as
