@@ -14,7 +14,7 @@
 # the OpenAI API wire format", not "this provider is OpenAI".
 
 version: 1
-updated_at: 2026-08-11
+updated_at: 2026-10-06
 
 defaults:
   model: anthropic/claude-sonnet-5
@@ -286,50 +286,31 @@ providers:
     auth:
       api_key: env:MISTRAL_API_KEY
     models:
-      devstral-latest:
-        name: Devstral Latest
+      mistral-large-4:
+        name: Mistral Large 4
         recommended: true
         default: true
-        capabilities: [chat, tools, json, coding]
-        context_window: 262000
+        capabilities: [chat, tools, vision, json, reasoning, coding]
+        reasoning: {efforts: [off, high], default: auto, transport: mistral_effort}
+        context_window: 524288
         speed: standard
-        cost: medium
-        notes: Mistral's agentic coding model. Strong tool use.
-      mistral-large-latest:
-        name: Mistral Large Latest
-        recommended: true
-        capabilities: [chat, tools, vision, json, coding]
-        context_window: 262000
-        speed: standard
-        cost: medium
-        notes: Flagship multimodal general-purpose model.
-      mistral-small-latest:
-        name: Mistral Small Latest
+        notes: General-purpose multimodal model with function calling and adjustable reasoning.
+      mistral-medium-3-5:
+        name: Mistral Medium 3.5
         recommended: true
         capabilities: [chat, tools, vision, json, reasoning, coding]
         reasoning: {efforts: [off, high], default: auto, transport: mistral_effort}
-        context_window: 262000
-        speed: fast
-        cost: low
-        notes: Unified reasoning + coding + vision (Small 4, March 2026). Strong small-model default; cheaper than Medium with better agentic behavior.
-      magistral-medium-latest:
-        name: Magistral Medium Latest
-        recommended: false
-        enabled: false
-        capabilities: [chat, tools, json, reasoning]
-        context_window: 262000
+        context_window: 262144
         speed: standard
-        cost: medium
-        notes: Pure reasoning model. Use when you need explicit long-chain thinking; not a general chat pick.
-      mistral-medium-latest:
-        name: Mistral Medium Latest
+        notes: Multimodal model with function calling and adjustable reasoning.
+      mistral-small-2603:
+        name: Mistral Small 4
         recommended: true
-        capabilities: [chat, tools, vision, json, reasoning]
+        capabilities: [chat, tools, vision, json, reasoning, coding]
         reasoning: {efforts: [off, high], default: auto, transport: mistral_effort}
-        context_window: 262000
-        speed: standard
-        cost: medium
-        notes: Mistral Medium 3.5 (April 2026). Mid-tier general-purpose; multimodal with tool use.
+        context_window: 262144
+        speed: fast
+        notes: Multimodal model with function calling and adjustable reasoning.
 
   groq:
     name: Groq

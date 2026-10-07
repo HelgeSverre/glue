@@ -8,7 +8,7 @@ import 'package:glue_core/glue_core.dart';
 const String _bundledCatalogJson = r'''
 {
   "version": 1,
-  "updated_at": "2026-08-11",
+  "updated_at": "2026-10-06",
   "defaults": {
     "model": "anthropic/claude-sonnet-5",
     "small_model": "openai/gpt-5.6-luna",
@@ -770,53 +770,12 @@ const String _bundledCatalogJson = r'''
         "help_url": null
       },
       "models": {
-        "devstral-latest": {
-          "id": "devstral-latest",
-          "name": "Devstral Latest",
-          "api_id": "devstral-latest",
+        "mistral-large-4": {
+          "id": "mistral-large-4",
+          "name": "Mistral Large 4",
+          "api_id": "mistral-large-4",
           "recommended": true,
           "default": true,
-          "enabled": true,
-          "capabilities": [
-            "chat",
-            "tools",
-            "json",
-            "coding"
-          ],
-          "context_window": 262000,
-          "max_output_tokens": null,
-          "speed": "standard",
-          "cost": "medium",
-          "notes": "Mistral's agentic coding model. Strong tool use.",
-          "reasoning": null
-        },
-        "mistral-large-latest": {
-          "id": "mistral-large-latest",
-          "name": "Mistral Large Latest",
-          "api_id": "mistral-large-latest",
-          "recommended": true,
-          "default": false,
-          "enabled": true,
-          "capabilities": [
-            "chat",
-            "tools",
-            "vision",
-            "json",
-            "coding"
-          ],
-          "context_window": 262000,
-          "max_output_tokens": null,
-          "speed": "standard",
-          "cost": "medium",
-          "notes": "Flagship multimodal general-purpose model.",
-          "reasoning": null
-        },
-        "mistral-small-latest": {
-          "id": "mistral-small-latest",
-          "name": "Mistral Small Latest",
-          "api_id": "mistral-small-latest",
-          "recommended": true,
-          "default": false,
           "enabled": true,
           "capabilities": [
             "chat",
@@ -826,11 +785,11 @@ const String _bundledCatalogJson = r'''
             "reasoning",
             "coding"
           ],
-          "context_window": 262000,
+          "context_window": 524288,
           "max_output_tokens": null,
-          "speed": "fast",
-          "cost": "low",
-          "notes": "Unified reasoning + coding + vision (Small 4, March 2026). Strong small-model default; cheaper than Medium with better agentic behavior.",
+          "speed": "standard",
+          "cost": null,
+          "notes": "General-purpose multimodal model with function calling and adjustable reasoning.",
           "reasoning": {
             "efforts": [
               "auto",
@@ -842,30 +801,10 @@ const String _bundledCatalogJson = r'''
             "transport": "mistral_effort"
           }
         },
-        "magistral-medium-latest": {
-          "id": "magistral-medium-latest",
-          "name": "Magistral Medium Latest",
-          "api_id": "magistral-medium-latest",
-          "recommended": false,
-          "default": false,
-          "enabled": false,
-          "capabilities": [
-            "chat",
-            "tools",
-            "json",
-            "reasoning"
-          ],
-          "context_window": 262000,
-          "max_output_tokens": null,
-          "speed": "standard",
-          "cost": "medium",
-          "notes": "Pure reasoning model. Use when you need explicit long-chain thinking; not a general chat pick.",
-          "reasoning": null
-        },
-        "mistral-medium-latest": {
-          "id": "mistral-medium-latest",
-          "name": "Mistral Medium Latest",
-          "api_id": "mistral-medium-latest",
+        "mistral-medium-3-5": {
+          "id": "mistral-medium-3-5",
+          "name": "Mistral Medium 3.5",
+          "api_id": "mistral-medium-3-5",
           "recommended": true,
           "default": false,
           "enabled": true,
@@ -874,13 +813,45 @@ const String _bundledCatalogJson = r'''
             "tools",
             "vision",
             "json",
-            "reasoning"
+            "reasoning",
+            "coding"
           ],
-          "context_window": 262000,
+          "context_window": 262144,
           "max_output_tokens": null,
           "speed": "standard",
-          "cost": "medium",
-          "notes": "Mistral Medium 3.5 (April 2026). Mid-tier general-purpose; multimodal with tool use.",
+          "cost": null,
+          "notes": "Multimodal model with function calling and adjustable reasoning.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "off",
+              "high"
+            ],
+            "default_effort": "auto",
+            "show_thoughts": false,
+            "transport": "mistral_effort"
+          }
+        },
+        "mistral-small-2603": {
+          "id": "mistral-small-2603",
+          "name": "Mistral Small 4",
+          "api_id": "mistral-small-2603",
+          "recommended": true,
+          "default": false,
+          "enabled": true,
+          "capabilities": [
+            "chat",
+            "tools",
+            "vision",
+            "json",
+            "reasoning",
+            "coding"
+          ],
+          "context_window": 262144,
+          "max_output_tokens": null,
+          "speed": "fast",
+          "cost": null,
+          "notes": "Multimodal model with function calling and adjustable reasoning.",
           "reasoning": {
             "efforts": [
               "auto",

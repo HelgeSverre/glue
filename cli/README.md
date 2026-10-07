@@ -95,7 +95,7 @@ Default models per provider:
 |-----------|---------------------|
 | anthropic | `claude-sonnet-4-6` |
 | openai    | `gpt-4.1`           |
-| mistral   | `devstral-latest`   |
+| mistral   | `mistral-large-4`   |
 | ollama    | `qwen3-coder:30b`   |
 
 Ollama hardware-tier suggestions:

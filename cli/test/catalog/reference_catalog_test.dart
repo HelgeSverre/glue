@@ -96,6 +96,34 @@ void main() {
       );
     });
 
+    test('mistral catalog uses current concrete model IDs', () {
+      final mistral = catalog.providers['mistral']!;
+      final large = mistral.models['mistral-large-4']!;
+      final medium = mistral.models['mistral-medium-3-5']!;
+      final small = mistral.models['mistral-small-2603']!;
+
+      expect(
+        mistral.models.keys,
+        unorderedEquals([
+          'mistral-large-4',
+          'mistral-medium-3-5',
+          'mistral-small-2603',
+        ]),
+      );
+      expect(large.isDefault, isTrue);
+      expect(large.contextWindow, 524288);
+      expect(large.capabilities, containsAll(['tools', 'vision', 'reasoning']));
+      expect(
+        large.reasoning!.efforts,
+        containsAll([ReasoningEffort.off, ReasoningEffort.high]),
+      );
+      expect(large.reasoning!.transport, 'mistral_effort');
+      expect(medium.contextWindow, 262144);
+      expect(medium.capabilities, contains('coding'));
+      expect(small.contextWindow, 262144);
+      expect(small.capabilities, contains('coding'));
+    });
+
     test('anthropic catalog does not list the non-existent sonnet-4-7', () {
       final anthropic = catalog.providers['anthropic']!;
       expect(anthropic.models.containsKey('claude-sonnet-4-7'), isFalse);

@@ -217,36 +217,9 @@
     "notes": "GA Flash-Lite (May 2026). Cost-efficient, fastest performance for high-frequency, lightweight tasks."
   },
   {
-    "id": "devstral-latest",
+    "id": "mistral-large-4",
     "provider": "mistral",
-    "name": "Devstral Latest",
-    "recommended": true,
-    "capabilities": [
-      "chat",
-      "tools",
-      "json",
-      "coding"
-    ],
-    "notes": "Mistral's agentic coding model. Strong tool use."
-  },
-  {
-    "id": "mistral-large-latest",
-    "provider": "mistral",
-    "name": "Mistral Large Latest",
-    "recommended": true,
-    "capabilities": [
-      "chat",
-      "tools",
-      "vision",
-      "json",
-      "coding"
-    ],
-    "notes": "Flagship multimodal general-purpose model."
-  },
-  {
-    "id": "mistral-small-latest",
-    "provider": "mistral",
-    "name": "Mistral Small Latest",
+    "name": "Mistral Large 4",
     "recommended": true,
     "capabilities": [
       "chat",
@@ -256,21 +229,37 @@
       "reasoning",
       "coding"
     ],
-    "notes": "Unified reasoning + coding + vision (Small 4, March 2026). Strong small-model default; cheaper than Medium with better agentic behavior."
+    "notes": "General-purpose multimodal model with function calling and adjustable reasoning."
   },
   {
-    "id": "mistral-medium-latest",
+    "id": "mistral-medium-3-5",
     "provider": "mistral",
-    "name": "Mistral Medium Latest",
+    "name": "Mistral Medium 3.5",
     "recommended": true,
     "capabilities": [
       "chat",
       "tools",
       "vision",
       "json",
-      "reasoning"
+      "reasoning",
+      "coding"
     ],
-    "notes": "Mistral Medium 3.5 (April 2026). Mid-tier general-purpose; multimodal with tool use."
+    "notes": "Multimodal model with function calling and adjustable reasoning."
+  },
+  {
+    "id": "mistral-small-2603",
+    "provider": "mistral",
+    "name": "Mistral Small 4",
+    "recommended": true,
+    "capabilities": [
+      "chat",
+      "tools",
+      "vision",
+      "json",
+      "reasoning",
+      "coding"
+    ],
+    "notes": "Multimodal model with function calling and adjustable reasoning."
   },
   {
     "id": "llama-4-scout-17b-16e-instruct",
