@@ -15,14 +15,10 @@ void main() {
       expect(m.mode, MountMode.ro);
     });
 
-    test(
-      'toDockerArg expands ~ on the host side',
-      () {
-        const m = MountEntry(hostPath: '~/data', mode: MountMode.rw);
-        expect(m.toDockerArg(), '$home/data:$home/data:rw');
-      },
-      skip: home.isEmpty ? 'no HOME in environment' : false,
-    );
+    test('toDockerArg expands ~ on the host side', () {
+      const m = MountEntry(hostPath: '~/data', mode: MountMode.rw);
+      expect(m.toDockerArg(), '$home/data:$home/data:rw');
+    }, skip: home.isEmpty ? 'no HOME in environment' : false);
   });
 
   group('MountEntry.parse', () {

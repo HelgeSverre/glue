@@ -199,52 +199,44 @@ void main() {
       expect(r.stderr.toString(), isNot(contains('StateError')));
     }, timeout: const Timeout(Duration(minutes: 2)));
 
-    test(
-      'tools warns and exits 1 when server is disabled',
-      () async {
-        final dir = _scratch();
-        addTearDown(() => dir.deleteSync(recursive: true));
+    test('tools warns and exits 1 when server is disabled', () async {
+      final dir = _scratch();
+      addTearDown(() => dir.deleteSync(recursive: true));
 
-        var r = await _runGlue([
-          'mcp',
-          'add',
-          'parked',
-          '--transport',
-          'stdio',
-          '--disabled',
-          '--',
-          'echo',
-          'hi',
-        ], glueHome: dir.path);
-        expect(r.exitCode, 0, reason: r.stderr.toString());
+      var r = await _runGlue([
+        'mcp',
+        'add',
+        'parked',
+        '--transport',
+        'stdio',
+        '--disabled',
+        '--',
+        'echo',
+        'hi',
+      ], glueHome: dir.path);
+      expect(r.exitCode, 0, reason: r.stderr.toString());
 
-        r = await _runGlue([
-          'mcp',
-          'tools',
-          'parked',
-        ], glueHome: dir.path).timeout(const Duration(seconds: 15));
-        expect(r.exitCode, 1);
-        expect(r.stderr.toString(), contains('disabled'));
-        expect(r.stderr.toString(), contains('glue mcp enable parked'));
-      },
-      timeout: const Timeout(Duration(seconds: 30)),
-    );
+      r = await _runGlue([
+        'mcp',
+        'tools',
+        'parked',
+      ], glueHome: dir.path).timeout(const Duration(seconds: 15));
+      expect(r.exitCode, 1);
+      expect(r.stderr.toString(), contains('disabled'));
+      expect(r.stderr.toString(), contains('glue mcp enable parked'));
+    }, timeout: const Timeout(Duration(seconds: 30)));
 
-    test(
-      'tools (no arg) with empty config prints friendly message',
-      () async {
-        final dir = _scratch();
-        addTearDown(() => dir.deleteSync(recursive: true));
+    test('tools (no arg) with empty config prints friendly message', () async {
+      final dir = _scratch();
+      addTearDown(() => dir.deleteSync(recursive: true));
 
-        final r = await _runGlue([
-          'mcp',
-          'tools',
-        ], glueHome: dir.path).timeout(const Duration(seconds: 30));
-        expect(r.exitCode, 0, reason: r.stderr.toString());
-        expect(r.stdout.toString(), contains('No MCP servers configured'));
-      },
-      timeout: const Timeout(Duration(seconds: 60)),
-    );
+      final r = await _runGlue([
+        'mcp',
+        'tools',
+      ], glueHome: dir.path).timeout(const Duration(seconds: 30));
+      expect(r.exitCode, 0, reason: r.stderr.toString());
+      expect(r.stdout.toString(), contains('No MCP servers configured'));
+    }, timeout: const Timeout(Duration(seconds: 60)));
 
     test(
       'tools (no arg) with only disabled servers groups them as disabled',

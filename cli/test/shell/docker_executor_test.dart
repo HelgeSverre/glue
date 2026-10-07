@@ -98,37 +98,33 @@ void main() {
     // default to Windows-container mode where pulling/running `alpine` hangs
     // (the probe itself can block, tripping the test timeout). Restrict to
     // Linux and still guard on the daemon being up / the binary existing.
-    test(
-      'runCapture executes in container',
-      () async {
-        if (!Platform.isLinux) {
-          markTestSkipped(
-            'Docker Linux-container integration runs on Linux only',
-          );
-          return;
-        }
-        try {
-          final probe = await Process.run('docker', ['info']);
-          if (probe.exitCode != 0) {
-            markTestSkipped('Docker daemon not available');
-            return;
-          }
-        } on ProcessException {
-          markTestSkipped('Docker not installed');
-          return;
-        }
-
-        final executor = DockerExecutor(
-          config: const DockerConfig(image: 'alpine:latest', shell: 'sh'),
-          cwd: Directory.current.path,
-          mounts: [],
+    test('runCapture executes in container', () async {
+      if (!Platform.isLinux) {
+        markTestSkipped(
+          'Docker Linux-container integration runs on Linux only',
         );
+        return;
+      }
+      try {
+        final probe = await Process.run('docker', ['info']);
+        if (probe.exitCode != 0) {
+          markTestSkipped('Docker daemon not available');
+          return;
+        }
+      } on ProcessException {
+        markTestSkipped('Docker not installed');
+        return;
+      }
 
-        final r = await executor.runCapture('echo hello');
-        expect(r.stdout.trim(), 'hello');
-        expect(r.exitCode, 0);
-      },
-      timeout: const Timeout(Duration(seconds: 30)),
-    );
+      final executor = DockerExecutor(
+        config: const DockerConfig(image: 'alpine:latest', shell: 'sh'),
+        cwd: Directory.current.path,
+        mounts: [],
+      );
+
+      final r = await executor.runCapture('echo hello');
+      expect(r.stdout.trim(), 'hello');
+      expect(r.exitCode, 0);
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

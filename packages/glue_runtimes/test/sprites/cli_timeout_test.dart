@@ -45,50 +45,46 @@ void main() {
       if (dir.existsSync()) await dir.delete(recursive: true);
     });
 
-    test(
-      'returns exit -1 promptly and the child never finishes',
-      () async {
-        if (Platform.isWindows) {
-          markTestSkipped('POSIX shell script fake not available on Windows');
-          return;
-        }
-        final cli = SpritesCli(
-          SpritesConfig(
-            spriteCliPath: script.path,
-            execTimeout: const Duration(minutes: 5),
-          ),
-        );
+    test('returns exit -1 promptly and the child never finishes', () async {
+      if (Platform.isWindows) {
+        markTestSkipped('POSIX shell script fake not available on Windows');
+        return;
+      }
+      final cli = SpritesCli(
+        SpritesConfig(
+          spriteCliPath: script.path,
+          execTimeout: const Duration(minutes: 5),
+        ),
+      );
 
-        final sw = Stopwatch()..start();
-        final res = await cli.execCapture(
-          'my-sprite',
-          'whatever',
-          timeout: const Duration(seconds: 1),
-        );
-        sw.stop();
+      final sw = Stopwatch()..start();
+      final res = await cli.execCapture(
+        'my-sprite',
+        'whatever',
+        timeout: const Duration(seconds: 1),
+      );
+      sw.stop();
 
-        expect(res.exitCode, -1, reason: 'timeout must yield exit -1');
-        expect(res.stderr, contains('timed out'));
-        expect(
-          sw.elapsed,
-          lessThan(const Duration(seconds: 3)),
-          reason: 'must return at ~timeout, not wait out the 4s child sleep',
-        );
+      expect(res.exitCode, -1, reason: 'timeout must yield exit -1');
+      expect(res.stderr, contains('timed out'));
+      expect(
+        sw.elapsed,
+        lessThan(const Duration(seconds: 3)),
+        reason: 'must return at ~timeout, not wait out the 4s child sleep',
+      );
 
-        // Wait well past the child's 4s sleep. A leaked (unkilled) child
-        // would run to completion and write `finished`; a SIGKILLed one
-        // never does. (We assert the negative — that `finished` is absent
-        // — rather than that `started` was written, because child-startup
-        // scheduling latency under the concurrent test harness is not
-        // something this test should depend on.)
-        await Future<void>.delayed(const Duration(seconds: 6));
-        expect(
-          finishedMarker.existsSync(),
-          isFalse,
-          reason: 'the child must be SIGKILLed on timeout, not left running',
-        );
-      },
-      timeout: const Timeout(Duration(seconds: 40)),
-    );
+      // Wait well past the child's 4s sleep. A leaked (unkilled) child
+      // would run to completion and write `finished`; a SIGKILLed one
+      // never does. (We assert the negative — that `finished` is absent
+      // — rather than that `started` was written, because child-startup
+      // scheduling latency under the concurrent test harness is not
+      // something this test should depend on.)
+      await Future<void>.delayed(const Duration(seconds: 6));
+      expect(
+        finishedMarker.existsSync(),
+        isFalse,
+        reason: 'the child must be SIGKILLed on timeout, not left running',
+      );
+    }, timeout: const Timeout(Duration(seconds: 40)));
   });
 }

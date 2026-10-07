@@ -37,37 +37,31 @@ String? _anchorApiKey() {
 
 void main() {
   group('Anchor Browser e2e', () {
-    test(
-      'provisions a session and drives web_browser over CDP',
-      () async {
-        final apiKey = _anchorApiKey();
-        if (apiKey == null || apiKey.isEmpty) {
-          markTestSkipped(
-            'Set ANCHOR_API_KEY or web.browser.anchor.api_key in ~/.glue/config.yaml',
-          );
-          return;
-        }
-
-        final manager = BrowserManager(
-          provider: AnchorProvider(apiKey: apiKey),
+    test('provisions a session and drives web_browser over CDP', () async {
+      final apiKey = _anchorApiKey();
+      if (apiKey == null || apiKey.isEmpty) {
+        markTestSkipped(
+          'Set ANCHOR_API_KEY or web.browser.anchor.api_key in ~/.glue/config.yaml',
         );
-        final tool = WebBrowserTool(manager);
+        return;
+      }
 
-        try {
-          final result = await tool.execute({
-            'action': 'navigate',
-            'url': 'https://example.com',
-          });
+      final manager = BrowserManager(provider: AnchorProvider(apiKey: apiKey));
+      final tool = WebBrowserTool(manager);
 
-          expect(result.success, isTrue);
-          expect(result.content, contains('Navigated to: https://example.com'));
-          expect(result.content, contains('Title: Example Domain'));
-          expect(result.content, contains('Backend: anchor'));
-        } finally {
-          await tool.dispose();
-        }
-      },
-      timeout: const Timeout(Duration(seconds: 90)),
-    );
+      try {
+        final result = await tool.execute({
+          'action': 'navigate',
+          'url': 'https://example.com',
+        });
+
+        expect(result.success, isTrue);
+        expect(result.content, contains('Navigated to: https://example.com'));
+        expect(result.content, contains('Title: Example Domain'));
+        expect(result.content, contains('Backend: anchor'));
+      } finally {
+        await tool.dispose();
+      }
+    }, timeout: const Timeout(Duration(seconds: 90)));
   });
 }

@@ -64,22 +64,18 @@ void main() {
     timeout: const Timeout(Duration(seconds: 60)),
   );
 
-  test(
-    'responds to session/new with a fresh sessionId',
-    () async {
-      final lines = await _serveAndCollect([
-        _initializeRequest,
-        _sessionNewRequest,
-      ], 2);
-      expect(lines, hasLength(2));
-      final newResp = jsonDecode(lines[1]) as Map<String, Object?>;
-      final result = newResp['result']! as Map<String, Object?>;
-      expect(result['sessionId'], isA<String>());
-      // CliAcpDelegate prefixes ids with `glue-` (vs the older `sess-` stub).
-      expect((result['sessionId']! as String).startsWith('glue-'), isTrue);
-    },
-    timeout: const Timeout(Duration(seconds: 60)),
-  );
+  test('responds to session/new with a fresh sessionId', () async {
+    final lines = await _serveAndCollect([
+      _initializeRequest,
+      _sessionNewRequest,
+    ], 2);
+    expect(lines, hasLength(2));
+    final newResp = jsonDecode(lines[1]) as Map<String, Object?>;
+    final result = newResp['result']! as Map<String, Object?>;
+    expect(result['sessionId'], isA<String>());
+    // CliAcpDelegate prefixes ids with `glue-` (vs the older `sess-` stub).
+    expect((result['sessionId']! as String).startsWith('glue-'), isTrue);
+  }, timeout: const Timeout(Duration(seconds: 60)));
 
   test(
     'session/close retires the session and later prompts return -32001',

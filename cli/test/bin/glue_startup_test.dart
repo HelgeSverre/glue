@@ -46,27 +46,19 @@ void main() {
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
-    test(
-      'ambiguous bare model exits 78 with candidate list',
-      () async {
-        final r = await _runGlue(['-p', '--model', 'claude-sonnet-4-6']);
-        expect(r.exitCode, 78);
-        expect(r.stderr.toString(), contains('ambiguous'));
-        expect(r.stderr.toString(), contains('anthropic/'));
-        expect(r.stderr.toString(), isNot(contains('Unhandled exception')));
-      },
-      timeout: const Timeout(Duration(minutes: 2)),
-    );
+    test('ambiguous bare model exits 78 with candidate list', () async {
+      final r = await _runGlue(['-p', '--model', 'claude-sonnet-4-6']);
+      expect(r.exitCode, 78);
+      expect(r.stderr.toString(), contains('ambiguous'));
+      expect(r.stderr.toString(), contains('anthropic/'));
+      expect(r.stderr.toString(), isNot(contains('Unhandled exception')));
+    }, timeout: const Timeout(Duration(minutes: 2)));
 
-    test(
-      'unknown provider in explicit ref exits 78 cleanly',
-      () async {
-        final r = await _runGlue(['-p', '--model', 'madeup/foo']);
-        expect(r.exitCode, 78);
-        expect(r.stderr.toString(), contains('unknown provider'));
-        expect(r.stderr.toString(), isNot(contains('Unhandled exception')));
-      },
-      timeout: const Timeout(Duration(minutes: 2)),
-    );
+    test('unknown provider in explicit ref exits 78 cleanly', () async {
+      final r = await _runGlue(['-p', '--model', 'madeup/foo']);
+      expect(r.exitCode, 78);
+      expect(r.stderr.toString(), contains('unknown provider'));
+      expect(r.stderr.toString(), isNot(contains('Unhandled exception')));
+    }, timeout: const Timeout(Duration(minutes: 2)));
   });
 }

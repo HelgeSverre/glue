@@ -80,11 +80,9 @@ void main() {
       final props = params['properties'] as Map<String, dynamic>;
       final itemsList = props['items_list'] as Map<String, dynamic>;
       expect(itemsList['type'], 'array');
-      expect(
-        itemsList['items'],
-        {'type': 'string'},
-        reason: 'OpenAI strict validator requires items on array schemas',
-      );
+      expect(itemsList['items'], {
+        'type': 'string',
+      }, reason: 'OpenAI strict validator requires items on array schemas');
     });
   });
 }
