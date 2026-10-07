@@ -239,8 +239,6 @@ class AtFileHint with AutocompleteSelection implements AutocompleteOverlay {
     return entries;
   }
 
-  @override
-  @override
   /// Accept the current selection by splicing the `@path` token into
   /// [buffer] at [_tokenStart]…[cursor]. Returns the new buffer and
   /// cursor position.

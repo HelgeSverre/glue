@@ -73,8 +73,6 @@ class ShellAutocomplete
     resetSelection();
   }
 
-  @override
-  @override
   /// Accept the current selection. The shell overlay has cached the
   /// triggering buffer/cursor at `requestCompletions` time, so the
   /// passed-in [buffer] and [cursor] are ignored.

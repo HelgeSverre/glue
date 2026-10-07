@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_harness/src/session/session_manager.dart';
 
@@ -56,24 +58,31 @@ abstract class SummaryGenerator {
 
   Future<String?> _generate(String userMessage) async {
     try {
-      final response = StringBuffer();
-      await _llm
-          .stream([Message.user(userMessage)])
-          .forEach((chunk) {
-            switch (chunk) {
-              case TextDelta(:final text):
-                response.write(text);
-              case UsageInfo():
-                onUsage?.call(chunk);
-              default:
-                break;
-            }
-          })
-          .timeout(timeout);
-      return sanitizeTo(response.toString(), maxLength);
+      final stream = StreamIterator(_llm.stream([Message.user(userMessage)]));
+      try {
+        final response = await _collect(stream).timeout(timeout);
+        return sanitizeTo(response, maxLength);
+      } finally {
+        await stream.cancel();
+      }
     } catch (_) {
       return null;
     }
+  }
+
+  Future<String> _collect(StreamIterator<LlmChunk> stream) async {
+    final response = StringBuffer();
+    while (await stream.moveNext()) {
+      switch (stream.current) {
+        case TextDelta(:final text):
+          response.write(text);
+        case final UsageInfo usage:
+          onUsage?.call(usage);
+        default:
+          break;
+      }
+    }
+    return response.toString();
   }
 
   // Control chars, combining marks (zalgo), and Other_Symbol (emoji,

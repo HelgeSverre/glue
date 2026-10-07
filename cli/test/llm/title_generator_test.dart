@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:glue_core/glue_core.dart';
 import 'package:glue_harness/glue_harness.dart';
 import 'package:test/test.dart';
@@ -21,8 +23,33 @@ class _FakeLlmClient implements LlmClient {
   }
 }
 
+class _StreamingLlmClient implements LlmClient {
+  final Stream<LlmChunk> chunks;
+
+  _StreamingLlmClient(this.chunks);
+
+  @override
+  Stream<LlmChunk> stream(List<Message> messages, {List<Tool>? tools}) =>
+      chunks;
+}
+
 void main() {
   group('TitleGenerator.generate', () {
+    test('cancels the provider stream when generation times out', () async {
+      var cancelled = false;
+      final chunks = StreamController<LlmChunk>(
+        onCancel: () => cancelled = true,
+      );
+      addTearDown(chunks.close);
+      final generator = TitleGenerator(
+        llmClient: _StreamingLlmClient(chunks.stream),
+      );
+      chunks.add(TextDelta('Partial title'));
+
+      expect(await generator.generate('test'), isNull);
+      expect(cancelled, isTrue);
+    });
+
     test('returns title from streamed text chunks', () async {
       final llm = _FakeLlmClient(
         chunks: [TextDelta('Fix'), TextDelta(' auth'), TextDelta(' bug')],
