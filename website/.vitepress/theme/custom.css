@@ -1,6 +1,7 @@
 /* ─── Glue · minimal technical ─────────────────────────────────────────── */
 
 :root {
+  --vp-layout-top-height: 3rem;
   /* Accent (used sparingly — focus states, shipping pill, brand marks). */
   --glue-accent: #facc15;
   --glue-accent-soft: rgba(250, 204, 21, 0.12);
@@ -26,6 +27,12 @@
   --vp-font-family-base:
     "Inter", system-ui, -apple-system, Segoe UI, sans-serif;
   --vp-font-family-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+
+@media (max-width: 480px) {
+  :root {
+    --vp-layout-top-height: 4.5rem;
+  }
 }
 
 /* Light defaults keep VitePress' neutrals. Dark reset below. */

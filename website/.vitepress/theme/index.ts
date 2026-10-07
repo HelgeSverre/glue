@@ -1,4 +1,5 @@
 import type { Theme } from "vitepress";
+import { h } from "vue";
 import DefaultTheme from "vitepress/theme";
 import "./custom.css";
 
@@ -9,9 +10,14 @@ import FeatureStatus from "./components/FeatureStatus.vue";
 import ConfigSnippet from "./components/ConfigSnippet.vue";
 import InstallSnippet from "./components/InstallSnippet.vue";
 import Home from "./components/Home.vue";
+import SplashAnnouncement from "./components/SplashAnnouncement.vue";
 
 const theme: Theme = {
   extends: DefaultTheme,
+  Layout: () =>
+    h(DefaultTheme.Layout, null, {
+      "layout-top": () => h(SplashAnnouncement),
+    }),
   enhanceApp({ app }) {
     app.component("TerminalDemo", TerminalDemo);
     app.component("ModelTable", ModelTable);
