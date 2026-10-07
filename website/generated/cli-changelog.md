@@ -4,6 +4,15 @@ All notable changes to Glue CLI will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Claude Haiku 5.5** is recommended in the model picker as
+  `anthropic/claude-haiku-5-5`, with 1M context, 128K output, and adaptive
+  reasoning controls. Thinking summaries respect `show_thoughts`, and edited
+  conversations discard invalidated thinking without failing the request.
+  Haiku 4.5 remains available for pinned configurations.
+  Older cached catalogs no longer hide models shipped in newer Glue builds.
+
 ### Changed
 
 - **`glue completions install --shell zsh` installs an autoloaded function.**

@@ -48,18 +48,20 @@
     "notes": "Best balance of speed and intelligence with adaptive thinking. $3/$15 per input/output MTok; introductory $2/$10 pricing runs through 2026-08-31."
   },
   {
-    "id": "claude-haiku-4-5",
+    "id": "claude-haiku-5-5",
     "provider": "anthropic",
-    "name": "Claude Haiku 4.5",
+    "name": "Claude Haiku 5.5",
     "recommended": true,
     "capabilities": [
       "chat",
       "tools",
       "vision",
+      "files",
       "json",
+      "reasoning",
       "coding"
     ],
-    "notes": "Good small_model candidate for titles, summaries, and quick checks."
+    "notes": "Fast small_model candidate for summaries and focused subagent work with adaptive thinking. $0.10/$0.50 per input/output MTok up to 100K input tokens; $0.50/$2.50 above 100K."
   },
   {
     "id": "gpt-5.6-sol",

@@ -58,7 +58,7 @@ void main() {
       expect(sonnet5.recommended, isTrue);
       expect(opus47.recommended, isFalse);
       expect(sonnet46.recommended, isFalse);
-      expect(haiku45.recommended, isTrue);
+      expect(haiku45.recommended, isFalse);
       expect(fable5.capabilities, contains('tools'));
       // opus-4-6 was moved to Anthropic's Legacy table; the catalog
       // should not advertise it as a current model.

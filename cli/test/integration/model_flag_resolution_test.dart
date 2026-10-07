@@ -29,6 +29,24 @@ GlueConfig _load(String cliModel, {Directory? home}) {
 
 void main() {
   group('model flag — catalogued exact match', () {
+    for (final input in [
+      'anthropic/claude-haiku-5-5',
+      'claude-haiku-5-5',
+      'Claude Haiku 5.5',
+    ]) {
+      test('Haiku 5.5 resolves from "$input" with catalog limits', () {
+        final config = _load(input);
+        expect(
+          config.activeModel,
+          ModelRef.parse('anthropic/claude-haiku-5-5'),
+        );
+        final resolved = config.resolveModel(config.activeModel);
+        expect(resolved.apiId, 'claude-haiku-5-5');
+        expect(resolved.def.contextWindow, 1000000);
+        expect(resolved.def.maxOutputTokens, 128000);
+      });
+    }
+
     test('catalog key resolves and apiId reaches the adapter', () {
       final config = _load('anthropic/claude-sonnet-4-6');
       expect(config.activeModel, ModelRef.parse('anthropic/claude-sonnet-4-6'));

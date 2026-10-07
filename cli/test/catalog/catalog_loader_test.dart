@@ -43,6 +43,43 @@ providers:
 
 void main() {
   group('loadCatalog', () {
+    for (final date in ['2026-08-11', '2026-10-09']) {
+      test('cached models respect catalog freshness ($date)', () {
+        final remote = _catalog('''
+version: 1
+updated_at: $date
+defaults:
+  model: anthropic/claude-haiku-4-5
+providers:
+  anthropic:
+    name: Anthropic
+    adapter: anthropic
+    auth:
+      api_key: none
+    models:
+      claude-haiku-4-5:
+        name: Claude Haiku 4.5
+        recommended: true
+      remote-only:
+        name: Remote only
+''');
+        final merged = loadCatalog(
+          bundled: bundledCatalog.copyWith(updatedAt: '2026-10-08'),
+          cachedRemote: remote,
+        );
+        final models = merged.providers['anthropic']!.models;
+        expect(models, contains('remote-only'));
+        if (date == '2026-08-11') {
+          expect(models['claude-haiku-5-5']!.recommended, isTrue);
+          expect(models['claude-haiku-5-5']!.maxOutputTokens, 128000);
+          expect(models['claude-haiku-4-5']!.recommended, isFalse);
+        } else {
+          expect(models, isNot(contains('claude-haiku-5-5')));
+          expect(models['claude-haiku-4-5']!.recommended, isTrue);
+        }
+      });
+    }
+
     test('returns bundled as-is with no overrides', () {
       final bundled = _catalog(_bundled);
       final merged = loadCatalog(bundled: bundled);

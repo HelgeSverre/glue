@@ -8,7 +8,7 @@ import 'package:glue_core/glue_core.dart';
 const String _bundledCatalogJson = r'''
 {
   "version": 1,
-  "updated_at": "2026-10-06",
+  "updated_at": "2026-10-08",
   "defaults": {
     "model": "anthropic/claude-sonnet-5",
     "small_model": "openai/gpt-5.6-luna",
@@ -181,11 +181,47 @@ const String _bundledCatalogJson = r'''
             "transport": "anthropic_adaptive"
           }
         },
+        "claude-haiku-5-5": {
+          "id": "claude-haiku-5-5",
+          "name": "Claude Haiku 5.5",
+          "api_id": "claude-haiku-5-5",
+          "recommended": true,
+          "default": false,
+          "enabled": true,
+          "capabilities": [
+            "chat",
+            "tools",
+            "vision",
+            "files",
+            "json",
+            "reasoning",
+            "coding"
+          ],
+          "context_window": 1000000,
+          "max_output_tokens": 128000,
+          "speed": "fast",
+          "cost": "low",
+          "notes": "Fast small_model candidate for summaries and focused subagent work with adaptive thinking. $0.10/$0.50 per input/output MTok up to 100K input tokens; $0.50/$2.50 above 100K.",
+          "reasoning": {
+            "efforts": [
+              "auto",
+              "off",
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ],
+            "default_effort": "medium",
+            "show_thoughts": false,
+            "transport": "anthropic_adaptive"
+          }
+        },
         "claude-haiku-4-5": {
           "id": "claude-haiku-4-5",
           "name": "Claude Haiku 4.5",
           "api_id": "claude-haiku-4-5",
-          "recommended": true,
+          "recommended": false,
           "default": false,
           "enabled": true,
           "capabilities": [
@@ -199,7 +235,7 @@ const String _bundledCatalogJson = r'''
           "max_output_tokens": 64000,
           "speed": "fast",
           "cost": "low",
-          "notes": "Good small_model candidate for titles, summaries, and quick checks.",
+          "notes": "Active pinned predecessor retained for existing configurations; prefer Claude Haiku 5.5.",
           "reasoning": {
             "efforts": [
               "auto"

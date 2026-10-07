@@ -14,7 +14,7 @@
 # the OpenAI API wire format", not "this provider is OpenAI".
 
 version: 1
-updated_at: 2026-10-06
+updated_at: 2026-10-08
 
 defaults:
   model: anthropic/claude-sonnet-5
@@ -86,16 +86,26 @@ providers:
         speed: standard
         cost: high
         notes: Active pinned predecessor retained for existing configurations; prefer Claude Sonnet 5.
+      claude-haiku-5-5:
+        name: Claude Haiku 5.5
+        recommended: true
+        capabilities: [chat, tools, vision, files, json, reasoning, coding]
+        reasoning: {efforts: [off, low, medium, high, xhigh, max], default: medium, transport: anthropic_adaptive}
+        context_window: 1000000
+        max_output_tokens: 128000
+        speed: fast
+        cost: low
+        notes: Fast small_model candidate for summaries and focused subagent work with adaptive thinking. $0.10/$0.50 per input/output MTok up to 100K input tokens; $0.50/$2.50 above 100K.
       claude-haiku-4-5:
         name: Claude Haiku 4.5
-        recommended: true
+        recommended: false
         capabilities: [chat, tools, vision, json, coding]
         reasoning: {efforts: [auto], default: auto, transport: anthropic_manual}
         context_window: 200000
         max_output_tokens: 64000
         speed: fast
         cost: low
-        notes: Good small_model candidate for titles, summaries, and quick checks.
+        notes: Active pinned predecessor retained for existing configurations; prefer Claude Haiku 5.5.
       claude-opus-4-7:
         name: Claude Opus 4.7
         recommended: false

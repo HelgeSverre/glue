@@ -12,6 +12,8 @@
 /// provider every time the user runs `glue catalog refresh`. Field-merging
 /// preserves stripped fields from the bundled layer while still letting the
 /// remote layer refresh `models`, `enabled`, `docs_url`, and `name`.
+/// A dated cache older than the bundle retains bundled model definitions,
+/// including newly released models, while still adding remote-only entries.
 ///
 /// **Local overrides** retain whole-ProviderDef replace semantics. Users
 /// writing `~/.glue/models.yaml` redeclare a provider in full, and the local
@@ -34,11 +36,21 @@ ModelCatalog loadCatalog({
   final providers = <String, ProviderDef>{...bundled.providers};
 
   if (cachedRemote != null) {
+    final bundledDate = DateTime.tryParse(bundled.updatedAt);
+    final cachedDate = DateTime.tryParse(cachedRemote.updatedAt);
+    final cacheIsOlder =
+        bundledDate != null &&
+        cachedDate != null &&
+        cachedDate.isBefore(bundledDate);
     for (final entry in cachedRemote.providers.entries) {
       final existing = providers[entry.key];
       providers[entry.key] = existing == null
           ? entry.value
-          : _mergeProvider(base: existing, overlay: entry.value);
+          : _mergeProvider(
+              base: existing,
+              overlay: entry.value,
+              preserveBundledModels: cacheIsOlder,
+            );
     }
   }
 
@@ -70,6 +82,7 @@ ModelCatalog loadCatalog({
 ProviderDef _mergeProvider({
   required ProviderDef base,
   required ProviderDef overlay,
+  required bool preserveBundledModels,
 }) {
   return ProviderDef(
     id: base.id,
@@ -83,7 +96,11 @@ ProviderDef _mergeProvider({
     requestHeaders: overlay.requestHeaders.isEmpty
         ? base.requestHeaders
         : overlay.requestHeaders,
-    models: overlay.models.isEmpty ? base.models : overlay.models,
+    models: preserveBundledModels
+        ? {...overlay.models, ...base.models}
+        : overlay.models.isEmpty
+        ? base.models
+        : overlay.models,
   );
 }
 

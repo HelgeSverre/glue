@@ -89,16 +89,47 @@ class AnthropicClient implements LlmClient {
       }
     }
 
+    final headers = <String, String>{
+      'content-type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': _apiVersion,
+      ...extraHeaders.map((key, value) => MapEntry(key.toLowerCase(), value)),
+    };
+    if (model == 'claude-haiku-5-5') {
+      if (reasoning.effort == ReasoningEffort.off) {
+        // Binding controls cannot accompany disabled thinking. Old reasoning
+        // may be invalid after a resume, compaction, or tool-set change.
+        for (final message in mapped.messages) {
+          if (message['role'] != 'assistant') continue;
+          (message['content'] as List<Map<String, dynamic>>).removeWhere(
+            (block) =>
+                block['type'] == 'thinking' ||
+                block['type'] == 'redacted_thinking',
+          );
+        }
+        mapped.messages.removeWhere(
+          (message) => (message['content'] as List).isEmpty,
+        );
+      } else {
+        body['thinking'] = {
+          'type': 'adaptive',
+          'display': reasoning.showThoughts ? 'summarized' : 'omitted',
+          // Glue can edit history and rebuild system prompts between turns.
+          // Let the API discard only the reasoning invalidated by those edits.
+          'block_binding': {'prefix_mismatch_behavior': 'drop_block'},
+        };
+        headers['anthropic-beta'] = [
+          if (headers['anthropic-beta'] case final String betas) betas,
+          'thinking-binding-controls-2026-08-01',
+        ].join(',');
+      }
+    }
+
     return retryStream(
       () => sendAndStream(
         requestClientFactory: _requestClientFactory,
         uri: _baseUri.resolve('/v1/messages'),
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': _apiVersion,
-          ...extraHeaders,
-        },
+        headers: headers,
         body: body,
         providerName: 'Anthropic',
         parse: (bytes) => parseStreamEvents(
@@ -179,7 +210,11 @@ class AnthropicClient implements LlmClient {
               }
             }
           } else if (deltaType == 'signature_delta') {
-            thinkingBlocks[index]?['signature'] = delta['signature'];
+            final block = thinkingBlocks[index];
+            if (block != null) {
+              block['signature'] =
+                  '${block['signature'] ?? ''}${delta['signature']}';
+            }
           } else if (deltaType == 'input_json_delta') {
             toolBuffers[index]?.write(delta['partial_json'] as String);
           }
@@ -200,6 +235,9 @@ class AnthropicClient implements LlmClient {
           if (thinking != null) yield ReasoningArtifactChunk(thinking);
 
         case 'message_delta':
+          if ((event['delta'] as Map?)?['stop_reason'] == 'refusal') {
+            throw Exception('Anthropic refused this request (refusal).');
+          }
           final usage = event['usage'] as Map?;
           if (usage != null) {
             outputTokens = (usage['output_tokens'] as int?) ?? 0;
