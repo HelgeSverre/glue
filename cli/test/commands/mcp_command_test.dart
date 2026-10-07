@@ -3,34 +3,35 @@
 /// arg parser, the config-file path resolution, and `McpConfigWriter`
 /// are all exercised together.
 ///
-/// Heavy by design — each test spawns a Dart VM. Keep the count small;
-/// per-edge-case coverage lives in `mcp_config_writer_test.dart`.
+/// Compile the entrypoint once, then spawn a fresh Dart VM per command.
+/// Per-edge-case coverage lives in `mcp_config_writer_test.dart`.
 library;
 
 import 'dart:io';
 
 import 'package:test/test.dart';
 
+late String _snapshotPath;
+
 Future<ProcessResult> _runGlue(
   List<String> args, {
   required String glueHome,
 }) async {
   final process = await Process.start(
-    'dart',
-    ['run', '--verbosity=error', 'bin/glue.dart', ...args],
+    Platform.resolvedExecutable,
+    [_snapshotPath, ...args],
     workingDirectory: Directory.current.path,
-    runInShell: true,
     environment: {...Platform.environment, 'GLUE_HOME': glueHome},
   );
+  addTearDown(() async {
+    process.kill();
+    await process.exitCode;
+  });
+  final out = process.stdout.transform(const SystemEncoding().decoder).join();
+  final err = process.stderr.transform(const SystemEncoding().decoder).join();
   await process.stdin.close();
-  final out = await process.stdout
-      .transform(const SystemEncoding().decoder)
-      .join();
-  final err = await process.stderr
-      .transform(const SystemEncoding().decoder)
-      .join();
   final exitCode = await process.exitCode;
-  return ProcessResult(process.pid, exitCode, out, err);
+  return ProcessResult(process.pid, exitCode, await out, await err);
 }
 
 Directory _scratch() =>
@@ -38,6 +39,20 @@ Directory _scratch() =>
 
 void main() {
   group('glue mcp', () {
+    setUpAll(() async {
+      final dir = _scratch();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      _snapshotPath = '${dir.path}/glue.dill';
+      final result = await Process.run('dart', [
+        'compile',
+        'kernel',
+        'bin/glue.dart',
+        '-o',
+        _snapshotPath,
+      ]);
+      expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
+    });
+
     test(
       'full lifecycle: add stdio → list → disable → enable → remove',
       () async {
@@ -289,5 +304,5 @@ void main() {
       final yaml = File('${dir.path}/config.yaml').readAsStringSync();
       expect(yaml, contains('kind: bearer'));
     });
-  });
+  }, timeout: const Timeout(Duration(minutes: 2)));
 }
