@@ -14,6 +14,10 @@
 
 Edits files, runs shell, keeps resumable sessions — the usual things. The web tooling is a bit more developed than in most coding agents: browser automation, fetch with OCR fallback, search. That's because I use Glue for scraping and automation about as much as for coding. Runs on your host or in a Docker sandbox.
 
+![Glue conversation with Claude Haiku 5.5 and the slash-command menu open](docs/assets/glue-slash-menu.png)
+
+[Watch the menu demo (GIF)](docs/assets/glue-demo.gif) · [Full recording (MP4)](docs/assets/glue-demo.mp4) · [Chat screenshot](docs/assets/glue-chat.png)
+
 ## Packages
 
 | Directory              | Description                                                         |
