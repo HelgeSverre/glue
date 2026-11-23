@@ -67,3 +67,4 @@ jobs:
           name: getglue-site
           path: website/.vitepress/dist
           if-no-files-found: error
+          retention-days: 7
